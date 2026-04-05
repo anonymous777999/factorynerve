@@ -817,6 +817,7 @@ def register_user(
             or build_verification_link(verification_token)
         )
         delivery_mode = "preview" if _should_expose_verification_link() else "email"
+        message = "Signup submitted. Verify the email to create and activate this account."
         if delivery_mode == "email":
             sent = _send_auth_email(
                 subject=EMAIL_VERIFICATION_EMAIL_SUBJECT,
@@ -830,21 +831,30 @@ def register_user(
                 context="registration_verification",
             )
             if not sent:
-                raise HTTPException(
-                    status_code=503,
-                    detail="Could not send the verification email right now. Please try again in a moment.",
+                delivery_mode = "email_failed"
+                message = (
+                    "Signup saved, but we could not send the verification email right now. "
+                    "Please use resend verification in a moment."
+                )
+                _log_auth_event(
+                    db,
+                    "PUBLIC_SIGNUP_PENDING_VERIFICATION_EMAIL_FAILED",
+                    "Pending signup saved, but the first verification email could not be delivered.",
+                    None,
+                    request,
                 )
 
-        _log_auth_event(
-            db,
-            "PUBLIC_SIGNUP_PENDING_VERIFICATION",
-            "Public signup is waiting for email verification before account creation.",
-            None,
-            request,
-        )
+        if delivery_mode != "email_failed":
+            _log_auth_event(
+                db,
+                "PUBLIC_SIGNUP_PENDING_VERIFICATION",
+                "Public signup is waiting for email verification before account creation.",
+                None,
+                request,
+            )
         db.commit()
         return RegisterResponse(
-            message="Signup submitted. Verify the email to create and activate this account.",
+            message=message,
             email=payload.email.lower(),
             pending_factory_name=requested_factory,
             verification_required=True,

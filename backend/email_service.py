@@ -10,6 +10,7 @@ from email.message import EmailMessage
 from typing import Iterable
 
 logger = logging.getLogger(__name__)
+SMTP_TIMEOUT_SECONDS = float(os.getenv("SMTP_TIMEOUT_SECONDS", "12"))
 
 
 def _to_bool(value: str | None, default: bool = False) -> bool:
@@ -53,14 +54,14 @@ def _send_via_smtp(
 ) -> None:
     if use_ssl:
         context = ssl.create_default_context()
-        with smtplib.SMTP_SSL(host, port, timeout=20, context=context) as smtp:
+        with smtplib.SMTP_SSL(host, port, timeout=SMTP_TIMEOUT_SECONDS, context=context) as smtp:
             smtp.ehlo()
             if user and password:
                 smtp.login(user, password)
             smtp.send_message(message)
         return
 
-    with smtplib.SMTP(host, port, timeout=20) as smtp:
+    with smtplib.SMTP(host, port, timeout=SMTP_TIMEOUT_SECONDS) as smtp:
         smtp.ehlo()
         if use_tls:
             context = ssl.create_default_context()

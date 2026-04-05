@@ -22,7 +22,10 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState<RegisterResponse | null>(null);
   const [resending, setResending] = useState(false);
   const [resendStatus, setResendStatus] = useState("");
-  const isEmailDelivery = success?.delivery_mode !== "preview";
+  const deliveryMode = success?.delivery_mode ?? null;
+  const isPreviewMode = deliveryMode === "preview";
+  const isEmailFailure = deliveryMode === "email_failed";
+  const isEmailDelivery = !!success && !isPreviewMode && !isEmailFailure;
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -55,6 +58,8 @@ export default function RegisterPage() {
         setError(err.message);
       } else if (err instanceof Error && err.message.includes("Failed to fetch")) {
         setError("Backend not reachable. Check that FastAPI is running and NEXT_PUBLIC_API_BASE_URL is correct.");
+      } else if (err instanceof Error && err.message.includes("Request timed out")) {
+        setError("Signup is taking too long waiting for email delivery. Please try again or retry in a minute.");
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -125,7 +130,11 @@ export default function RegisterPage() {
         <div className="space-y-5">
               <div className="rounded-2xl border border-[rgba(245,158,11,0.28)] bg-[rgba(245,158,11,0.10)] p-4 text-sm">
                 <div className="font-semibold text-amber-300">
-                  {isEmailDelivery ? "Check your inbox to finish signup" : "Verification link ready"}
+                  {isEmailFailure
+                    ? "Signup saved, but email delivery needs another try"
+                    : isEmailDelivery
+                      ? "Check your inbox to finish signup"
+                      : "Verification link ready"}
                 </div>
                 <div className="mt-2 text-[var(--text)]/90">{success.message}</div>
                 <div className="mt-3 text-[var(--muted)]">
@@ -137,13 +146,22 @@ export default function RegisterPage() {
                     What to do next
                   </div>
                   <ol className="mt-3 space-y-2 text-sm text-[var(--text)]/90">
-                    <li>1. Open the inbox for {email}.</li>
+                    <li>1. {isEmailFailure ? "Wait a minute, then request a fresh verification email." : `Open the inbox for ${email}.`}</li>
                     <li>
-                      2. {isEmailDelivery ? "Click the verification email from DPR.ai." : "Open the preview link below."}
+                      2. {isEmailFailure
+                        ? "Use Resend Verification Email below until the message arrives."
+                        : isEmailDelivery
+                          ? "Click the verification email from DPR.ai."
+                          : "Open the preview link below."}
                     </li>
                     <li>3. Return here and sign in after verification is complete.</li>
                   </ol>
                 </div>
+                {isEmailFailure ? (
+                  <div className="mt-3 rounded-xl border border-[rgba(248,113,113,0.28)] bg-[rgba(127,29,29,0.28)] p-3 text-xs text-red-100">
+                    The signup request is safe in the system, but the first verification email did not leave successfully. You do not need to fill the form again.
+                  </div>
+                ) : null}
                 {isEmailDelivery ? (
                   <div className="mt-3 rounded-xl border border-[rgba(34,197,94,0.18)] bg-[rgba(34,197,94,0.08)] p-3 text-xs text-[var(--muted)]">
                     If you do not see the email within a minute, check spam or promotions, then use
@@ -166,6 +184,10 @@ export default function RegisterPage() {
                       Open Verification Page
                     </a>
                     <div className="break-all text-xs text-[var(--muted)]">{success.verification_link}</div>
+                  </div>
+                ) : isEmailFailure ? (
+                  <div className="mt-3 text-[var(--muted)]">
+                    Use resend once the email service is healthy again. The pending signup is already stored.
                   </div>
                 ) : (
                   <div className="mt-3 text-[var(--muted)]">

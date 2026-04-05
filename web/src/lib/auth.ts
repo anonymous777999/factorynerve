@@ -104,6 +104,8 @@ export type SessionSummary = {
   last_activity?: string | null;
 };
 
+const AUTH_EMAIL_TIMEOUT_MS = 30_000;
+
 function refreshAccountSession(payload: CurrentUser) {
   invalidateApiCache("session:me");
   invalidateApiCache("session:context");
@@ -139,7 +141,7 @@ export async function register(payload: {
       method: "POST",
       body: payload,
     },
-    { useCookies: false },
+    { useCookies: false, timeoutMs: AUTH_EMAIL_TIMEOUT_MS },
   );
 }
 
@@ -167,7 +169,7 @@ export async function requestPasswordReset(email: string): Promise<PasswordForgo
       method: "POST",
       body: { email },
     },
-    { useCookies: false },
+    { useCookies: false, timeoutMs: AUTH_EMAIL_TIMEOUT_MS },
   );
 }
 
@@ -178,7 +180,7 @@ export async function resendEmailVerification(email: string): Promise<EmailVerif
       method: "POST",
       body: { email },
     },
-    { useCookies: false },
+    { useCookies: false, timeoutMs: AUTH_EMAIL_TIMEOUT_MS },
   );
 }
 

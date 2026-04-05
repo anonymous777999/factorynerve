@@ -5,7 +5,8 @@ import pytest
 from starlette.requests import Request
 
 from backend.database import SessionLocal, init_db
-from backend.models.user import UserRole
+from backend.models.pending_registration import PendingRegistration
+from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
 from backend.routers import auth as auth_router
 from backend.services.auth_service import get_or_create_google_user
@@ -208,6 +209,53 @@ def test_register_email_mode_sends_verification_without_existing_user(monkeypatc
     assert captured["to_email"] == email.lower()
     assert captured["context"] == "registration_verification"
     assert "Verify your email address to activate your account." in captured["body"]
+
+
+def test_register_email_mode_keeps_pending_signup_when_delivery_fails(monkeypatch):
+    init_db()
+    email = unique_email()
+
+    def fake_send_auth_email(*, subject: str, to_email: str, body: str, context: str) -> bool:
+        return False
+
+    scope = {
+        "type": "http",
+        "method": "POST",
+        "path": "/auth/register",
+        "headers": [(b"origin", b"http://127.0.0.1:3000")],
+        "client": ("127.0.0.1", 1234),
+        "server": ("127.0.0.1", 8765),
+        "scheme": "http",
+        "query_string": b"",
+    }
+
+    monkeypatch.setenv("EMAIL_VERIFICATION_EXPOSE_LINK", "0")
+    monkeypatch.setattr(auth_router, "_send_auth_email", fake_send_auth_email)
+
+    with SessionLocal() as db:
+        response = auth_router.register_user(
+            payload=auth_router.RegisterRequest(
+                name="Pending Email Failure",
+                email=email,
+                password="StrongPassw0rd!",
+                role=UserRole.ATTENDANCE,
+                factory_name=unique_factory(),
+                phone_number="+910000000000",
+            ),
+            request=Request(scope),
+            db=db,
+        )
+
+    assert response.verification_required is True
+    assert response.delivery_mode == "email_failed"
+    assert response.verification_link is None
+    assert "Signup saved" in response.message
+
+    with SessionLocal() as db:
+        pending = db.query(PendingRegistration).filter(PendingRegistration.email == email.lower()).first()
+        assert pending is not None
+        existing_user = db.query(User).filter(User.email == email.lower()).first()
+        assert existing_user is None
 
 
 def test_google_onboarding_bootstraps_new_workspace_as_admin():
