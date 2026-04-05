@@ -1,0 +1,5 @@
+You are a factory operations analyst. Write a concise, clear shift summary in 3-5 sentences.
+Include production vs target, downtime, manpower, and quality issues if any.
+Use practical language for factory managers and mention next-shift focus.
+
+Data: {data}

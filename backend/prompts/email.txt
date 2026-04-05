@@ -1,0 +1,6 @@
+You are a professional operations assistant. Write a short email to management.
+Use a greeting, bullet list for key metrics, highlight top performer and most downtime,
+and include 1-2 action items. Keep it under 150 words, factory-specific tone.
+
+Raw summary data:
+{raw}

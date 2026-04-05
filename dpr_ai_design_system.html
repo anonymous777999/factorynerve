@@ -1,0 +1,756 @@
+
+<style>
+.dp-tabs{display:flex;gap:6px;margin:0 0 14px;flex-wrap:wrap;}
+.dp-tab{padding:5px 13px;border-radius:6px;border:0.5px solid var(--color-border-tertiary);background:var(--color-background-primary);font-size:12px;cursor:pointer;color:var(--color-text-secondary);font-weight:500;}
+.dp-tab.on{background:var(--color-background-secondary);color:var(--color-text-primary);border-color:var(--color-border-secondary);}
+.dp-screen{display:none;}.dp-screen.on{display:block;}
+
+/* === DPR FRAME === */
+.F{background:#0D1117;color:#E6EDF3;border-radius:10px;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:13px;line-height:1.4;}
+.F.mob{max-width:390px;margin:0 auto;}
+.F.desk{width:100%;}
+
+/* Nav */
+.nav{background:#161B22;border-bottom:1px solid #21262D;padding:0 16px;display:flex;align-items:center;height:50px;gap:2px;}
+.logo{font-weight:800;font-size:14px;color:#4A8CC4;letter-spacing:-0.02em;margin-right:20px;}
+.ni{font-size:12px;color:#8B949E;cursor:pointer;padding:5px 10px;border-radius:5px;}
+.ni.a{color:#E6EDF3;background:#21262D;}
+
+/* Sidebar nav */
+.sidebar{background:#161B22;border-right:1px solid #21262D;padding:12px 8px;display:flex;flex-direction:column;gap:1px;min-width:44px;width:200px;}
+.sni{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:5px;font-size:12px;color:#8B949E;cursor:pointer;white-space:nowrap;}
+.sni.a{background:#21262D;color:#E6EDF3;}
+.sni-dot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
+
+/* Status badges */
+.b{display:inline-flex;align-items:center;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;}
+.b-ok{background:#0d2818;color:#3FB950;border:1px solid #1a3d20;}
+.b-warn{background:#2d1f00;color:#E8A317;border:1px solid #4d3500;}
+.b-err{background:#2d0f0f;color:#F85149;border:1px solid #4d1f1f;}
+.b-pend{background:#1a1f2e;color:#8B949E;border:1px solid #30363D;}
+.b-info{background:#0d1f3d;color:#4A8CC4;border:1px solid #1a3a5e;}
+.b-flag{background:#2d1a00;color:#E88417;border:1px solid #4d3000;}
+
+/* Cards */
+.card{background:#161B22;border:1px solid #21262D;border-radius:8px;padding:14px;}
+.card-sm{background:#161B22;border:1px solid #21262D;border-radius:6px;padding:10px 12px;}
+.card-hi{background:#0d1f3d;border:1px solid #1a3a5e;border-radius:8px;padding:14px;}
+
+/* Stat */
+.sv{font-size:26px;font-weight:700;letter-spacing:-0.04em;line-height:1;}
+.sl{font-size:10px;color:#6E7681;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:5px;}
+.ss{font-size:11px;color:#6E7681;margin-top:3px;}
+
+/* Section heading */
+.sh{font-size:10px;font-weight:700;color:#6E7681;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px;}
+
+/* Table */
+.T{width:100%;border-collapse:collapse;}
+.T th{font-size:10px;text-transform:uppercase;letter-spacing:0.05em;color:#6E7681;font-weight:600;text-align:left;padding:6px 10px;border-bottom:1px solid #21262D;}
+.T td{font-size:12px;padding:8px 10px;border-bottom:1px solid #161B22;color:#C9D1D9;}
+.T tr:hover td{background:#161B22;}
+
+/* Buttons */
+.btn{background:#4A8CC4;color:#fff;border:none;padding:8px 16px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;}
+.btn-s{background:#21262D;color:#C9D1D9;border:1px solid #30363D;padding:7px 13px;border-radius:6px;font-size:12px;cursor:pointer;}
+.btn-g{background:transparent;color:#8B949E;border:1px solid #30363D;padding:5px 10px;border-radius:5px;font-size:11px;cursor:pointer;}
+.btn-ok{background:#0d2818;color:#3FB950;border:1px solid #1a3d20;padding:6px 14px;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;}
+.btn-err{background:#2d0f0f;color:#F85149;border:1px solid #4d1f1f;padding:6px 14px;border-radius:5px;font-size:12px;font-weight:600;cursor:pointer;}
+
+/* Utils */
+.mono{font-family:'Courier New',monospace;}
+.hr{border:none;border-top:1px solid #21262D;margin:12px 0;}
+.row{display:flex;align-items:center;}
+.col{display:flex;flex-direction:column;}
+.jb{justify-content:space-between;}
+.g4{gap:4px;}.g8{gap:8px;}.g10{gap:10px;}.g12{gap:12px;}.g16{gap:16px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
+.p16{padding:16px;}.p12{padding:12px;}
+.mb8{margin-bottom:8px;}.mb12{margin-bottom:12px;}.mb14{margin-bottom:14px;}.mb16{margin-bottom:16px;}
+.c1{color:#E6EDF3;}.c2{color:#C9D1D9;}.c3{color:#8B949E;}.c4{color:#6E7681;}
+.steel{color:#4A8CC4;}.amber{color:#E8A317;}.green{color:#3FB950;}.red{color:#F85149;}.cyan{color:#2ECFD6;}
+.fw7{font-weight:700;}.fw6{font-weight:600;}.fs10{font-size:10px;}.fs11{font-size:11px;}.fs12{font-size:12px;}.fs14{font-size:14px;}.fs18{font-size:18px;}
+.pill{padding:2px 8px;border-radius:10px;font-size:10px;}
+.dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.dot-ok{background:#3FB950;}.dot-warn{background:#E8A317;}.dot-err{background:#F85149;}.dot-pend{background:#30363D;}
+
+/* Mobile bottom nav */
+.mbnav{background:#161B22;border-top:1px solid #21262D;padding:8px 0 18px;display:flex;justify-content:space-around;}
+.mbn{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:#6E7681;cursor:pointer;padding:0 10px;}
+.mbn.a{color:#4A8CC4;}
+.mbn-ico{width:22px;height:22px;border-radius:5px;background:#21262D;display:flex;align-items:center;justify-content:center;}
+
+/* OCR specific */
+.cam-zone{background:#0a0a0a;border:2px dashed #30363D;border-radius:8px;margin:16px;height:220px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;}
+.ocr-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;border-bottom:1px solid #21262D;}
+.ocr-row.flag{background:#2d1a00;border-left:3px solid #E88417;}
+.ocr-row.ok{border-left:3px solid #1a3d20;}
+
+/* Signal bar */
+.sig-bar{height:3px;border-radius:2px;}
+.sig-bar.full{background:#4A8CC4;}
+.sig-bar.warn{background:#E8A317;}
+.sig-bar.err{background:#F85149;}
+
+/* Risk meter */
+.risk-track{height:6px;background:#21262D;border-radius:3px;overflow:hidden;}
+.risk-fill{height:100%;border-radius:3px;}
+
+/* Approval item */
+.appr-item{padding:12px 14px;border-bottom:1px solid #21262D;cursor:pointer;}
+.appr-item.sel{background:#0d1f3d;border-left:3px solid #4A8CC4;}
+.appr-item:hover{background:#161B22;}
+
+/* Split */
+.split{display:grid;grid-template-columns:280px 1fr;min-height:540px;}
+</style>
+
+<div class="dp-tabs">
+  <button class="dp-tab on" onclick="sw('sys')">Design System</button>
+  <button class="dp-tab" onclick="sw('dash')">Dashboard</button>
+  <button class="dp-tab" onclick="sw('ocr')">OCR Scan</button>
+  <button class="dp-tab" onclick="sw('appr')">Approvals</button>
+  <button class="dp-tab" onclick="sw('owner')">Owner View</button>
+</div>
+
+<!-- ===== DESIGN SYSTEM ===== -->
+<div id="s-sys" class="dp-screen on">
+  <div class="F desk">
+    <div class="nav"><span class="logo">DPR.ai</span><span class="ni a">Design System</span></div>
+    <div class="p16">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;">
+
+        <!-- Colors -->
+        <div>
+          <div class="sh">Color Tokens</div>
+          <div class="col g8">
+            <div class="row g8"><div style="width:28px;height:28px;border-radius:4px;background:#4A8CC4;"></div><div class="col g4"><span class="fs11 c1 fw6">Steel Blue</span><span class="fs10 mono c4">#4A8CC4 — primary action</span></div></div>
+            <div class="row g8"><div style="width:28px;height:28px;border-radius:4px;background:#E8A317;"></div><div class="col g4"><span class="fs11 c1 fw6">Amber</span><span class="fs10 mono c4">#E8A317 — warning / pending</span></div></div>
+            <div class="row g8"><div style="width:28px;height:28px;border-radius:4px;background:#2ECFD6;"></div><div class="col g4"><span class="fs11 c1 fw6">Cyan</span><span class="fs10 mono c4">#2ECFD6 — insight / AI</span></div></div>
+            <div class="row g8"><div style="width:28px;height:28px;border-radius:4px;background:#3FB950;"></div><div class="col g4"><span class="fs11 c1 fw6">Signal Green</span><span class="fs10 mono c4">#3FB950 — trusted / approved</span></div></div>
+            <div class="row g8"><div style="width:28px;height:28px;border-radius:4px;background:#F85149;"></div><div class="col g4"><span class="fs11 c1 fw6">Alert Red</span><span class="fs10 mono c4">#F85149 — flagged / rejected</span></div></div>
+            <div class="row g8"><div style="width:28px;height:28px;border-radius:4px;background:#0D1117;border:1px solid #30363D;"></div><div class="col g4"><span class="fs11 c1 fw6">Base</span><span class="fs10 mono c4">#0D1117 — page background</span></div></div>
+            <div class="row g8"><div style="width:28px;height:28px;border-radius:4px;background:#161B22;border:1px solid #30363D;"></div><div class="col g4"><span class="fs11 c1 fw6">Surface</span><span class="fs10 mono c4">#161B22 — cards, sidebar</span></div></div>
+            <div class="row g8"><div style="width:28px;height:28px;border-radius:4px;background:#21262D;border:1px solid #30363D;"></div><div class="col g4"><span class="fs11 c1 fw6">Elevated</span><span class="fs10 mono c4">#21262D — hover, selected</span></div></div>
+          </div>
+        </div>
+
+        <!-- Status Components -->
+        <div>
+          <div class="sh">Trust State Badges</div>
+          <div class="col g8 mb16">
+            <div class="row jb"><span class="b b-ok">Approved</span><span class="fs11 c4">OCR trusted, data locked</span></div>
+            <div class="row jb"><span class="b b-warn">Pending</span><span class="fs11 c4">Awaiting supervisor review</span></div>
+            <div class="row jb"><span class="b b-err">Flagged</span><span class="fs11 c4">Mismatch or anomaly found</span></div>
+            <div class="row jb"><span class="b b-pend">Unreviewed</span><span class="fs11 c4">Captured, not yet in queue</span></div>
+            <div class="row jb"><span class="b b-info">Processing</span><span class="fs11 c4">OCR or compute running</span></div>
+            <div class="row jb"><span class="b b-flag">Mismatch</span><span class="fs11 c4">Weight / stock discrepancy</span></div>
+          </div>
+          <div class="sh">Signal Rows</div>
+          <div class="col g4">
+            <div class="row g8" style="padding:7px 10px;background:#0d2818;border-radius:5px;border-left:3px solid #3FB950;"><div class="dot dot-ok"></div><span class="fs11 c1">Shift A — Production 142.5 MT</span><span class="b b-ok" style="margin-left:auto;">Approved</span></div>
+            <div class="row g8" style="padding:7px 10px;background:#2d1f00;border-radius:5px;border-left:3px solid #E8A317;"><div class="dot dot-warn"></div><span class="fs11 c1">OCR Scan #48 — 2 cells flagged</span><span class="b b-warn" style="margin-left:auto;">Pending</span></div>
+            <div class="row g8" style="padding:7px 10px;background:#2d0f0f;border-radius:5px;border-left:3px solid #F85149;"><div class="dot dot-err"></div><span class="fs11 c1">Stock — 12.3 MT loss unresolved</span><span class="b b-err" style="margin-left:auto;">Flagged</span></div>
+          </div>
+        </div>
+
+        <!-- Component Kit -->
+        <div>
+          <div class="sh">Component Kit</div>
+          <div class="col g10">
+            <div class="card-sm">
+              <div class="sl">Total Production Today</div>
+              <div class="sv steel">248.4<span class="fs14 c4" style="margin-left:4px;">MT</span></div>
+              <div class="ss green">↑ 12.3 MT vs yesterday</div>
+            </div>
+            <div class="row g8">
+              <button class="btn">Approve All</button>
+              <button class="btn-s">Export CSV</button>
+              <button class="btn-g">Filter</button>
+            </div>
+            <div>
+              <div class="sl mb8">Dispatch Progress</div>
+              <div class="row jb mb8"><span class="fs11 c2">Truck #TRK-041</span><span class="fs11 amber">67% loaded</span></div>
+              <div class="risk-track"><div class="risk-fill" style="width:67%;background:#E8A317;"></div></div>
+            </div>
+            <div class="card-sm" style="border-left:3px solid #F85149;">
+              <div class="row jb"><span class="fs11 c1 fw6">Anomaly Detected</span><span class="b b-err">High</span></div>
+              <div class="fs11 c3 mt4" style="margin-top:4px;">Billing weight 14.2 MT vs dispatch 12.9 MT</div>
+            </div>
+            <div style="background:#21262D;border-radius:5px;padding:8px 10px;">
+              <div class="row g8">
+                <div class="dot dot-ok"></div>
+                <span class="fs11 c1">Rajesh Kumar</span>
+                <span class="b b-ok" style="margin-left:auto;">Present</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <hr class="hr">
+
+      <div class="sh">Typography Scale</div>
+      <div class="row g16" style="flex-wrap:wrap;">
+        <div><div class="c4 fs10 mb8">Display / KPI</div><div style="font-size:32px;font-weight:800;letter-spacing:-0.04em;color:#E6EDF3;">1,284.5 MT</div></div>
+        <div><div class="c4 fs10 mb8">Section title</div><div style="font-size:18px;font-weight:700;letter-spacing:-0.02em;color:#E6EDF3;">Production Overview</div></div>
+        <div><div class="c4 fs10 mb8">Body / label</div><div style="font-size:13px;color:#C9D1D9;">Shift A — Furnace 2 — Cast Iron</div></div>
+        <div><div class="c4 fs10 mb8">Mono data</div><div class="mono" style="font-size:13px;color:#4A8CC4;">142.500 MT / 08:00–16:00</div></div>
+        <div><div class="c4 fs10 mb8">Tag / caption</div><div style="font-size:10px;text-transform:uppercase;letter-spacing:0.08em;color:#6E7681;font-weight:700;">TOTAL DISPATCHED TODAY</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== DASHBOARD ===== -->
+<div id="s-dash" class="dp-screen">
+  <div class="F desk">
+    <div class="nav">
+      <span class="logo">DPR.ai</span>
+      <span class="ni a">Dashboard</span>
+      <span class="ni">Approvals</span>
+      <span class="ni">Reports</span>
+      <span class="ni">Steel</span>
+      <span class="ni">Analytics</span>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+        <span class="b b-warn">4 pending</span>
+        <div class="row g8">
+          <div style="width:28px;height:28px;border-radius:50%;background:#21262D;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#8B949E;">RS</div>
+          <span class="fs11 c3">Ravi Singh · Supervisor</span>
+        </div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0;">
+      <!-- Main content -->
+      <div style="grid-column:span 2;padding:16px;border-right:1px solid #21262D;">
+        <!-- KPI row -->
+        <div class="grid4 mb14">
+          <div class="card-sm"><div class="sl">Production Today</div><div class="sv steel">248.4 <span style="font-size:13px;color:#6E7681;">MT</span></div><div class="ss green">↑ 12.3 vs yest.</div></div>
+          <div class="card-sm"><div class="sl">Dispatched</div><div class="sv" style="color:#2ECFD6;">184.0 <span style="font-size:13px;color:#6E7681;">MT</span></div><div class="ss c4">6 trucks today</div></div>
+          <div class="card-sm"><div class="sl">Pending Reviews</div><div class="sv amber">4</div><div class="ss amber">2 OCR + 2 shifts</div></div>
+          <div class="card-sm"><div class="sl">Attendance</div><div class="sv green">94<span style="font-size:13px;color:#6E7681;">%</span></div><div class="ss c4">47/50 present</div></div>
+        </div>
+        <!-- Work queue -->
+        <div class="mb14">
+          <div class="row jb mb8"><div class="sh" style="margin:0;">Work Queue</div><button class="btn-g">View all</button></div>
+          <table class="T">
+            <tr><th>Type</th><th>Reference</th><th>Shift / Source</th><th>Age</th><th>Status</th><th>Action</th></tr>
+            <tr>
+              <td><span class="b b-warn" style="font-size:9px;">OCR</span></td>
+              <td class="mono steel">OCR-20240405-048</td>
+              <td class="c3">Shift A · Scanner 1</td>
+              <td class="amber">2h 14m</td>
+              <td><span class="b b-warn">Pending</span></td>
+              <td><button class="btn-ok">Review</button></td>
+            </tr>
+            <tr>
+              <td><span class="b b-info" style="font-size:9px;">SHIFT</span></td>
+              <td class="mono steel">DPR-2024-0405-A</td>
+              <td class="c3">Shift A · Furnace 2</td>
+              <td class="c4">1h 8m</td>
+              <td><span class="b b-warn">Pending</span></td>
+              <td><button class="btn-ok">Review</button></td>
+            </tr>
+            <tr>
+              <td><span class="b b-err" style="font-size:9px;">STOCK</span></td>
+              <td class="mono steel">STK-MISMATCH-041</td>
+              <td class="c3">Yard B · Cast Iron</td>
+              <td class="red">4h 52m</td>
+              <td><span class="b b-err">Flagged</span></td>
+              <td><button class="btn-err">Resolve</button></td>
+            </tr>
+            <tr>
+              <td><span class="b b-pend" style="font-size:9px;">ATT</span></td>
+              <td class="mono c3">ATT-2024-0405</td>
+              <td class="c3">All shifts</td>
+              <td class="c4">30m</td>
+              <td><span class="b b-pend">Unreviewed</span></td>
+              <td><button class="btn-s" style="font-size:11px;padding:4px 10px;">Review</button></td>
+            </tr>
+          </table>
+        </div>
+        <!-- Shift timeline -->
+        <div>
+          <div class="row jb mb8"><div class="sh" style="margin:0;">Today's Shifts</div></div>
+          <div class="col g8">
+            <div class="card-sm row jb"><div class="col g4"><span class="fs11 c1 fw6">Shift A — 08:00–16:00</span><span class="fs11 c3 mono">142.5 MT · Furnace 1 + 2</span></div><span class="b b-ok">Approved</span></div>
+            <div class="card-sm row jb"><div class="col g4"><span class="fs11 c1 fw6">Shift B — 16:00–00:00</span><span class="fs11 c3 mono">105.9 MT · Furnace 1</span></div><span class="b b-warn">Pending</span></div>
+            <div class="card-sm row jb" style="opacity:0.6;"><div class="col g4"><span class="fs11 c1 fw6">Shift C — 00:00–08:00</span><span class="fs11 c3">Not started</span></div><span class="b b-pend">Upcoming</span></div>
+          </div>
+        </div>
+      </div>
+      <!-- Right rail -->
+      <div style="padding:16px;">
+        <div class="sh">Attention Signals</div>
+        <div class="col g8 mb16">
+          <div class="card" style="border-left:3px solid #F85149;background:#2d0f0f20;">
+            <div class="row g8 mb8"><div class="dot dot-err"></div><span class="fs11 c1 fw6">Stock Mismatch — Yard B</span></div>
+            <div class="fs11 c3">12.3 MT unaccounted. Cast iron batch STK-041.</div>
+            <div class="row g8" style="margin-top:8px;"><button class="btn-err" style="font-size:11px;padding:4px 10px;">Investigate</button></div>
+          </div>
+          <div class="card" style="border-left:3px solid #E8A317;">
+            <div class="row g8 mb8"><div class="dot dot-warn"></div><span class="fs11 c1 fw6">OCR Review Aging</span></div>
+            <div class="fs11 c3">OCR-048 waiting 2h 14m. SLA breach in 46 min.</div>
+            <div class="row g8" style="margin-top:8px;"><button class="btn-ok" style="font-size:11px;padding:4px 10px;">Open</button></div>
+          </div>
+        </div>
+        <div class="sh">Dispatch Status</div>
+        <div class="col g8 mb16">
+          <div class="card-sm"><div class="row jb mb8"><span class="fs11 c1">TRK-041 · TATA 407</span><span class="b b-warn">Loading</span></div><div class="risk-track"><div class="risk-fill" style="width:67%;background:#E8A317;"></div></div><div class="fs10 c4 mt4" style="margin-top:4px;">8.4 / 12.5 MT loaded</div></div>
+          <div class="card-sm"><div class="row jb mb8"><span class="fs11 c1">TRK-038 · Ashok Leyland</span><span class="b b-ok">Dispatched</span></div><div class="risk-track"><div class="risk-fill" style="width:100%;background:#3FB950;"></div></div><div class="fs10 c4 mt4" style="margin-top:4px;">12.5 / 12.5 MT · INV-2024-0318</div></div>
+        </div>
+        <div class="sh">Attendance Summary</div>
+        <div class="card-sm">
+          <div class="row jb mb8"><span class="fs12 c1 fw6">Today · Shift A</span><span class="green fs11 fw6">47 / 50</span></div>
+          <div class="risk-track mb8"><div class="risk-fill" style="width:94%;background:#3FB950;"></div></div>
+          <div class="row g8 fs10 c4"><span class="green">47 present</span><span>·</span><span class="amber">2 late</span><span>·</span><span class="red">1 absent</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== OCR SCAN ===== -->
+<div id="s-ocr" class="dp-screen">
+  <div class="F mob">
+    <!-- Top bar -->
+    <div style="background:#161B22;border-bottom:1px solid #21262D;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
+      <div class="row g8"><span class="fw7 c1 fs14">OCR Scan</span></div>
+      <div class="row g8"><span class="b b-info">Processing ready</span></div>
+    </div>
+
+    <!-- Step indicator -->
+    <div style="padding:12px 16px;background:#0D1117;border-bottom:1px solid #21262D;">
+      <div class="row g8">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="width:22px;height:22px;border-radius:50%;background:#4A8CC4;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;">1</div>
+          <span class="fs11 steel fw6">Capture</span>
+        </div>
+        <div style="flex:1;height:2px;background:#21262D;"><div style="height:100%;width:0%;background:#4A8CC4;"></div></div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="width:22px;height:22px;border-radius:50%;background:#21262D;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#6E7681;">2</div>
+          <span class="fs11 c4">Process</span>
+        </div>
+        <div style="flex:1;height:2px;background:#21262D;"></div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <div style="width:22px;height:22px;border-radius:50%;background:#21262D;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#6E7681;">3</div>
+          <span class="fs11 c4">Verify</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Camera zone -->
+    <div class="cam-zone">
+      <div style="width:48px;height:48px;border-radius:8px;background:#21262D;display:flex;align-items:center;justify-content:center;">
+        <div style="width:24px;height:18px;border:2px solid #4A8CC4;border-radius:3px;position:relative;">
+          <div style="width:8px;height:8px;border-radius:50%;background:#4A8CC4;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);"></div>
+        </div>
+      </div>
+      <span class="fs12 c3">Point camera at register page</span>
+      <span class="fs10 c4">Auto-capture when stable</span>
+      <!-- Corner guides -->
+      <div style="position:relative;width:160px;height:100px;border:none;">
+        <div style="position:absolute;top:0;left:0;width:18px;height:18px;border-top:2px solid #4A8CC4;border-left:2px solid #4A8CC4;"></div>
+        <div style="position:absolute;top:0;right:0;width:18px;height:18px;border-top:2px solid #4A8CC4;border-right:2px solid #4A8CC4;"></div>
+        <div style="position:absolute;bottom:0;left:0;width:18px;height:18px;border-bottom:2px solid #4A8CC4;border-left:2px solid #4A8CC4;"></div>
+        <div style="position:absolute;bottom:0;right:0;width:18px;height:18px;border-bottom:2px solid #4A8CC4;border-right:2px solid #4A8CC4;"></div>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div style="padding:12px 16px;display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <button class="btn" style="padding:12px;font-size:13px;">Take Photo</button>
+      <button class="btn-s" style="padding:12px;font-size:13px;">Upload from Gallery</button>
+    </div>
+
+    <hr class="hr" style="margin:0 16px;">
+
+    <!-- Recent scan preview (state: processed) -->
+    <div style="padding:12px 16px;">
+      <div class="row jb mb12"><div class="sh" style="margin:0;">Last Scan — OCR-047</div><span class="b b-ok">Processed</span></div>
+      <!-- OCR result rows -->
+      <div class="col g4">
+        <div class="ocr-row ok">
+          <span class="fs10 c4" style="width:70px;">Date</span>
+          <span class="fs12 mono c1">04-Apr-2024</span>
+          <div class="dot dot-ok" style="margin-left:auto;"></div>
+        </div>
+        <div class="ocr-row ok">
+          <span class="fs10 c4" style="width:70px;">Shift</span>
+          <span class="fs12 mono c1">A (08:00–16:00)</span>
+          <div class="dot dot-ok" style="margin-left:auto;"></div>
+        </div>
+        <div class="ocr-row flag">
+          <span class="fs10 amber" style="width:70px;">Production</span>
+          <span class="fs12 mono amber">138.5 MT</span>
+          <div class="dot dot-warn" style="margin-left:auto;"></div>
+        </div>
+        <div style="padding:5px 10px;background:#2d1a0080;border-radius:4px;margin:0 0 4px;">
+          <span class="fs10 amber">Expected range: 140–160 MT. Verify with operator before approving.</span>
+        </div>
+        <div class="ocr-row ok">
+          <span class="fs10 c4" style="width:70px;">Remarks</span>
+          <span class="fs12 mono c1">Power cut 2h</span>
+          <div class="dot dot-ok" style="margin-left:auto;"></div>
+        </div>
+      </div>
+      <div class="row g8" style="margin-top:12px;">
+        <button class="btn-ok" style="flex:1;padding:10px;">Send to Review</button>
+        <button class="btn-err" style="flex:1;padding:10px;">Re-scan</button>
+      </div>
+    </div>
+
+    <!-- Bottom nav -->
+    <div class="mbnav">
+      <div class="mbn"><div class="mbn-ico"></div>Home</div>
+      <div class="mbn"><div class="mbn-ico"></div>Entry</div>
+      <div class="mbn a"><div class="mbn-ico" style="background:#0d1f3d;"></div>Scan</div>
+      <div class="mbn"><div class="mbn-ico"></div>Attend.</div>
+      <div class="mbn"><div class="mbn-ico"></div>Queue</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== APPROVALS ===== -->
+<div id="s-appr" class="dp-screen">
+  <div class="F desk">
+    <div class="nav">
+      <span class="logo">DPR.ai</span>
+      <span class="ni">Dashboard</span>
+      <span class="ni a">Approvals</span>
+      <span class="ni">Reports</span>
+      <span class="ni">Steel</span>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:8px;">
+        <span class="b b-warn">6 pending</span>
+        <div style="width:28px;height:28px;border-radius:50%;background:#21262D;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#8B949E;">RS</div>
+      </div>
+    </div>
+    <div class="split">
+      <!-- Left: queue list -->
+      <div style="background:#0D1117;border-right:1px solid #21262D;overflow-y:auto;">
+        <div style="padding:10px 14px;border-bottom:1px solid #21262D;background:#161B22;">
+          <div class="row jb mb8"><span class="fs12 fw6 c1">Review Queue</span><span class="b b-warn">6</span></div>
+          <div class="row g6" style="gap:6px;">
+            <button class="btn-g" style="font-size:10px;padding:3px 8px;">All</button>
+            <button class="btn-g" style="font-size:10px;padding:3px 8px;">OCR</button>
+            <button class="btn-g" style="font-size:10px;padding:3px 8px;">Shift</button>
+            <button class="btn-g" style="font-size:10px;padding:3px 8px;">Stock</button>
+          </div>
+        </div>
+        <div class="appr-item sel">
+          <div class="row jb mb8"><span class="b b-warn" style="font-size:9px;">OCR</span><span class="red fs10">2h 14m</span></div>
+          <div class="fs11 c1 fw6 mb8">OCR-20240405-048</div>
+          <div class="fs11 c3 mb8">Shift A · Scanner 1 · 2 cells flagged</div>
+          <span class="b b-warn">Pending Review</span>
+        </div>
+        <div class="appr-item">
+          <div class="row jb mb8"><span class="b b-info" style="font-size:9px;">SHIFT</span><span class="c4 fs10">1h 8m</span></div>
+          <div class="fs11 c1 fw6 mb8">DPR-2024-0405-A</div>
+          <div class="fs11 c3 mb8">Shift A · Furnace 2 · 142.5 MT</div>
+          <span class="b b-warn">Pending</span>
+        </div>
+        <div class="appr-item">
+          <div class="row jb mb8"><span class="b b-err" style="font-size:9px;">STOCK</span><span class="red fs10">4h 52m</span></div>
+          <div class="fs11 c1 fw6 mb8">STK-MISMATCH-041</div>
+          <div class="fs11 c3 mb8">Yard B · Cast Iron · 12.3 MT loss</div>
+          <span class="b b-err">Flagged</span>
+        </div>
+        <div class="appr-item">
+          <div class="row jb mb8"><span class="b b-pend" style="font-size:9px;">ATT</span><span class="c4 fs10">30m</span></div>
+          <div class="fs11 c1 fw6 mb8">ATT-2024-0405-B</div>
+          <div class="fs11 c3 mb8">Shift B · 48/50 marked</div>
+          <span class="b b-pend">Unreviewed</span>
+        </div>
+        <div class="appr-item">
+          <div class="row jb mb8"><span class="b b-warn" style="font-size:9px;">OCR</span><span class="amber fs10">3h 22m</span></div>
+          <div class="fs11 c1 fw6 mb8">OCR-20240405-049</div>
+          <div class="fs11 c3 mb8">Shift B · Scanner 2 · 1 cell low-conf</div>
+          <span class="b b-warn">Pending</span>
+        </div>
+        <div class="appr-item">
+          <div class="row jb mb8"><span class="b b-info" style="font-size:9px;">SHIFT</span><span class="c4 fs10">20m</span></div>
+          <div class="fs11 c1 fw6 mb8">DPR-2024-0405-B</div>
+          <div class="fs11 c3 mb8">Shift B · Furnace 1 · 105.9 MT</div>
+          <span class="b b-warn">Pending</span>
+        </div>
+      </div>
+
+      <!-- Right: detail panel -->
+      <div style="background:#0D1117;padding:16px;">
+        <div class="row jb mb16">
+          <div class="col g4">
+            <div class="row g8"><span class="b b-warn">OCR REVIEW</span><span class="red fs11">2h 14m waiting</span></div>
+            <div style="font-size:18px;font-weight:700;letter-spacing:-0.02em;color:#E6EDF3;margin-top:4px;">OCR-20240405-048</div>
+            <div class="fs11 c3">Shift A · Scanner 1 · 04 Apr 2024 · 06:48 AM</div>
+          </div>
+          <div class="row g8">
+            <button class="btn-err">Reject</button>
+            <button class="btn-ok">Approve</button>
+          </div>
+        </div>
+        <div class="grid2 mb14">
+          <div>
+            <!-- Scanned image placeholder -->
+            <div class="sh">Scanned Image</div>
+            <div style="background:#0a0a0a;border:1px solid #21262D;border-radius:6px;height:200px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;">
+              <div style="color:#30363D;font-size:11px;">[ Register scan image ]</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:12px;width:100%;">
+                <div style="height:12px;background:#1a1f28;border-radius:2px;"></div>
+                <div style="height:12px;background:#1a1f28;border-radius:2px;"></div>
+                <div style="height:12px;background:#2d1a00;border-radius:2px;border:1px solid #4d3000;"></div>
+                <div style="height:12px;background:#1a1f28;border-radius:2px;"></div>
+                <div style="height:12px;background:#1a1f28;border-radius:2px;"></div>
+                <div style="height:12px;background:#1a1f28;border-radius:2px;"></div>
+                <div style="height:12px;background:#1a1f28;border-radius:2px;"></div>
+                <div style="height:12px;background:#2d1a00;border-radius:2px;border:1px solid #4d3000;"></div>
+                <div style="height:12px;background:#1a1f28;border-radius:2px;"></div>
+              </div>
+              <div style="font-size:10px;color:#4d3000;background:#2d1a00;padding:3px 8px;border-radius:4px;">2 cells highlighted</div>
+            </div>
+          </div>
+          <div>
+            <div class="sh">Extracted Data</div>
+            <div class="col g4">
+              <div class="ocr-row ok" style="background:#161B22;border-radius:5px;border-bottom:none;margin-bottom:4px;">
+                <span class="fs10 c4" style="width:90px;">Date</span><span class="mono fs12 c1">04-Apr-2024</span><div class="dot dot-ok" style="margin-left:auto;"></div>
+              </div>
+              <div class="ocr-row ok" style="background:#161B22;border-radius:5px;border-bottom:none;margin-bottom:4px;">
+                <span class="fs10 c4" style="width:90px;">Shift</span><span class="mono fs12 c1">A</span><div class="dot dot-ok" style="margin-left:auto;"></div>
+              </div>
+              <div class="ocr-row flag" style="border-radius:5px;border-bottom:none;margin-bottom:4px;">
+                <span class="fs10 amber" style="width:90px;">Production</span>
+                <div class="col"><span class="mono fs12 amber">138.5 MT</span><span class="fs10 c4">Expected 140–160</span></div>
+                <div class="dot dot-warn" style="margin-left:auto;"></div>
+              </div>
+              <div class="ocr-row ok" style="background:#161B22;border-radius:5px;border-bottom:none;margin-bottom:4px;">
+                <span class="fs10 c4" style="width:90px;">Scraps</span><span class="mono fs12 c1">4.2 MT</span><div class="dot dot-ok" style="margin-left:auto;"></div>
+              </div>
+              <div class="ocr-row flag" style="border-radius:5px;border-bottom:none;margin-bottom:4px;">
+                <span class="fs10 amber" style="width:90px;">Operator Sig.</span>
+                <div class="col"><span class="mono fs12 amber">Low confidence</span><span class="fs10 c4">0.41 score</span></div>
+                <div class="dot dot-warn" style="margin-left:auto;"></div>
+              </div>
+              <div class="ocr-row ok" style="background:#161B22;border-radius:5px;border-bottom:none;">
+                <span class="fs10 c4" style="width:90px;">Remarks</span><span class="mono fs12 c1">Power cut 2h</span><div class="dot dot-ok" style="margin-left:auto;"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="sh">Supervisor Note (optional)</div>
+          <div style="background:#161B22;border:1px solid #30363D;border-radius:6px;padding:10px 12px;font-size:12px;color:#6E7681;">Add a note before approving or rejecting...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== OWNER DASHBOARD ===== -->
+<div id="s-owner" class="dp-screen">
+  <div class="F desk">
+    <div class="nav" style="background:#0D1117;border-bottom:1px solid #30363D;">
+      <span class="logo" style="font-size:16px;">DPR.ai</span>
+      <span style="font-size:10px;text-transform:uppercase;letter-spacing:0.1em;color:#6E7681;font-weight:700;margin-left:4px;">OWNER</span>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+        <span class="b b-err">3 risk signals</span>
+        <span class="b b-info">AI insights</span>
+        <div style="width:28px;height:28px;border-radius:50%;background:#0d1f3d;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#4A8CC4;">AK</div>
+        <span class="fs11 c3">Arvind Kumar · Owner</span>
+      </div>
+    </div>
+
+    <div class="p16">
+      <!-- Top KPIs — prominent -->
+      <div class="row jb mb16">
+        <div>
+          <div class="c4 fs10 mb8" style="text-transform:uppercase;letter-spacing:0.08em;font-weight:700;">Factory Intelligence — Apr 2024</div>
+          <div style="font-size:28px;font-weight:800;letter-spacing:-0.04em;color:#E6EDF3;">Arvind Steel Works</div>
+        </div>
+        <div class="row g8">
+          <button class="btn-g">Last 7 days</button>
+          <button class="btn-g">Last 30 days</button>
+          <button class="btn" style="background:#2ECFD6;color:#0D1117;font-size:12px;padding:7px 14px;">AI Insights</button>
+        </div>
+      </div>
+
+      <!-- Risk indicators row -->
+      <div style="background:#2d0f0f20;border:1px solid #4d1f1f;border-radius:8px;padding:12px 16px;margin-bottom:14px;" class="row g16">
+        <div class="dot dot-err" style="width:10px;height:10px;flex-shrink:0;"></div>
+        <span class="fs12 c1 fw6">3 Active Risk Signals</span>
+        <div class="row g8">
+          <span class="red fs11">Stock loss ₹2.4L unresolved</span>
+          <span class="c4">·</span>
+          <span class="amber fs11">2 OCR reviews pending 3h+</span>
+          <span class="c4">·</span>
+          <span class="amber fs11">Dispatch billing gap 14.2 MT</span>
+        </div>
+        <button class="btn-err" style="margin-left:auto;font-size:11px;padding:5px 12px;">View All Risks</button>
+      </div>
+
+      <!-- KPI grid -->
+      <div class="grid4 mb14">
+        <div class="card-sm">
+          <div class="sl">MTD Production</div>
+          <div class="sv steel">4,284 <span class="fs12 c4">MT</span></div>
+          <div class="ss green">↑ 8.2% vs last month</div>
+        </div>
+        <div class="card-sm">
+          <div class="sl">MTD Revenue</div>
+          <div class="sv" style="color:#2ECFD6;">₹1.84<span class="fs14 c4">Cr</span></div>
+          <div class="ss green">↑ ₹12.4L vs budget</div>
+        </div>
+        <div class="card-sm" style="border-left:3px solid #F85149;">
+          <div class="sl">Identified Loss</div>
+          <div class="sv red">₹2.4<span class="fs14 c4">L</span></div>
+          <div class="ss red">Stock + dispatch gaps</div>
+        </div>
+        <div class="card-sm">
+          <div class="sl">Data Trust Score</div>
+          <div class="sv green">91<span class="fs16 c4">%</span></div>
+          <div class="ss amber">3 items unresolved</div>
+        </div>
+      </div>
+
+      <!-- Two column: charts + signal feed -->
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:14px;">
+        <div>
+          <div class="row jb mb8"><div class="sh" style="margin:0;">Production vs Target — This Week</div><span class="b b-ok">On track</span></div>
+          <div class="card" style="padding:12px 16px;">
+            <!-- Simple bar chart mockup -->
+            <div style="display:flex;align-items:flex-end;gap:8px;height:120px;padding-bottom:24px;position:relative;">
+              <div style="position:absolute;bottom:24px;left:0;right:0;border-top:1px dashed #30363D;"></div>
+              <div style="position:absolute;bottom:54px;left:0;right:0;border-top:1px solid #21262D;"></div>
+              <div style="position:absolute;bottom:84px;left:0;right:0;border-top:1px solid #21262D;"></div>
+              <div class="col" style="gap:2px;align-items:center;flex:1;">
+                <div style="width:100%;background:#4A8CC4;height:72px;border-radius:3px 3px 0 0;"></div>
+                <span class="fs10 c4">Mon</span>
+              </div>
+              <div class="col" style="gap:2px;align-items:center;flex:1;">
+                <div style="width:100%;background:#4A8CC4;height:85px;border-radius:3px 3px 0 0;"></div>
+                <span class="fs10 c4">Tue</span>
+              </div>
+              <div class="col" style="gap:2px;align-items:center;flex:1;">
+                <div style="width:100%;background:#4A8CC4;height:68px;border-radius:3px 3px 0 0;"></div>
+                <span class="fs10 c4">Wed</span>
+              </div>
+              <div class="col" style="gap:2px;align-items:center;flex:1;">
+                <div style="width:100%;background:#4A8CC4;height:90px;border-radius:3px 3px 0 0;"></div>
+                <span class="fs10 c4">Thu</span>
+              </div>
+              <div class="col" style="gap:2px;align-items:center;flex:1;">
+                <div style="width:100%;background:#F85149;height:62px;border-radius:3px 3px 0 0;"></div>
+                <span class="fs10 red">Fri</span>
+              </div>
+              <div class="col" style="gap:2px;align-items:center;flex:1;">
+                <div style="width:100%;background:#21262D;height:0px;border-radius:3px 3px 0 0;border:1px dashed #30363D;"></div>
+                <span class="fs10 c4">Sat</span>
+              </div>
+            </div>
+            <div class="row g16 fs10 c4">
+              <span class="row g4"><span style="width:10px;height:10px;border-radius:2px;background:#4A8CC4;display:inline-block;"></span>Actual MT</span>
+              <span class="row g4"><span style="width:10px;height:10px;border-radius:2px;background:#F85149;display:inline-block;"></span>Below target</span>
+              <span class="c4">Target: 150 MT/day</span>
+            </div>
+          </div>
+
+          <!-- Loss table -->
+          <div class="sh" style="margin:14px 0 8px;">Loss & Leakage Tracker</div>
+          <table class="T">
+            <tr><th>Category</th><th>This Month</th><th>Last Month</th><th>Trend</th><th>Status</th></tr>
+            <tr>
+              <td class="c1 fw6">Stock Variance</td>
+              <td class="red mono">₹2,40,000</td>
+              <td class="c3 mono">₹1,80,000</td>
+              <td class="red">↑ 33%</td>
+              <td><span class="b b-err">Unresolved</span></td>
+            </tr>
+            <tr>
+              <td class="c1 fw6">Dispatch Billing Gap</td>
+              <td class="amber mono">14.2 MT</td>
+              <td class="c3 mono">8.4 MT</td>
+              <td class="amber">↑ 69%</td>
+              <td><span class="b b-warn">Investigating</span></td>
+            </tr>
+            <tr>
+              <td class="c1 fw6">Scrap Unaccounted</td>
+              <td class="c3 mono">2.1 MT</td>
+              <td class="c3 mono">3.2 MT</td>
+              <td class="green">↓ 34%</td>
+              <td><span class="b b-ok">Resolved</span></td>
+            </tr>
+            <tr>
+              <td class="c1 fw6">Overtime Anomaly</td>
+              <td class="c3 mono">₹42,000</td>
+              <td class="c3 mono">₹38,000</td>
+              <td class="amber">↑ 11%</td>
+              <td><span class="b b-ok">Reviewed</span></td>
+            </tr>
+          </table>
+        </div>
+
+        <!-- Right: AI Insights + alerts -->
+        <div class="col g12">
+          <div>
+            <div class="sh">AI Insights</div>
+            <div class="card-hi mb8">
+              <div class="row g8 mb8"><span style="width:20px;height:20px;border-radius:4px;background:#0d3040;display:flex;align-items:center;justify-content:center;font-size:10px;color:#2ECFD6;">AI</span><span class="fs11 c1 fw6">Pattern detected</span></div>
+              <div class="fs11 c2">Friday production drops 18% below weekly avg. Correlates with weekly reporting pressure. Consider staggering DPR submissions.</div>
+            </div>
+            <div class="card" style="border-left:3px solid #2ECFD6;">
+              <div class="row g8 mb8"><span class="b b-info" style="font-size:9px;">INSIGHT</span><span class="cyan fs10 fw6">Billing risk</span></div>
+              <div class="fs11 c3">3 dispatches this week invoiced above weighed MT. Recommend cross-check before month close.</div>
+            </div>
+          </div>
+
+          <div>
+            <div class="sh">Control Tower</div>
+            <div class="col g6">
+              <div class="row jb" style="padding:8px 10px;background:#161B22;border-radius:5px;">
+                <span class="fs11 c2">Data trust level</span>
+                <div class="row g6"><div class="risk-track" style="width:60px;"><div class="risk-fill" style="width:91%;background:#3FB950;"></div></div><span class="green fs11 fw6">91%</span></div>
+              </div>
+              <div class="row jb" style="padding:8px 10px;background:#161B22;border-radius:5px;">
+                <span class="fs11 c2">Approved today</span><span class="green fs11 fw6">12 / 15</span>
+              </div>
+              <div class="row jb" style="padding:8px 10px;background:#2d0f0f20;border-radius:5px;border:1px solid #4d1f1f;">
+                <span class="fs11 c2">Open risks</span><span class="red fs11 fw6">3 items</span>
+              </div>
+              <div class="row jb" style="padding:8px 10px;background:#161B22;border-radius:5px;">
+                <span class="fs11 c2">MTD loss identified</span><span class="red fs11 fw6">₹2.82L</span>
+              </div>
+              <div class="row jb" style="padding:8px 10px;background:#161B22;border-radius:5px;">
+                <span class="fs11 c2">Dispatches today</span><span class="steel fs11 fw6">6 trucks</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div class="sh">Email Summary</div>
+            <div class="card-sm">
+              <div class="fs11 c1 fw6 mb8">Daily report ready</div>
+              <div class="fs11 c3 mb8">Apr 04, 2024 · All shifts covered</div>
+              <div class="row g8">
+                <button class="btn" style="font-size:11px;padding:6px 12px;">Send to Owner</button>
+                <button class="btn-s" style="font-size:11px;padding:5px 10px;">Preview</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function sw(id){
+  document.querySelectorAll('.dp-tab').forEach(function(t,i){
+    const ids=['sys','dash','ocr','appr','owner'];
+    t.classList.toggle('on', ids[i]===id);
+  });
+  document.querySelectorAll('.dp-screen').forEach(function(s){
+    s.classList.toggle('on', s.id==='s-'+id);
+  });
+}
+</script>

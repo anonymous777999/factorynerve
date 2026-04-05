@@ -1,0 +1,1259 @@
+"use client";
+
+import Link from "next/link";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+
+import { Button } from "@/components/ui/button";
+import { formatApiErrorMessage } from "@/lib/api";
+import { transferBlob } from "@/lib/blob-transfer";
+import { createImageEnhancer } from "@/lib/image-enhance-client";
+import { defaultEnhanceSettings, type CropBox, type EnhanceSettings } from "@/lib/image-enhance";
+import { canUseOcrScan, validateOcrImageFile } from "@/lib/ocr-access";
+import {
+  createOcrVerification,
+  downloadOcrVerificationExport,
+  previewOcrLogbook,
+  warpOcrImage,
+  type OcrPreviewResult,
+} from "@/lib/ocr";
+import { useSession } from "@/lib/use-session";
+import { signalWorkflowRefresh } from "@/lib/workflow-sync";
+import { cn } from "@/lib/utils";
+
+type ScanScreen = "camera" | "crop" | "enhance" | "output" | "processing" | "result";
+type FilterPreset = "original" | "clean" | "contrast";
+type OutputChoice = "excel" | "pdf";
+type OCRFields = {
+  date: string;
+  material: string;
+  quantity: string;
+};
+type LastFields = OCRFields & { updatedAt: number };
+type CropPoint = { x: number; y: number };
+
+const LAST_FIELD_STORAGE_KEY = "dpr:ocr:last-fields:v2";
+const OUTPUT_FILE_NAME = "factory-scan";
+const FULL_CROP: CropBox = { left: 0, top: 0, right: 1, bottom: 1 };
+const DEFAULT_CROP_POINTS: CropPoint[] = [
+  { x: 0.14, y: 0.16 },
+  { x: 0.86, y: 0.14 },
+  { x: 0.84, y: 0.86 },
+  { x: 0.16, y: 0.88 },
+];
+
+function buildEnhancedFile(blob: Blob, originalName: string) {
+  const base = originalName.replace(/\.[^.]+$/, "");
+  const ext = blob.type.includes("png") ? "png" : blob.type.includes("webp") ? "webp" : "jpg";
+  return new File([blob], `${base || OUTPUT_FILE_NAME}-enhanced.${ext}`, { type: blob.type });
+}
+
+function buildWarpedFile(blob: Blob, originalName: string) {
+  const base = originalName.replace(/\.[^.]+$/, "");
+  return new File([blob], `${base || OUTPUT_FILE_NAME}-warped.png`, { type: blob.type || "image/png" });
+}
+
+function fileBaseName(fileName: string) {
+  return fileName.replace(/\.[^.]+$/, "") || OUTPUT_FILE_NAME;
+}
+
+function defaultCropPoints() {
+  return DEFAULT_CROP_POINTS.map((point) => ({ ...point }));
+}
+
+function clamp01(value: number) {
+  return Math.min(1, Math.max(0, value));
+}
+
+function sortPoints(points: CropPoint[]) {
+  return points.map((point) => ({ ...point }));
+}
+
+function cropBounds(points: CropPoint[]): CropBox {
+  const xs = points.map((point) => point.x);
+  const ys = points.map((point) => point.y);
+  return {
+    left: clamp01(Math.min(...xs)),
+    top: clamp01(Math.min(...ys)),
+    right: clamp01(Math.max(...xs)),
+    bottom: clamp01(Math.max(...ys)),
+  };
+}
+
+function toWarpCorners(points: CropPoint[], naturalWidth: number, naturalHeight: number) {
+  return points.map((point) => [
+    Math.round(clamp01(point.x) * naturalWidth),
+    Math.round(clamp01(point.y) * naturalHeight),
+  ]);
+}
+
+function buildEnhanceSettings(preset: FilterPreset, crop: CropBox): EnhanceSettings {
+  const base = defaultEnhanceSettings();
+  if (preset === "original") {
+    return {
+      ...base,
+      autoFix: false,
+      brightness: 0,
+      contrast: 0,
+      grayscale: false,
+      threshold: false,
+      crop,
+    };
+  }
+  if (preset === "contrast") {
+    return {
+      ...base,
+      autoFix: false,
+      brightness: 12,
+      contrast: 34,
+      grayscale: true,
+      threshold: true,
+      crop,
+    };
+  }
+  return {
+    ...base,
+    autoFix: true,
+    brightness: 10,
+    contrast: 18,
+    grayscale: true,
+    threshold: false,
+    crop,
+  };
+}
+
+function humanExtractError(error: unknown) {
+  const message = formatApiErrorMessage(error, "Could not process this scan.");
+  const lowered = message.toLowerCase();
+  if (lowered.includes("timed out")) return "Processing took too long. Try another capture.";
+  if (lowered.includes("no text")) return "The document was unclear. Try with better lighting.";
+  if (lowered.includes("too large") || lowered.includes("8 mb") || lowered.includes("8mb")) {
+    return "The image is too large. Keep it under 8 MB.";
+  }
+  return "The scan was not clear enough. Try again or retake it.";
+}
+
+function humanExportError(error: unknown) {
+  const message = formatApiErrorMessage(error, "Could not prepare corrected Excel.");
+  const lowered = message.toLowerCase();
+  if (lowered.includes("api key") || lowered.includes("authentication")) {
+    return "Excel export is unavailable right now.";
+  }
+  if (lowered.includes("timed out")) return "Excel export is delayed. Try again in a moment.";
+  return "Corrected Excel could not be prepared.";
+}
+
+function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = window.setTimeout(() => reject(new Error(message)), ms);
+    promise
+      .then((value) => {
+        window.clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error) => {
+        window.clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
+function normalizeRows(result: OcrPreviewResult, lastFields: LastFields | null) {
+  const columns = Math.max(result.columns || 0, ...result.rows.map((row) => row.length), 3);
+  const normalized = (result.rows.length ? result.rows : [Array.from({ length: columns }, () => "")]).map((row) =>
+    Array.from({ length: columns }, (_, index) => String(row[index] ?? "")),
+  );
+  if (lastFields && normalized[0]) {
+    if (!normalized[0][0]?.trim()) normalized[0][0] = lastFields.date;
+    if (!normalized[0][1]?.trim()) normalized[0][1] = lastFields.material;
+    if (!normalized[0][2]?.trim()) normalized[0][2] = lastFields.quantity;
+  }
+  return normalized;
+}
+
+function extractFields(rows: string[][], lastFields: LastFields | null): OCRFields {
+  const firstRow = rows[0] || [];
+  return {
+    date: firstRow[0]?.trim() || lastFields?.date || "",
+    material: firstRow[1]?.trim() || lastFields?.material || "",
+    quantity: firstRow[2]?.trim() || lastFields?.quantity || "",
+  };
+}
+
+function applyFieldsToRows(rows: string[][], fields: OCRFields) {
+  const next = rows.map((row) => [...row]);
+  if (!next.length) next.push(["", "", ""]);
+  while (next[0].length < 3) next[0].push("");
+  next[0][0] = fields.date;
+  next[0][1] = fields.material;
+  next[0][2] = fields.quantity;
+  return next;
+}
+
+function hintsFromWarnings(warnings: string[] | undefined) {
+  const hints: string[] = [];
+  for (const warning of warnings || []) {
+    if (warning === "blur_detected") hints.push("Low sharpness");
+    if (warning === "low_light") hints.push("Low light");
+    if (warning === "glare") hints.push("Glare detected");
+  }
+  return hints;
+}
+
+async function blobToUint8Array(blob: Blob) {
+  return new Uint8Array(await blob.arrayBuffer());
+}
+
+function concatUint8Arrays(chunks: Uint8Array[]) {
+  const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const result = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    result.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return result;
+}
+
+async function buildPdfBlobFromImage(file: File) {
+  const bitmap = await createImageBitmap(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = bitmap.width;
+  canvas.height = bitmap.height;
+  const context = canvas.getContext("2d");
+  if (!context) {
+    throw new Error("Canvas is unavailable.");
+  }
+  context.drawImage(bitmap, 0, 0);
+  const jpegBlob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob(
+      (blob) => (blob ? resolve(blob) : reject(new Error("Could not prepare PDF preview."))),
+      "image/jpeg",
+      0.9,
+    );
+  });
+
+  const imageBytes = await blobToUint8Array(jpegBlob);
+  const pageWidth = bitmap.width >= bitmap.height ? 841.89 : 595.28;
+  const pageHeight = bitmap.width >= bitmap.height ? 595.28 : 841.89;
+  const margin = 24;
+  const scale = Math.min((pageWidth - margin * 2) / bitmap.width, (pageHeight - margin * 2) / bitmap.height);
+  const drawWidth = bitmap.width * scale;
+  const drawHeight = bitmap.height * scale;
+  const originX = (pageWidth - drawWidth) / 2;
+  const originY = (pageHeight - drawHeight) / 2;
+
+  const encoder = new TextEncoder();
+  const header = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a, 0x25, 0xe2, 0xe3, 0xcf, 0xd3, 0x0a]);
+  const contentStream = encoder.encode(
+    `q\n${drawWidth.toFixed(2)} 0 0 ${drawHeight.toFixed(2)} ${originX.toFixed(2)} ${originY.toFixed(2)} cm\n/Im0 Do\nQ\n`,
+  );
+
+  const objects: Uint8Array[] = [
+    encoder.encode("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"),
+    encoder.encode("2 0 obj\n<< /Type /Pages /Count 1 /Kids [3 0 R] >>\nendobj\n"),
+    encoder.encode(
+      `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth.toFixed(2)} ${pageHeight.toFixed(2)}] /Resources << /ProcSet [/PDF /ImageC] /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`,
+    ),
+    concatUint8Arrays([
+      encoder.encode(
+        `4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${bitmap.width} /Height ${bitmap.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imageBytes.length} >>\nstream\n`,
+      ),
+      imageBytes,
+      encoder.encode("\nendstream\nendobj\n"),
+    ]),
+    concatUint8Arrays([
+      encoder.encode(`5 0 obj\n<< /Length ${contentStream.length} >>\nstream\n`),
+      contentStream,
+      encoder.encode("endstream\nendobj\n"),
+    ]),
+  ];
+
+  let offset = header.length;
+  const offsets = [0];
+  for (const object of objects) {
+    offsets.push(offset);
+    offset += object.length;
+  }
+
+  const xrefOffset = offset;
+  const xrefLines = [
+    "xref",
+    `0 ${objects.length + 1}`,
+    "0000000000 65535 f ",
+    ...offsets.slice(1).map((value) => `${String(value).padStart(10, "0")} 00000 n `),
+    "trailer",
+    `<< /Size ${objects.length + 1} /Root 1 0 R >>`,
+    "startxref",
+    String(xrefOffset),
+    "%%EOF",
+  ];
+
+  return new Blob([header.slice(), ...objects.map((object) => object.slice()), encoder.encode(`${xrefLines.join("\n")}\n`).slice()], {
+    type: "application/pdf",
+  });
+}
+
+function GalleryIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-6">
+      <rect x="3.5" y="5" width="17" height="14" rx="3" />
+      <circle cx="9" cy="10" r="1.5" />
+      <path d="m7.5 16 3.2-3.1 2.7 2.2 2.8-2.9 2.3 3.8" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function FlashIcon({ active }: { active: boolean }) {
+  return (
+    <svg viewBox="0 0 24 24" fill={active ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" className="h-6 w-6">
+      <path d="M13 2 6.5 12h4l-.5 10L17.5 12h-4L13 2Z" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ExcelIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-6">
+      <path d="M7 3.8h8l4 4v12.4H7z" strokeLinejoin="round" />
+      <path d="M15 3.8v4h4M10 10.2l4 5.6M14 10.2 10 15.8" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function PdfIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-6 w-6">
+      <path d="M7 3.8h8l4 4v12.4H7z" strokeLinejoin="round" />
+      <path d="M15 3.8v4h4M9.4 16v-4.8h1.4c.9 0 1.5.5 1.5 1.3 0 .9-.6 1.4-1.5 1.4H9.4M14.2 16v-4.8h1.4c1.2 0 2 .9 2 2.4 0 1.5-.8 2.4-2 2.4h-1.4Z" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-8 w-8">
+      <path d="m5 12.5 4.2 4.2L19 7.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function SpinnerIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="h-10 w-10 animate-spin text-cyan-300">
+      <circle cx="12" cy="12" r="9" stroke="currentColor" strokeOpacity="0.2" strokeWidth="2.2" />
+      <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export default function OcrScanPage() {
+  const { user, loading, error: sessionError } = useSession();
+
+  const [screen, setScreen] = useState<ScanScreen>("camera");
+  const [selectedFilter, setSelectedFilter] = useState<FilterPreset>("clean");
+  const [outputChoice, setOutputChoice] = useState<OutputChoice>("excel");
+  const [flashEnabled, setFlashEnabled] = useState(false);
+  const [cameraReady, setCameraReady] = useState(false);
+  const [busyCrop, setBusyCrop] = useState(false);
+  const [busyEnhance, setBusyEnhance] = useState(false);
+  const [busyAction, setBusyAction] = useState(false);
+  const [showInsights, setShowInsights] = useState(false);
+  const [error, setError] = useState("");
+  const [status, setStatus] = useState("");
+
+  const [originalFile, setOriginalFile] = useState<File | null>(null);
+  const [originalUrl, setOriginalUrl] = useState("");
+  const [perspectiveFile, setPerspectiveFile] = useState<File | null>(null);
+  const [perspectiveUrl, setPerspectiveUrl] = useState("");
+  const [enhancedFile, setEnhancedFile] = useState<File | null>(null);
+  const [enhancedUrl, setEnhancedUrl] = useState("");
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+
+  const [fields, setFields] = useState<OCRFields>({ date: "", material: "", quantity: "" });
+  const [qualityHints, setQualityHints] = useState<string[]>([]);
+  const [savedId, setSavedId] = useState<number | null>(null);
+  const [lastFields, setLastFields] = useState<LastFields | null>(null);
+
+  const [cropPoints, setCropPoints] = useState<CropPoint[]>(defaultCropPoints);
+  const [activeHandle, setActiveHandle] = useState<number | null>(null);
+  const [cropNaturalSize, setCropNaturalSize] = useState({ width: 0, height: 0 });
+
+  const cameraInputRef = useRef<HTMLInputElement | null>(null);
+  const galleryInputRef = useRef<HTMLInputElement | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const enhancerRef = useRef<ReturnType<typeof createImageEnhancer> | null>(null);
+  const cropSurfaceRef = useRef<HTMLDivElement | null>(null);
+
+  const canUseOcr = canUseOcrScan(user?.role);
+  const basePreviewUrl = perspectiveUrl || originalUrl;
+  const basePreviewFile = perspectiveFile || originalFile;
+  const cropBox = useMemo(() => cropBounds(cropPoints), [cropPoints]);
+  const enhanceSettings = useMemo(
+    () => buildEnhanceSettings(selectedFilter, perspectiveFile ? FULL_CROP : cropBox),
+    [cropBox, perspectiveFile, selectedFilter],
+  );
+  const displayEnhanceUrl =
+    selectedFilter === "original" ? basePreviewUrl : enhancedUrl || basePreviewUrl;
+  const processFile =
+    selectedFilter === "original"
+      ? perspectiveFile || originalFile
+      : enhancedFile || perspectiveFile || originalFile;
+
+  const resetFlow = useCallback(() => {
+    setScreen("camera");
+    setSelectedFilter("clean");
+    setOutputChoice("excel");
+    setFlashEnabled(false);
+    setBusyCrop(false);
+    setBusyEnhance(false);
+    setBusyAction(false);
+    setShowInsights(false);
+    setError("");
+    setStatus("");
+    setOriginalFile(null);
+    setOriginalUrl("");
+    setPerspectiveFile(null);
+    setPerspectiveUrl("");
+    setEnhancedFile(null);
+    setEnhancedUrl("");
+    setPdfBlob(null);
+    setFields({ date: "", material: "", quantity: "" });
+    setQualityHints([]);
+    setSavedId(null);
+    setCropPoints(defaultCropPoints());
+    setActiveHandle(null);
+    setCropNaturalSize({ width: 0, height: 0 });
+  }, []);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(LAST_FIELD_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<LastFields>;
+      if (typeof parsed.date === "string" && typeof parsed.material === "string" && typeof parsed.quantity === "string") {
+        setLastFields({
+          date: parsed.date,
+          material: parsed.material,
+          quantity: parsed.quantity,
+          updatedAt: typeof parsed.updatedAt === "number" ? parsed.updatedAt : Date.now(),
+        });
+      }
+    } catch {
+      // ignore local cache issues
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (originalUrl) URL.revokeObjectURL(originalUrl);
+    };
+  }, [originalUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (perspectiveUrl) URL.revokeObjectURL(perspectiveUrl);
+    };
+  }, [perspectiveUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (enhancedUrl) URL.revokeObjectURL(enhancedUrl);
+    };
+  }, [enhancedUrl]);
+
+  const stopCamera = useCallback(async () => {
+    if (streamRef.current) {
+      for (const track of streamRef.current.getTracks()) {
+        track.stop();
+      }
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setCameraReady(false);
+    setFlashEnabled(false);
+  }, []);
+
+  const startCamera = useCallback(async () => {
+    if (!navigator.mediaDevices?.getUserMedia || originalFile) {
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: "environment" },
+          width: { ideal: 1440 },
+          height: { ideal: 2560 },
+        },
+        audio: false,
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play().catch(() => undefined);
+      }
+      setCameraReady(true);
+    } catch {
+      setCameraReady(false);
+    }
+  }, [originalFile]);
+
+  useEffect(() => {
+    if (screen !== "camera") {
+      void stopCamera();
+      return;
+    }
+    void startCamera();
+    return () => {
+      void stopCamera();
+    };
+  }, [screen, startCamera, stopCamera]);
+
+  useEffect(() => {
+    if (screen !== "enhance" || !basePreviewFile) return;
+    if (selectedFilter === "original") {
+      setBusyEnhance(false);
+      return;
+    }
+    let cancelled = false;
+    if (!enhancerRef.current) enhancerRef.current = createImageEnhancer();
+    setBusyEnhance(true);
+    void enhancerRef.current
+      .enhance(basePreviewFile, enhanceSettings)
+      .then((enhanced) => {
+        if (cancelled) {
+          URL.revokeObjectURL(enhanced.previewUrl);
+          return;
+        }
+        setEnhancedFile(buildEnhancedFile(enhanced.blob, basePreviewFile.name));
+        setEnhancedUrl((current) => {
+          if (current) URL.revokeObjectURL(current);
+          return enhanced.previewUrl;
+        });
+      })
+      .catch((reason) => {
+        if (!cancelled) {
+          setError(formatApiErrorMessage(reason, "Could not apply this filter."));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setBusyEnhance(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [basePreviewFile, enhanceSettings, screen, selectedFilter]);
+
+  useEffect(() => {
+    return () => {
+      enhancerRef.current?.dispose();
+      enhancerRef.current = null;
+    };
+  }, []);
+
+  const persistLastFields = useCallback((nextFields: OCRFields) => {
+    const nextLast = { ...nextFields, updatedAt: Date.now() };
+    setLastFields(nextLast);
+    window.localStorage.setItem(LAST_FIELD_STORAGE_KEY, JSON.stringify(nextLast));
+  }, []);
+
+  const moveHandle = useCallback((index: number, clientX: number, clientY: number) => {
+    const surface = cropSurfaceRef.current;
+    if (!surface) return;
+    const bounds = surface.getBoundingClientRect();
+    const nextX = clamp01((clientX - bounds.left) / bounds.width);
+    const nextY = clamp01((clientY - bounds.top) / bounds.height);
+    setCropPoints((current) => {
+      const next = sortPoints(current);
+      if (!next[index]) return current;
+      const gap = 0.08;
+      if (index === 0) {
+        next[index] = { x: Math.min(nextX, next[1].x - gap), y: Math.min(nextY, next[3].y - gap) };
+      } else if (index === 1) {
+        next[index] = { x: Math.max(nextX, next[0].x + gap), y: Math.min(nextY, next[2].y - gap) };
+      } else if (index === 2) {
+        next[index] = { x: Math.max(nextX, next[3].x + gap), y: Math.max(nextY, next[1].y + gap) };
+      } else {
+        next[index] = { x: Math.min(nextX, next[2].x - gap), y: Math.max(nextY, next[0].y + gap) };
+      }
+      return next;
+    });
+  }, []);
+
+  const handleOverlayMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (activeHandle == null) return;
+    moveHandle(activeHandle, event.clientX, event.clientY);
+  };
+
+  const handleOverlayRelease = () => {
+    setActiveHandle(null);
+  };
+
+  const captureCurrentFrame = useCallback(async () => {
+    if (!videoRef.current || !videoRef.current.videoWidth || !videoRef.current.videoHeight) {
+      cameraInputRef.current?.click();
+      return;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = videoRef.current.videoWidth;
+    canvas.height = videoRef.current.videoHeight;
+    const context = canvas.getContext("2d");
+    if (!context) {
+      cameraInputRef.current?.click();
+      return;
+    }
+    context.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
+    if (!blob) {
+      cameraInputRef.current?.click();
+      return;
+    }
+    const file = new File([blob], `scan-${Date.now()}.jpg`, { type: "image/jpeg" });
+    setOriginalFile(file);
+    setOriginalUrl(URL.createObjectURL(file));
+    setPerspectiveFile(null);
+    setPerspectiveUrl("");
+    setEnhancedFile(null);
+    setEnhancedUrl("");
+    setPdfBlob(null);
+    setFields({ date: "", material: "", quantity: "" });
+    setQualityHints([]);
+    setSavedId(null);
+    setCropPoints(defaultCropPoints());
+    setCropNaturalSize({ width: 0, height: 0 });
+    setSelectedFilter("clean");
+    setOutputChoice("excel");
+    setShowInsights(false);
+    setError("");
+    setStatus("");
+    setScreen("crop");
+  }, []);
+
+  const handleFlashToggle = useCallback(async () => {
+    const track = streamRef.current?.getVideoTracks?.()[0];
+    const next = !flashEnabled;
+    try {
+      const rawCapabilities = (track as MediaStreamTrack & { getCapabilities?: () => MediaTrackCapabilities })
+        ?.getCapabilities?.();
+      const supportsTorch = Boolean((rawCapabilities as Record<string, unknown> | undefined)?.torch);
+      if (track && supportsTorch) {
+        await track.applyConstraints({ advanced: [{ torch: next } as MediaTrackConstraintSet] });
+      }
+    } catch {
+      // UI toggle only when torch is unavailable
+    }
+    setFlashEnabled(next);
+  }, [flashEnabled]);
+
+  const handlePickedFile = useCallback((file: File | null) => {
+    if (!file) return;
+    const validationError = validateOcrImageFile(file, "Image");
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setOriginalFile(file);
+    setOriginalUrl(URL.createObjectURL(file));
+    setPerspectiveFile(null);
+    setPerspectiveUrl("");
+    setEnhancedFile(null);
+    setEnhancedUrl("");
+    setPdfBlob(null);
+    setFields({ date: "", material: "", quantity: "" });
+    setQualityHints([]);
+    setSavedId(null);
+    setCropPoints(defaultCropPoints());
+    setCropNaturalSize({ width: 0, height: 0 });
+    setSelectedFilter("clean");
+    setOutputChoice("excel");
+    setShowInsights(false);
+    setError("");
+    setStatus("");
+    setScreen("crop");
+  }, []);
+
+  const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    handlePickedFile(event.target.files?.[0] || null);
+    event.target.value = "";
+  };
+
+  const handleContinueFromCrop = useCallback(async () => {
+    if (!originalFile) return;
+    setBusyCrop(true);
+    setError("");
+    const nextCrop = cropBounds(cropPoints);
+    try {
+      if (cropNaturalSize.width && cropNaturalSize.height) {
+        const warped = await withTimeout(
+          warpOcrImage({
+            file: originalFile,
+            corners: toWarpCorners(cropPoints, cropNaturalSize.width, cropNaturalSize.height),
+          }),
+          9000,
+          "Crop correction timed out.",
+        );
+        const warpedFile = buildWarpedFile(warped.blob, originalFile.name);
+        setPerspectiveFile(warpedFile);
+        setPerspectiveUrl(URL.createObjectURL(warped.blob));
+      }
+      setSelectedFilter("clean");
+      setScreen("enhance");
+      setStatus("");
+      setError("");
+      if (!perspectiveFile) {
+        setCropPoints([
+          { x: nextCrop.left, y: nextCrop.top },
+          { x: nextCrop.right, y: nextCrop.top },
+          { x: nextCrop.right, y: nextCrop.bottom },
+          { x: nextCrop.left, y: nextCrop.bottom },
+        ]);
+      }
+    } catch {
+      setStatus("Auto crop was skipped. Using your selected frame.");
+      setSelectedFilter("clean");
+      setScreen("enhance");
+    } finally {
+      setBusyCrop(false);
+    }
+  }, [cropNaturalSize.height, cropNaturalSize.width, cropPoints, originalFile, perspectiveFile]);
+
+  const handleProcess = useCallback(async () => {
+    if (!processFile || !originalFile) return;
+    setBusyAction(true);
+    setError("");
+    setStatus("");
+    setShowInsights(false);
+    setScreen("processing");
+
+    try {
+      const pdfPromise = buildPdfBlobFromImage(processFile);
+      const result = await withTimeout(
+        previewOcrLogbook({
+          file: processFile,
+          columns: 5,
+          language: "auto",
+          templateId: null,
+        }),
+        15000,
+        "Processing timed out.",
+      );
+      const normalizedRows = normalizeRows(result, lastFields);
+      const nextFields = extractFields(normalizedRows, lastFields);
+      const reviewedRows = applyFieldsToRows(normalizedRows, nextFields);
+
+      setFields(nextFields);
+      setQualityHints(hintsFromWarnings(result.warnings));
+
+      const saved = await createOcrVerification({
+        columns: result.columns || Math.max(...reviewedRows.map((row) => row.length), 1),
+        language: result.used_language || "auto",
+        avgConfidence: result.avg_confidence ?? null,
+        warnings: result.warnings ?? [],
+        headers: [],
+        originalRows: result.rows ?? reviewedRows,
+        reviewedRows,
+        rawColumnAdded: result.raw_column_added ?? false,
+        reviewerNotes: "",
+        templateId: null,
+        sourceFilename: originalFile.name,
+        file: processFile,
+      });
+
+      setSavedId(saved.id);
+      signalWorkflowRefresh("ocr-verification-created");
+      persistLastFields(nextFields);
+      setPdfBlob(await pdfPromise);
+      setStatus(
+        outputChoice === "excel"
+          ? `Draft #${saved.id} saved. Excel export will use these corrected rows. Approve it in Review Documents to make the export trusted.`
+          : `Draft #${saved.id} saved.`,
+      );
+
+      setScreen("result");
+    } catch (reason) {
+      setError(humanExtractError(reason));
+      setScreen("output");
+    } finally {
+      setBusyAction(false);
+    }
+  }, [lastFields, originalFile, outputChoice, persistLastFields, processFile]);
+
+  const handleDownloadPdf = useCallback(async () => {
+    if (!pdfBlob || !originalFile) return;
+    await transferBlob(pdfBlob, `${fileBaseName(originalFile.name)}.pdf`, {
+      title: "OCR PDF export",
+      text: "Processed factory scan ready to share or save.",
+    });
+  }, [originalFile, pdfBlob]);
+
+  const handleDownloadExcel = useCallback(async () => {
+    if (!savedId) return;
+    setBusyAction(true);
+    try {
+      const download = await downloadOcrVerificationExport(savedId);
+      await transferBlob(download.blob, download.filename, {
+        title: "OCR Excel export",
+        text: "Reviewed OCR file ready to share or save.",
+      });
+      setStatus(`Downloaded corrected Excel from draft #${savedId}.`);
+    } catch (reason) {
+      setStatus(humanExportError(reason));
+    } finally {
+      setBusyAction(false);
+    }
+  }, [savedId]);
+
+  const handleRetake = () => {
+    resetFlow();
+  };
+
+  if (loading) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#0B0F19] text-sm text-slate-300">
+        Loading scanner...
+      </main>
+    );
+  }
+
+  if (!user) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#0B0F19] px-6 text-white">
+        <div className="w-full max-w-sm space-y-4 rounded-[2rem] border border-white/10 bg-[rgba(14,18,28,0.92)] p-6 text-center">
+          <div className="text-lg font-semibold">Login required</div>
+          <div className="text-sm text-slate-400">{sessionError || "Open login to use Document Desk."}</div>
+          <div className="flex justify-center">
+            <Link href="/login">
+              <Button>Open Login</Button>
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  if (!canUseOcr) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-[#0B0F19] px-6 text-white">
+        <div className="w-full max-w-sm space-y-4 rounded-[2rem] border border-white/10 bg-[rgba(14,18,28,0.92)] p-6 text-center">
+          <div className="text-lg font-semibold">Scanner access unavailable</div>
+          <div className="text-sm text-slate-400">Your role does not have access to Document Desk.</div>
+          <div className="flex justify-center">
+            <Link href="/dashboard">
+              <Button>Back to Dashboard</Button>
+            </Link>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-[#0B0F19] text-white">
+      {screen === "camera" ? (
+        <section className="relative flex min-h-screen flex-col overflow-hidden">
+          <div className="absolute inset-0">
+            {cameraReady ? (
+              <video
+                ref={videoRef}
+                className="h-full w-full object-cover"
+                autoPlay
+                muted
+                playsInline
+              />
+            ) : (
+              <div className="h-full w-full bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.18),transparent_38%),linear-gradient(180deg,#111827,#05070d)]" />
+            )}
+            {flashEnabled ? <div className="absolute inset-0 bg-white/10" /> : null}
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.16),rgba(0,0,0,0.02),rgba(0,0,0,0.5))]" />
+          </div>
+
+          <div className="relative flex flex-1 items-center justify-center px-6">
+            <div className="pointer-events-none relative aspect-[0.72] w-full max-w-[30rem] rounded-[2.6rem] border border-white/55 shadow-[0_0_0_1px_rgba(255,255,255,0.12),0_30px_90px_rgba(0,0,0,0.42)]">
+              <div className="absolute inset-0 rounded-[2.6rem] border border-cyan-300/35" />
+              <div className="absolute left-5 top-5 h-10 w-10 rounded-tl-[1.2rem] border-l-[3px] border-t-[3px] border-cyan-300" />
+              <div className="absolute right-5 top-5 h-10 w-10 rounded-tr-[1.2rem] border-r-[3px] border-t-[3px] border-cyan-300" />
+              <div className="absolute bottom-5 left-5 h-10 w-10 rounded-bl-[1.2rem] border-b-[3px] border-l-[3px] border-cyan-300" />
+              <div className="absolute bottom-5 right-5 h-10 w-10 rounded-br-[1.2rem] border-b-[3px] border-r-[3px] border-cyan-300" />
+              <div className="absolute inset-x-6 top-1/2 h-px -translate-y-1/2 bg-[linear-gradient(90deg,transparent,rgba(34,211,238,0.95),transparent)] shadow-[0_0_24px_rgba(34,211,238,0.7)] animate-pulse" />
+            </div>
+          </div>
+
+          <div
+            className="relative z-10 border-t border-white/10 bg-[rgba(8,11,18,0.78)] backdrop-blur-xl"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
+          >
+            <div className="mx-auto flex w-full max-w-xl items-center justify-between px-6 pt-5">
+              <button
+                type="button"
+                aria-label="Open gallery"
+                className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/12 bg-white/6 text-slate-100 transition hover:bg-white/10"
+                onClick={() => galleryInputRef.current?.click()}
+              >
+                <GalleryIcon />
+              </button>
+
+              <button
+                type="button"
+                aria-label="Capture scan"
+                className="relative inline-flex h-20 w-20 items-center justify-center rounded-full border border-white/35 bg-white/8 shadow-[0_0_0_12px_rgba(255,255,255,0.08)] transition hover:scale-[1.02]"
+                onClick={() => void captureCurrentFrame()}
+              >
+                <span className="h-14 w-14 rounded-full bg-white" />
+              </button>
+
+              <button
+                type="button"
+                aria-label="Toggle flash"
+                className={cn(
+                  "inline-flex h-14 w-14 items-center justify-center rounded-full border text-slate-100 transition",
+                  flashEnabled ? "border-cyan-300/45 bg-cyan-300/14" : "border-white/12 bg-white/6 hover:bg-white/10",
+                )}
+                onClick={() => void handleFlashToggle()}
+              >
+                <FlashIcon active={flashEnabled} />
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {screen === "crop" ? (
+        <section className="flex min-h-screen flex-col bg-[#0B0F19]">
+          <div className="flex flex-1 items-center justify-center px-4 py-6">
+            <div className="flex h-full w-full max-w-5xl items-center justify-center overflow-hidden rounded-[2.2rem] bg-black/35">
+              <div
+                ref={cropSurfaceRef}
+                className="relative inline-block touch-none"
+                onPointerMove={handleOverlayMove}
+                onPointerUp={handleOverlayRelease}
+                onPointerCancel={handleOverlayRelease}
+                onPointerLeave={handleOverlayRelease}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={originalUrl}
+                  alt="Crop preview"
+                  className="block max-h-[82vh] max-w-full object-contain"
+                  onLoad={(event) => {
+                    setCropNaturalSize({
+                      width: event.currentTarget.naturalWidth,
+                      height: event.currentTarget.naturalHeight,
+                    });
+                  }}
+                />
+                <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                  <defs>
+                    <linearGradient id="crop-line" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#67e8f9" />
+                      <stop offset="100%" stopColor="#60a5fa" />
+                    </linearGradient>
+                  </defs>
+                  <polygon
+                    points={cropPoints.map((point) => `${point.x * 100},${point.y * 100}`).join(" ")}
+                    fill="rgba(14,165,233,0.1)"
+                    stroke="url(#crop-line)"
+                    strokeWidth="0.8"
+                  />
+                </svg>
+                {cropPoints.map((point, index) => (
+                  <button
+                    key={`${index}-${point.x}-${point.y}`}
+                    type="button"
+                    aria-label={`Move crop handle ${index + 1}`}
+                    className="absolute h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-cyan-300 shadow-[0_0_0_5px_rgba(6,182,212,0.18)]"
+                    style={{
+                      left: `${point.x * 100}%`,
+                      top: `${point.y * 100}%`,
+                    }}
+                    onPointerDown={(event) => {
+                      setActiveHandle(index);
+                      cropSurfaceRef.current?.setPointerCapture?.(event.pointerId);
+                      moveHandle(index, event.clientX, event.clientY);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div
+            className="border-t border-white/10 bg-[rgba(8,11,18,0.8)] px-6 pt-4 backdrop-blur-xl"
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 18px)" }}
+          >
+            <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4">
+              <button
+                type="button"
+                className="text-base font-medium text-slate-300 transition hover:text-white"
+                onClick={handleRetake}
+              >
+                Retake
+              </button>
+              <button
+                type="button"
+                className="inline-flex min-w-[9rem] items-center justify-center rounded-full bg-[linear-gradient(135deg,#67e8f9,#60a5fa)] px-6 py-3 text-base font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={busyCrop || !cropNaturalSize.width}
+                onClick={() => void handleContinueFromCrop()}
+              >
+                {busyCrop ? "Working..." : "Continue"}
+              </button>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {screen === "enhance" ? (
+        <section className="flex min-h-screen flex-col bg-[#0B0F19]">
+          <div className="flex flex-1 items-center justify-center px-4 py-6">
+            <div className="flex h-full w-full max-w-5xl items-center justify-center overflow-hidden rounded-[2.2rem] bg-black/35">
+              {displayEnhanceUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={displayEnhanceUrl} alt="Enhanced preview" className="max-h-[82vh] w-full object-contain" />
+              ) : null}
+              {busyEnhance ? (
+                <div className="absolute inset-0 grid place-items-center bg-[rgba(11,15,25,0.36)]">
+                  <SpinnerIcon />
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="border-t border-white/10 bg-[rgba(8,11,18,0.84)] backdrop-blur-xl">
+            <div className="mx-auto flex w-full max-w-5xl gap-3 overflow-x-auto px-4 py-4">
+              {[
+                { value: "original" as const, label: "Original" },
+                { value: "clean" as const, label: "Clean" },
+                { value: "contrast" as const, label: "Contrast" },
+              ].map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  className={cn(
+                    "shrink-0 rounded-full border px-5 py-3 text-sm font-semibold transition",
+                    selectedFilter === item.value
+                      ? "border-cyan-300/35 bg-cyan-300/14 text-white"
+                      : "border-white/10 bg-white/6 text-slate-300 hover:bg-white/10 hover:text-white",
+                  )}
+                  onClick={() => setSelectedFilter(item.value)}
+                >
+                  {item.label}
+                </button>
+              ))}
+            </div>
+            <div
+              className="border-t border-white/10 px-6 pt-4"
+              style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 18px)" }}
+            >
+              <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4">
+                <button
+                  type="button"
+                  className="text-base font-medium text-slate-300 transition hover:text-white"
+                  onClick={() => setScreen("crop")}
+                >
+                  Back
+                </button>
+                <button
+                  type="button"
+                  className="inline-flex min-w-[9rem] items-center justify-center rounded-full bg-[linear-gradient(135deg,#67e8f9,#60a5fa)] px-6 py-3 text-base font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={busyEnhance}
+                  onClick={() => setScreen("output")}
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {screen === "output" ? (
+        <section className="flex min-h-screen flex-col items-center justify-center px-6 py-10">
+          <div className="w-full max-w-md space-y-5 text-center">
+            <div className="text-3xl font-semibold tracking-[-0.04em]">Choose Output</div>
+            <div className="space-y-3">
+              {[
+                { value: "excel" as const, label: "Generate Excel", icon: <ExcelIcon /> },
+                { value: "pdf" as const, label: "Generate PDF", icon: <PdfIcon /> },
+              ].map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  className={cn(
+                    "flex w-full items-center gap-4 rounded-[1.8rem] border px-5 py-5 text-left transition",
+                    outputChoice === item.value
+                      ? "border-cyan-300/35 bg-cyan-300/12 shadow-[0_18px_40px_rgba(34,211,238,0.12)]"
+                      : "border-white/10 bg-white/6 hover:bg-white/9",
+                  )}
+                  onClick={() => setOutputChoice(item.value)}
+                >
+                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-cyan-200">
+                    {item.icon}
+                  </span>
+                  <span className="text-lg font-semibold">{item.label}</span>
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#67e8f9,#60a5fa)] px-6 py-4 text-base font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={busyAction || !processFile}
+              onClick={() => void handleProcess()}
+            >
+              Continue
+            </button>
+            <button
+              type="button"
+              className="text-sm font-medium text-slate-400 transition hover:text-white"
+              onClick={() => setScreen("enhance")}
+            >
+              Back
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {screen === "processing" ? (
+        <section className="grid min-h-screen place-items-center px-6 text-center">
+          <div className="space-y-5">
+            <div className="mx-auto grid h-24 w-24 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/8">
+              <SpinnerIcon />
+            </div>
+            <div className="text-3xl font-semibold tracking-[-0.04em]">Processing</div>
+            <div className="text-base text-slate-400">Processing your document</div>
+          </div>
+        </section>
+      ) : null}
+
+      {screen === "result" ? (
+        <section className="flex min-h-screen flex-col items-center justify-center px-6 py-10">
+          <div className="w-full max-w-md space-y-4 text-center">
+            <div className="mx-auto grid h-20 w-20 place-items-center rounded-full border border-emerald-400/25 bg-emerald-400/10 text-emerald-200">
+              <CheckIcon />
+            </div>
+            <div className="text-3xl font-semibold tracking-[-0.04em]">Done</div>
+
+            <div className="space-y-3 pt-3">
+              <button
+                type="button"
+                className={cn(
+                  "flex w-full items-center justify-between rounded-[1.5rem] border px-5 py-4 text-left transition",
+                  savedId
+                    ? "border-cyan-300/30 bg-cyan-300/10"
+                    : "border-white/10 bg-white/6 hover:bg-white/9",
+                )}
+                disabled={busyAction || !savedId}
+                onClick={() => void handleDownloadExcel()}
+              >
+                <span className="flex items-center gap-3">
+                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-cyan-200">
+                    <ExcelIcon />
+                  </span>
+                  <span className="text-base font-semibold">Download Excel</span>
+                </span>
+                <span className="text-sm text-slate-400">
+                  {savedId ? "Corrected rows" : "Save first"}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                className="flex w-full items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/6 px-5 py-4 text-left transition hover:bg-white/9 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={!pdfBlob}
+                onClick={handleDownloadPdf}
+              >
+                <span className="flex items-center gap-3">
+                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-cyan-200">
+                    <PdfIcon />
+                  </span>
+                  <span className="text-base font-semibold">Download PDF</span>
+                </span>
+                <span className="text-sm text-slate-400">{pdfBlob ? "Ready" : ""}</span>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className="pt-2 text-sm font-medium text-cyan-300 transition hover:text-cyan-100"
+              onClick={() => setShowInsights((current) => !current)}
+            >
+              {showInsights ? "Hide Insights" : "View Insights"}
+            </button>
+
+            {showInsights ? (
+              <div className="space-y-3 rounded-[1.6rem] border border-white/10 bg-white/6 p-4 text-left">
+                {[
+                  ["Date", fields.date || "Not detected"],
+                  ["Material", fields.material || "Not detected"],
+                  ["Quantity", fields.quantity || "Not detected"],
+                  ["Draft", savedId ? `#${savedId}` : "Not saved"],
+                  ["Excel source", savedId ? "Corrected review draft rows" : "Not ready"],
+                  ["Next step", savedId ? "Open the same draft in Review Documents" : "Save the draft first"],
+                  ["Hints", qualityHints.length ? qualityHints.join(", ") : "No scan warnings"],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex items-center justify-between gap-4">
+                    <span className="text-sm text-slate-400">{label}</span>
+                    <span className="max-w-[60%] text-right text-sm font-medium text-white">{value}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            {savedId ? (
+              <Link
+                href={`/ocr/verify?verification_id=${savedId}`}
+                className="block pt-1 text-sm font-medium text-cyan-300 transition hover:text-cyan-100"
+              >
+                Open This Draft In Review Documents
+              </Link>
+            ) : null}
+
+            <button
+              type="button"
+              className="pt-2 text-sm font-medium text-slate-400 transition hover:text-white"
+              onClick={resetFlow}
+            >
+              Process New Document
+            </button>
+          </div>
+        </section>
+      ) : null}
+
+      {(error || status) && screen !== "processing" ? (
+        <div
+          className={cn(
+            "pointer-events-none fixed inset-x-0 z-50 mx-auto w-[min(92vw,34rem)] rounded-[1.4rem] border px-4 py-3 text-sm shadow-[0_18px_60px_rgba(0,0,0,0.34)] backdrop-blur-xl",
+            error ? "border-red-400/25 bg-[rgba(127,29,29,0.85)] text-red-50" : "border-cyan-300/20 bg-[rgba(8,19,30,0.86)] text-cyan-50",
+          )}
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
+        >
+          {error || status}
+        </div>
+      ) : null}
+
+      <input
+        ref={cameraInputRef}
+        className="hidden"
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleInputChange}
+      />
+      <input
+        ref={galleryInputRef}
+        className="hidden"
+        type="file"
+        accept="image/*"
+        onChange={handleInputChange}
+      />
+    </main>
+  );
+}

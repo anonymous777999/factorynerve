@@ -1,0 +1,58 @@
+{
+  "base_url": "http://127.0.0.1:8877",
+  "virtual_users": 3,
+  "concurrency": 2,
+  "duration_ms": 3521.86,
+  "failed_users": 0,
+  "failures": [],
+  "endpoints": {
+    "register": {
+      "success": 3,
+      "failures": 0,
+      "avg_ms": 1188.42,
+      "p50_ms": 1140.34,
+      "p95_ms": 1750.93,
+      "max_ms": 1750.93
+    },
+    "login": {
+      "success": 3,
+      "failures": 0,
+      "avg_ms": 779.26,
+      "p50_ms": 659.51,
+      "p95_ms": 1046.15,
+      "max_ms": 1046.15
+    },
+    "health": {
+      "success": 3,
+      "failures": 0,
+      "avg_ms": 20.92,
+      "p50_ms": 20.69,
+      "p95_ms": 35.75,
+      "max_ms": 35.75
+    },
+    "create_entry": {
+      "success": 3,
+      "failures": 0,
+      "avg_ms": 47.37,
+      "p50_ms": 55.01,
+      "p95_ms": 63.44,
+      "max_ms": 63.44
+    },
+    "list_entries": {
+      "success": 3,
+      "failures": 0,
+      "avg_ms": 109.44,
+      "p50_ms": 119.38,
+      "p95_ms": 173.57,
+      "max_ms": 173.57
+    },
+    "export_excel": {
+      "success": 3,
+      "failures": 0,
+      "avg_ms": 55.58,
+      "p50_ms": 55.81,
+      "p95_ms": 67.29,
+      "max_ms": 67.29
+    }
+  }
+}

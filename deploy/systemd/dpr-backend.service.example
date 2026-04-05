@@ -1,0 +1,15 @@
+[Unit]
+Description=DPR.ai FastAPI backend
+After=network.target
+
+[Service]
+Type=simple
+User=dpr
+WorkingDirectory=/opt/dpr-ai
+EnvironmentFile=/opt/dpr-ai/.env
+ExecStart=/usr/bin/python3 -m uvicorn backend.main:app --host 127.0.0.1 --port 8765
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

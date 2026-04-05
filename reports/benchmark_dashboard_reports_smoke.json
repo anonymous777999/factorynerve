@@ -1,0 +1,103 @@
+{
+  "base_url": "http://127.0.0.1:8877",
+  "seed_entries": 18,
+  "samples_per_endpoint": 2,
+  "results": {
+    "register": {
+      "samples": 1,
+      "failures": 0,
+      "avg_ms": 436.3,
+      "p50_ms": 436.3,
+      "p95_ms": 436.3,
+      "max_ms": 436.3
+    },
+    "seed_entry": {
+      "samples": 18,
+      "failures": 0,
+      "avg_ms": 60.12,
+      "p50_ms": 62.18,
+      "p95_ms": 107.53,
+      "max_ms": 107.53
+    },
+    "register_runner": {
+      "samples": 1,
+      "failures": 0,
+      "avg_ms": 495.66,
+      "p50_ms": 495.66,
+      "p95_ms": 495.66,
+      "max_ms": 495.66
+    },
+    "analytics_weekly": {
+      "samples": 2,
+      "failures": 0,
+      "avg_ms": 15.91,
+      "p50_ms": 20.81,
+      "p95_ms": 20.81,
+      "max_ms": 20.81
+    },
+    "analytics_monthly": {
+      "samples": 2,
+      "failures": 0,
+      "avg_ms": 13.4,
+      "p50_ms": 15.55,
+      "p95_ms": 15.55,
+      "max_ms": 15.55
+    },
+    "reports_weekly": {
+      "samples": 2,
+      "failures": 0,
+      "avg_ms": 11.24,
+      "p50_ms": 13.55,
+      "p95_ms": 13.55,
+      "max_ms": 13.55
+    },
+    "reports_monthly": {
+      "samples": 2,
+      "failures": 0,
+      "avg_ms": 10.61,
+      "p50_ms": 11.17,
+      "p95_ms": 11.17,
+      "max_ms": 11.17
+    },
+    "ai_anomaly_preview": {
+      "samples": 2,
+      "failures": 0,
+      "avg_ms": 14.98,
+      "p50_ms": 16.26,
+      "p95_ms": 16.26,
+      "max_ms": 16.26
+    },
+    "report_job_create": {
+      "samples": 1,
+      "failures": 0,
+      "avg_ms": 10.76,
+      "p50_ms": 10.76,
+      "p95_ms": 10.76,
+      "max_ms": 10.76
+    },
+    "job_poll": {
+      "samples": 42,
+      "failures": 0,
+      "avg_ms": 19.87,
+      "p50_ms": 8.81,
+      "p95_ms": 83.43,
+      "max_ms": 141.68
+    },
+    "report_job_download": {
+      "samples": 1,
+      "failures": 0,
+      "avg_ms": 38.33,
+      "p50_ms": 38.33,
+      "p95_ms": 38.33,
+      "max_ms": 38.33
+    },
+    "ai_summary_job_create": {
+      "samples": 1,
+      "failures": 0,
+      "avg_ms": 28.25,
+      "p50_ms": 28.25,
+      "p95_ms": 28.25,
+      "max_ms": 28.25
+    }
+  }
+}

@@ -1,0 +1,15 @@
+[Unit]
+Description=DPR.ai Next.js frontend
+After=network.target
+
+[Service]
+Type=simple
+User=dpr
+WorkingDirectory=/opt/dpr-ai/web
+EnvironmentFile=/opt/dpr-ai/.env
+ExecStart=/usr/bin/npm run start -- --hostname 127.0.0.1 --port 3000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
