@@ -116,6 +116,19 @@ def get_db() -> Generator[Session, None, None]:
         db.close()
 
 
+def _audit_log_user_id(obj: Any) -> int | None:
+    user_id = getattr(obj, "user_id", None)
+    if user_id is not None:
+        return int(user_id)
+
+    if obj.__class__.__name__ == "User":
+        user_pk = getattr(obj, "id", None)
+        if user_pk is not None:
+            return int(user_pk)
+
+    return None
+
+
 @event.listens_for(Session, "before_flush")
 def _audit_writes(session: Session, _flush_context: Any, _instances: Any) -> None:
     from backend.models.report import AuditLog
@@ -137,7 +150,7 @@ def _audit_writes(session: Session, _flush_context: Any, _instances: Any) -> Non
         factory_id = getattr(obj, "factory_id", None)
         session.add(
             AuditLog(
-                user_id=getattr(obj, "user_id", getattr(obj, "id", None)),
+                user_id=_audit_log_user_id(obj),
                 org_id=org_id,
                 factory_id=factory_id,
                 action=f"create_{obj.__class__.__name__.lower()}",
@@ -151,7 +164,7 @@ def _audit_writes(session: Session, _flush_context: Any, _instances: Any) -> Non
         factory_id = getattr(obj, "factory_id", None)
         session.add(
             AuditLog(
-                user_id=getattr(obj, "user_id", getattr(obj, "id", None)),
+                user_id=_audit_log_user_id(obj),
                 org_id=org_id,
                 factory_id=factory_id,
                 action=f"update_{obj.__class__.__name__.lower()}",
@@ -165,7 +178,7 @@ def _audit_writes(session: Session, _flush_context: Any, _instances: Any) -> Non
         factory_id = getattr(obj, "factory_id", None)
         session.add(
             AuditLog(
-                user_id=getattr(obj, "user_id", getattr(obj, "id", None)),
+                user_id=_audit_log_user_id(obj),
                 org_id=org_id,
                 factory_id=factory_id,
                 action=f"delete_{obj.__class__.__name__.lower()}",

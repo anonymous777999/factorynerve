@@ -6,6 +6,7 @@ from starlette.requests import Request
 
 from backend.database import SessionLocal, init_db
 from backend.models.pending_registration import PendingRegistration
+from backend.models.report import AuditLog
 from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
 from backend.routers import auth as auth_router
@@ -256,6 +257,14 @@ def test_register_email_mode_keeps_pending_signup_when_delivery_fails(monkeypatc
         assert pending is not None
         existing_user = db.query(User).filter(User.email == email.lower()).first()
         assert existing_user is None
+        audit_rows = (
+            db.query(AuditLog)
+            .filter(AuditLog.action == "update_pendingregistration")
+            .order_by(AuditLog.id.desc())
+            .all()
+        )
+        assert audit_rows
+        assert audit_rows[0].user_id is None
 
 
 def test_google_onboarding_bootstraps_new_workspace_as_admin():
