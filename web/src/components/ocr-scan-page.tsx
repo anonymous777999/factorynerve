@@ -31,6 +31,7 @@ import { cn } from "@/lib/utils";
 type ScanScreen = "camera" | "crop" | "enhance" | "output" | "processing" | "result";
 type FilterPreset = "original" | "clean" | "contrast";
 type OutputChoice = "excel" | "pdf";
+type ProcessingStage = "analyzing" | "extracting" | "formatting";
 type OCRFields = {
   date: string;
   material: string;
@@ -48,6 +49,23 @@ const DEFAULT_CROP_POINTS: CropPoint[] = [
   { x: 0.84, y: 0.86 },
   { x: 0.16, y: 0.88 },
 ];
+const PROCESSING_STAGE_COPY: Record<ProcessingStage, { label: string; detail: string; progress: number }> = {
+  analyzing: {
+    label: "Analyzing image",
+    detail: "Checking layout, sharpness, and document boundaries before extraction.",
+    progress: 32,
+  },
+  extracting: {
+    label: "Extracting data",
+    detail: "Reading rows, rebuilding structure, and preparing review-ready values.",
+    progress: 68,
+  },
+  formatting: {
+    label: "Formatting output",
+    detail: "Saving the draft and preparing exports for Excel or PDF.",
+    progress: 96,
+  },
+};
 
 function buildEnhancedFile(blob: Blob, originalName: string) {
   const base = originalName.replace(/\.[^.]+$/, "");
@@ -360,6 +378,7 @@ export default function OcrScanPage() {
   const [screen, setScreen] = useState<ScanScreen>("camera");
   const [selectedFilter, setSelectedFilter] = useState<FilterPreset>("clean");
   const [outputChoice, setOutputChoice] = useState<OutputChoice>("excel");
+  const [processingStage, setProcessingStage] = useState<ProcessingStage>("analyzing");
   const [flashEnabled, setFlashEnabled] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
   const [busyCrop, setBusyCrop] = useState(false);
@@ -412,6 +431,7 @@ export default function OcrScanPage() {
     setScreen("camera");
     setSelectedFilter("clean");
     setOutputChoice("excel");
+    setProcessingStage("analyzing");
     setFlashEnabled(false);
     setBusyCrop(false);
     setBusyEnhance(false);
@@ -507,6 +527,18 @@ export default function OcrScanPage() {
       setCameraReady(false);
     }
   }, [originalFile]);
+
+  useEffect(() => {
+    if (screen !== "processing") return;
+    setProcessingStage("analyzing");
+    const timers = [
+      window.setTimeout(() => setProcessingStage("extracting"), 1100),
+      window.setTimeout(() => setProcessingStage("formatting"), 2450),
+    ];
+    return () => {
+      timers.forEach((timer) => window.clearTimeout(timer));
+    };
+  }, [screen]);
 
   useEffect(() => {
     if (screen !== "camera") {
@@ -874,54 +906,121 @@ export default function OcrScanPage() {
               <div className="h-full w-full bg-[radial-gradient(circle_at_top,rgba(37,99,235,0.18),transparent_38%),linear-gradient(180deg,#111827,#05070d)]" />
             )}
             {flashEnabled ? <div className="absolute inset-0 bg-white/10" /> : null}
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.16),rgba(0,0,0,0.02),rgba(0,0,0,0.5))]" />
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,8,18,0.28),rgba(0,0,0,0.02),rgba(3,8,18,0.7))]" />
           </div>
 
-          <div className="relative flex flex-1 items-center justify-center px-6">
-            <div className="pointer-events-none relative aspect-[0.72] w-full max-w-[30rem] rounded-[2.6rem] border border-white/55 shadow-[0_0_0_1px_rgba(255,255,255,0.12),0_30px_90px_rgba(0,0,0,0.42)]">
-              <div className="absolute inset-0 rounded-[2.6rem] border border-cyan-300/35" />
+          <div className="relative z-10 px-5 pt-6 sm:px-7 sm:pt-7">
+            <div className="mx-auto w-full max-w-5xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-400/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-100">
+                OCR Capture Desk
+              </div>
+              <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_18rem] md:items-start">
+                <div>
+                  <h1 className="max-w-2xl text-3xl font-semibold tracking-[-0.04em] text-white sm:text-[2.8rem]">
+                    Scan registers with a calmer, cleaner capture flow.
+                  </h1>
+                  <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-200/82 sm:text-base">
+                    Capture from the camera or upload from the gallery, then crop, enhance, review, and export the same trusted draft to Excel or PDF.
+                  </p>
+                </div>
+                <div className="rounded-[1.6rem] border border-white/10 bg-[rgba(8,14,24,0.62)] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.26)] backdrop-blur-xl">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Live readiness</div>
+                  <div className="mt-3 space-y-3 text-sm text-slate-200">
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-2.5">
+                      <span>Camera</span>
+                      <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", cameraReady ? "bg-emerald-400/16 text-emerald-100" : "bg-amber-400/16 text-amber-100")}>
+                        {cameraReady ? "Live" : "Upload fallback"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-2.5">
+                      <span>Export formats</span>
+                      <span className="text-xs text-slate-300">Excel + PDF</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-2.5">
+                      <span>Review path</span>
+                      <span className="text-xs text-slate-300">Draft before trust</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative flex flex-1 items-center justify-center px-5 py-8 sm:px-6 md:py-10">
+            <div className="pointer-events-none relative aspect-[0.72] w-full max-w-[28rem] rounded-[2.7rem] border border-white/45 shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_32px_100px_rgba(0,0,0,0.42)]">
+              <div className="absolute inset-0 rounded-[2.7rem] border border-cyan-300/30 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))]" />
               <div className="absolute left-5 top-5 h-10 w-10 rounded-tl-[1.2rem] border-l-[3px] border-t-[3px] border-cyan-300" />
               <div className="absolute right-5 top-5 h-10 w-10 rounded-tr-[1.2rem] border-r-[3px] border-t-[3px] border-cyan-300" />
               <div className="absolute bottom-5 left-5 h-10 w-10 rounded-bl-[1.2rem] border-b-[3px] border-l-[3px] border-cyan-300" />
               <div className="absolute bottom-5 right-5 h-10 w-10 rounded-br-[1.2rem] border-b-[3px] border-r-[3px] border-cyan-300" />
+              <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full border border-white/12 bg-[rgba(8,14,24,0.68)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+                Align the full page
+              </div>
               <div className="absolute inset-x-6 top-1/2 h-px -translate-y-1/2 bg-[linear-gradient(90deg,transparent,rgba(34,211,238,0.95),transparent)] shadow-[0_0_24px_rgba(34,211,238,0.7)] animate-pulse" />
             </div>
           </div>
 
           <div
-            className="relative z-10 border-t border-white/10 bg-[rgba(8,11,18,0.78)] backdrop-blur-xl"
+            className="relative z-10 border-t border-white/10 bg-[rgba(8,11,18,0.74)] backdrop-blur-2xl"
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
           >
-            <div className="mx-auto flex w-full max-w-xl items-center justify-between px-6 pt-5">
-              <button
-                type="button"
-                aria-label="Open gallery"
-                className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/12 bg-white/6 text-slate-100 transition hover:bg-white/10"
-                onClick={() => galleryInputRef.current?.click()}
-              >
-                <GalleryIcon />
-              </button>
+            <div className="mx-auto w-full max-w-5xl px-5 pt-5 sm:px-6">
+              <div className="rounded-[2rem] border border-white/10 bg-[rgba(8,14,24,0.68)] p-4 shadow-[0_22px_70px_rgba(0,0,0,0.26)]">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <div className="text-lg font-semibold tracking-[-0.02em] text-white">Capture or upload</div>
+                    <div className="mt-1 text-sm text-slate-300">
+                      Use the live camera for the cleanest result, or jump straight to gallery upload if you already have the image.
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">PNG / JPG / HEIC</span>
+                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">Factory-safe review flow</span>
+                  </div>
+                </div>
+                <div className="mt-5 flex items-end justify-between gap-3 sm:gap-5">
+                  <button
+                    type="button"
+                    aria-label="Open gallery"
+                    className="group flex min-w-0 flex-1 flex-col items-center gap-2 rounded-[1.4rem] border border-white/10 bg-white/[0.04] px-3 py-4 text-slate-100 transition hover:border-sky-300/20 hover:bg-sky-400/10"
+                    onClick={() => galleryInputRef.current?.click()}
+                  >
+                    <span className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/12 bg-white/6 transition group-hover:bg-white/10">
+                      <GalleryIcon />
+                    </span>
+                    <span className="text-sm font-semibold">Gallery</span>
+                    <span className="text-center text-[11px] text-slate-400">Use an existing photo</span>
+                  </button>
 
-              <button
-                type="button"
-                aria-label="Capture scan"
-                className="relative inline-flex h-20 w-20 items-center justify-center rounded-full border border-white/35 bg-white/8 shadow-[0_0_0_12px_rgba(255,255,255,0.08)] transition hover:scale-[1.02]"
-                onClick={() => void captureCurrentFrame()}
-              >
-                <span className="h-14 w-14 rounded-full bg-white" />
-              </button>
+                  <button
+                    type="button"
+                    aria-label="Capture scan"
+                    className="relative -mt-8 inline-flex h-24 w-24 shrink-0 items-center justify-center rounded-full border border-white/40 bg-white/8 shadow-[0_0_0_14px_rgba(255,255,255,0.06),0_28px_55px_rgba(0,0,0,0.32)] transition hover:scale-[1.02]"
+                    onClick={() => void captureCurrentFrame()}
+                  >
+                    <span className="absolute inset-[11px] rounded-full border border-white/25" />
+                    <span className="h-16 w-16 rounded-full bg-white" />
+                  </button>
 
-              <button
-                type="button"
-                aria-label="Toggle flash"
-                className={cn(
-                  "inline-flex h-14 w-14 items-center justify-center rounded-full border text-slate-100 transition",
-                  flashEnabled ? "border-cyan-300/45 bg-cyan-300/14" : "border-white/12 bg-white/6 hover:bg-white/10",
-                )}
-                onClick={() => void handleFlashToggle()}
-              >
-                <FlashIcon active={flashEnabled} />
-              </button>
+                  <button
+                    type="button"
+                    aria-label="Toggle flash"
+                    className={cn(
+                      "group flex min-w-0 flex-1 flex-col items-center gap-2 rounded-[1.4rem] border px-3 py-4 text-slate-100 transition",
+                      flashEnabled
+                        ? "border-cyan-300/35 bg-cyan-300/12"
+                        : "border-white/10 bg-white/[0.04] hover:border-sky-300/20 hover:bg-sky-400/10",
+                    )}
+                    onClick={() => void handleFlashToggle()}
+                  >
+                    <span className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/12 bg-white/6">
+                      <FlashIcon active={flashEnabled} />
+                    </span>
+                    <span className="text-sm font-semibold">Flash</span>
+                    <span className="text-center text-[11px] text-slate-400">{flashEnabled ? "Torch requested" : "Use in low light"}</span>
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -1076,10 +1175,57 @@ export default function OcrScanPage() {
       ) : null}
 
       {screen === "output" ? (
-        <section className="flex min-h-screen flex-col items-center justify-center px-6 py-10">
-          <div className="w-full max-w-md space-y-5 text-center">
-            <div className="text-3xl font-semibold tracking-[-0.04em]">Choose Output</div>
-            <div className="space-y-3">
+        <section className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-6">
+          <div className="w-full max-w-5xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,27,0.92),rgba(8,13,22,0.96))] p-5 shadow-[0_26px_80px_rgba(0,0,0,0.34)] sm:p-7">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)]">
+              <div className="space-y-4">
+                <div className="inline-flex rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-100">
+                  Step 4 of 4
+                </div>
+                <div>
+                  <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white">Choose the final output</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
+                    We already cleaned the image. Now choose whether this draft should leave the scan desk as an Excel sheet for correction workflows or as a PDF snapshot for sharing.
+                  </p>
+                </div>
+                <div className="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)]">
+                  <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
+                    <div>
+                      <div className="text-sm font-semibold text-white">{processFile?.name || "Current scan"}</div>
+                      <div className="text-xs text-slate-400">Prepared after crop and enhancement</div>
+                    </div>
+                    <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+                      {selectedFilter === "original" ? "Original tone" : `${selectedFilter} filter`}
+                    </div>
+                  </div>
+                  <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_15rem]">
+                    <div className="overflow-hidden rounded-[1.4rem] border border-white/8 bg-black/30">
+                      {displayEnhanceUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={displayEnhanceUrl} alt="Prepared scan preview" className="max-h-[28rem] w-full object-contain" />
+                      ) : null}
+                    </div>
+                    <div className="space-y-3">
+                      {[
+                        "Crop corrections are already applied.",
+                        "The first row will prefill date, material, and quantity.",
+                        "Exports still route through the review draft for trust.",
+                      ].map((item) => (
+                        <div key={item} className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
+                          {item}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-4 rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4 sm:p-5">
+                <div>
+                  <div className="text-lg font-semibold text-white">Output destination</div>
+                  <div className="mt-1 text-sm text-slate-400">Choose what the operator needs next.</div>
+                </div>
+                <div className="space-y-3">
               {[
                 { value: "excel" as const, label: "Generate Excel", icon: <ExcelIcon /> },
                 { value: "pdf" as const, label: "Generate PDF", icon: <PdfIcon /> },
@@ -1088,141 +1234,236 @@ export default function OcrScanPage() {
                   key={item.value}
                   type="button"
                   className={cn(
-                    "flex w-full items-center gap-4 rounded-[1.8rem] border px-5 py-5 text-left transition",
+                    "flex w-full items-center gap-4 rounded-[1.6rem] border px-5 py-5 text-left transition",
                     outputChoice === item.value
                       ? "border-cyan-300/35 bg-cyan-300/12 shadow-[0_18px_40px_rgba(34,211,238,0.12)]"
-                      : "border-white/10 bg-white/6 hover:bg-white/9",
+                      : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08]",
                   )}
                   onClick={() => setOutputChoice(item.value)}
                 >
                   <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-cyan-200">
                     {item.icon}
                   </span>
-                  <span className="text-lg font-semibold">{item.label}</span>
+                  <span>
+                    <span className="block text-lg font-semibold">{item.label}</span>
+                    <span className="mt-1 block text-sm text-slate-400">
+                      {item.value === "excel"
+                        ? "Best for corrected rows, handoff, and downstream review."
+                        : "Best for quick sharing and frozen visual output."}
+                    </span>
+                  </span>
                 </button>
               ))}
+                </div>
+                <button
+                  type="button"
+                  className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#67e8f9,#60a5fa)] px-6 py-4 text-base font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                  disabled={busyAction || !processFile}
+                  onClick={() => void handleProcess()}
+                >
+                  Start extraction
+                </button>
+                <button
+                  type="button"
+                  className="w-full text-sm font-medium text-slate-400 transition hover:text-white"
+                  onClick={() => setScreen("enhance")}
+                >
+                  Back to filters
+                </button>
+              </div>
             </div>
-            <button
-              type="button"
-              className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#67e8f9,#60a5fa)] px-6 py-4 text-base font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={busyAction || !processFile}
-              onClick={() => void handleProcess()}
-            >
-              Continue
-            </button>
-            <button
-              type="button"
-              className="text-sm font-medium text-slate-400 transition hover:text-white"
-              onClick={() => setScreen("enhance")}
-            >
-              Back
-            </button>
           </div>
         </section>
       ) : null}
 
       {screen === "processing" ? (
-        <section className="grid min-h-screen place-items-center px-6 text-center">
-          <div className="space-y-5">
-            <div className="mx-auto grid h-24 w-24 place-items-center rounded-full border border-cyan-300/20 bg-cyan-300/8">
-              <SpinnerIcon />
+        <section className="grid min-h-screen place-items-center px-5 py-10 sm:px-6">
+          <div className="w-full max-w-3xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,27,0.94),rgba(8,13,22,0.97))] p-6 text-center shadow-[0_26px_80px_rgba(0,0,0,0.34)] sm:p-8">
+            <div className="inline-flex rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-100">
+              AI Processing
             </div>
-            <div className="text-3xl font-semibold tracking-[-0.04em]">Processing</div>
-            <div className="text-base text-slate-400">Processing your document</div>
+            <div className="mx-auto mt-6 w-full max-w-sm">
+              <div className="relative overflow-hidden rounded-[1.8rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                <div className="relative overflow-hidden rounded-[1.3rem] bg-[linear-gradient(180deg,rgba(5,10,18,0.95),rgba(14,21,33,0.95))] px-4 py-12">
+                  <div className="absolute inset-y-0 left-0 w-full bg-[linear-gradient(180deg,transparent,rgba(76,176,255,0.08),transparent)]" />
+                  <div className="absolute left-0 right-0 top-0 h-0.5 bg-[linear-gradient(90deg,transparent,rgba(76,176,255,0.95),transparent)] animate-[pulse_2s_ease-in-out_infinite]" />
+                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-cyan-200">
+                    <SpinnerIcon />
+                  </div>
+                  <div className="mt-4 truncate text-sm font-medium text-slate-300">
+                    {processFile?.name || "Current scan"}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <h2 className="mt-6 text-3xl font-semibold tracking-[-0.04em] text-white">
+              {PROCESSING_STAGE_COPY[processingStage].label}
+            </h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-slate-300">
+              {PROCESSING_STAGE_COPY[processingStage].detail}
+            </p>
+            <div className="mx-auto mt-6 h-2.5 w-full max-w-xl overflow-hidden rounded-full bg-white/8">
+              <div
+                className="h-full rounded-full bg-[linear-gradient(90deg,#67e8f9,#60a5fa)] transition-[width] duration-500 ease-out"
+                style={{ width: `${PROCESSING_STAGE_COPY[processingStage].progress}%` }}
+              />
+            </div>
+            <div className="mx-auto mt-6 grid w-full max-w-xl gap-3 text-left sm:grid-cols-3">
+              {(Object.entries(PROCESSING_STAGE_COPY) as Array<[ProcessingStage, { label: string; detail: string; progress: number }]>).map(([key, item], index) => (
+                <div
+                  key={key}
+                  className={cn(
+                    "rounded-[1.35rem] border px-4 py-3",
+                    key === processingStage
+                      ? "border-cyan-300/30 bg-cyan-300/12"
+                      : "border-white/8 bg-white/[0.03]",
+                  )}
+                >
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">0{index + 1}</div>
+                  <div className="mt-2 text-sm font-semibold text-white">{item.label}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
       ) : null}
 
       {screen === "result" ? (
-        <section className="flex min-h-screen flex-col items-center justify-center px-6 py-10">
-          <div className="w-full max-w-md space-y-4 text-center">
-            <div className="mx-auto grid h-20 w-20 place-items-center rounded-full border border-emerald-400/25 bg-emerald-400/10 text-emerald-200">
-              <CheckIcon />
-            </div>
-            <div className="text-3xl font-semibold tracking-[-0.04em]">Done</div>
-
-            <div className="space-y-3 pt-3">
-              <button
-                type="button"
-                className={cn(
-                  "flex w-full items-center justify-between rounded-[1.5rem] border px-5 py-4 text-left transition",
-                  savedId
-                    ? "border-cyan-300/30 bg-cyan-300/10"
-                    : "border-white/10 bg-white/6 hover:bg-white/9",
-                )}
-                disabled={busyAction || !savedId}
-                onClick={() => void handleDownloadExcel()}
-              >
-                <span className="flex items-center gap-3">
-                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-cyan-200">
-                    <ExcelIcon />
-                  </span>
-                  <span className="text-base font-semibold">Download Excel</span>
-                </span>
-                <span className="text-sm text-slate-400">
-                  {savedId ? "Corrected rows" : "Save first"}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                className="flex w-full items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/6 px-5 py-4 text-left transition hover:bg-white/9 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={!pdfBlob}
-                onClick={handleDownloadPdf}
-              >
-                <span className="flex items-center gap-3">
-                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-cyan-200">
-                    <PdfIcon />
-                  </span>
-                  <span className="text-base font-semibold">Download PDF</span>
-                </span>
-                <span className="text-sm text-slate-400">{pdfBlob ? "Ready" : ""}</span>
-              </button>
-            </div>
-
-            <button
-              type="button"
-              className="pt-2 text-sm font-medium text-cyan-300 transition hover:text-cyan-100"
-              onClick={() => setShowInsights((current) => !current)}
-            >
-              {showInsights ? "Hide Insights" : "View Insights"}
-            </button>
-
-            {showInsights ? (
-              <div className="space-y-3 rounded-[1.6rem] border border-white/10 bg-white/6 p-4 text-left">
-                {[
-                  ["Date", fields.date || "Not detected"],
-                  ["Material", fields.material || "Not detected"],
-                  ["Quantity", fields.quantity || "Not detected"],
-                  ["Draft", savedId ? `#${savedId}` : "Not saved"],
-                  ["Excel source", savedId ? "Corrected review draft rows" : "Not ready"],
-                  ["Next step", savedId ? "Open the same draft in Review Documents" : "Save the draft first"],
-                  ["Hints", qualityHints.length ? qualityHints.join(", ") : "No scan warnings"],
-                ].map(([label, value]) => (
-                  <div key={label} className="flex items-center justify-between gap-4">
-                    <span className="text-sm text-slate-400">{label}</span>
-                    <span className="max-w-[60%] text-right text-sm font-medium text-white">{value}</span>
+        <section className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-6">
+          <div className="w-full max-w-5xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,27,0.94),rgba(8,13,22,0.97))] p-5 shadow-[0_26px_80px_rgba(0,0,0,0.34)] sm:p-7">
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(22rem,0.92fr)]">
+              <div className="space-y-5">
+                <div className="text-center lg:text-left">
+                  <div className="mx-auto grid h-20 w-20 place-items-center rounded-[1.6rem] border border-emerald-400/25 bg-emerald-400/10 text-emerald-200 lg:mx-0">
+                    <CheckIcon />
                   </div>
-                ))}
+                  <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-white">Conversion complete</h2>
+                  <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
+                    Your scan has been turned into a review-safe draft. Download what you need now, or open the same draft in Review Documents for trust checks.
+                  </p>
+                </div>
+
+                <div className="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)]">
+                  <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
+                    <div>
+                      <div className="text-sm font-semibold text-white">{processFile?.name || "Current scan"}</div>
+                      <div className="text-xs text-slate-400">Saved as a review draft before export</div>
+                    </div>
+                    <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+                      {savedId ? `Draft #${savedId}` : "Draft pending"}
+                    </div>
+                  </div>
+                  <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_16rem]">
+                    <div className="overflow-hidden rounded-[1.4rem] border border-white/8 bg-black/30">
+                      {displayEnhanceUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={displayEnhanceUrl} alt="Processed scan preview" className="max-h-[28rem] w-full object-contain" />
+                      ) : null}
+                    </div>
+                    <div className="space-y-3">
+                      {[
+                        ["Date", fields.date || "Not detected"],
+                        ["Material", fields.material || "Not detected"],
+                        ["Quantity", fields.quantity || "Not detected"],
+                        ["Hints", qualityHints.length ? qualityHints.join(", ") : "No scan warnings"],
+                      ].map(([label, value]) => (
+                        <div key={label} className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</div>
+                          <div className="mt-2 text-sm font-medium text-white">{value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
-            ) : null}
 
-            {savedId ? (
-              <Link
-                href={`/ocr/verify?verification_id=${savedId}`}
-                className="block pt-1 text-sm font-medium text-cyan-300 transition hover:text-cyan-100"
-              >
-                Open This Draft In Review Documents
-              </Link>
-            ) : null}
+              <div className="space-y-4 rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4 sm:p-5">
+                <div>
+                  <div className="text-lg font-semibold text-white">Export or continue review</div>
+                  <div className="mt-1 text-sm text-slate-400">Choose the next action for this OCR draft.</div>
+                </div>
+                <div className="space-y-3">
+                  <button
+                    type="button"
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-[1.5rem] border px-5 py-4 text-left transition",
+                      savedId
+                        ? "border-cyan-300/30 bg-cyan-300/10 hover:bg-cyan-300/14"
+                        : "border-white/10 bg-white/[0.04]",
+                    )}
+                    disabled={busyAction || !savedId}
+                    onClick={() => void handleDownloadExcel()}
+                  >
+                    <span className="flex items-center gap-3">
+                      <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-cyan-200">
+                        <ExcelIcon />
+                      </span>
+                      <span>
+                        <span className="block text-base font-semibold text-white">Download Excel</span>
+                        <span className="mt-1 block text-sm text-slate-400">Corrected rows ready for spreadsheet workflow.</span>
+                      </span>
+                    </span>
+                  </button>
 
-            <button
-              type="button"
-              className="pt-2 text-sm font-medium text-slate-400 transition hover:text-white"
-              onClick={resetFlow}
-            >
-              Process New Document
-            </button>
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-5 py-4 text-left transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={!pdfBlob}
+                    onClick={handleDownloadPdf}
+                  >
+                    <span className="flex items-center gap-3">
+                      <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-cyan-200">
+                        <PdfIcon />
+                      </span>
+                      <span>
+                        <span className="block text-base font-semibold text-white">Download PDF</span>
+                        <span className="mt-1 block text-sm text-slate-400">Frozen visual export for easy sharing.</span>
+                      </span>
+                    </span>
+                  </button>
+                </div>
+
+                {savedId ? (
+                  <Link
+                    href={`/ocr/verify?verification_id=${savedId}`}
+                    className="inline-flex w-full items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
+                  >
+                    Open this draft in Review Documents
+                  </Link>
+                ) : null}
+
+                <button
+                  type="button"
+                  className="w-full text-sm font-medium text-cyan-300 transition hover:text-cyan-100"
+                  onClick={() => setShowInsights((current) => !current)}
+                >
+                  {showInsights ? "Hide detailed insights" : "Show detailed insights"}
+                </button>
+
+                {showInsights ? (
+                  <div className="space-y-3 rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 text-left">
+                    {[
+                      ["Draft", savedId ? `#${savedId}` : "Not saved"],
+                      ["Excel source", savedId ? "Corrected review draft rows" : "Not ready"],
+                      ["Next step", savedId ? "Review, approve, and export trusted output" : "Save the draft first"],
+                    ].map(([label, value]) => (
+                      <div key={label} className="flex items-center justify-between gap-4">
+                        <span className="text-sm text-slate-400">{label}</span>
+                        <span className="max-w-[60%] text-right text-sm font-medium text-white">{value}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+
+                <button
+                  type="button"
+                  className="w-full text-sm font-medium text-slate-400 transition hover:text-white"
+                  onClick={resetFlow}
+                >
+                  Scan another document
+                </button>
+              </div>
+            </div>
           </div>
         </section>
       ) : null}
