@@ -33,4 +33,4 @@ COPY PROJECT_CONTEXT.md ./PROJECT_CONTEXT.md
 
 RUN mkdir -p /app/logs /app/exports/failed_payloads
 
-CMD ["/bin/sh", "-c", "alembic upgrade head && uvicorn backend.main:app --host 0.0.0.0 --port ${PORT:-10000}"]
+CMD ["python", "scripts/render_start.py"]
