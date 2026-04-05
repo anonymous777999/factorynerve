@@ -9,8 +9,12 @@ import ssl
 from email.message import EmailMessage
 from typing import Iterable
 
+import requests
+
 logger = logging.getLogger(__name__)
 SMTP_TIMEOUT_SECONDS = float(os.getenv("SMTP_TIMEOUT_SECONDS", "12"))
+RESEND_API_TIMEOUT_SECONDS = float(os.getenv("RESEND_API_TIMEOUT_SECONDS", "15"))
+RESEND_API_BASE_URL = os.getenv("RESEND_API_BASE_URL", "https://api.resend.com").rstrip("/")
 
 
 def _to_bool(value: str | None, default: bool = False) -> bool:
@@ -40,6 +44,45 @@ def _build_smtp_attempts(
             if candidate not in attempts:
                 attempts.append(candidate)
     return attempts
+
+
+def _resolve_resend_api_key(*, host: str, user: str | None, password: str | None) -> str | None:
+    explicit = (os.getenv("RESEND_API_KEY") or "").strip()
+    if explicit:
+        return explicit
+
+    normalized_host = host.strip().lower()
+    normalized_user = (user or "").strip().lower()
+    candidate = (password or "").strip()
+    if "resend" in normalized_host and normalized_user == "resend" and candidate.startswith("re_"):
+        return candidate
+    return None
+
+
+def _send_via_resend_api(
+    *,
+    api_key: str,
+    sender: str,
+    to_emails: list[str],
+    subject: str,
+    body: str,
+) -> None:
+    app_name = (os.getenv("APP_NAME") or "FactoryNerve").strip() or "FactoryNerve"
+    response = requests.post(
+        f"{RESEND_API_BASE_URL}/emails",
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "User-Agent": f"{app_name}/1.0",
+        },
+        json={
+            "from": sender,
+            "to": to_emails,
+            "subject": subject,
+            "text": body,
+        },
+        timeout=RESEND_API_TIMEOUT_SECONDS,
+    )
+    response.raise_for_status()
 
 
 def _send_via_smtp(
@@ -93,17 +136,35 @@ def send_email(
     use_tls = _to_bool(os.getenv("SMTP_USE_TLS"), True)
     use_ssl = _to_bool(os.getenv("SMTP_USE_SSL"), False)
     dry_run = _to_bool(os.getenv("SMTP_DRY_RUN"), False)
+    normalized_recipients = [email.strip() for email in to_emails if email and email.strip()]
 
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = sender
-    msg["To"] = ", ".join(list(to_emails))
+    msg["To"] = ", ".join(normalized_recipients)
     if reply_to:
         msg["Reply-To"] = reply_to
     msg.set_content(body)
 
     if dry_run:
         return {"sent": False, "dry_run": True}
+
+    resend_api_key = _resolve_resend_api_key(host=host, user=user, password=password)
+    if resend_api_key:
+        try:
+            _send_via_resend_api(
+                api_key=resend_api_key,
+                sender=sender,
+                to_emails=normalized_recipients,
+                subject=subject,
+                body=body,
+            )
+            return {"sent": True, "dry_run": False}
+        except requests.RequestException as error:
+            logger.warning(
+                "Resend API delivery failed; falling back to SMTP transport.",
+                exc_info=error,
+            )
 
     attempts = _build_smtp_attempts(
         host=host,

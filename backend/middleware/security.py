@@ -12,12 +12,12 @@ from collections.abc import Callable
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
 try:
     from starlette.middleware.proxy_headers import ProxyHeadersMiddleware  # type: ignore
 except Exception:  # pragma: no cover
     ProxyHeadersMiddleware = None
 from starlette.requests import Request
+from starlette.responses import RedirectResponse
 from starlette.responses import JSONResponse, Response
 
 from backend.security import decode_access_token
@@ -65,6 +65,13 @@ def _env_float(key: str, default: float) -> float:
         return default
 
 
+def _request_is_https(request: Request) -> bool:
+    if request.url.scheme == "https":
+        return True
+    forwarded_proto = (request.headers.get("x-forwarded-proto") or "").split(",")[0].strip().lower()
+    return forwarded_proto == "https"
+
+
 def apply_security(app: FastAPI) -> None:
     cors_origins = _parse_origins(os.getenv("CORS_ALLOWED_ORIGINS"))
     cors_allow_credentials = _env_bool("CORS_ALLOW_CREDENTIALS", True)
@@ -85,8 +92,8 @@ def apply_security(app: FastAPI) -> None:
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     if _env_bool("TRUST_PROXY", False) and ProxyHeadersMiddleware:
         app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
-    if _env_bool("FORCE_HTTPS", False):
-        app.add_middleware(HTTPSRedirectMiddleware)
+    force_https = _env_bool("FORCE_HTTPS", False)
+    https_exempt_paths = {"/health", "/observability/ready"}
 
     rate_limit_window = _env_float("RATE_LIMIT_WINDOW_SECONDS", 60.0)
     rate_limit_max = _env_int("RATE_LIMIT_MAX_REQUESTS", 120)
@@ -136,6 +143,13 @@ def apply_security(app: FastAPI) -> None:
             request_id_var.reset(token)
         response.headers["X-Request-ID"] = request_id
         return response
+
+    @app.middleware("http")
+    async def force_https_redirect(request: Request, call_next: Callable) -> Response:
+        if force_https and request.url.path not in https_exempt_paths and not _request_is_https(request):
+            target = str(request.url.replace(scheme="https"))
+            return RedirectResponse(url=target, status_code=307)
+        return await call_next(request)
 
     @app.middleware("http")
     async def rate_limit_requests(request: Request, call_next: Callable) -> Response:
