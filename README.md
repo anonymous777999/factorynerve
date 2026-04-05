@@ -57,4 +57,5 @@ See [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) for a detailed AI and engineer ha
 ## Deployment help
 
 - HTTPS / production deployment: [docs/HTTPS_DEPLOYMENT_PLAYBOOK.md](./docs/HTTPS_DEPLOYMENT_PLAYBOOK.md)
+- Render backend deployment: [docs/RENDER_SETUP.md](./docs/RENDER_SETUP.md)
 - Mobile APK path: [docs/MOBILE_APK_SHIPPING_CHECKLIST.md](./docs/MOBILE_APK_SHIPPING_CHECKLIST.md)
