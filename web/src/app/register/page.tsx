@@ -172,6 +172,9 @@ export default function RegisterPage() {
                 <div className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-xs text-[var(--muted)]">
                   Random or wrong emails can create a pending record, but they do not get working access. Only the person who can open that inbox can activate the account.
                 </div>
+                <div className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-xs text-[var(--muted)]">
+                  Password reset works only after verification is complete. Until then, use <span className="font-medium text-[var(--text)]">Resend Verification Email</span> instead of forgot password.
+                </div>
                 {success.verification_link ? (
                   <div className="mt-4 space-y-3">
                     <div className="text-[var(--muted)]">

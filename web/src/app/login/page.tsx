@@ -122,7 +122,7 @@ export default function LoginPage() {
         },
       ]}
       supportTitle="If sign-in is blocked"
-      supportDescription="The most common cause is an unverified inbox. Use resend verification with the same signup email, then come back and sign in normally."
+      supportDescription="The most common cause is an unverified inbox. Use resend verification with the same signup email, then come back and sign in normally. Forgot password starts working only after that verification creates the real account."
       cardClassName="max-w-xl"
     >
       <form onSubmit={onSubmit} className="space-y-4">
@@ -148,7 +148,7 @@ export default function LoginPage() {
                 <div>{error}</div>
                 {canResendVerification ? (
                   <div className="mt-2 text-xs text-amber-100/80">
-                    This usually means the signup exists only as a pending record. The account will stay locked until the email inbox opens the verification link.
+                    This usually means the signup exists only as a pending record. The account will stay locked until the email inbox opens the verification link, and forgot password will not help until that verification step is finished.
                   </div>
                 ) : null}
               </div>

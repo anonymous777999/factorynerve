@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { ApiError } from "@/lib/api";
-import { requestPasswordReset, type PasswordForgotResponse } from "@/lib/auth";
+import { requestPasswordReset, resendEmailVerification, type PasswordForgotResponse } from "@/lib/auth";
 import { AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,6 +15,8 @@ export default function ForgotPasswordPage() {
   const [error, setError] = useState("");
   const [response, setResponse] = useState<PasswordForgotResponse | null>(null);
   const [copyStatus, setCopyStatus] = useState("");
+  const [resendingVerification, setResendingVerification] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState("");
   const isEmailDelivery = response?.delivery_mode !== "preview";
 
   const copyResetLink = async () => {
@@ -44,6 +46,7 @@ export default function ForgotPasswordPage() {
     setError("");
     setResponse(null);
     setCopyStatus("");
+    setVerificationStatus("");
     try {
       const result = await requestPasswordReset(email);
       setResponse(result);
@@ -57,6 +60,29 @@ export default function ForgotPasswordPage() {
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const onResendVerification = async () => {
+    if (!email) {
+      setVerificationStatus("Enter the same signup email first, then resend verification.");
+      return;
+    }
+    setResendingVerification(true);
+    setVerificationStatus("");
+    try {
+      const result = await resendEmailVerification(email);
+      setVerificationStatus(result.message);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setVerificationStatus(err.message);
+      } else if (err instanceof Error) {
+        setVerificationStatus(err.message);
+      } else {
+        setVerificationStatus("Could not resend the verification email.");
+      }
+    } finally {
+      setResendingVerification(false);
     }
   };
 
@@ -82,7 +108,7 @@ export default function ForgotPasswordPage() {
         },
       ]}
       supportTitle="Privacy-safe by design"
-      supportDescription="This screen intentionally does not confirm whether an email exists. If the account is real and eligible, the reset link will reach that inbox."
+      supportDescription="This screen intentionally does not confirm whether an email exists. Password reset only works after the signup email has been verified and the real account has been created."
       cardClassName="max-w-xl"
       contentClassName="space-y-5"
     >
@@ -119,6 +145,9 @@ export default function ForgotPasswordPage() {
                   <li>3. Set a new password, then sign in again.</li>
                 </ol>
               </div>
+              <div className="mt-3 rounded-xl border border-[rgba(245,158,11,0.28)] bg-[rgba(245,158,11,0.10)] p-3 text-xs text-amber-100">
+                If you only just signed up and have not clicked the verification email yet, password reset will not arrive. Verify the signup email first because the real account is created only after verification.
+              </div>
               {isEmailDelivery ? (
                 <div className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-xs text-[var(--muted)]">
                   For privacy, this page always shows the same result whether the email exists or not. If the account is real, active, and eligible for reset, the email will arrive in that inbox.
@@ -146,6 +175,19 @@ export default function ForgotPasswordPage() {
                   Check your inbox, spam, and promotions folder for the reset email.
                 </div>
               )}
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <Button type="button" variant="outline" onClick={onResendVerification} disabled={resendingVerification}>
+                  {resendingVerification ? "Sending..." : "Resend Verification Email Instead"}
+                </Button>
+                <Link href="/login" className="text-sm text-[var(--accent)] underline">
+                  Back to sign in
+                </Link>
+              </div>
+              {verificationStatus ? (
+                <div className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-sm text-[var(--muted)]">
+                  {verificationStatus}
+                </div>
+              ) : null}
             </div>
           ) : null}
 
