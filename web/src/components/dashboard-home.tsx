@@ -1635,7 +1635,7 @@ export default function DashboardHome() {
           </div>
         ) : null}
 
-        <section className="surface-panel-strong grid gap-6 rounded-[2rem] p-5 md:p-7 xl:grid-cols-[minmax(0,1.28fr)_minmax(19rem,0.92fr)]">
+        <section className="surface-panel-strong grid gap-6 rounded-[2rem] p-4 sm:p-5 md:p-7 xl:grid-cols-[minmax(0,1.28fr)_minmax(19rem,0.92fr)]">
           <div className="space-y-5">
             <div className="flex flex-wrap gap-2">
               <span className="surface-pill rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
@@ -1652,59 +1652,104 @@ export default function DashboardHome() {
               <h1 className="max-w-3xl text-3xl font-semibold leading-tight md:text-[2.75rem]">{headerTitle}</h1>
               <p className="max-w-2xl text-sm leading-6 text-text-secondary">{headerCopy}</p>
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              {primaryAction ? (
-                <Link href={primaryAction.href}>
-                  <Button size="lg">{primaryAction.action}</Button>
+            <div className="space-y-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+                {primaryAction ? (
+                  <Link href={primaryAction.href} className="w-full sm:w-auto">
+                    <Button size="lg" className="w-full sm:w-auto">
+                      {primaryAction.action}
+                    </Button>
+                  </Link>
+                ) : null}
+                <Link href={heroSecondaryAction.href} className="w-full sm:w-auto">
+                  <Button variant="outline" size="lg" className="w-full sm:w-auto">
+                    {heroSecondaryAction.label}
+                  </Button>
                 </Link>
-              ) : null}
-              <Link href={heroSecondaryAction.href}>
-                <Button variant="outline" size="lg">{heroSecondaryAction.label}</Button>
-              </Link>
-              <Button variant="ghost" size="sm" onClick={() => loadDashboard()}>
-                {dashboardLoading
-                  ? t("dashboard.action.refreshing", "Refreshing...")
-                  : t("dashboard.action.refresh_board", "Refresh Board")}
-              </Button>
-              {queueCount > 0 ? (
-                <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
-                  {syncing
-                    ? t("dashboard.sync.syncing", "Syncing...")
-                    : `${t("dashboard.action.sync_queue", "Sync Queue")} (${queueCount})`}
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button variant="ghost" size="sm" onClick={() => loadDashboard()}>
+                  {dashboardLoading
+                    ? t("dashboard.action.refreshing", "Refreshing...")
+                    : t("dashboard.action.refresh_board", "Refresh Board")}
                 </Button>
-              ) : null}
+                {queueCount > 0 ? (
+                  <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
+                    {syncing
+                      ? t("dashboard.sync.syncing", "Syncing...")
+                      : `${t("dashboard.action.sync_queue", "Sync Queue")} (${queueCount})`}
+                  </Button>
+                ) : null}
+                {dashboardLoading ? (
+                  <span className="rounded-full border border-[rgba(77,163,255,0.22)] bg-[rgba(77,163,255,0.12)] px-3 py-1 text-xs font-semibold text-[rgba(77,163,255,0.92)]">
+                    Refreshing live data
+                  </span>
+                ) : null}
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-3 text-xs text-text-secondary">
+            <div className="hidden flex-wrap items-center gap-3 text-xs text-text-secondary sm:flex">
               <span>
                 {t(
                   "dashboard.hero.supporting_note",
                   "Keep the hero focused on the next decision. Account and system controls stay in the left rail.",
                 )}
               </span>
-              {dashboardLoading ? (
-                <span className="rounded-full border border-[rgba(77,163,255,0.22)] bg-[rgba(77,163,255,0.12)] px-3 py-1 font-semibold text-[rgba(77,163,255,0.92)]">
-                  Refreshing live data
-                </span>
-              ) : null}
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-3">
             {heroHighlights.map((item) => (
               <div
                 key={item.label}
-                className="rounded-[1.35rem] border border-[rgba(255,255,255,0.09)] bg-[rgba(255,255,255,0.035)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]"
+                className="min-w-0 rounded-[1.35rem] border border-[rgba(255,255,255,0.09)] bg-[rgba(255,255,255,0.035)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-4"
               >
-                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">{item.label}</div>
-                <div className="mt-2 text-2xl font-semibold text-text-primary">{item.value}</div>
-                <div className="mt-1 text-xs leading-5 text-text-secondary">{item.detail}</div>
+                <div className="truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted sm:text-[11px] sm:tracking-[0.2em]">
+                  {item.label}
+                </div>
+                <div className="mt-2 text-xl font-semibold text-text-primary sm:text-2xl">{item.value}</div>
+                <div className="mt-1 hidden text-xs leading-5 text-text-secondary sm:block">{item.detail}</div>
               </div>
             ))}
           </div>
         </section>
 
         <section className="grid gap-4 xl:grid-cols-[1.08fr_0.94fr_0.98fr]">
-          <Card className={`overflow-hidden ${calmAttentionBoard ? "" : "border-[rgba(77,163,255,0.2)]"}`}>
+          <Card className="order-2 overflow-hidden xl:order-1">
+            <CardHeader>
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
+                {t("dashboard.section.now", "Now")}
+              </div>
+              <CardTitle className="text-xl">
+                {primaryAction?.title || t("dashboard.primary.fallback_title", "Start the next task")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-sm leading-6 text-text-secondary">
+                {primaryAction?.detail || t("dashboard.primary.fallback_detail", "Keep the floor moving with the next best action.")}
+              </div>
+              {primaryAction ? (
+                <Link href={primaryAction.href} className="block">
+                  <Button size="lg" className="w-full sm:w-auto">
+                    {primaryAction.action}
+                  </Button>
+                </Link>
+              ) : null}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="surface-panel-soft rounded-[1.2rem] px-4 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Active Factory</div>
+                  <div className="mt-1 text-sm font-semibold text-text-primary">{activeFactory?.name || user.factory_name || "Factory"}</div>
+                </div>
+                <div className="surface-panel-soft rounded-[1.2rem] px-4 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Board State</div>
+                  <div className="mt-1 text-sm font-semibold text-text-primary">
+                    {dashboardLoading ? "Refreshing live" : online ? "Live sync ready" : "Offline safe"}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className={`order-1 overflow-hidden xl:order-2 ${calmAttentionBoard ? "" : "border-[rgba(77,163,255,0.2)]"}`}>
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
                 {t("dashboard.section.attention", "Attention")}
@@ -1712,7 +1757,7 @@ export default function DashboardHome() {
               <CardTitle className="text-xl">{t("dashboard.attention.title", "What needs review now")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                 <div className="surface-panel-soft rounded-[1.2rem] p-3">
                   <div className="text-xs text-[var(--muted)]">{t("dashboard.metric.alerts", "Alerts")}</div>
                   <div className="mt-1 text-xl font-bold text-text-primary">{state.alerts.length}</div>
@@ -1721,7 +1766,7 @@ export default function DashboardHome() {
                   <div className="text-xs text-[var(--muted)]">{t("dashboard.metric.signals", "Signals")}</div>
                   <div className="mt-1 text-xl font-bold text-text-primary">{anomalyCount}</div>
                 </div>
-                <div className="surface-panel-soft rounded-[1.2rem] p-3">
+                <div className="surface-panel-soft col-span-2 rounded-[1.2rem] p-3 sm:col-span-1">
                   <div className="text-xs text-[var(--muted)]">{t("dashboard.metric.pending_shift", "Pending Shift")}</div>
                   <div className="mt-1 text-xl font-bold text-text-primary">{pendingShifts}</div>
                 </div>
@@ -1743,7 +1788,7 @@ export default function DashboardHome() {
               {shouldShowOcrAttention ? (
                 <div className="rounded-[1.3rem] border border-cyan-400/20 bg-[rgba(34,211,238,0.08)] p-4">
                   <div className="text-xs uppercase tracking-[0.18em] text-cyan-100">Trusted OCR</div>
-                  <div className="mt-3 grid grid-cols-3 gap-3">
+                  <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                     <div className="rounded-[1.05rem] border border-cyan-400/16 bg-[rgba(255,255,255,0.04)] p-3">
                       <div className="text-[11px] text-cyan-100/80">Approved</div>
                       <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary?.trusted_documents ?? 0}</div>
@@ -1752,7 +1797,7 @@ export default function DashboardHome() {
                       <div className="text-[11px] text-cyan-100/80">Trusted rows</div>
                       <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary?.trusted_rows ?? 0}</div>
                     </div>
-                    <div className="rounded-[1.05rem] border border-cyan-400/16 bg-[rgba(255,255,255,0.04)] p-3">
+                    <div className="rounded-[1.05rem] border border-cyan-400/16 bg-[rgba(255,255,255,0.04)] p-3 sm:col-span-1 col-span-2">
                       <div className="text-[11px] text-cyan-100/80">Pending</div>
                       <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary?.pending_documents ?? 0}</div>
                     </div>
@@ -1762,15 +1807,15 @@ export default function DashboardHome() {
                   </div>
                 </div>
               ) : null}
-              <div className="flex flex-wrap gap-2">
-                <Link href="/dashboard">
-                  <Button variant="outline" className="px-4 py-2 text-xs">
+              <div className="grid gap-2 sm:flex sm:flex-wrap">
+                <Link href="/dashboard" className="block">
+                  <Button variant="outline" className="w-full px-4 py-2 text-xs sm:w-auto">
                     {t("dashboard.action.open_alert_feed", "Open Alert Feed")}
                   </Button>
                 </Link>
                 {canReview ? (
-                  <Link href="/approvals">
-                    <Button variant="ghost" className="px-4 py-2 text-xs">
+                  <Link href="/approvals" className="block">
+                    <Button variant="ghost" className="w-full px-4 py-2 text-xs sm:w-auto">
                       {t("dashboard.action.open_review_queue", "Open Review Queue")}
                     </Button>
                   </Link>
@@ -1779,40 +1824,7 @@ export default function DashboardHome() {
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden">
-            <CardHeader>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
-                {t("dashboard.section.now", "Now")}
-              </div>
-              <CardTitle className="text-xl">
-                {primaryAction?.title || t("dashboard.primary.fallback_title", "Start the next task")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-sm leading-6 text-text-secondary">
-                {primaryAction?.detail || t("dashboard.primary.fallback_detail", "Keep the floor moving with the next best action.")}
-              </div>
-              {primaryAction ? (
-                <Link href={primaryAction.href}>
-                  <Button size="lg">{primaryAction.action}</Button>
-                </Link>
-              ) : null}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="surface-panel-soft rounded-[1.2rem] px-4 py-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Active Factory</div>
-                  <div className="mt-1 text-sm font-semibold text-text-primary">{activeFactory?.name || user.factory_name || "Factory"}</div>
-                </div>
-                <div className="surface-panel-soft rounded-[1.2rem] px-4 py-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Board State</div>
-                  <div className="mt-1 text-sm font-semibold text-text-primary">
-                    {dashboardLoading ? "Refreshing live" : online ? "Live sync ready" : "Offline safe"}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden">
+          <Card className="order-3 overflow-hidden">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
                 {t("dashboard.section.quick_actions", "Quick Actions")}
@@ -1836,10 +1848,10 @@ export default function DashboardHome() {
                   </div>
                 </Link>
               ))}
-              <div className="flex flex-wrap gap-2 pt-1">
+              <div className="grid gap-2 pt-1 sm:flex sm:flex-wrap">
                 {dashboardQuickLinks.map((link) => (
-                  <Link key={`${link.href}-${link.label}`} href={link.href}>
-                    <Button variant={link.variant} className="px-4 py-2 text-xs">
+                  <Link key={`${link.href}-${link.label}`} href={link.href} className="block">
+                    <Button variant={link.variant} className="w-full px-4 py-2 text-xs sm:w-auto">
                       {link.label}
                     </Button>
                   </Link>
@@ -1902,7 +1914,7 @@ export default function DashboardHome() {
                     key={alert.id}
                     className={`rounded-2xl border p-4 ${severityTone(alert.severity)}`}
                   >
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
                         <div className="text-xs uppercase tracking-[0.2em] opacity-80">{alert.alert_type}</div>
                         <div className="mt-1 text-sm font-medium">{alert.message}</div>
@@ -1910,7 +1922,7 @@ export default function DashboardHome() {
                       </div>
                       <Button
                         variant="ghost"
-                        className="px-3 py-1 text-xs"
+                        className="w-full px-3 py-1 text-xs sm:w-auto"
                         onClick={() => handleMarkAlertRead(alert.id)}
                       >
                         {t("dashboard.action.mark_read", "Mark read")}
@@ -1948,7 +1960,7 @@ export default function DashboardHome() {
                             {t("common.open", "Open")}
                           </Link>
                         </div>
-                        <div className="mt-3 grid grid-cols-3 gap-3 text-xs text-text-secondary">
+                        <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-text-secondary sm:grid-cols-3">
                           <div>
                             <div className="text-text-muted">Units</div>
                             <div className="mt-1 text-sm font-semibold text-text-primary">{entry.units_produced} / {entry.units_target}</div>
@@ -1957,7 +1969,7 @@ export default function DashboardHome() {
                             <div className="text-text-muted">Downtime</div>
                             <div className="mt-1 text-sm font-semibold text-text-primary">{entry.downtime_minutes} {t("table.min", "min")}</div>
                           </div>
-                          <div>
+                          <div className="col-span-2 sm:col-span-1">
                             <div className="text-text-muted">Submitted</div>
                             <div className="mt-1 text-sm font-semibold text-text-primary">{formatDateTime(entry.created_at, locale)}</div>
                           </div>

@@ -1146,8 +1146,8 @@ function MobileBottomNav({
   translate?: TranslateFn;
 }) {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(0.8rem+env(safe-area-inset-bottom))] pt-3 lg:hidden">
-      <div className="surface-panel-strong mx-auto flex max-w-xl items-end justify-between gap-1 rounded-[2rem] px-2 pb-2 pt-2">
+    <nav className="safe-inline-pad fixed inset-x-0 bottom-0 z-40 pb-[calc(0.95rem+env(safe-area-inset-bottom))] pt-3 lg:hidden">
+      <div className="surface-panel-strong mx-auto flex max-w-xl items-end justify-between gap-1 rounded-[2rem] px-2 pb-2 pt-2 shadow-[0_24px_50px_rgba(3,8,20,0.34)]">
         {items.map((item) => {
           const active = item.match(pathname);
           const badgeCount = getMobileNavBadgeCount(item, badgeCounts);
@@ -1865,12 +1865,12 @@ function AppShellFrame({
 
       <div
         className={cn(
-          "flex min-h-screen min-w-0 flex-1 flex-col transition-[padding-left] duration-300 ease-out",
+          "app-shell-content flex min-h-screen min-w-0 flex-1 flex-col transition-[padding-left] duration-300 ease-out",
           immersiveScannerRoute ? "lg:pl-[18rem]" : sidebarOpen ? "lg:pl-[18rem]" : "lg:pl-0",
         )}
       >
         {shellLayout.mobileTopBar ? (
-          <div className="sticky top-0 z-30 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:hidden">
+          <div className="safe-inline-pad sticky top-0 z-30 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:hidden">
             <div className="surface-panel flex items-center gap-3 rounded-[1.65rem] px-3 py-2.5">
               {mobileTabActive ? (
                 <div className="h-10 w-10 shrink-0" />
@@ -1912,7 +1912,12 @@ function AppShellFrame({
           </div>
         ) : null}
 
-        <div className={cn("min-w-0 flex-1", shellLayout.mobileBottomNav ? "pb-28 lg:pb-0" : "")}>
+        <div
+          className={cn(
+            "app-shell-content min-w-0 flex-1",
+            shellLayout.mobileBottomNav ? "pb-[calc(6.9rem+env(safe-area-inset-bottom))] lg:pb-0" : "",
+          )}
+        >
           {!immersiveScannerRoute ? <WorkflowReminderStrip /> : null}
           {shellLayout.desktopRail === "context" ? (
             <div
@@ -1965,7 +1970,7 @@ function AppShellFrame({
       ) : null}
       <div
         className={cn(
-          "fixed bottom-[5.5rem] right-4 z-40 w-[min(22rem,calc(100vw-2rem))] lg:bottom-4 lg:right-6",
+          "fixed bottom-[calc(6.15rem+env(safe-area-inset-bottom))] right-[max(1rem,calc(1rem+env(safe-area-inset-right)))] z-40 w-[min(22rem,calc(100vw-2rem))] lg:bottom-4 lg:right-6",
           immersiveScannerRoute ? "hidden" : "",
         )}
       >

@@ -360,24 +360,27 @@ export default function AttendancePage() {
           </div>
         ) : null}
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px] lg:gap-6">
           <Card className="border border-border bg-card-elevated">
             <CardHeader>
-              <CardTitle className="text-lg md:text-xl">{factoryName}</CardTitle>
+              <div className="space-y-2">
+                <div className="text-[0.68rem] uppercase tracking-[0.28em] text-text-muted">Attendance Desk</div>
+                <CardTitle className="text-lg md:text-xl">{factoryName}</CardTitle>
+              </div>
             </CardHeader>
-            <CardContent className="space-y-8">
+            <CardContent className="space-y-6 sm:space-y-8">
               <div className="flex flex-col items-center text-center">
                 <div className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-widest ${statusMeta.badge}`}>
                   <span className={`h-2.5 w-2.5 rounded-full ${statusMeta.dot}`} />
                   {statusText(today?.status)}
                 </div>
 
-                <div className="mt-6 text-2xl md:text-4xl font-bold">{formatShift(displayShift)} Shift</div>
+                <div className="mt-5 text-[1.75rem] font-bold leading-tight sm:mt-6 md:text-4xl">{formatShift(displayShift)} Shift</div>
 
-                <div className="mt-8 text-xs uppercase tracking-widest text-text-muted">
+                <div className="mt-6 text-[0.68rem] uppercase tracking-[0.28em] text-text-muted sm:mt-8">
                   {today?.status === "working" ? "Shift running" : "Worked time"}
                 </div>
-                <div className="mt-3 text-4xl md:text-5xl font-bold tracking-tight">{workedTime}</div>
+                <div className="mt-2 text-[2.35rem] font-bold tracking-tight sm:mt-3 sm:text-4xl md:text-5xl">{workedTime}</div>
                 <div className="mt-2 text-sm text-text-secondary">
                   {today?.status === "working" ? "Worked" : today?.status === "not_punched" ? "Ready to start" : "Today"}
                 </div>
@@ -385,7 +388,7 @@ export default function AttendancePage() {
 
               <Button
                 variant="primary"
-                className={`h-14 w-full text-lg font-semibold ${mainAction.className}`}
+                className={`h-[3.25rem] w-full text-base font-semibold sm:h-14 sm:text-lg ${mainAction.className}`}
                 disabled={busy || mainAction.disabled}
                 onClick={mainAction.action ? () => void handlePunch(mainAction.action!) : undefined}
               >
@@ -400,6 +403,34 @@ export default function AttendancePage() {
                 Last action: <span className="font-semibold text-text-primary">{formatTime(lastActionAt, locale)}</span>
               </div>
 
+              <div className="grid gap-3 lg:hidden sm:grid-cols-2">
+                <div className="rounded-xl border border-border bg-card px-4 py-3">
+                  <div className="text-[0.68rem] uppercase tracking-[0.24em] text-text-muted">Worked</div>
+                  <div className="mt-2 text-lg font-semibold text-text-primary">{workedTime}</div>
+                </div>
+                <div className="rounded-xl border border-border bg-card px-4 py-3">
+                  <div className="text-[0.68rem] uppercase tracking-[0.24em] text-text-muted">Last punch</div>
+                  <div className="mt-2 text-lg font-semibold text-text-primary">{formatTime(lastActionAt, locale)}</div>
+                </div>
+                <div className="rounded-xl border border-border bg-card px-4 py-3">
+                  <div className="text-[0.68rem] uppercase tracking-[0.24em] text-text-muted">Shift</div>
+                  <div className="mt-2 text-lg font-semibold text-text-primary">{formatShift(displayShift)}</div>
+                </div>
+                <div className="rounded-xl border border-border bg-card px-4 py-3">
+                  <div className="text-[0.68rem] uppercase tracking-[0.24em] text-text-muted">Status</div>
+                  <div className="mt-2 flex items-center gap-2 text-sm font-semibold text-text-primary">
+                    <span className={`h-2 w-2 rounded-full ${statusMeta.dot}`} />
+                    {statusText(today?.status)}
+                  </div>
+                </div>
+              </div>
+
+              {summaryAlert ? (
+                <div className="rounded-xl border border-color-warning/25 bg-color-warning/10 px-4 py-3 text-sm text-color-warning lg:hidden">
+                  {summaryAlert}
+                </div>
+              ) : null}
+
               <div className="text-center">
                 <button
                   type="button"
@@ -412,7 +443,7 @@ export default function AttendancePage() {
 
               {optionsOpen ? (
                 <Card className="bg-card-elevated border border-border">
-                  <CardContent className="pt-6 space-y-4">
+                  <CardContent className="space-y-4 pt-5 sm:pt-6">
                     <div>
                       <label className="block text-sm font-medium text-text-primary mb-2">Shift</label>
                       <Select
