@@ -1220,6 +1220,7 @@ function AppShellFrame({
   const [switchingFactory, setSwitchingFactory] = useState(false);
   const [switchError, setSwitchError] = useState("");
   const [accountActionBusy, setAccountActionBusy] = useState<"logout" | "switch" | null>(null);
+  const [accountActionError, setAccountActionError] = useState("");
   const [badgeCounts, setBadgeCounts] = useState<Record<"approvals" | "alerts", number>>({
     approvals: 0,
     alerts: 0,
@@ -1336,15 +1337,21 @@ function AppShellFrame({
   }, []);
 
   useEffect(() => {
-    setHydrated(true);
+    const timer = window.setTimeout(() => {
+      setHydrated(true);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const saved = window.localStorage.getItem(CONTEXT_RAIL_OPEN_STORAGE_KEY);
-    if (saved === "false") {
-      setContextRailOpen(false);
-    }
+    const timer = window.setTimeout(() => {
+      const saved = window.localStorage.getItem(CONTEXT_RAIL_OPEN_STORAGE_KEY);
+      if (saved === "false") {
+        setContextRailOpen(false);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   useEffect(() => {
@@ -1485,9 +1492,12 @@ function AppShellFrame({
     if (!immersiveScannerRoute) {
       return;
     }
-    if (typeof window !== "undefined" && window.innerWidth >= 1024) {
-      setSidebarState(true);
-    }
+    const timer = window.setTimeout(() => {
+      if (typeof window !== "undefined" && window.innerWidth >= 1024) {
+        setSidebarState(true);
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [immersiveScannerRoute, setSidebarState]);
 
   useEffect(() => {
@@ -1605,23 +1615,29 @@ function AppShellFrame({
 
   const handleLogout = useCallback(async () => {
     setAccountActionBusy("logout");
+    setAccountActionError("");
     try {
       await logout();
-    } finally {
       if (typeof window !== "undefined") {
         window.location.href = "/login";
       }
+    } catch (error) {
+      setAccountActionError(error instanceof Error ? error.message : "Could not sign out right now.");
+      setAccountActionBusy(null);
     }
   }, []);
 
   const handleSwitchAccount = useCallback(async () => {
     setAccountActionBusy("switch");
+    setAccountActionError("");
     try {
       await logout();
-    } finally {
       if (typeof window !== "undefined") {
         window.location.href = "/login?switch_account=1";
       }
+    } catch (error) {
+      setAccountActionError(error instanceof Error ? error.message : "Could not switch account right now.");
+      setAccountActionBusy(null);
     }
   }, []);
 
@@ -1859,6 +1875,11 @@ function AppShellFrame({
                   : t("shell.switch_account", "Switch Account")}
               </button>
             </div>
+            {accountActionError ? (
+              <div className="mt-2 rounded-lg border border-[rgba(248,113,113,0.22)] bg-[rgba(127,29,29,0.18)] px-3 py-2 text-[11px] leading-5 text-red-100">
+                {accountActionError}
+              </div>
+            ) : null}
           </div>
         </div>
       </aside>

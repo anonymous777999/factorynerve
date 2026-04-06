@@ -187,6 +187,8 @@ Goal:
 Tasks:
 
 - keep the login warm-up + retry flow
+- pre-warm Google sign-in before redirecting into OAuth
+- retry session and workspace hydration after cold starts
 - reduce Render cold-start pain as much as possible in the app
 - move backend hosting to an always-on plan when possible
 - verify Google login inside standalone mode
@@ -358,6 +360,9 @@ Use this section as the running status board. Update it as work ships.
 ### Reliability
 
 - [x] Login wake-up retry exists
+- [x] Google sign-in pre-warm exists
+- [x] Session and workspace wake retry exists
+- [x] Logout / switch-account wake retry exists
 - [ ] Backend moved off Render free hibernation
 - [ ] Standalone auth fully QA-tested
 
@@ -396,7 +401,7 @@ Use this section as the running status board. Update it as work ships.
 
 ## Immediate Next Steps
 
-1. Add a real install prompt / install helper experience.
+1. QA standalone auth on Android home-screen mode, including Google login, logout, and switch account.
 2. Continue route-by-route mobile hardening with `/approvals` and `/work-queue`.
 3. Define explicit offline behavior for attendance, entry, and OCR.
 4. Move the backend to an always-on hosting tier when possible.
