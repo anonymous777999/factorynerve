@@ -115,6 +115,25 @@ select {
   font: inherit;
 }
 
+select {
+  color-scheme: dark;
+}
+
+select option,
+select optgroup {
+  background: var(--card-elevated);
+  color: var(--text-primary);
+}
+
+select option:checked,
+select option:hover,
+select option:focus {
+  background:
+    linear-gradient(0deg, rgba(59, 130, 246, 0.2), rgba(59, 130, 246, 0.2)),
+    var(--card-elevated);
+  color: var(--text-primary);
+}
+
 ::selection {
   background: rgba(59, 130, 246, 0.28);
   color: #f8fbff;
