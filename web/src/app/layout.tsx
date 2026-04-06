@@ -6,6 +6,7 @@ import { AppShell } from "@/components/app-shell";
 import { BetaRolloutBanner } from "@/components/beta-rollout-banner";
 import { FrontendErrorMonitor } from "@/components/frontend-error-monitor";
 import { OfflineSyncAgent } from "@/components/offline-sync-agent";
+import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { ServiceWorker } from "@/components/service-worker";
 import { ToastCenter } from "@/components/toast-center";
 
@@ -20,14 +21,14 @@ const fontDisplay = Sora({
 });
 
 export const metadata: Metadata = {
-  title: "DPR.ai Web",
-  description: "Modern production-ready frontend for DPR.ai",
+  title: "FactoryNerve",
+  description: "Factory-first mobile operating system for attendance, entry, OCR, approvals, and reporting.",
   manifest: "/manifest.json",
-  applicationName: "DPR.ai",
+  applicationName: "FactoryNerve",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "DPR.ai",
+    title: "FactoryNerve",
   },
   formatDetection: {
     telephone: false,
@@ -55,6 +56,7 @@ export default function RootLayout({
         <AppProviders>
           <BetaRolloutBanner />
           <AppShell>{children}</AppShell>
+          <PwaInstallPrompt />
           <ToastCenter />
           <FrontendErrorMonitor />
           <OfflineSyncAgent />

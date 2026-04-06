@@ -1,6 +1,6 @@
 {
-  "name": "DPR.ai",
-  "short_name": "DPR.ai",
+  "name": "FactoryNerve",
+  "short_name": "FactoryNerve",
   "id": "/",
   "scope": "/",
   "start_url": "/",
@@ -11,7 +11,7 @@
   "orientation": "portrait-primary",
   "background_color": "#0b0e14",
   "theme_color": "#0b0e14",
-  "description": "Factory operations system for attendance, OCR, approvals, dispatch, and reporting.",
+  "description": "Factory-first mobile operating system for attendance, OCR, approvals, dispatch, and reporting.",
   "categories": ["business", "productivity", "utilities"],
   "prefer_related_applications": false,
   "shortcuts": [

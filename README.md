@@ -54,6 +54,8 @@ Open `http://127.0.0.1:3000`
 
 See [PROJECT_CONTEXT.md](./PROJECT_CONTEXT.md) for a detailed AI and engineer handoff guide.
 
+- PWA build plan: [docs/PWA_BUILD_README.md](./docs/PWA_BUILD_README.md)
+
 ## Deployment help
 
 - HTTPS / production deployment: [docs/HTTPS_DEPLOYMENT_PLAYBOOK.md](./docs/HTTPS_DEPLOYMENT_PLAYBOOK.md)
