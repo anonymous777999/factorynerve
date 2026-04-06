@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { logout } from "@/lib/auth";
 import { getAnomalyPreview, type AnomalyResponse } from "@/lib/ai";
 import { ApiError, formatApiErrorMessage } from "@/lib/api";
 import { getMyAttendanceToday, type AttendanceStatus, type AttendanceToday } from "@/lib/attendance";
@@ -1130,6 +1129,62 @@ export default function DashboardHome() {
       label: t("dashboard.action.open_entry_form", "Open Entry Form"),
     };
   }, [organization?.accessible_factories, t, user?.role]);
+  const roleLabel = useMemo(() => {
+    switch (user?.role) {
+      case "supervisor":
+        return "Supervisor";
+      case "manager":
+        return "Manager";
+      case "admin":
+        return "Admin";
+      case "owner":
+        return "Owner";
+      case "accountant":
+        return "Accounts";
+      default:
+        return "Operator";
+    }
+  }, [user?.role]);
+  const heroStatusTiles = useMemo(
+    () => [
+      {
+        label: canReview ? "Review Queue" : "Board Status",
+        value: canReview
+          ? `${state.alerts.length + (state.ocrSummary?.pending_documents || 0)} waiting`
+          : `${state.alerts.length} active`,
+      },
+      {
+        label: "DB",
+        value: activeFactory?.name ? "Connected" : "Pending",
+      },
+      {
+        label: "Cloud Sync",
+        value: online ? "Active" : "Offline",
+      },
+      {
+        label: "OCR Trust",
+        value: state.ocrSummary?.pending_documents ? `${state.ocrSummary.pending_documents} pending` : "Clean",
+      },
+    ],
+    [activeFactory?.name, canReview, online, state.alerts.length, state.ocrSummary?.pending_documents],
+  );
+  const pulseRows = useMemo(() => {
+    const trustedDocs = state.ocrSummary?.trusted_documents || 0;
+    const pendingDocs = state.ocrSummary?.pending_documents || 0;
+    const trustTotal = trustedDocs + pendingDocs;
+    return [
+      {
+        label: "Network connectivity",
+        value: online ? "ONLINE" : "OFFLINE",
+        width: online ? 100 : 34,
+      },
+      {
+        label: "Workflow trust",
+        value: pendingDocs ? `${pendingDocs} pending` : "CLEAR",
+        width: trustTotal ? Math.max(18, Math.round((trustedDocs / trustTotal) * 100)) : 72,
+      },
+    ];
+  }, [online, state.ocrSummary?.pending_documents, state.ocrSummary?.trusted_documents]);
 
   const handleSync = useCallback(async () => {
     if (!user) return;
@@ -1192,14 +1247,6 @@ export default function DashboardHome() {
       window.removeEventListener("offline", onOffline);
     };
   }, [handleSync, queueCount]);
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } finally {
-      window.location.href = "/login";
-    }
-  };
 
   const handleMarkAlertRead = useCallback(
     async (alertId: number) => {
@@ -1457,12 +1504,12 @@ export default function DashboardHome() {
           ) : null}
 
           <div className="space-y-4 lg:space-y-6">
-            <Card variant="elevated" className="overflow-hidden">
+            <Card variant="elevated" className="surface-stage rounded-[2rem] border-0 shadow-none">
               <CardHeader>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-3">
                     <div className="flex flex-wrap gap-2">
-                      <span className="surface-pill rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
+                      <span className="eyebrow-chip rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em]">
                         {activeFactory?.name || user.factory_name || "Factory"}
                       </span>
                       <span
@@ -1491,8 +1538,11 @@ export default function DashboardHome() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-6">
+                <div className="signal-note rounded-[1.4rem] px-4 py-3 text-sm text-text-secondary">
+                  This desk stays focused on the next floor action, today&apos;s shift state, and anything that could block the operator before the day closes.
+                </div>
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)]">
-                  <div className="surface-panel-soft rounded-[1.4rem] p-4">
+                  <div className="metric-tile rounded-[1.5rem] p-4 md:p-5">
                     <div className="text-xs font-semibold uppercase tracking-[0.22em] text-text-muted">Main Action</div>
                     <Link href={workerPrimaryAction.href} className="mt-4 block">
                       <Button className="h-12 w-full text-base md:h-14 md:text-lg" size="lg">
@@ -1512,7 +1562,7 @@ export default function DashboardHome() {
 
                   <div className="grid gap-3 sm:grid-cols-2 sm:content-start">
                     {operatorSummaryCards.map((card) => (
-                      <div key={card.label} className="surface-panel-soft rounded-[1.25rem] p-4">
+                      <div key={card.label} className="metric-tile rounded-[1.3rem] p-4">
                         <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">{card.label}</div>
                         <div className="mt-2 text-xl font-semibold text-text-primary">{card.value}</div>
                         <div className="mt-1 text-xs leading-5 text-text-secondary">{card.detail}</div>
@@ -1526,7 +1576,7 @@ export default function DashboardHome() {
                   <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                     {workerQuickActions.map((action) => (
                       <Link key={action.key} href={action.href}>
-                        <Card variant="interactive" className="h-full p-4 text-left">
+                        <Card variant="interactive" className="metric-tile h-full rounded-[1.4rem] p-4 text-left">
                           <p className="text-sm font-semibold text-text-primary">{action.label}</p>
                           <p className="mt-2 text-xs text-text-secondary">{action.detail}</p>
                           <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[rgba(77,163,255,0.92)]">
@@ -1547,19 +1597,19 @@ export default function DashboardHome() {
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-                  <div className="surface-panel-soft rounded-[1.2rem] p-4">
+                  <div className="metric-tile rounded-[1.2rem] p-4">
                     <p className="text-xs text-text-tertiary">Completed</p>
                     <p className="mt-2 text-2xl font-bold text-text-primary">{completedShifts}</p>
                   </div>
-                  <div className="surface-panel-soft rounded-[1.2rem] p-4">
+                  <div className="metric-tile rounded-[1.2rem] p-4">
                     <p className="text-xs text-text-tertiary">Pending</p>
                     <p className="mt-2 text-2xl font-bold text-text-primary">{pendingShifts}</p>
                   </div>
-                  <div className="surface-panel-soft rounded-[1.2rem] p-4">
+                  <div className="metric-tile rounded-[1.2rem] p-4">
                     <p className="text-xs text-text-tertiary">Offline</p>
                     <p className="mt-2 text-2xl font-bold text-text-primary">{queueCount}</p>
                   </div>
-                  <div className="surface-panel-soft rounded-[1.2rem] p-4">
+                  <div className="metric-tile rounded-[1.2rem] p-4">
                     <p className="text-xs text-text-tertiary">Attendance</p>
                     <p className="mt-2 text-2xl font-bold text-text-primary">
                       {state.attendanceToday?.can_punch_out ? "Open" : state.attendanceToday?.can_punch_in ? "Ready" : "Set"}
@@ -1610,210 +1660,256 @@ export default function DashboardHome() {
   return (
     <main className="min-h-screen px-4 py-6 pb-28 md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="surface-panel-strong grid gap-5 rounded-[2rem] p-5 md:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)] md:p-7">
-          <div className="space-y-4">
-            <div className="flex flex-wrap gap-2">
-              <span className="surface-pill rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
-                {headerEyebrow}
-              </span>
-              <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
-                {activeFactory?.name || user.factory_name || "Factory"}
-              </span>
-              <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${online ? "border-success/30 bg-success/12 text-success" : "border-warning/30 bg-warning/12 text-warning"}`}>
-                {online ? "Network Live" : "Offline Mode"}
-              </span>
-            </div>
-            <div className="space-y-3">
-              <h1 className="max-w-3xl text-3xl font-semibold leading-tight md:text-[2.75rem]">{headerTitle}</h1>
-              <p className="max-w-2xl text-sm leading-6 text-[var(--muted)]">{headerCopy}</p>
-            </div>
-            <div className="grid gap-3 sm:flex sm:flex-wrap">
-              {primaryAction ? (
-                <Link href={primaryAction.href}>
-                  <Button size="lg">{primaryAction.action}</Button>
-                </Link>
-              ) : null}
-              <Link href="/reports">
-                <Button variant="outline" size="lg">{t("dashboard.action.open_reports", "Open Reports")}</Button>
-              </Link>
-              <Button variant="ghost" size="lg" onClick={() => loadDashboard()}>
-                {dashboardLoading
-                  ? t("dashboard.action.refreshing", "Refreshing...")
-                  : t("dashboard.action.refresh_board", "Refresh Board")}
-              </Button>
-              {queueCount > 0 ? (
-                <Button variant="outline" size="lg" onClick={handleSync} disabled={syncing}>
-                  {syncing
-                    ? t("dashboard.sync.syncing", "Syncing...")
-                    : `${t("dashboard.action.sync_queue", "Sync Queue")} (${queueCount})`}
-                </Button>
-              ) : null}
-              <Button variant="ghost" size="lg" onClick={handleLogout}>
-                {t("shell.logout", "Logout")}
-              </Button>
-            </div>
+        <section className="relative overflow-hidden rounded-[2.15rem] border border-[#2551ba]/40 bg-[linear-gradient(135deg,#112d78_0%,#12368b_40%,#0b255f_100%)] px-5 py-6 shadow-[0_36px_84px_rgba(4,10,24,0.34)] md:px-7 md:py-7">
+          <div className="absolute inset-0">
+            <div className="absolute -right-12 top-8 h-52 w-52 rounded-full bg-[radial-gradient(circle,rgba(93,135,255,0.24),transparent_68%)]" />
+            <div className="absolute -left-10 bottom-[-3rem] h-44 w-44 rounded-full bg-[radial-gradient(circle,rgba(18,184,166,0.16),transparent_70%)]" />
           </div>
-
-          <div className="grid gap-3 sm:grid-cols-2">
-            {heroHighlights.map((item) => (
-              <div key={item.label} className="surface-panel-soft rounded-[1.35rem] p-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">{item.label}</div>
-                <div className="mt-2 text-2xl font-semibold text-text-primary">{item.value}</div>
-                <div className="mt-1 text-xs leading-5 text-text-secondary">{item.detail}</div>
+          <div className="relative grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_14rem] lg:items-start">
+            <div className="space-y-5">
+              <div className="flex flex-wrap gap-2">
+                <span className="rounded-full border border-white/10 bg-white/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/75">
+                  {headerEyebrow}
+                </span>
+                <span className="rounded-full border border-white/10 bg-white/8 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-white/75">
+                  {state.usage?.plan || "Live Workflow"}
+                </span>
               </div>
-            ))}
+              <div className="space-y-3">
+                <h1 className="max-w-4xl text-3xl font-semibold leading-tight text-white md:text-[3rem]">
+                  {headerTitle}
+                </h1>
+                <p className="max-w-3xl text-sm leading-7 text-white/72 md:text-base">
+                  {topAnomaly
+                    ? `${topAnomaly.message} ${headerCopy}`
+                    : `Workflow health is stable across ${activeFactory?.name || user.factory_name || "the current factory"}. ${headerCopy}`}
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                {primaryAction ? (
+                  <Link href={primaryAction.href}>
+                    <Button size="lg" className="min-w-[12rem] bg-[linear-gradient(135deg,#77a8ff,#5c87f7)] text-[#071226] shadow-[0_24px_44px_rgba(18,47,118,0.42)]">
+                      {primaryAction.action}
+                    </Button>
+                  </Link>
+                ) : null}
+                <Link href={secondaryActions[0]?.href || "/reports"}>
+                  <Button variant="outline" size="lg" className="min-w-[12rem] border-white/14 bg-white/6 text-white hover:bg-white/10">
+                    {secondaryActions[0]?.action || t("dashboard.action.open_reports", "Open Reports")}
+                  </Button>
+                </Link>
+                <Button variant="ghost" size="lg" className="text-white/80 hover:bg-white/10 hover:text-white" onClick={() => void loadDashboard()}>
+                  {dashboardLoading ? t("dashboard.action.refreshing", "Refreshing...") : t("dashboard.action.refresh_board", "Refresh Board")}
+                </Button>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                {heroStatusTiles.map((item) => (
+                  <div key={item.label} className="rounded-[1.15rem] border border-white/10 bg-[rgba(255,255,255,0.05)] px-4 py-3 backdrop-blur-xl">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/55">{item.label}</div>
+                    <div className="mt-2 text-sm font-semibold text-white">{item.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="hidden lg:flex lg:justify-end">
+              <div className="relative mt-2 h-40 w-40">
+                <div className="absolute inset-0 rounded-[2.5rem] border border-white/8 bg-[rgba(255,255,255,0.04)]" />
+                <div className="absolute inset-8 rounded-[1.8rem] border border-white/10 bg-[rgba(255,255,255,0.03)]" />
+                <div className="absolute inset-[4.4rem] rounded-[1.1rem] border border-white/10 bg-[rgba(255,255,255,0.03)]" />
+                {[0, 1, 2, 3].map((item) => (
+                  <span
+                    key={`chip-h-${item}`}
+                    className="absolute top-1/2 h-4 w-2 -translate-y-1/2 rounded-full bg-white/10"
+                    style={{ left: `${10 + item * 22}%` }}
+                  />
+                ))}
+                {[0, 1, 2, 3].map((item) => (
+                  <span
+                    key={`chip-v-${item}`}
+                    className="absolute left-1/2 h-2 w-4 -translate-x-1/2 rounded-full bg-white/10"
+                    style={{ top: `${10 + item * 22}%` }}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 
-        {roleLaunchGuide ? (
-          <Card className="overflow-hidden">
-            <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
-                  {roleLaunchGuide.eyebrow}
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {heroHighlights.map((item) => (
+            <Card key={item.label} className="rounded-[1.7rem] border border-white/6 bg-[rgba(18,21,28,0.96)] shadow-[0_18px_40px_rgba(4,10,24,0.24)]">
+              <CardHeader>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-[rgba(99,134,255,0.18)] bg-[rgba(93,135,255,0.12)] text-[rgba(182,204,255,0.95)]">
+                    <span className="h-2.5 w-2.5 rounded-full bg-current" />
+                  </div>
+                  <span className="text-xs font-semibold text-white/50">LIVE</span>
                 </div>
-                <CardTitle className="mt-1 text-xl">{roleLaunchGuide.title}</CardTitle>
-                <div className="mt-2 max-w-3xl text-sm text-[var(--muted)]">{roleLaunchGuide.detail}</div>
+                <CardTitle className="mt-6 text-4xl leading-none">{item.value}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <div className="text-sm font-semibold uppercase tracking-[0.16em] text-white/78">{item.label}</div>
+                <div className="text-sm leading-6 text-white/56">{item.detail}</div>
+              </CardContent>
+            </Card>
+          ))}
+        </section>
+
+        {roleLaunchGuide ? (
+          <section className="rounded-[2rem] border border-white/8 bg-[rgba(18,21,28,0.96)] p-5 shadow-[0_22px_52px_rgba(4,10,24,0.24)] md:p-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+              <div className="space-y-2">
+                <div className="text-xl font-semibold text-white">{roleLabel} Onboarding Guide</div>
+                <div className="text-sm font-medium text-white/84">{roleLaunchGuide.title}</div>
+                <div className="max-w-3xl text-sm leading-6 text-white/58">{roleLaunchGuide.detail}</div>
               </div>
               <Link href={roleLaunchGuide.steps[0]?.href || "/dashboard"}>
-                <Button variant="outline">{roleLaunchGuide.steps[0]?.action || "Open Workspace"}</Button>
+                <Button variant="outline" className="border-white/10 bg-white/4 text-white hover:bg-white/8">
+                  {roleLaunchGuide.steps[0]?.action || "Open Workspace"}
+                </Button>
               </Link>
-            </CardHeader>
-            <CardContent className="grid gap-3 lg:grid-cols-3">
+            </div>
+            <div className="mt-5 grid gap-4 lg:grid-cols-3">
               {roleLaunchGuide.steps.map((step, index) => (
-                <div key={`${step.href}-${index}`} className="surface-panel-soft rounded-[1.35rem] p-4">
-                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Step {index + 1}</div>
-                  <div className="mt-2 text-sm font-semibold text-[var(--text)]">{step.title}</div>
-                  <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
-                  <Link href={step.href} className="mt-3 inline-block text-xs text-[rgba(77,163,255,0.92)] underline underline-offset-4">
+                <div key={`${step.href}-${index}`} className="rounded-[1.5rem] border border-white/7 bg-[rgba(255,255,255,0.02)] p-4">
+                  <div className="inline-flex h-7 min-w-7 items-center justify-center rounded-full border border-[rgba(93,135,255,0.18)] bg-[rgba(93,135,255,0.12)] px-2 text-[11px] font-semibold text-[rgba(182,204,255,0.95)]">
+                    {index + 1}
+                  </div>
+                  <div className="mt-4 text-base font-semibold text-white">{step.title}</div>
+                  <div className="mt-2 text-sm leading-6 text-white/58">{step.detail}</div>
+                  <Link href={step.href} className="mt-4 inline-block text-sm font-medium text-[rgba(125,165,255,0.95)] underline underline-offset-4">
                     {step.action}
                   </Link>
                 </div>
               ))}
-            </CardContent>
-          </Card>
+            </div>
+          </section>
         ) : null}
 
-        <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr_1fr]">
-          <Card className="overflow-hidden">
+        <section className="grid gap-4 xl:grid-cols-[1.15fr_0.92fr_0.93fr]">
+          <Card className="rounded-[1.8rem] border border-white/6 bg-[rgba(18,21,28,0.96)] shadow-[0_20px_50px_rgba(4,10,24,0.24)]">
             <CardHeader>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
-                {t("dashboard.section.now", "Now")}
+              <div className="flex items-center justify-between gap-3">
+                <span className="rounded-full border border-[rgba(93,135,255,0.18)] bg-[rgba(93,135,255,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(182,204,255,0.95)]">
+                  Required Now
+                </span>
+                <span className="text-xs text-white/45">{online ? "Live status" : "Offline caution"}</span>
               </div>
-              <CardTitle className="text-xl">
-                {primaryAction?.title || t("dashboard.primary.fallback_title", "Start the next task")}
-              </CardTitle>
+              <CardTitle className="mt-4 text-[2rem]">Operational Pulse</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="text-sm leading-6 text-text-secondary">
+              <div className="text-sm leading-6 text-white/60">
                 {primaryAction?.detail || t("dashboard.primary.fallback_detail", "Keep the floor moving with the next best action.")}
+              </div>
+              <div className="space-y-4">
+                {pulseRows.map((item) => (
+                  <div key={item.label} className="rounded-[1.35rem] border border-white/7 bg-[rgba(255,255,255,0.03)] px-4 py-4">
+                    <div className="flex items-center justify-between gap-3 text-sm">
+                      <span className="font-medium text-white/72">{item.label}</span>
+                      <span className="text-xs font-semibold uppercase tracking-[0.16em] text-white/88">{item.value}</span>
+                    </div>
+                    <div className="mt-3 h-2 rounded-full bg-white/8">
+                      <div
+                        className="h-2 rounded-full bg-[linear-gradient(90deg,#6fa1ff,#77d7d0)]"
+                        style={{ width: `${item.width}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
               {primaryAction ? (
                 <Link href={primaryAction.href}>
-                  <Button size="lg">{primaryAction.action}</Button>
-                </Link>
-              ) : null}
-              <div className="surface-panel-soft rounded-[1.2rem] px-4 py-3 text-xs text-[var(--muted)]">
-                {online
-                  ? t("dashboard.network.live", "Network is live. Actions will sync in real time.")
-                  : t("dashboard.network.offline", "Offline mode active. Your entries save locally and sync later.")}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden">
-            <CardHeader>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
-                {t("dashboard.section.attention", "Attention")}
-              </div>
-              <CardTitle className="text-xl">{t("dashboard.attention.title", "What needs review now")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <div className="grid grid-cols-3 gap-3">
-                <div className="surface-panel-soft rounded-[1.2rem] p-3">
-                  <div className="text-xs text-[var(--muted)]">{t("dashboard.metric.alerts", "Alerts")}</div>
-                  <div className="mt-1 text-xl font-bold text-text-primary">{state.alerts.length}</div>
-                </div>
-                <div className="surface-panel-soft rounded-[1.2rem] p-3">
-                  <div className="text-xs text-[var(--muted)]">{t("dashboard.metric.signals", "Signals")}</div>
-                  <div className="mt-1 text-xl font-bold text-text-primary">{anomalyCount}</div>
-                </div>
-                <div className="surface-panel-soft rounded-[1.2rem] p-3">
-                  <div className="text-xs text-[var(--muted)]">{t("dashboard.metric.pending_shift", "Pending Shift")}</div>
-                  <div className="mt-1 text-xl font-bold text-text-primary">{pendingShifts}</div>
-                </div>
-              </div>
-              {topAnomaly ? (
-                <div className={`rounded-md border px-3 py-2 text-xs ${severityTone(topAnomaly.severity)}`}>
-                  <p className="uppercase tracking-wider opacity-80">{topAnomaly.anomaly_type.replaceAll("_", " ")}</p>
-                  <p className="mt-1 font-medium">{topAnomaly.message}</p>
-                </div>
-              ) : null}
-              {state.ocrSummary ? (
-                <div className="rounded-[1.4rem] border border-cyan-400/24 bg-[rgba(34,211,238,0.08)] p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-cyan-100">Trusted OCR</div>
-                  <div className="mt-3 grid grid-cols-3 gap-3">
-                    <div className="surface-panel-soft rounded-[1.1rem] border-cyan-400/20 p-3">
-                      <div className="text-[11px] text-cyan-100/80">Approved docs</div>
-                      <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary.trusted_documents}</div>
-                    </div>
-                    <div className="surface-panel-soft rounded-[1.1rem] border-cyan-400/20 p-3">
-                      <div className="text-[11px] text-cyan-100/80">Trusted rows</div>
-                      <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary.trusted_rows}</div>
-                    </div>
-                    <div className="surface-panel-soft rounded-[1.1rem] border-cyan-400/20 p-3">
-                      <div className="text-[11px] text-cyan-100/80">Pending docs</div>
-                      <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary.pending_documents}</div>
-                    </div>
-                  </div>
-                  <div className="mt-3 text-xs text-cyan-50/80">
-                    {state.ocrSummary.trust_note} Last approved OCR update: {formatDateTime(state.ocrSummary.last_trusted_at || undefined, locale)}.
-                  </div>
-                </div>
-              ) : null}
-              <div className="flex flex-wrap gap-2">
-                <Link href="/dashboard">
-                  <Button variant="outline" className="px-4 py-2 text-xs">
-                    {t("dashboard.action.open_alert_feed", "Open Alert Feed")}
+                  <Button size="lg" className="mt-2 w-full">
+                    {primaryAction.action}
                   </Button>
                 </Link>
-                {canReview ? (
-                  <Link href="/approvals">
-                    <Button variant="ghost" className="px-4 py-2 text-xs">
-                      {t("dashboard.action.open_review_queue", "Open Review Queue")}
-                    </Button>
-                  </Link>
-                ) : null}
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[1.8rem] border border-[rgba(93,135,255,0.18)] bg-[linear-gradient(180deg,rgba(174,189,214,0.2),rgba(143,166,203,0.12))] shadow-[0_20px_50px_rgba(4,10,24,0.18)]">
+            <CardHeader>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(182,204,255,0.95)]">
+                Pending Review
+              </div>
+              <CardTitle className="mt-4 text-[2rem] text-white">Data Verification</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center justify-between text-white/78">
+                  <span>Unread Alerts</span>
+                  <span className="font-semibold text-white">{state.alerts.length}</span>
+                </div>
+                <div className="flex items-center justify-between text-white/78">
+                  <span>Flagged Signals</span>
+                  <span className="font-semibold text-white">{anomalyCount}</span>
+                </div>
+                <div className="flex items-center justify-between text-white/78">
+                  <span>Pending Shift Logs</span>
+                  <span className="font-semibold text-white">{pendingShifts}</span>
+                </div>
+              </div>
+              <div className="border-t border-white/10 pt-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[rgba(182,204,255,0.9)]">Trusted OCR Feed</div>
+                <div className="mt-3 grid grid-cols-3 gap-3">
+                  <div className="rounded-[1rem] border border-white/10 bg-[rgba(24,28,38,0.28)] px-3 py-3 text-center">
+                    <div className="text-[11px] text-white/50">Approved</div>
+                    <div className="mt-2 text-lg font-semibold text-white">{state.ocrSummary?.trusted_documents ?? 0}</div>
+                  </div>
+                  <div className="rounded-[1rem] border border-white/10 bg-[rgba(24,28,38,0.28)] px-3 py-3 text-center">
+                    <div className="text-[11px] text-white/50">Trusted</div>
+                    <div className="mt-2 text-lg font-semibold text-white">{state.ocrSummary?.trusted_rows ?? 0}</div>
+                  </div>
+                  <div className="rounded-[1rem] border border-white/10 bg-[rgba(24,28,38,0.28)] px-3 py-3 text-center">
+                    <div className="text-[11px] text-white/50">Pending</div>
+                    <div className="mt-2 text-lg font-semibold text-white">{state.ocrSummary?.pending_documents ?? 0}</div>
+                  </div>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Link href={canReview ? "/approvals" : "/reports"}>
+                  <Button className="w-full">{canReview ? "Review Feed" : "Open Reports"}</Button>
+                </Link>
+                <Link href="/reports">
+                  <Button variant="outline" className="w-full border-white/14 bg-white/4 text-white hover:bg-white/8">
+                    {state.ocrSummary?.pending_documents ? "Check OCR Trust" : "Open Trusted View"}
+                  </Button>
+                </Link>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="overflow-hidden">
+          <Card className="rounded-[1.8rem] border border-white/6 bg-[rgba(18,21,28,0.96)] shadow-[0_20px_50px_rgba(4,10,24,0.24)]">
             <CardHeader>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
-                {t("dashboard.section.quick_actions", "Quick Actions")}
+              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/58">
+                Quick Actions
               </div>
-              <CardTitle className="text-xl">{t("dashboard.quick.title", "No hunting, just move")}</CardTitle>
+              <CardTitle className="mt-4 text-[2rem]">No hunting, just move</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {secondaryActions.map((card, index) => (
-                <div key={`${card.eyebrow}-${card.href}`} className={index === 0 ? "surface-panel-strong rounded-[1.35rem] p-4" : "surface-panel-soft rounded-[1.35rem] p-4"}>
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{card.eyebrow}</div>
-                  <div className="mt-1 text-sm font-semibold">{card.title}</div>
-                  <div className="mt-1 text-xs text-[var(--muted)]">{card.detail}</div>
-                  <Link href={card.href} className="mt-3 inline-block text-xs text-[rgba(77,163,255,0.92)] underline underline-offset-4">
-                    {card.action}
-                  </Link>
-                </div>
+              {[...secondaryActions, ...dashboardQuickLinks.slice(0, 2).map((link) => ({
+                eyebrow: "Jump",
+                title: link.label,
+                detail: "Open the linked workspace without leaving this board.",
+                href: link.href,
+                action: link.label,
+              }))].map((card) => (
+                <Link
+                  key={`${card.href}-${card.action}`}
+                  href={card.href}
+                  className="flex items-start justify-between gap-4 rounded-[1.35rem] border border-white/7 bg-[rgba(255,255,255,0.02)] px-4 py-4 transition hover:bg-[rgba(255,255,255,0.04)]"
+                >
+                  <div>
+                    <div className="text-sm font-semibold text-white">{card.action}</div>
+                    <div className="mt-1 text-sm leading-6 text-white/54">{card.title}</div>
+                  </div>
+                  <span className="text-lg text-white/40">&gt;</span>
+                </Link>
               ))}
-              <div className="flex flex-wrap gap-2 pt-1">
-                {dashboardQuickLinks.map((link) => (
-                  <Link key={`${link.href}-${link.label}`} href={link.href}>
-                    <Button variant={link.variant} className="px-4 py-2 text-xs">
-                      {link.label}
-                    </Button>
-                  </Link>
-                ))}
+              <div className="flex items-center justify-between border-t border-white/8 pt-4 text-xs text-white/46">
+                <span>Background Jobs</span>
+                <span>{queueCount} recent</span>
               </div>
             </CardContent>
           </Card>
@@ -1857,41 +1953,63 @@ export default function DashboardHome() {
           </Card>
         ) : null}
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {dashboardSnapshotCards.map((card, index) => (
-            <Card key={`${card.label}-${card.href}`}>
-              <CardHeader>
-                <div className="text-sm text-[var(--muted)]">{card.label}</div>
-                <CardTitle>{card.value}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-                <div>{card.detail}</div>
-                {index === dashboardSnapshotCards.length - 1 && user?.role === "operator" ? (
-                  <div className="flex flex-wrap gap-3">
-                    <Button variant="outline" className="px-4 py-2 text-xs" onClick={handleSync} disabled={syncing}>
-                      {syncing ? t("dashboard.sync.syncing", "Syncing...") : t("dashboard.action.sync_now", "Sync Now")}
-                    </Button>
+        <section className="space-y-4">
+          <div className="flex flex-col gap-3 border-b border-white/10 pb-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="text-xs font-semibold uppercase tracking-[0.26em] text-white/28">
+                Advanced Insights &amp; Business Context
+              </div>
+              <div className="mt-2 text-sm leading-6 text-white/52">
+                Keep the wider factory story close by, but secondary to the control actions above.
+              </div>
+            </div>
+            <span className="inline-flex w-fit rounded-full border border-white/10 bg-white/6 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-white/62">
+              {state.analyticsLocked ? "Premium Review Lane" : "Live Factory Context"}
+            </span>
+          </div>
+
+          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            {dashboardSnapshotCards.map((card, index) => (
+              <Card
+                key={`${card.label}-${card.href}`}
+                className="rounded-[1.6rem] border border-[rgba(148,163,184,0.18)] bg-[linear-gradient(180deg,rgba(216,224,236,0.16),rgba(148,163,184,0.11))] shadow-[0_18px_44px_rgba(4,10,24,0.12)]"
+              >
+                <CardHeader className="space-y-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/42">{card.label}</div>
+                  <CardTitle className="text-[2rem] leading-none text-white">{card.value}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm leading-6 text-white/58">
+                  <div>{card.detail}</div>
+                  {index === dashboardSnapshotCards.length - 1 && user?.role === "operator" ? (
+                    <div className="flex flex-wrap gap-3">
+                      <Button variant="outline" className="px-4 py-2 text-xs" onClick={handleSync} disabled={syncing}>
+                        {syncing ? t("dashboard.sync.syncing", "Syncing...") : t("dashboard.action.sync_now", "Sync Now")}
+                      </Button>
+                      <Link href={card.href}>
+                        <Button variant="ghost" className="px-4 py-2 text-xs">
+                          {card.action}
+                        </Button>
+                      </Link>
+                    </div>
+                  ) : (
                     <Link href={card.href}>
-                      <Button variant="ghost" className="px-4 py-2 text-xs">
+                      <Button
+                        variant="outline"
+                        className="border-white/12 bg-[rgba(14,18,26,0.74)] px-4 py-2 text-xs text-white hover:bg-[rgba(14,18,26,0.88)]"
+                      >
                         {card.action}
                       </Button>
                     </Link>
-                  </div>
-                ) : (
-                  <Link href={card.href}>
-                    <Button variant="outline" className="px-4 py-2 text-xs">
-                      {card.action}
-                    </Button>
-                  </Link>
-                )}
-              </CardContent>
-            </Card>
-          ))}
+                  )}
+                </CardContent>
+              </Card>
+            ))}
+          </section>
         </section>
 
-        <details className="rounded-[1.5rem] border border-[var(--border)] bg-[rgba(16,20,32,0.82)] p-4">
+        <details className="rounded-[1.7rem] border border-white/8 bg-[rgba(16,20,32,0.76)] p-5 shadow-[0_18px_44px_rgba(4,10,24,0.2)]">
           <summary className="cursor-pointer list-none text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
-            {t("dashboard.section.advanced", "Advanced Insights and Business Context")}
+            Deep Diagnostics, plan limits, and AI context
           </summary>
           <div className="mt-5 space-y-6">
             {organization || activeFactory ? (
@@ -2136,25 +2254,28 @@ export default function DashboardHome() {
           </div>
         </details>
 
-        <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+        <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+          <Card className="rounded-[1.8rem] border border-[rgba(148,163,184,0.14)] bg-[linear-gradient(180deg,rgba(216,224,236,0.12),rgba(23,31,45,0.9))] shadow-[0_20px_50px_rgba(4,10,24,0.16)]">
+            <CardHeader className="flex flex-row items-center justify-between gap-4">
               <div>
-                <div className="text-sm text-[var(--muted)]">{t("dashboard.unread_alerts", "Unread Alerts")}</div>
-                <CardTitle className="text-xl">{state.alerts.length} {t("dashboard.active", "active")}</CardTitle>
+                <div className="text-sm text-white/52">{t("dashboard.unread_alerts", "Unread Alerts")}</div>
+                <CardTitle className="mt-1 text-2xl text-white">{state.alerts.length} {t("dashboard.active", "active")}</CardTitle>
               </div>
+              <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/58">
+                Priority Feed
+              </span>
             </CardHeader>
             <CardContent className="space-y-3">
               {state.alerts.length ? (
                 state.alerts.slice(0, 5).map((alert) => (
                   <div
                     key={alert.id}
-                    className={`rounded-2xl border p-4 ${severityTone(alert.severity)}`}
+                    className={`rounded-[1.35rem] border p-4 ${severityTone(alert.severity)}`}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
                         <div className="text-xs uppercase tracking-[0.2em] opacity-80">{alert.alert_type}</div>
-                        <div className="mt-1 text-sm font-medium">{alert.message}</div>
+                        <div className="mt-1 text-sm font-medium leading-6">{alert.message}</div>
                         <div className="mt-2 text-xs opacity-70">{formatDateTime(alert.created_at, locale)}</div>
                       </div>
                       <Button
@@ -2168,24 +2289,29 @@ export default function DashboardHome() {
                   </div>
                 ))
               ) : (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                <div className="rounded-[1.5rem] border border-dashed border-white/12 bg-[rgba(255,255,255,0.03)] px-5 py-8 text-center text-sm text-white/44">
                   {t("dashboard.alert.none", "No unread alerts right now.")}
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">{t("dashboard.recent_entries", "Recent Entries")}</div>
-              <CardTitle className="text-xl">{t("dashboard.recent_activity", "Latest production activity")}</CardTitle>
+          <Card className="rounded-[1.8rem] border border-[rgba(148,163,184,0.14)] bg-[linear-gradient(180deg,rgba(216,224,236,0.12),rgba(23,31,45,0.9))] shadow-[0_20px_50px_rgba(4,10,24,0.16)]">
+            <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="text-sm text-white/52">{t("dashboard.recent_entries", "Recent Entries")}</div>
+                <CardTitle className="mt-1 text-2xl text-white">{t("dashboard.recent_activity", "Latest production activity")}</CardTitle>
+              </div>
+              <span className="rounded-full border border-white/10 bg-white/6 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-white/58">
+                Recent Activity
+              </span>
             </CardHeader>
             <CardContent>
               {recentEntries.length ? (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto rounded-[1.5rem] border border-white/8 bg-[rgba(255,255,255,0.03)]">
                   <table className="min-w-full text-left text-sm">
-                    <thead className="text-[var(--muted)]">
-                      <tr className="border-b border-[var(--border)]">
+                    <thead className="text-white/46">
+                      <tr className="border-b border-white/8">
                         <th className="px-3 py-3 font-medium">{t("table.date", "Date")}</th>
                         <th className="px-3 py-3 font-medium">{t("table.shift", "Shift")}</th>
                         <th className="px-3 py-3 font-medium">{t("table.department", "Department")}</th>
@@ -2197,17 +2323,17 @@ export default function DashboardHome() {
                     </thead>
                     <tbody>
                       {recentEntries.map((entry) => (
-                        <tr key={entry.id} className="border-b border-[var(--border)]/60">
-                          <td className="px-3 py-3">{formatDate(entry.date, locale)}</td>
-                          <td className="px-3 py-3">{formatShift(entry.shift)}</td>
-                          <td className="px-3 py-3">{entry.department || "-"}</td>
-                          <td className="px-3 py-3">
+                        <tr key={entry.id} className="border-b border-white/7 last:border-b-0">
+                          <td className="px-3 py-3 text-white/84">{formatDate(entry.date, locale)}</td>
+                          <td className="px-3 py-3 text-white/76">{formatShift(entry.shift)}</td>
+                          <td className="px-3 py-3 text-white/62">{entry.department || "-"}</td>
+                          <td className="px-3 py-3 text-white/84">
                             {entry.units_produced} / {entry.units_target}
                           </td>
-                          <td className="px-3 py-3">{entry.downtime_minutes} {t("table.min", "min")}</td>
-                          <td className="px-3 py-3 text-[var(--muted)]">{formatDateTime(entry.created_at, locale)}</td>
+                          <td className="px-3 py-3 text-white/62">{entry.downtime_minutes} {t("table.min", "min")}</td>
+                          <td className="px-3 py-3 text-white/48">{formatDateTime(entry.created_at, locale)}</td>
                           <td className="px-3 py-3">
-                            <Link href={`/entry/${entry.id}`} className="text-[var(--accent)] underline underline-offset-4">
+                            <Link href={`/entry/${entry.id}`} className="text-[rgba(125,165,255,0.95)] underline underline-offset-4">
                               {t("common.open", "Open")}
                             </Link>
                           </td>
@@ -2217,7 +2343,7 @@ export default function DashboardHome() {
                   </table>
                 </div>
               ) : (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                <div className="rounded-[1.5rem] border border-dashed border-white/12 bg-[rgba(255,255,255,0.03)] px-5 py-8 text-center text-sm text-white/44">
                   {t("dashboard.entries.empty", "No entries submitted yet.")}
                 </div>
               )}

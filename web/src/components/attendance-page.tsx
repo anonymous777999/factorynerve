@@ -343,78 +343,139 @@ export default function AttendancePage() {
 
   return (
     <main className="min-h-screen bg-bg px-4 py-6 text-text-primary md:px-6 lg:py-8 pb-20 md:pb-8">
-      <div className="mx-auto max-w-6xl">
+      <div className="mx-auto max-w-6xl space-y-6">
         {status ? (
-          <div className="mb-4 rounded-lg border border-color-success/25 bg-color-success/10 px-4 py-3 text-sm text-color-success">
+          <div className="rounded-lg border border-color-success/25 bg-color-success/10 px-4 py-3 text-sm text-color-success">
             {status}
           </div>
         ) : null}
         {error ? (
-          <div className="mb-4 rounded-lg border border-color-danger/25 bg-color-danger/10 px-4 py-3 text-sm text-color-danger">
+          <div className="rounded-lg border border-color-danger/25 bg-color-danger/10 px-4 py-3 text-sm text-color-danger">
             {error}
           </div>
         ) : null}
         {sessionError ? (
-          <div className="mb-4 rounded-lg border border-color-danger/25 bg-color-danger/10 px-4 py-3 text-sm text-color-danger">
+          <div className="rounded-lg border border-color-danger/25 bg-color-danger/10 px-4 py-3 text-sm text-color-danger">
             {sessionError}
           </div>
         ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <Card className="border border-border bg-card-elevated">
+          <Card className="surface-stage rounded-[2rem] border-0 shadow-none">
             <CardHeader>
-              <CardTitle className="text-lg md:text-xl">{factoryName}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-8">
-              <div className="flex flex-col items-center text-center">
-                <div className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-widest ${statusMeta.badge}`}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="space-y-3">
+                  <div className="flex flex-wrap gap-2">
+                    <span className="eyebrow-chip rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em]">
+                      Attendance Desk
+                    </span>
+                    <span className="rounded-full border border-border bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                      {factoryName}
+                    </span>
+                    <span className="rounded-full border border-border bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                      Auto-refresh {refreshing ? "running" : "active"}
+                    </span>
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl md:text-[2.3rem]">Punch status that stays clear on mobile</CardTitle>
+                    <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">
+                      Keep the worker focused on one action, one shift state, and the exact moment the last attendance update was recorded.
+                    </p>
+                  </div>
+                </div>
+                <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] ${statusMeta.badge}`}>
                   <span className={`h-2.5 w-2.5 rounded-full ${statusMeta.dot}`} />
                   {statusText(today?.status)}
                 </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              <div className="signal-note rounded-[1.4rem] px-4 py-3 text-sm text-text-secondary">
+                {today?.status === "working"
+                  ? "Shift is open. The main button should stay visible until punch-out."
+                  : today?.status === "not_punched"
+                    ? "The desk is ready for a quick shift start."
+                    : "Attendance details below show the latest state for today."}
+              </div>
 
-                <div className="mt-6 text-2xl md:text-4xl font-bold">{formatShift(displayShift)} Shift</div>
-
-                <div className="mt-8 text-xs uppercase tracking-widest text-text-muted">
-                  {today?.status === "working" ? "Shift running" : "Worked time"}
+              <div className="grid gap-3 md:grid-cols-3">
+                <div className="metric-tile rounded-[1.35rem] p-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">Shift</div>
+                  <div className="mt-3 text-2xl font-semibold text-text-primary">{formatShift(displayShift)}</div>
+                  <div className="mt-1 text-sm text-text-secondary">Selected for today&apos;s attendance record.</div>
                 </div>
-                <div className="mt-3 text-4xl md:text-5xl font-bold tracking-tight">{workedTime}</div>
-                <div className="mt-2 text-sm text-text-secondary">
-                  {today?.status === "working" ? "Worked" : today?.status === "not_punched" ? "Ready to start" : "Today"}
+                <div className="metric-tile rounded-[1.35rem] p-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">
+                    {today?.status === "working" ? "Shift running" : "Worked time"}
+                  </div>
+                  <div className="mt-3 text-2xl font-semibold text-text-primary md:text-3xl">{workedTime}</div>
+                  <div className="mt-1 text-sm text-text-secondary">
+                    {today?.status === "working" ? "Live timer for the current shift." : "Tracked against today's punches."}
+                  </div>
+                </div>
+                <div className="metric-tile rounded-[1.35rem] p-4">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">Last action</div>
+                  <div className="mt-3 text-2xl font-semibold text-text-primary">{formatTime(lastActionAt, locale)}</div>
+                  <div className="mt-1 text-sm text-text-secondary">Most recent punch recorded for this worker.</div>
                 </div>
               </div>
 
-              <Button
-                variant="primary"
-                className={`h-14 w-full text-lg font-semibold ${mainAction.className}`}
-                disabled={busy || mainAction.disabled}
-                onClick={mainAction.action ? () => void handlePunch(mainAction.action!) : undefined}
-              >
-                {busy && mainAction.action === "in"
-                  ? "Recording..."
-                  : busy && mainAction.action === "out"
-                    ? "Closing..."
-                    : mainAction.label}
-              </Button>
-
-              <div className="rounded-md border border-border bg-card-elevated px-4 py-3 text-center text-sm text-text-secondary">
-                Last action: <span className="font-semibold text-text-primary">{formatTime(lastActionAt, locale)}</span>
+              <div className="metric-tile rounded-[1.55rem] p-4 md:p-5">
+                <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+                  <div className="max-w-xl">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">Main action</div>
+                    <div className="mt-2 text-lg font-semibold text-text-primary">
+                      {today?.can_punch_out ? "Close the running shift" : today?.can_punch_in ? "Start today's shift" : mainAction.label}
+                    </div>
+                    <div className="mt-2 text-sm leading-6 text-text-secondary">
+                      {summaryAlert || "The primary action stays large and visible so a worker can finish attendance without hunting through extra controls."}
+                    </div>
+                  </div>
+                  <div className="w-full md:w-auto md:min-w-[16rem]">
+                    <Button
+                      variant="primary"
+                      className={`h-14 w-full text-lg font-semibold ${mainAction.className}`}
+                      disabled={busy || mainAction.disabled}
+                      onClick={mainAction.action ? () => void handlePunch(mainAction.action!) : undefined}
+                    >
+                      {busy && mainAction.action === "in"
+                        ? "Recording..."
+                        : busy && mainAction.action === "out"
+                          ? "Closing..."
+                          : mainAction.label}
+                    </Button>
+                  </div>
+                </div>
               </div>
 
-              <div className="text-center">
+              <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  className="text-sm font-medium text-text-secondary hover:text-text-primary transition"
+                  className="rounded-full border border-border bg-[rgba(255,255,255,0.04)] px-4 py-2 text-sm font-medium text-text-secondary transition hover:border-[rgba(77,163,255,0.28)] hover:text-text-primary"
                   onClick={() => setOptionsOpen((current) => !current)}
                 >
                   {optionsOpen ? "Hide Options" : "More Options"}
                 </button>
+                <Link href="/attendance/reports">
+                  <Button variant="outline" className="h-11 px-5">
+                    View History
+                  </Button>
+                </Link>
+                <Button
+                  variant="ghost"
+                  className="h-11 px-5"
+                  onClick={() => void loadAttendance({ background: true })}
+                  disabled={busy || refreshing}
+                >
+                  {refreshing ? "Refreshing..." : "Refresh"}
+                </Button>
               </div>
 
               {optionsOpen ? (
-                <Card className="bg-card-elevated border border-border">
-                  <CardContent className="pt-6 space-y-4">
+                <div className="metric-tile rounded-[1.45rem] p-4 md:p-5">
+                  <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-end">
                     <div>
-                      <label className="block text-sm font-medium text-text-primary mb-2">Shift</label>
+                      <label className="mb-2 block text-sm font-medium text-text-primary">Shift</label>
                       <Select
                         value={selectedShift}
                         onChange={(event) => setSelectedShift(event.target.value as AttendanceShift)}
@@ -427,30 +488,17 @@ export default function AttendancePage() {
                         ))}
                       </Select>
                     </div>
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <Button
-                        variant="outline"
-                        className="h-11 w-full"
-                        onClick={() => void loadAttendance({ background: true })}
-                        disabled={busy || refreshing}
-                      >
-                        {refreshing ? "Refreshing..." : "Refresh"}
-                      </Button>
-                      <Link href="/attendance/reports" className="block">
-                        <Button variant="outline" className="h-11 w-full">
-                          View History
-                        </Button>
-                      </Link>
+                    <div className="signal-note rounded-[1.25rem] px-4 py-3 text-sm text-text-secondary">
+                      Change the shift only before punch-in. Once the day is running, the desk keeps the record stable and ready for review.
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               ) : null}
             </CardContent>
           </Card>
 
           <aside className="hidden lg:block">
-            <Card className="border border-border bg-card-elevated sticky top-6">
+            <Card className="sticky top-6 border border-border bg-card-elevated">
               <CardHeader>
                 <div className="text-xs uppercase tracking-widest text-text-muted">Today Summary</div>
               </CardHeader>
@@ -476,12 +524,12 @@ export default function AttendancePage() {
                 </div>
 
                 {summaryAlert ? (
-                  <div className="rounded-md border border-color-warning/25 bg-color-warning/10 px-3 py-2 text-xs text-color-warning">
+                  <div className="signal-note rounded-[1.15rem] px-3 py-3 text-xs text-text-secondary">
                     {summaryAlert}
                   </div>
                 ) : null}
 
-                <div className="rounded-md border border-border bg-card p-3">
+                <div className="metric-tile rounded-[1.2rem] p-3">
                   <div className="text-xs uppercase tracking-widest text-text-muted">Shift Status</div>
                   <div className="mt-2 inline-flex items-center gap-2 rounded-full px-2 py-1 text-xs font-semibold uppercase tracking-widest text-text-primary">
                     <span className={`h-2 w-2 rounded-full ${statusMeta.dot}`} />
@@ -500,7 +548,7 @@ export default function AttendancePage() {
                   </div>
                 </div>
 
-                <div className="rounded-md border border-border bg-card p-3 text-sm">
+                <div className="metric-tile rounded-[1.2rem] p-3 text-sm">
                   <div className="flex items-center justify-between text-text-secondary">
                     <span>Factory</span>
                     <span className="font-semibold text-text-primary">{factoryName}</span>
