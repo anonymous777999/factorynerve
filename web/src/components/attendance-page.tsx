@@ -265,6 +265,7 @@ export default function AttendancePage() {
   const statusMeta = statusTheme(today?.status);
   const mainAction = buildMainAction(today);
   const lastActionAt = today?.punch_out_at || today?.punch_in_at || null;
+  const canEditShift = Boolean(today?.can_punch_in);
 
   const summaryAlert = useMemo(() => {
     if (!today) return null;
@@ -431,17 +432,37 @@ export default function AttendancePage() {
                 </div>
               ) : null}
 
-              <div className="text-center">
-                <button
-                  type="button"
-                  className="text-sm font-medium text-text-secondary hover:text-text-primary transition"
-                  onClick={() => setOptionsOpen((current) => !current)}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Button
+                  variant="outline"
+                  className="h-11 w-full"
+                  onClick={() => void loadAttendance({ background: true })}
+                  disabled={busy || refreshing}
                 >
-                  {optionsOpen ? "Hide Options" : "More Options"}
-                </button>
+                  {refreshing ? "Refreshing..." : "Refresh"}
+                </Button>
+                <Link href="/attendance/reports" className="block">
+                  <Button variant="outline" className="h-11 w-full">
+                    View History
+                  </Button>
+                </Link>
               </div>
 
-              {optionsOpen ? (
+              {canEditShift ? (
+                <div className="space-y-3">
+                  <div className="text-center">
+                    <button
+                      type="button"
+                      className="text-sm font-medium text-text-secondary transition hover:text-text-primary"
+                      onClick={() => setOptionsOpen((current) => !current)}
+                    >
+                      {optionsOpen ? "Hide Shift Picker" : `Change Shift (${formatShift(selectedShift)})`}
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {canEditShift && optionsOpen ? (
                 <Card className="bg-card-elevated border border-border">
                   <CardContent className="space-y-4 pt-5 sm:pt-6">
                     <div>
@@ -449,7 +470,7 @@ export default function AttendancePage() {
                       <Select
                         value={selectedShift}
                         onChange={(event) => setSelectedShift(event.target.value as AttendanceShift)}
-                        disabled={busy || Boolean(today && !today.can_punch_in)}
+                        disabled={busy || !canEditShift}
                       >
                         {SHIFT_OPTIONS.map((shift) => (
                           <option key={shift} value={shift}>
@@ -457,22 +478,6 @@ export default function AttendancePage() {
                           </option>
                         ))}
                       </Select>
-                    </div>
-
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <Button
-                        variant="outline"
-                        className="h-11 w-full"
-                        onClick={() => void loadAttendance({ background: true })}
-                        disabled={busy || refreshing}
-                      >
-                        {refreshing ? "Refreshing..." : "Refresh"}
-                      </Button>
-                      <Link href="/attendance/reports" className="block">
-                        <Button variant="outline" className="h-11 w-full">
-                          View History
-                        </Button>
-                      </Link>
                     </div>
                   </CardContent>
                 </Card>
