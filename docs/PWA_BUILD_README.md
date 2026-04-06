@@ -222,6 +222,22 @@ Definition of done:
 - users can still complete the highest-priority partial workflows when the connection drops
 - queued work is clearly recoverable and understandable
 
+### Current Offline Behavior Matrix
+
+- `/attendance`
+  - requires a live connection for punch in and punch out
+  - offline mode should clearly pause punch actions instead of letting the user fail after a timeout
+- `/entry`
+  - drafts save locally in the browser
+  - submit can queue locally and auto-sync later
+  - queue state should stay visible from the shell and the entry page
+- `/ocr/scan`
+  - capture, crop, and enhancement can continue offline
+  - AI extraction, saving the review draft, and Excel export require a live connection
+- `/work-queue`, `/approvals`, `/reports`
+  - these are live-data routes
+  - when offline, they should explain that local draft and queued-entry state remain available, but remote counts and review data are paused
+
 ## Phase 4: Mobile UX Hardening
 
 Goal:
@@ -379,10 +395,10 @@ Use this section as the running status board. Update it as work ships.
 ### Offline
 
 - [x] offline route exists
-- [ ] attendance offline behavior defined
-- [ ] entry offline behavior fully documented
-- [ ] OCR offline-safe behavior defined
-- [ ] queue and sync states made clearer in-app
+- [x] attendance offline behavior defined
+- [x] entry offline behavior fully documented
+- [x] OCR offline-safe behavior defined
+- [x] queue and sync states made clearer in-app
 
 ### QA
 

@@ -20,6 +20,7 @@ import {
   type EntryPayload,
   type TemplateFieldMap,
 } from "@/lib/offline-entries";
+import { useOnlineStatus } from "@/lib/use-online-status";
 import { coerceIntegerInput } from "@/lib/validation";
 import { signalWorkflowRefresh } from "@/lib/workflow-sync";
 import { EntryPageSkeleton } from "@/components/page-skeletons";
@@ -287,7 +288,6 @@ export default function EntryPage() {
   const [form, setForm] = useState<EntryDraft>(() => blankDraft());
   const [shiftMap, setShiftMap] = useState<Record<string, number>>({});
   const [queueCount, setQueueCount] = useState(0);
-  const [online, setOnline] = useState(true);
   const [busy, setBusy] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
@@ -296,6 +296,7 @@ export default function EntryPage() {
   const [activeStep, setActiveStep] = useState<StepIndex>(0);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
   const queryAppliedRef = useRef(false);
+  const online = useOnlineStatus();
 
   const loadShiftMap = useCallback(async (date: string) => {
     const response = await listEntries({ date, page: 1, page_size: 50 });
@@ -364,19 +365,6 @@ export default function EntryPage() {
       template_fields: normalizeTemplateFields(templateContext, prev.template_fields),
     }));
   }, [templateContext]);
-
-  useEffect(() => {
-    if (typeof navigator === "undefined") return;
-    setOnline(navigator.onLine);
-    const onOnline = () => setOnline(true);
-    const onOffline = () => setOnline(false);
-    window.addEventListener("online", onOnline);
-    window.addEventListener("offline", onOffline);
-    return () => {
-      window.removeEventListener("online", onOnline);
-      window.removeEventListener("offline", onOffline);
-    };
-  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -802,6 +790,22 @@ export default function EntryPage() {
         ? "Submitting..."
         : "Submit Entry"
       : "Next";
+  const connectivityNote = !online
+    ? {
+        tone: "offline" as const,
+        title: "Offline entry mode is active",
+        detail:
+          queueCount > 0
+            ? `${queueCount} queued entr${queueCount === 1 ? "y is" : "ies are"} already saved on this device. New submissions will also queue locally and sync automatically when the network returns.`
+            : "Drafts keep saving on this device, and new shift submissions will queue locally until the network returns.",
+      }
+    : queueCount > 0
+      ? {
+          tone: "queue" as const,
+          title: "Queued entry sync is still in progress",
+          detail: `${queueCount} offline entr${queueCount === 1 ? "y is" : "ies are"} still waiting. Leave this page open or press Sync Queue once the network feels stable.`,
+        }
+      : null;
 
   return (
     <main className="min-h-screen bg-[#0B0F19] px-4 pb-[calc(7.75rem+env(safe-area-inset-bottom))] pt-6 text-white md:px-6 lg:pb-10 lg:pt-8">
@@ -840,6 +844,22 @@ export default function EntryPage() {
             </Link>
           </div>
         </header>
+
+        {connectivityNote ? (
+          <div
+            className={`mt-5 rounded-[28px] border px-4 py-4 text-sm sm:px-5 ${
+              connectivityNote.tone === "offline"
+                ? "border-amber-400/24 bg-amber-400/10 text-amber-50"
+                : "border-cyan-300/24 bg-cyan-300/10 text-cyan-50"
+            }`}
+          >
+            <div className="text-[11px] font-semibold uppercase tracking-[0.2em]">
+              {connectivityNote.tone === "offline" ? "Offline-safe flow" : "Queue status"}
+            </div>
+            <div className="mt-2 text-base font-semibold">{connectivityNote.title}</div>
+            <div className="mt-2 leading-6 opacity-90">{connectivityNote.detail}</div>
+          </div>
+        ) : null}
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
           <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(21,28,44,0.92),rgba(11,15,25,0.98))] p-5 shadow-[0_24px_80px_rgba(6,10,18,0.48)] backdrop-blur md:p-7">

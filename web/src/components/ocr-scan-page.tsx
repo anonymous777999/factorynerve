@@ -24,6 +24,7 @@ import {
   warpOcrImage,
   type OcrPreviewResult,
 } from "@/lib/ocr";
+import { useOnlineStatus } from "@/lib/use-online-status";
 import { useSession } from "@/lib/use-session";
 import { signalWorkflowRefresh } from "@/lib/workflow-sync";
 import { cn } from "@/lib/utils";
@@ -400,6 +401,7 @@ function SpinnerIcon() {
 
 export default function OcrScanPage() {
   const { user, loading, error: sessionError } = useSession();
+  const online = useOnlineStatus();
 
   const [screen, setScreen] = useState<ScanScreen>("camera");
   const [selectedFilter, setSelectedFilter] = useState<FilterPreset>("clean");
@@ -454,6 +456,11 @@ export default function OcrScanPage() {
     selectedFilter === "original"
       ? perspectiveFile || originalFile
       : enhancedFile || perspectiveFile || originalFile;
+  const ocrOfflineNotice = !online
+    ? screen === "result"
+      ? "This draft is already prepared on this device, but Review Documents and fresh Excel export still need a connection."
+      : "You can capture, crop, and enhance offline. AI extraction, saving the review draft, and Excel export need a live connection."
+    : null;
 
   const resetFlow = useCallback(() => {
     setScreen("camera");
@@ -792,6 +799,11 @@ export default function OcrScanPage() {
 
   const handleProcess = useCallback(async () => {
     if (!processFile || !originalFile) return;
+    if (!online) {
+      setError("Reconnect to extract and save this OCR draft.");
+      setStatus("");
+      return;
+    }
     setBusyAction(true);
     setError("");
     setStatus("");
@@ -856,7 +868,7 @@ export default function OcrScanPage() {
     } finally {
       setBusyAction(false);
     }
-  }, [lastFields, originalFile, outputChoice, persistLastFields, processFile]);
+  }, [lastFields, online, originalFile, outputChoice, persistLastFields, processFile]);
 
   const handleDownloadPdf = useCallback(async () => {
     if (!pdfBlob || !originalFile) return;
@@ -929,6 +941,14 @@ export default function OcrScanPage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-bg text-text-primary pb-20 md:pb-8">
+      {ocrOfflineNotice ? (
+        <div className="relative z-20 px-4 pt-4 sm:px-6">
+          <div className="mx-auto max-w-5xl rounded-[1.4rem] border border-amber-400/24 bg-[rgba(120,53,15,0.72)] px-4 py-3 text-sm text-amber-50 shadow-[0_18px_50px_rgba(0,0,0,0.24)] backdrop-blur-xl">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-amber-200">Offline-safe OCR</div>
+            <div className="mt-1 leading-6">{ocrOfflineNotice}</div>
+          </div>
+        </div>
+      ) : null}
       {screen === "camera" ? (
         <section className="relative flex min-h-screen flex-col overflow-hidden bg-bg pb-20 md:pb-8">
           <div className="absolute inset-0">
@@ -1437,10 +1457,10 @@ export default function OcrScanPage() {
             <button
               type="button"
               className="inline-flex w-full items-center justify-center rounded-full bg-color-primary px-6 py-4 text-base font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-              disabled={busyAction || !processFile}
+              disabled={busyAction || !processFile || !online}
               onClick={() => void handleProcess()}
             >
-              Start extraction
+              {online ? "Start extraction" : "Reconnect to extract"}
             </button>
             <button
               type="button"
@@ -1638,7 +1658,7 @@ export default function OcrScanPage() {
                     ? "border-cyan-300/30 bg-cyan-300/10 hover:bg-cyan-300/14"
                     : "border-white/10 bg-white/[0.04]",
                 )}
-                disabled={busyAction || !savedId}
+                disabled={busyAction || !savedId || !online}
                 onClick={() => void handleDownloadExcel()}
               >
                 <span className="flex items-center gap-3">
@@ -1671,12 +1691,18 @@ export default function OcrScanPage() {
             </div>
 
             {savedId ? (
-              <Link
-                href={`/ocr/verify?verification_id=${savedId}`}
-                className="inline-flex w-full items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
-              >
-                Open this draft in Review Documents
-              </Link>
+              online ? (
+                <Link
+                  href={`/ocr/verify?verification_id=${savedId}`}
+                  className="inline-flex w-full items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
+                >
+                  Open this draft in Review Documents
+                </Link>
+              ) : (
+                <div className="inline-flex w-full items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-slate-400 opacity-70">
+                  Reconnect to open in Review Documents
+                </div>
+              )
             ) : null}
 
             <button

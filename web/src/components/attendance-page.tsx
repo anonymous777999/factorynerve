@@ -12,6 +12,7 @@ import {
   type AttendanceToday,
 } from "@/lib/attendance";
 import { useI18n } from "@/lib/i18n";
+import { useOnlineStatus } from "@/lib/use-online-status";
 import { useSession } from "@/lib/use-session";
 import { signalWorkflowRefresh, subscribeToWorkflowRefresh } from "@/lib/workflow-sync";
 import { Button } from "@/components/ui/button";
@@ -171,6 +172,7 @@ export default function AttendancePage() {
   const [error, setError] = useState("");
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const online = useOnlineStatus();
 
   const loadAttendance = useCallback(
     async (options?: { background?: boolean }) => {
@@ -264,8 +266,19 @@ export default function AttendancePage() {
   const factoryName = today?.factory_name || activeFactory?.name || user?.factory_name || "Factory";
   const statusMeta = statusTheme(today?.status);
   const mainAction = buildMainAction(today);
+  const resolvedMainAction = online
+    ? mainAction
+    : {
+        label: "Reconnect to Punch",
+        action: null,
+        disabled: true,
+        className: "border border-amber-400/24 bg-amber-500/15 text-amber-100",
+      };
   const lastActionAt = today?.punch_out_at || today?.punch_in_at || null;
   const canEditShift = Boolean(today?.can_punch_in);
+  const offlineNotice = !online
+    ? "Attendance punch actions need a live connection. Reconnect before recording punch in or punch out."
+    : null;
 
   const summaryAlert = useMemo(() => {
     if (!today) return null;
@@ -389,20 +402,26 @@ export default function AttendancePage() {
 
               <Button
                 variant="primary"
-                className={`h-[3.25rem] w-full text-base font-semibold sm:h-14 sm:text-lg ${mainAction.className}`}
-                disabled={busy || mainAction.disabled}
-                onClick={mainAction.action ? () => void handlePunch(mainAction.action!) : undefined}
+                className={`h-[3.25rem] w-full text-base font-semibold sm:h-14 sm:text-lg ${resolvedMainAction.className}`}
+                disabled={busy || resolvedMainAction.disabled}
+                onClick={resolvedMainAction.action ? () => void handlePunch(resolvedMainAction.action!) : undefined}
               >
-                {busy && mainAction.action === "in"
+                {busy && resolvedMainAction.action === "in"
                   ? "Recording..."
-                  : busy && mainAction.action === "out"
+                  : busy && resolvedMainAction.action === "out"
                     ? "Closing..."
-                    : mainAction.label}
+                    : resolvedMainAction.label}
               </Button>
 
               <div className="rounded-md border border-border bg-card-elevated px-4 py-3 text-center text-sm text-text-secondary">
                 Last action: <span className="font-semibold text-text-primary">{formatTime(lastActionAt, locale)}</span>
               </div>
+
+              {offlineNotice ? (
+                <div className="rounded-xl border border-amber-400/24 bg-amber-500/12 px-4 py-3 text-sm text-amber-100">
+                  {offlineNotice}
+                </div>
+              ) : null}
 
               <div className="grid gap-3 lg:hidden sm:grid-cols-2">
                 <div className="rounded-xl border border-border bg-card px-4 py-3">
@@ -437,9 +456,9 @@ export default function AttendancePage() {
                   variant="outline"
                   className="h-11 w-full"
                   onClick={() => void loadAttendance({ background: true })}
-                  disabled={busy || refreshing}
+                  disabled={busy || refreshing || !online}
                 >
-                  {refreshing ? "Refreshing..." : "Refresh"}
+                  {!online ? "Offline" : refreshing ? "Refreshing..." : "Refresh"}
                 </Button>
                 <Link href="/attendance/reports" className="block">
                   <Button variant="outline" className="h-11 w-full">

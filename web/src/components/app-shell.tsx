@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { JobsDrawer } from "@/components/jobs-drawer";
+import { OfflineWorkStrip } from "@/components/offline-work-strip";
 import { WorkflowReminderStrip } from "@/components/workflow-reminder-strip";
 import { Select } from "@/components/ui/select";
 import { logout, selectFactory } from "@/lib/auth";
@@ -1940,6 +1941,7 @@ function AppShellFrame({
           )}
         >
           {!immersiveScannerRoute ? <WorkflowReminderStrip /> : null}
+          {!immersiveScannerRoute ? <OfflineWorkStrip /> : null}
           {shellLayout.desktopRail === "context" ? (
             <div
               className={cn(
