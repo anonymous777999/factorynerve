@@ -1766,24 +1766,24 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur md:flex-row md:items-end md:justify-between">
+    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+        <section className="flex flex-col gap-4 rounded-[1.9rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-5 shadow-2xl backdrop-blur sm:p-6 md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">
             <div className="text-sm uppercase tracking-[0.32em] text-[var(--accent)]">Review</div>
-            <h1 className="text-3xl font-semibold md:text-4xl">Review Queue</h1>
+            <h1 className="text-3xl font-semibold sm:text-4xl">Review Queue</h1>
             <p className="max-w-3xl text-sm text-[var(--muted)]">
               One prioritized inbox for attendance, DPR, OCR, and stock review decisions. Tasks stay at the top, signals stay separate, and the right side keeps full context on screen.
             </p>
           </div>
-          <div className="flex flex-wrap items-center gap-3 text-sm text-[var(--muted)]">
+          <div className="grid gap-3 text-sm text-[var(--muted)] md:text-right">
             <span>
               Active factory: <span className="font-semibold text-[var(--text)]">{activeFactory?.name || user.factory_name}</span>
             </span>
             <span>
               Last refresh: <span className="font-semibold text-[var(--text)]">{refreshedLabel}</span>
             </span>
-            <Button variant="outline" onClick={() => void loadInbox()}>
+            <Button variant="outline" className="w-full md:w-auto" onClick={() => void loadInbox()}>
               {busy ? "Refreshing..." : "Refresh Queue"}
             </Button>
           </div>
@@ -1792,125 +1792,9 @@ export default function ApprovalsPage() {
         {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
         {status ? <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <SummaryMetric label="Urgent reviews" value={urgentTaskCount} helper="Critical first" tone="border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100" />
-          <SummaryMetric label="Open review tasks" value={filteredTasks.length} helper="Decision queue" tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
-          <SummaryMetric label="24h breaches" value={staleTaskCount} helper="Oldest first" tone="border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100" />
-          <SummaryMetric label="Signals" value={signalCount} helper="Needs routing" tone="border-fuchsia-400/30 bg-[rgba(217,70,239,0.12)] text-fuchsia-100" />
-        </section>
-
-        <section>
-          <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
-            <CardHeader className="space-y-2">
-              <div className="text-sm text-[var(--muted)]">Backlog mix</div>
-              <CardTitle className="text-xl">By type and urgency</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-              {([
-                {
-                  label: "Attendance",
-                  total: taskItems.filter((item) => item.kind === "attendance").length,
-                  urgent: taskItems.filter((item) => item.kind === "attendance" && (item.severity === "critical" || item.severity === "high")).length,
-                  aging: taskItems.filter((item) => item.kind === "attendance" && item.ageBand !== "fresh").length,
-                },
-                {
-                  label: "DPR",
-                  total: taskItems.filter((item) => item.kind === "entry").length,
-                  urgent: taskItems.filter((item) => item.kind === "entry" && (item.severity === "critical" || item.severity === "high")).length,
-                  aging: taskItems.filter((item) => item.kind === "entry" && item.ageBand !== "fresh").length,
-                },
-                {
-                  label: "OCR",
-                  total: taskItems.filter((item) => item.kind === "ocr").length,
-                  urgent: taskItems.filter((item) => item.kind === "ocr" && (item.severity === "critical" || item.severity === "high")).length,
-                  aging: taskItems.filter((item) => item.kind === "ocr" && item.ageBand !== "fresh").length,
-                },
-                {
-                  label: "Stock",
-                  total: taskItems.filter((item) => item.kind === "reconciliation").length,
-                  urgent: taskItems.filter((item) => item.kind === "reconciliation" && (item.severity === "critical" || item.severity === "high")).length,
-                  aging: taskItems.filter((item) => item.kind === "reconciliation" && item.ageBand !== "fresh").length,
-                },
-              ] as Array<{ label: string; total: number; urgent: number; aging: number }>).map((metric) => (
-                <div key={metric.label} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-                  <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">{metric.label}</div>
-                  <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{metric.total}</div>
-                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-full border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-3 py-1 text-red-100">
-                      Urgent {metric.urgent}
-                    </span>
-                    <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-amber-100">
-                      8h+ {metric.aging}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </section>
-
-        <section>
-          <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
-            <CardHeader className="space-y-2">
-              <div className="text-sm text-[var(--muted)]">Queue SLA board</div>
-              <CardTitle className="text-xl">8h / 24h breach lanes</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4 lg:grid-cols-2">
-              <div className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.08)] p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-200">8h+ waiting</div>
-                    <div className="mt-1 text-3xl font-semibold text-[var(--text)]">{sla8TaskCount}</div>
-                  </div>
-                  <div className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.14)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-amber-100">
-                    Urgent: {sla8UrgentCount}
-                  </div>
-                </div>
-                <div className="mt-3 text-xs text-[var(--muted)]">
-                  Mix A:{sla8AttendanceCount} | D:{sla8DprCount} | O:{sla8OcrCount} | S:{sla8StockCount}
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Button
-                    className="px-3 py-2 text-xs"
-                    onClick={() => applyPreset("sla8")}
-                  >
-                    Focus 8h+ queue
-                  </Button>
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.1)] p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-red-200">24h+ breached</div>
-                    <div className="mt-1 text-3xl font-semibold text-[var(--text)]">{sla24TaskCount}</div>
-                  </div>
-                  <div className="rounded-full border border-red-400/30 bg-[rgba(239,68,68,0.16)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-red-100">
-                    Urgent: {sla24UrgentCount}
-                  </div>
-                </div>
-                <div className="mt-3 text-xs text-[var(--muted)]">
-                  Mix A:{sla24AttendanceCount} | D:{sla24DprCount} | O:{sla24OcrCount} | S:{sla24StockCount}
-                </div>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  <Button
-                    className="px-3 py-2 text-xs"
-                    onClick={() => applyPreset("stale")}
-                  >
-                    Focus 24h+ queue
-                  </Button>
-                  <Button variant="outline" className="px-3 py-2 text-xs" onClick={() => applyPreset("all")}>
-                    Clear SLA filter
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
         <section
           className={cn(
-            "grid gap-6",
+            "grid gap-5",
             showDetailPanel ? "lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.95fr)]" : "lg:grid-cols-1",
           )}
         >
@@ -1922,7 +1806,7 @@ export default function ApprovalsPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Quick presets</div>
                       <div className="mt-1 text-sm text-[var(--text)]">
@@ -1932,12 +1816,12 @@ export default function ApprovalsPage() {
                         Jump between fresh work, SLA backlog, and source-specific lanes without rebuilding filters by hand.
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
                       {(["all", "today", "sla8", "stale", "stock", "ocr"] as QueuePreset[]).map((preset) => (
                         <Button
                           key={`preset:${preset}`}
                           variant={activePreset === preset ? "primary" : "outline"}
-                          className="px-3 py-2 text-xs"
+                          className="shrink-0 px-3 py-2 text-xs"
                           onClick={() => applyPreset(preset)}
                         >
                           {presetLabel(preset)}
@@ -1947,7 +1831,7 @@ export default function ApprovalsPage() {
                   </div>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   <div>
                     <label className="text-sm text-[var(--muted)]">Task type</label>
                     <Select value={taskFilter} onChange={(event) => setTaskFilter(event.target.value as TaskFilter)}>
@@ -1984,69 +1868,75 @@ export default function ApprovalsPage() {
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Bulk decisions</div>
-                      <div className="mt-1 text-sm text-[var(--text)]">
-                        Selected: {selectedTaskCount} | Approve-ready: {selectedApproveCount} | Reject-ready: {selectedRejectCount}
-                      </div>
-                      {selectedNoDecisionCount > 0 ? (
-                        <div className="mt-1 text-xs text-amber-200">
-                          {selectedNoDecisionCount} selected item(s) are role-restricted and cannot be actioned.
+                {selectedTaskCount ? (
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Bulk decisions</div>
+                        <div className="mt-1 text-sm text-[var(--text)]">
+                          Selected: {selectedTaskCount} | Approve-ready: {selectedApproveCount} | Reject-ready: {selectedRejectCount}
                         </div>
-                      ) : null}
+                        {selectedNoDecisionCount > 0 ? (
+                          <div className="mt-1 text-xs text-amber-200">
+                            {selectedNoDecisionCount} selected item(s) are role-restricted and cannot be actioned.
+                          </div>
+                        ) : null}
+                      </div>
+                      <div className="grid gap-2 sm:flex sm:flex-wrap">
+                        <Button
+                          variant="outline"
+                          className="px-3 py-2 text-xs"
+                          onClick={toggleVisibleActionableSelection}
+                          disabled={!visibleActionableTaskKeys.length}
+                        >
+                          {allVisibleActionableSelected ? "Unselect visible" : "Select visible actionable"}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          className="px-3 py-2 text-xs"
+                          onClick={() => setSelectedTaskKeys([])}
+                          disabled={!selectedTaskCount}
+                        >
+                          Clear selection
+                        </Button>
+                      </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
+                      <Textarea
+                        rows={2}
+                        value={bulkNote}
+                        onChange={(event) => setBulkNote(event.target.value)}
+                        placeholder="Shared decision note. Required for bulk reject and for high-risk approvals."
+                      />
                       <Button
-                        variant="outline"
-                        className="px-3 py-2 text-xs"
-                        onClick={toggleVisibleActionableSelection}
-                        disabled={!visibleActionableTaskKeys.length}
+                        className="px-4 py-2 text-xs"
+                        disabled={bulkBusy || !selectedApproveCount}
+                        onClick={() => openBulkDecisionConfirm("approve")}
                       >
-                        {allVisibleActionableSelected ? "Unselect visible" : "Select visible actionable"}
+                        {bulkApproveBusy ? "Approving..." : "Approve selected"}
                       </Button>
                       <Button
                         variant="ghost"
-                        className="px-3 py-2 text-xs"
-                        onClick={() => setSelectedTaskKeys([])}
-                        disabled={!selectedTaskCount}
+                        className="px-4 py-2 text-xs"
+                        disabled={bulkBusy || !selectedRejectCount}
+                        onClick={() => openBulkDecisionConfirm("reject")}
                       >
-                        Clear selection
+                        {bulkRejectBusy ? "Rejecting..." : "Reject selected"}
                       </Button>
                     </div>
+                    <div className={cn("text-xs", bulkApproveReasonMissing || bulkRejectReasonMissing ? "text-amber-200" : "text-[var(--muted)]")}>
+                      {bulkRejectReasonMissing
+                        ? "Bulk rejection is blocked until a reason note is added."
+                        : bulkApproveReasonMissing
+                          ? "High-risk approvals are selected, so add one shared review note before confirming."
+                          : "Use one shared note when the same decision context applies across multiple selected items."}
+                    </div>
                   </div>
-                  <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
-                    <Textarea
-                      rows={2}
-                      value={bulkNote}
-                      onChange={(event) => setBulkNote(event.target.value)}
-                      placeholder="Shared decision note. Required for bulk reject and for high-risk approvals."
-                    />
-                    <Button
-                      className="px-4 py-2 text-xs"
-                      disabled={bulkBusy || !selectedApproveCount}
-                      onClick={() => openBulkDecisionConfirm("approve")}
-                    >
-                      {bulkApproveBusy ? "Approving..." : "Approve selected"}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="px-4 py-2 text-xs"
-                      disabled={bulkBusy || !selectedRejectCount}
-                      onClick={() => openBulkDecisionConfirm("reject")}
-                    >
-                      {bulkRejectBusy ? "Rejecting..." : "Reject selected"}
-                    </Button>
+                ) : (
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4 text-sm text-[var(--muted)]">
+                    Select one or more actionable tasks to unlock bulk decisions. The queue stays lighter until you actually need bulk actions.
                   </div>
-                  <div className={cn("text-xs", bulkApproveReasonMissing || bulkRejectReasonMissing ? "text-amber-200" : "text-[var(--muted)]")}>
-                    {bulkRejectReasonMissing
-                      ? "Bulk rejection is blocked until a reason note is added."
-                      : bulkApproveReasonMissing
-                        ? "High-risk approvals are selected, so add one shared review note before confirming."
-                        : "Use one shared note when the same decision context applies across multiple selected items."}
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 
@@ -2078,7 +1968,7 @@ export default function ApprovalsPage() {
             ) : null}
 
             <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
-              <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="text-sm text-[var(--muted)]">Decision queue</div>
                   <CardTitle className="text-xl">Tasks waiting for review</CardTitle>
@@ -2086,8 +1976,8 @@ export default function ApprovalsPage() {
                     Mix: Attendance {attendanceTaskCount} | DPR {dprTaskCount} | OCR {ocrTaskCount} | Stock {stockTaskCount}
                   </div>
                 </div>
-                <div className="flex flex-wrap items-center justify-end gap-3">
-                  <div className="text-sm text-[var(--muted)]">
+                <div className="flex flex-col gap-3 sm:items-end">
+                  <div className="text-sm text-[var(--muted)] sm:text-right">
                     {restrictedTaskCount ? `${restrictedTaskCount} item(s) require escalation by role.` : "Highest risk and oldest items stay at the top."}
                   </div>
                   <Button variant="outline" className="hidden px-3 py-2 text-xs lg:inline-flex" onClick={toggleDetailPanel}>
@@ -2231,12 +2121,12 @@ export default function ApprovalsPage() {
                                 </span>
                               ) : null}
                             </div>
-                            <div className="flex flex-wrap gap-3">
-                              <Button className="px-4 py-2 text-xs" onClick={() => openItem(item.key, true)}>
+                            <div className="grid gap-3 sm:flex sm:flex-wrap">
+                              <Button className="w-full px-4 py-2 text-xs sm:w-auto" onClick={() => openItem(item.key, true)}>
                                 Review
                               </Button>
-                              <Link href={item.openHref}>
-                                <Button variant="outline" className="px-4 py-2 text-xs">
+                              <Link href={item.openHref} className="w-full sm:w-auto">
+                                <Button variant="outline" className="w-full px-4 py-2 text-xs sm:w-auto">
                                   {item.openLabel}
                                 </Button>
                               </Link>
@@ -2262,12 +2152,12 @@ export default function ApprovalsPage() {
             </Card>
 
             <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
-              <CardHeader className="flex flex-row items-center justify-between gap-3">
+              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="text-sm text-[var(--muted)]">Signals</div>
                   <CardTitle className="text-xl">Investigations and acknowledgements</CardTitle>
                 </div>
-                <div className="text-sm text-[var(--muted)]">Signals stay separate from approval work so the queue remains trustworthy.</div>
+                <div className="text-sm text-[var(--muted)] sm:max-w-sm sm:text-right">Signals stay separate from approval work so the queue remains trustworthy.</div>
               </CardHeader>
               <CardContent className="space-y-3">
                 {filteredSignals.length ? (
@@ -2322,6 +2212,114 @@ export default function ApprovalsPage() {
               </div>
             </div>
           ) : null}
+        </section>
+
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <SummaryMetric label="Urgent reviews" value={urgentTaskCount} helper="Critical first" tone="border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100" />
+          <SummaryMetric label="Open review tasks" value={filteredTasks.length} helper="Decision queue" tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
+          <SummaryMetric label="24h breaches" value={staleTaskCount} helper="Oldest first" tone="border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100" />
+          <SummaryMetric label="Signals" value={signalCount} helper="Needs routing" tone="border-fuchsia-400/30 bg-[rgba(217,70,239,0.12)] text-fuchsia-100" />
+        </section>
+
+        <section className="grid gap-5 xl:grid-cols-2">
+          <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+            <CardHeader className="space-y-2">
+              <div className="text-sm text-[var(--muted)]">Backlog mix</div>
+              <CardTitle className="text-xl">By type and urgency</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2">
+              {([
+                {
+                  label: "Attendance",
+                  total: taskItems.filter((item) => item.kind === "attendance").length,
+                  urgent: taskItems.filter((item) => item.kind === "attendance" && (item.severity === "critical" || item.severity === "high")).length,
+                  aging: taskItems.filter((item) => item.kind === "attendance" && item.ageBand !== "fresh").length,
+                },
+                {
+                  label: "DPR",
+                  total: taskItems.filter((item) => item.kind === "entry").length,
+                  urgent: taskItems.filter((item) => item.kind === "entry" && (item.severity === "critical" || item.severity === "high")).length,
+                  aging: taskItems.filter((item) => item.kind === "entry" && item.ageBand !== "fresh").length,
+                },
+                {
+                  label: "OCR",
+                  total: taskItems.filter((item) => item.kind === "ocr").length,
+                  urgent: taskItems.filter((item) => item.kind === "ocr" && (item.severity === "critical" || item.severity === "high")).length,
+                  aging: taskItems.filter((item) => item.kind === "ocr" && item.ageBand !== "fresh").length,
+                },
+                {
+                  label: "Stock",
+                  total: taskItems.filter((item) => item.kind === "reconciliation").length,
+                  urgent: taskItems.filter((item) => item.kind === "reconciliation" && (item.severity === "critical" || item.severity === "high")).length,
+                  aging: taskItems.filter((item) => item.kind === "reconciliation" && item.ageBand !== "fresh").length,
+                },
+              ] as Array<{ label: string; total: number; urgent: number; aging: number }>).map((metric) => (
+                <div key={metric.label} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+                  <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">{metric.label}</div>
+                  <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{metric.total}</div>
+                  <div className="mt-3 flex flex-wrap gap-2 text-xs">
+                    <span className="rounded-full border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-3 py-1 text-red-100">
+                      Urgent {metric.urgent}
+                    </span>
+                    <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-amber-100">
+                      8h+ {metric.aging}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+            <CardHeader className="space-y-2">
+              <div className="text-sm text-[var(--muted)]">Queue SLA board</div>
+              <CardTitle className="text-xl">8h / 24h breach lanes</CardTitle>
+            </CardHeader>
+            <CardContent className="grid gap-4">
+              <div className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.08)] p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-200">8h+ waiting</div>
+                    <div className="mt-1 text-3xl font-semibold text-[var(--text)]">{sla8TaskCount}</div>
+                  </div>
+                  <div className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.14)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-amber-100">
+                    Urgent: {sla8UrgentCount}
+                  </div>
+                </div>
+                <div className="mt-3 text-xs text-[var(--muted)]">
+                  Mix A:{sla8AttendanceCount} | D:{sla8DprCount} | O:{sla8OcrCount} | S:{sla8StockCount}
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button className="px-3 py-2 text-xs" onClick={() => applyPreset("sla8")}>
+                    Focus 8h+ queue
+                  </Button>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.1)] p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-red-200">24h+ breached</div>
+                    <div className="mt-1 text-3xl font-semibold text-[var(--text)]">{sla24TaskCount}</div>
+                  </div>
+                  <div className="rounded-full border border-red-400/30 bg-[rgba(239,68,68,0.16)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-red-100">
+                    Urgent: {sla24UrgentCount}
+                  </div>
+                </div>
+                <div className="mt-3 text-xs text-[var(--muted)]">
+                  Mix A:{sla24AttendanceCount} | D:{sla24DprCount} | O:{sla24OcrCount} | S:{sla24StockCount}
+                </div>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <Button className="px-3 py-2 text-xs" onClick={() => applyPreset("stale")}>
+                    Focus 24h+ queue
+                  </Button>
+                  <Button variant="outline" className="px-3 py-2 text-xs" onClick={() => applyPreset("all")}>
+                    Clear SLA filter
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </section>
       </div>
 
