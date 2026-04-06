@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { logout } from "@/lib/auth";
 import { getAnomalyPreview, type AnomalyResponse } from "@/lib/ai";
 import { ApiError, formatApiErrorMessage } from "@/lib/api";
 import { getMyAttendanceToday, type AttendanceStatus, type AttendanceToday } from "@/lib/attendance";
@@ -1131,6 +1130,29 @@ export default function DashboardHome() {
     };
   }, [organization?.accessible_factories, t, user?.role]);
 
+  const heroSecondaryAction = useMemo(() => {
+    if (user?.role === "accountant") {
+      return { href: "/email-summary", label: "Open Scheduled Updates" };
+    }
+    if (primaryAction?.href === "/reports") {
+      return { href: "/analytics", label: "Open Analysis" };
+    }
+    return { href: "/reports", label: t("dashboard.action.open_reports", "Open Reports") };
+  }, [primaryAction?.href, t, user?.role]);
+
+  const shouldShowOcrAttention = useMemo(() => {
+    if (!state.ocrSummary) {
+      return false;
+    }
+    return (
+      (state.ocrSummary.pending_documents || 0) > 0 ||
+      (state.ocrSummary.trusted_documents || 0) > 0 ||
+      (state.ocrSummary.trusted_rows || 0) > 0
+    );
+  }, [state.ocrSummary]);
+
+  const calmAttentionBoard = state.alerts.length === 0 && anomalyCount === 0 && !shouldShowOcrAttention;
+
   const handleSync = useCallback(async () => {
     if (!user) return;
     setSyncing(true);
@@ -1192,14 +1214,6 @@ export default function DashboardHome() {
       window.removeEventListener("offline", onOffline);
     };
   }, [handleSync, queueCount]);
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-    } finally {
-      window.location.href = "/login";
-    }
-  };
 
   const handleMarkAlertRead = useCallback(
     async (alertId: number) => {
@@ -1610,8 +1624,19 @@ export default function DashboardHome() {
   return (
     <main className="min-h-screen px-4 py-6 pb-28 md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="surface-panel-strong grid gap-5 rounded-[2rem] p-5 md:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)] md:p-7">
-          <div className="space-y-4">
+        {status ? (
+          <div className="rounded-[1.2rem] border border-success/30 bg-success/12 px-4 py-3 text-sm text-success">
+            {status}
+          </div>
+        ) : null}
+        {error || sessionError ? (
+          <div className="rounded-[1.2rem] border border-danger/30 bg-danger/12 px-4 py-3 text-sm text-danger">
+            {error || sessionError}
+          </div>
+        ) : null}
+
+        <section className="surface-panel-strong grid gap-6 rounded-[2rem] p-5 md:p-7 xl:grid-cols-[minmax(0,1.28fr)_minmax(19rem,0.92fr)]">
+          <div className="space-y-5">
             <div className="flex flex-wrap gap-2">
               <span className="surface-pill rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
                 {headerEyebrow}
@@ -1625,38 +1650,51 @@ export default function DashboardHome() {
             </div>
             <div className="space-y-3">
               <h1 className="max-w-3xl text-3xl font-semibold leading-tight md:text-[2.75rem]">{headerTitle}</h1>
-              <p className="max-w-2xl text-sm leading-6 text-[var(--muted)]">{headerCopy}</p>
+              <p className="max-w-2xl text-sm leading-6 text-text-secondary">{headerCopy}</p>
             </div>
-            <div className="grid gap-3 sm:flex sm:flex-wrap">
+            <div className="flex flex-wrap items-center gap-3">
               {primaryAction ? (
                 <Link href={primaryAction.href}>
                   <Button size="lg">{primaryAction.action}</Button>
                 </Link>
               ) : null}
-              <Link href="/reports">
-                <Button variant="outline" size="lg">{t("dashboard.action.open_reports", "Open Reports")}</Button>
+              <Link href={heroSecondaryAction.href}>
+                <Button variant="outline" size="lg">{heroSecondaryAction.label}</Button>
               </Link>
-              <Button variant="ghost" size="lg" onClick={() => loadDashboard()}>
+              <Button variant="ghost" size="sm" onClick={() => loadDashboard()}>
                 {dashboardLoading
                   ? t("dashboard.action.refreshing", "Refreshing...")
                   : t("dashboard.action.refresh_board", "Refresh Board")}
               </Button>
               {queueCount > 0 ? (
-                <Button variant="outline" size="lg" onClick={handleSync} disabled={syncing}>
+                <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
                   {syncing
                     ? t("dashboard.sync.syncing", "Syncing...")
                     : `${t("dashboard.action.sync_queue", "Sync Queue")} (${queueCount})`}
                 </Button>
               ) : null}
-              <Button variant="ghost" size="lg" onClick={handleLogout}>
-                {t("shell.logout", "Logout")}
-              </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-3 text-xs text-text-secondary">
+              <span>
+                {t(
+                  "dashboard.hero.supporting_note",
+                  "Keep the hero focused on the next decision. Account and system controls stay in the left rail.",
+                )}
+              </span>
+              {dashboardLoading ? (
+                <span className="rounded-full border border-[rgba(77,163,255,0.22)] bg-[rgba(77,163,255,0.12)] px-3 py-1 font-semibold text-[rgba(77,163,255,0.92)]">
+                  Refreshing live data
+                </span>
+              ) : null}
             </div>
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
             {heroHighlights.map((item) => (
-              <div key={item.label} className="surface-panel-soft rounded-[1.35rem] p-4">
+              <div
+                key={item.label}
+                className="rounded-[1.35rem] border border-[rgba(255,255,255,0.09)] bg-[rgba(255,255,255,0.035)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)]"
+              >
                 <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">{item.label}</div>
                 <div className="mt-2 text-2xl font-semibold text-text-primary">{item.value}</div>
                 <div className="mt-1 text-xs leading-5 text-text-secondary">{item.detail}</div>
@@ -1665,63 +1703,8 @@ export default function DashboardHome() {
           </div>
         </section>
 
-        {roleLaunchGuide ? (
-          <Card className="overflow-hidden">
-            <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
-                  {roleLaunchGuide.eyebrow}
-                </div>
-                <CardTitle className="mt-1 text-xl">{roleLaunchGuide.title}</CardTitle>
-                <div className="mt-2 max-w-3xl text-sm text-[var(--muted)]">{roleLaunchGuide.detail}</div>
-              </div>
-              <Link href={roleLaunchGuide.steps[0]?.href || "/dashboard"}>
-                <Button variant="outline">{roleLaunchGuide.steps[0]?.action || "Open Workspace"}</Button>
-              </Link>
-            </CardHeader>
-            <CardContent className="grid gap-3 lg:grid-cols-3">
-              {roleLaunchGuide.steps.map((step, index) => (
-                <div key={`${step.href}-${index}`} className="surface-panel-soft rounded-[1.35rem] p-4">
-                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Step {index + 1}</div>
-                  <div className="mt-2 text-sm font-semibold text-[var(--text)]">{step.title}</div>
-                  <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
-                  <Link href={step.href} className="mt-3 inline-block text-xs text-[rgba(77,163,255,0.92)] underline underline-offset-4">
-                    {step.action}
-                  </Link>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        ) : null}
-
-        <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr_1fr]">
-          <Card className="overflow-hidden">
-            <CardHeader>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
-                {t("dashboard.section.now", "Now")}
-              </div>
-              <CardTitle className="text-xl">
-                {primaryAction?.title || t("dashboard.primary.fallback_title", "Start the next task")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-sm leading-6 text-text-secondary">
-                {primaryAction?.detail || t("dashboard.primary.fallback_detail", "Keep the floor moving with the next best action.")}
-              </div>
-              {primaryAction ? (
-                <Link href={primaryAction.href}>
-                  <Button size="lg">{primaryAction.action}</Button>
-                </Link>
-              ) : null}
-              <div className="surface-panel-soft rounded-[1.2rem] px-4 py-3 text-xs text-[var(--muted)]">
-                {online
-                  ? t("dashboard.network.live", "Network is live. Actions will sync in real time.")
-                  : t("dashboard.network.offline", "Offline mode active. Your entries save locally and sync later.")}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="overflow-hidden">
+        <section className="grid gap-4 xl:grid-cols-[1.08fr_0.94fr_0.98fr]">
+          <Card className={`overflow-hidden ${calmAttentionBoard ? "" : "border-[rgba(77,163,255,0.2)]"}`}>
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
                 {t("dashboard.section.attention", "Attention")}
@@ -1743,31 +1726,39 @@ export default function DashboardHome() {
                   <div className="mt-1 text-xl font-bold text-text-primary">{pendingShifts}</div>
                 </div>
               </div>
+              {calmAttentionBoard ? (
+                <div className="rounded-[1.2rem] border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-text-secondary">
+                  {t(
+                    "dashboard.attention.calm",
+                    "The board is calm right now. Use reports or analytics for a broader business check.",
+                  )}
+                </div>
+              ) : null}
               {topAnomaly ? (
-                <div className={`rounded-md border px-3 py-2 text-xs ${severityTone(topAnomaly.severity)}`}>
+                <div className={`rounded-[1.2rem] border px-4 py-3 text-xs ${severityTone(topAnomaly.severity)}`}>
                   <p className="uppercase tracking-wider opacity-80">{topAnomaly.anomaly_type.replaceAll("_", " ")}</p>
                   <p className="mt-1 font-medium">{topAnomaly.message}</p>
                 </div>
               ) : null}
-              {state.ocrSummary ? (
-                <div className="rounded-[1.4rem] border border-cyan-400/24 bg-[rgba(34,211,238,0.08)] p-4">
+              {shouldShowOcrAttention ? (
+                <div className="rounded-[1.3rem] border border-cyan-400/20 bg-[rgba(34,211,238,0.08)] p-4">
                   <div className="text-xs uppercase tracking-[0.18em] text-cyan-100">Trusted OCR</div>
                   <div className="mt-3 grid grid-cols-3 gap-3">
-                    <div className="surface-panel-soft rounded-[1.1rem] border-cyan-400/20 p-3">
-                      <div className="text-[11px] text-cyan-100/80">Approved docs</div>
-                      <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary.trusted_documents}</div>
+                    <div className="rounded-[1.05rem] border border-cyan-400/16 bg-[rgba(255,255,255,0.04)] p-3">
+                      <div className="text-[11px] text-cyan-100/80">Approved</div>
+                      <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary?.trusted_documents ?? 0}</div>
                     </div>
-                    <div className="surface-panel-soft rounded-[1.1rem] border-cyan-400/20 p-3">
+                    <div className="rounded-[1.05rem] border border-cyan-400/16 bg-[rgba(255,255,255,0.04)] p-3">
                       <div className="text-[11px] text-cyan-100/80">Trusted rows</div>
-                      <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary.trusted_rows}</div>
+                      <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary?.trusted_rows ?? 0}</div>
                     </div>
-                    <div className="surface-panel-soft rounded-[1.1rem] border-cyan-400/20 p-3">
-                      <div className="text-[11px] text-cyan-100/80">Pending docs</div>
-                      <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary.pending_documents}</div>
+                    <div className="rounded-[1.05rem] border border-cyan-400/16 bg-[rgba(255,255,255,0.04)] p-3">
+                      <div className="text-[11px] text-cyan-100/80">Pending</div>
+                      <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary?.pending_documents ?? 0}</div>
                     </div>
                   </div>
                   <div className="mt-3 text-xs text-cyan-50/80">
-                    {state.ocrSummary.trust_note} Last approved OCR update: {formatDateTime(state.ocrSummary.last_trusted_at || undefined, locale)}.
+                    {state.ocrSummary?.trust_note} Last approved OCR update: {formatDateTime(state.ocrSummary?.last_trusted_at || undefined, locale)}.
                   </div>
                 </div>
               ) : null}
@@ -1791,20 +1782,59 @@ export default function DashboardHome() {
           <Card className="overflow-hidden">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
+                {t("dashboard.section.now", "Now")}
+              </div>
+              <CardTitle className="text-xl">
+                {primaryAction?.title || t("dashboard.primary.fallback_title", "Start the next task")}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-sm leading-6 text-text-secondary">
+                {primaryAction?.detail || t("dashboard.primary.fallback_detail", "Keep the floor moving with the next best action.")}
+              </div>
+              {primaryAction ? (
+                <Link href={primaryAction.href}>
+                  <Button size="lg">{primaryAction.action}</Button>
+                </Link>
+              ) : null}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="surface-panel-soft rounded-[1.2rem] px-4 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Active Factory</div>
+                  <div className="mt-1 text-sm font-semibold text-text-primary">{activeFactory?.name || user.factory_name || "Factory"}</div>
+                </div>
+                <div className="surface-panel-soft rounded-[1.2rem] px-4 py-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Board State</div>
+                  <div className="mt-1 text-sm font-semibold text-text-primary">
+                    {dashboardLoading ? "Refreshing live" : online ? "Live sync ready" : "Offline safe"}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="overflow-hidden">
+            <CardHeader>
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
                 {t("dashboard.section.quick_actions", "Quick Actions")}
               </div>
               <CardTitle className="text-xl">{t("dashboard.quick.title", "No hunting, just move")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {secondaryActions.map((card, index) => (
-                <div key={`${card.eyebrow}-${card.href}`} className={index === 0 ? "surface-panel-strong rounded-[1.35rem] p-4" : "surface-panel-soft rounded-[1.35rem] p-4"}>
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{card.eyebrow}</div>
-                  <div className="mt-1 text-sm font-semibold">{card.title}</div>
-                  <div className="mt-1 text-xs text-[var(--muted)]">{card.detail}</div>
-                  <Link href={card.href} className="mt-3 inline-block text-xs text-[rgba(77,163,255,0.92)] underline underline-offset-4">
-                    {card.action}
-                  </Link>
-                </div>
+                <Link
+                  key={`${card.eyebrow}-${card.href}`}
+                  href={card.href}
+                  className={`${index === 0 ? "surface-panel-strong" : "surface-panel-soft"} block rounded-[1.35rem] p-4 transition hover:border-[rgba(77,163,255,0.24)]`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{card.eyebrow}</div>
+                      <div className="mt-1 text-sm font-semibold">{card.title}</div>
+                      <div className="mt-1 text-xs leading-5 text-text-secondary">{card.detail}</div>
+                    </div>
+                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[rgba(77,163,255,0.92)]">Open</span>
+                  </div>
+                </Link>
               ))}
               <div className="flex flex-wrap gap-2 pt-1">
                 {dashboardQuickLinks.map((link) => (
@@ -1857,37 +1887,178 @@ export default function DashboardHome() {
           </Card>
         ) : null}
 
+        <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <div>
+                <div className="text-sm text-[var(--muted)]">{t("dashboard.unread_alerts", "Unread Alerts")}</div>
+                <CardTitle className="text-xl">{state.alerts.length} {t("dashboard.active", "active")}</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {state.alerts.length ? (
+                state.alerts.slice(0, 5).map((alert) => (
+                  <div
+                    key={alert.id}
+                    className={`rounded-2xl border p-4 ${severityTone(alert.severity)}`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.2em] opacity-80">{alert.alert_type}</div>
+                        <div className="mt-1 text-sm font-medium">{alert.message}</div>
+                        <div className="mt-2 text-xs opacity-70">{formatDateTime(alert.created_at, locale)}</div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        className="px-3 py-1 text-xs"
+                        onClick={() => handleMarkAlertRead(alert.id)}
+                      >
+                        {t("dashboard.action.mark_read", "Mark read")}
+                      </Button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                  {t("dashboard.alert.none", "No unread alerts right now.")}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <div className="text-sm text-[var(--muted)]">{t("dashboard.recent_entries", "Recent Entries")}</div>
+              <CardTitle className="text-xl">{t("dashboard.recent_activity", "Latest production activity")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {recentEntries.length ? (
+                <>
+                  <div className="space-y-3 lg:hidden">
+                    {recentEntries.map((entry) => (
+                      <div key={entry.id} className="surface-panel-soft rounded-[1.25rem] p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-semibold text-text-primary">
+                              {formatDate(entry.date, locale)} - {formatShift(entry.shift)}
+                            </div>
+                            <div className="mt-1 text-xs text-text-secondary">{entry.department || "-"}</div>
+                          </div>
+                          <Link href={`/entry/${entry.id}`} className="text-xs font-semibold text-[var(--accent)] underline underline-offset-4">
+                            {t("common.open", "Open")}
+                          </Link>
+                        </div>
+                        <div className="mt-3 grid grid-cols-3 gap-3 text-xs text-text-secondary">
+                          <div>
+                            <div className="text-text-muted">Units</div>
+                            <div className="mt-1 text-sm font-semibold text-text-primary">{entry.units_produced} / {entry.units_target}</div>
+                          </div>
+                          <div>
+                            <div className="text-text-muted">Downtime</div>
+                            <div className="mt-1 text-sm font-semibold text-text-primary">{entry.downtime_minutes} {t("table.min", "min")}</div>
+                          </div>
+                          <div>
+                            <div className="text-text-muted">Submitted</div>
+                            <div className="mt-1 text-sm font-semibold text-text-primary">{formatDateTime(entry.created_at, locale)}</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden overflow-x-auto lg:block">
+                    <table className="min-w-full text-left text-sm">
+                      <thead className="text-[var(--muted)]">
+                        <tr className="border-b border-[var(--border)]">
+                          <th className="px-3 py-3 font-medium">{t("table.date", "Date")}</th>
+                          <th className="px-3 py-3 font-medium">{t("table.shift", "Shift")}</th>
+                          <th className="px-3 py-3 font-medium">{t("table.department", "Department")}</th>
+                          <th className="px-3 py-3 font-medium">{t("table.units", "Units")}</th>
+                          <th className="px-3 py-3 font-medium">{t("table.downtime", "Downtime")}</th>
+                          <th className="px-3 py-3 font-medium">{t("table.submitted", "Submitted")}</th>
+                          <th className="px-3 py-3 font-medium">{t("table.action", "Action")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentEntries.map((entry) => (
+                          <tr key={entry.id} className="border-b border-[var(--border)]/60">
+                            <td className="px-3 py-3">{formatDate(entry.date, locale)}</td>
+                            <td className="px-3 py-3">{formatShift(entry.shift)}</td>
+                            <td className="px-3 py-3">{entry.department || "-"}</td>
+                            <td className="px-3 py-3">
+                              {entry.units_produced} / {entry.units_target}
+                            </td>
+                            <td className="px-3 py-3">{entry.downtime_minutes} {t("table.min", "min")}</td>
+                            <td className="px-3 py-3 text-[var(--muted)]">{formatDateTime(entry.created_at, locale)}</td>
+                            <td className="px-3 py-3">
+                              <Link href={`/entry/${entry.id}`} className="text-[var(--accent)] underline underline-offset-4">
+                                {t("common.open", "Open")}
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              ) : (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                  {t("dashboard.entries.empty", "No entries submitted yet.")}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </section>
+
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {dashboardSnapshotCards.map((card, index) => (
-            <Card key={`${card.label}-${card.href}`}>
+            <Card key={`${card.label}-${card.href}`} className="h-full">
               <CardHeader>
                 <div className="text-sm text-[var(--muted)]">{card.label}</div>
                 <CardTitle>{card.value}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm text-[var(--muted)]">
+              <CardContent className="space-y-3 text-sm text-text-secondary">
                 <div>{card.detail}</div>
                 {index === dashboardSnapshotCards.length - 1 && user?.role === "operator" ? (
                   <div className="flex flex-wrap gap-3">
                     <Button variant="outline" className="px-4 py-2 text-xs" onClick={handleSync} disabled={syncing}>
                       {syncing ? t("dashboard.sync.syncing", "Syncing...") : t("dashboard.action.sync_now", "Sync Now")}
                     </Button>
-                    <Link href={card.href}>
-                      <Button variant="ghost" className="px-4 py-2 text-xs">
-                        {card.action}
-                      </Button>
+                    <Link href={card.href} className="inline-flex items-center text-xs font-semibold text-[rgba(77,163,255,0.92)] underline underline-offset-4">
+                      {card.action}
                     </Link>
                   </div>
                 ) : (
-                  <Link href={card.href}>
-                    <Button variant="outline" className="px-4 py-2 text-xs">
-                      {card.action}
-                    </Button>
+                  <Link href={card.href} className="inline-flex items-center text-xs font-semibold text-[rgba(77,163,255,0.92)] underline underline-offset-4">
+                    {card.action}
                   </Link>
                 )}
               </CardContent>
             </Card>
           ))}
         </section>
+
+        {roleLaunchGuide ? (
+          <details className="rounded-[1.5rem] border border-[var(--border)] bg-[rgba(16,20,32,0.72)] p-4">
+            <summary className="cursor-pointer list-none text-sm font-semibold uppercase tracking-[0.2em] text-[rgba(77,163,255,0.92)]">
+              {roleLaunchGuide.eyebrow} - {roleLaunchGuide.title}
+            </summary>
+            <div className="mt-4 space-y-4">
+              <div className="max-w-3xl text-sm text-text-secondary">{roleLaunchGuide.detail}</div>
+              <div className="grid gap-3 lg:grid-cols-3">
+                {roleLaunchGuide.steps.map((step, index) => (
+                  <div key={`${step.href}-${index}`} className="surface-panel-soft rounded-[1.25rem] p-4">
+                    <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Step {index + 1}</div>
+                    <div className="mt-2 text-sm font-semibold text-[var(--text)]">{step.title}</div>
+                    <div className="mt-2 text-sm text-text-secondary">{step.detail}</div>
+                    <Link href={step.href} className="mt-3 inline-block text-xs font-semibold text-[rgba(77,163,255,0.92)] underline underline-offset-4">
+                      {step.action}
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </details>
+        ) : null}
 
         <details className="rounded-[1.5rem] border border-[var(--border)] bg-[rgba(16,20,32,0.82)] p-4">
           <summary className="cursor-pointer list-none text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
@@ -2136,97 +2307,6 @@ export default function DashboardHome() {
           </div>
         </details>
 
-        <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <div className="text-sm text-[var(--muted)]">{t("dashboard.unread_alerts", "Unread Alerts")}</div>
-                <CardTitle className="text-xl">{state.alerts.length} {t("dashboard.active", "active")}</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {state.alerts.length ? (
-                state.alerts.slice(0, 5).map((alert) => (
-                  <div
-                    key={alert.id}
-                    className={`rounded-2xl border p-4 ${severityTone(alert.severity)}`}
-                  >
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-xs uppercase tracking-[0.2em] opacity-80">{alert.alert_type}</div>
-                        <div className="mt-1 text-sm font-medium">{alert.message}</div>
-                        <div className="mt-2 text-xs opacity-70">{formatDateTime(alert.created_at, locale)}</div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        className="px-3 py-1 text-xs"
-                        onClick={() => handleMarkAlertRead(alert.id)}
-                      >
-                        {t("dashboard.action.mark_read", "Mark read")}
-                      </Button>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  {t("dashboard.alert.none", "No unread alerts right now.")}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">{t("dashboard.recent_entries", "Recent Entries")}</div>
-              <CardTitle className="text-xl">{t("dashboard.recent_activity", "Latest production activity")}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {recentEntries.length ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-left text-sm">
-                    <thead className="text-[var(--muted)]">
-                      <tr className="border-b border-[var(--border)]">
-                        <th className="px-3 py-3 font-medium">{t("table.date", "Date")}</th>
-                        <th className="px-3 py-3 font-medium">{t("table.shift", "Shift")}</th>
-                        <th className="px-3 py-3 font-medium">{t("table.department", "Department")}</th>
-                        <th className="px-3 py-3 font-medium">{t("table.units", "Units")}</th>
-                        <th className="px-3 py-3 font-medium">{t("table.downtime", "Downtime")}</th>
-                        <th className="px-3 py-3 font-medium">{t("table.submitted", "Submitted")}</th>
-                        <th className="px-3 py-3 font-medium">{t("table.action", "Action")}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentEntries.map((entry) => (
-                        <tr key={entry.id} className="border-b border-[var(--border)]/60">
-                          <td className="px-3 py-3">{formatDate(entry.date, locale)}</td>
-                          <td className="px-3 py-3">{formatShift(entry.shift)}</td>
-                          <td className="px-3 py-3">{entry.department || "-"}</td>
-                          <td className="px-3 py-3">
-                            {entry.units_produced} / {entry.units_target}
-                          </td>
-                          <td className="px-3 py-3">{entry.downtime_minutes} {t("table.min", "min")}</td>
-                          <td className="px-3 py-3 text-[var(--muted)]">{formatDateTime(entry.created_at, locale)}</td>
-                          <td className="px-3 py-3">
-                            <Link href={`/entry/${entry.id}`} className="text-[var(--accent)] underline underline-offset-4">
-                              {t("common.open", "Open")}
-                            </Link>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  {t("dashboard.entries.empty", "No entries submitted yet.")}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </section>
-
-        {status ? <div className="text-sm text-green-400">{status}</div> : null}
-        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
     </main>
   );
