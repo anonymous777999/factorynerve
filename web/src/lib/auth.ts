@@ -1,4 +1,4 @@
-import { apiFetch, invalidateApiCache } from "@/lib/api";
+import { API_BASE_URL, apiFetch, ApiError, invalidateApiCache } from "@/lib/api";
 import { clearSession, primeSession } from "@/lib/session-store";
 import type { WorkflowTemplateSummary } from "@/lib/settings";
 
@@ -105,6 +105,10 @@ export type SessionSummary = {
 };
 
 const AUTH_EMAIL_TIMEOUT_MS = 30_000;
+const BACKEND_WAKE_TIMEOUT_MS = 25_000;
+const BACKEND_WAKE_INTERVAL_MS = 3_000;
+
+let backendWarmPromise: Promise<boolean> | null = null;
 
 function refreshAccountSession(payload: CurrentUser) {
   invalidateApiCache("session:me");
@@ -123,6 +127,57 @@ function sanitizeNextPath(raw?: string | null): string {
   return raw;
 }
 
+function delay(ms: number) {
+  return new Promise<void>((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+export async function warmBackendConnection(force = false): Promise<boolean> {
+  if (typeof window === "undefined") {
+    return true;
+  }
+
+  if (!force && backendWarmPromise) {
+    return backendWarmPromise;
+  }
+
+  const task = (async () => {
+    const deadline = Date.now() + BACKEND_WAKE_TIMEOUT_MS;
+
+    while (Date.now() < deadline) {
+      try {
+        const response = await fetch(`${API_BASE_URL}/observability/ready`, {
+          method: "GET",
+          cache: "no-store",
+          credentials: "include",
+        });
+
+        if (response.ok) {
+          return true;
+        }
+
+        const renderRouting = response.headers.get("x-render-routing") || "";
+        if (response.status !== 503 || !renderRouting.includes("hibernate-wake")) {
+          return false;
+        }
+      } catch {
+        // Retry a few times while the service wakes up.
+      }
+
+      await delay(BACKEND_WAKE_INTERVAL_MS);
+    }
+
+    return false;
+  })();
+
+  backendWarmPromise = task.finally(() => {
+    backendWarmPromise = null;
+  });
+
+  return backendWarmPromise;
+}
+
 export function startGoogleLogin(nextPath?: string | null) {
   if (typeof window === "undefined") {
     return;
@@ -132,16 +187,31 @@ export function startGoogleLogin(nextPath?: string | null) {
 }
 
 export async function login(email: string, password: string): Promise<AuthResponse> {
-  const response = await apiFetch<AuthResponse>(
-    "/auth/login",
-    {
-      method: "POST",
-      body: { email, password },
-    },
-    { cookieAuth: true },
-  );
-  primeSession(response);
-  return response;
+  const performLogin = async () => {
+    const response = await apiFetch<AuthResponse>(
+      "/auth/login",
+      {
+        method: "POST",
+        body: { email, password },
+      },
+      { cookieAuth: true },
+    );
+    primeSession(response);
+    return response;
+  };
+
+  try {
+    return await performLogin();
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 503) {
+      const woke = await warmBackendConnection(true);
+      if (woke) {
+        return performLogin();
+      }
+      throw new ApiError("FactoryNerve is waking up. Please try signing in again in a few seconds.", 503, error.detail);
+    }
+    throw error;
+  }
 }
 
 export async function register(payload: {

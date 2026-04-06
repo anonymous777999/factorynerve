@@ -2,9 +2,9 @@
 
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
-import { login, resendEmailVerification } from "@/lib/auth";
+import { login, resendEmailVerification, warmBackendConnection } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import { AuthShell } from "@/components/auth-shell";
 import { GoogleAuthButton } from "@/components/google-auth-button";
@@ -55,6 +55,10 @@ export default function LoginPage() {
     return raw;
   }, [searchParams]);
 
+  useEffect(() => {
+    void warmBackendConnection();
+  }, []);
+
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
@@ -66,7 +70,11 @@ export default function LoginPage() {
       router.replace(nextPath);
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.message);
+        setError(
+          err.status === 503
+            ? "FactoryNerve is waking up on the backend. Please wait a few seconds and try again."
+            : err.message,
+        );
       } else if (err instanceof Error && err.message.includes("Failed to fetch")) {
         setError("Backend not reachable. Check that FastAPI is running and NEXT_PUBLIC_API_BASE_URL is correct.");
       } else if (err instanceof Error) {
