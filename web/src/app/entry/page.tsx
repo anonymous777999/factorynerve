@@ -294,6 +294,7 @@ export default function EntryPage() {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [activeStep, setActiveStep] = useState<StepIndex>(0);
+  const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
   const queryAppliedRef = useRef(false);
 
   const loadShiftMap = useCallback(async (date: string) => {
@@ -894,6 +895,162 @@ export default function EntryPage() {
                   </button>
                 );
               })}
+            </div>
+
+            <div className="mt-6 lg:hidden">
+              <div className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(17,25,40,0.94),rgba(11,15,25,0.98))] p-4 shadow-[0_20px_50px_rgba(6,10,18,0.28)]">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Live Summary</div>
+                    <div className="mt-2 text-3xl font-semibold">{performance.toFixed(0)}%</div>
+                    <div className="mt-1 text-sm text-slate-300">{performanceLabel}</div>
+                  </div>
+                  <span
+                    className={`rounded-full border px-3 py-1 text-xs ${
+                      online
+                        ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
+                        : "border-amber-400/20 bg-amber-400/10 text-amber-200"
+                    }`}
+                  >
+                    {online ? "Live" : "Offline"}
+                  </span>
+                </div>
+
+                <div className="mt-4 h-2 rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-[linear-gradient(90deg,#22d3ee,#8b5cf6)] transition-all duration-300"
+                    style={{ width: `${clampProgress(performance)}%` }}
+                  />
+                </div>
+
+                <div className="mt-4 grid grid-cols-2 gap-3">
+                  <div className="rounded-[20px] border border-white/10 bg-white/5 px-4 py-3">
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Alerts</div>
+                    <div className="mt-2 text-lg font-semibold text-white">{alerts.length}</div>
+                  </div>
+                  <div className="rounded-[20px] border border-white/10 bg-white/5 px-4 py-3">
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Queue</div>
+                    <div className="mt-2 text-lg font-semibold text-white">{queueCount}</div>
+                  </div>
+                  <div className="rounded-[20px] border border-white/10 bg-white/5 px-4 py-3">
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Workforce</div>
+                    <div className="mt-2 text-lg font-semibold text-white">{workforceTotal}</div>
+                  </div>
+                  <div className="rounded-[20px] border border-white/10 bg-white/5 px-4 py-3">
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Draft Save</div>
+                    <div className="mt-2 text-lg font-semibold text-white">{draftReady ? "Active" : "Starting"}</div>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+                  {queueCount ? (
+                    <Button variant="outline" className="h-11 w-full sm:w-auto" onClick={handleSync} disabled={syncing}>
+                      {syncing ? "Syncing..." : "Sync Queue"}
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant="ghost"
+                    className="h-11 w-full sm:w-auto"
+                    onClick={() => setMobileSummaryOpen((current) => !current)}
+                  >
+                    {mobileSummaryOpen ? "Hide Full Summary" : "Show Full Summary"}
+                  </Button>
+                </div>
+
+                {mobileSummaryOpen ? (
+                  <div className="mt-4 space-y-4 border-t border-white/10 pt-4">
+                    <div className="rounded-[20px] border border-white/10 bg-white/5 px-4 py-4">
+                      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Production Snapshot</div>
+                      <div className="mt-3 grid gap-3 text-sm text-slate-300 sm:grid-cols-2">
+                        <div className="flex items-center justify-between gap-3">
+                          <span>Date</span>
+                          <span className="font-semibold text-white">{form.date}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span>Shift</span>
+                          <span className="font-semibold text-white">{formatShiftLabel(form.shift)}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span>Department</span>
+                          <span className="font-semibold text-white">{form.department || "-"}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span>Target</span>
+                          <span className="font-semibold text-white">{form.units_target}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span>Produced</span>
+                          <span className="font-semibold text-white">{form.units_produced}</span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span>Downtime</span>
+                          <span className="font-semibold text-white">{form.downtime_minutes} min</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rounded-[20px] border border-white/10 bg-white/5 px-4 py-4">
+                      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Alerts</div>
+                      {alerts.length ? (
+                        <div className="mt-3 space-y-3">
+                          {alerts.map((alert) => (
+                            <div
+                              key={alert}
+                              className="rounded-[16px] border border-amber-400/15 bg-amber-400/10 px-4 py-3 text-sm text-amber-100"
+                            >
+                              {alert}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="mt-3 rounded-[16px] border border-emerald-400/15 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
+                          No alerts right now.
+                        </div>
+                      )}
+                      {conflictId ? (
+                        <div className="mt-4 text-sm text-slate-300">
+                          Existing shift entry:{" "}
+                          <Link href={`/entry/${conflictId}`} className="text-cyan-200 underline underline-offset-4">
+                            Open #{conflictId}
+                          </Link>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    {traceabilitySummary.length ? (
+                      <div className="rounded-[20px] border border-white/10 bg-white/5 px-4 py-4">
+                        <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Traceability</div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {traceabilitySummary.map((item) => (
+                            <span
+                              key={item.label}
+                              className="rounded-full border border-white/10 bg-[#0E1524]/80 px-3 py-1 text-xs text-slate-200"
+                            >
+                              {item.label}: {item.value}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
+                    {submittedShifts.length ? (
+                      <div className="rounded-[20px] border border-white/10 bg-white/5 px-4 py-4">
+                        <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Already Submitted</div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {submittedShifts.map(([shift, entryId]) => (
+                            <span
+                              key={shift}
+                              className="rounded-full border border-white/10 bg-[#0E1524]/80 px-3 py-1 text-xs text-slate-200"
+                            >
+                              {formatShiftLabel(shift as ShiftValue)} #{entryId}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </div>
 
             <div className="mt-6 space-y-4">
