@@ -1027,7 +1027,7 @@ def get_attendance_employee_profiles(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[EmployeeProfileItem]:
-    require_role(current_user, UserRole.MANAGER)
+    require_role(current_user, UserRole.ADMIN)
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     users = _attendance_users_for_factory(db, factory_id=factory.factory_id, org_id=org_id)
@@ -1064,7 +1064,7 @@ def upsert_attendance_employee_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EmployeeProfileItem:
-    require_role(current_user, UserRole.MANAGER)
+    require_role(current_user, UserRole.ADMIN)
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     user = (
@@ -1168,7 +1168,7 @@ def get_shift_templates(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[ShiftTemplateItem]:
-    require_role(current_user, UserRole.MANAGER)
+    require_role(current_user, UserRole.ADMIN)
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     templates = _shift_templates_for_factory(db, org_id=org_id, factory_id=factory.factory_id)
@@ -1182,7 +1182,7 @@ def upsert_shift_template(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ShiftTemplateItem:
-    require_role(current_user, UserRole.MANAGER)
+    require_role(current_user, UserRole.ADMIN)
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
 

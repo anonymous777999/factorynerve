@@ -6,7 +6,8 @@ from http import HTTPStatus
 from backend.database import SessionLocal, init_db
 from backend.models.factory import Factory
 from backend.models.steel_stock_reconciliation import SteelStockReconciliation
-from backend.models.user import User
+from backend.models.user import User, UserRole
+from backend.models.user_factory_role import UserFactoryRole
 from tests.utils import register_user, set_org_plan_for_user_email
 
 
@@ -36,7 +37,11 @@ def _set_user_role(email: str, role: str) -> None:
     try:
         user = db.query(User).filter(User.email == email).first()
         assert user is not None
-        user.role = role
+        normalized_role = UserRole(role)
+        user.role = normalized_role
+        memberships = db.query(UserFactoryRole).filter(UserFactoryRole.user_id == user.id).all()
+        for membership in memberships:
+            membership.role = normalized_role
         db.add(user)
         db.commit()
     finally:

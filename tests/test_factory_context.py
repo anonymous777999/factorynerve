@@ -1,5 +1,8 @@
 from http import HTTPStatus
 
+from backend.database import SessionLocal
+from backend.models.user import UserRole
+from backend.models.user_factory_role import UserFactoryRole
 from tests.utils import register_user, set_org_plan_for_user_email, unique_email, unique_factory
 
 
@@ -408,6 +411,85 @@ def test_manager_cannot_update_factory_access_memberships(http_client):
     assert denied.status_code == HTTPStatus.FORBIDDEN, denied.text
 
 
+def test_manager_cannot_access_settings_admin_routes(http_client):
+    admin = register_user(http_client, role="admin")
+    manager = register_user(
+        http_client,
+        role="manager",
+        factory_name=admin["factory_name"],
+        company_code=admin["company_code"],
+    )
+
+    manager_headers = _auth_headers(manager["access_token"])
+
+    users = http_client.get("/settings/users", headers=manager_headers)
+    factory = http_client.get("/settings/factory", headers=manager_headers)
+    create_factory = http_client.post(
+        "/settings/factories",
+        headers=manager_headers,
+        json={
+            "name": unique_factory(),
+            "location": "Locked Plant",
+            "address": "Restricted Zone",
+            "timezone": "Asia/Kolkata",
+            "industry_type": "general",
+            "workflow_template_key": "general-ops-pack",
+        },
+    )
+
+    assert users.status_code == HTTPStatus.FORBIDDEN, users.text
+    assert factory.status_code == HTTPStatus.FORBIDDEN, factory.text
+    assert create_factory.status_code == HTTPStatus.FORBIDDEN, create_factory.text
+
+
+def test_factory_switch_uses_membership_role_for_permissions(http_client):
+    admin = register_user(http_client, role="admin")
+    headers = _auth_headers(admin["access_token"])
+    set_org_plan_for_user_email(admin["email"], "growth")
+
+    created = http_client.post(
+        "/settings/factories",
+        headers=headers,
+        json={
+            "name": unique_factory(),
+            "location": "Secondary Unit",
+            "address": "Plant 2",
+            "timezone": "Asia/Kolkata",
+            "industry_type": "general",
+            "workflow_template_key": "general-ops-pack",
+        },
+    )
+    assert created.status_code == HTTPStatus.CREATED, created.text
+    second_factory_id = created.json()["factory"]["factory_id"]
+
+    db = SessionLocal()
+    try:
+        second_membership = (
+            db.query(UserFactoryRole)
+            .filter(
+                UserFactoryRole.user_id == admin["user_id"],
+                UserFactoryRole.factory_id == second_factory_id,
+            )
+            .first()
+        )
+        assert second_membership is not None
+        second_membership.role = UserRole.OPERATOR
+        db.commit()
+    finally:
+        db.close()
+
+    switched = http_client.post(
+        "/auth/select-factory",
+        headers=headers,
+        json={"factory_id": second_factory_id},
+    )
+    assert switched.status_code == HTTPStatus.OK, switched.text
+    switched_headers = _auth_headers(switched.json()["access_token"])
+
+    settings_users = http_client.get("/settings/users", headers=switched_headers)
+    assert settings_users.status_code == HTTPStatus.FORBIDDEN, settings_users.text
+
+
 def test_manager_cannot_invite_admin_or_owner(http_client):
     admin = register_user(http_client, role="admin")
     manager = register_user(
@@ -441,7 +523,6 @@ def test_manager_cannot_invite_admin_or_owner(http_client):
 
     assert admin_invite.status_code == HTTPStatus.FORBIDDEN, admin_invite.text
     assert owner_invite.status_code == HTTPStatus.FORBIDDEN, owner_invite.text
-    assert "cannot assign admin or owner roles" in admin_invite.text.lower()
 
 
 def test_manager_cannot_promote_or_modify_privileged_roles(http_client):
@@ -474,8 +555,6 @@ def test_manager_cannot_promote_or_modify_privileged_roles(http_client):
 
     assert promote.status_code == HTTPStatus.FORBIDDEN, promote.text
     assert demote_admin.status_code == HTTPStatus.FORBIDDEN, demote_admin.text
-    assert "cannot assign admin or owner roles" in promote.text.lower()
-    assert "cannot modify admin or owner accounts" in demote_admin.text.lower()
 
 
 def test_role_update_noop_returns_clear_message(http_client):

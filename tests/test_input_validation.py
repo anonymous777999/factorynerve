@@ -52,14 +52,14 @@ def test_register_rejects_email_like_phone_number(http_client):
 
 
 def test_employee_profile_rejects_email_like_employee_code(http_client):
-    manager = register_user(http_client, role="manager")
-    headers = {"Authorization": f"Bearer {manager['access_token']}"}
+    admin = register_user(http_client, role="admin")
+    headers = {"Authorization": f"Bearer {admin['access_token']}"}
 
     response = http_client.post(
         "/attendance/settings/employees",
         headers=headers,
         json={
-            "user_id": manager["user_id"],
+            "user_id": admin["user_id"],
             "employee_code": "emp@example.com",
             "department": "Forge",
             "designation": "Operator",

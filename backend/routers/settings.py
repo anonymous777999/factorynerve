@@ -461,7 +461,7 @@ def get_factory_settings(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    require_role(current_user, UserRole.ADMIN)
     factory = _active_factory(db, current_user)
     factory_name = _active_factory_name(db, current_user)
     settings = db.query(FactorySettings).filter(FactorySettings.factory_name == factory_name).first()
@@ -505,7 +505,7 @@ def get_factory_templates(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    require_role(current_user, UserRole.ADMIN)
     factory = _active_factory(db, current_user)
     if industry_type:
         profile = get_factory_profile(industry_type)
@@ -528,7 +528,7 @@ def list_factories(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
-    require_role(current_user, UserRole.MANAGER)
+    require_role(current_user, UserRole.ADMIN)
     return _serialize_factory_summaries(db, factories=_org_factories(db, current_user), current_user=current_user)
 
 
@@ -539,7 +539,7 @@ def create_factory(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    require_role(current_user, UserRole.ADMIN)
     org_id = resolve_org_id(current_user)
     if not org_id:
         raise HTTPException(status_code=400, detail="Organization not found for current user.")
@@ -642,7 +642,7 @@ def get_control_tower(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    require_role(current_user, UserRole.ADMIN)
     org_id = resolve_org_id(current_user)
     factories = _org_factories(db, current_user)
     summaries = _serialize_factory_summaries(db, factories=factories, current_user=current_user)
@@ -673,7 +673,7 @@ def update_factory_settings(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    require_role(current_user, UserRole.ADMIN)
     try:
         factory = _active_factory(db, current_user)
         factory_id = factory.factory_id if factory else None
@@ -768,7 +768,7 @@ def list_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
-    require_role(current_user, UserRole.MANAGER)
+    require_role(current_user, UserRole.ADMIN)
     users = _scoped_users_query(db, current_user).all()
     plan_rows = db.query(UserPlan).filter(UserPlan.user_id.in_([u.id for u in users])).all() if users else []
     plan_map = {row.user_id: row.plan for row in plan_rows}
@@ -807,7 +807,7 @@ def invite_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    require_role(current_user, UserRole.ADMIN)
     _assert_role_assignment_allowed(db, current_user=current_user, target_role=payload.role)
     factory = _active_factory(db, current_user)
     factory_name = factory.name if factory else _active_factory_name(db, current_user)
@@ -1049,7 +1049,7 @@ def update_user_role(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    require_role(current_user, UserRole.ADMIN)
     org_id = resolve_org_id(current_user)
     if payload.role == UserRole.ACCOUNTANT and not has_org_feature(
         db,
@@ -1118,7 +1118,7 @@ def update_user_plan(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    require_role(current_user, UserRole.ADMIN)
     plan = normalize_plan(payload.plan)
     if plan not in ALLOWED_PLANS:
         raise HTTPException(status_code=400, detail=f"Plan must be one of: {', '.join(sorted(ALLOWED_PLANS))}.")
@@ -1192,7 +1192,7 @@ def deactivate_user(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    require_role(current_user, UserRole.ADMIN)
     org_id = resolve_org_id(current_user)
     factory_id = resolve_factory_id(db, current_user)
     user = _scoped_users_query(db, current_user).filter(User.id == user_id).first()

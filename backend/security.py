@@ -12,6 +12,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import set_committed_value
 
 from backend.database import get_db
 from backend.models.report import TokenBlacklist
@@ -100,15 +101,26 @@ def get_current_user(
     if org_id and user.org_id and org_id != user.org_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session invalidated. Please log in again.")
     active_factory_id = None
+    active_org_id = user.org_id
+    effective_role = user.role
     if factory_id:
         membership = (
             db.query(UserFactoryRole)
-            .filter(UserFactoryRole.user_id == user.id, UserFactoryRole.factory_id == factory_id)
+            .filter(
+                UserFactoryRole.user_id == user.id,
+                UserFactoryRole.factory_id == factory_id,
+            )
             .first()
         )
-        if membership:
-            active_factory_id = factory_id
-    setattr(user, "active_org_id", user.org_id)
+        if not membership:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session invalidated. Please log in again.")
+        if org_id and membership.org_id and membership.org_id != org_id:
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session invalidated. Please log in again.")
+        active_factory_id = factory_id
+        active_org_id = membership.org_id or user.org_id
+        effective_role = membership.role
+    set_committed_value(user, "role", effective_role)
+    setattr(user, "active_org_id", active_org_id)
     setattr(user, "active_factory_id", active_factory_id)
     return user
 

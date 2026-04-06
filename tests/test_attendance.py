@@ -94,16 +94,16 @@ def test_attendance_role_is_self_service_only(http_client):
 
 
 def test_attendance_settings_bootstrap_and_profile_save(http_client):
-    manager = register_user(http_client, role="manager")
-    manager_headers = _auth_headers(manager["access_token"])
+    admin = register_user(http_client, role="admin")
+    admin_headers = _auth_headers(admin["access_token"])
 
-    shifts = http_client.get("/attendance/settings/shifts", headers=manager_headers)
+    shifts = http_client.get("/attendance/settings/shifts", headers=admin_headers)
     assert shifts.status_code == HTTPStatus.OK, shifts.text
     shifts_payload = shifts.json()
     assert len(shifts_payload) >= 3
     assert any(item["shift_name"] == "morning" for item in shifts_payload)
 
-    employees = http_client.get("/attendance/settings/employees", headers=manager_headers)
+    employees = http_client.get("/attendance/settings/employees", headers=admin_headers)
     assert employees.status_code == HTTPStatus.OK, employees.text
     employees_payload = employees.json()
     assert len(employees_payload) >= 1
@@ -111,7 +111,7 @@ def test_attendance_settings_bootstrap_and_profile_save(http_client):
     target = employees_payload[0]
     saved = http_client.post(
         "/attendance/settings/employees",
-        headers=manager_headers,
+        headers=admin_headers,
         json={
             "user_id": target["user_id"],
             "employee_code": "EMP-1001",
@@ -287,18 +287,18 @@ def test_attendance_review_rejects_unknown_final_status(http_client):
 
 
 def test_attendance_profile_rejects_non_manager_reporting_manager(http_client):
-    manager = register_user(http_client, role="manager")
+    admin = register_user(http_client, role="admin")
     operator = register_user(
         http_client,
         role="operator",
-        factory_name=manager["factory_name"],
-        company_code=manager["company_code"],
+        factory_name=admin["factory_name"],
+        company_code=admin["company_code"],
     )
-    manager_headers = _auth_headers(manager["access_token"])
+    admin_headers = _auth_headers(admin["access_token"])
 
     response = http_client.post(
         "/attendance/settings/employees",
-        headers=manager_headers,
+        headers=admin_headers,
         json={
             "user_id": operator["user_id"],
             "employee_code": "EMP-2001",
