@@ -39,6 +39,13 @@ type OCRFields = {
 };
 type LastFields = OCRFields & { updatedAt: number };
 type CropPoint = { x: number; y: number };
+type ResultPreview = {
+  rows: string[][];
+  columns: number;
+  language: string;
+  avgConfidence: number | null;
+  rawColumnAdded: boolean;
+};
 
 const LAST_FIELD_STORAGE_KEY = "dpr:ocr:last-fields:v2";
 const OUTPUT_FILE_NAME = "factory-scan";
@@ -66,6 +73,11 @@ const PROCESSING_STAGE_COPY: Record<ProcessingStage, { label: string; detail: st
     progress: 96,
   },
 };
+const FILTER_OPTIONS: Array<{ value: FilterPreset; label: string; detail: string }> = [
+  { value: "original", label: "Original", detail: "Keep the raw capture for manual review or lightly marked pages." },
+  { value: "clean", label: "Clean", detail: "Best default for paper registers, moderate shadows, and standard handwriting." },
+  { value: "contrast", label: "Contrast", detail: "Pushes row separation harder for faded ink, glare, or low-contrast pages." },
+];
 
 function buildEnhancedFile(blob: Blob, originalName: string) {
   const base = originalName.replace(/\.[^.]+$/, "");
@@ -223,6 +235,20 @@ function hintsFromWarnings(warnings: string[] | undefined) {
     if (warning === "glare") hints.push("Glare detected");
   }
   return hints;
+}
+
+function summarizeCrop(points: CropPoint[]) {
+  const bounds = cropBounds(points);
+  return {
+    coverage: Math.max(0, Math.min(100, Math.round((bounds.right - bounds.left) * (bounds.bottom - bounds.top) * 100))),
+    width: Math.round((bounds.right - bounds.left) * 100),
+    height: Math.round((bounds.bottom - bounds.top) * 100),
+  };
+}
+
+function formatConfidence(value: number | null) {
+  if (value == null || Number.isNaN(value)) return "Not available";
+  return `${Math.round(value)}%`;
 }
 
 async function blobToUint8Array(blob: Blob) {
@@ -399,6 +425,7 @@ export default function OcrScanPage() {
   const [fields, setFields] = useState<OCRFields>({ date: "", material: "", quantity: "" });
   const [qualityHints, setQualityHints] = useState<string[]>([]);
   const [savedId, setSavedId] = useState<number | null>(null);
+  const [resultPreview, setResultPreview] = useState<ResultPreview | null>(null);
   const [lastFields, setLastFields] = useState<LastFields | null>(null);
 
   const [cropPoints, setCropPoints] = useState<CropPoint[]>(defaultCropPoints);
@@ -416,6 +443,7 @@ export default function OcrScanPage() {
   const basePreviewUrl = perspectiveUrl || originalUrl;
   const basePreviewFile = perspectiveFile || originalFile;
   const cropBox = useMemo(() => cropBounds(cropPoints), [cropPoints]);
+  const cropSummary = useMemo(() => summarizeCrop(cropPoints), [cropPoints]);
   const enhanceSettings = useMemo(
     () => buildEnhanceSettings(selectedFilter, perspectiveFile ? FULL_CROP : cropBox),
     [cropBox, perspectiveFile, selectedFilter],
@@ -449,6 +477,7 @@ export default function OcrScanPage() {
     setFields({ date: "", material: "", quantity: "" });
     setQualityHints([]);
     setSavedId(null);
+    setResultPreview(null);
     setCropPoints(defaultCropPoints());
     setActiveHandle(null);
     setCropNaturalSize({ width: 0, height: 0 });
@@ -661,6 +690,7 @@ export default function OcrScanPage() {
     setFields({ date: "", material: "", quantity: "" });
     setQualityHints([]);
     setSavedId(null);
+    setResultPreview(null);
     setCropPoints(defaultCropPoints());
     setCropNaturalSize({ width: 0, height: 0 });
     setSelectedFilter("clean");
@@ -704,6 +734,7 @@ export default function OcrScanPage() {
     setFields({ date: "", material: "", quantity: "" });
     setQualityHints([]);
     setSavedId(null);
+    setResultPreview(null);
     setCropPoints(defaultCropPoints());
     setCropNaturalSize({ width: 0, height: 0 });
     setSelectedFilter("clean");
@@ -785,6 +816,13 @@ export default function OcrScanPage() {
 
       setFields(nextFields);
       setQualityHints(hintsFromWarnings(result.warnings));
+      setResultPreview({
+        rows: reviewedRows,
+        columns: result.columns || Math.max(...reviewedRows.map((row) => row.length), 1),
+        language: result.used_language || "auto",
+        avgConfidence: result.avg_confidence ?? null,
+        rawColumnAdded: result.raw_column_added ?? false,
+      });
 
       const saved = await createOcrVerification({
         columns: result.columns || Math.max(...reviewedRows.map((row) => row.length), 1),
@@ -1027,147 +1065,241 @@ export default function OcrScanPage() {
       ) : null}
 
       {screen === "crop" ? (
-        <section className="flex min-h-screen flex-col bg-[#0B0F19]">
-          <div className="flex flex-1 items-center justify-center px-4 py-6">
-            <div className="flex h-full w-full max-w-5xl items-center justify-center overflow-hidden rounded-[2.2rem] bg-black/35">
-              <div
-                ref={cropSurfaceRef}
-                className="relative inline-block touch-none"
-                onPointerMove={handleOverlayMove}
-                onPointerUp={handleOverlayRelease}
-                onPointerCancel={handleOverlayRelease}
-                onPointerLeave={handleOverlayRelease}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={originalUrl}
-                  alt="Crop preview"
-                  className="block max-h-[82vh] max-w-full object-contain"
-                  onLoad={(event) => {
-                    setCropNaturalSize({
-                      width: event.currentTarget.naturalWidth,
-                      height: event.currentTarget.naturalHeight,
-                    });
-                  }}
-                />
-                <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                  <defs>
-                    <linearGradient id="crop-line" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#67e8f9" />
-                      <stop offset="100%" stopColor="#60a5fa" />
-                    </linearGradient>
-                  </defs>
-                  <polygon
-                    points={cropPoints.map((point) => `${point.x * 100},${point.y * 100}`).join(" ")}
-                    fill="rgba(14,165,233,0.1)"
-                    stroke="url(#crop-line)"
-                    strokeWidth="0.8"
-                  />
-                </svg>
-                {cropPoints.map((point, index) => (
-                  <button
-                    key={`${index}-${point.x}-${point.y}`}
-                    type="button"
-                    aria-label={`Move crop handle ${index + 1}`}
-                    className="absolute h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-cyan-300 shadow-[0_0_0_5px_rgba(6,182,212,0.18)]"
-                    style={{
-                      left: `${point.x * 100}%`,
-                      top: `${point.y * 100}%`,
-                    }}
-                    onPointerDown={(event) => {
-                      setActiveHandle(index);
-                      cropSurfaceRef.current?.setPointerCapture?.(event.pointerId);
-                      moveHandle(index, event.clientX, event.clientY);
-                    }}
-                  />
-                ))}
+        <section className="flex min-h-screen flex-col bg-[#0B0F19] px-5 py-6 sm:px-6 sm:py-8">
+          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+              <div>
+                <div className="inline-flex rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-100">
+                  Step 2 of 4
+                </div>
+                <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-white">Set the crop frame</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
+                  Drag the four corners to keep only the page. We will use this frame for perspective correction before enhancement and extraction.
+                </p>
+              </div>
+              <div className="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Crop health</div>
+                <div className="mt-3 space-y-3">
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                    <div className="text-xs text-slate-400">Coverage</div>
+                    <div className="mt-1 text-lg font-semibold text-white">{cropSummary.coverage}%</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                      <div className="text-xs text-slate-400">Width</div>
+                      <div className="mt-1 text-lg font-semibold text-white">{cropSummary.width}%</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                      <div className="text-xs text-slate-400">Height</div>
+                      <div className="mt-1 text-lg font-semibold text-white">{cropSummary.height}%</div>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
+                    Keep the corners tight to the page edge. If the crop feels off, retake the capture instead of forcing a bad frame.
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div
-            className="border-t border-white/10 bg-[rgba(8,11,18,0.8)] px-6 pt-4 backdrop-blur-xl"
-            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 18px)" }}
-          >
-            <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4">
-              <button
-                type="button"
-                className="text-base font-medium text-slate-300 transition hover:text-white"
-                onClick={handleRetake}
-              >
-                Retake
-              </button>
-              <button
-                type="button"
-                className="inline-flex min-w-[9rem] items-center justify-center rounded-full bg-[linear-gradient(135deg,#67e8f9,#60a5fa)] px-6 py-3 text-base font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={busyCrop || !cropNaturalSize.width}
-                onClick={() => void handleContinueFromCrop()}
-              >
-                {busyCrop ? "Working..." : "Continue"}
-              </button>
+            <div className="grid flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
+              <div className="flex min-h-[26rem] items-center justify-center rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(5,10,18,0.92),rgba(12,19,31,0.94))] p-3 shadow-[0_26px_80px_rgba(0,0,0,0.28)] sm:p-4">
+                <div
+                  ref={cropSurfaceRef}
+                  className="relative inline-block touch-none overflow-hidden rounded-[1.7rem] border border-white/10 bg-black/35"
+                  onPointerMove={handleOverlayMove}
+                  onPointerUp={handleOverlayRelease}
+                  onPointerCancel={handleOverlayRelease}
+                  onPointerLeave={handleOverlayRelease}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={originalUrl}
+                    alt="Crop preview"
+                    className="block max-h-[76vh] max-w-full object-contain"
+                    onLoad={(event) => {
+                      setCropNaturalSize({
+                        width: event.currentTarget.naturalWidth,
+                        height: event.currentTarget.naturalHeight,
+                      });
+                    }}
+                  />
+                  <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                    <defs>
+                      <linearGradient id="crop-line" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stopColor="#67e8f9" />
+                        <stop offset="100%" stopColor="#60a5fa" />
+                      </linearGradient>
+                      <mask id="crop-mask">
+                        <rect width="100" height="100" fill="white" />
+                        <polygon points={cropPoints.map((point) => `${point.x * 100},${point.y * 100}`).join(" ")} fill="black" />
+                      </mask>
+                    </defs>
+                    <rect width="100" height="100" fill="rgba(3,8,18,0.52)" mask="url(#crop-mask)" />
+                    <polygon
+                      points={cropPoints.map((point) => `${point.x * 100},${point.y * 100}`).join(" ")}
+                      fill="rgba(14,165,233,0.1)"
+                      stroke="url(#crop-line)"
+                      strokeWidth="0.8"
+                    />
+                  </svg>
+                  {cropPoints.map((point, index) => (
+                    <button
+                      key={`${index}-${point.x}-${point.y}`}
+                      type="button"
+                      aria-label={`Move crop handle ${index + 1}`}
+                      className="absolute h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-cyan-300 shadow-[0_0_0_6px_rgba(6,182,212,0.18)]"
+                      style={{
+                        left: `${point.x * 100}%`,
+                        top: `${point.y * 100}%`,
+                      }}
+                      onPointerDown={(event) => {
+                        setActiveHandle(index);
+                        cropSurfaceRef.current?.setPointerCapture?.(event.pointerId);
+                        moveHandle(index, event.clientX, event.clientY);
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-4 rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4 sm:p-5">
+                <div>
+                  <div className="text-lg font-semibold text-white">Crop guidance</div>
+                  <div className="mt-1 text-sm text-slate-400">Make extraction easier before filters run.</div>
+                </div>
+                <div className="space-y-3">
+                  {[
+                    "Line the crop corners with the real paper edges, not the table edges only.",
+                    "Keep labels, dates, and quantity columns inside the frame.",
+                    "If the page is badly tilted or cut off, retake the photo now.",
+                  ].map((item) => (
+                    <div key={item} className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
+                      {item}
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-[1.5rem] border border-cyan-300/18 bg-cyan-300/10 p-4 text-sm text-cyan-50">
+                  After this step we attempt perspective correction automatically. A clean crop usually makes the filter stage much more accurate.
+                </div>
+                <div className="flex flex-col gap-3 pt-2">
+                  <button
+                    type="button"
+                    className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#67e8f9,#60a5fa)] px-6 py-3.5 text-base font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={busyCrop || !cropNaturalSize.width}
+                    onClick={() => void handleContinueFromCrop()}
+                  >
+                    {busyCrop ? "Correcting perspective..." : "Continue to enhancement"}
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full text-sm font-medium text-slate-400 transition hover:text-white"
+                    onClick={handleRetake}
+                  >
+                    Retake capture
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         </section>
       ) : null}
 
       {screen === "enhance" ? (
-        <section className="flex min-h-screen flex-col bg-[#0B0F19]">
-          <div className="flex flex-1 items-center justify-center px-4 py-6">
-            <div className="flex h-full w-full max-w-5xl items-center justify-center overflow-hidden rounded-[2.2rem] bg-black/35">
-              {displayEnhanceUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={displayEnhanceUrl} alt="Enhanced preview" className="max-h-[82vh] w-full object-contain" />
-              ) : null}
-              {busyEnhance ? (
-                <div className="absolute inset-0 grid place-items-center bg-[rgba(11,15,25,0.36)]">
-                  <SpinnerIcon />
+        <section className="flex min-h-screen flex-col bg-[#0B0F19] px-5 py-6 sm:px-6 sm:py-8">
+          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5">
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+              <div>
+                <div className="inline-flex rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-100">
+                  Step 3 of 4
                 </div>
-              ) : null}
+                <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-white">Tune the scan for extraction</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
+                  Pick the version that gives the clearest rows and handwriting. We keep the OCR logic the same, but this step improves what we send into it.
+                </p>
+              </div>
+              <div className="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Current enhancement</div>
+                <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                  <div className="text-xs text-slate-400">Preset</div>
+                  <div className="mt-1 text-lg font-semibold text-white">
+                    {FILTER_OPTIONS.find((item) => item.value === selectedFilter)?.label || "Clean"}
+                  </div>
+                </div>
+                <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
+                  {FILTER_OPTIONS.find((item) => item.value === selectedFilter)?.detail}
+                </div>
+                <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
+                  {busyEnhance ? "Refreshing preview..." : "Preview is ready. Compare contrast before moving to output."}
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div className="border-t border-white/10 bg-[rgba(8,11,18,0.84)] backdrop-blur-xl">
-            <div className="mx-auto flex w-full max-w-5xl gap-3 overflow-x-auto px-4 py-4">
-              {[
-                { value: "original" as const, label: "Original" },
-                { value: "clean" as const, label: "Clean" },
-                { value: "contrast" as const, label: "Contrast" },
-              ].map((item) => (
-                <button
-                  key={item.value}
-                  type="button"
-                  className={cn(
-                    "shrink-0 rounded-full border px-5 py-3 text-sm font-semibold transition",
-                    selectedFilter === item.value
-                      ? "border-cyan-300/35 bg-cyan-300/14 text-white"
-                      : "border-white/10 bg-white/6 text-slate-300 hover:bg-white/10 hover:text-white",
-                  )}
-                  onClick={() => setSelectedFilter(item.value)}
-                >
-                  {item.label}
-                </button>
-              ))}
-            </div>
-            <div
-              className="border-t border-white/10 px-6 pt-4"
-              style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 18px)" }}
-            >
-              <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-4">
-                <button
-                  type="button"
-                  className="text-base font-medium text-slate-300 transition hover:text-white"
-                  onClick={() => setScreen("crop")}
-                >
-                  Back
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex min-w-[9rem] items-center justify-center rounded-full bg-[linear-gradient(135deg,#67e8f9,#60a5fa)] px-6 py-3 text-base font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={busyEnhance}
-                  onClick={() => setScreen("output")}
-                >
-                  Continue
-                </button>
+            <div className="grid flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
+              <div className="relative flex min-h-[26rem] items-center justify-center overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(5,10,18,0.92),rgba(12,19,31,0.94))] p-3 shadow-[0_26px_80px_rgba(0,0,0,0.28)] sm:p-4">
+                <div className="absolute left-5 top-5 z-10 rounded-full border border-white/10 bg-[rgba(8,14,24,0.74)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+                  {selectedFilter === "original" ? "Raw view" : "Enhanced preview"}
+                </div>
+                <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-[1.7rem] border border-white/10 bg-black/35">
+                  {displayEnhanceUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={displayEnhanceUrl} alt="Enhanced preview" className="max-h-[76vh] w-full object-contain" />
+                  ) : null}
+                </div>
+                {busyEnhance ? (
+                  <div className="absolute inset-0 grid place-items-center bg-[rgba(11,15,25,0.42)] backdrop-blur-sm">
+                    <div className="rounded-[1.5rem] border border-white/10 bg-[rgba(8,14,24,0.78)] px-5 py-4 text-center shadow-[0_18px_55px_rgba(0,0,0,0.28)]">
+                      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-cyan-200">
+                        <SpinnerIcon />
+                      </div>
+                      <div className="mt-3 text-sm font-semibold text-white">Applying {selectedFilter} preset</div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="space-y-4 rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4 sm:p-5">
+                <div>
+                  <div className="text-lg font-semibold text-white">Filter presets</div>
+                  <div className="mt-1 text-sm text-slate-400">Choose the preview that gives the best table separation.</div>
+                </div>
+                <div className="space-y-3">
+                  {FILTER_OPTIONS.map((item) => (
+                    <button
+                      key={item.value}
+                      type="button"
+                      className={cn(
+                        "w-full rounded-[1.4rem] border px-4 py-4 text-left transition",
+                        selectedFilter === item.value
+                          ? "border-cyan-300/35 bg-cyan-300/12 shadow-[0_18px_40px_rgba(34,211,238,0.12)]"
+                          : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08]",
+                      )}
+                      onClick={() => setSelectedFilter(item.value)}
+                    >
+                      <div className="text-base font-semibold text-white">{item.label}</div>
+                      <div className="mt-1 text-sm text-slate-400">{item.detail}</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="rounded-[1.5rem] border border-cyan-300/18 bg-cyan-300/10 p-4 text-sm text-cyan-50">
+                  If the cleaned version starts hiding faint handwriting, switch back to Original. If rows still blend together, try Contrast.
+                </div>
+                <div className="flex flex-col gap-3 pt-2">
+                  <button
+                    type="button"
+                    className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#67e8f9,#60a5fa)] px-6 py-3.5 text-base font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={busyEnhance}
+                    onClick={() => setScreen("output")}
+                  >
+                    Continue to output
+                  </button>
+                  <button
+                    type="button"
+                    className="w-full text-sm font-medium text-slate-400 transition hover:text-white"
+                    onClick={() => setScreen("crop")}
+                  >
+                    Back to crop
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -1353,12 +1485,32 @@ export default function OcrScanPage() {
                       {savedId ? `Draft #${savedId}` : "Draft pending"}
                     </div>
                   </div>
-                  <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_16rem]">
-                    <div className="overflow-hidden rounded-[1.4rem] border border-white/8 bg-black/30">
+                  <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+                    <div className="space-y-4">
+                      <div className="overflow-hidden rounded-[1.4rem] border border-white/8 bg-black/30">
                       {displayEnhanceUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img src={displayEnhanceUrl} alt="Processed scan preview" className="max-h-[28rem] w-full object-contain" />
                       ) : null}
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Language</div>
+                          <div className="mt-2 text-sm font-medium text-white">{resultPreview?.language || "auto"}</div>
+                        </div>
+                        <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Confidence</div>
+                          <div className="mt-2 text-sm font-medium text-white">{formatConfidence(resultPreview?.avgConfidence ?? null)}</div>
+                        </div>
+                        <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Columns</div>
+                          <div className="mt-2 text-sm font-medium text-white">{resultPreview?.columns || 0}</div>
+                        </div>
+                        <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Raw helper column</div>
+                          <div className="mt-2 text-sm font-medium text-white">{resultPreview?.rawColumnAdded ? "Added" : "Not needed"}</div>
+                        </div>
+                      </div>
                     </div>
                     <div className="space-y-3">
                       {[
@@ -1372,6 +1524,32 @@ export default function OcrScanPage() {
                           <div className="mt-2 text-sm font-medium text-white">{value}</div>
                         </div>
                       ))}
+                      <div className="overflow-hidden rounded-[1.4rem] border border-white/8 bg-white/[0.04]">
+                        <div className="border-b border-white/8 px-4 py-3">
+                          <div className="text-sm font-semibold text-white">Extracted preview</div>
+                          <div className="mt-1 text-xs text-slate-400">First rows from the corrected draft that will feed review and export.</div>
+                        </div>
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full text-left text-sm">
+                            <tbody>
+                              {(resultPreview?.rows.slice(0, 4) || []).map((row, rowIndex) => (
+                                <tr key={`preview-row-${rowIndex}`} className="border-b border-white/6 last:border-b-0">
+                                  {row.slice(0, Math.min(resultPreview?.columns || row.length, 5)).map((cell, cellIndex) => (
+                                    <td key={`preview-cell-${rowIndex}-${cellIndex}`} className="max-w-[9rem] px-4 py-3 align-top text-slate-200">
+                                      <div className="truncate">{cell || "-"}</div>
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                              {!resultPreview?.rows.length ? (
+                                <tr>
+                                  <td className="px-4 py-4 text-slate-400">Preview rows are not available yet.</td>
+                                </tr>
+                              ) : null}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
