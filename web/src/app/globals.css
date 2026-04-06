@@ -41,8 +41,6 @@
   --card: #111827;
   --card-elevated: #1f2937;
   --card-strong: rgba(10, 18, 29, 0.74);
-  --card-frost: rgba(13, 22, 34, 0.82);
-  --card-highlight: rgba(77, 163, 255, 0.12);
 
   /* Text Colors */
   --text-primary: #f3f4f6;
@@ -201,74 +199,6 @@ input[type="checkbox"] {
     background: rgba(255, 255, 255, 0.045);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
     backdrop-filter: blur(18px);
-  }
-
-  .surface-stage {
-    position: relative;
-    overflow: hidden;
-    border: 1px solid var(--border-strong);
-    background:
-      radial-gradient(circle at 14% 16%, rgba(77, 163, 255, 0.16), transparent 24%),
-      radial-gradient(circle at 88% 18%, rgba(20, 184, 166, 0.1), transparent 22%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)),
-      var(--card-frost);
-    box-shadow: var(--shadow-xl);
-    backdrop-filter: blur(24px);
-  }
-
-  .surface-stage::before {
-    content: "";
-    position: absolute;
-    inset: auto auto -6rem -4rem;
-    height: 14rem;
-    width: 14rem;
-    border-radius: 999px;
-    background: radial-gradient(circle, rgba(245, 158, 11, 0.16), transparent 68%);
-    pointer-events: none;
-  }
-
-  .surface-stage::after {
-    content: "";
-    position: absolute;
-    inset: -7rem -5rem auto auto;
-    height: 16rem;
-    width: 16rem;
-    border-radius: 999px;
-    background: radial-gradient(circle, rgba(77, 163, 255, 0.14), transparent 68%);
-    pointer-events: none;
-  }
-
-  .surface-stage > * {
-    position: relative;
-    z-index: 1;
-  }
-
-  .metric-tile {
-    border: 1px solid var(--border);
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
-      rgba(11, 20, 31, 0.88);
-    box-shadow:
-      inset 0 1px 0 rgba(255, 255, 255, 0.05),
-      0 18px 44px rgba(3, 8, 18, 0.22);
-    backdrop-filter: blur(18px);
-  }
-
-  .signal-note {
-    border: 1px solid var(--border);
-    background:
-      linear-gradient(180deg, rgba(77, 163, 255, 0.08), rgba(77, 163, 255, 0.02)),
-      rgba(10, 18, 29, 0.76);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(18px);
-  }
-
-  .eyebrow-chip {
-    border: 1px solid rgba(77, 163, 255, 0.28);
-    background: rgba(77, 163, 255, 0.1);
-    color: rgba(213, 235, 255, 0.96);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-    backdrop-filter: blur(16px);
   }
 
   .safe-bottom-pad {

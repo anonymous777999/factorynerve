@@ -950,7 +950,7 @@ export default function OcrScanPage() {
 
           <div className="relative z-10 px-5 pt-6 sm:px-7 sm:pt-7">
             <div className="mx-auto w-full max-w-5xl">
-              <div className="eyebrow-chip inline-flex items-center gap-2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em]">
+              <div className="inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-400/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-100">
                 OCR Capture Desk
               </div>
               <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_18rem] md:items-start">
@@ -962,20 +962,20 @@ export default function OcrScanPage() {
                     Capture from the camera or upload from the gallery, then crop, enhance, review, and export the same trusted draft to Excel or PDF.
                   </p>
                 </div>
-                <div className="metric-tile rounded-[1.6rem] p-4">
+                <div className="rounded-[1.6rem] border border-white/10 bg-[rgba(8,14,24,0.62)] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.26)] backdrop-blur-xl">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Live readiness</div>
                   <div className="mt-3 space-y-3 text-sm text-slate-200">
-                    <div className="signal-note flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-2.5">
                       <span>Camera</span>
                       <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", cameraReady ? "bg-emerald-400/16 text-emerald-100" : "bg-amber-400/16 text-amber-100")}>
                         {cameraReady ? "Live" : "Upload fallback"}
                       </span>
                     </div>
-                    <div className="signal-note flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-2.5">
                       <span>Export formats</span>
                       <span className="text-xs text-slate-300">Excel + PDF</span>
                     </div>
-                    <div className="signal-note flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5">
+                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-2.5">
                       <span>Review path</span>
                       <span className="text-xs text-slate-300">Draft before trust</span>
                     </div>
@@ -992,7 +992,7 @@ export default function OcrScanPage() {
               <div className="absolute right-5 top-5 h-10 w-10 rounded-tr-[1.2rem] border-r-[3px] border-t-[3px] border-cyan-300" />
               <div className="absolute bottom-5 left-5 h-10 w-10 rounded-bl-[1.2rem] border-b-[3px] border-l-[3px] border-cyan-300" />
               <div className="absolute bottom-5 right-5 h-10 w-10 rounded-br-[1.2rem] border-b-[3px] border-r-[3px] border-cyan-300" />
-              <div className="eyebrow-chip absolute left-1/2 top-4 -translate-x-1/2 rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em]">
+              <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full border border-white/12 bg-[rgba(8,14,24,0.68)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-200">
                 Align the full page
               </div>
               <div className="absolute inset-x-6 top-1/2 h-px -translate-y-1/2 bg-[linear-gradient(90deg,transparent,rgba(34,211,238,0.95),transparent)] shadow-[0_0_24px_rgba(34,211,238,0.7)] animate-pulse" />
@@ -1004,7 +1004,7 @@ export default function OcrScanPage() {
             style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
           >
             <div className="mx-auto w-full max-w-5xl px-5 pt-5 sm:px-6">
-              <div className="surface-stage rounded-[2rem] border-0 p-4 shadow-none">
+              <div className="rounded-[2rem] border border-white/10 bg-[rgba(8,14,24,0.68)] p-4 shadow-[0_22px_70px_rgba(0,0,0,0.26)]">
                 <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                   <div>
                     <div className="text-lg font-semibold tracking-[-0.02em] text-white">Capture or upload</div>
@@ -1013,8 +1013,8 @@ export default function OcrScanPage() {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 text-xs text-slate-400">
-                    <span className="signal-note rounded-full px-3 py-1">PNG / JPG / HEIC</span>
-                    <span className="signal-note rounded-full px-3 py-1">Factory-safe review flow</span>
+                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">PNG / JPG / HEIC</span>
+                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">Factory-safe review flow</span>
                   </div>
                 </div>
                 <div className="mt-5 flex items-end justify-between gap-3 sm:gap-5">
@@ -1072,7 +1072,7 @@ export default function OcrScanPage() {
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
           <div>
-            <div className="eyebrow-chip inline-flex rounded-lg px-3 py-1 text-xs font-semibold uppercase tracking-widest">
+            <div className="inline-flex rounded-lg border border-color-primary/20 bg-color-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-color-primary">
               Step 2 of 4
             </div>
 
@@ -1081,24 +1081,24 @@ export default function OcrScanPage() {
               Drag the four corners to keep only the page. We will use this frame for perspective correction before enhancement and extraction.
             </p>
           </div>
-          <div className="metric-tile rounded-[1.6rem] p-4">
+          <div className="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4">
             <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Crop health</div>
             <div className="mt-3 space-y-3">
-              <div className="signal-note rounded-2xl px-4 py-3">
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
                 <div className="text-xs text-slate-400">Coverage</div>
                 <div className="mt-1 text-lg font-semibold text-white">{cropSummary.coverage}%</div>
               </div>
               <div className="grid grid-cols-2 gap-3">
-                <div className="signal-note rounded-2xl px-4 py-3">
+                <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
                   <div className="text-xs text-slate-400">Width</div>
                   <div className="mt-1 text-lg font-semibold text-white">{cropSummary.width}%</div>
                 </div>
-                <div className="signal-note rounded-2xl px-4 py-3">
+                <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
                   <div className="text-xs text-slate-400">Height</div>
                   <div className="mt-1 text-lg font-semibold text-white">{cropSummary.height}%</div>
                 </div>
               </div>
-              <div className="signal-note rounded-2xl px-4 py-3 text-sm text-slate-300">
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
                 Keep the corners tight to the page edge. If the crop feels off, retake the capture instead of forcing a bad frame.
               </div>
             </div>
@@ -1166,7 +1166,7 @@ export default function OcrScanPage() {
             </div>
           </div>
 
-          <div className="metric-tile space-y-4 rounded-[1.7rem] p-4 sm:p-5">
+          <div className="space-y-4 rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4 sm:p-5">
             <div>
               <div className="text-lg font-semibold text-white">Crop guidance</div>
               <div className="mt-1 text-sm text-slate-400">Make extraction easier before filters run.</div>
@@ -1177,12 +1177,12 @@ export default function OcrScanPage() {
                 "Keep labels, dates, and quantity columns inside the frame.",
                 "If the page is badly tilted or cut off, retake the photo now.",
               ].map((item) => (
-                <div key={item} className="signal-note rounded-2xl px-4 py-3 text-sm text-slate-300">
+                <div key={item} className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
                   {item}
                 </div>
               ))}
             </div>
-            <div className="signal-note rounded-[1.5rem] border-cyan-300/18 p-4 text-sm text-cyan-50">
+            <div className="rounded-[1.5rem] border border-cyan-300/18 bg-cyan-300/10 p-4 text-sm text-cyan-50">
               After this step we attempt perspective correction automatically. A clean crop usually makes the filter stage much more accurate.
             </div>
             <div className="flex flex-col gap-3 pt-2">
@@ -1215,7 +1215,7 @@ export default function OcrScanPage() {
       <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5">
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
           <div>
-            <div className="eyebrow-chip inline-flex rounded-lg px-3 py-1 text-xs font-semibold uppercase tracking-widest">
+            <div className="inline-flex rounded-lg border border-color-primary/20 bg-color-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-color-primary">
               Step 3 of 4
             </div>
 
@@ -1224,18 +1224,18 @@ export default function OcrScanPage() {
               Pick the version that gives the clearest rows and handwriting. We keep the OCR logic the same, but this step improves what we send into it.
             </p>
           </div>
-          <div className="metric-tile rounded-[1.6rem] p-4">
+          <div className="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4">
             <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Current enhancement</div>
-            <div className="signal-note mt-3 rounded-2xl px-4 py-3">
+            <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
               <div className="text-xs text-slate-400">Preset</div>
               <div className="mt-1 text-lg font-semibold text-white">
                 {FILTER_OPTIONS.find((item) => item.value === selectedFilter)?.label || "Clean"}
               </div>
             </div>
-            <div className="signal-note mt-3 rounded-2xl px-4 py-3 text-sm text-slate-300">
+            <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
               {FILTER_OPTIONS.find((item) => item.value === selectedFilter)?.detail}
             </div>
-            <div className="signal-note mt-3 rounded-2xl px-4 py-3 text-sm text-slate-300">
+            <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
               {busyEnhance ? "Refreshing preview..." : "Preview is ready. Compare contrast before moving to output."}
             </div>
           </div>
@@ -1264,7 +1264,7 @@ export default function OcrScanPage() {
             ) : null}
           </div>
 
-          <div className="metric-tile space-y-4 rounded-[1.7rem] p-4 sm:p-5">
+          <div className="space-y-4 rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4 sm:p-5">
             <div>
               <div className="text-lg font-semibold text-white">Filter presets</div>
               <div className="mt-1 text-sm text-slate-400">Choose the preview that gives the best table separation.</div>
@@ -1287,7 +1287,7 @@ export default function OcrScanPage() {
                 </button>
               ))}
             </div>
-            <div className="signal-note rounded-[1.5rem] border-cyan-300/18 p-4 text-sm text-cyan-50">
+            <div className="rounded-[1.5rem] border border-cyan-300/18 bg-cyan-300/10 p-4 text-sm text-cyan-50">
               If the cleaned version starts hiding faint handwriting, switch back to Original. If rows still blend together, try Contrast.
             </div>
             <div className="flex flex-col gap-3 pt-2">
@@ -1317,10 +1317,10 @@ export default function OcrScanPage() {
 {
   screen === "output" ? (
     <section className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-6">
-      <div className="surface-stage w-full max-w-5xl rounded-[2rem] border-0 p-5 shadow-none sm:p-7">
+      <div className="w-full max-w-5xl rounded-[2rem] border border-border bg-card p-5 shadow-[0_26px_80px_rgba(0,0,0,0.34)] sm:p-7">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)]">
           <div className="space-y-4">
-            <div className="eyebrow-chip inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em]">
+            <div className="inline-flex rounded-full border border-border bg-color-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-color-primary">
               Step 4 of 4
             </div>
             <div>
@@ -1329,7 +1329,7 @@ export default function OcrScanPage() {
                 We already cleaned the image. Now choose whether this draft should leave the scan desk as an Excel sheet for correction workflows or as a PDF snapshot for sharing.
               </p>
             </div>
-            <div className="metric-tile overflow-hidden rounded-[1.7rem]">
+            <div className="overflow-hidden rounded-[1.7rem] border border-border bg-card-elevated">
               <div className="flex items-center justify-between border-b border-border px-4 py-3">
                 <div>
                   <div className="text-sm font-semibold text-text-primary">{processFile?.name || "Current scan"}</div>
@@ -1352,7 +1352,7 @@ export default function OcrScanPage() {
                     "The first row will prefill date, material, and quantity.",
                     "Exports still route through the review draft for trust.",
                   ].map((item) => (
-                    <div key={item} className="signal-note rounded-2xl px-4 py-3 text-sm text-text-secondary">
+                    <div key={item} className="rounded-2xl border border-border bg-card-elevated px-4 py-3 text-sm text-text-secondary">
                       {item}
                     </div>
                   ))}
@@ -1361,7 +1361,7 @@ export default function OcrScanPage() {
             </div>
           </div>
 
-          <div className="metric-tile space-y-4 rounded-[1.7rem] p-4 sm:p-5">
+          <div className="space-y-4 rounded-[1.7rem] border border-border bg-card-elevated p-4 sm:p-5">
             <div>
               <div className="text-lg font-semibold text-text-primary">Output destination</div>
               <div className="mt-1 text-sm text-text-muted">Choose what the operator needs next.</div>
@@ -1421,8 +1421,8 @@ export default function OcrScanPage() {
 {
   screen === "processing" ? (
     <section className="grid min-h-screen place-items-center px-5 py-10 sm:px-6">
-      <div className="surface-stage w-full max-w-3xl rounded-[2rem] border-0 p-6 text-center shadow-none sm:p-8">
-        <div className="eyebrow-chip inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em]">
+      <div className="w-full max-w-3xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,27,0.94),rgba(8,13,22,0.97))] p-6 text-center shadow-[0_26px_80px_rgba(0,0,0,0.34)] sm:p-8">
+        <div className="inline-flex rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-100">
           AI Processing
         </div>
         <div className="mx-auto mt-6 w-full max-w-sm">
@@ -1475,7 +1475,7 @@ export default function OcrScanPage() {
 {
   screen === "result" ? (
     <section className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-6">
-      <div className="surface-stage w-full max-w-5xl rounded-[2rem] border-0 p-5 shadow-none sm:p-7">
+      <div className="w-full max-w-5xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,27,0.94),rgba(8,13,22,0.97))] p-5 shadow-[0_26px_80px_rgba(0,0,0,0.34)] sm:p-7">
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(22rem,0.92fr)]">
           <div className="space-y-5">
             <div className="text-center lg:text-left">
@@ -1488,7 +1488,7 @@ export default function OcrScanPage() {
               </p>
             </div>
 
-            <div className="metric-tile overflow-hidden rounded-[1.7rem]">
+            <div className="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)]">
               <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
                 <div>
                   <div className="text-sm font-semibold text-white">{processFile?.name || "Current scan"}</div>
@@ -1507,19 +1507,19 @@ export default function OcrScanPage() {
                     ) : null}
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2">
-                    <div className="signal-note rounded-2xl px-4 py-3">
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Language</div>
                       <div className="mt-2 text-sm font-medium text-white">{resultPreview?.language || "auto"}</div>
                     </div>
-                    <div className="signal-note rounded-2xl px-4 py-3">
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Confidence</div>
                       <div className="mt-2 text-sm font-medium text-white">{formatConfidence(resultPreview?.avgConfidence ?? null)}</div>
                     </div>
-                    <div className="signal-note rounded-2xl px-4 py-3">
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Columns</div>
                       <div className="mt-2 text-sm font-medium text-white">{resultPreview?.columns || 0}</div>
                     </div>
-                    <div className="signal-note rounded-2xl px-4 py-3">
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Raw helper column</div>
                       <div className="mt-2 text-sm font-medium text-white">{resultPreview?.rawColumnAdded ? "Added" : "Not needed"}</div>
                     </div>
@@ -1532,12 +1532,12 @@ export default function OcrScanPage() {
                     ["Quantity", fields.quantity || "Not detected"],
                     ["Hints", qualityHints.length ? qualityHints.join(", ") : "No scan warnings"],
                   ].map(([label, value]) => (
-                    <div key={label} className="signal-note rounded-2xl px-4 py-3">
+                    <div key={label} className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
                       <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</div>
                       <div className="mt-2 text-sm font-medium text-white">{value}</div>
                     </div>
                   ))}
-                  <div className="metric-tile overflow-hidden rounded-[1.4rem]">
+                  <div className="overflow-hidden rounded-[1.4rem] border border-white/8 bg-white/[0.04]">
                     <div className="border-b border-white/8 px-4 py-3">
                       <div className="text-sm font-semibold text-white">Extracted preview</div>
                       <div className="mt-1 text-xs text-slate-400">First rows from the corrected draft that will feed review and export.</div>
@@ -1568,7 +1568,7 @@ export default function OcrScanPage() {
             </div>
           </div>
 
-          <div className="metric-tile space-y-4 rounded-[1.7rem] p-4 sm:p-5">
+          <div className="space-y-4 rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4 sm:p-5">
             <div>
               <div className="text-lg font-semibold text-white">Export or continue review</div>
               <div className="mt-1 text-sm text-slate-400">Choose the next action for this OCR draft.</div>
@@ -1632,7 +1632,7 @@ export default function OcrScanPage() {
             </button>
 
             {showInsights ? (
-              <div className="signal-note space-y-3 rounded-[1.5rem] p-4 text-left">
+              <div className="space-y-3 rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 text-left">
                 {[
                   ["Draft", savedId ? `#${savedId}` : "Not saved"],
                   ["Excel source", savedId ? "Corrected review draft rows" : "Not ready"],
