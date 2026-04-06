@@ -655,9 +655,9 @@ export default function ReportsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8 pb-20 md:pb-8 bg-bg">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-border bg-card p-6 shadow-2xl backdrop-blur">
+    <main className="min-h-screen bg-bg px-4 py-6 pb-24 md:px-8 md:pb-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+        <section className="flex flex-col gap-4 rounded-[1.9rem] border border-border bg-card p-5 shadow-2xl backdrop-blur sm:p-6 lg:flex-row lg:items-start lg:justify-between">
 
         <div>
           <div className="text-sm uppercase tracking-[0.28em] text-color-primary">Reports</div>
@@ -677,23 +677,23 @@ export default function ReportsPage() {
             </span>
           </div>
         </div>
-        <div className="space-y-3">
-          <div className="flex flex-wrap gap-3">
-            <Link href="/dashboard">
-              <Button variant="outline">Dashboard</Button>
+        <div className="grid gap-3">
+          <div className="grid gap-3 sm:flex sm:flex-wrap">
+            <Link href="/dashboard" className="w-full sm:w-auto">
+              <Button variant="outline" className="w-full sm:w-auto">Dashboard</Button>
             </Link>
-            <Link href="/email-summary">
-              <Button>Owner Update Desk</Button>
+            <Link href="/email-summary" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto">Owner Update Desk</Button>
             </Link>
-            <Link href="/entry">
-              <Button variant="outline">New Entry</Button>
+            <Link href="/entry" className="w-full sm:w-auto">
+              <Button variant="outline" className="w-full sm:w-auto">New Entry</Button>
             </Link>
           </div>
           {!isAccountant ? (
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
               <Button
                 variant="outline"
-                className="px-4 py-2 text-xs"
+                className="w-full px-4 py-2 text-xs sm:w-auto"
                 onClick={handleRefreshAll}
                 disabled={loadingRows || loadingInsights || refreshing || refreshingInsights}
               >
@@ -719,7 +719,7 @@ export default function ReportsPage() {
         ) : null}
         {sessionError ? <div className="rounded-2xl border border-color-danger/30 bg-color-danger/10 px-4 py-3 text-sm text-color-danger-light">{sessionError}</div> : null}
 
-        <section className="grid gap-4 lg:grid-cols-3">
+        <section className="order-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {reportHubCards.map((card) => (
             <Card key={card.title} className="border border-border bg-card">
               <CardHeader>
@@ -737,11 +737,11 @@ export default function ReportsPage() {
           ))}
         </section>
 
-        <Card>
+        <Card className="order-4">
           <CardHeader>
             <CardTitle className="text-xl">Quick Filters</CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-3">
+          <CardContent className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
             <Button variant="outline" onClick={() => handleQuickRange("today")}>Today</Button>
             <Button variant="outline" onClick={() => handleQuickRange("week")}>Last 7 Days</Button>
             <Button variant="outline" onClick={() => handleQuickRange("month")}>This Month</Button>
@@ -749,10 +749,12 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
 
-        <ReportInsightsBoard insights={insights} loading={loadingInsights} role={user.role} steelOverview={steelOverview} />
+        <div className="order-5">
+          <ReportInsightsBoard insights={insights} loading={loadingInsights} role={user.role} steelOverview={steelOverview} />
+        </div>
 
       {ocrSummary ? (
-        <Card className="border border-border bg-card">
+        <Card className="order-6 border border-border bg-card">
           <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
               <div className="text-sm uppercase tracking-[0.22em] text-color-primary-light">OCR Trust Summary</div>
@@ -794,12 +796,12 @@ export default function ReportsPage() {
         </Card>
       ) : null}
 
-      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+      <section className="order-1 grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Filter Reports</CardTitle>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div>
               <label className="text-sm text-text-muted">Start Date</label>
               <Input
@@ -873,11 +875,11 @@ export default function ReportsPage() {
                 className="h-11"
               />
             </div>
-            <div className="flex items-end gap-2">
-              <Button variant="primary" onClick={applyFilters} disabled={loadingRows || isAccountant} className="h-11">
+            <div className="grid gap-2 sm:flex sm:items-end">
+              <Button variant="primary" onClick={applyFilters} disabled={loadingRows || isAccountant} className="h-11 w-full sm:w-auto">
                 {loadingRows && !hasLoadedRows ? "Loading..." : "Apply Filters"}
               </Button>
-              <Button variant="outline" onClick={resetFilters} disabled={loadingRows || isAccountant} className="h-11">
+              <Button variant="outline" onClick={resetFilters} disabled={loadingRows || isAccountant} className="h-11 w-full sm:w-auto">
                 Reset
               </Button>
             </div>
@@ -895,17 +897,17 @@ export default function ReportsPage() {
             <div className="rounded-2xl border border-border bg-card-elevated p-4 text-sm text-text-muted">
               Use range Excel for shared plant files, JSON for system handoff, and the executive summary or email desk when leadership needs the same reporting story in plain language.
             </div>
-            <Button variant="outline" onClick={handleRangeExcelJob} disabled={busy} className="h-11">
+            <Button variant="outline" onClick={handleRangeExcelJob} disabled={busy} className="h-11 w-full sm:w-auto">
               Export Date Range to Excel
             </Button>
-            <Button variant="outline" onClick={() => handleJsonExport("weekly")} disabled={busy} className="h-11">
+            <Button variant="outline" onClick={() => handleJsonExport("weekly")} disabled={busy} className="h-11 w-full sm:w-auto">
               Export Weekly Summary JSON
             </Button>
-            <Button variant="outline" onClick={() => handleJsonExport("monthly")} disabled={busy} className="h-11">
+            <Button variant="outline" onClick={() => handleJsonExport("monthly")} disabled={busy} className="h-11 w-full sm:w-auto">
               Export Monthly Summary JSON
             </Button>
             {!isAccountant ? (
-              <Button variant="outline" onClick={handleDownloadCurrentPage} disabled={!filteredRows.length} className="h-11">
+              <Button variant="outline" onClick={handleDownloadCurrentPage} disabled={!filteredRows.length} className="h-11 w-full sm:w-auto">
                 Export Visible Page CSV
               </Button>
             ) : (
@@ -913,12 +915,12 @@ export default function ReportsPage() {
                 Accountant view keeps raw entries hidden, but summary exports still work.
               </div>
             )}
-            <div className="flex flex-wrap gap-3 pt-1">
-              <Link href="/attendance/reports">
-                <Button variant="ghost">Attendance Reports</Button>
+            <div className="grid gap-3 pt-1 sm:flex sm:flex-wrap">
+              <Link href="/attendance/reports" className="w-full sm:w-auto">
+                <Button variant="ghost" className="w-full sm:w-auto">Attendance Reports</Button>
               </Link>
-              <Link href="/email-summary">
-                <Button variant="ghost">Email Summary</Button>
+              <Link href="/email-summary" className="w-full sm:w-auto">
+                <Button variant="ghost" className="w-full sm:w-auto">Email Summary</Button>
               </Link>
             </div>
             {reportJob ? (
@@ -940,7 +942,7 @@ export default function ReportsPage() {
         </Card>
       </section>
 
-      <Card>
+      <Card className="order-7">
         <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <div className="text-sm text-text-muted">Phase 7</div>
@@ -1007,7 +1009,7 @@ export default function ReportsPage() {
       </Card>
 
       {!isAccountant ? (
-        <Card>
+        <Card className="order-2">
           <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="text-sm text-text-muted">Results</div>
@@ -1030,8 +1032,60 @@ export default function ReportsPage() {
                 ))}
               </div>
             ) : filteredRows.length ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-left text-sm">
+              <>
+                <div className="space-y-3 md:hidden">
+                  {filteredRows.map((row) => (
+                    <div key={`card:${row.id}`} className="rounded-2xl border border-border bg-card-elevated p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <div className="text-sm font-semibold text-text-primary">{row.date}</div>
+                          <div className="mt-1 text-xs text-text-muted">
+                            {row.shift} · {row.department || "-"}
+                          </div>
+                        </div>
+                        <div className="rounded-full border border-border px-3 py-1 text-xs text-text-muted">
+                          {row.status}
+                        </div>
+                      </div>
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div>
+                          <div className="text-xs text-text-muted">Units</div>
+                          <div className="mt-1 text-sm font-semibold text-text-primary">
+                            {row.units_produced} / {row.units_target}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-xs text-text-muted">Submitted</div>
+                          <div className="mt-1 text-sm text-text-primary">{formatDateTime(row.created_at)}</div>
+                        </div>
+                      </div>
+                      <div className="mt-4 grid gap-3 sm:flex sm:flex-wrap">
+                        <Link href={`/entry/${row.id}`} className="w-full sm:w-auto">
+                          <Button variant="outline" className="w-full sm:w-auto">Open</Button>
+                        </Link>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="w-full sm:w-auto"
+                          onClick={() => handleEntryPdfJob(row.id)}
+                        >
+                          PDF
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          className="w-full sm:w-auto"
+                          onClick={() => handleBinaryDownload(() => downloadEntryReport(row.id, "excel"), `entry-${row.id}.xlsx`)}
+                        >
+                          Excel
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="hidden overflow-x-auto md:block">
+                  <table className="min-w-full text-left text-sm">
                   <thead className="text-text-muted">
                     <tr className="border-b border-border">
                       <th className="px-3 py-3 font-medium">Date</th>
@@ -1078,8 +1132,9 @@ export default function ReportsPage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
-              </div>
+                  </table>
+                </div>
+              </>
             ) : (
               <div className="space-y-4 rounded-2xl border border-border bg-card-elevated p-4 text-sm text-text-muted">
                 <div>No entries found for the selected filters.</div>
