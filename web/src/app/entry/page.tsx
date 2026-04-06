@@ -804,7 +804,7 @@ export default function EntryPage() {
       : "Next";
 
   return (
-    <main className="min-h-screen bg-[#0B0F19] px-4 pb-28 pt-6 text-white md:px-6 lg:pb-10 lg:pt-8">
+    <main className="min-h-screen bg-[#0B0F19] px-4 pb-[calc(7.75rem+env(safe-area-inset-bottom))] pt-6 text-white md:px-6 lg:pb-10 lg:pt-8">
       <div className="mx-auto max-w-7xl">
         <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
@@ -1580,7 +1580,7 @@ export default function EntryPage() {
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#08101D]/95 px-4 py-4 backdrop-blur lg:hidden">
+      <div className="safe-inline-pad fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#08101D]/95 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-xl items-center gap-3">
           <button
             type="button"
