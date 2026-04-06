@@ -74,6 +74,8 @@ type QueueLink = {
   label: string;
 };
 
+const REVIEW_DETAIL_PANEL_STORAGE_KEY = "dpr.reviewQueue.detailPanel";
+
 type BaseQueueItem = {
   key: string;
   bucket: "task" | "signal";
@@ -1121,6 +1123,7 @@ export default function ApprovalsPage() {
   const [search, setSearch] = useState("");
   const [selectedKey, setSelectedKey] = useState("");
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
+  const [showDetailPanel, setShowDetailPanel] = useState(true);
   const [notesByKey, setNotesByKey] = useState<Record<string, string>>({});
   const [selectedTaskKeys, setSelectedTaskKeys] = useState<string[]>([]);
   const [bulkNote, setBulkNote] = useState("");
@@ -1260,6 +1263,19 @@ export default function ApprovalsPage() {
       void loadInbox();
     });
   }, [canReview, loadInbox, user]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem(REVIEW_DETAIL_PANEL_STORAGE_KEY);
+    if (saved === "hidden") {
+      setShowDetailPanel(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(REVIEW_DETAIL_PANEL_STORAGE_KEY, showDetailPanel ? "shown" : "hidden");
+  }, [showDetailPanel]);
 
   const taskItems = useMemo<ReviewTaskItem[]>(() => {
     const items: ReviewTaskItem[] = [
@@ -1434,9 +1450,19 @@ export default function ApprovalsPage() {
 
   const openItem = useCallback((key: string, mobile = false) => {
     setSelectedKey(key);
-    if (mobile) {
+    if (mobile || !showDetailPanel) {
       setMobileDetailOpen(true);
     }
+  }, [showDetailPanel]);
+
+  const toggleDetailPanel = useCallback(() => {
+    setShowDetailPanel((current) => {
+      const next = !current;
+      if (next) {
+        setMobileDetailOpen(false);
+      }
+      return next;
+    });
   }, []);
 
   const toggleTaskSelection = useCallback((key: string) => {
@@ -1882,7 +1908,12 @@ export default function ApprovalsPage() {
           </Card>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.95fr)]">
+        <section
+          className={cn(
+            "grid gap-6",
+            showDetailPanel ? "lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.95fr)]" : "lg:grid-cols-1",
+          )}
+        >
           <div className="space-y-6">
             <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
               <CardHeader>
@@ -2019,6 +2050,33 @@ export default function ApprovalsPage() {
               </CardContent>
             </Card>
 
+            {!showDetailPanel ? (
+              <div className="hidden rounded-2xl border border-[rgba(77,163,255,0.18)] bg-[rgba(77,163,255,0.08)] px-4 py-4 lg:block">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="space-y-1">
+                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[rgba(77,163,255,0.92)]">
+                      Detail panel hidden
+                    </div>
+                    <div className="text-sm text-text-secondary">
+                      {selectedItem
+                        ? `Selected item: ${selectedItem.title}. Use preview when you want the full context.`
+                        : "The task list is using full width. Pick any item to preview it in an overlay or show the side panel again."}
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedItem ? (
+                      <Button variant="outline" className="px-3 py-2 text-xs" onClick={() => setMobileDetailOpen(true)}>
+                        Preview selected
+                      </Button>
+                    ) : null}
+                    <Button className="px-3 py-2 text-xs" onClick={toggleDetailPanel}>
+                      Show detail panel
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+
             <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
               <CardHeader className="flex flex-row items-center justify-between gap-3">
                 <div>
@@ -2028,8 +2086,13 @@ export default function ApprovalsPage() {
                     Mix: Attendance {attendanceTaskCount} | DPR {dprTaskCount} | OCR {ocrTaskCount} | Stock {stockTaskCount}
                   </div>
                 </div>
-                <div className="text-sm text-[var(--muted)]">
-                  {restrictedTaskCount ? `${restrictedTaskCount} item(s) require escalation by role.` : "Highest risk and oldest items stay at the top."}
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                  <div className="text-sm text-[var(--muted)]">
+                    {restrictedTaskCount ? `${restrictedTaskCount} item(s) require escalation by role.` : "Highest risk and oldest items stay at the top."}
+                  </div>
+                  <Button variant="outline" className="hidden px-3 py-2 text-xs lg:inline-flex" onClick={toggleDetailPanel}>
+                    {showDetailPanel ? "Hide detail panel" : "Show detail panel"}
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className="px-0 pb-0">
@@ -2239,19 +2302,26 @@ export default function ApprovalsPage() {
             </Card>
           </div>
 
-          <div className="hidden lg:block">
-            <div className="sticky top-24">
-              <QueueDetailPanel
-                item={selectedItem}
-                note={selectedNote}
-                onNoteChange={updateSelectedNote}
-                onApprove={handleApproveSelected}
-                onReject={handleRejectSelected}
-                onSignalAction={handleSignalAction}
-                busyKey={actionKey}
-              />
+          {showDetailPanel ? (
+            <div className="hidden lg:block">
+              <div className="sticky top-24 space-y-3">
+                <div className="flex justify-end">
+                  <Button variant="ghost" className="px-3 py-2 text-xs" onClick={toggleDetailPanel}>
+                    Hide detail panel
+                  </Button>
+                </div>
+                <QueueDetailPanel
+                  item={selectedItem}
+                  note={selectedNote}
+                  onNoteChange={updateSelectedNote}
+                  onApprove={handleApproveSelected}
+                  onReject={handleRejectSelected}
+                  onSignalAction={handleSignalAction}
+                  busyKey={actionKey}
+                />
+              </div>
             </div>
-          </div>
+          ) : null}
         </section>
       </div>
 
@@ -2341,7 +2411,12 @@ export default function ApprovalsPage() {
       ) : null}
 
       {mobileDetailOpen ? (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(4,8,16,0.96)] px-4 py-4 lg:hidden">
+        <div
+          className={cn(
+            "fixed inset-0 z-50 overflow-y-auto bg-[rgba(4,8,16,0.96)] px-4 py-4",
+            showDetailPanel ? "lg:hidden" : "",
+          )}
+        >
           <QueueDetailPanel
             item={selectedItem}
             note={selectedNote}
