@@ -1022,8 +1022,8 @@ export default function WorkQueuePage() {
 
   if (isWorkerQueue) {
     return (
-      <main className="min-h-screen bg-bg px-4 py-6 md:px-6 lg:py-8 pb-20 md:pb-8">
-        <div className="mx-auto max-w-6xl space-y-4">
+      <main className="min-h-screen bg-bg px-4 py-5 pb-24 md:px-6 md:pb-8 lg:py-8">
+        <div className="mx-auto max-w-6xl space-y-5">
           {error ? (
             <div className="rounded-[20px] border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">
               {error}
@@ -1048,13 +1048,13 @@ export default function WorkQueuePage() {
             </section>
           ) : null}
 
-          <section className="rounded-[32px] border border-border bg-card p-6 shadow-[0_24px_80px_rgba(6,10,18,0.42)]">
+          <section className="rounded-[28px] border border-border bg-card p-5 shadow-[0_24px_80px_rgba(6,10,18,0.42)] sm:p-6">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-color-primary">
                   {activeFactory?.name || user.factory_name || "Factory"}
                 </div>
-                <h1 className="mt-2 text-3xl font-semibold text-text-primary">Work Queue</h1>
+                <h1 className="mt-2 text-2xl font-semibold text-text-primary sm:text-3xl">Work Queue</h1>
                 <div className="mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-text-primary">
                   <span className={`rounded-full border px-3 py-1 ${workerQueueStatus.tone}`}>
                     {workerQueueStatus.label}
@@ -1083,7 +1083,7 @@ export default function WorkQueuePage() {
             </div>
           </section>
 
-          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
             <section className="space-y-4">
               {workerTaskSections.length ? (
                 workerTaskSections.map((section) => {
@@ -1091,7 +1091,7 @@ export default function WorkQueuePage() {
                   return (
                     <div
                       key={section.key}
-                      className={`rounded-[30px] border p-5 shadow-[0_18px_50px_rgba(3,8,20,0.24)] ${accent.panel}`}
+                      className={`rounded-[28px] border p-4 shadow-[0_18px_50px_rgba(3,8,20,0.24)] sm:p-5 ${accent.panel}`}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <span
@@ -1149,10 +1149,10 @@ export default function WorkQueuePage() {
               )}
             </section>
 
-            <aside className="space-y-4">
+            <aside className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
               <div className="rounded-[28px] border border-border bg-card p-5 shadow-[0_20px_60px_rgba(6,10,18,0.32)]">
                 <div className="text-xs uppercase tracking-[0.18em] text-text-muted">Today</div>
-                <div className="mt-4 grid gap-3">
+                <div className="mt-4 grid gap-3 sm:grid-cols-3 md:grid-cols-1 xl:grid-cols-1">
                   <div className="rounded-[20px] border border-border bg-card-elevated px-4 py-3">
                     <div className="text-xs text-text-muted">Pending</div>
                     <div className="mt-2 text-2xl font-semibold text-text-primary">{workerPendingCount}</div>
@@ -1203,13 +1203,13 @@ export default function WorkQueuePage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
+    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+        <section className="rounded-[1.9rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-5 shadow-2xl backdrop-blur sm:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">Daily Coordination</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Work Queue</h1>
+              <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Work Queue</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 One place for open work, review load, unread alerts, and the next actions your team should take in the current factory context.
               </p>
@@ -1244,10 +1244,12 @@ export default function WorkQueuePage() {
           </div>
 
           {quickActions.length ? (
-            <div className="mt-5 flex flex-wrap gap-3">
+            <div className="mt-5 grid gap-3 sm:flex sm:flex-wrap">
               {quickActions.map((action) => (
-                <Link key={action.href} href={action.href}>
-                  <Button variant={action.variant || "primary"}>{action.label}</Button>
+                <Link key={action.href} href={action.href} className="w-full sm:w-auto">
+                  <Button variant={action.variant || "primary"} className="w-full justify-center sm:w-auto">
+                    {action.label}
+                  </Button>
                 </Link>
               ))}
             </div>
@@ -1275,54 +1277,15 @@ export default function WorkQueuePage() {
           </section>
         ) : null}
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
           <Card>
             <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Open Items</div>
-              <CardTitle>{filterCounts.all}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Combined queue items across daily work, review, and alerts.
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Today</div>
-              <CardTitle>{filterCounts.today}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Missing shifts, saved draft work, and offline queue follow-up.
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Review</div>
-              <CardTitle>{filterCounts.review}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Pending entry approvals, OCR checks, and stock trust decisions.
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Unread Alerts</div>
-              <CardTitle>{state.alerts.length}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Factory alerts waiting for attention on the operations board.
-            </CardContent>
-          </Card>
-        </section>
-
-        <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-          <Card>
-            <CardHeader>
-              <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                 <div>
                   <div className="text-sm text-[var(--muted)]">Queue View</div>
                   <CardTitle className="text-xl">Open work in priority order</CardTitle>
                 </div>
-                <div className="flex flex-wrap gap-2">
+                <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
                   {([
                     ["all", "All"],
                     ["today", "Today"],
@@ -1332,7 +1295,7 @@ export default function WorkQueuePage() {
                     <Button
                       key={key}
                       variant={filter === key ? "primary" : "outline"}
-                      className="px-4 py-2 text-xs"
+                      className="shrink-0 px-4 py-2 text-xs"
                       onClick={() => setFilter(key)}
                     >
                       {label}
@@ -1344,7 +1307,7 @@ export default function WorkQueuePage() {
             <CardContent className="space-y-3">
               {filteredItems.length ? filteredItems.map((item) => (
                 <div key={item.id} className={`rounded-2xl border p-4 ${toneClass(item.tone)}`}>
-                  <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                     <div className="space-y-2">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${toneBadgeClass(item.tone)}`}>
@@ -1355,16 +1318,19 @@ export default function WorkQueuePage() {
                       <div className="text-sm font-semibold text-[var(--text)]">{item.title}</div>
                       <div className="text-xs leading-5 text-[var(--muted)]">{item.detail}</div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid gap-2 sm:flex sm:flex-wrap">
                       <Link href={item.href}>
-                        <Button variant={item.isOverflow ? "primary" : "outline"} className="px-4 py-2 text-xs">
+                        <Button
+                          variant={item.isOverflow ? "primary" : "outline"}
+                          className="w-full px-4 py-2 text-xs sm:w-auto"
+                        >
                           {item.action}
                         </Button>
                       </Link>
                       {typeof item.alertId === "number" ? (
                         <Button
                           variant="ghost"
-                          className="px-4 py-2 text-xs"
+                          className="w-full px-4 py-2 text-xs sm:w-auto"
                           onClick={() => {
                             void markAlertAsRead(item.alertId!);
                           }}
@@ -1390,7 +1356,7 @@ export default function WorkQueuePage() {
                 <div className="text-sm text-[var(--muted)]">Queue Snapshot</div>
                 <CardTitle className="text-xl">Where the work is stacking up</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4 text-sm text-[var(--muted)]">
+              <CardContent className="grid gap-3 text-sm text-[var(--muted)] sm:grid-cols-2 xl:grid-cols-1">
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                   <div className="text-xs uppercase tracking-[0.16em]">Pending DPR Review</div>
                   <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{state.pendingEntryTotal}</div>
@@ -1445,6 +1411,45 @@ export default function WorkQueuePage() {
               </CardContent>
             </Card>
           </div>
+        </section>
+
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <Card>
+            <CardHeader>
+              <div className="text-sm text-[var(--muted)]">Open Items</div>
+              <CardTitle>{filterCounts.all}</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-[var(--muted)]">
+              Combined queue items across daily work, review, and alerts.
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <div className="text-sm text-[var(--muted)]">Today</div>
+              <CardTitle>{filterCounts.today}</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-[var(--muted)]">
+              Missing shifts, saved draft work, and offline queue follow-up.
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <div className="text-sm text-[var(--muted)]">Review</div>
+              <CardTitle>{filterCounts.review}</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-[var(--muted)]">
+              Pending entry approvals, OCR checks, and stock trust decisions.
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <div className="text-sm text-[var(--muted)]">Unread Alerts</div>
+              <CardTitle>{state.alerts.length}</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-[var(--muted)]">
+              Factory alerts waiting for attention on the operations board.
+            </CardContent>
+          </Card>
         </section>
       </div>
     </main>
