@@ -948,21 +948,36 @@ export default function OcrScanPage() {
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,8,18,0.28),rgba(0,0,0,0.02),rgba(3,8,18,0.7))]" />
           </div>
 
-          <div className="relative z-10 px-5 pt-6 sm:px-7 sm:pt-7">
+          <div className="relative z-10 px-4 pt-5 sm:px-7 sm:pt-7">
             <div className="mx-auto w-full max-w-5xl">
               <div className="inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-400/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-100">
                 OCR Capture Desk
               </div>
               <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_18rem] md:items-start">
                 <div>
-                  <h1 className="max-w-2xl text-3xl font-semibold tracking-[-0.04em] text-white sm:text-[2.8rem]">
+                  <h1 className="max-w-2xl text-[2rem] font-semibold tracking-[-0.04em] text-white sm:text-[2.8rem]">
                     Scan registers with a calmer, cleaner capture flow.
                   </h1>
-                  <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-200/82 sm:text-base">
+                  <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-200/82 sm:text-base sm:leading-7">
                     Capture from the camera or upload from the gallery, then crop, enhance, review, and export the same trusted draft to Excel or PDF.
                   </p>
+                  <div className="mt-4 grid grid-cols-2 gap-2 md:hidden">
+                    <div className="rounded-2xl border border-white/10 bg-[rgba(8,14,24,0.62)] px-3 py-2.5 text-sm text-slate-100">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Camera</div>
+                      <div className="mt-1 flex items-center justify-between gap-3">
+                        <span>Capture</span>
+                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", cameraReady ? "bg-emerald-400/16 text-emerald-100" : "bg-amber-400/16 text-amber-100")}>
+                          {cameraReady ? "Live" : "Upload"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-[rgba(8,14,24,0.62)] px-3 py-2.5 text-sm text-slate-100">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Review path</div>
+                      <div className="mt-1 text-xs text-slate-300">Draft before trust</div>
+                    </div>
+                  </div>
                 </div>
-                <div className="rounded-[1.6rem] border border-white/10 bg-[rgba(8,14,24,0.62)] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.26)] backdrop-blur-xl">
+                <div className="hidden rounded-[1.6rem] border border-white/10 bg-[rgba(8,14,24,0.62)] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.26)] backdrop-blur-xl md:block">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Live readiness</div>
                   <div className="mt-3 space-y-3 text-sm text-slate-200">
                     <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-2.5">
@@ -985,7 +1000,7 @@ export default function OcrScanPage() {
             </div>
           </div>
 
-          <div className="relative flex flex-1 items-center justify-center px-5 py-8 sm:px-6 md:py-10">
+          <div className="relative flex flex-1 items-center justify-center px-4 py-6 sm:px-6 md:py-10">
             <div className="pointer-events-none relative aspect-[0.72] w-full max-w-[28rem] rounded-[2.7rem] border border-white/45 shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_32px_100px_rgba(0,0,0,0.42)]">
               <div className="absolute inset-0 rounded-[2.7rem] border border-cyan-300/30 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))]" />
               <div className="absolute left-5 top-5 h-10 w-10 rounded-tl-[1.2rem] border-l-[3px] border-t-[3px] border-cyan-300" />
@@ -1012,7 +1027,7 @@ export default function OcrScanPage() {
                       Use the live camera for the cleanest result, or jump straight to gallery upload if you already have the image.
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-slate-400">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
                     <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">PNG / JPG / HEIC</span>
                     <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">Factory-safe review flow</span>
                   </div>
