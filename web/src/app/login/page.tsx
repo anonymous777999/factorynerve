@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { login, resendEmailVerification } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import { AuthShell } from "@/components/auth-shell";
+import { GoogleAuthButton } from "@/components/google-auth-button";
 import { PasswordField } from "@/components/password-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,13 @@ export default function LoginPage() {
   const [infoTone, setInfoTone] = useState<"neutral" | "success">("neutral");
   const [resending, setResending] = useState(false);
   const routeInfo = useMemo(() => {
+    const oauthError = searchParams.get("oauth_error");
+    if (oauthError) {
+      return {
+        message: oauthError,
+        tone: "error" as const,
+      };
+    }
     if (searchParams.get("reset") === "1") {
       return {
         message: "Password updated successfully. Sign in with your new password.",
@@ -126,6 +134,20 @@ export default function LoginPage() {
       cardClassName="max-w-xl"
     >
       <form onSubmit={onSubmit} className="space-y-5">
+        <div className="space-y-4">
+          <GoogleAuthButton
+            nextPath={nextPath}
+            hint="Use your Google account to open the same factory-safe session without typing a password."
+          />
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase tracking-[0.18em] text-text-muted">
+              <span className="bg-[rgba(10,16,26,0.94)] px-3">or continue with email</span>
+            </div>
+          </div>
+        </div>
         <div className="space-y-2">
           <label className="block text-sm font-medium text-text-primary">Email Address</label>
           <Input
@@ -187,6 +209,8 @@ export default function LoginPage() {
             className={
               routeInfo.tone === "success"
                 ? "rounded-lg border border-color-success/25 bg-color-success/10 p-4 text-sm text-color-success"
+                : routeInfo.tone === "error"
+                  ? "rounded-lg border border-color-danger/25 bg-color-danger/10 p-4 text-sm text-color-danger"
                 : "rounded-lg border border-border bg-card-elevated p-4 text-sm text-text-primary"
             }
           >

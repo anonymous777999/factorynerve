@@ -7,6 +7,7 @@ import { register, resendEmailVerification, type RegisterResponse } from "@/lib/
 import { ApiError } from "@/lib/api";
 import { validatePhoneNumber } from "@/lib/validation";
 import { AuthShell } from "@/components/auth-shell";
+import { GoogleAuthButton } from "@/components/google-auth-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -215,7 +216,21 @@ export default function RegisterPage() {
               ) : null}
             </div>
       ) : (
-        <form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-5">
+          <div className="rounded-2xl border border-[rgba(77,163,255,0.18)] bg-[rgba(77,163,255,0.08)] p-4">
+            <div className="text-sm font-semibold text-text-primary">Prefer the faster Google route?</div>
+            <div className="mt-1 text-sm leading-6 text-text-secondary">
+              Continue with Google to create or link a workspace owner account without filling the full public signup form.
+            </div>
+            <div className="mt-4">
+              <GoogleAuthButton
+                nextPath="/dashboard"
+                hint="Use this when you want the direct workspace-owner flow. The form below still creates the attendance-worker signup request."
+              />
+            </div>
+          </div>
+
+          <form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-2">
               <div className="md:col-span-1">
                 <label className="text-sm text-[var(--muted)]">Full Name</label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} required />
@@ -278,6 +293,7 @@ export default function RegisterPage() {
                 </Link>
               </div>
             </form>
+        </div>
       )}
     </AuthShell>
   );

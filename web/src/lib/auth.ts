@@ -113,6 +113,24 @@ function refreshAccountSession(payload: CurrentUser) {
   return payload;
 }
 
+function sanitizeNextPath(raw?: string | null): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
+    return "/";
+  }
+  if (raw === "/login" || raw === "/register") {
+    return "/";
+  }
+  return raw;
+}
+
+export function startGoogleLogin(nextPath?: string | null) {
+  if (typeof window === "undefined") {
+    return;
+  }
+  const safeNext = sanitizeNextPath(nextPath);
+  window.location.assign(`/api/auth/google/login?next=${encodeURIComponent(safeNext)}`);
+}
+
 export async function login(email: string, password: string): Promise<AuthResponse> {
   const response = await apiFetch<AuthResponse>(
     "/auth/login",
