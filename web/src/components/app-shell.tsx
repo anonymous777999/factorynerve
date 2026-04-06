@@ -55,6 +55,7 @@ const RAIL_COUNT_REFRESH_EVENT = "dpr:rail-counts-refresh";
 const SIDEBAR_OPEN_STORAGE_KEY = "dpr:web:shell-sidebar-open";
 const NAV_FAVORITES_STORAGE_KEY = "dpr:web:shell-favorites";
 const NAV_SECTION_STATE_STORAGE_KEY = "dpr:web:shell-section-state";
+const CONTEXT_RAIL_OPEN_STORAGE_KEY = "dpr:web:shell-context-rail-open";
 
 type NavBadgeKey = "approvals" | "alerts";
 type NavIconName =
@@ -1023,6 +1024,7 @@ function DesktopContextRail({
   workflowHint,
   quickLinks,
   onWarm,
+  onToggle,
   translate,
 }: {
   currentItem: { label: string; description: string };
@@ -1033,11 +1035,21 @@ function DesktopContextRail({
   workflowHint: { title: string; detail: string };
   quickLinks: NavItem[];
   onWarm: (href: string) => void;
+  onToggle: () => void;
   translate?: TranslateFn;
 }) {
   return (
     <aside className="hidden w-[19rem] shrink-0 xl:block">
       <div className="sticky top-6 space-y-4 px-6 py-6">
+        <div className="flex justify-end">
+          <button
+            type="button"
+            className="inline-flex items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(12,16,24,0.78)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)] transition hover:border-[rgba(62,166,255,0.32)] hover:text-[var(--text)]"
+            onClick={onToggle}
+          >
+            Hide panel
+          </button>
+        </div>
         <div className="rounded-[1.5rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-5 shadow-[0_16px_44px_rgba(3,8,20,0.28)]">
           <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(62,166,255,0.82)]">
             Workspace
@@ -1213,6 +1225,7 @@ function AppShellFrame({
     alerts: 0,
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [contextRailOpen, setContextRailOpen] = useState(true);
   const [favoriteHrefs, setFavoriteHrefs] = useState<string[]>([]);
   const [sectionExpanded, setSectionExpanded] = useState<Record<string, boolean>>({});
   const factoryChoices = useMemo(
@@ -1318,9 +1331,26 @@ function AppShellFrame({
     [router],
   );
 
+  const toggleContextRail = useCallback(() => {
+    setContextRailOpen((current) => !current);
+  }, []);
+
   useEffect(() => {
     setHydrated(true);
   }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem(CONTEXT_RAIL_OPEN_STORAGE_KEY);
+    if (saved === "false") {
+      setContextRailOpen(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem(CONTEXT_RAIL_OPEN_STORAGE_KEY, contextRailOpen ? "true" : "false");
+  }, [contextRailOpen]);
 
   useEffect(() => {
     const primaryRoutes = [
@@ -1885,19 +1915,38 @@ function AppShellFrame({
         <div className={cn("min-w-0 flex-1", shellLayout.mobileBottomNav ? "pb-28 lg:pb-0" : "")}>
           {!immersiveScannerRoute ? <WorkflowReminderStrip /> : null}
           {shellLayout.desktopRail === "context" ? (
-            <div className="min-h-full xl:grid xl:grid-cols-[minmax(0,1fr)_19rem]">
+            <div
+              className={cn(
+                "min-h-full",
+                contextRailOpen ? "xl:grid xl:grid-cols-[minmax(0,1fr)_19rem]" : "xl:block",
+              )}
+            >
+              {!contextRailOpen ? (
+                <div className="hidden justify-end px-6 pt-6 xl:flex">
+                  <button
+                    type="button"
+                    className="inline-flex items-center justify-center rounded-full border border-[rgba(62,166,255,0.24)] bg-[rgba(12,16,24,0.82)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[rgba(62,166,255,0.88)] shadow-[0_12px_28px_rgba(3,8,20,0.24)] transition hover:border-[rgba(62,166,255,0.38)] hover:bg-[rgba(20,24,36,0.92)] hover:text-[var(--text)]"
+                    onClick={toggleContextRail}
+                  >
+                    Show workspace panel
+                  </button>
+                </div>
+              ) : null}
               <div className="min-w-0">{children}</div>
-              <DesktopContextRail
-                currentItem={currentItem}
-                badgeCounts={badgeCounts}
-                factoryName={activeFactory?.name || user?.factory_name || t("common.not_selected", "Factory not selected")}
-                organizationName={organization?.name}
-                role={resolvedRole}
-                workflowHint={workflowHint}
-                quickLinks={desktopRailQuickLinks}
-                onWarm={warmRoute}
-                translate={t}
-              />
+              {contextRailOpen ? (
+                <DesktopContextRail
+                  currentItem={currentItem}
+                  badgeCounts={badgeCounts}
+                  factoryName={activeFactory?.name || user?.factory_name || t("common.not_selected", "Factory not selected")}
+                  organizationName={organization?.name}
+                  role={resolvedRole}
+                  workflowHint={workflowHint}
+                  quickLinks={desktopRailQuickLinks}
+                  onWarm={warmRoute}
+                  onToggle={toggleContextRail}
+                  translate={t}
+                />
+              ) : null}
             </div>
           ) : (
             <div className="min-w-0 flex-1">{children}</div>
