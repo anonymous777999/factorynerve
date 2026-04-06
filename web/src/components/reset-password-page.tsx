@@ -139,83 +139,90 @@ export default function ResetPasswordPage() {
       contentClassName="space-y-5"
     >
       {verifying ? (
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-              Verifying your reset link...
+        <div className="rounded-lg border border-border bg-card-elevated p-4 text-sm text-text-muted">
+          Verifying your reset link...
+        </div>
+      ) : null}
+
+      {status ? (
+        <div className="rounded-lg border border-color-success/25 bg-color-success/10 p-4 text-sm text-color-success">
+          <div className="font-medium">{status}</div>
+          {resetFinished ? (
+            <div className="mt-3 rounded-md border border-border bg-card p-3 text-xs text-color-success/90">
+              Next step: use your new password on the sign-in screen. You will be redirected there automatically.
             </div>
           ) : null}
+        </div>
+      ) : null}
 
-          {status ? (
-            <div className="rounded-2xl border border-[rgba(34,197,94,0.22)] bg-[rgba(34,197,94,0.08)] p-4 text-sm text-green-200">
-              <div>{status}</div>
-              {resetFinished ? (
-                <div className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-xs text-green-100/90">
-                  Next step: use your new password on the sign-in screen. You will be redirected there automatically.
-                </div>
-              ) : null}
+      {error ? (
+        <div className="rounded-lg border border-color-danger/25 bg-color-danger/10 p-4 text-sm text-color-danger">
+          {error}
+        </div>
+      ) : null}
+
+      {valid && !verifying ? (
+        <div className="space-y-5">
+          <div className="rounded-lg border border-border bg-card-elevated p-4">
+            <div className="text-xs font-semibold uppercase tracking-widest text-text-muted">
+              What to do next
             </div>
-          ) : null}
-
-          {error ? (
-            <div className="rounded-2xl border border-[rgba(239,68,68,0.24)] bg-[rgba(239,68,68,0.08)] p-4 text-sm text-red-300">
-              {error}
+            <ol className="mt-3 space-y-2 text-sm text-text-primary/90">
+              <li>1. Enter a strong new password.</li>
+              <li>2. Confirm it once more below.</li>
+              <li>3. Sign in with the same email and your new password.</li>
+            </ol>
+            <div className="mt-4 text-xs text-text-muted">
+              This reset link can only be used once. If it expires, request a new link.
             </div>
-          ) : null}
-
-          {valid && !verifying ? (
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-4">
-                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-                  What to do next
-                </div>
-                <ol className="mt-3 space-y-2 text-sm text-[var(--text)]/90">
-                  <li>1. Enter a strong new password.</li>
-                  <li>2. Confirm it once more below.</li>
-                  <li>3. Sign in with the same email and your new password.</li>
-                </ol>
-                <div className="mt-3 text-xs text-[var(--muted)]">
-                  This reset link can only be used once. If it expires, request a new link.
-                </div>
-              </div>
-              <form onSubmit={onSubmit} className="space-y-4">
-                <PasswordField
-                  label="New Password"
-                  autoComplete="new-password"
-                  value={password}
-                  onChange={setPassword}
-                  required
-                />
-                <PasswordStrengthMeter password={password} />
-                <div className="text-xs text-[var(--muted)]">
-                  Use 12+ characters with uppercase, lowercase, number, and symbol.
-                </div>
-                <PasswordField
-                  label="Confirm Password"
-                  autoComplete="new-password"
-                  value={confirmPassword}
-                  onChange={setConfirmPassword}
-                  required
-                />
-                <Button type="submit" disabled={loading} className="w-full">
-                  {loading ? "Resetting password..." : "Reset Password"}
-                </Button>
-              </form>
-            </div>
-          ) : null}
-
-          {!valid && !verifying && error ? (
-            <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-4 text-sm text-[var(--muted)]">
-              Use <span className="font-medium text-[var(--text)]">Request New Link</span> below to generate a fresh password reset email. Only the newest valid link should be used.
-            </div>
-          ) : null}
-
-          <div className="flex flex-wrap gap-3">
-            <Link href="/forgot-password">
-              <Button variant="outline">Request New Link</Button>
-            </Link>
-            <Link href="/login">
-              <Button>Back to Login</Button>
-            </Link>
           </div>
+          <form onSubmit={onSubmit} className="space-y-5">
+            <PasswordField
+              label="New Password"
+              autoComplete="new-password"
+              value={password}
+              onChange={setPassword}
+              required
+              className="w-full"
+            />
+            <PasswordStrengthMeter password={password} />
+            <div className="text-xs text-text-muted">
+              Use 12+ characters with uppercase, lowercase, number, and symbol.
+            </div>
+            <PasswordField
+              label="Confirm Password"
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              required
+              className="w-full"
+            />
+            <Button
+              type="submit"
+              disabled={loading}
+              variant="primary"
+              className="w-full h-12 text-base font-semibold"
+            >
+              {loading ? "Resetting password..." : "Reset Password"}
+            </Button>
+          </form>
+        </div>
+      ) : null}
+
+      {!valid && !verifying && error ? (
+        <div className="rounded-lg border border-border bg-card-elevated p-4 text-sm text-text-muted">
+          Use <span className="font-medium text-text-primary">Request New Link</span> below to generate a fresh password reset email. Only the newest valid link should be used.
+        </div>
+      ) : null}
+
+      <div className="flex flex-col gap-3 sm:flex-row">
+        <Link href="/forgot-password" className="flex-1">
+          <Button variant="outline" className="w-full h-11">Request New Link</Button>
+        </Link>
+        <Link href="/login" className="flex-1">
+          <Button variant="primary" className="w-full h-11">Back to Login</Button>
+        </Link>
+      </div>
     </AuthShell>
   );
 }

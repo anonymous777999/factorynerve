@@ -1,9 +1,5 @@
-# pip install bytez
-
 import os
 from pathlib import Path
-
-from bytez import Bytez
 
 
 def _load_dotenv(path: Path) -> None:
@@ -19,17 +15,25 @@ def _load_dotenv(path: Path) -> None:
         if key and key not in os.environ:
             os.environ[key] = value
 
-# Read raw API key from env. Do not include "Key " prefix here.
-_load_dotenv(Path(__file__).resolve().parents[1] / ".env")
-key = os.getenv("BYTEZ_API_KEY")
-if not key:
-    raise RuntimeError("BYTEZ_API_KEY is not set in the environment.")
+def run_bytez_demo() -> dict[str, object]:
+    try:
+        from bytez import Bytez
+    except ImportError as exc:  # pragma: no cover - optional local dependency
+        raise RuntimeError("bytez package is not installed. Run `pip install bytez`.") from exc
 
-sdk = Bytez(key)
+    # Read raw API key from env. Do not include "Key " prefix here.
+    _load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+    key = os.getenv("BYTEZ_API_KEY")
+    if not key:
+        raise RuntimeError("BYTEZ_API_KEY is not set in the environment.")
 
-model = sdk.model("google/gemma-3-4b-it")
-results = model.run([
-    {"role": "user", "content": "Hello"}
-])
+    sdk = Bytez(key)
+    model = sdk.model("google/gemma-3-4b-it")
+    results = model.run([
+        {"role": "user", "content": "Hello"}
+    ])
+    return {"error": results.error, "output": results.output}
 
-print({"error": results.error, "output": results.output})
+
+if __name__ == "__main__":
+    print(run_bytez_demo())

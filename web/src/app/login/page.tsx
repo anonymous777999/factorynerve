@@ -125,80 +125,95 @@ export default function LoginPage() {
       supportDescription="The most common cause is an unverified inbox. Use resend verification with the same signup email, then come back and sign in normally. Forgot password starts working only after that verification creates the real account."
       cardClassName="max-w-xl"
     >
-      <form onSubmit={onSubmit} className="space-y-4">
-            <div>
-              <label className="text-sm text-[var(--muted)]">Email</label>
-              <Input
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-            <PasswordField
-              label="Password"
-              autoComplete="current-password"
-              value={password}
-              onChange={setPassword}
-              required
-            />
-            {error ? (
-              <div className={canResendVerification ? "rounded-2xl border border-[rgba(245,158,11,0.28)] bg-[rgba(245,158,11,0.10)] p-4 text-sm text-amber-200" : "text-sm text-red-400"}>
-                <div>{error}</div>
-                {canResendVerification ? (
-                  <div className="mt-2 text-xs text-amber-100/80">
-                    This usually means the signup exists only as a pending record. The account will stay locked until the email inbox opens the verification link, and forgot password will not help until that verification step is finished.
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
+      <form onSubmit={onSubmit} className="space-y-5">
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-text-primary">Email Address</label>
+          <Input
+            type="email"
+            autoComplete="email"
+            placeholder="your@email.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+            className="w-full"
+          />
+        </div>
+        <PasswordField
+          label="Password"
+          autoComplete="current-password"
+          value={password}
+          onChange={setPassword}
+          required
+          className="w-full"
+        />
+        {error ? (
+          <div className={canResendVerification ? "rounded-lg border border-color-warning/25 bg-color-warning/10 p-4 text-sm text-color-warning" : "rounded-lg border border-color-danger/25 bg-color-danger/10 p-4 text-sm text-color-danger"}>
+            <div className="font-medium">{error}</div>
             {canResendVerification ? (
-              <div className="space-y-3">
-                <Button type="button" variant="outline" onClick={onResendVerification} disabled={resending}>
-                  {resending ? "Sending..." : "Resend Verification Email"}
-                </Button>
-                <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-xs text-[var(--muted)]">
-                  Use the same email address you used during signup. After the inbox verifies the account, come back here and sign in normally.
-                </div>
+              <div className="mt-2 text-xs text-color-warning/80">
+                This usually means the signup exists only as a pending record. The account will stay locked until the email inbox opens the verification link, and forgot password will not help until that verification step is finished.
               </div>
             ) : null}
-            {info ? (
-              <div
-                className={
-                  infoTone === "success"
-                    ? "rounded-xl border border-[rgba(34,197,94,0.22)] bg-[rgba(34,197,94,0.08)] p-3 text-sm text-green-200"
-                    : "rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-sm text-[var(--muted)]"
-                }
-              >
-                {info}
-              </div>
-            ) : routeInfo ? (
-              <div
-                className={
-                  routeInfo.tone === "success"
-                    ? "rounded-xl border border-[rgba(34,197,94,0.22)] bg-[rgba(34,197,94,0.08)] p-3 text-sm text-green-200"
-                    : "rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-sm text-[var(--muted)]"
-                }
-              >
-                {routeInfo.message}
-              </div>
-            ) : null}
-            <div className="text-right text-sm">
-              <Link href="/forgot-password" className="text-[var(--accent)] underline">
-                Forgot password?
-              </Link>
-            </div>
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Signing in..." : "Sign in"}
-            </Button>
-          </form>
-          <div className="mt-4 text-center text-sm text-[var(--muted)]">
-            New here?{" "}
-            <Link href="/register" className="text-[var(--accent)] underline">
-              Create an account
-            </Link>
           </div>
+        ) : null}
+        {canResendVerification ? (
+          <div className="space-y-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onResendVerification}
+              disabled={resending}
+              className="w-full h-11"
+            >
+              {resending ? "Sending..." : "Resend Verification Email"}
+            </Button>
+            <div className="rounded-md border border-border bg-card-elevated p-3 text-xs text-text-muted">
+              Use the same email address you used during signup. After the inbox verifies the account, come back here and sign in normally.
+            </div>
+          </div>
+        ) : null}
+        {info ? (
+          <div
+            className={
+              infoTone === "success"
+                ? "rounded-lg border border-color-success/25 bg-color-success/10 p-4 text-sm text-color-success"
+                : "rounded-lg border border-border bg-card-elevated p-4 text-sm text-text-primary"
+            }
+          >
+            {info}
+          </div>
+        ) : routeInfo ? (
+          <div
+            className={
+              routeInfo.tone === "success"
+                ? "rounded-lg border border-color-success/25 bg-color-success/10 p-4 text-sm text-color-success"
+                : "rounded-lg border border-border bg-card-elevated p-4 text-sm text-text-primary"
+            }
+          >
+            {routeInfo.message}
+          </div>
+        ) : null}
+        <div className="flex items-center justify-between text-sm">
+          <span></span>
+          <Link href="/forgot-password" className="text-color-primary hover:underline font-medium">
+            Forgot password?
+          </Link>
+        </div>
+        <Button
+          type="submit"
+          disabled={loading}
+          variant="primary"
+          className="w-full h-12 text-base font-semibold"
+        >
+          {loading ? "Signing in..." : "Sign in"}
+        </Button>
+      </form>
+      <div className="mt-6 pt-4 border-t border-border text-center text-sm text-text-muted">
+        New here?{" "}
+        <Link href="/register" className="text-color-primary hover:underline font-medium">
+          Create an account
+        </Link>
+      </div>
     </AuthShell>
   );
 }

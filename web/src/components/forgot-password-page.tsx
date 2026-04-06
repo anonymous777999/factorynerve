@@ -113,90 +113,109 @@ export default function ForgotPasswordPage() {
       contentClassName="space-y-5"
     >
       <form onSubmit={onSubmit} className="space-y-4">
-            <div>
-              <label className="text-sm text-[var(--muted)]">Email</label>
-              <Input
-                type="email"
-                autoComplete="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                required
-              />
-            </div>
-            {error ? <div className="text-sm text-red-400">{error}</div> : null}
-            <Button type="submit" disabled={loading} className="w-full">
-              {loading ? "Preparing reset..." : "Send Reset Link"}
-            </Button>
-          </form>
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-text-primary">Email Address</label>
+          <Input
+            type="email"
+            autoComplete="email"
+            placeholder="your@email.com"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            required
+            className="w-full"
+          />
+        </div>
+        {error && (
+          <div className="rounded-lg border border-color-danger/25 bg-color-danger/10 p-3 text-sm text-color-danger">
+            {error}
+          </div>
+        )}
+        <Button
+          type="submit"
+          disabled={loading}
+          variant="primary"
+          className="w-full h-12 text-base font-semibold"
+        >
+          {loading ? "Preparing reset..." : "Send Reset Link"}
+        </Button>
+      </form>
 
-          {response ? (
-            <div className="rounded-2xl border border-[rgba(34,197,94,0.22)] bg-[rgba(34,197,94,0.08)] p-4 text-sm">
-              <div className="font-semibold text-green-300">
-                {isEmailDelivery ? "Reset email sent if the account exists" : "Reset link ready"}
-              </div>
-              <div className="mt-2 text-[var(--text)]/90">{response.message}</div>
-              <div className="mt-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3">
-                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-                  What to do next
-                </div>
-                <ol className="mt-3 space-y-2 text-sm text-[var(--text)]/90">
-                  <li>1. Check the inbox for {email}.</li>
-                  <li>2. Open the newest reset link only.</li>
-                  <li>3. Set a new password, then sign in again.</li>
-                </ol>
-              </div>
-              <div className="mt-3 rounded-xl border border-[rgba(245,158,11,0.28)] bg-[rgba(245,158,11,0.10)] p-3 text-xs text-amber-100">
-                If you only just signed up and have not clicked the verification email yet, password reset will not arrive. Verify the signup email first because the real account is created only after verification.
-              </div>
-              {isEmailDelivery ? (
-                <div className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-xs text-[var(--muted)]">
-                  For privacy, this page always shows the same result whether the email exists or not. If the account is real, active, and eligible for reset, the email will arrive in that inbox.
-                </div>
-              ) : null}
-              {response.reset_link ? (
-                <div className="mt-4 space-y-3">
-                  <div className="text-[var(--muted)]">
-                    Local preview mode is active, so your reset link is shown here directly.
-                  </div>
-                  <a
-                    href={response.reset_link}
-                    className="inline-flex rounded-full border border-[rgba(62,166,255,0.4)] bg-[rgba(62,166,255,0.12)] px-4 py-2 text-sm font-semibold text-[var(--text)] transition hover:bg-[rgba(62,166,255,0.18)]"
-                  >
-                    Open Reset Form
-                  </a>
-                  <Button type="button" variant="outline" onClick={copyResetLink}>
-                    Copy Reset Link
-                  </Button>
-                  {copyStatus ? <div className="text-xs text-[var(--muted)]">{copyStatus}</div> : null}
-                  <div className="break-all text-xs text-[var(--muted)]">{response.reset_link}</div>
-                </div>
-              ) : (
-                <div className="mt-3 text-[var(--muted)]">
-                  Check your inbox, spam, and promotions folder for the reset email.
-                </div>
-              )}
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <Button type="button" variant="outline" onClick={onResendVerification} disabled={resendingVerification}>
-                  {resendingVerification ? "Sending..." : "Resend Verification Email Instead"}
-                </Button>
-                <Link href="/login" className="text-sm text-[var(--accent)] underline">
-                  Back to sign in
-                </Link>
-              </div>
-              {verificationStatus ? (
-                <div className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-sm text-[var(--muted)]">
-                  {verificationStatus}
-                </div>
-              ) : null}
+      {response ? (
+        <div className="rounded-lg border border-color-success/25 bg-color-success/10 p-4 text-sm">
+          <div className="font-semibold text-color-success">
+            {isEmailDelivery ? "Reset email sent if the account exists" : "Reset link ready"}
+          </div>
+          <div className="mt-3 text-text-primary/90">{response.message}</div>
+          <div className="mt-4 rounded-md border border-border bg-card-elevated p-3">
+            <div className="text-xs font-semibold uppercase tracking-widest text-text-muted">
+              What to do next
+            </div>
+            <ol className="mt-3 space-y-2 text-sm text-text-primary/90">
+              <li>1. Check the inbox for {email}.</li>
+              <li>2. Open the newest reset link only.</li>
+              <li>3. Set a new password, then sign in again.</li>
+            </ol>
+          </div>
+          <div className="mt-3 rounded-md border border-color-warning/25 bg-color-warning/10 p-3 text-xs text-color-warning">
+            If you only just signed up and have not clicked the verification email yet, password reset will not arrive. Verify the signup email first because the real account is created only after verification.
+          </div>
+          {isEmailDelivery ? (
+            <div className="mt-3 rounded-md border border-border bg-card-elevated p-3 text-xs text-text-muted">
+              For privacy, this page always shows the same result whether the email exists or not. If the account is real, active, and eligible for reset, the email will arrive in that inbox.
             </div>
           ) : null}
-
-          <div className="text-center text-sm text-[var(--muted)]">
-            Remembered it?{" "}
-            <Link href="/login" className="text-[var(--accent)] underline">
+          {response.reset_link ? (
+            <div className="mt-4 space-y-3">
+              <div className="text-text-muted">
+                Local preview mode is active, so your reset link is shown here directly.
+              </div>
+              <a
+                href={response.reset_link}
+                className="inline-flex rounded-md border border-color-primary/40 bg-color-primary/20 px-4 py-2 text-sm font-semibold text-text-primary transition hover:bg-color-primary/30"
+              >
+                Open Reset Form
+              </a>
+              <Button type="button" variant="outline" onClick={copyResetLink}>
+                Copy Reset Link
+              </Button>
+              {copyStatus ? <div className="text-xs text-text-muted">{copyStatus}</div> : null}
+              <div className="break-all rounded-md border border-border bg-card p-3 text-xs text-text-muted font-mono">
+                {response.reset_link}
+              </div>
+            </div>
+          ) : (
+            <div className="mt-3 text-text-muted">
+              Check your inbox, spam, and promotions folder for the reset email.
+            </div>
+          )}
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onResendVerification}
+              disabled={resendingVerification}
+              className="flex-1"
+            >
+              {resendingVerification ? "Sending..." : "Resend Verification Email"}
+            </Button>
+            <Link href="/login" className="inline-flex items-center justify-center text-sm text-color-primary hover:underline">
               Back to sign in
             </Link>
           </div>
+          {verificationStatus ? (
+            <div className="mt-3 rounded-md border border-border bg-card-elevated p-3 text-sm text-text-muted">
+              {verificationStatus}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="text-center text-sm text-text-muted">
+        Remembered it?{" "}
+        <Link href="/login" className="text-color-primary hover:underline font-medium">
+          Back to sign in
+        </Link>
+      </div>
     </AuthShell>
   );
 }

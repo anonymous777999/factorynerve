@@ -638,13 +638,13 @@ export default function ReportsPage() {
 
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 pb-20 md:pb-8">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Reports</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Please login to continue."}</div>
+            <div className="text-sm text-color-danger">{sessionError || "Please login to continue."}</div>
             <Link href="/login">
               <Button>Open Login</Button>
             </Link>
@@ -655,79 +655,80 @@ export default function ReportsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
+    <main className="min-h-screen px-4 py-8 md:px-8 pb-20 md:pb-8 bg-bg">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
-          <div>
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Reports</div>
-            <h1 className="mt-2 text-3xl font-semibold">Reporting hub for trusted factory output</h1>
-            <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
-              Pull daily operations, trusted OCR, and owner-facing summaries into one desk. This page should answer three things fast: what is safe to report, what still needs review, and what format should leave the factory next.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full border border-cyan-400/25 bg-[rgba(34,211,238,0.08)] px-3 py-1 text-cyan-100">
-                Trusted outputs only
-              </span>
-              <span className="rounded-full border border-white/10 bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[var(--muted)]">
-                {activeFactory?.name || "Current factory"}
-              </span>
-              <span className="rounded-full border border-white/10 bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[var(--muted)]">
-                {isAccountant ? "Accounts-first view" : "Operations + management view"}
+        <section className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-border bg-card p-6 shadow-2xl backdrop-blur">
+
+        <div>
+          <div className="text-sm uppercase tracking-[0.28em] text-color-primary">Reports</div>
+          <h1 className="mt-2 text-3xl font-semibold text-text-primary">Reporting hub for trusted factory output</h1>
+          <p className="mt-2 max-w-3xl text-sm text-text-muted">
+            Pull daily operations, trusted OCR, and owner-facing summaries into one desk. This page should answer three things fast: what is safe to report, what still needs review, and what format should leave the factory next.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full border border-color-primary/25 bg-color-primary/8 px-3 py-1 text-color-primary-light">
+              Trusted outputs only
+            </span>
+            <span className="rounded-full border border-border bg-card-elevated px-3 py-1 text-text-muted">
+              {activeFactory?.name || "Current factory"}
+            </span>
+            <span className="rounded-full border border-border bg-card-elevated px-3 py-1 text-text-muted">
+              {isAccountant ? "Accounts-first view" : "Operations + management view"}
+            </span>
+          </div>
+        </div>
+        <div className="space-y-3">
+          <div className="flex flex-wrap gap-3">
+            <Link href="/dashboard">
+              <Button variant="outline">Dashboard</Button>
+            </Link>
+            <Link href="/email-summary">
+              <Button>Owner Update Desk</Button>
+            </Link>
+            <Link href="/entry">
+              <Button variant="outline">New Entry</Button>
+            </Link>
+          </div>
+          {!isAccountant ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="outline"
+                className="px-4 py-2 text-xs"
+                onClick={handleRefreshAll}
+                disabled={loadingRows || loadingInsights || refreshing || refreshingInsights}
+              >
+                {refreshing || refreshingInsights ? "Refreshing..." : "Refresh Reports"}
+              </Button>
+              <span className="text-xs text-[var(--muted)]">
+                {refreshing || refreshingInsights
+                  ? "Updating reports and charts..."
+                  : lastUpdatedAt
+                    ? `Updated ${formatDateTime(lastUpdatedAt)}`
+                    : "Live updates every 40 seconds"}
               </span>
             </div>
-          </div>
-          <div className="space-y-3">
-            <div className="flex flex-wrap gap-3">
-              <Link href="/dashboard">
-                <Button variant="outline">Dashboard</Button>
-              </Link>
-              <Link href="/email-summary">
-                <Button>Owner Update Desk</Button>
-              </Link>
-              <Link href="/entry">
-                <Button variant="outline">New Entry</Button>
-              </Link>
-            </div>
-            {!isAccountant ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant="outline"
-                  className="px-4 py-2 text-xs"
-                  onClick={handleRefreshAll}
-                  disabled={loadingRows || loadingInsights || refreshing || refreshingInsights}
-                >
-                  {refreshing || refreshingInsights ? "Refreshing..." : "Refresh Reports"}
-                </Button>
-                <span className="text-xs text-[var(--muted)]">
-                  {refreshing || refreshingInsights
-                    ? "Updating reports and charts..."
-                    : lastUpdatedAt
-                      ? `Updated ${formatDateTime(lastUpdatedAt)}`
-                      : "Live updates every 40 seconds"}
-                </span>
-              </div>
-            ) : null}
-          </div>
+          ) : null}
+        </div>
         </section>
 
-        {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
+        {error ? <div className="rounded-2xl border border-color-danger/30 bg-color-danger/10 px-4 py-3 text-sm text-color-danger-light">{error}</div> : null}
         {refreshing || refreshingInsights ? (
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3 text-sm text-[var(--muted)]">
+          <div className="rounded-2xl border border-border bg-card-elevated px-4 py-3 text-sm text-text-muted">
             Refreshing reports in the background...
           </div>
         ) : null}
-        {sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{sessionError}</div> : null}
+        {sessionError ? <div className="rounded-2xl border border-color-danger/30 bg-color-danger/10 px-4 py-3 text-sm text-color-danger-light">{sessionError}</div> : null}
 
         <section className="grid gap-4 lg:grid-cols-3">
           {reportHubCards.map((card) => (
-            <Card key={card.title} className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
+            <Card key={card.title} className="border border-border bg-card">
               <CardHeader>
-                <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">{card.eyebrow}</div>
-                <CardTitle className="text-xl">{card.title}</CardTitle>
+                <div className="text-xs uppercase tracking-[0.22em] text-color-primary">{card.eyebrow}</div>
+                <CardTitle className="text-xl text-text-primary">{card.title}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="text-2xl font-semibold">{card.metric}</div>
-                <div className="text-sm leading-6 text-[var(--muted)]">{card.detail}</div>
+                <div className="text-2xl font-semibold text-text-primary">{card.metric}</div>
+                <div className="text-sm leading-6 text-text-muted">{card.detail}</div>
                 <Link href={card.href}>
                   <Button variant="outline">{card.action}</Button>
                 </Link>
@@ -750,354 +751,358 @@ export default function ReportsPage() {
 
         <ReportInsightsBoard insights={insights} loading={loadingInsights} role={user.role} steelOverview={steelOverview} />
 
-        {ocrSummary ? (
-          <Card className="border-cyan-400/20 bg-[rgba(18,24,36,0.92)]">
-            <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div>
-                <div className="text-sm uppercase tracking-[0.22em] text-cyan-200">OCR Trust Summary</div>
-                <CardTitle className="mt-2 text-xl">Approved OCR is the reporting-safe layer</CardTitle>
-                <div className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
-                  {ocrSummary.trust_note}
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Link href="/ocr/verify">
-                  <Button variant="outline">Open Review Documents</Button>
-                </Link>
-                <Link href="/approvals">
-                  <Button variant="ghost">Open Review Queue</Button>
-                </Link>
-              </div>
-            </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-4">
-              <div className="rounded-2xl border border-cyan-400/20 bg-[rgba(6,14,22,0.55)] p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-cyan-100/80">Approved Docs</div>
-                <div className="mt-2 text-2xl font-semibold text-white">{ocrSummary.trusted_documents}</div>
-              </div>
-              <div className="rounded-2xl border border-cyan-400/20 bg-[rgba(6,14,22,0.55)] p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-cyan-100/80">Trusted Rows</div>
-                <div className="mt-2 text-2xl font-semibold text-white">{ocrSummary.trusted_rows}</div>
-              </div>
-              <div className="rounded-2xl border border-amber-400/20 bg-[rgba(28,20,8,0.42)] p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-amber-100/80">Pending Review</div>
-                <div className="mt-2 text-2xl font-semibold text-white">{ocrSummary.pending_documents}</div>
-              </div>
-              <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Last Trusted Approval</div>
-                <div className="mt-2 text-lg font-semibold text-white">{formatDateTime(ocrSummary.last_trusted_at || undefined)}</div>
-                <div className="mt-1 text-xs text-[var(--muted)]">
-                  Approval rate: {ocrSummary.approval_rate != null ? `${ocrSummary.approval_rate}%` : "-"}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ) : null}
-
-        <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl">Filter Reports</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <div>
-                <label className="text-sm text-[var(--muted)]">Start Date</label>
-                <Input
-                  type="date"
-                  value={draftFilters.startDate}
-                  onChange={(e) => setDraftFilters((current) => ({ ...current, startDate: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="text-sm text-[var(--muted)]">End Date</label>
-                <Input
-                  type="date"
-                  value={draftFilters.endDate}
-                  onChange={(e) => setDraftFilters((current) => ({ ...current, endDate: e.target.value }))}
-                />
-              </div>
-              <div>
-                <label className="text-sm text-[var(--muted)]">Shift</label>
-                <Select
-                  value={draftFilters.shift}
-                  onChange={(e) => setDraftFilters((current) => ({ ...current, shift: e.target.value }))}
-                >
-                  <option value="">All Shifts</option>
-                  <option value="morning">Morning</option>
-                  <option value="evening">Evening</option>
-                  <option value="night">Night</option>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm text-[var(--muted)]">Has Issues</label>
-                <Select
-                  value={draftFilters.hasIssues}
-                  onChange={(e) => setDraftFilters((current) => ({ ...current, hasIssues: e.target.value as IssueFilter }))}
-                >
-                  <option value="any">Any</option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm text-[var(--muted)]">Status</label>
-                <Select
-                  value={draftFilters.status}
-                  onChange={(e) => setDraftFilters((current) => ({ ...current, status: e.target.value }))}
-                >
-                  <option value="any">Any</option>
-                  <option value="submitted">Submitted</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                </Select>
-              </div>
-              <div className="md:col-span-2">
-                <label className="text-sm text-[var(--muted)]">Search notes / department</label>
-                <Input
-                  value={draftFilters.search}
-                  onChange={(e) => setDraftFilters((current) => ({ ...current, search: e.target.value }))}
-                  placeholder="Search notes, downtime reason, department..."
-                />
-              </div>
-              <div>
-                <label className="text-sm text-[var(--muted)]">Page</label>
-                <Input
-                  type="number"
-                  min={1}
-                  max={pageCount}
-                  value={page}
-                  onChange={(e) => setPage(Math.max(1, Math.min(pageCount, Number(e.target.value) || 1)))}
-                />
-              </div>
-              <div className="flex items-end gap-2">
-                <Button onClick={applyFilters} disabled={loadingRows || isAccountant}>
-                  {loadingRows && !hasLoadedRows ? "Loading..." : "Apply Filters"}
-                </Button>
-                <Button variant="ghost" onClick={resetFilters} disabled={loadingRows || isAccountant}>
-                  Reset
-                </Button>
-              </div>
-              <div className="md:col-span-2 xl:col-span-4 text-xs text-[var(--muted)]">
-                Applied range: {appliedFilters.startDate} to {appliedFilters.endDate}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl">Quick Exports</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                Use range Excel for shared plant files, JSON for system handoff, and the executive summary or email desk when leadership needs the same reporting story in plain language.
-              </div>
-              <Button variant="outline" onClick={handleRangeExcelJob} disabled={busy}>
-                Export Date Range to Excel
-              </Button>
-              <Button variant="outline" onClick={() => handleJsonExport("weekly")} disabled={busy}>
-                Export Weekly Summary JSON
-              </Button>
-              <Button variant="outline" onClick={() => handleJsonExport("monthly")} disabled={busy}>
-                Export Monthly Summary JSON
-              </Button>
-              {!isAccountant ? (
-                <Button variant="ghost" onClick={handleDownloadCurrentPage} disabled={!filteredRows.length}>
-                  Export Visible Page CSV
-                </Button>
-              ) : (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  Accountant view keeps raw entries hidden, but summary exports still work.
-                </div>
-              )}
-              <div className="flex flex-wrap gap-3 pt-1">
-                <Link href="/attendance/reports">
-                  <Button variant="ghost">Attendance Reports</Button>
-                </Link>
-                <Link href="/email-summary">
-                  <Button variant="ghost">Email Summary</Button>
-                </Link>
-              </div>
-              {reportJob ? (
-                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
-                  <div className="flex items-center justify-between gap-4 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                    <span>Range Export Job</span>
-                    <span>{reportJob.progress}%</span>
-                  </div>
-                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: progressWidth(reportJob.progress) }} />
-                  </div>
-                  <div className="mt-3 text-sm text-[var(--text)]">{reportJob.message}</div>
-                  {reportJob.status === "failed" && reportJob.error ? (
-                    <div className="mt-2 text-sm text-red-400">{reportJob.error}</div>
-                  ) : null}
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
-        </section>
-
-        <Card>
-          <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+      {ocrSummary ? (
+        <Card className="border border-border bg-card">
+          <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
             <div>
-              <div className="text-sm text-[var(--muted)]">Phase 7</div>
-              <CardTitle className="text-xl">Executive AI Summary</CardTitle>
+              <div className="text-sm uppercase tracking-[0.22em] text-color-primary-light">OCR Trust Summary</div>
+              <CardTitle className="mt-2 text-xl text-text-primary">Approved OCR is the reporting-safe layer</CardTitle>
+              <div className="mt-2 max-w-3xl text-sm text-text-muted">
+                {ocrSummary.trust_note}
+              </div>
             </div>
-            <Button variant="outline" onClick={handleExecutiveSummary} disabled={executiveBusy}>
-              {executiveBusy ? "Generating..." : "Generate Executive Summary"}
-            </Button>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/ocr/verify">
+                <Button variant="outline">Open Review Documents</Button>
+              </Link>
+              <Link href="/approvals">
+                <Button variant="ghost">Open Review Queue</Button>
+              </Link>
+            </div>
           </CardHeader>
-          <CardContent className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Summary</div>
-              <div className="mt-3 text-sm leading-7 text-[var(--text)]">
-                {executiveSummary?.summary || "Generate a management summary for the currently selected date range."}
+          <CardContent className="grid gap-4 md:grid-cols-4">
+            <div className="rounded-2xl border border-color-primary/20 bg-card-elevated p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-color-primary-light">Approved Docs</div>
+              <div className="mt-2 text-2xl font-semibold text-text-primary">{ocrSummary.trusted_documents}</div>
+            </div>
+            <div className="rounded-2xl border border-color-primary/20 bg-card-elevated p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-color-primary-light">Trusted Rows</div>
+              <div className="mt-2 text-2xl font-semibold text-text-primary">{ocrSummary.trusted_rows}</div>
+            </div>
+            <div className="rounded-2xl border border-color-warning/20 bg-card-elevated p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-color-warning-light">Pending Review</div>
+              <div className="mt-2 text-2xl font-semibold text-text-primary">{ocrSummary.pending_documents}</div>
+            </div>
+            <div className="rounded-2xl border border-border bg-card-elevated p-4">
+              <div className="text-xs uppercase tracking-[0.18em] text-text-muted">Last Trusted Approval</div>
+              <div className="mt-2 text-lg font-semibold text-text-primary">{formatDateTime(ocrSummary.last_trusted_at || undefined)}</div>
+              <div className="mt-1 text-xs text-text-muted">
+                Approval rate: {ocrSummary.approval_rate != null ? `${ocrSummary.approval_rate}%` : "-"}
               </div>
             </div>
-            <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Metrics</div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                <div>
-                  <div className="text-xs text-[var(--muted)]">Units</div>
-                  <div className="mt-1 text-lg font-semibold">{executiveSummary?.metrics?.total_units ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-[var(--muted)]">Target</div>
-                  <div className="mt-1 text-lg font-semibold">{executiveSummary?.metrics?.total_target ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-[var(--muted)]">Performance</div>
-                  <div className="mt-1 text-lg font-semibold">
-                    {executiveSummary?.metrics?.average_performance != null ? `${executiveSummary.metrics.average_performance}%` : "-"}
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-[var(--muted)]">Downtime</div>
-                  <div className="mt-1 text-lg font-semibold">{executiveSummary?.metrics?.total_downtime ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-[var(--muted)]">Best Shift</div>
-                  <div className="mt-1 text-lg font-semibold capitalize">{String(executiveSummary?.metrics?.best_shift || "-")}</div>
-                </div>
-                <div>
-                  <div className="text-xs text-[var(--muted)]">Provider</div>
-                  <div className="mt-1 text-lg font-semibold">{executiveSummary?.provider || "-"}</div>
-                </div>
-              </div>
-              {summaryJob ? (
-                <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4">
-                  <div className="flex items-center justify-between gap-4 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                    <span>Summary Job</span>
-                    <span>{summaryJob.progress}%</span>
-                  </div>
-                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: progressWidth(summaryJob.progress) }} />
-                  </div>
-                  <div className="mt-3 text-sm text-[var(--text)]">{summaryJob.message}</div>
-                  {summaryJob.status === "failed" && summaryJob.error ? (
-                    <div className="mt-2 text-sm text-red-400">{summaryJob.error}</div>
-                  ) : null}
-                </div>
-              ) : null}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">Filter Reports</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div>
+              <label className="text-sm text-text-muted">Start Date</label>
+              <Input
+                type="date"
+                value={draftFilters.startDate}
+                onChange={(e) => setDraftFilters((current) => ({ ...current, startDate: e.target.value }))}
+                className="h-11"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-text-muted">End Date</label>
+              <Input
+                type="date"
+                value={draftFilters.endDate}
+                onChange={(e) => setDraftFilters((current) => ({ ...current, endDate: e.target.value }))}
+                className="h-11"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-text-muted">Shift</label>
+              <Select
+                value={draftFilters.shift}
+                onChange={(e) => setDraftFilters((current) => ({ ...current, shift: e.target.value }))}
+              >
+                <option value="">All Shifts</option>
+                <option value="morning">Morning</option>
+                <option value="evening">Evening</option>
+                <option value="night">Night</option>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm text-text-muted">Has Issues</label>
+              <Select
+                value={draftFilters.hasIssues}
+                onChange={(e) => setDraftFilters((current) => ({ ...current, hasIssues: e.target.value as IssueFilter }))}
+              >
+                <option value="any">Any</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </Select>
+            </div>
+            <div>
+              <label className="text-sm text-text-muted">Status</label>
+              <Select
+                value={draftFilters.status}
+                onChange={(e) => setDraftFilters((current) => ({ ...current, status: e.target.value }))}
+              >
+                <option value="any">Any</option>
+                <option value="submitted">Submitted</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </Select>
+            </div>
+            <div className="md:col-span-2">
+              <label className="text-sm text-text-muted">Search notes / department</label>
+              <Input
+                value={draftFilters.search}
+                onChange={(e) => setDraftFilters((current) => ({ ...current, search: e.target.value }))}
+                placeholder="Search notes, downtime reason, department..."
+                className="h-11"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-text-muted">Page</label>
+              <Input
+                type="number"
+                min={1}
+                max={pageCount}
+                value={page}
+                onChange={(e) => setPage(Math.max(1, Math.min(pageCount, Number(e.target.value) || 1)))}
+                className="h-11"
+              />
+            </div>
+            <div className="flex items-end gap-2">
+              <Button variant="primary" onClick={applyFilters} disabled={loadingRows || isAccountant} className="h-11">
+                {loadingRows && !hasLoadedRows ? "Loading..." : "Apply Filters"}
+              </Button>
+              <Button variant="outline" onClick={resetFilters} disabled={loadingRows || isAccountant} className="h-11">
+                Reset
+              </Button>
+            </div>
+            <div className="md:col-span-2 xl:col-span-4 text-xs text-text-muted">
+              Applied range: {appliedFilters.startDate} to {appliedFilters.endDate}
             </div>
           </CardContent>
         </Card>
 
-        {!isAccountant ? (
-          <Card>
-            <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="text-sm text-[var(--muted)]">Results</div>
-                <CardTitle className="text-xl">{filteredRows.length} rows on this page</CardTitle>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-xl">Quick Exports</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="rounded-2xl border border-border bg-card-elevated p-4 text-sm text-text-muted">
+              Use range Excel for shared plant files, JSON for system handoff, and the executive summary or email desk when leadership needs the same reporting story in plain language.
+            </div>
+            <Button variant="outline" onClick={handleRangeExcelJob} disabled={busy} className="h-11">
+              Export Date Range to Excel
+            </Button>
+            <Button variant="outline" onClick={() => handleJsonExport("weekly")} disabled={busy} className="h-11">
+              Export Weekly Summary JSON
+            </Button>
+            <Button variant="outline" onClick={() => handleJsonExport("monthly")} disabled={busy} className="h-11">
+              Export Monthly Summary JSON
+            </Button>
+            {!isAccountant ? (
+              <Button variant="outline" onClick={handleDownloadCurrentPage} disabled={!filteredRows.length} className="h-11">
+                Export Visible Page CSV
+              </Button>
+            ) : (
+              <div className="rounded-2xl border border-border bg-card-elevated p-4 text-sm text-text-muted">
+                Accountant view keeps raw entries hidden, but summary exports still work.
               </div>
-              <div className="text-sm text-[var(--muted)]">
-                Page {page} of {pageCount} - total {total}
+            )}
+            <div className="flex flex-wrap gap-3 pt-1">
+              <Link href="/attendance/reports">
+                <Button variant="ghost">Attendance Reports</Button>
+              </Link>
+              <Link href="/email-summary">
+                <Button variant="ghost">Email Summary</Button>
+              </Link>
+            </div>
+            {reportJob ? (
+              <div className="rounded-2xl border border-border bg-card-elevated p-4">
+                <div className="flex items-center justify-between gap-4 text-xs uppercase tracking-[0.18em] text-text-muted">
+                  <span>Range Export Job</span>
+                  <span>{reportJob.progress}%</span>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-border">
+                  <div className="h-full rounded-full bg-color-primary transition-all" style={{ width: progressWidth(reportJob.progress) }} />
+                </div>
+                <div className="mt-3 text-sm text-text-primary">{reportJob.message}</div>
+                {reportJob.status === "failed" && reportJob.error ? (
+                  <div className="mt-2 text-sm text-color-danger">{reportJob.error}</div>
+                ) : null}
               </div>
-            </CardHeader>
-            <CardContent>
-              {loadingRows && hasLoadedRows ? (
-                <div className="mb-3 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-2 text-xs text-[var(--muted)]">
-                  Updating rows...
-                </div>
-              ) : null}
-              {loadingRows && !hasLoadedRows ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 6 }).map((_, index) => (
-                    <Skeleton key={index} className="h-14 w-full" />
-                  ))}
-                </div>
-              ) : filteredRows.length ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-left text-sm">
-                    <thead className="text-[var(--muted)]">
-                      <tr className="border-b border-[var(--border)]">
-                        <th className="px-3 py-3 font-medium">Date</th>
-                        <th className="px-3 py-3 font-medium">Shift</th>
-                        <th className="px-3 py-3 font-medium">Department</th>
-                        <th className="px-3 py-3 font-medium">Status</th>
-                        <th className="px-3 py-3 font-medium">Units</th>
-                        <th className="px-3 py-3 font-medium">Submitted</th>
-                        <th className="px-3 py-3 font-medium">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredRows.map((row) => (
-                        <tr key={row.id} className="border-b border-[var(--border)]/60">
-                          <td className="px-3 py-3">{row.date}</td>
-                          <td className="px-3 py-3">{row.shift}</td>
-                          <td className="px-3 py-3">{row.department || "-"}</td>
-                          <td className="px-3 py-3">{row.status}</td>
-                          <td className="px-3 py-3">
-                            {row.units_produced} / {row.units_target}
-                          </td>
-                          <td className="px-3 py-3 text-[var(--muted)]">{formatDateTime(row.created_at)}</td>
-                          <td className="px-3 py-3">
-                            <div className="flex flex-wrap gap-3">
-                              <Link href={`/entry/${row.id}`} className="text-[var(--accent)] underline underline-offset-4">
-                                Open
-                              </Link>
-                              <button
-                                type="button"
-                                className="text-[var(--accent)] underline underline-offset-4"
-                                onClick={() => handleEntryPdfJob(row.id)}
-                              >
-                                PDF
-                              </button>
-                              <button
-                                type="button"
-                                className="text-[var(--accent)] underline underline-offset-4"
-                                onClick={() => handleBinaryDownload(() => downloadEntryReport(row.id, "excel"), `entry-${row.id}.xlsx`)}
-                              >
-                                Excel
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  <div>No entries found for the selected filters.</div>
-                  <div className="flex flex-wrap gap-3">
-                    <Button variant="outline" onClick={resetFilters}>
-                      Reset Filters
-                    </Button>
-                    <Button variant="ghost" onClick={() => handleQuickRange("week")}>
-                      Last 7 Days
-                    </Button>
-                    <Link href="/entry">
-                      <Button variant="ghost">Open Entry Form</Button>
-                    </Link>
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ) : null}
+            ) : null}
+          </CardContent>
+        </Card>
+      </section>
 
-        {status ? <div className="text-sm text-green-400">{status}</div> : null}
-        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
-      </div>
-    </main>
+      <Card>
+        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div>
+            <div className="text-sm text-text-muted">Phase 7</div>
+            <CardTitle className="text-xl text-text-primary">Executive AI Summary</CardTitle>
+          </div>
+          <Button variant="primary" onClick={handleExecutiveSummary} disabled={executiveBusy} className="h-11">
+            {executiveBusy ? "Generating..." : "Generate Executive Summary"}
+          </Button>
+        </CardHeader>
+        <CardContent className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="rounded-2xl border border-border bg-card-elevated p-4">
+            <div className="text-xs uppercase tracking-[0.18em] text-text-muted">Summary</div>
+            <div className="mt-3 text-sm leading-7 text-text-primary">
+              {executiveSummary?.summary || "Generate a management summary for the currently selected date range."}
+            </div>
+          </div>
+          <div className="rounded-2xl border border-border bg-card-elevated p-4">
+            <div className="text-xs uppercase tracking-[0.18em] text-text-muted">Metrics</div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div>
+                <div className="text-xs text-text-muted">Units</div>
+                <div className="mt-1 text-lg font-semibold text-text-primary">{executiveSummary?.metrics?.total_units ?? "-"}</div>
+              </div>
+              <div>
+                <div className="text-xs text-text-muted">Target</div>
+                <div className="mt-1 text-lg font-semibold text-text-primary">{executiveSummary?.metrics?.total_target ?? "-"}</div>
+              </div>
+              <div>
+                <div className="text-xs text-text-muted">Performance</div>
+                <div className="mt-1 text-lg font-semibold text-text-primary">
+                  {executiveSummary?.metrics?.average_performance != null ? `${executiveSummary.metrics.average_performance}%` : "-"}
+                </div>
+              </div>
+              <div>
+                <div className="text-xs text-text-muted">Downtime</div>
+                <div className="mt-1 text-lg font-semibold text-text-primary">{executiveSummary?.metrics?.total_downtime ?? "-"}</div>
+              </div>
+              <div>
+                <div className="text-xs text-text-muted">Best Shift</div>
+                <div className="mt-1 text-lg font-semibold capitalize text-text-primary">{String(executiveSummary?.metrics?.best_shift || "-")}</div>
+              </div>
+              <div>
+                <div className="text-xs text-text-muted">Provider</div>
+                <div className="mt-1 text-lg font-semibold text-text-primary">{executiveSummary?.provider || "-"}</div>
+              </div>
+            </div>
+            {summaryJob ? (
+              <div className="mt-4 rounded-2xl border border-border bg-card-elevated p-4">
+                <div className="flex items-center justify-between gap-4 text-xs uppercase tracking-[0.18em] text-text-muted">
+                  <span>Summary Job</span>
+                  <span>{summaryJob.progress}%</span>
+                </div>
+                <div className="mt-3 h-2 overflow-hidden rounded-full bg-border">
+                  <div className="h-full rounded-full bg-color-primary transition-all" style={{ width: progressWidth(summaryJob.progress) }} />
+                </div>
+                <div className="mt-3 text-sm text-text-primary">{summaryJob.message}</div>
+                {summaryJob.status === "failed" && summaryJob.error ? (
+                  <div className="mt-2 text-sm text-color-danger">{summaryJob.error}</div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        </CardContent>
+      </Card>
+
+      {!isAccountant ? (
+        <Card>
+          <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <div className="text-sm text-text-muted">Results</div>
+              <CardTitle className="text-xl text-text-primary">{filteredRows.length} rows on this page</CardTitle>
+            </div>
+            <div className="text-sm text-text-muted">
+              Page {page} of {pageCount} - total {total}
+            </div>
+          </CardHeader>
+          <CardContent>
+            {loadingRows && hasLoadedRows ? (
+              <div className="mb-3 rounded-2xl border border-border bg-card-elevated px-4 py-2 text-xs text-text-muted">
+                Updating rows...
+              </div>
+            ) : null}
+            {loadingRows && !hasLoadedRows ? (
+              <div className="space-y-3">
+                {Array.from({ length: 6 }).map((_, index) => (
+                  <Skeleton key={index} className="h-14 w-full" />
+                ))}
+              </div>
+            ) : filteredRows.length ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="text-text-muted">
+                    <tr className="border-b border-border">
+                      <th className="px-3 py-3 font-medium">Date</th>
+                      <th className="px-3 py-3 font-medium">Shift</th>
+                      <th className="px-3 py-3 font-medium">Department</th>
+                      <th className="px-3 py-3 font-medium">Status</th>
+                      <th className="px-3 py-3 font-medium">Units</th>
+                      <th className="px-3 py-3 font-medium">Submitted</th>
+                      <th className="px-3 py-3 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredRows.map((row) => (
+                      <tr key={row.id} className="border-b border-border/60 hover:bg-card-elevated transition-colors">
+                        <td className="px-3 py-3 text-text-primary">{row.date}</td>
+                        <td className="px-3 py-3 text-text-primary">{row.shift}</td>
+                        <td className="px-3 py-3 text-text-primary">{row.department || "-"}</td>
+                        <td className="px-3 py-3 text-text-primary">{row.status}</td>
+                        <td className="px-3 py-3 text-text-primary">
+                          {row.units_produced} / {row.units_target}
+                        </td>
+                        <td className="px-3 py-3 text-text-muted">{formatDateTime(row.created_at)}</td>
+                        <td className="px-3 py-3">
+                          <div className="flex flex-wrap gap-3">
+                            <Link href={`/entry/${row.id}`} className="text-color-primary underline underline-offset-4 hover:text-color-primary-light">
+                              Open
+                            </Link>
+                            <button
+                              type="button"
+                              className="text-color-primary underline underline-offset-4 hover:text-color-primary-light"
+                              onClick={() => handleEntryPdfJob(row.id)}
+                            >
+                              PDF
+                            </button>
+                            <button
+                              type="button"
+                              className="text-color-primary underline underline-offset-4 hover:text-color-primary-light"
+                              onClick={() => handleBinaryDownload(() => downloadEntryReport(row.id, "excel"), `entry-${row.id}.xlsx`)}
+                            >
+                              Excel
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="space-y-4 rounded-2xl border border-border bg-card-elevated p-4 text-sm text-text-muted">
+                <div>No entries found for the selected filters.</div>
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="outline" onClick={resetFilters} className="h-11">
+                    Reset Filters
+                  </Button>
+                  <Button variant="outline" onClick={() => handleQuickRange("week")} className="h-11">
+                    Last 7 Days
+                  </Button>
+                  <Link href="/entry">
+                    <Button variant="outline" className="h-11">Open Entry Form</Button>
+                  </Link>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      {status ? <div className="text-sm text-color-success">{status}</div> : null}
+      {error || sessionError ? <div className="text-sm text-color-danger">{error || sessionError}</div> : null}
+    </div>
+    </main >
   );
 }

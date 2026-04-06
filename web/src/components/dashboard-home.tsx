@@ -1466,11 +1466,10 @@ export default function DashboardHome() {
                         {activeFactory?.name || user.factory_name || "Factory"}
                       </span>
                       <span
-                        className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${
-                          online
-                            ? "border-success/30 bg-success/12 text-success"
-                            : "border-warning/30 bg-warning/12 text-warning"
-                        }`}
+                        className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${online
+                          ? "border-success/30 bg-success/12 text-success"
+                          : "border-warning/30 bg-warning/12 text-warning"
+                          }`}
                       >
                         {online ? "Online" : "Offline"}
                       </span>

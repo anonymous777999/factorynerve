@@ -889,7 +889,7 @@ export default function OcrScanPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#0B0F19] text-sm text-slate-300">
+      <main className="flex min-h-screen items-center justify-center bg-bg text-sm text-text-muted pb-20 md:pb-8">
         Loading scanner...
       </main>
     );
@@ -897,10 +897,10 @@ export default function OcrScanPage() {
 
   if (!user) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#0B0F19] px-6 text-white">
-        <div className="w-full max-w-sm space-y-4 rounded-[2rem] border border-white/10 bg-[rgba(14,18,28,0.92)] p-6 text-center">
-          <div className="text-lg font-semibold">Login required</div>
-          <div className="text-sm text-slate-400">{sessionError || "Open login to use Document Desk."}</div>
+      <main className="flex min-h-screen items-center justify-center bg-bg px-6 text-text-primary pb-20 md:pb-8">
+        <div className="w-full max-w-sm space-y-4 rounded-[2rem] border border-border bg-card p-6 text-center">
+          <div className="text-lg font-semibold text-text-primary">Login required</div>
+          <div className="text-sm text-text-muted">{sessionError || "Open login to use Document Desk."}</div>
           <div className="flex justify-center">
             <Link href="/login">
               <Button>Open Login</Button>
@@ -913,10 +913,10 @@ export default function OcrScanPage() {
 
   if (!canUseOcr) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#0B0F19] px-6 text-white">
-        <div className="w-full max-w-sm space-y-4 rounded-[2rem] border border-white/10 bg-[rgba(14,18,28,0.92)] p-6 text-center">
-          <div className="text-lg font-semibold">Scanner access unavailable</div>
-          <div className="text-sm text-slate-400">Your role does not have access to Document Desk.</div>
+      <main className="flex min-h-screen items-center justify-center bg-bg px-6 text-text-primary pb-20 md:pb-8">
+        <div className="w-full max-w-sm space-y-4 rounded-[2rem] border border-border bg-card p-6 text-center">
+          <div className="text-lg font-semibold text-text-primary">Scanner access unavailable</div>
+          <div className="text-sm text-text-muted">Your role does not have access to Document Desk.</div>
           <div className="flex justify-center">
             <Link href="/dashboard">
               <Button>Back to Dashboard</Button>
@@ -928,12 +928,13 @@ export default function OcrScanPage() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#0B0F19] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-bg text-text-primary pb-20 md:pb-8">
       {screen === "camera" ? (
-        <section className="relative flex min-h-screen flex-col overflow-hidden">
+        <section className="relative flex min-h-screen flex-col overflow-hidden bg-bg pb-20 md:pb-8">
           <div className="absolute inset-0">
             {cameraReady ? (
               <video
+
                 ref={videoRef}
                 className="h-full w-full object-cover"
                 autoPlay
@@ -1062,302 +1063,310 @@ export default function OcrScanPage() {
             </div>
           </div>
         </section>
-      ) : null}
+  ) : null
+}
 
-      {screen === "crop" ? (
-        <section className="flex min-h-screen flex-col bg-[#0B0F19] px-5 py-6 sm:px-6 sm:py-8">
-          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5">
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
-              <div>
-                <div className="inline-flex rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-100">
-                  Step 2 of 4
-                </div>
-                <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-white">Set the crop frame</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
-                  Drag the four corners to keep only the page. We will use this frame for perspective correction before enhancement and extraction.
-                </p>
-              </div>
-              <div className="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Crop health</div>
-                <div className="mt-3 space-y-3">
-                  <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
-                    <div className="text-xs text-slate-400">Coverage</div>
-                    <div className="mt-1 text-lg font-semibold text-white">{cropSummary.coverage}%</div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
-                      <div className="text-xs text-slate-400">Width</div>
-                      <div className="mt-1 text-lg font-semibold text-white">{cropSummary.width}%</div>
-                    </div>
-                    <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
-                      <div className="text-xs text-slate-400">Height</div>
-                      <div className="mt-1 text-lg font-semibold text-white">{cropSummary.height}%</div>
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
-                    Keep the corners tight to the page edge. If the crop feels off, retake the capture instead of forcing a bad frame.
-                  </div>
-                </div>
-              </div>
+{
+  screen === "crop" ? (
+    <section className="flex min-h-screen flex-col bg-bg pb-20 md:pb-8 px-5 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+          <div>
+            <div className="inline-flex rounded-lg border border-color-primary/20 bg-color-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-color-primary">
+              Step 2 of 4
             </div>
 
-            <div className="grid flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
-              <div className="flex min-h-[26rem] items-center justify-center rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(5,10,18,0.92),rgba(12,19,31,0.94))] p-3 shadow-[0_26px_80px_rgba(0,0,0,0.28)] sm:p-4">
-                <div
-                  ref={cropSurfaceRef}
-                  className="relative inline-block touch-none overflow-hidden rounded-[1.7rem] border border-white/10 bg-black/35"
-                  onPointerMove={handleOverlayMove}
-                  onPointerUp={handleOverlayRelease}
-                  onPointerCancel={handleOverlayRelease}
-                  onPointerLeave={handleOverlayRelease}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={originalUrl}
-                    alt="Crop preview"
-                    className="block max-h-[76vh] max-w-full object-contain"
-                    onLoad={(event) => {
-                      setCropNaturalSize({
-                        width: event.currentTarget.naturalWidth,
-                        height: event.currentTarget.naturalHeight,
-                      });
-                    }}
-                  />
-                  <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                    <defs>
-                      <linearGradient id="crop-line" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#67e8f9" />
-                        <stop offset="100%" stopColor="#60a5fa" />
-                      </linearGradient>
-                      <mask id="crop-mask">
-                        <rect width="100" height="100" fill="white" />
-                        <polygon points={cropPoints.map((point) => `${point.x * 100},${point.y * 100}`).join(" ")} fill="black" />
-                      </mask>
-                    </defs>
-                    <rect width="100" height="100" fill="rgba(3,8,18,0.52)" mask="url(#crop-mask)" />
-                    <polygon
-                      points={cropPoints.map((point) => `${point.x * 100},${point.y * 100}`).join(" ")}
-                      fill="rgba(14,165,233,0.1)"
-                      stroke="url(#crop-line)"
-                      strokeWidth="0.8"
-                    />
-                  </svg>
-                  {cropPoints.map((point, index) => (
-                    <button
-                      key={`${index}-${point.x}-${point.y}`}
-                      type="button"
-                      aria-label={`Move crop handle ${index + 1}`}
-                      className="absolute h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-cyan-300 shadow-[0_0_0_6px_rgba(6,182,212,0.18)]"
-                      style={{
-                        left: `${point.x * 100}%`,
-                        top: `${point.y * 100}%`,
-                      }}
-                      onPointerDown={(event) => {
-                        setActiveHandle(index);
-                        cropSurfaceRef.current?.setPointerCapture?.(event.pointerId);
-                        moveHandle(index, event.clientX, event.clientY);
-                      }}
-                    />
-                  ))}
+            <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-white">Set the crop frame</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
+              Drag the four corners to keep only the page. We will use this frame for perspective correction before enhancement and extraction.
+            </p>
+          </div>
+          <div className="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Crop health</div>
+            <div className="mt-3 space-y-3">
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                <div className="text-xs text-slate-400">Coverage</div>
+                <div className="mt-1 text-lg font-semibold text-white">{cropSummary.coverage}%</div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                  <div className="text-xs text-slate-400">Width</div>
+                  <div className="mt-1 text-lg font-semibold text-white">{cropSummary.width}%</div>
+                </div>
+                <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                  <div className="text-xs text-slate-400">Height</div>
+                  <div className="mt-1 text-lg font-semibold text-white">{cropSummary.height}%</div>
                 </div>
               </div>
+              <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
+                Keep the corners tight to the page edge. If the crop feels off, retake the capture instead of forcing a bad frame.
+              </div>
+            </div>
+          </div>
+        </div>
 
-              <div className="space-y-4 rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4 sm:p-5">
+        <div className="grid flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
+          <div className="flex min-h-[26rem] items-center justify-center rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(5,10,18,0.92),rgba(12,19,31,0.94))] p-3 shadow-[0_26px_80px_rgba(0,0,0,0.28)] sm:p-4">
+            <div
+              ref={cropSurfaceRef}
+              className="relative inline-block touch-none overflow-hidden rounded-[1.7rem] border border-white/10 bg-black/35"
+              onPointerMove={handleOverlayMove}
+              onPointerUp={handleOverlayRelease}
+              onPointerCancel={handleOverlayRelease}
+              onPointerLeave={handleOverlayRelease}
+            >
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={originalUrl}
+                alt="Crop preview"
+                className="block max-h-[76vh] max-w-full object-contain"
+                onLoad={(event) => {
+                  setCropNaturalSize({
+                    width: event.currentTarget.naturalWidth,
+                    height: event.currentTarget.naturalHeight,
+                  });
+                }}
+              />
+              <svg className="pointer-events-none absolute inset-0 h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
+                <defs>
+                  <linearGradient id="crop-line" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%" stopColor="#67e8f9" />
+                    <stop offset="100%" stopColor="#60a5fa" />
+                  </linearGradient>
+                  <mask id="crop-mask">
+                    <rect width="100" height="100" fill="white" />
+                    <polygon points={cropPoints.map((point) => `${point.x * 100},${point.y * 100}`).join(" ")} fill="black" />
+                  </mask>
+                </defs>
+                <rect width="100" height="100" fill="rgba(3,8,18,0.52)" mask="url(#crop-mask)" />
+                <polygon
+                  points={cropPoints.map((point) => `${point.x * 100},${point.y * 100}`).join(" ")}
+                  fill="rgba(14,165,233,0.1)"
+                  stroke="url(#crop-line)"
+                  strokeWidth="0.8"
+                />
+              </svg>
+              {cropPoints.map((point, index) => (
+                <button
+                  key={`${index}-${point.x}-${point.y}`}
+                  type="button"
+                  aria-label={`Move crop handle ${index + 1}`}
+                  className="absolute h-7 w-7 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-cyan-300 shadow-[0_0_0_6px_rgba(6,182,212,0.18)]"
+                  style={{
+                    left: `${point.x * 100}%`,
+                    top: `${point.y * 100}%`,
+                  }}
+                  onPointerDown={(event) => {
+                    setActiveHandle(index);
+                    cropSurfaceRef.current?.setPointerCapture?.(event.pointerId);
+                    moveHandle(index, event.clientX, event.clientY);
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-4 rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4 sm:p-5">
+            <div>
+              <div className="text-lg font-semibold text-white">Crop guidance</div>
+              <div className="mt-1 text-sm text-slate-400">Make extraction easier before filters run.</div>
+            </div>
+            <div className="space-y-3">
+              {[
+                "Line the crop corners with the real paper edges, not the table edges only.",
+                "Keep labels, dates, and quantity columns inside the frame.",
+                "If the page is badly tilted or cut off, retake the photo now.",
+              ].map((item) => (
+                <div key={item} className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
+                  {item}
+                </div>
+              ))}
+            </div>
+            <div className="rounded-[1.5rem] border border-cyan-300/18 bg-cyan-300/10 p-4 text-sm text-cyan-50">
+              After this step we attempt perspective correction automatically. A clean crop usually makes the filter stage much more accurate.
+            </div>
+            <div className="flex flex-col gap-3 pt-2">
+              <button
+                type="button"
+                className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#67e8f9,#60a5fa)] px-6 py-3.5 text-base font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={busyCrop || !cropNaturalSize.width}
+                onClick={() => void handleContinueFromCrop()}
+              >
+                {busyCrop ? "Correcting perspective..." : "Continue to enhancement"}
+              </button>
+              <button
+                type="button"
+                className="w-full text-sm font-medium text-slate-400 transition hover:text-white"
+                onClick={handleRetake}
+              >
+                Retake capture
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  ) : null
+}
+
+{
+  screen === "enhance" ? (
+    <section className="flex min-h-screen flex-col bg-[#0B0F19] px-5 py-6 sm:px-6 sm:py-8">
+      <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
+          <div>
+            <div className="inline-flex rounded-lg border border-color-primary/20 bg-color-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-widest text-color-primary">
+              Step 3 of 4
+            </div>
+
+            <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-white">Tune the scan for extraction</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
+              Pick the version that gives the clearest rows and handwriting. We keep the OCR logic the same, but this step improves what we send into it.
+            </p>
+          </div>
+          <div className="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Current enhancement</div>
+            <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+              <div className="text-xs text-slate-400">Preset</div>
+              <div className="mt-1 text-lg font-semibold text-white">
+                {FILTER_OPTIONS.find((item) => item.value === selectedFilter)?.label || "Clean"}
+              </div>
+            </div>
+            <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
+              {FILTER_OPTIONS.find((item) => item.value === selectedFilter)?.detail}
+            </div>
+            <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
+              {busyEnhance ? "Refreshing preview..." : "Preview is ready. Compare contrast before moving to output."}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
+          <div className="relative flex min-h-[26rem] items-center justify-center overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(5,10,18,0.92),rgba(12,19,31,0.94))] p-3 shadow-[0_26px_80px_rgba(0,0,0,0.28)] sm:p-4">
+            <div className="absolute left-5 top-5 z-10 rounded-full border border-white/10 bg-[rgba(8,14,24,0.74)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200">
+              {selectedFilter === "original" ? "Raw view" : "Enhanced preview"}
+            </div>
+            <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-[1.7rem] border border-white/10 bg-black/35">
+              {displayEnhanceUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={displayEnhanceUrl} alt="Enhanced preview" className="max-h-[76vh] w-full object-contain" />
+              ) : null}
+            </div>
+            {busyEnhance ? (
+              <div className="absolute inset-0 grid place-items-center bg-[rgba(11,15,25,0.42)] backdrop-blur-sm">
+                <div className="rounded-[1.5rem] border border-white/10 bg-[rgba(8,14,24,0.78)] px-5 py-4 text-center shadow-[0_18px_55px_rgba(0,0,0,0.28)]">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-cyan-200">
+                    <SpinnerIcon />
+                  </div>
+                  <div className="mt-3 text-sm font-semibold text-white">Applying {selectedFilter} preset</div>
+                </div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="space-y-4 rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4 sm:p-5">
+            <div>
+              <div className="text-lg font-semibold text-white">Filter presets</div>
+              <div className="mt-1 text-sm text-slate-400">Choose the preview that gives the best table separation.</div>
+            </div>
+            <div className="space-y-3">
+              {FILTER_OPTIONS.map((item) => (
+                <button
+                  key={item.value}
+                  type="button"
+                  className={cn(
+                    "w-full rounded-[1.4rem] border px-4 py-4 text-left transition",
+                    selectedFilter === item.value
+                      ? "border-cyan-300/35 bg-cyan-300/12 shadow-[0_18px_40px_rgba(34,211,238,0.12)]"
+                      : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08]",
+                  )}
+                  onClick={() => setSelectedFilter(item.value)}
+                >
+                  <div className="text-base font-semibold text-white">{item.label}</div>
+                  <div className="mt-1 text-sm text-slate-400">{item.detail}</div>
+                </button>
+              ))}
+            </div>
+            <div className="rounded-[1.5rem] border border-cyan-300/18 bg-cyan-300/10 p-4 text-sm text-cyan-50">
+              If the cleaned version starts hiding faint handwriting, switch back to Original. If rows still blend together, try Contrast.
+            </div>
+            <div className="flex flex-col gap-3 pt-2">
+              <button
+                type="button"
+                className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#67e8f9,#60a5fa)] px-6 py-3.5 text-base font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={busyEnhance}
+                onClick={() => setScreen("output")}
+              >
+                Continue to output
+              </button>
+              <button
+                type="button"
+                className="w-full text-sm font-medium text-slate-400 transition hover:text-white"
+                onClick={() => setScreen("crop")}
+              >
+                Back to crop
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  ) : null
+}
+
+{
+  screen === "output" ? (
+    <section className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-6">
+      <div className="w-full max-w-5xl rounded-[2rem] border border-border bg-card p-5 shadow-[0_26px_80px_rgba(0,0,0,0.34)] sm:p-7">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)]">
+          <div className="space-y-4">
+            <div className="inline-flex rounded-full border border-border bg-color-primary/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-color-primary">
+              Step 4 of 4
+            </div>
+            <div>
+              <h2 className="text-3xl font-semibold tracking-[-0.04em] text-text-primary">Choose the final output</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-7 text-text-secondary">
+                We already cleaned the image. Now choose whether this draft should leave the scan desk as an Excel sheet for correction workflows or as a PDF snapshot for sharing.
+              </p>
+            </div>
+            <div className="overflow-hidden rounded-[1.7rem] border border-border bg-card-elevated">
+              <div className="flex items-center justify-between border-b border-border px-4 py-3">
                 <div>
-                  <div className="text-lg font-semibold text-white">Crop guidance</div>
-                  <div className="mt-1 text-sm text-slate-400">Make extraction easier before filters run.</div>
+                  <div className="text-sm font-semibold text-text-primary">{processFile?.name || "Current scan"}</div>
+                  <div className="text-xs text-text-muted">Prepared after crop and enhancement</div>
+                </div>
+                <div className="rounded-full border border-border bg-card-elevated px-3 py-1 text-xs text-text-secondary">
+                  {selectedFilter === "original" ? "Original tone" : `${selectedFilter} filter`}
+                </div>
+              </div>
+              <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_15rem]">
+                <div className="overflow-hidden rounded-[1.4rem] border border-border bg-bg">
+                  {displayEnhanceUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={displayEnhanceUrl} alt="Prepared scan preview" className="max-h-[28rem] w-full object-contain" />
+                  ) : null}
                 </div>
                 <div className="space-y-3">
                   {[
-                    "Line the crop corners with the real paper edges, not the table edges only.",
-                    "Keep labels, dates, and quantity columns inside the frame.",
-                    "If the page is badly tilted or cut off, retake the photo now.",
+                    "Crop corrections are already applied.",
+                    "The first row will prefill date, material, and quantity.",
+                    "Exports still route through the review draft for trust.",
                   ].map((item) => (
-                    <div key={item} className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
+                    <div key={item} className="rounded-2xl border border-border bg-card-elevated px-4 py-3 text-sm text-text-secondary">
                       {item}
                     </div>
                   ))}
                 </div>
-                <div className="rounded-[1.5rem] border border-cyan-300/18 bg-cyan-300/10 p-4 text-sm text-cyan-50">
-                  After this step we attempt perspective correction automatically. A clean crop usually makes the filter stage much more accurate.
-                </div>
-                <div className="flex flex-col gap-3 pt-2">
-                  <button
-                    type="button"
-                    className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#67e8f9,#60a5fa)] px-6 py-3.5 text-base font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={busyCrop || !cropNaturalSize.width}
-                    onClick={() => void handleContinueFromCrop()}
-                  >
-                    {busyCrop ? "Correcting perspective..." : "Continue to enhancement"}
-                  </button>
-                  <button
-                    type="button"
-                    className="w-full text-sm font-medium text-slate-400 transition hover:text-white"
-                    onClick={handleRetake}
-                  >
-                    Retake capture
-                  </button>
-                </div>
               </div>
             </div>
           </div>
-        </section>
-      ) : null}
 
-      {screen === "enhance" ? (
-        <section className="flex min-h-screen flex-col bg-[#0B0F19] px-5 py-6 sm:px-6 sm:py-8">
-          <div className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-5">
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start">
-              <div>
-                <div className="inline-flex rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-100">
-                  Step 3 of 4
-                </div>
-                <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-white">Tune the scan for extraction</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
-                  Pick the version that gives the clearest rows and handwriting. We keep the OCR logic the same, but this step improves what we send into it.
-                </p>
-              </div>
-              <div className="rounded-[1.6rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">Current enhancement</div>
-                <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
-                  <div className="text-xs text-slate-400">Preset</div>
-                  <div className="mt-1 text-lg font-semibold text-white">
-                    {FILTER_OPTIONS.find((item) => item.value === selectedFilter)?.label || "Clean"}
-                  </div>
-                </div>
-                <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
-                  {FILTER_OPTIONS.find((item) => item.value === selectedFilter)?.detail}
-                </div>
-                <div className="mt-3 rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
-                  {busyEnhance ? "Refreshing preview..." : "Preview is ready. Compare contrast before moving to output."}
-                </div>
-              </div>
+          <div className="space-y-4 rounded-[1.7rem] border border-border bg-card-elevated p-4 sm:p-5">
+            <div>
+              <div className="text-lg font-semibold text-text-primary">Output destination</div>
+              <div className="mt-1 text-sm text-text-muted">Choose what the operator needs next.</div>
             </div>
-
-            <div className="grid flex-1 gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
-              <div className="relative flex min-h-[26rem] items-center justify-center overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(5,10,18,0.92),rgba(12,19,31,0.94))] p-3 shadow-[0_26px_80px_rgba(0,0,0,0.28)] sm:p-4">
-                <div className="absolute left-5 top-5 z-10 rounded-full border border-white/10 bg-[rgba(8,14,24,0.74)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-200">
-                  {selectedFilter === "original" ? "Raw view" : "Enhanced preview"}
-                </div>
-                <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-[1.7rem] border border-white/10 bg-black/35">
-                  {displayEnhanceUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={displayEnhanceUrl} alt="Enhanced preview" className="max-h-[76vh] w-full object-contain" />
-                  ) : null}
-                </div>
-                {busyEnhance ? (
-                  <div className="absolute inset-0 grid place-items-center bg-[rgba(11,15,25,0.42)] backdrop-blur-sm">
-                    <div className="rounded-[1.5rem] border border-white/10 bg-[rgba(8,14,24,0.78)] px-5 py-4 text-center shadow-[0_18px_55px_rgba(0,0,0,0.28)]">
-                      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-cyan-200">
-                        <SpinnerIcon />
-                      </div>
-                      <div className="mt-3 text-sm font-semibold text-white">Applying {selectedFilter} preset</div>
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-
-              <div className="space-y-4 rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4 sm:p-5">
-                <div>
-                  <div className="text-lg font-semibold text-white">Filter presets</div>
-                  <div className="mt-1 text-sm text-slate-400">Choose the preview that gives the best table separation.</div>
-                </div>
-                <div className="space-y-3">
-                  {FILTER_OPTIONS.map((item) => (
-                    <button
-                      key={item.value}
-                      type="button"
-                      className={cn(
-                        "w-full rounded-[1.4rem] border px-4 py-4 text-left transition",
-                        selectedFilter === item.value
-                          ? "border-cyan-300/35 bg-cyan-300/12 shadow-[0_18px_40px_rgba(34,211,238,0.12)]"
-                          : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08]",
-                      )}
-                      onClick={() => setSelectedFilter(item.value)}
-                    >
-                      <div className="text-base font-semibold text-white">{item.label}</div>
-                      <div className="mt-1 text-sm text-slate-400">{item.detail}</div>
-                    </button>
-                  ))}
-                </div>
-                <div className="rounded-[1.5rem] border border-cyan-300/18 bg-cyan-300/10 p-4 text-sm text-cyan-50">
-                  If the cleaned version starts hiding faint handwriting, switch back to Original. If rows still blend together, try Contrast.
-                </div>
-                <div className="flex flex-col gap-3 pt-2">
-                  <button
-                    type="button"
-                    className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#67e8f9,#60a5fa)] px-6 py-3.5 text-base font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={busyEnhance}
-                    onClick={() => setScreen("output")}
-                  >
-                    Continue to output
-                  </button>
-                  <button
-                    type="button"
-                    className="w-full text-sm font-medium text-slate-400 transition hover:text-white"
-                    onClick={() => setScreen("crop")}
-                  >
-                    Back to crop
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-      ) : null}
-
-      {screen === "output" ? (
-        <section className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-6">
-          <div className="w-full max-w-5xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,27,0.92),rgba(8,13,22,0.96))] p-5 shadow-[0_26px_80px_rgba(0,0,0,0.34)] sm:p-7">
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.15fr)_minmax(22rem,0.85fr)]">
-              <div className="space-y-4">
-                <div className="inline-flex rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-100">
-                  Step 4 of 4
-                </div>
-                <div>
-                  <h2 className="text-3xl font-semibold tracking-[-0.04em] text-white">Choose the final output</h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
-                    We already cleaned the image. Now choose whether this draft should leave the scan desk as an Excel sheet for correction workflows or as a PDF snapshot for sharing.
-                  </p>
-                </div>
-                <div className="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)]">
-                  <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
-                    <div>
-                      <div className="text-sm font-semibold text-white">{processFile?.name || "Current scan"}</div>
-                      <div className="text-xs text-slate-400">Prepared after crop and enhancement</div>
-                    </div>
-                    <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
-                      {selectedFilter === "original" ? "Original tone" : `${selectedFilter} filter`}
-                    </div>
-                  </div>
-                  <div className="grid gap-4 p-4 md:grid-cols-[minmax(0,1fr)_15rem]">
-                    <div className="overflow-hidden rounded-[1.4rem] border border-white/8 bg-black/30">
-                      {displayEnhanceUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={displayEnhanceUrl} alt="Prepared scan preview" className="max-h-[28rem] w-full object-contain" />
-                      ) : null}
-                    </div>
-                    <div className="space-y-3">
-                      {[
-                        "Crop corrections are already applied.",
-                        "The first row will prefill date, material, and quantity.",
-                        "Exports still route through the review draft for trust.",
-                      ].map((item) => (
-                        <div key={item} className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
-                          {item}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4 rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4 sm:p-5">
-                <div>
-                  <div className="text-lg font-semibold text-white">Output destination</div>
-                  <div className="mt-1 text-sm text-slate-400">Choose what the operator needs next.</div>
-                </div>
-                <div className="space-y-3">
+            <div className="space-y-3">
               {[
                 { value: "excel" as const, label: "Generate Excel", icon: <ExcelIcon /> },
                 { value: "pdf" as const, label: "Generate PDF", icon: <PdfIcon /> },
@@ -1368,17 +1377,17 @@ export default function OcrScanPage() {
                   className={cn(
                     "flex w-full items-center gap-4 rounded-[1.6rem] border px-5 py-5 text-left transition",
                     outputChoice === item.value
-                      ? "border-cyan-300/35 bg-cyan-300/12 shadow-[0_18px_40px_rgba(34,211,238,0.12)]"
-                      : "border-white/10 bg-white/[0.04] hover:bg-white/[0.08]",
+                      ? "border-color-primary bg-color-primary/10 shadow-[0_18px_40px_rgba(59,130,246,0.12)]"
+                      : "border-border bg-card-elevated hover:bg-card",
                   )}
                   onClick={() => setOutputChoice(item.value)}
                 >
-                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-cyan-200">
+                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-border bg-bg text-color-primary">
                     {item.icon}
                   </span>
                   <span>
-                    <span className="block text-lg font-semibold">{item.label}</span>
-                    <span className="mt-1 block text-sm text-slate-400">
+                    <span className="block text-lg font-semibold text-text-primary">{item.label}</span>
+                    <span className="mt-1 block text-sm text-text-muted">
                       {item.value === "excel"
                         ? "Best for corrected rows, handoff, and downstream review."
                         : "Best for quick sharing and frozen visual output."}
@@ -1386,277 +1395,284 @@ export default function OcrScanPage() {
                   </span>
                 </button>
               ))}
-                </div>
-                <button
-                  type="button"
-                  className="inline-flex w-full items-center justify-center rounded-full bg-[linear-gradient(135deg,#67e8f9,#60a5fa)] px-6 py-4 text-base font-semibold text-slate-950 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-                  disabled={busyAction || !processFile}
-                  onClick={() => void handleProcess()}
-                >
-                  Start extraction
-                </button>
-                <button
-                  type="button"
-                  className="w-full text-sm font-medium text-slate-400 transition hover:text-white"
-                  onClick={() => setScreen("enhance")}
-                >
-                  Back to filters
-                </button>
+            </div>
+            <button
+              type="button"
+              className="inline-flex w-full items-center justify-center rounded-full bg-color-primary px-6 py-4 text-base font-semibold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+              disabled={busyAction || !processFile}
+              onClick={() => void handleProcess()}
+            >
+              Start extraction
+            </button>
+            <button
+              type="button"
+              className="w-full text-sm font-medium text-slate-400 transition hover:text-white"
+              onClick={() => setScreen("enhance")}
+            >
+              Back to filters
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  ) : null
+}
+
+{
+  screen === "processing" ? (
+    <section className="grid min-h-screen place-items-center px-5 py-10 sm:px-6">
+      <div className="w-full max-w-3xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,27,0.94),rgba(8,13,22,0.97))] p-6 text-center shadow-[0_26px_80px_rgba(0,0,0,0.34)] sm:p-8">
+        <div className="inline-flex rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-100">
+          AI Processing
+        </div>
+        <div className="mx-auto mt-6 w-full max-w-sm">
+          <div className="relative overflow-hidden rounded-[1.8rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+            <div className="relative overflow-hidden rounded-[1.3rem] bg-[linear-gradient(180deg,rgba(5,10,18,0.95),rgba(14,21,33,0.95))] px-4 py-12">
+              <div className="absolute inset-y-0 left-0 w-full bg-[linear-gradient(180deg,transparent,rgba(76,176,255,0.08),transparent)]" />
+              <div className="absolute left-0 right-0 top-0 h-0.5 bg-[linear-gradient(90deg,transparent,rgba(76,176,255,0.95),transparent)] animate-[pulse_2s_ease-in-out_infinite]" />
+              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-cyan-200">
+                <SpinnerIcon />
+              </div>
+              <div className="mt-4 truncate text-sm font-medium text-slate-300">
+                {processFile?.name || "Current scan"}
               </div>
             </div>
           </div>
-        </section>
-      ) : null}
-
-      {screen === "processing" ? (
-        <section className="grid min-h-screen place-items-center px-5 py-10 sm:px-6">
-          <div className="w-full max-w-3xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,27,0.94),rgba(8,13,22,0.97))] p-6 text-center shadow-[0_26px_80px_rgba(0,0,0,0.34)] sm:p-8">
-            <div className="inline-flex rounded-full border border-sky-300/20 bg-sky-400/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-100">
-              AI Processing
+        </div>
+        <h2 className="mt-6 text-3xl font-semibold tracking-[-0.04em] text-white">
+          {PROCESSING_STAGE_COPY[processingStage].label}
+        </h2>
+        <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-slate-300">
+          {PROCESSING_STAGE_COPY[processingStage].detail}
+        </p>
+        <div className="mx-auto mt-6 h-2.5 w-full max-w-xl overflow-hidden rounded-full bg-white/8">
+          <div
+            className="h-full rounded-full bg-[linear-gradient(90deg,#67e8f9,#60a5fa)] transition-[width] duration-500 ease-out"
+            style={{ width: `${PROCESSING_STAGE_COPY[processingStage].progress}%` }}
+          />
+        </div>
+        <div className="mx-auto mt-6 grid w-full max-w-xl gap-3 text-left sm:grid-cols-3">
+          {(Object.entries(PROCESSING_STAGE_COPY) as Array<[ProcessingStage, { label: string; detail: string; progress: number }]>).map(([key, item], index) => (
+            <div
+              key={key}
+              className={cn(
+                "rounded-[1.35rem] border px-4 py-3",
+                key === processingStage
+                  ? "border-cyan-300/30 bg-cyan-300/12"
+                  : "border-white/8 bg-white/[0.03]",
+              )}
+            >
+              <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">0{index + 1}</div>
+              <div className="mt-2 text-sm font-semibold text-white">{item.label}</div>
             </div>
-            <div className="mx-auto mt-6 w-full max-w-sm">
-              <div className="relative overflow-hidden rounded-[1.8rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                <div className="relative overflow-hidden rounded-[1.3rem] bg-[linear-gradient(180deg,rgba(5,10,18,0.95),rgba(14,21,33,0.95))] px-4 py-12">
-                  <div className="absolute inset-y-0 left-0 w-full bg-[linear-gradient(180deg,transparent,rgba(76,176,255,0.08),transparent)]" />
-                  <div className="absolute left-0 right-0 top-0 h-0.5 bg-[linear-gradient(90deg,transparent,rgba(76,176,255,0.95),transparent)] animate-[pulse_2s_ease-in-out_infinite]" />
-                  <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04] text-cyan-200">
-                    <SpinnerIcon />
-                  </div>
-                  <div className="mt-4 truncate text-sm font-medium text-slate-300">
-                    {processFile?.name || "Current scan"}
-                  </div>
-                </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  ) : null
+}
+
+{
+  screen === "result" ? (
+    <section className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-6">
+      <div className="w-full max-w-5xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,27,0.94),rgba(8,13,22,0.97))] p-5 shadow-[0_26px_80px_rgba(0,0,0,0.34)] sm:p-7">
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(22rem,0.92fr)]">
+          <div className="space-y-5">
+            <div className="text-center lg:text-left">
+              <div className="mx-auto grid h-20 w-20 place-items-center rounded-[1.6rem] border border-emerald-400/25 bg-emerald-400/10 text-emerald-200 lg:mx-0">
+                <CheckIcon />
               </div>
+              <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-white">Conversion complete</h2>
+              <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
+                Your scan has been turned into a review-safe draft. Download what you need now, or open the same draft in Review Documents for trust checks.
+              </p>
             </div>
-            <h2 className="mt-6 text-3xl font-semibold tracking-[-0.04em] text-white">
-              {PROCESSING_STAGE_COPY[processingStage].label}
-            </h2>
-            <p className="mx-auto mt-2 max-w-xl text-sm leading-7 text-slate-300">
-              {PROCESSING_STAGE_COPY[processingStage].detail}
-            </p>
-            <div className="mx-auto mt-6 h-2.5 w-full max-w-xl overflow-hidden rounded-full bg-white/8">
-              <div
-                className="h-full rounded-full bg-[linear-gradient(90deg,#67e8f9,#60a5fa)] transition-[width] duration-500 ease-out"
-                style={{ width: `${PROCESSING_STAGE_COPY[processingStage].progress}%` }}
-              />
-            </div>
-            <div className="mx-auto mt-6 grid w-full max-w-xl gap-3 text-left sm:grid-cols-3">
-              {(Object.entries(PROCESSING_STAGE_COPY) as Array<[ProcessingStage, { label: string; detail: string; progress: number }]>).map(([key, item], index) => (
-                <div
-                  key={key}
-                  className={cn(
-                    "rounded-[1.35rem] border px-4 py-3",
-                    key === processingStage
-                      ? "border-cyan-300/30 bg-cyan-300/12"
-                      : "border-white/8 bg-white/[0.03]",
-                  )}
-                >
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">0{index + 1}</div>
-                  <div className="mt-2 text-sm font-semibold text-white">{item.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-      ) : null}
 
-      {screen === "result" ? (
-        <section className="flex min-h-screen items-center justify-center px-5 py-10 sm:px-6">
-          <div className="w-full max-w-5xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(11,17,27,0.94),rgba(8,13,22,0.97))] p-5 shadow-[0_26px_80px_rgba(0,0,0,0.34)] sm:p-7">
-            <div className="grid gap-6 lg:grid-cols-[minmax(0,1.08fr)_minmax(22rem,0.92fr)]">
-              <div className="space-y-5">
-                <div className="text-center lg:text-left">
-                  <div className="mx-auto grid h-20 w-20 place-items-center rounded-[1.6rem] border border-emerald-400/25 bg-emerald-400/10 text-emerald-200 lg:mx-0">
-                    <CheckIcon />
-                  </div>
-                  <h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] text-white">Conversion complete</h2>
-                  <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
-                    Your scan has been turned into a review-safe draft. Download what you need now, or open the same draft in Review Documents for trust checks.
-                  </p>
-                </div>
-
-                <div className="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)]">
-                  <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
-                    <div>
-                      <div className="text-sm font-semibold text-white">{processFile?.name || "Current scan"}</div>
-                      <div className="text-xs text-slate-400">Saved as a review draft before export</div>
-                    </div>
-                    <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
-                      {savedId ? `Draft #${savedId}` : "Draft pending"}
-                    </div>
-                  </div>
-                  <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-                    <div className="space-y-4">
-                      <div className="overflow-hidden rounded-[1.4rem] border border-white/8 bg-black/30">
-                      {displayEnhanceUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={displayEnhanceUrl} alt="Processed scan preview" className="max-h-[28rem] w-full object-contain" />
-                      ) : null}
-                      </div>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Language</div>
-                          <div className="mt-2 text-sm font-medium text-white">{resultPreview?.language || "auto"}</div>
-                        </div>
-                        <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Confidence</div>
-                          <div className="mt-2 text-sm font-medium text-white">{formatConfidence(resultPreview?.avgConfidence ?? null)}</div>
-                        </div>
-                        <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Columns</div>
-                          <div className="mt-2 text-sm font-medium text-white">{resultPreview?.columns || 0}</div>
-                        </div>
-                        <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Raw helper column</div>
-                          <div className="mt-2 text-sm font-medium text-white">{resultPreview?.rawColumnAdded ? "Added" : "Not needed"}</div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="space-y-3">
-                      {[
-                        ["Date", fields.date || "Not detected"],
-                        ["Material", fields.material || "Not detected"],
-                        ["Quantity", fields.quantity || "Not detected"],
-                        ["Hints", qualityHints.length ? qualityHints.join(", ") : "No scan warnings"],
-                      ].map(([label, value]) => (
-                        <div key={label} className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</div>
-                          <div className="mt-2 text-sm font-medium text-white">{value}</div>
-                        </div>
-                      ))}
-                      <div className="overflow-hidden rounded-[1.4rem] border border-white/8 bg-white/[0.04]">
-                        <div className="border-b border-white/8 px-4 py-3">
-                          <div className="text-sm font-semibold text-white">Extracted preview</div>
-                          <div className="mt-1 text-xs text-slate-400">First rows from the corrected draft that will feed review and export.</div>
-                        </div>
-                        <div className="overflow-x-auto">
-                          <table className="min-w-full text-left text-sm">
-                            <tbody>
-                              {(resultPreview?.rows.slice(0, 4) || []).map((row, rowIndex) => (
-                                <tr key={`preview-row-${rowIndex}`} className="border-b border-white/6 last:border-b-0">
-                                  {row.slice(0, Math.min(resultPreview?.columns || row.length, 5)).map((cell, cellIndex) => (
-                                    <td key={`preview-cell-${rowIndex}-${cellIndex}`} className="max-w-[9rem] px-4 py-3 align-top text-slate-200">
-                                      <div className="truncate">{cell || "-"}</div>
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                              {!resultPreview?.rows.length ? (
-                                <tr>
-                                  <td className="px-4 py-4 text-slate-400">Preview rows are not available yet.</td>
-                                </tr>
-                              ) : null}
-                            </tbody>
-                          </table>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-4 rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4 sm:p-5">
+            <div className="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)]">
+              <div className="flex items-center justify-between border-b border-white/8 px-4 py-3">
                 <div>
-                  <div className="text-lg font-semibold text-white">Export or continue review</div>
-                  <div className="mt-1 text-sm text-slate-400">Choose the next action for this OCR draft.</div>
+                  <div className="text-sm font-semibold text-white">{processFile?.name || "Current scan"}</div>
+                  <div className="text-xs text-slate-400">Saved as a review draft before export</div>
+                </div>
+                <div className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
+                  {savedId ? `Draft #${savedId}` : "Draft pending"}
+                </div>
+              </div>
+              <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
+                <div className="space-y-4">
+                  <div className="overflow-hidden rounded-[1.4rem] border border-white/8 bg-black/30">
+                    {displayEnhanceUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={displayEnhanceUrl} alt="Processed scan preview" className="max-h-[28rem] w-full object-contain" />
+                    ) : null}
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Language</div>
+                      <div className="mt-2 text-sm font-medium text-white">{resultPreview?.language || "auto"}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Confidence</div>
+                      <div className="mt-2 text-sm font-medium text-white">{formatConfidence(resultPreview?.avgConfidence ?? null)}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Columns</div>
+                      <div className="mt-2 text-sm font-medium text-white">{resultPreview?.columns || 0}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Raw helper column</div>
+                      <div className="mt-2 text-sm font-medium text-white">{resultPreview?.rawColumnAdded ? "Added" : "Not needed"}</div>
+                    </div>
+                  </div>
                 </div>
                 <div className="space-y-3">
-                  <button
-                    type="button"
-                    className={cn(
-                      "flex w-full items-center justify-between rounded-[1.5rem] border px-5 py-4 text-left transition",
-                      savedId
-                        ? "border-cyan-300/30 bg-cyan-300/10 hover:bg-cyan-300/14"
-                        : "border-white/10 bg-white/[0.04]",
-                    )}
-                    disabled={busyAction || !savedId}
-                    onClick={() => void handleDownloadExcel()}
-                  >
-                    <span className="flex items-center gap-3">
-                      <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-cyan-200">
-                        <ExcelIcon />
-                      </span>
-                      <span>
-                        <span className="block text-base font-semibold text-white">Download Excel</span>
-                        <span className="mt-1 block text-sm text-slate-400">Corrected rows ready for spreadsheet workflow.</span>
-                      </span>
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-5 py-4 text-left transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-60"
-                    disabled={!pdfBlob}
-                    onClick={handleDownloadPdf}
-                  >
-                    <span className="flex items-center gap-3">
-                      <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-cyan-200">
-                        <PdfIcon />
-                      </span>
-                      <span>
-                        <span className="block text-base font-semibold text-white">Download PDF</span>
-                        <span className="mt-1 block text-sm text-slate-400">Frozen visual export for easy sharing.</span>
-                      </span>
-                    </span>
-                  </button>
-                </div>
-
-                {savedId ? (
-                  <Link
-                    href={`/ocr/verify?verification_id=${savedId}`}
-                    className="inline-flex w-full items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
-                  >
-                    Open this draft in Review Documents
-                  </Link>
-                ) : null}
-
-                <button
-                  type="button"
-                  className="w-full text-sm font-medium text-cyan-300 transition hover:text-cyan-100"
-                  onClick={() => setShowInsights((current) => !current)}
-                >
-                  {showInsights ? "Hide detailed insights" : "Show detailed insights"}
-                </button>
-
-                {showInsights ? (
-                  <div className="space-y-3 rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 text-left">
-                    {[
-                      ["Draft", savedId ? `#${savedId}` : "Not saved"],
-                      ["Excel source", savedId ? "Corrected review draft rows" : "Not ready"],
-                      ["Next step", savedId ? "Review, approve, and export trusted output" : "Save the draft first"],
-                    ].map(([label, value]) => (
-                      <div key={label} className="flex items-center justify-between gap-4">
-                        <span className="text-sm text-slate-400">{label}</span>
-                        <span className="max-w-[60%] text-right text-sm font-medium text-white">{value}</span>
-                      </div>
-                    ))}
+                  {[
+                    ["Date", fields.date || "Not detected"],
+                    ["Material", fields.material || "Not detected"],
+                    ["Quantity", fields.quantity || "Not detected"],
+                    ["Hints", qualityHints.length ? qualityHints.join(", ") : "No scan warnings"],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</div>
+                      <div className="mt-2 text-sm font-medium text-white">{value}</div>
+                    </div>
+                  ))}
+                  <div className="overflow-hidden rounded-[1.4rem] border border-white/8 bg-white/[0.04]">
+                    <div className="border-b border-white/8 px-4 py-3">
+                      <div className="text-sm font-semibold text-white">Extracted preview</div>
+                      <div className="mt-1 text-xs text-slate-400">First rows from the corrected draft that will feed review and export.</div>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-left text-sm">
+                        <tbody>
+                          {(resultPreview?.rows.slice(0, 4) || []).map((row, rowIndex) => (
+                            <tr key={`preview-row-${rowIndex}`} className="border-b border-white/6 last:border-b-0">
+                              {row.slice(0, Math.min(resultPreview?.columns || row.length, 5)).map((cell, cellIndex) => (
+                                <td key={`preview-cell-${rowIndex}-${cellIndex}`} className="max-w-[9rem] px-4 py-3 align-top text-slate-200">
+                                  <div className="truncate">{cell || "-"}</div>
+                                </td>
+                              ))}
+                            </tr>
+                          ))}
+                          {!resultPreview?.rows.length ? (
+                            <tr>
+                              <td className="px-4 py-4 text-slate-400">Preview rows are not available yet.</td>
+                            </tr>
+                          ) : null}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                ) : null}
-
-                <button
-                  type="button"
-                  className="w-full text-sm font-medium text-slate-400 transition hover:text-white"
-                  onClick={resetFlow}
-                >
-                  Scan another document
-                </button>
+                </div>
               </div>
             </div>
           </div>
-        </section>
-      ) : null}
 
-      {(error || status) && screen !== "processing" ? (
-        <div
-          className={cn(
-            "pointer-events-none fixed inset-x-0 z-50 mx-auto w-[min(92vw,34rem)] rounded-[1.4rem] border px-4 py-3 text-sm shadow-[0_18px_60px_rgba(0,0,0,0.34)] backdrop-blur-xl",
-            error ? "border-red-400/25 bg-[rgba(127,29,29,0.85)] text-red-50" : "border-cyan-300/20 bg-[rgba(8,19,30,0.86)] text-cyan-50",
-          )}
-          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
-        >
-          {error || status}
+          <div className="space-y-4 rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)] p-4 sm:p-5">
+            <div>
+              <div className="text-lg font-semibold text-white">Export or continue review</div>
+              <div className="mt-1 text-sm text-slate-400">Choose the next action for this OCR draft.</div>
+            </div>
+            <div className="space-y-3">
+              <button
+                type="button"
+                className={cn(
+                  "flex w-full items-center justify-between rounded-[1.5rem] border px-5 py-4 text-left transition",
+                  savedId
+                    ? "border-cyan-300/30 bg-cyan-300/10 hover:bg-cyan-300/14"
+                    : "border-white/10 bg-white/[0.04]",
+                )}
+                disabled={busyAction || !savedId}
+                onClick={() => void handleDownloadExcel()}
+              >
+                <span className="flex items-center gap-3">
+                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-cyan-200">
+                    <ExcelIcon />
+                  </span>
+                  <span>
+                    <span className="block text-base font-semibold text-white">Download Excel</span>
+                    <span className="mt-1 block text-sm text-slate-400">Corrected rows ready for spreadsheet workflow.</span>
+                  </span>
+                </span>
+              </button>
+
+              <button
+                type="button"
+                className="flex w-full items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-5 py-4 text-left transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-60"
+                disabled={!pdfBlob}
+                onClick={handleDownloadPdf}
+              >
+                <span className="flex items-center gap-3">
+                  <span className="inline-flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/20 text-cyan-200">
+                    <PdfIcon />
+                  </span>
+                  <span>
+                    <span className="block text-base font-semibold text-white">Download PDF</span>
+                    <span className="mt-1 block text-sm text-slate-400">Frozen visual export for easy sharing.</span>
+                  </span>
+                </span>
+              </button>
+            </div>
+
+            {savedId ? (
+              <Link
+                href={`/ocr/verify?verification_id=${savedId}`}
+                className="inline-flex w-full items-center justify-center rounded-full border border-white/12 bg-white/[0.04] px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/[0.08]"
+              >
+                Open this draft in Review Documents
+              </Link>
+            ) : null}
+
+            <button
+              type="button"
+              className="w-full text-sm font-medium text-cyan-300 transition hover:text-cyan-100"
+              onClick={() => setShowInsights((current) => !current)}
+            >
+              {showInsights ? "Hide detailed insights" : "Show detailed insights"}
+            </button>
+
+            {showInsights ? (
+              <div className="space-y-3 rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 text-left">
+                {[
+                  ["Draft", savedId ? `#${savedId}` : "Not saved"],
+                  ["Excel source", savedId ? "Corrected review draft rows" : "Not ready"],
+                  ["Next step", savedId ? "Review, approve, and export trusted output" : "Save the draft first"],
+                ].map(([label, value]) => (
+                  <div key={label} className="flex items-center justify-between gap-4">
+                    <span className="text-sm text-slate-400">{label}</span>
+                    <span className="max-w-[60%] text-right text-sm font-medium text-white">{value}</span>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+
+            <button
+              type="button"
+              className="w-full text-sm font-medium text-slate-400 transition hover:text-white"
+              onClick={resetFlow}
+            >
+              Scan another document
+            </button>
+          </div>
         </div>
-      ) : null}
+      </div>
+    </section>
+  ) : null
+}
+
+{
+  (error || status) && screen !== "processing" ? (
+    <div
+      className={cn(
+        "pointer-events-none fixed inset-x-0 z-50 mx-auto w-[min(92vw,34rem)] rounded-[1.4rem] border px-4 py-3 text-sm shadow-[0_18px_60px_rgba(0,0,0,0.34)] backdrop-blur-xl",
+        error ? "border-red-400/25 bg-[rgba(127,29,29,0.85)] text-red-50" : "border-cyan-300/20 bg-[rgba(8,19,30,0.86)] text-cyan-50",
+      )}
+      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
+    >
+      {error || status}
+    </div>
+  ) : null
+}
 
       <input
         ref={cameraInputRef}
@@ -1673,6 +1689,6 @@ export default function OcrScanPage() {
         accept="image/*"
         onChange={handleInputChange}
       />
-    </main>
+    </main >
   );
 }

@@ -15,6 +15,7 @@ import { useI18n } from "@/lib/i18n";
 import { useSession } from "@/lib/use-session";
 import { signalWorkflowRefresh, subscribeToWorkflowRefresh } from "@/lib/workflow-sync";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -308,12 +309,12 @@ export default function AttendancePage() {
 
   if (loading || (pageLoading && Boolean(user) && !hasLoadedOnce)) {
     return (
-      <main className="min-h-screen bg-[#0B0F19] px-4 py-8 md:px-6">
+      <main className="min-h-screen bg-bg px-4 py-8 md:px-6 pb-20 md:pb-8">
         <div className="mx-auto max-w-6xl space-y-6">
-          <Skeleton className="h-[28rem] rounded-[2rem]" />
+          <Skeleton className="h-96 rounded-lg" />
           <div className="hidden gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_360px]">
-            <Skeleton className="h-[22rem] rounded-[2rem]" />
-            <Skeleton className="h-[22rem] rounded-[2rem]" />
+            <Skeleton className="h-80 rounded-lg" />
+            <Skeleton className="h-80 rounded-lg" />
           </div>
         </div>
       </main>
@@ -322,64 +323,69 @@ export default function AttendancePage() {
 
   if (!user) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#0B0F19] px-4">
-        <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-white/5 p-6 text-white">
-          <div className="text-xl font-semibold">Attendance</div>
-          <div className="mt-3 text-sm text-slate-300">
-            {sessionError || "Please login to open attendance."}
-          </div>
-          <Link href="/login" className="mt-6 inline-flex">
-            <Button className="h-12 px-6">Open Login</Button>
-          </Link>
-        </div>
+      <main className="flex min-h-screen items-center justify-center bg-bg px-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Attendance</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-text-muted text-sm">
+              {sessionError || "Please login to open attendance."}
+            </p>
+            <Link href="/login" className="mt-6 inline-block">
+              <Button variant="primary" className="h-11 px-6">Open Login</Button>
+            </Link>
+          </CardContent>
+        </Card>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[#0B0F19] px-4 py-6 text-white md:px-6 lg:py-8">
+    <main className="min-h-screen bg-bg px-4 py-6 text-text-primary md:px-6 lg:py-8 pb-20 md:pb-8">
       <div className="mx-auto max-w-6xl">
         {status ? (
-          <div className="mb-4 rounded-[20px] border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+          <div className="mb-4 rounded-lg border border-color-success/25 bg-color-success/10 px-4 py-3 text-sm text-color-success">
             {status}
           </div>
         ) : null}
         {error ? (
-          <div className="mb-4 rounded-[20px] border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+          <div className="mb-4 rounded-lg border border-color-danger/25 bg-color-danger/10 px-4 py-3 text-sm text-color-danger">
             {error}
           </div>
         ) : null}
         {sessionError ? (
-          <div className="mb-4 rounded-[20px] border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+          <div className="mb-4 rounded-lg border border-color-danger/25 bg-color-danger/10 px-4 py-3 text-sm text-color-danger">
             {sessionError}
           </div>
         ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(17,25,40,0.96),rgba(11,15,25,0.98))] p-6 shadow-[0_24px_80px_rgba(6,10,18,0.48)]">
-            <div className="text-base font-semibold tracking-wide text-slate-100">{factoryName}</div>
+          <Card className="border border-border bg-card-elevated">
+            <CardHeader>
+              <CardTitle className="text-lg md:text-xl">{factoryName}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              <div className="flex flex-col items-center text-center">
+                <div className={`inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-semibold uppercase tracking-widest ${statusMeta.badge}`}>
+                  <span className={`h-2.5 w-2.5 rounded-full ${statusMeta.dot}`} />
+                  {statusText(today?.status)}
+                </div>
 
-            <div className="mt-10 flex flex-col items-center text-center">
-              <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] ${statusMeta.badge}`}>
-                <span className={`h-2.5 w-2.5 rounded-full ${statusMeta.dot}`} />
-                {statusText(today?.status)}
+                <div className="mt-6 text-2xl md:text-4xl font-bold">{formatShift(displayShift)} Shift</div>
+
+                <div className="mt-8 text-xs uppercase tracking-widest text-text-muted">
+                  {today?.status === "working" ? "Shift running" : "Worked time"}
+                </div>
+                <div className="mt-3 text-4xl md:text-5xl font-bold tracking-tight">{workedTime}</div>
+                <div className="mt-2 text-sm text-text-secondary">
+                  {today?.status === "working" ? "Worked" : today?.status === "not_punched" ? "Ready to start" : "Today"}
+                </div>
               </div>
 
-              <div className="mt-5 text-2xl font-semibold md:text-3xl">{formatShift(displayShift)} Shift</div>
-
-              <div className="mt-8 text-sm uppercase tracking-[0.22em] text-slate-400">
-                {today?.status === "working" ? "Shift running" : "Worked time"}
-              </div>
-              <div className="mt-3 text-4xl font-semibold tracking-tight md:text-5xl">{workedTime}</div>
-              <div className="mt-2 text-sm text-slate-300">
-                {today?.status === "working" ? "Worked" : today?.status === "not_punched" ? "Ready to start" : "Today"}
-              </div>
-            </div>
-
-            <div className="mt-10">
               <Button
-                variant="ghost"
-                className={`h-20 w-full rounded-[28px] text-xl font-semibold ${mainAction.className}`}
+                variant="primary"
+                className={`h-14 w-full text-lg font-semibold ${mainAction.className}`}
                 disabled={busy || mainAction.disabled}
                 onClick={mainAction.action ? () => void handlePunch(mainAction.action!) : undefined}
               >
@@ -389,117 +395,123 @@ export default function AttendancePage() {
                     ? "Closing..."
                     : mainAction.label}
               </Button>
-            </div>
 
-            <div className="mt-8 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 text-center text-sm text-slate-300">
-              Last action: <span className="font-semibold text-white">{formatTime(lastActionAt, locale)}</span>
-            </div>
-
-            <div className="mt-6 text-center">
-              <button
-                type="button"
-                className="text-sm font-medium text-slate-300 transition hover:text-white"
-                onClick={() => setOptionsOpen((current) => !current)}
-              >
-                {optionsOpen ? "Hide Options" : "More Options"}
-              </button>
-            </div>
-
-            {optionsOpen ? (
-              <div className="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
-                <div>
-                  <label className="text-sm text-slate-300">Shift</label>
-                  <Select
-                    value={selectedShift}
-                    onChange={(event) => setSelectedShift(event.target.value as AttendanceShift)}
-                    disabled={busy || Boolean(today && !today.can_punch_in)}
-                  >
-                    {SHIFT_OPTIONS.map((shift) => (
-                      <option key={shift} value={shift}>
-                        {formatShift(shift)}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-
-                <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <Button
-                    variant="outline"
-                    className="h-11 w-full"
-                    onClick={() => void loadAttendance({ background: true })}
-                    disabled={busy || refreshing}
-                  >
-                    {refreshing ? "Refreshing..." : "Refresh"}
-                  </Button>
-                  <Link href="/attendance/reports" className="block">
-                    <Button variant="ghost" className="h-11 w-full rounded-[22px] border border-white/10 bg-white/5">
-                      View History
-                    </Button>
-                  </Link>
-                </div>
+              <div className="rounded-md border border-border bg-card-elevated px-4 py-3 text-center text-sm text-text-secondary">
+                Last action: <span className="font-semibold text-text-primary">{formatTime(lastActionAt, locale)}</span>
               </div>
-            ) : null}
-          </section>
+
+              <div className="text-center">
+                <button
+                  type="button"
+                  className="text-sm font-medium text-text-secondary hover:text-text-primary transition"
+                  onClick={() => setOptionsOpen((current) => !current)}
+                >
+                  {optionsOpen ? "Hide Options" : "More Options"}
+                </button>
+              </div>
+
+              {optionsOpen ? (
+                <Card className="bg-card-elevated border border-border">
+                  <CardContent className="pt-6 space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-text-primary mb-2">Shift</label>
+                      <Select
+                        value={selectedShift}
+                        onChange={(event) => setSelectedShift(event.target.value as AttendanceShift)}
+                        disabled={busy || Boolean(today && !today.can_punch_in)}
+                      >
+                        {SHIFT_OPTIONS.map((shift) => (
+                          <option key={shift} value={shift}>
+                            {formatShift(shift)}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Button
+                        variant="outline"
+                        className="h-11 w-full"
+                        onClick={() => void loadAttendance({ background: true })}
+                        disabled={busy || refreshing}
+                      >
+                        {refreshing ? "Refreshing..." : "Refresh"}
+                      </Button>
+                      <Link href="/attendance/reports" className="block">
+                        <Button variant="outline" className="h-11 w-full">
+                          View History
+                        </Button>
+                      </Link>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
+            </CardContent>
+          </Card>
 
           <aside className="hidden lg:block">
-            <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(14,21,36,0.96),rgba(11,15,25,0.98))] p-6 shadow-[0_20px_70px_rgba(6,10,18,0.32)]">
-              <div className="text-xs uppercase tracking-[0.22em] text-slate-400">Today Summary</div>
+            <Card className="border border-border bg-card-elevated sticky top-6">
+              <CardHeader>
+                <div className="text-xs uppercase tracking-widest text-text-muted">Today Summary</div>
+              </CardHeader>
 
-              <div className="mt-6 space-y-4 text-sm text-slate-300">
-                <div className="flex items-center justify-between">
-                  <span>Worked</span>
-                  <span className="font-semibold text-white">{workedTime}</span>
+              <CardContent className="space-y-6">
+                <div className="space-y-3 text-sm">
+                  <div className="flex items-center justify-between text-text-secondary">
+                    <span>Worked</span>
+                    <span className="font-semibold text-text-primary">{workedTime}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-text-secondary">
+                    <span>Last punch</span>
+                    <span className="font-semibold text-text-primary">{formatTime(lastActionAt, locale)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-text-secondary">
+                    <span>Shift</span>
+                    <span className="font-semibold text-text-primary">{formatShift(displayShift)}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-text-secondary">
+                    <span>Status</span>
+                    <span className="font-semibold text-text-primary">{statusText(today?.status)}</span>
+                  </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span>Last punch</span>
-                  <span className="font-semibold text-white">{formatTime(lastActionAt, locale)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Shift</span>
-                  <span className="font-semibold text-white">{formatShift(displayShift)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>Shift status</span>
-                  <span className="font-semibold text-white">{statusText(today?.status)}</span>
-                </div>
-              </div>
 
-              {summaryAlert ? (
-                <div className="mt-6 rounded-[24px] border border-amber-400/20 bg-amber-500/10 px-4 py-4 text-sm text-amber-100">
-                  {summaryAlert}
-                </div>
-              ) : null}
+                {summaryAlert ? (
+                  <div className="rounded-md border border-color-warning/25 bg-color-warning/10 px-3 py-2 text-xs text-color-warning">
+                    {summaryAlert}
+                  </div>
+                ) : null}
 
-              <div className="mt-6 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Shift Status</div>
-                <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">
-                  <span className={`h-2.5 w-2.5 rounded-full ${statusMeta.dot}`} />
-                  {statusText(today?.status)}
+                <div className="rounded-md border border-border bg-card p-3">
+                  <div className="text-xs uppercase tracking-widest text-text-muted">Shift Status</div>
+                  <div className="mt-2 inline-flex items-center gap-2 rounded-full px-2 py-1 text-xs font-semibold uppercase tracking-widest text-text-primary">
+                    <span className={`h-2 w-2 rounded-full ${statusMeta.dot}`} />
+                    {statusText(today?.status)}
+                  </div>
+                  <div className="mt-4 text-sm text-text-secondary">
+                    {today?.status === "working"
+                      ? "Timer is running for the open shift."
+                      : today?.status === "late"
+                        ? `Late recorded: ${formatDuration(today?.late_minutes || 0)}.`
+                        : today?.status === "missed_punch"
+                          ? "This record now needs supervisor review."
+                          : today?.status === "completed"
+                            ? "Today's attendance is already closed."
+                            : "Ready for the next punch action."}
+                  </div>
                 </div>
-                <div className="mt-4 text-sm text-slate-300">
-                  {today?.status === "working"
-                    ? "Timer is running for the open shift."
-                    : today?.status === "late"
-                      ? `Late recorded: ${formatDuration(today?.late_minutes || 0)}.`
-                      : today?.status === "missed_punch"
-                        ? "This record now needs supervisor review."
-                        : today?.status === "completed"
-                          ? "Today's attendance is already closed."
-                          : "Ready for the next punch action."}
-                </div>
-              </div>
 
-              <div className="mt-6 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 text-sm text-slate-300">
-                <div className="flex items-center justify-between">
-                  <span>Factory</span>
-                  <span className="font-semibold text-white">{factoryName}</span>
+                <div className="rounded-md border border-border bg-card p-3 text-sm">
+                  <div className="flex items-center justify-between text-text-secondary">
+                    <span>Factory</span>
+                    <span className="font-semibold text-text-primary">{factoryName}</span>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between text-text-secondary">
+                    <span>Auto-refresh</span>
+                    <span className="font-semibold text-text-primary">{refreshing ? "Running" : "Active"}</span>
+                  </div>
                 </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <span>Refresh</span>
-                  <span className="font-semibold text-white">{refreshing ? "Running" : "Auto"}</span>
-                </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
           </aside>
         </div>
       </div>

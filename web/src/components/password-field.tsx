@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 type PasswordFieldProps = {
   label: string;
@@ -12,6 +13,7 @@ type PasswordFieldProps = {
   onChange: (value: string) => void;
   placeholder?: string;
   required?: boolean;
+  className?: string;
 };
 
 export function PasswordField({
@@ -21,11 +23,12 @@ export function PasswordField({
   onChange,
   placeholder,
   required = false,
+  className,
 }: PasswordFieldProps) {
   const [visible, setVisible] = useState(false);
 
   return (
-    <div>
+    <div className={cn("w-full", className)}>
       <label className="text-sm text-[var(--muted)]">{label}</label>
       <div className="relative mt-2">
         <Input

@@ -1022,7 +1022,7 @@ export default function WorkQueuePage() {
 
   if (isWorkerQueue) {
     return (
-      <main className="min-h-screen bg-[#0B0F19] px-4 py-6 md:px-6 lg:py-8">
+      <main className="min-h-screen bg-bg px-4 py-6 md:px-6 lg:py-8 pb-20 md:pb-8">
         <div className="mx-auto max-w-6xl space-y-4">
           {error ? (
             <div className="rounded-[20px] border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">
@@ -1048,20 +1048,20 @@ export default function WorkQueuePage() {
             </section>
           ) : null}
 
-          <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(18,24,36,0.96),rgba(11,15,25,0.98))] p-6 shadow-[0_24px_80px_rgba(6,10,18,0.42)]">
+          <section className="rounded-[32px] border border-border bg-card p-6 shadow-[0_24px_80px_rgba(6,10,18,0.42)]">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[rgba(62,166,255,0.88)]">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-color-primary">
                   {activeFactory?.name || user.factory_name || "Factory"}
                 </div>
-                <h1 className="mt-2 text-3xl font-semibold text-white">Work Queue</h1>
-                <div className="mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/90">
+                <h1 className="mt-2 text-3xl font-semibold text-text-primary">Work Queue</h1>
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-text-primary">
                   <span className={`rounded-full border px-3 py-1 ${workerQueueStatus.tone}`}>
                     {workerQueueStatus.label}
                   </span>
                 </div>
               </div>
-              <div className="space-y-2 text-sm text-slate-300 sm:text-right">
+              <div className="space-y-2 text-sm text-text-secondary sm:text-right">
                 <Button
                   variant="outline"
                   className="h-11 px-5"
@@ -1072,7 +1072,7 @@ export default function WorkQueuePage() {
                 >
                   {refreshing ? "Refreshing..." : "Refresh"}
                 </Button>
-                <div className="text-xs text-slate-400">
+                <div className="text-xs text-text-muted">
                   {refreshing
                     ? "Updating queue..."
                     : lastUpdatedAt
@@ -1099,7 +1099,7 @@ export default function WorkQueuePage() {
                         >
                           {workerSectionLabel(section.tone)}
                         </span>
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-text-muted">
                           {section.items.length} task{section.items.length === 1 ? "" : "s"}
                         </span>
                       </div>
@@ -1108,10 +1108,10 @@ export default function WorkQueuePage() {
                         {section.items.map((item) => (
                           <div
                             key={item.id}
-                            className="rounded-[24px] border border-white/10 bg-[rgba(8,12,20,0.45)] px-4 py-4"
+                            className="rounded-[24px] border border-border bg-bg px-4 py-4"
                           >
-                            <div className="text-lg font-semibold text-white">{item.title}</div>
-                            <div className="mt-2 text-sm leading-6 text-slate-300">{item.detail}</div>
+                            <div className="text-lg font-semibold text-text-primary">{item.title}</div>
+                            <div className="mt-2 text-sm leading-6 text-text-secondary">{item.detail}</div>
                             <div className="mt-4">
                               <Link href={item.href}>
                                 <Button
@@ -1129,12 +1129,12 @@ export default function WorkQueuePage() {
                   );
                 })
               ) : (
-                <div className="rounded-[30px] border border-emerald-400/18 bg-[linear-gradient(180deg,rgba(16,32,24,0.92),rgba(11,15,25,0.98))] p-6 shadow-[0_18px_50px_rgba(3,8,20,0.24)]">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-100">
+                <div className="rounded-[30px] border border-border bg-card-elevated p-6 shadow-[0_18px_50px_rgba(3,8,20,0.24)]">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-color-success">
                     All Clear
                   </div>
-                  <div className="mt-3 text-2xl font-semibold text-white">No tasks are waiting right now</div>
-                  <div className="mt-2 text-sm text-slate-300">
+                  <div className="mt-3 text-2xl font-semibold text-text-primary">No tasks are waiting right now</div>
+                  <div className="mt-2 text-sm text-text-secondary">
                     Today&apos;s shift work looks covered in this queue.
                   </div>
                   <div className="mt-5 flex flex-wrap gap-3">
@@ -1150,35 +1150,35 @@ export default function WorkQueuePage() {
             </section>
 
             <aside className="space-y-4">
-              <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(16,22,36,0.96),rgba(11,15,25,0.98))] p-5 shadow-[0_20px_60px_rgba(6,10,18,0.32)]">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Today</div>
+              <div className="rounded-[28px] border border-border bg-card p-5 shadow-[0_20px_60px_rgba(6,10,18,0.32)]">
+                <div className="text-xs uppercase tracking-[0.18em] text-text-muted">Today</div>
                 <div className="mt-4 grid gap-3">
-                  <div className="rounded-[20px] border border-white/10 bg-[rgba(8,12,20,0.48)] px-4 py-3">
-                    <div className="text-xs text-slate-400">Pending</div>
-                    <div className="mt-2 text-2xl font-semibold text-white">{workerPendingCount}</div>
+                  <div className="rounded-[20px] border border-border bg-card-elevated px-4 py-3">
+                    <div className="text-xs text-text-muted">Pending</div>
+                    <div className="mt-2 text-2xl font-semibold text-text-primary">{workerPendingCount}</div>
                   </div>
-                  <div className="rounded-[20px] border border-white/10 bg-[rgba(8,12,20,0.48)] px-4 py-3">
-                    <div className="text-xs text-slate-400">Completed</div>
-                    <div className="mt-2 text-2xl font-semibold text-white">{state.todayEntries.length}</div>
+                  <div className="rounded-[20px] border border-border bg-card-elevated px-4 py-3">
+                    <div className="text-xs text-text-muted">Completed</div>
+                    <div className="mt-2 text-2xl font-semibold text-text-primary">{state.todayEntries.length}</div>
                   </div>
-                  <div className="rounded-[20px] border border-white/10 bg-[rgba(8,12,20,0.48)] px-4 py-3">
-                    <div className="text-xs text-slate-400">Critical Alerts</div>
-                    <div className="mt-2 text-2xl font-semibold text-white">{workerCriticalAlerts.length}</div>
+                  <div className="rounded-[20px] border border-border bg-card-elevated px-4 py-3">
+                    <div className="text-xs text-text-muted">Critical Alerts</div>
+                    <div className="mt-2 text-2xl font-semibold text-text-primary">{workerCriticalAlerts.length}</div>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-[28px] border border-white/10 bg-[rgba(255,255,255,0.04)] p-5">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Alerts</div>
+              <div className="rounded-[28px] border border-border bg-card p-5">
+                <div className="text-xs uppercase tracking-[0.18em] text-text-muted">Alerts</div>
                 {workerCriticalAlerts.length ? (
                   <div className="mt-4 space-y-3">
                     {workerCriticalAlerts.map((alert) => (
                       <div
                         key={alert.id}
-                        className="rounded-[20px] border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3"
+                        className="rounded-[20px] border border-color-danger/30 bg-color-danger/12 px-4 py-3"
                       >
-                        <div className="text-sm font-semibold text-red-100">{alert.message}</div>
-                        <div className="mt-2 text-xs text-red-100/80">
+                        <div className="text-sm font-semibold text-color-danger">{alert.message}</div>
+                        <div className="mt-2 text-xs text-color-danger/80">
                           {alert.created_at ? formatDateTime(alert.created_at) : "Critical alert"}
                         </div>
                       </div>
@@ -1190,7 +1190,7 @@ export default function WorkQueuePage() {
                     </Link>
                   </div>
                 ) : (
-                  <div className="mt-4 rounded-[20px] border border-emerald-400/20 bg-[rgba(34,197,94,0.1)] px-4 py-3 text-sm text-emerald-100">
+                  <div className="mt-4 rounded-[20px] border border-color-success/20 bg-color-success/10 px-4 py-3 text-sm text-color-success">
                     No critical alerts are waiting right now.
                   </div>
                 )}
