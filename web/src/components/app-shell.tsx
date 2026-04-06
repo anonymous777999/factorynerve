@@ -529,10 +529,10 @@ const shellHiddenRoutes = new Set(["/", "/login", "/register", "/forgot-password
 
 function navLinkClasses(active: boolean) {
   return cn(
-    "group block rounded-xl border px-3.5 py-2.5 transition",
+    "group block rounded-[1.15rem] px-3.5 py-3 transition",
     active
-      ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)] shadow-[0_0_0_1px_rgba(62,166,255,0.15)]"
-      : "border-[var(--border)] bg-[rgba(20,24,36,0.7)] hover:border-[rgba(62,166,255,0.28)] hover:bg-[rgba(28,34,51,0.82)]",
+      ? "border border-[rgba(77,163,255,0.42)] bg-[rgba(77,163,255,0.14)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_18px_36px_rgba(5,12,24,0.16)]"
+      : "surface-panel-soft hover:border-[rgba(77,163,255,0.24)] hover:bg-[rgba(255,255,255,0.055)]",
   );
 }
 
@@ -1134,8 +1134,8 @@ function MobileBottomNav({
   translate?: TranslateFn;
 }) {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border)] bg-[rgba(11,14,20,0.95)] px-3 pb-[calc(0.8rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:hidden">
-      <div className="mx-auto flex max-w-xl items-end justify-between gap-1">
+    <nav className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(0.8rem+env(safe-area-inset-bottom))] pt-3 lg:hidden">
+      <div className="surface-panel-strong mx-auto flex max-w-xl items-end justify-between gap-1 rounded-[2rem] px-2 pb-2 pt-2">
         {items.map((item) => {
           const active = item.match(pathname);
           const badgeCount = getMobileNavBadgeCount(item, badgeCounts);
@@ -1147,7 +1147,7 @@ function MobileBottomNav({
               href={item.href}
               prefetch
               className={cn(
-                "group relative flex min-w-0 flex-1 flex-col items-center justify-end px-2 text-[11px] font-medium transition",
+                "group relative flex min-w-0 flex-1 flex-col items-center justify-end rounded-[1.5rem] px-2 py-1 text-[11px] font-medium transition",
                 active ? "text-[var(--text)]" : "text-[var(--muted)]",
               )}
               onMouseEnter={() => onWarm(item.href)}
@@ -1158,12 +1158,12 @@ function MobileBottomNav({
                 className={cn(
                   "relative flex items-center justify-center transition",
                   scanAction
-                    ? "mb-1 h-14 w-14 -translate-y-4 rounded-[1.35rem] bg-[linear-gradient(135deg,#22d3ee,#60a5fa)] text-[#08101D] shadow-[0_18px_36px_rgba(34,211,238,0.28)]"
+                    ? "mb-1 h-14 w-14 -translate-y-4 rounded-[1.45rem] bg-[linear-gradient(135deg,#34d399,#4da3ff)] text-[#08101D] shadow-[0_20px_40px_rgba(77,163,255,0.28)]"
                     : cn(
-                        "h-10 w-10 rounded-2xl border",
+                        "h-10 w-10 rounded-[1.15rem] border",
                         active
-                          ? "border-[rgba(62,166,255,0.34)] bg-[rgba(62,166,255,0.14)]"
-                          : "border-[var(--border)] bg-[rgba(20,24,36,0.86)]",
+                          ? "border-[rgba(77,163,255,0.34)] bg-[rgba(77,163,255,0.14)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                          : "border-[var(--border)] bg-[rgba(255,255,255,0.04)]",
                       ),
                 )}
               >
@@ -1174,7 +1174,7 @@ function MobileBottomNav({
                   </span>
                 ) : null}
               </span>
-              <span className={cn("truncate", scanAction ? "-mt-2" : "mt-1")}>{getMobileNavLabel(item, translate)}</span>
+              <span className={cn("max-w-full truncate", scanAction ? "-mt-2" : "mt-1.5")}>{getMobileNavLabel(item, translate)}</span>
             </Link>
           );
         })}
@@ -1840,23 +1840,25 @@ function AppShellFrame({
         )}
       >
         {shellLayout.mobileTopBar ? (
-          <div className="sticky top-0 z-30 border-b border-[var(--border)] bg-[rgba(11,14,20,0.92)] px-4 py-3 backdrop-blur lg:hidden">
-            <div className="flex items-center gap-3">
+          <div className="sticky top-0 z-30 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:hidden">
+            <div className="surface-panel flex items-center gap-3 rounded-[1.65rem] px-3 py-2.5">
               {mobileTabActive ? (
                 <div className="h-10 w-10 shrink-0" />
               ) : (
                 <button
                   type="button"
                   aria-label={t("shell.go_back", "Go back")}
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(20,24,36,0.86)] text-base font-semibold text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)]"
+                  className="surface-pill inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--text)] transition hover:border-[rgba(77,163,255,0.35)]"
                   onClick={handleMobileBack}
                 >
-                  {"<"}
+                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
+                    <path d="m11.8 4.8-5 5 5 5" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
                 </button>
               )}
 
               <div className="min-w-0 flex-1 text-center">
-                <div className="truncate text-[10px] font-semibold uppercase tracking-[0.22em] text-[rgba(62,166,255,0.88)]">
+                <div className="truncate text-[10px] font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
                   {activeFactory?.name || user?.factory_name || "DPR.ai"}
                 </div>
                 <div className="truncate text-sm font-semibold text-[var(--text)]">{currentItem.label}</div>
@@ -1869,7 +1871,7 @@ function AppShellFrame({
                     ? t("shell.hide_sidebar", "Hide sidebar")
                     : t("shell.show_sidebar", "Show sidebar")
                 }
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(20,24,36,0.86)] text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)]"
+                className="surface-pill inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--text)] transition hover:border-[rgba(77,163,255,0.35)]"
                 onClick={toggleSidebar}
               >
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
@@ -1880,7 +1882,7 @@ function AppShellFrame({
           </div>
         ) : null}
 
-        <div className={cn("min-w-0 flex-1", shellLayout.mobileBottomNav ? "pb-24 lg:pb-0" : "")}>
+        <div className={cn("min-w-0 flex-1", shellLayout.mobileBottomNav ? "pb-28 lg:pb-0" : "")}>
           {!immersiveScannerRoute ? <WorkflowReminderStrip /> : null}
           {shellLayout.desktopRail === "context" ? (
             <div className="min-h-full xl:grid xl:grid-cols-[minmax(0,1fr)_19rem]">
