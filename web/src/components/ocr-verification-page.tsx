@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { ApiError, formatApiErrorMessage } from "@/lib/api";
 import {
@@ -236,22 +236,126 @@ function sortWeight(status: OcrVerificationRecord["status"]) {
   }
 }
 
+function SurfaceBadge({
+  children,
+  className,
+}: {
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]",
+        className,
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function MetricCard({
+  label,
+  value,
+  detail,
+  className,
+}: {
+  label: string;
+  value: ReactNode;
+  detail?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("rounded-[1.4rem] border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4", className)}>
+      <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">{label}</div>
+      <div className="mt-2 text-lg font-semibold text-[var(--text)]">{value}</div>
+      {detail ? <div className="mt-2 text-sm leading-6 text-[var(--muted)]">{detail}</div> : null}
+    </div>
+  );
+}
+
+function SectionHeading({
+  eyebrow,
+  title,
+  detail,
+  className,
+}: {
+  eyebrow: string;
+  title: string;
+  detail?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={cn("space-y-2", className)}>
+      <div className="text-sm uppercase tracking-[0.24em] text-[var(--accent)]">{eyebrow}</div>
+      <div className="text-2xl font-semibold tracking-[-0.02em] text-[var(--text)]">{title}</div>
+      {detail ? <div className="max-w-3xl text-sm leading-6 text-[var(--muted)]">{detail}</div> : null}
+    </div>
+  );
+}
+
 function EmptyWorkspace() {
   return (
-    <Card className="border-dashed border-[var(--border)] bg-[var(--card-strong)]">
-      <CardContent className="flex min-h-[24rem] flex-col items-center justify-center gap-3 px-6 py-10 text-center">
-        <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Review Documents</div>
-        <div className="text-2xl font-semibold text-[var(--text)]">Open a document to start review</div>
-        <div className="max-w-xl text-sm leading-6 text-[var(--muted)]">
-          Pick a saved document from the queue or import a new scan. This workspace will show the original paper, highlight risky values, and let you correct only what needs attention.
-        </div>
-        <div className="flex flex-wrap gap-3">
-          <Link href="/ocr/scan">
-            <Button>Open scan desk</Button>
-          </Link>
-          <Link href="/dashboard">
-            <Button variant="outline">Back to Dashboard</Button>
-          </Link>
+    <Card className="overflow-hidden border-dashed border-[var(--border-strong)] bg-[linear-gradient(135deg,rgba(16,26,40,0.96),rgba(10,16,28,0.98))]">
+      <CardContent className="relative min-h-[26rem] px-6 py-8 sm:px-8 sm:py-10">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.18),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.12),transparent_28%)]" />
+        <div className="relative grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_22rem]">
+          <div className="space-y-5">
+            <SectionHeading
+              eyebrow="Review Documents"
+              title="Open a paper, confirm the risky values, and push a trusted export forward."
+              detail="Pick a saved document from the queue or bring in a fresh scan. This workbench keeps the human check focused on the values that can break billing, dispatch, stock, or traceability."
+            />
+            <div className="flex flex-wrap gap-3">
+              <Link href="/ocr/scan">
+                <Button>Open scan desk</Button>
+              </Link>
+              <Link href="/dashboard">
+                <Button variant="outline">Back to Dashboard</Button>
+              </Link>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <MetricCard
+                label="Queue"
+                value="Choose the next file"
+                detail="Open a saved draft, a pending approval, or a sent-back document from the review queue."
+              />
+              <MetricCard
+                label="Fix"
+                value="Correct only what matters"
+                detail="Jump to the flagged fields instead of manually checking every row from scratch."
+              />
+              <MetricCard
+                label="Approve"
+                value="Export with confidence"
+                detail="Once the risky values are checked, send the cleaned sheet forward as a trusted source."
+              />
+            </div>
+          </div>
+          <div className="rounded-[1.8rem] border border-white/10 bg-[rgba(8,12,20,0.74)] p-5 shadow-[0_24px_60px_rgba(2,6,23,0.26)] backdrop-blur">
+            <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">What opens here</div>
+            <div className="mt-3 space-y-3">
+              <div className="rounded-[1.3rem] border border-cyan-400/20 bg-[rgba(34,211,238,0.08)] px-4 py-4">
+                <div className="text-sm font-semibold text-cyan-100">Original paper viewer</div>
+                <div className="mt-2 text-sm leading-6 text-cyan-50/80">
+                  Keep the image on one side and the extracted values on the other so operators can compare fast.
+                </div>
+              </div>
+              <div className="rounded-[1.3rem] border border-amber-400/20 bg-[rgba(245,158,11,0.08)] px-4 py-4">
+                <div className="text-sm font-semibold text-amber-100">Issue-first correction flow</div>
+                <div className="mt-2 text-sm leading-6 text-amber-50/80">
+                  Critical and warning items stay visible until they are checked, corrected, or sent back.
+                </div>
+              </div>
+              <div className="rounded-[1.3rem] border border-emerald-400/20 bg-[rgba(34,197,94,0.08)] px-4 py-4">
+                <div className="text-sm font-semibold text-emerald-100">Trusted export decision</div>
+                <div className="mt-2 text-sm leading-6 text-emerald-50/80">
+                  Approved reviews become the clean source for Excel exports and downstream reporting.
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -349,6 +453,8 @@ function ReviewWorkspace({
   const criticalCount = reviewIssues.filter((issue) => issue.tone === "critical").length;
   const warningCount = reviewIssues.filter((issue) => issue.tone === "warning").length;
   const progressPercent = totalIssues ? Math.round((checkedIssueCount / totalIssues) * 100) : 100;
+  const averageConfidence = (preview?.avg_confidence ?? activeVerification?.avg_confidence ?? 0).toFixed(0);
+  const viewerLanguage = preview?.used_language || activeVerification?.language || "-";
   const safeFixCount =
     headers.filter((header) => header.trim() !== header || /\s{2,}/.test(header)).length +
     rows.reduce(
@@ -373,6 +479,7 @@ function ReviewWorkspace({
     showAllRows || !reviewIssues.length || !focusedRows.length
       ? rows.map((row, rowIndex) => ({ rowIndex, row }))
       : focusedRows;
+  const focusModeRows = displayRows.length;
   const currentStep = activeStatus === "approved" ? 4 : 3;
   const steps = ["Select", "Scan", "Review", "Approve"];
   const trustState =
@@ -442,67 +549,76 @@ function ReviewWorkspace({
   ].filter((item): item is { label: string; detail: string } => Boolean(item));
 
   const trustSection = activeVerification ? (
-    <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.94)]">
-      <CardHeader>
-        <div className="text-sm text-[var(--muted)]">Trust and audit</div>
-        <CardTitle className="text-xl">Why this OCR output can or cannot be trusted</CardTitle>
+    <Card className="overflow-hidden border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(14,22,34,0.98),rgba(10,16,28,0.98))]">
+      <CardHeader className="relative overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.14),transparent_34%)]" />
+        <SectionHeading
+          eyebrow="Trust and audit"
+          title="Why this OCR output can or cannot be trusted"
+          detail="This strip is the confidence handoff. It tells the reviewer and the approver whether the reviewed sheet is still a working draft, waiting in the queue, or safe to use as the export source."
+          className="relative"
+        />
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <div className={cn("rounded-2xl border px-4 py-4", trustState.className)}>
+          <div className={cn("rounded-[1.45rem] border px-4 py-4 shadow-[0_18px_40px_rgba(2,6,23,0.18)]", trustState.className)}>
             <div className="text-[11px] uppercase tracking-[0.16em]">Trust state</div>
             <div className="mt-2 text-lg font-semibold">{trustState.title}</div>
             <div className="mt-2 text-sm leading-6">{trustState.detail}</div>
           </div>
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-            <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Export source</div>
-            <div className="mt-2 text-lg font-semibold text-[var(--text)]">{exportSourceLabel(activeVerification.export_source)}</div>
-            <div className="mt-2 text-sm text-[var(--muted)]">
-              {activeVerification.trusted_export ? "Approved reviewed rows" : "Reviewed rows before approval"}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-            <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Created by</div>
-            <div className="mt-2 text-lg font-semibold text-[var(--text)]">
-              {actorDisplayName(activeVerification.created_by_name, activeVerification.user_id)}
-            </div>
-            <div className="mt-2 text-sm text-[var(--muted)]">Review draft owner for this document record.</div>
-          </div>
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-            <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Latest decision</div>
-            <div className="mt-2 text-lg font-semibold text-[var(--text)]">
-              {activeVerification.approved_at
+          <MetricCard
+            label="Export source"
+            value={exportSourceLabel(activeVerification.export_source)}
+            detail={activeVerification.trusted_export ? "Approved reviewed rows" : "Reviewed rows before approval"}
+          />
+          <MetricCard
+            label="Created by"
+            value={actorDisplayName(activeVerification.created_by_name, activeVerification.user_id)}
+            detail="Review draft owner for this document record."
+          />
+          <MetricCard
+            label="Latest decision"
+            value={
+              activeVerification.approved_at
                 ? "Approved"
                 : activeVerification.rejected_at
                   ? "Sent back"
                   : activeVerification.submitted_at
                     ? "Pending approval"
-                    : "Draft"}
-            </div>
-            <div className="mt-2 text-sm text-[var(--muted)]">
-              {activeVerification.approved_at
+                    : "Draft"
+            }
+            detail={
+              activeVerification.approved_at
                 ? `${actorDisplayName(activeVerification.approved_by_name, activeVerification.approved_by)} on ${formatTimestamp(activeVerification.approved_at)}`
                 : activeVerification.rejected_at
                   ? `${actorDisplayName(activeVerification.rejected_by_name, activeVerification.rejected_by)} on ${formatTimestamp(activeVerification.rejected_at)}`
                   : activeVerification.submitted_at
                     ? `Sent for approval on ${formatTimestamp(activeVerification.submitted_at)}`
-                    : "Still in working draft mode."}
-            </div>
-          </div>
+                    : "Still in working draft mode."
+            }
+          />
         </div>
 
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-          <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Audit timeline</div>
+        <div className="rounded-[1.5rem] border border-[var(--border)] bg-[rgba(10,15,24,0.76)] px-4 py-4 sm:px-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Audit timeline</div>
+              <div className="mt-1 text-sm text-[var(--muted)]">Every save, submit, approval, and send-back checkpoint appears here.</div>
+            </div>
+            <SurfaceBadge className="border-white/10 bg-white/[0.03] text-[var(--muted)]">
+              {auditEvents.length} checkpoint{auditEvents.length === 1 ? "" : "s"}
+            </SurfaceBadge>
+          </div>
           <div className="mt-3 grid gap-3 md:grid-cols-2">
             {auditEvents.length ? (
               auditEvents.map((event) => (
-                <div key={`${event.label}-${event.detail}`} className="rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.82)] px-4 py-3">
+                <div key={`${event.label}-${event.detail}`} className="rounded-[1.25rem] border border-[var(--border)] bg-[rgba(8,12,20,0.82)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
                   <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">{event.label}</div>
                   <div className="mt-2 text-sm text-[var(--text)]">{event.detail}</div>
                 </div>
               ))
             ) : (
-              <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-3 text-sm text-[var(--muted)]">
+              <div className="rounded-[1.25rem] border border-dashed border-[var(--border)] px-4 py-3 text-sm text-[var(--muted)]">
                 Audit checkpoints will appear here after this document is saved, submitted, approved, or sent back.
               </div>
             )}
@@ -513,19 +629,20 @@ function ReviewWorkspace({
   ) : null;
 
   const viewerSection = (
-    <Card className="overflow-hidden border-[var(--border)] bg-[rgba(18,22,34,0.94)]">
-      <CardHeader className="flex flex-row items-center justify-between gap-3">
-        <div>
-          <div className="text-sm text-[var(--muted)]">Document viewer</div>
-          <CardTitle className="text-xl">Compare against the real paper</CardTitle>
-        </div>
+    <Card className="overflow-hidden border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(15,22,35,0.98),rgba(10,16,28,0.98))]">
+      <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <SectionHeading
+          eyebrow="Document viewer"
+          title="Compare against the real paper"
+          detail="Keep the source image visible while you confirm the risky values. This is the fastest way to catch OCR misses before they reach reports or dispatch."
+        />
         <div className="flex flex-wrap gap-2">
-          <div className="rounded-full border border-cyan-400/30 bg-[rgba(34,211,238,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-100">
+          <SurfaceBadge className="border-cyan-400/30 bg-[rgba(34,211,238,0.12)] text-cyan-100">
             {progressPercent}% reviewed
-          </div>
-          <div className="rounded-full border border-[var(--border)] bg-[var(--card-strong)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-            {(preview?.avg_confidence ?? activeVerification?.avg_confidence ?? 0).toFixed(0)}% confidence
-          </div>
+          </SurfaceBadge>
+          <SurfaceBadge className="border-white/10 bg-white/[0.03] text-[var(--muted)]">
+            {averageConfidence}% confidence
+          </SurfaceBadge>
           {imageUrl ? (
             <a href={imageUrl} target="_blank" rel="noreferrer">
               <Button variant="outline" className="px-4 py-2 text-xs">
@@ -536,7 +653,12 @@ function ReviewWorkspace({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="rounded-[1.5rem] border border-[var(--border)] bg-[rgba(8,12,20,0.94)] p-3">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <MetricCard label="Issues left" value={unresolvedIssueCount} detail="Outstanding items still need a visual or field-level check." />
+          <MetricCard label="Language used" value={viewerLanguage} detail="This is the OCR language hint used for the current read." />
+          <MetricCard label="Rows in focus" value={focusModeRows} detail={showAllRows ? "Full extracted table is visible." : "Focus mode keeps the first pass fast."} />
+        </div>
+        <div className="rounded-[1.6rem] border border-[var(--border)] bg-[rgba(8,12,20,0.94)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
           {imageUrl ? (
             <div className="min-h-[26rem] max-h-[46rem] overflow-auto rounded-[1.2rem] bg-[#060811]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -549,17 +671,8 @@ function ReviewWorkspace({
             </div>
           )}
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3">
-            <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Issues left</div>
-            <div className="mt-1 text-lg font-semibold text-[var(--text)]">{unresolvedIssueCount}</div>
-          </div>
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3">
-            <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Language used</div>
-            <div className="mt-1 text-lg font-semibold text-[var(--text)]">
-              {preview?.used_language || activeVerification?.language || "-"}
-            </div>
-          </div>
+        <div className="rounded-[1.4rem] border border-cyan-400/20 bg-[rgba(34,211,238,0.06)] px-4 py-4 text-sm leading-6 text-cyan-50/85">
+          Work from left to right: confirm the paper first, clear the risky fields second, and only then send the sheet forward as trusted data.
         </div>
       </CardContent>
     </Card>
@@ -567,10 +680,13 @@ function ReviewWorkspace({
 
   const issuesSection = (
     <div className="space-y-6">
-      <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+      <Card className="border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(15,22,35,0.97),rgba(11,17,29,0.98))]">
         <CardHeader>
-          <div className="text-sm text-[var(--muted)]">Issue priority</div>
-          <CardTitle className="text-xl">Check the risky values first</CardTitle>
+          <SectionHeading
+            eyebrow="Issue priority"
+            title="Check the risky values first"
+            detail="The queue below is sorted for speed: start with critical fields, then warnings, then clean up anything still blocking approval."
+          />
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 sm:grid-cols-3">
@@ -580,10 +696,11 @@ function ReviewWorkspace({
                 const next = reviewIssues.find((issue) => issue.tone === "critical" && !resolvedIssueKeys.includes(issue.key));
                 if (next) onSelectIssue(next.key, "issues");
               }}
-              className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.1)] px-4 py-4 text-left text-red-100"
+              className="rounded-[1.35rem] border border-red-400/30 bg-[rgba(239,68,68,0.1)] px-4 py-4 text-left text-red-100 transition hover:-translate-y-0.5 hover:bg-[rgba(239,68,68,0.14)]"
             >
               <div className="text-[11px] uppercase tracking-[0.16em]">Critical</div>
               <div className="mt-2 text-2xl font-semibold">{criticalCount}</div>
+              <div className="mt-2 text-sm text-red-50/80">Highest-risk values that can break operations or approvals.</div>
             </button>
             <button
               type="button"
@@ -591,14 +708,16 @@ function ReviewWorkspace({
                 const next = reviewIssues.find((issue) => issue.tone === "warning" && !resolvedIssueKeys.includes(issue.key));
                 if (next) onSelectIssue(next.key, "issues");
               }}
-              className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.1)] px-4 py-4 text-left text-amber-100"
+              className="rounded-[1.35rem] border border-amber-400/30 bg-[rgba(245,158,11,0.1)] px-4 py-4 text-left text-amber-100 transition hover:-translate-y-0.5 hover:bg-[rgba(245,158,11,0.14)]"
             >
               <div className="text-[11px] uppercase tracking-[0.16em]">Warning</div>
               <div className="mt-2 text-2xl font-semibold">{warningCount}</div>
+              <div className="mt-2 text-sm text-amber-50/80">Likely readable, but still worth a quick paper check.</div>
             </button>
-            <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.1)] px-4 py-4 text-emerald-100">
+            <div className="rounded-[1.35rem] border border-emerald-400/30 bg-[rgba(34,197,94,0.1)] px-4 py-4 text-emerald-100">
               <div className="text-[11px] uppercase tracking-[0.16em]">Checked</div>
               <div className="mt-2 text-2xl font-semibold">{checkedIssueCount}</div>
+              <div className="mt-2 text-sm text-emerald-50/80">Fields already reviewed and cleared for this pass.</div>
             </div>
           </div>
 
@@ -613,8 +732,10 @@ function ReviewWorkspace({
                     type="button"
                     onClick={() => onSelectIssue(issue.key, "issues")}
                     className={cn(
-                      "w-full rounded-2xl border px-4 py-4 text-left transition",
-                      isActive ? "border-[var(--accent)] bg-[rgba(62,166,255,0.08)]" : "border-[var(--border)] bg-[var(--card-strong)]",
+                      "w-full rounded-[1.35rem] border px-4 py-4 text-left transition",
+                      isActive
+                        ? "border-[var(--accent)] bg-[linear-gradient(180deg,rgba(62,166,255,0.12),rgba(62,166,255,0.06))] shadow-[0_16px_36px_rgba(15,23,42,0.2)]"
+                        : "border-[var(--border)] bg-[var(--card-strong)] hover:-translate-y-0.5 hover:border-[var(--accent)]/30",
                     )}
                   >
                     <div className="flex items-start justify-between gap-3">
@@ -634,6 +755,9 @@ function ReviewWorkspace({
                         </div>
                         <div className="font-semibold text-[var(--text)]">{issue.title}</div>
                         <div className="text-sm leading-6 text-[var(--muted)]">{issue.detail}</div>
+                        <div className="text-xs uppercase tracking-[0.12em] text-[var(--muted)]">
+                          Expected next step: {issue.actionLabel}
+                        </div>
                       </div>
                       <div className="text-xs text-[var(--muted)]">{issue.actionLabel}</div>
                     </div>
@@ -649,34 +773,35 @@ function ReviewWorkspace({
         </CardContent>
       </Card>
 
-      <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+      <Card className="border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(15,22,35,0.97),rgba(11,17,29,0.98))]">
         <CardHeader>
-          <div className="text-sm text-[var(--muted)]">Active issue</div>
-          <CardTitle className="text-xl">{activeIssue ? activeIssue.title : "No issue selected"}</CardTitle>
+          <SectionHeading
+            eyebrow="Active issue"
+            title={activeIssue ? activeIssue.title : "No issue selected"}
+            detail={
+              activeIssue
+                ? "Use this panel as the reviewer brief: what was detected, what it should become, and why it matters to downstream work."
+                : "Select an item from the issue queue to focus the review and jump to the right field."
+            }
+          />
         </CardHeader>
         <CardContent className="space-y-4">
           {activeIssue ? (
             <>
-              <div className={cn("rounded-2xl border px-4 py-4", signalTone(activeIssue.tone))}>
+              <div className={cn("rounded-[1.35rem] border px-4 py-4", signalTone(activeIssue.tone))}>
                 <div className="text-xs font-semibold uppercase tracking-[0.16em]">Suggested check</div>
                 <div className="mt-2 text-sm leading-6">{activeIssue.detail}</div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-                  <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Detected value</div>
-                  <div className="mt-2 text-sm text-[var(--text)]">{activeIssue.affectedValue || "-"}</div>
-                </div>
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-                  <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Expected review</div>
-                  <div className="mt-2 text-sm text-[var(--text)]">{activeIssue.expectedValue}</div>
-                </div>
+                <MetricCard label="Detected value" value={activeIssue.affectedValue || "-"} />
+                <MetricCard label="Expected review" value={activeIssue.expectedValue} />
               </div>
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+              <div className="rounded-[1.35rem] border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
                 <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Why it matters</div>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
-                  <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]", impactTone(activeIssue.impact))}>
+                  <SurfaceBadge className={cn("", impactTone(activeIssue.impact))}>
                     {impactLabel(activeIssue.impact)}
-                  </span>
+                  </SurfaceBadge>
                   <span className="text-sm text-[var(--text)]">{activeIssue.helpText}</span>
                 </div>
               </div>
@@ -699,17 +824,20 @@ function ReviewWorkspace({
               </div>
             </>
           ) : (
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4 text-sm text-[var(--muted)]">
+            <div className="rounded-[1.35rem] border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4 text-sm text-[var(--muted)]">
               Select an issue from the list to focus the review and jump to the right row.
             </div>
           )}
         </CardContent>
       </Card>
 
-      <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+      <Card className="border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(15,22,35,0.97),rgba(11,17,29,0.98))]">
         <CardHeader>
-          <div className="text-sm text-[var(--muted)]">Review notes</div>
-          <CardTitle className="text-xl">Capture what you checked</CardTitle>
+          <SectionHeading
+            eyebrow="Review notes"
+            title="Capture what you checked"
+            detail="Keep the note short but useful. This is the context the next approver or operator will use when they reopen the document."
+          />
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
@@ -746,6 +874,7 @@ function ReviewWorkspace({
               value={reviewerNotes}
               onChange={(event) => onReviewerNotesChange(event.target.value)}
               placeholder="Example: checked invoice total against the paper and corrected vehicle number."
+              className="mt-3 rounded-[1.35rem] border-[var(--border-strong)] bg-[rgba(8,12,20,0.82)] px-4 py-3 leading-6"
             />
           </div>
           {canApprove ? (
@@ -756,6 +885,7 @@ function ReviewWorkspace({
                 value={rejectionReason}
                 onChange={(event) => onRejectionReasonChange(event.target.value)}
                 placeholder="Only needed when this document must go back for correction."
+                className="mt-3 rounded-[1.35rem] border-[var(--border-strong)] bg-[rgba(8,12,20,0.82)] px-4 py-3 leading-6"
               />
             </div>
           ) : null}
@@ -775,12 +905,13 @@ function ReviewWorkspace({
   );
 
   const fixSection = (
-    <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
-      <CardHeader className="flex flex-row items-center justify-between gap-3">
-        <div>
-          <div className="text-sm text-[var(--muted)]">Fix fields</div>
-          <CardTitle className="text-xl">Correct the flagged values</CardTitle>
-        </div>
+    <Card className="border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(15,22,35,0.97),rgba(11,17,29,0.98))]">
+      <CardHeader className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+        <SectionHeading
+          eyebrow="Fix fields"
+          title="Correct the flagged values"
+          detail="Stay in focus mode for a fast first pass, then open the full extracted table if you want a deeper cleanup before export."
+        />
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" onClick={() => setShowAllRows((current) => !current)} disabled={!rows.length}>
             {showAllRows ? "Hide full table" : "View all extracted rows"}
@@ -798,8 +929,13 @@ function ReviewWorkspace({
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <MetricCard label="Flagged fields" value={editableIssues.length} detail="Editable items that need direct field review." />
+          <MetricCard label="Rows loaded" value={rows.length} detail="Total extracted rows currently in this review." />
+          <MetricCard label="Safe cleanup" value={safeFixCount} detail="Whitespace-only fixes available for quick cleanup." />
+        </div>
         {!editableIssues.length ? (
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+          <div className="rounded-[1.35rem] border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
             No flagged fields need direct correction right now. You can still open the full extracted table if you want to do a detailed pass.
           </div>
         ) : (
@@ -812,9 +948,9 @@ function ReviewWorkspace({
                 <div
                   key={issue.key}
                   className={cn(
-                    "rounded-2xl border px-4 py-4",
+                    "rounded-[1.35rem] border px-4 py-4",
                     activeIssue?.key === issue.key
-                      ? "border-[var(--accent)] bg-[rgba(62,166,255,0.08)]"
+                      ? "border-[var(--accent)] bg-[linear-gradient(180deg,rgba(62,166,255,0.12),rgba(62,166,255,0.05))]"
                       : "border-[var(--border)] bg-[var(--card-strong)]",
                   )}
                 >
@@ -860,7 +996,7 @@ function ReviewWorkspace({
         )}
 
         {showAllRows ? (
-          <div className="overflow-x-auto rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.82)]">
+          <div className="overflow-x-auto rounded-[1.45rem] border border-[var(--border)] bg-[rgba(8,12,20,0.82)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
             <table className="min-w-full text-left text-sm">
               <thead className="text-[var(--muted)]">
                 <tr className="border-b border-[var(--border)]">
@@ -921,7 +1057,7 @@ function ReviewWorkspace({
   return (
     <div className="space-y-6">
       {activeVerification?.status === "approved" ? (
-        <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.08)] px-4 py-3 text-sm text-emerald-100">
+        <div className="rounded-[1.35rem] border border-emerald-400/30 bg-[rgba(34,197,94,0.08)] px-4 py-3 text-sm text-emerald-100">
           Approved by{" "}
           <span className="font-semibold">
             {actorDisplayName(activeVerification.approved_by_name, activeVerification.approved_by)}
@@ -929,53 +1065,51 @@ function ReviewWorkspace({
           on {formatTimestamp(activeVerification.approved_at)}. This approved review is now the trusted Excel export source, so the fields stay locked.
         </div>
       ) : activeVerification?.status === "rejected" ? (
-        <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.08)] px-4 py-3 text-sm text-red-100">
+        <div className="rounded-[1.35rem] border border-red-400/30 bg-[rgba(239,68,68,0.08)] px-4 py-3 text-sm text-red-100">
           This document was sent back on {formatTimestamp(activeVerification.rejected_at)}. Fix the flagged rows and resubmit before using it as trusted OCR output.
         </div>
       ) : activeVerification?.status === "pending" ? (
-        <div className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.08)] px-4 py-3 text-sm text-amber-100">
+        <div className="rounded-[1.35rem] border border-amber-400/30 bg-[rgba(245,158,11,0.08)] px-4 py-3 text-sm text-amber-100">
           Reviewed rows are ready and waiting for approval. Export is available for checking, but it should not be treated as trusted business data yet.
         </div>
       ) : activeVerification ? (
-        <div className="rounded-2xl border border-cyan-400/30 bg-[rgba(34,211,238,0.08)] px-4 py-3 text-sm text-cyan-100">
+        <div className="rounded-[1.35rem] border border-cyan-400/30 bg-[rgba(34,211,238,0.08)] px-4 py-3 text-sm text-cyan-100">
           This is still a working draft. Save your corrections here, then send the document for approval when the risky values are checked.
         </div>
       ) : null}
       {trustSection}
-      <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.94)]">
+      <Card className="overflow-hidden border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(14,22,34,0.98),rgba(10,16,28,0.98))]">
         <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", statusBadgeClass(activeStatus))}>
+              <SurfaceBadge className={cn("", statusBadgeClass(activeStatus))}>
                 {activeStatus.replace("_", " ")}
-              </span>
-              <span className="rounded-full border border-[var(--border)] bg-[var(--card-strong)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+              </SurfaceBadge>
+              <SurfaceBadge className="border-white/10 bg-white/[0.03] text-[var(--muted)]">
                 {rows.length} row{rows.length === 1 ? "" : "s"} detected
-              </span>
-              <span className="rounded-full border border-[var(--border)] bg-[var(--card-strong)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+              </SurfaceBadge>
+              <SurfaceBadge className="border-white/10 bg-white/[0.03] text-[var(--muted)]">
                 {unresolvedIssueCount} issue{unresolvedIssueCount === 1 ? "" : "s"} left
-              </span>
+              </SurfaceBadge>
             </div>
-            <div>
-              <CardTitle className="text-2xl">
-                {activeVerification?.source_filename || "New document review"}
-              </CardTitle>
-              <div className="mt-2 text-sm text-[var(--muted)]">
-                {activeVerification
-                  ? `Last updated ${formatTimestamp(activeVerification.updated_at)}`
-                  : "Open the paper, check the flagged values, fix only what matters, and send a clean version forward."}
-              </div>
-            </div>
+            <SectionHeading
+              eyebrow="Review workspace"
+              title={activeVerification?.source_filename || "New document review"}
+              detail={
+                activeVerification
+                  ? `Last updated ${formatTimestamp(activeVerification.updated_at)}. Keep the reviewer flow tight: compare, correct, note what changed, and approve only when the risky values are clear.`
+                  : "Open the paper, check the flagged values, fix only what matters, and send a clean version forward."
+              }
+            />
             <div className="flex flex-wrap gap-3">
               {steps.map((step, index) => {
                 const stepNumber = index + 1;
                 const complete = stepNumber < currentStep;
                 const current = stepNumber === currentStep;
                 return (
-                  <div
+                  <SurfaceBadge
                     key={step}
                     className={cn(
-                      "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]",
                       complete
                         ? "border-emerald-400/30 bg-[rgba(34,197,94,0.12)] text-emerald-100"
                         : current
@@ -984,7 +1118,7 @@ function ReviewWorkspace({
                     )}
                   >
                     {step}
-                  </div>
+                  </SurfaceBadge>
                 );
               })}
             </div>
@@ -999,14 +1133,14 @@ function ReviewWorkspace({
 
       {mobile ? (
         <>
-          <div className="flex gap-2 overflow-x-auto rounded-2xl border border-[var(--border)] bg-[rgba(18,22,34,0.94)] p-2">
+          <div className="flex gap-2 overflow-x-auto rounded-[1.35rem] border border-[var(--border)] bg-[rgba(18,22,34,0.94)] p-2 shadow-[var(--shadow-sm)]">
             {(["document", "issues", "fix"] as MobileReviewTab[]).map((tab) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => onMobileTabChange(tab)}
                 className={cn(
-                  "min-w-[7rem] rounded-xl px-4 py-3 text-sm font-semibold capitalize transition",
+                  "min-w-[7rem] rounded-[1rem] px-4 py-3 text-sm font-semibold capitalize transition",
                   mobileTab === tab ? "bg-[var(--accent)] text-black" : "bg-[var(--card-strong)] text-[var(--muted)]",
                 )}
               >
@@ -1740,73 +1874,90 @@ export default function OcrVerificationPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-4 md:px-6">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.09),transparent_24%),radial-gradient(circle_at_top_right,rgba(34,197,94,0.06),transparent_20%)] px-4 py-4 md:px-6">
       <div className="w-full space-y-4">
-        <section className="sticky top-3 z-20 flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.94)] p-5 shadow-2xl backdrop-blur">
-          <div>
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Review</div>
-            <h1 className="mt-2 text-2xl font-semibold md:text-3xl">Review Documents</h1>
-            <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
-              Open a document, review the flagged values, fix quickly, and approve with confidence.
-            </p>
-            <div className="mt-4 flex flex-wrap gap-3">
-              {([
-                ["Select", "done"],
-                ["Scan", "done"],
-                ["Review", "current"],
-                ["Approve", "pending"],
-              ] as Array<[string, "done" | "current" | "pending"]>).map(([step, phase]) => (
-                <div
-                  key={step}
-                  className={cn(
-                    "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]",
-                    phase === "done"
-                      ? "border-emerald-400/30 bg-[rgba(34,197,94,0.12)] text-emerald-100"
-                      : phase === "current"
-                        ? "border-cyan-400/30 bg-[rgba(34,211,238,0.12)] text-cyan-100"
-                        : "border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)]",
-                  )}
-                >
-                  {step}
-                </div>
-              ))}
+        <section className="sticky top-3 z-20 overflow-hidden rounded-[2rem] border border-[var(--border-strong)] bg-[linear-gradient(135deg,rgba(18,27,42,0.97),rgba(11,18,30,0.98))] p-5 shadow-2xl backdrop-blur md:p-6">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.18),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.1),transparent_28%)]" />
+          <div className="relative grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_24rem]">
+            <div>
+              <SectionHeading
+                eyebrow="Review"
+                title="Review Documents"
+                detail="Open a document, confirm the flagged values, fix fast, and move only trusted data into business exports."
+              />
+              <div className="mt-4 flex flex-wrap gap-3">
+                {([
+                  ["Select", "done"],
+                  ["Scan", "done"],
+                  ["Review", "current"],
+                  ["Approve", "pending"],
+                ] as Array<[string, "done" | "current" | "pending"]>).map(([step, phase]) => (
+                  <SurfaceBadge
+                    key={step}
+                    className={cn(
+                      phase === "done"
+                        ? "border-emerald-400/30 bg-[rgba(34,197,94,0.12)] text-emerald-100"
+                        : phase === "current"
+                          ? "border-cyan-400/30 bg-[rgba(34,211,238,0.12)] text-cyan-100"
+                          : "border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)]",
+                    )}
+                  >
+                    {step}
+                  </SurfaceBadge>
+                ))}
+              </div>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <SurfaceBadge className="border-cyan-400/30 bg-[rgba(34,211,238,0.12)] text-cyan-100">
+                  {totalIssues ? `${Math.round((checkedIssueCount / totalIssues) * 100)}% reviewed` : "Clean review"}
+                </SurfaceBadge>
+                <SurfaceBadge className="border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100">
+                  {unresolvedCriticalCount} critical
+                </SurfaceBadge>
+                <SurfaceBadge className="border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100">
+                  {unresolvedIssueCount} issues left
+                </SurfaceBadge>
+                <SurfaceBadge className="border-white/10 bg-white/[0.03] text-[var(--muted)]">
+                  {pendingCount} waiting in queue
+                </SurfaceBadge>
+              </div>
+              <div className="mt-5 flex flex-wrap gap-3">
+                <Link href="/ocr/scan">
+                  <Button>Open scan desk</Button>
+                </Link>
+                <Button variant="outline" onClick={() => setShowQuickIntake((current) => !current)}>
+                  {showQuickIntake ? "Hide upload" : "Upload document"}
+                </Button>
+              </div>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              <div className="rounded-full border border-cyan-400/30 bg-[rgba(34,211,238,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-cyan-100">
-                {totalIssues ? `${Math.round((checkedIssueCount / totalIssues) * 100)}% reviewed` : "Clean review"}
-              </div>
-              <div className="rounded-full border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-red-100">
-                {unresolvedCriticalCount} critical
-              </div>
-              <div className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-100">
-                {unresolvedIssueCount} issues left
-              </div>
-              <div className="rounded-full border border-[var(--border)] bg-[var(--card-strong)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-                {pendingCount} waiting in queue
-              </div>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+              <MetricCard
+                label="Review focus"
+                value="Check risky values, not every cell"
+                detail="The verify screen keeps attention on low-confidence, blank, or sent-back fields so supervisors move faster."
+                className="border-cyan-400/20 bg-[rgba(8,12,20,0.64)]"
+              />
+              <MetricCard
+                label="Approval rule"
+                value="Only trusted sheets move forward"
+                detail="Draft and pending exports stay visible for checking, but approved reviews become the trusted business source."
+                className="border-emerald-400/20 bg-[rgba(8,12,20,0.64)]"
+              />
             </div>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/ocr/scan">
-              <Button>Open scan desk</Button>
-            </Link>
-            <Button variant="outline" onClick={() => setShowQuickIntake((current) => !current)}>
-              {showQuickIntake ? "Hide upload" : "Upload document"}
-            </Button>
           </div>
         </section>
 
-        {status ? <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
-        {error || sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error || sessionError}</div> : null}
+        {status ? <div className="rounded-[1.35rem] border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
+        {error || sessionError ? <div className="rounded-[1.35rem] border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error || sessionError}</div> : null}
 
         <section className="grid gap-4 xl:grid-cols-[19rem_minmax(0,1fr)]">
           <aside className="space-y-4 xl:sticky xl:top-28 xl:self-start">
-            <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+            <Card className="overflow-hidden border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(15,22,35,0.97),rgba(11,17,29,0.98))]">
               <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                <div>
-                  <div className="text-sm text-[var(--muted)]">Document queue</div>
-                  <CardTitle className="text-xl">Pick the next document to review</CardTitle>
-                </div>
+                <SectionHeading
+                  eyebrow="Document queue"
+                  title="Pick the next document to review"
+                  detail="Drafts, pending approvals, sent-back sheets, and approved records all stay in one queue so the team can recover context quickly."
+                />
                 <div className="grid w-full gap-3">
                   <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by file, warning, or template" />
                   <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}>
@@ -1819,6 +1970,10 @@ export default function OcrVerificationPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                  <MetricCard label="Queue size" value={filteredVerifications.length} detail="Documents matching the current search and status filters." />
+                  <MetricCard label="Pending approvals" value={pendingCount} detail="Sheets waiting for an approver to unlock trusted export." />
+                </div>
                 {filteredVerifications.length ? (
                   filteredVerifications.map((verification) => {
                     const warningCount = verification.warnings.length;
@@ -1829,10 +1984,10 @@ export default function OcrVerificationPage() {
                         type="button"
                         onClick={() => hydrateFromRecord(verification)}
                         className={cn(
-                          "w-full rounded-2xl border p-4 text-left transition",
+                          "w-full rounded-[1.35rem] border p-4 text-left transition",
                           isActive
-                            ? "border-[var(--accent)] bg-[rgba(62,166,255,0.08)]"
-                            : "border-[var(--border)] bg-[var(--card-strong)] hover:border-[var(--accent)]/40",
+                            ? "border-[var(--accent)] bg-[linear-gradient(180deg,rgba(62,166,255,0.12),rgba(62,166,255,0.05))]"
+                            : "border-[var(--border)] bg-[var(--card-strong)] hover:-translate-y-0.5 hover:border-[var(--accent)]/40",
                         )}
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -1871,10 +2026,13 @@ export default function OcrVerificationPage() {
             </Card>
 
             {showQuickIntake ? (
-              <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+              <Card className="overflow-hidden border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(15,22,35,0.97),rgba(11,17,29,0.98))]">
                 <CardHeader>
-                  <div className="text-sm text-[var(--muted)]">Upload for review</div>
-                  <CardTitle className="text-xl">Bring a new document into this workbench</CardTitle>
+                  <SectionHeading
+                    eyebrow="Upload for review"
+                    title="Bring a new document into this workbench"
+                    detail="Use this quick intake when the scan is already available and you want to jump straight into review."
+                  />
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
