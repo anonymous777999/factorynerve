@@ -158,10 +158,10 @@ export default function AttendanceLivePage() {
 
   if (loading || (pageLoading && user && canReview && !hasLoadedOnce)) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-7xl space-y-6">
+      <main className="min-h-screen px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mx-auto max-w-7xl space-y-5 sm:space-y-6">
           <Skeleton className="h-36 rounded-[2rem]" />
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
               <Skeleton key={index} className="h-32 rounded-2xl" />
             ))}
@@ -201,12 +201,12 @@ export default function AttendanceLivePage() {
             <div className="text-sm text-[var(--muted)]">
               Live attendance is available to supervisor, manager, admin, and owner roles.
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/attendance">
-                <Button>Open My Attendance</Button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link href="/attendance" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto">Open My Attendance</Button>
               </Link>
-              <Link href="/work-queue">
-                <Button variant="outline">Work Queue</Button>
+              <Link href="/work-queue" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto">Work Queue</Button>
               </Link>
             </div>
           </CardContent>
@@ -216,30 +216,30 @@ export default function AttendanceLivePage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.9)] p-6 shadow-2xl backdrop-blur">
+    <main className="min-h-screen px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-5 sm:space-y-6">
+        <section className="rounded-[1.75rem] border border-[var(--border)] bg-[rgba(20,24,36,0.9)] p-5 shadow-2xl backdrop-blur sm:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">Attendance Board</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Live attendance across the active factory</h1>
+              <h1 className="mt-2 text-2xl font-semibold sm:text-3xl md:text-4xl">Live attendance across the active factory</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 Watch who is working, who has already closed attendance, and who still needs a punch update before the shift moves on.
               </p>
             </div>
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-3">
-                <Link href="/attendance">
-                  <Button variant="outline">My Attendance</Button>
+            <div className="w-full space-y-3 lg:w-auto">
+              <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
+                <Link href="/attendance" className="w-full sm:w-auto">
+                  <Button variant="outline" className="w-full sm:w-auto">My Attendance</Button>
                 </Link>
-                <Link href="/attendance/review">
-                  <Button variant="outline">Attendance Review</Button>
+                <Link href="/attendance/review" className="w-full sm:w-auto">
+                  <Button variant="outline" className="w-full sm:w-auto">Attendance Review</Button>
                 </Link>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <Button
                   variant="outline"
-                  className="px-4 py-2 text-xs"
+                  className="w-full px-4 py-2 text-xs sm:w-auto"
                   onClick={() => {
                     void loadBoard({ background: true });
                   }}
@@ -267,7 +267,7 @@ export default function AttendanceLivePage() {
         ) : null}
         {sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{sessionError}</div> : null}
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Card>
             <CardHeader>
               <div className="text-sm text-[var(--muted)]">Factory</div>
@@ -306,8 +306,8 @@ export default function AttendanceLivePage() {
           </Card>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-          <div className="space-y-6">
+        <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr] xl:items-start">
+          <div className="space-y-5">
             <Card>
               <CardHeader>
                 <CardTitle className="text-xl">Board Filters</CardTitle>
@@ -317,25 +317,27 @@ export default function AttendanceLivePage() {
                   <label className="text-sm text-[var(--muted)]">Attendance Date</label>
                   <Input type="date" value={attendanceDate} onChange={(event) => setAttendanceDate(event.target.value)} />
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {([
-                    ["all", "All"],
-                    ["working", "Working"],
-                    ["missed_punch", "Missed Punch"],
-                    ["not_punched", "Not Punched"],
-                    ["completed", "Closed"],
-                  ] as const).map(([key, label]) => (
-                    <Button
-                      key={key}
-                      variant={filter === key ? "primary" : "outline"}
-                      className="px-4 py-2 text-xs"
-                      onClick={() => setFilter(key)}
-                    >
-                      {label}
-                    </Button>
-                  ))}
+                <div className="-mx-1 overflow-x-auto pb-1">
+                  <div className="flex min-w-max gap-2 px-1">
+                    {([
+                      ["all", "All"],
+                      ["working", "Working"],
+                      ["missed_punch", "Missed Punch"],
+                      ["not_punched", "Not Punched"],
+                      ["completed", "Closed"],
+                    ] as const).map(([key, label]) => (
+                      <Button
+                        key={key}
+                        variant={filter === key ? "primary" : "outline"}
+                        className="shrink-0 px-4 py-2 text-xs"
+                        onClick={() => setFilter(key)}
+                      >
+                        {label}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
-                <Button variant="ghost" onClick={() => void loadBoard({ background: true })} disabled={refreshing}>
+                <Button variant="ghost" className="w-full sm:w-auto" onClick={() => void loadBoard({ background: true })} disabled={refreshing}>
                   {refreshing ? "Refreshing..." : "Refresh Board"}
                 </Button>
               </CardContent>
@@ -378,43 +380,82 @@ export default function AttendanceLivePage() {
             </CardHeader>
             <CardContent>
               {filteredRows.length ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full text-left text-sm">
-                    <thead className="text-[var(--muted)]">
-                      <tr className="border-b border-[var(--border)]">
-                        <th className="px-3 py-3 font-medium">User</th>
-                        <th className="px-3 py-3 font-medium">Role</th>
-                        <th className="px-3 py-3 font-medium">Department</th>
-                        <th className="px-3 py-3 font-medium">Shift</th>
-                        <th className="px-3 py-3 font-medium">Status</th>
-                        <th className="px-3 py-3 font-medium">Punch In</th>
-                        <th className="px-3 py-3 font-medium">Punch Out</th>
-                        <th className="px-3 py-3 font-medium">Worked</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredRows.map((row) => (
-                        <tr key={row.user_id} className="border-b border-[var(--border)]/60">
-                          <td className="px-3 py-3">
+                <>
+                  <div className="space-y-3 md:hidden">
+                    {filteredRows.map((row) => (
+                      <div key={row.user_id} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
                             <div className="font-semibold text-[var(--text)]">{row.name}</div>
-                            <div className="text-xs text-[var(--muted)]">ID {row.user_code}</div>
-                          </td>
-                          <td className="px-3 py-3">{row.role}</td>
-                          <td className="px-3 py-3">{row.department || "-"}</td>
-                          <td className="px-3 py-3">{formatShift(row.shift)}</td>
-                          <td className="px-3 py-3">
-                            <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${statusTone(row.status)}`}>
-                              {row.status.replace("_", " ")}
-                            </span>
-                          </td>
-                          <td className="px-3 py-3 text-[var(--muted)]">{formatDateTime(row.punch_in_at)}</td>
-                          <td className="px-3 py-3 text-[var(--muted)]">{formatDateTime(row.punch_out_at)}</td>
-                          <td className="px-3 py-3">{formatMinutes(row.worked_minutes)}</td>
+                            <div className="text-xs text-[var(--muted)]">ID {row.user_code} - {row.role}</div>
+                          </div>
+                          <span className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${statusTone(row.status)}`}>
+                            {row.status.replace("_", " ")}
+                          </span>
+                        </div>
+                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                          <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
+                            <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Department</div>
+                            <div className="mt-1 font-medium text-[var(--text)]">{row.department || "-"}</div>
+                          </div>
+                          <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
+                            <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Shift</div>
+                            <div className="mt-1 font-medium text-[var(--text)]">{formatShift(row.shift)}</div>
+                          </div>
+                          <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
+                            <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Punch In</div>
+                            <div className="mt-1 font-medium text-[var(--text)]">{formatDateTime(row.punch_in_at)}</div>
+                          </div>
+                          <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
+                            <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Punch Out</div>
+                            <div className="mt-1 font-medium text-[var(--text)]">{formatDateTime(row.punch_out_at)}</div>
+                          </div>
+                        </div>
+                        <div className="mt-3 rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
+                          <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Worked</div>
+                          <div className="mt-1 font-medium text-[var(--text)]">{formatMinutes(row.worked_minutes)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden overflow-x-auto md:block">
+                    <table className="min-w-full text-left text-sm">
+                      <thead className="text-[var(--muted)]">
+                        <tr className="border-b border-[var(--border)]">
+                          <th className="px-3 py-3 font-medium">User</th>
+                          <th className="px-3 py-3 font-medium">Role</th>
+                          <th className="px-3 py-3 font-medium">Department</th>
+                          <th className="px-3 py-3 font-medium">Shift</th>
+                          <th className="px-3 py-3 font-medium">Status</th>
+                          <th className="px-3 py-3 font-medium">Punch In</th>
+                          <th className="px-3 py-3 font-medium">Punch Out</th>
+                          <th className="px-3 py-3 font-medium">Worked</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {filteredRows.map((row) => (
+                          <tr key={row.user_id} className="border-b border-[var(--border)]/60">
+                            <td className="px-3 py-3">
+                              <div className="font-semibold text-[var(--text)]">{row.name}</div>
+                              <div className="text-xs text-[var(--muted)]">ID {row.user_code}</div>
+                            </td>
+                            <td className="px-3 py-3">{row.role}</td>
+                            <td className="px-3 py-3">{row.department || "-"}</td>
+                            <td className="px-3 py-3">{formatShift(row.shift)}</td>
+                            <td className="px-3 py-3">
+                              <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${statusTone(row.status)}`}>
+                                {row.status.replace("_", " ")}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3 text-[var(--muted)]">{formatDateTime(row.punch_in_at)}</td>
+                            <td className="px-3 py-3 text-[var(--muted)]">{formatDateTime(row.punch_out_at)}</td>
+                            <td className="px-3 py-3">{formatMinutes(row.worked_minutes)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </>
               ) : (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                   No attendance rows match this filter yet.
