@@ -646,10 +646,10 @@ export default function PremiumDashboardPage() {
     : [];
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-[1500px] space-y-6">
+    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
+      <div className="mx-auto flex max-w-[1500px] flex-col gap-6">
         <section className="rounded-[2rem] border border-[rgba(62,166,255,0.18)] bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.18),rgba(11,14,20,0.92)_50%)] p-6 shadow-[0_40px_120px_rgba(3,8,20,0.45)]">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-2">
               <div className="text-xs font-semibold uppercase tracking-[0.32em] text-[rgba(62,166,255,0.88)]">
                 Owner Intelligence
@@ -659,15 +659,15 @@ export default function PremiumDashboardPage() {
                 Move from raw activity to owner decisions quickly: where money is at risk, where stock trust is slipping, which dispatch exposure is still open, and which signals deserve inspection first.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="outline" onClick={() => void handleExportPdf()}>
+            <div className="grid gap-3 sm:flex sm:flex-wrap">
+              <Button variant="outline" className="w-full sm:w-auto" onClick={() => void handleExportPdf()}>
                 Executive PDF
               </Button>
               <Link href="/analytics">
-                <Button variant="outline">Basic Analytics</Button>
+                <Button variant="outline" className="w-full sm:w-auto">Basic Analytics</Button>
               </Link>
               <Link href="/dashboard">
-                <Button>Operations Dashboard</Button>
+                <Button className="w-full sm:w-auto">Operations Dashboard</Button>
               </Link>
             </div>
           </div>
@@ -700,6 +700,37 @@ export default function PremiumDashboardPage() {
             ) : null}
           </div>
         </section>
+
+        {busy ? (
+          <div className="rounded-3xl border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-4 py-3 text-sm text-[var(--muted)]">
+            Refreshing premium analytics...
+          </div>
+        ) : null}
+        {status ? (
+          <div className="rounded-3xl border border-emerald-400/30 bg-emerald-400/12 px-4 py-3 text-sm text-emerald-100">
+            {status}
+          </div>
+        ) : null}
+        {auditWarning ? (
+          <div className="rounded-3xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-sm text-amber-100">
+            {auditWarning}
+          </div>
+        ) : null}
+        {ocrWarning ? (
+          <div className="rounded-3xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-sm text-amber-100">
+            {ocrWarning}
+          </div>
+        ) : null}
+        {steelWarning ? (
+          <div className="rounded-3xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-sm text-amber-100">
+            {steelWarning}
+          </div>
+        ) : null}
+        {error || sessionError ? (
+          <div className="rounded-3xl border border-rose-400/30 bg-rose-400/12 px-4 py-3 text-sm text-rose-100">
+            {error || sessionError}
+          </div>
+        ) : null}
 
         <Card>
           <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -774,7 +805,7 @@ export default function PremiumDashboardPage() {
                 ))}
               </div>
               <Link href="/plans">
-                <Button>Upgrade Plan</Button>
+                <Button className="w-full sm:w-auto">Upgrade Plan</Button>
               </Link>
             </CardContent>
           </Card>
@@ -782,7 +813,7 @@ export default function PremiumDashboardPage() {
 
         {dashboard && activeSummary ? (
           <>
-            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
               {[
                 ["Output", `${activeSummary.total_units}`],
                 ["Target", `${activeSummary.total_target}`],
@@ -843,7 +874,7 @@ export default function PremiumDashboardPage() {
                       {topRankedAnomalies.length ? (
                         topRankedAnomalies.map((entry) => (
                           <div key={entry.batch.id} className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4">
-                            <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                               <div className="space-y-2">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span className={severityClasses(entry.batch.severity)}>
@@ -860,7 +891,7 @@ export default function PremiumDashboardPage() {
                               </div>
                               <div className="text-xs text-[var(--muted)]">{formatDate(entry.batch.production_date)}</div>
                             </div>
-                            <div className="mt-4 grid gap-3 md:grid-cols-4">
+                            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                               <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
                                 <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Operator</div>
                                 <div className="mt-1 text-sm text-[var(--text)]">{entry.batch.operator_name || "Unassigned"}</div>
@@ -880,15 +911,15 @@ export default function PremiumDashboardPage() {
                                 </div>
                               </div>
                             </div>
-                            <div className="mt-4 flex flex-wrap gap-3">
+                            <div className="mt-4 grid gap-3 sm:flex sm:flex-wrap">
                               <Link href={`/steel/batches/${entry.batch.id}`}>
-                                <Button variant="outline">Open Batch Evidence</Button>
+                                <Button variant="outline" className="w-full sm:w-auto">Open Batch Evidence</Button>
                               </Link>
                               <Link href="/steel/reconciliations">
-                                <Button variant="ghost">Check Stock Trust</Button>
+                                <Button variant="ghost" className="w-full sm:w-auto">Check Stock Trust</Button>
                               </Link>
                               <Link href="/reports">
-                                <Button variant="ghost">Open Reports</Button>
+                                <Button variant="ghost" className="w-full sm:w-auto">Open Reports</Button>
                               </Link>
                             </div>
                           </div>
@@ -1232,12 +1263,6 @@ export default function PremiumDashboardPage() {
           </>
         ) : null}
 
-        {busy ? <div className="text-sm text-[var(--muted)]">Refreshing premium analytics...</div> : null}
-        {status ? <div className="text-sm text-green-400">{status}</div> : null}
-        {auditWarning ? <div className="text-sm text-amber-300">{auditWarning}</div> : null}
-        {ocrWarning ? <div className="text-sm text-amber-300">{ocrWarning}</div> : null}
-        {steelWarning ? <div className="text-sm text-amber-300">{steelWarning}</div> : null}
-        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
     </main>
   );
