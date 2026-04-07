@@ -87,6 +87,13 @@ function planBadge(plan: PlanInfo, activePlanId: string) {
   return null;
 }
 
+function compareRowLabel(value: boolean | string) {
+  if (typeof value === "boolean") {
+    return value ? "Yes" : "-";
+  }
+  return value;
+}
+
 export default function PlansPage() {
   const { user, loading, error: sessionError } = useSession();
   const [plansPayload, setPlansPayload] = useState<PlansPayload | null>(null);
@@ -176,10 +183,10 @@ export default function PlansPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Plans</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">
@@ -189,17 +196,17 @@ export default function PlansPage() {
                 Compare plans, included limits, and OCR packs without exposing any internal pricing math or business-side margin logic.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/billing">
-                <Button>{canViewBilling ? "Open Billing" : "Billing Access"}</Button>
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+              <Link href="/billing" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto">{canViewBilling ? "Open Billing" : "Billing Access"}</Button>
               </Link>
-              <Link href="/dashboard">
-                <Button variant="outline">Dashboard</Button>
+              <Link href="/dashboard" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto" variant="outline">Dashboard</Button>
               </Link>
             </div>
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-3 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+          <div className="mt-5 grid gap-2 text-xs uppercase tracking-[0.18em] text-[var(--muted)] sm:flex sm:flex-wrap">
             <span className={`rounded-full px-3 py-1 ${badgeClass("blue")}`}>
               Current plan: {currentPlan || "free"}
             </span>
@@ -212,7 +219,13 @@ export default function PlansPage() {
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-3">
+        {(error || sessionError) && !plansLoading ? (
+          <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">
+            {error || sessionError}
+          </div>
+        ) : null}
+
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <Card>
             <CardHeader>
               <div className="flex items-start justify-between gap-3">
@@ -272,7 +285,7 @@ export default function PlansPage() {
           </Card>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-3">
+        <section className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
           {plans.map((plan) => {
             const badge = planBadge(plan, currentPlan);
             return (
@@ -365,7 +378,7 @@ export default function PlansPage() {
               OCR packs stay customer-visible because they are purchasable product features, but the internal cost model behind them is no longer exposed anywhere in the web UI.
             </p>
           </div>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {addons.map((addon) => {
               const isFreePlan = (currentPlan || "free").toLowerCase() === "free";
               const canPurchasePack = !isFreePlan;
@@ -410,7 +423,50 @@ export default function PlansPage() {
               <CardTitle className="text-xl">Compare all plans</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+              <div className="space-y-3 md:hidden">
+                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4 text-sm text-[var(--muted)]">
+                  Scroll the plan cards above for the main offer. This compact compare view keeps the biggest differences visible on phones.
+                </div>
+                {[
+                  {
+                    label: "Users included",
+                    values: plans.map((plan) => compareRowLabel(plan.user_limit > 0 ? formatInteger(plan.user_limit) : "Unlimited")),
+                  },
+                  {
+                    label: "Factories included",
+                    values: plans.map((plan) => compareRowLabel(plan.factory_limit > 0 ? formatInteger(plan.factory_limit) : "Unlimited")),
+                  },
+                  {
+                    label: "OCR",
+                    values: plans.map((plan) => compareRowLabel(describeLimit(plan, "ocr"))),
+                  },
+                  {
+                    label: "Smart inputs",
+                    values: plans.map((plan) => compareRowLabel(describeLimit(plan, "smart"))),
+                  },
+                  {
+                    label: "AI summaries",
+                    values: plans.map((plan) => compareRowLabel(describeLimit(plan, "summary"))),
+                  },
+                  ...CUSTOMER_FEATURES.map((feature) => ({
+                    label: feature.label,
+                    values: plans.map((plan) => compareRowLabel(Boolean(plan.features?.[feature.key]))),
+                  })),
+                ].map((row) => (
+                  <div key={row.label} className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
+                    <div className="text-sm font-semibold text-white">{row.label}</div>
+                    <div className="mt-3 grid gap-2">
+                      {plans.map((plan, index) => (
+                        <div key={`${row.label}-${plan.id}`} className="flex items-center justify-between gap-3 text-sm">
+                          <span className="text-[var(--muted)]">{plan.name}</span>
+                          <span className="text-right font-medium text-white">{row.values[index]}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] md:block">
                 <table className="min-w-full text-left text-sm">
                   <thead className="text-[var(--muted)]">
                     <tr className="border-b border-[var(--border)]">
@@ -479,8 +535,6 @@ export default function PlansPage() {
             </CardContent>
           </Card>
         ) : null}
-
-        {(error || sessionError) && !plansLoading ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
     </main>
   );
