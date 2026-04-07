@@ -88,6 +88,44 @@ export default function LoginPage() {
   };
 
   const canResendVerification = error.toLowerCase().includes("verify your email");
+  const stateCard = useMemo(() => {
+    if (canResendVerification) {
+      return {
+        title: "Verification still pending",
+        detail:
+          "This sign-in is blocked because the inbox has not completed verification yet. Resend verification below using the same signup email.",
+        className: "border-color-warning/25 bg-color-warning/10 text-color-warning",
+      };
+    }
+    if (info) {
+      return {
+        title: infoTone === "success" ? "Sign-in help updated" : "Action needed",
+        detail: info,
+        className:
+          infoTone === "success"
+            ? "border-color-success/25 bg-color-success/10 text-color-success"
+            : "border-border bg-card-elevated text-text-primary",
+      };
+    }
+    if (routeInfo) {
+      return {
+        title: routeInfo.tone === "success" ? "Ready to continue" : "Sign-in needs attention",
+        detail: routeInfo.message,
+        className:
+          routeInfo.tone === "success"
+            ? "border-color-success/25 bg-color-success/10 text-color-success"
+            : routeInfo.tone === "error"
+              ? "border-color-danger/25 bg-color-danger/10 text-color-danger"
+              : "border-border bg-card-elevated text-text-primary",
+      };
+    }
+    return {
+      title: "Use a verified inbox",
+      detail:
+        "Sign in with the same verified email and password, or use Google above if that account is linked to your workspace.",
+      className: "border-border bg-card-elevated text-text-primary",
+    };
+  }, [canResendVerification, info, infoTone, routeInfo]);
 
   const onResendVerification = async () => {
     if (!email) {
@@ -176,6 +214,11 @@ export default function LoginPage() {
           required
           className="w-full"
         />
+        <div className={`rounded-lg border p-4 text-sm ${stateCard.className}`}>
+          <div className="text-xs font-semibold uppercase tracking-widest text-text-muted">Sign-In Status</div>
+          <div className="mt-2 text-base font-semibold text-text-primary">{stateCard.title}</div>
+          <div className="mt-2 leading-6">{stateCard.detail}</div>
+        </div>
         {error ? (
           <div className={canResendVerification ? "rounded-lg border border-color-warning/25 bg-color-warning/10 p-4 text-sm text-color-warning" : "rounded-lg border border-color-danger/25 bg-color-danger/10 p-4 text-sm text-color-danger"}>
             <div className="font-medium">{error}</div>
@@ -202,31 +245,7 @@ export default function LoginPage() {
             </div>
           </div>
         ) : null}
-        {info ? (
-          <div
-            className={
-              infoTone === "success"
-                ? "rounded-lg border border-color-success/25 bg-color-success/10 p-4 text-sm text-color-success"
-                : "rounded-lg border border-border bg-card-elevated p-4 text-sm text-text-primary"
-            }
-          >
-            {info}
-          </div>
-        ) : routeInfo ? (
-          <div
-            className={
-              routeInfo.tone === "success"
-                ? "rounded-lg border border-color-success/25 bg-color-success/10 p-4 text-sm text-color-success"
-                : routeInfo.tone === "error"
-                  ? "rounded-lg border border-color-danger/25 bg-color-danger/10 p-4 text-sm text-color-danger"
-                : "rounded-lg border border-border bg-card-elevated p-4 text-sm text-text-primary"
-            }
-          >
-            {routeInfo.message}
-          </div>
-        ) : null}
-        <div className="flex items-center justify-between text-sm">
-          <span></span>
+        <div className="flex justify-end text-sm">
           <Link href="/forgot-password" className="text-color-primary hover:underline font-medium">
             Forgot password?
           </Link>
