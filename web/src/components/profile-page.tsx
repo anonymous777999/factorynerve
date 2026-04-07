@@ -548,7 +548,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0B0F19] px-4 py-6 md:px-8 lg:py-8">
+    <main className="min-h-screen bg-[#0B0F19] px-4 py-6 pb-24 md:px-8 md:pb-8 lg:py-8">
       <div className="mx-auto max-w-6xl space-y-6">
         <section className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(18,24,36,0.96),rgba(11,15,25,0.98))] p-6 shadow-[0_24px_80px_rgba(6,10,18,0.42)]">
           <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[rgba(62,166,255,0.88)]">
@@ -570,14 +570,14 @@ export default function ProfilePage() {
           <div className="space-y-6">
             <Card className="rounded-[2rem] border-white/10 bg-[rgba(20,24,36,0.9)]">
               <CardHeader className="pb-0">
-                <div className="flex items-start justify-between gap-4">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <div className="text-sm text-slate-400">Identity</div>
                     <CardTitle className="mt-2 text-2xl text-white">Profile</CardTitle>
                   </div>
                   <Button
                     variant={editingProfile ? "outline" : "primary"}
-                    className="h-10 px-4"
+                    className="h-10 w-full px-4 sm:w-auto"
                     onClick={() => {
                       setEditingProfile((current) => !current);
                       setProfileMessage("");
@@ -769,8 +769,9 @@ export default function ProfilePage() {
                                 </div>
                               </div>
                             </div>
-                            <div className="mt-5 flex flex-wrap gap-3">
+                            <div className="mt-5 grid gap-3 sm:flex sm:flex-wrap">
                               <Button
+                                className="w-full sm:w-auto"
                                 onClick={() => void handlePhotoUpload()}
                                 disabled={photoBusy !== null || !selectedPhotoDimensions}
                               >
@@ -778,6 +779,7 @@ export default function ProfilePage() {
                               </Button>
                               <Button
                                 variant="outline"
+                                className="w-full sm:w-auto"
                                 onClick={() => setPhotoCrop(DEFAULT_PHOTO_CROP)}
                                 disabled={photoBusy !== null}
                               >
@@ -785,6 +787,7 @@ export default function ProfilePage() {
                               </Button>
                               <Button
                                 variant="outline"
+                                className="w-full sm:w-auto"
                                 onClick={clearSelectedPhoto}
                                 disabled={photoBusy !== null}
                               >
@@ -800,7 +803,7 @@ export default function ProfilePage() {
                     {photoError ? <div className="text-sm text-red-300">{photoError}</div> : null}
 
                     {editingProfile ? (
-                      <div className="grid gap-4 md:grid-cols-2">
+                      <div className="grid gap-4 sm:grid-cols-2">
                         <div>
                           <label className="text-sm text-slate-400">Name</label>
                           <Input
@@ -837,8 +840,8 @@ export default function ProfilePage() {
                             {formatRole(profile.role)}
                           </div>
                         </div>
-                        <div className="md:col-span-2 flex flex-wrap items-center gap-3 pt-1">
-                          <Button onClick={handleProfileSave} disabled={profileBusy}>
+                        <div className="grid gap-3 pt-1 sm:col-span-2 sm:flex sm:flex-wrap sm:items-center">
+                          <Button className="w-full sm:w-auto" onClick={handleProfileSave} disabled={profileBusy}>
                             {profileBusy ? "Saving..." : "Save Profile"}
                           </Button>
                           {profileMessage ? <div className="text-sm text-emerald-300">{profileMessage}</div> : null}
@@ -846,7 +849,7 @@ export default function ProfilePage() {
                         </div>
                       </div>
                     ) : (
-                      <div className="grid gap-3 md:grid-cols-2">
+                      <div className="grid gap-3 sm:grid-cols-2">
                         <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
                           <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Name</div>
                           <div className="mt-2 text-sm font-semibold text-white">{profile.name}</div>
@@ -901,8 +904,9 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
+                <div className="grid gap-3 sm:flex sm:flex-wrap">
                   <Button
+                    className="w-full sm:w-auto"
                     variant={showPasswordForm ? "outline" : "primary"}
                     onClick={() => {
                       setShowPasswordForm((current) => !current);
@@ -913,6 +917,7 @@ export default function ProfilePage() {
                     {showPasswordForm ? "Cancel Password Change" : "Change Password"}
                   </Button>
                   <Button
+                    className="w-full sm:w-auto"
                     variant="outline"
                     onClick={() => {
                       void handleLogoutAllDevices();
@@ -949,12 +954,12 @@ export default function ProfilePage() {
                     <div className="text-xs text-slate-400">
                       Use at least 12 characters with mixed case, a number, and a symbol.
                     </div>
-                    <div className="flex flex-wrap items-center gap-3">
-                      <Button onClick={handlePasswordSave} disabled={passwordBusy}>
+                    <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center">
+                      <Button className="w-full sm:w-auto" onClick={handlePasswordSave} disabled={passwordBusy}>
                         {passwordBusy ? "Updating..." : "Update Password"}
                       </Button>
-                      <Link href="/forgot-password">
-                        <Button variant="outline">Forgot Password</Button>
+                      <Link href="/forgot-password" className="w-full sm:w-auto">
+                        <Button className="w-full sm:w-auto" variant="outline">Forgot Password</Button>
                       </Link>
                     </div>
                   </div>
@@ -985,7 +990,7 @@ export default function ProfilePage() {
                 </div>
               </CardHeader>
               <CardContent className={sectionContentClass("workspace")}>
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
                     <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Factory</div>
                     <div className="mt-2 text-sm font-semibold text-white">
@@ -1071,8 +1076,9 @@ export default function ProfilePage() {
             </div>
           </CardHeader>
           <CardContent className={sectionContentClass("actions")}>
-            <div className="flex flex-wrap gap-3">
+            <div className="grid gap-3 sm:flex sm:flex-wrap">
               <Button
+                className="w-full sm:w-auto"
                 variant="outline"
                 onClick={() => {
                   void handleLogout();
@@ -1082,6 +1088,7 @@ export default function ProfilePage() {
                 {accountBusy === "logout" ? "Logging out..." : "Logout"}
               </Button>
               <Button
+                className="w-full sm:w-auto"
                 onClick={() => {
                   void handleSwitchAccount();
                 }}
