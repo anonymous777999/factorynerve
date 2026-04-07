@@ -18,6 +18,17 @@ export default function ForgotPasswordPage() {
   const [resendingVerification, setResendingVerification] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState("");
   const isEmailDelivery = response?.delivery_mode !== "preview";
+  const stateCard = response
+    ? {
+        title: isEmailDelivery ? "Inbox check required" : "Local reset link ready",
+        detail: isEmailDelivery
+          ? "Use only the newest email for this address. The reset link is time-limited and older links should be ignored."
+          : "Preview mode is active, so you can open or copy the reset link directly from this screen.",
+        className: isEmailDelivery
+          ? "border-[rgba(34,197,94,0.22)] bg-[rgba(34,197,94,0.08)] text-green-100"
+          : "border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.08)] text-sky-100",
+      }
+    : null;
 
   const copyResetLink = async () => {
     if (!response?.reset_link) return;
@@ -140,6 +151,14 @@ export default function ForgotPasswordPage() {
         </Button>
       </form>
 
+      {stateCard ? (
+        <div className={`rounded-2xl border p-4 text-sm ${stateCard.className}`}>
+          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/80">Recovery Status</div>
+          <div className="mt-2 text-base font-semibold text-text-primary">{stateCard.title}</div>
+          <div className="mt-2 leading-6">{stateCard.detail}</div>
+        </div>
+      ) : null}
+
       {response ? (
         <div className="rounded-lg border border-color-success/25 bg-color-success/10 p-4 text-sm">
           <div className="font-semibold text-color-success">
@@ -169,15 +188,17 @@ export default function ForgotPasswordPage() {
               <div className="text-text-muted">
                 Local preview mode is active, so your reset link is shown here directly.
               </div>
-              <a
-                href={response.reset_link}
-                className="inline-flex rounded-md border border-color-primary/40 bg-color-primary/20 px-4 py-2 text-sm font-semibold text-text-primary transition hover:bg-color-primary/30"
-              >
-                Open Reset Form
-              </a>
-              <Button type="button" variant="outline" onClick={copyResetLink}>
-                Copy Reset Link
-              </Button>
+              <div className="grid gap-3 sm:flex sm:flex-wrap">
+                <a
+                  href={response.reset_link}
+                  className="inline-flex w-full items-center justify-center rounded-md border border-color-primary/40 bg-color-primary/20 px-4 py-2 text-sm font-semibold text-text-primary transition hover:bg-color-primary/30 sm:w-auto"
+                >
+                  Open Reset Form
+                </a>
+                <Button type="button" variant="outline" onClick={copyResetLink} className="w-full sm:w-auto">
+                  Copy Reset Link
+                </Button>
+              </div>
               {copyStatus ? <div className="text-xs text-text-muted">{copyStatus}</div> : null}
               <div className="break-all rounded-md border border-border bg-card p-3 text-xs text-text-muted font-mono">
                 {response.reset_link}
@@ -188,17 +209,17 @@ export default function ForgotPasswordPage() {
               Check your inbox, spam, and promotions folder for the reset email.
             </div>
           )}
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+          <div className="mt-4 grid gap-3 sm:flex sm:flex-row">
             <Button
               type="button"
               variant="outline"
               onClick={onResendVerification}
               disabled={resendingVerification}
-              className="flex-1"
+              className="w-full flex-1"
             >
               {resendingVerification ? "Sending..." : "Resend Verification Email"}
             </Button>
-            <Link href="/login" className="inline-flex items-center justify-center text-sm text-color-primary hover:underline">
+            <Link href="/login" className="inline-flex w-full items-center justify-center text-sm text-color-primary hover:underline sm:w-auto">
               Back to sign in
             </Link>
           </div>
