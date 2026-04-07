@@ -528,9 +528,9 @@ function BillingPageInner() {
     );
   }
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
+    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+        <section className="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Billing</div>
             <h1 className="mt-2 text-3xl font-semibold">Plan status and live checkout</h1>
@@ -540,17 +540,20 @@ function BillingPageInner() {
               catalog.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/plans">
-              <Button>Plans</Button>
+          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+            <Link href="/plans" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto">Plans</Button>
             </Link>
-            <Link href="/dashboard">
-              <Button variant="outline">Dashboard</Button>
+            <Link href="/dashboard" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto" variant="outline">Dashboard</Button>
             </Link>
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {status ? <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
+        {error || sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error || sessionError}</div> : null}
+
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Card>
             <CardHeader>
               <div className="text-sm text-[var(--muted)]">Current Plan</div>
@@ -594,8 +597,8 @@ function BillingPageInner() {
           </Card>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-          <Card>
+        <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+          <Card className="order-2 xl:order-1">
             <CardHeader>
               <CardTitle className="text-xl">Usage Summary</CardTitle>
             </CardHeader>
@@ -744,7 +747,7 @@ function BillingPageInner() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="order-1 xl:order-2">
             <CardHeader>
               <CardTitle className="text-xl">Live Upgrade Summary</CardTitle>
             </CardHeader>
@@ -773,7 +776,7 @@ function BillingPageInner() {
                   <option value="yearly">Yearly</option>
                 </Select>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="text-sm text-[var(--muted)]">Users</label>
                   <Input
@@ -797,13 +800,13 @@ function BillingPageInner() {
               </div>
 
               <div className="space-y-3 rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <span className="text-sm font-semibold">OCR scan packs</span>
                   <Link href="/plans" className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">
                     Compare on plans page
                   </Link>
                 </div>
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2">
                   {addonOptions.map((addon) => {
                     const activeQuantity = activeAddonQuantities[addon.id] || 0;
                     const selectedQuantity = selectedAddonQuantities[addon.id] || 0;
@@ -846,7 +849,7 @@ function BillingPageInner() {
                             <div className="flex items-center gap-2">
                               <Button
                                 variant="outline"
-                                className="px-3 py-1"
+                                className="min-w-10 px-3 py-1"
                                 type="button"
                                 onClick={() => updateAddonQuantity(addon.id, selectedQuantity - 1)}
                               >
@@ -857,7 +860,7 @@ function BillingPageInner() {
                               </span>
                               <Button
                                 variant="outline"
-                                className="px-3 py-1"
+                                className="min-w-10 px-3 py-1"
                                 type="button"
                                 onClick={() => updateAddonQuantity(addon.id, selectedQuantity + 1)}
                               >
@@ -942,6 +945,7 @@ function BillingPageInner() {
               ) : null}
 
               <Button
+                className="w-full sm:w-auto"
                 onClick={launchCheckout}
                 disabled={
                   busy ||
@@ -969,7 +973,7 @@ function BillingPageInner() {
           </Card>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
           <Card>
             <CardHeader>
               <CardTitle className="text-xl">Plan Controls</CardTitle>
@@ -983,6 +987,7 @@ function BillingPageInner() {
                       Pending plan: {billing.pending_plan} on {formatDateTime(billing.pending_plan_effective_at)}
                     </div>
                     <Button
+                      className="w-full sm:w-auto"
                       variant="outline"
                       onClick={() =>
                         handleAction(async () => {
@@ -1005,6 +1010,7 @@ function BillingPageInner() {
                       ))}
                     </Select>
                     <Button
+                      className="w-full sm:w-auto"
                       variant="outline"
                       onClick={() =>
                         handleAction(async () => {
@@ -1035,6 +1041,7 @@ function BillingPageInner() {
                     ))}
                   </Select>
                   <Button
+                    className="w-full sm:w-auto"
                     onClick={() =>
                       handleAction(async () => {
                         await updateOrganizationPlan(overridePlan);
@@ -1061,7 +1068,37 @@ function BillingPageInner() {
             </CardHeader>
             <CardContent>
               {invoices.length ? (
-                <div className="overflow-x-auto">
+                <>
+                  <div className="space-y-3 md:hidden">
+                    {invoices.map((invoice) => (
+                      <div key={invoice.id} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="font-semibold text-white">{invoice.plan}</div>
+                            <div className="mt-1 text-xs text-[var(--muted)]">Invoice #{invoice.id}</div>
+                          </div>
+                          <span className="text-sm font-semibold text-white">
+                            {formatAmount(invoice.amount, invoice.currency || "INR")}
+                          </span>
+                        </div>
+                        <div className="mt-3 grid gap-2 text-xs text-[var(--muted)]">
+                          <div className="flex items-center justify-between gap-3">
+                            <span>Status</span>
+                            <span className="text-right text-white">{invoice.status}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span>Issued</span>
+                            <span className="text-right text-white">{formatDateTime(invoice.issued_at)}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-3">
+                            <span>Provider</span>
+                            <span className="text-right text-white">{invoice.provider || "-"}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden overflow-x-auto md:block">
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">
@@ -1088,7 +1125,8 @@ function BillingPageInner() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                  </div>
+                </>
               ) : (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                   No invoices recorded yet.
@@ -1097,9 +1135,6 @@ function BillingPageInner() {
             </CardContent>
           </Card>
         </section>
-
-        {status ? <div className="text-sm text-green-400">{status}</div> : null}
-        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
     </main>
   );
