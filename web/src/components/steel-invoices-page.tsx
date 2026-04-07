@@ -312,32 +312,35 @@ export function SteelInvoicesPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Invoicing</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Weight × rate billing that matches the steel workflow</h1>
+              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Weight x rate billing that matches the steel workflow</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 Build invoices directly from finished goods and optional production batches. Totals are computed server-side so the commercial math stays trustworthy.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/steel">
-                <Button variant="outline">Back to Steel</Button>
+            <div className="grid gap-3 sm:flex sm:flex-wrap">
+              <Link href="/steel" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto" variant="outline">Back to Steel</Button>
               </Link>
-              <Link href="/steel/customers">
-                <Button variant="ghost">Customer Ledger</Button>
+              <Link href="/steel/customers" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto" variant="ghost">Customer Ledger</Button>
               </Link>
-              <Link href="/steel/dispatches">
-                <Button variant="ghost">Open Dispatch</Button>
+              <Link href="/steel/dispatches" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto" variant="ghost">Open Dispatch</Button>
               </Link>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-3">
+        {status ? <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
+        {error || sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error || sessionError}</div> : null}
+
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <Card>
             <CardHeader><CardTitle className="text-base">Recent Invoices</CardTitle></CardHeader>
             <CardContent className="text-2xl font-semibold text-white">{invoices.length}</CardContent>
@@ -352,14 +355,14 @@ export function SteelInvoicesPage() {
           </Card>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <section className="grid gap-5 xl:grid-cols-[1fr_1fr]">
           <Card>
             <CardHeader>
               <div className="text-sm text-[var(--muted)]">Create Invoice</div>
               <CardTitle className="text-xl">Issue a steel sales invoice</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="text-sm text-[var(--muted)]">Invoice Date</label>
                   <Input type="date" value={invoiceDate} onChange={(event) => setInvoiceDate(event.target.value)} />
@@ -376,8 +379,8 @@ export function SteelInvoicesPage() {
                   </Select>
                 </div>
               </div>
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="md:col-span-2">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="sm:col-span-2">
                   <label className="text-sm text-[var(--muted)]">Customer Name</label>
                   <Input value={customerName} onChange={(event) => setCustomerName(event.target.value)} placeholder="Customer / buyer name" />
                   <div className="mt-2 text-xs text-[var(--muted)]">
@@ -397,7 +400,7 @@ export function SteelInvoicesPage() {
               {selectedCustomer ? (
                 <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4 text-sm text-[var(--muted)]">
                   <div className="font-semibold text-white">{selectedCustomer.name}</div>
-                  <div className="mt-1">Status: {selectedCustomer.status.replace("_", " ")} · Credit used {selectedCustomer.credit_used_percentage.toFixed(0)}%</div>
+                  <div className="mt-1">Status: {selectedCustomer.status.replace("_", " ")} - Credit used {selectedCustomer.credit_used_percentage.toFixed(0)}%</div>
                   <div className="mt-1">Outstanding {formatCurrency(selectedCustomer.outstanding_amount_inr)} / Limit {selectedCustomer.credit_limit ? formatCurrency(selectedCustomer.credit_limit) : "Not set"}</div>
                 </div>
               ) : null}
@@ -409,7 +412,7 @@ export function SteelInvoicesPage() {
                   const lineTotal = Number(line.weight_kg || 0) * Number(line.rate_per_kg || 0);
                   return (
                     <div key={index} className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                      <div className="grid gap-4 md:grid-cols-2">
+                      <div className="grid gap-4 sm:grid-cols-2">
                         <div>
                           <label className="text-sm text-[var(--muted)]">Finished item</label>
                           <Select value={line.item_id} onChange={(event) => setLine(index, { item_id: event.target.value, batch_id: "" })}>
@@ -433,7 +436,7 @@ export function SteelInvoicesPage() {
                           </Select>
                         </div>
                       </div>
-                      <div className="mt-4 grid gap-4 md:grid-cols-3">
+                      <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                         <div>
                           <label className="text-sm text-[var(--muted)]">Weight (KG)</label>
                           <Input type="number" min="0.01" step="0.01" value={line.weight_kg} onChange={(event) => setLine(index, { weight_kg: event.target.value })} />
@@ -453,9 +456,9 @@ export function SteelInvoicesPage() {
                         <label className="text-sm text-[var(--muted)]">Description</label>
                         <Input value={line.description} onChange={(event) => setLine(index, { description: event.target.value })} placeholder="Line description" />
                       </div>
-                      <div className="mt-4 flex gap-3">
+                      <div className="mt-4 grid gap-3 sm:flex">
                         {lines.length > 1 ? (
-                          <Button variant="ghost" onClick={() => setLines((current) => current.filter((_, lineIndex) => lineIndex !== index))}>
+                          <Button className="w-full sm:w-auto" variant="ghost" onClick={() => setLines((current) => current.filter((_, lineIndex) => lineIndex !== index))}>
                             Remove Line
                           </Button>
                         ) : null}
@@ -463,13 +466,13 @@ export function SteelInvoicesPage() {
                     </div>
                   );
                 })}
-                <Button variant="outline" onClick={() => setLines((current) => [...current, blankLine()])}>
+                <Button className="w-full sm:w-auto" variant="outline" onClick={() => setLines((current) => [...current, blankLine()])}>
                   Add Another Line
                 </Button>
               </div>
 
               <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <div className="text-sm text-[var(--muted)]">Invoice total weight</div>
                     <div className="text-2xl font-semibold text-white">{formatKg(totals.weight)} KG</div>
@@ -481,7 +484,7 @@ export function SteelInvoicesPage() {
                 </div>
               </div>
 
-              <Button disabled={busy || !canCreate} onClick={() => void submitInvoice()}>
+              <Button className="w-full sm:w-auto" disabled={busy || !canCreate} onClick={() => void submitInvoice()}>
                 {canCreate ? (busy ? "Creating Invoice..." : "Create Steel Invoice") : "Owner / manager / admin / accountant access required"}
               </Button>
             </CardContent>
@@ -493,7 +496,42 @@ export function SteelInvoicesPage() {
               <CardTitle className="text-xl">Recent steel invoices</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+              <div className="space-y-3 md:hidden">
+                {invoices.length ? invoices.map((invoice) => (
+                  <div key={`mobile-invoice-${invoice.id}`} className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-semibold text-white">{invoice.invoice_number}</div>
+                        <div className="mt-1 text-xs text-[var(--muted)]">{invoice.invoice_date}</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-semibold text-white">{formatCurrency(invoice.outstanding_amount_inr ?? invoice.total_amount)}</div>
+                        <div className="text-xs text-[var(--muted)]">{invoice.status}</div>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid gap-2 text-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[var(--muted)]">Customer</span>
+                        <span className="text-right text-white">{invoice.customer_name}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[var(--muted)]">Due</span>
+                        <span className="text-right text-white">{invoice.due_date}</span>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <Link href={`/steel/invoices/${invoice.id}`} className="text-sm font-medium text-[var(--accent)] hover:underline">
+                        Open invoice
+                      </Link>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] px-4 py-6 text-center text-sm text-[var(--muted)]">
+                    No steel invoices yet. Create the first one from finished goods above.
+                  </div>
+                )}
+              </div>
+              <div className="hidden overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] md:block">
                 <table className="min-w-full text-left text-sm">
                   <thead className="text-[var(--muted)]">
                     <tr className="border-b border-[var(--border)]">
@@ -537,9 +575,6 @@ export function SteelInvoicesPage() {
             </CardContent>
           </Card>
         </section>
-
-        {status ? <div className="text-sm text-green-400">{status}</div> : null}
-        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
     </main>
   );
