@@ -409,22 +409,24 @@ function ReviewDetailPanel({
           <div className="mt-2 text-sm leading-6 text-[var(--muted)]">{review.suggestedFix}</div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {DETAIL_TABS.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => onChangeTab(tab.id)}
-              className={cn(
-                "rounded-full px-4 py-2 text-sm font-semibold transition",
-                detailTab === tab.id
-                  ? "bg-[var(--accent)] text-[#0b0e14]"
-                  : "border border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)] hover:text-[var(--text)]",
-              )}
-            >
-              {tab.label}
-            </button>
-          ))}
+        <div className="-mx-1 overflow-x-auto pb-1">
+          <div className="flex min-w-max gap-2 px-1">
+            {DETAIL_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => onChangeTab(tab.id)}
+                className={cn(
+                  "rounded-full px-4 py-2 text-sm font-semibold transition",
+                  detailTab === tab.id
+                    ? "bg-[var(--accent)] text-[#0b0e14]"
+                    : "border border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)] hover:text-[var(--text)]",
+                )}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
       </CardHeader>
 
@@ -532,7 +534,7 @@ function ReviewDetailPanel({
           </div>
         ) : null}
 
-        <div className={cn("border-t border-[var(--border)] pt-5", mobile ? "sticky bottom-0 bg-[rgba(17,21,33,0.96)] pb-2" : "")}>
+        <div className={cn("border-t border-[var(--border)] pt-5", mobile ? "sticky bottom-0 bg-[rgba(17,21,33,0.96)] pb-2 [padding-bottom:calc(0.5rem+env(safe-area-inset-bottom))]" : "")}>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button className="flex-1" onClick={() => void onApprove(item)} disabled={isBusy}>
               {isBusy ? "Saving..." : "Approve & Close"}
@@ -813,10 +815,10 @@ export default function AttendanceReviewPage() {
 
   if (loading || (pageLoading && user && canReview && !hasLoadedOnce)) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-7xl space-y-6">
+      <main className="min-h-screen px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mx-auto max-w-7xl space-y-5 sm:space-y-6">
           <Skeleton className="h-40 rounded-[2rem]" />
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
               <Skeleton key={index} className="h-32 rounded-2xl" />
             ))}
@@ -860,12 +862,12 @@ export default function AttendanceReviewPage() {
             <div className="text-sm text-[var(--muted)]">
               Attendance review is available to supervisor, manager, admin, and owner roles.
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/attendance">
-                <Button>Open My Attendance</Button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link href="/attendance" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto">Open My Attendance</Button>
               </Link>
-              <Link href="/work-queue">
-                <Button variant="outline">Work Queue</Button>
+              <Link href="/work-queue" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto">Work Queue</Button>
               </Link>
             </div>
           </CardContent>
@@ -875,38 +877,38 @@ export default function AttendanceReviewPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 md:px-8 md:py-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.9)] p-6 shadow-2xl backdrop-blur">
+    <main className="min-h-screen px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-5 sm:space-y-6">
+        <section className="rounded-[1.75rem] border border-[var(--border)] bg-[rgba(20,24,36,0.9)] p-5 shadow-2xl backdrop-blur sm:p-6">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">Attendance Review</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Review exceptions before payroll and shift close</h1>
+              <h1 className="mt-2 text-2xl font-semibold sm:text-3xl md:text-4xl">Review exceptions before payroll and shift close</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 Check missed punches, timing corrections, and attendance requests for{" "}
                 {payload?.factory_name || activeFactory?.name || user.factory_name}. Desktop gives a full review board, and mobile keeps the same decisions in a focused issue-by-issue flow.
               </p>
             </div>
 
-            <div className="space-y-3 xl:text-right">
-              <div className="flex flex-wrap gap-3 xl:justify-end">
-                <Link href="/attendance">
-                  <Button variant="outline">My Attendance</Button>
+            <div className="w-full space-y-3 xl:w-auto xl:text-right">
+              <div className="flex flex-col gap-3 sm:flex-row xl:justify-end">
+                <Link href="/attendance" className="w-full sm:w-auto">
+                  <Button variant="outline" className="w-full sm:w-auto">My Attendance</Button>
                 </Link>
-                <Link href="/attendance/live">
-                  <Button variant="outline">Live Board</Button>
+                <Link href="/attendance/live" className="w-full sm:w-auto">
+                  <Button variant="outline" className="w-full sm:w-auto">Live Board</Button>
                 </Link>
                 {canManage ? (
-                  <Link href="/settings/attendance">
-                    <Button variant="outline">Attendance Admin</Button>
+                  <Link href="/settings/attendance" className="w-full sm:w-auto">
+                    <Button variant="outline" className="w-full sm:w-auto">Attendance Admin</Button>
                   </Link>
                 ) : null}
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center xl:justify-end">
                 <Button
                   variant="outline"
-                  className="px-4 py-2 text-xs"
+                  className="w-full px-4 py-2 text-xs sm:w-auto"
                   onClick={() => {
                     void loadReview({ background: true });
                   }}
@@ -942,7 +944,7 @@ export default function AttendanceReviewPage() {
           </div>
         ) : null}
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <SummaryCard
             label="Pending Review"
             value={derivedItems.length}
@@ -967,7 +969,7 @@ export default function AttendanceReviewPage() {
 
         <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.9)]">
           <CardHeader className="space-y-4">
-            <div className="flex flex-col gap-1 md:flex-row md:items-end md:justify-between">
+            <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
               <div>
                 <div className="text-sm text-[var(--muted)]">Filters</div>
                 <CardTitle className="text-xl">Find the right issue fast</CardTitle>
@@ -977,8 +979,8 @@ export default function AttendanceReviewPage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-            <div className="xl:col-span-2">
+          <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <div className="sm:col-span-2 xl:col-span-2">
               <label className="text-sm text-[var(--muted)]">Search employee or issue</label>
               <Input
                 value={search}
@@ -1023,7 +1025,7 @@ export default function AttendanceReviewPage() {
           </CardContent>
         </Card>
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.95fr)]">
+        <section className="grid gap-5 lg:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.95fr)] lg:items-start">
           <div className="space-y-4">
             {filteredItems.length ? (
               <>
@@ -1144,7 +1146,7 @@ export default function AttendanceReviewPage() {
                           <div className="text-sm leading-6 text-[var(--muted)]">{review.headline}</div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="grid gap-3 text-sm sm:grid-cols-2">
                           <div className="rounded-2xl border border-[var(--border)] bg-[rgba(10,14,24,0.78)] p-3">
                             <div className="text-[var(--muted)]">Date</div>
                             <div className="mt-1 font-semibold text-[var(--text)]">{formatDate(review.item.attendance_date)}</div>
@@ -1186,7 +1188,7 @@ export default function AttendanceReviewPage() {
       </div>
 
       {mobileDetailOpen ? (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(4,8,16,0.96)] px-4 py-4 lg:hidden">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(4,8,16,0.96)] px-4 py-4 pb-28 lg:hidden">
           <ReviewDetailPanel
             review={selectedReview}
             form={selectedForm}
