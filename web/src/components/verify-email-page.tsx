@@ -24,6 +24,41 @@ export default function VerifyEmailPage() {
   const isPendingSignupToken = status.toLowerCase().includes("create the account");
   const verificationFinished = status.toLowerCase().includes("sign in now") || status.toLowerCase().includes("ready to sign in");
   const loginHref = verificationFinished ? "/login?verified=1" : "/login";
+  const stateCard = useMemo(() => {
+    if (verifying) {
+      return {
+        title: "Checking link",
+        detail: "We are validating the verification token before allowing account activation.",
+        className: "border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)]",
+      };
+    }
+    if (verificationFinished) {
+      return {
+        title: "Email verified",
+        detail: "The inbox is confirmed and this account can now sign in with the same email and password.",
+        className: "border-[rgba(34,197,94,0.22)] bg-[rgba(34,197,94,0.08)] text-green-100",
+      };
+    }
+    if (valid) {
+      return {
+        title: "Ready to activate",
+        detail: "This verification link is valid. Use the button below to redeem it and finish account activation.",
+        className: "border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.08)] text-sky-100",
+      };
+    }
+    if (error) {
+      return {
+        title: "Verification needs attention",
+        detail: "This link is invalid, expired, or already used. Go back to register or request a fresh verification email.",
+        className: "border-[rgba(239,68,68,0.24)] bg-[rgba(239,68,68,0.08)] text-red-200",
+      };
+    }
+    return {
+      title: "Awaiting verification",
+      detail: "Open the secure email link to prove inbox ownership before this account can sign in.",
+      className: "border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)]",
+    };
+  }, [error, valid, verificationFinished, verifying]);
 
   useEffect(() => {
     let alive = true;
@@ -124,42 +159,48 @@ export default function VerifyEmailPage() {
       contentClassName="space-y-5"
     >
       {verifying ? (
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-              Checking your verification link...
+        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+          Checking your verification link...
+        </div>
+      ) : null}
+
+      {status ? (
+        <div className="rounded-2xl border border-[rgba(34,197,94,0.22)] bg-[rgba(34,197,94,0.08)] p-4 text-sm text-green-200">
+          <div>{status}</div>
+          {verificationFinished ? (
+            <div className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-xs text-green-100/90">
+              Next step: return to sign in and use the same email and password from registration.
             </div>
           ) : null}
+        </div>
+      ) : null}
 
-          {status ? (
-            <div className="rounded-2xl border border-[rgba(34,197,94,0.22)] bg-[rgba(34,197,94,0.08)] p-4 text-sm text-green-200">
-              <div>{status}</div>
-              {verificationFinished ? (
-                <div className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-xs text-green-100/90">
-                  Next step: return to sign in and use the same email and password from registration.
-                </div>
-              ) : null}
-            </div>
-          ) : null}
+      {error ? (
+        <div className="rounded-2xl border border-[rgba(239,68,68,0.24)] bg-[rgba(239,68,68,0.08)] p-4 text-sm text-red-300">
+          {error}
+        </div>
+      ) : null}
 
-          {error ? (
-            <div className="rounded-2xl border border-[rgba(239,68,68,0.24)] bg-[rgba(239,68,68,0.08)] p-4 text-sm text-red-300">
-              {error}
-            </div>
-          ) : null}
+      <div className={`rounded-2xl border p-4 text-sm ${stateCard.className}`}>
+        <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/80">Link Status</div>
+        <div className="mt-2 text-base font-semibold text-[var(--text)]">{stateCard.title}</div>
+        <div className="mt-2 leading-6">{stateCard.detail}</div>
+      </div>
 
-          {valid && !verifying ? (
-            <Button type="button" onClick={onVerify} disabled={loading} className="w-full">
-              {loading ? "Verifying email..." : isPendingSignupToken ? "Create and Activate Account" : "Verify Email"}
-            </Button>
-          ) : null}
+      {valid && !verifying ? (
+        <Button type="button" onClick={onVerify} disabled={loading} className="w-full">
+          {loading ? "Verifying email..." : isPendingSignupToken ? "Create and Activate Account" : "Verify Email"}
+        </Button>
+      ) : null}
 
-          <div className="flex flex-wrap gap-3">
-            <Link href="/register">
-              <Button variant="outline">Back to Register</Button>
-            </Link>
-            <Link href={loginHref}>
-              <Button>Go to Login</Button>
-            </Link>
-          </div>
+      <div className="grid gap-3 sm:flex sm:flex-wrap">
+        <Link href="/register">
+          <Button variant="outline" className="w-full sm:w-auto">Back to Register</Button>
+        </Link>
+        <Link href={loginHref}>
+          <Button className="w-full sm:w-auto">Go to Login</Button>
+        </Link>
+      </div>
     </AuthShell>
   );
 }
