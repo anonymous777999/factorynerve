@@ -27,6 +27,41 @@ export default function ResetPasswordPage() {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const resetFinished = status.toLowerCase().includes("password reset successful");
+  const stateCard = useMemo(() => {
+    if (verifying) {
+      return {
+        title: "Checking reset link",
+        detail: "We are validating the one-time recovery link before letting you set a new password.",
+        className: "border-border bg-card-elevated text-text-muted",
+      };
+    }
+    if (resetFinished) {
+      return {
+        title: "Password updated",
+        detail: "The account is ready for sign-in with the new password, and older recovery sessions should no longer be used.",
+        className: "border-color-success/25 bg-color-success/10 text-color-success",
+      };
+    }
+    if (valid) {
+      return {
+        title: "Ready to reset",
+        detail: "This link is valid. Enter a strong new password below, confirm it once, and finish the reset.",
+        className: "border-color-primary/25 bg-color-primary/10 text-text-primary",
+      };
+    }
+    if (error) {
+      return {
+        title: "Reset link needs attention",
+        detail: "The link is missing, expired, invalid, or already used. Request a fresh recovery email to continue.",
+        className: "border-color-danger/25 bg-color-danger/10 text-color-danger",
+      };
+    }
+    return {
+      title: "Awaiting reset",
+      detail: "Use the latest recovery email only. Each reset link works once and only for a limited time.",
+      className: "border-border bg-card-elevated text-text-muted",
+    };
+  }, [error, resetFinished, valid, verifying]);
 
   useEffect(() => {
     let alive = true;
@@ -160,6 +195,12 @@ export default function ResetPasswordPage() {
           {error}
         </div>
       ) : null}
+
+      <div className={`rounded-lg border p-4 text-sm ${stateCard.className}`}>
+        <div className="text-xs font-semibold uppercase tracking-widest text-text-muted">Reset Status</div>
+        <div className="mt-2 text-base font-semibold text-text-primary">{stateCard.title}</div>
+        <div className="mt-2 leading-6">{stateCard.detail}</div>
+      </div>
 
       {valid && !verifying ? (
         <div className="space-y-5">
