@@ -338,9 +338,10 @@ export default function EmailSummaryPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
+    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+        <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">
               Email Summary
@@ -361,40 +362,62 @@ export default function EmailSummaryPage() {
               </span>
             </div>
           </div>
-          <div className="flex flex-wrap gap-3">
+          <div className="grid gap-3 sm:flex sm:flex-wrap">
             <Link href="/dashboard">
-              <Button variant="outline">Dashboard</Button>
+              <Button variant="outline" className="w-full sm:w-auto">Dashboard</Button>
             </Link>
             <Link href="/reports">
-              <Button>Reports</Button>
+              <Button className="w-full sm:w-auto">Reports</Button>
             </Link>
             <Link href="/plans">
-              <Button variant="outline">Plans</Button>
+              <Button variant="outline" className="w-full sm:w-auto">Plans</Button>
             </Link>
           </div>
+          </div>
         </section>
+
+        {status ? (
+          <div className="rounded-3xl border border-emerald-400/30 bg-emerald-400/12 px-4 py-3 text-sm text-emerald-100">
+            {status}
+          </div>
+        ) : null}
+        {ocrWarning ? (
+          <div className="rounded-3xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-sm text-amber-100">
+            {ocrWarning}
+          </div>
+        ) : null}
+        {steelWarning ? (
+          <div className="rounded-3xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-sm text-amber-100">
+            {steelWarning}
+          </div>
+        ) : null}
+        {error || sessionError ? (
+          <div className="rounded-3xl border border-rose-400/30 bg-rose-400/12 px-4 py-3 text-sm text-rose-100">
+            {error || sessionError}
+          </div>
+        ) : null}
 
         <Card>
           <CardHeader>
             <CardTitle className="text-xl">Date Range</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex flex-wrap gap-3">
-              <Button variant="outline" onClick={() => handleQuickRange("today")}>Today</Button>
-              <Button variant="outline" onClick={() => handleQuickRange("week")}>Last 7 Days</Button>
-              <Button variant="outline" onClick={() => handleQuickRange("month")}>This Month</Button>
+            <div className="grid gap-3 sm:flex sm:flex-wrap">
+              <Button className="w-full sm:w-auto" variant="outline" onClick={() => handleQuickRange("today")}>Today</Button>
+              <Button className="w-full sm:w-auto" variant="outline" onClick={() => handleQuickRange("week")}>Last 7 Days</Button>
+              <Button className="w-full sm:w-auto" variant="outline" onClick={() => handleQuickRange("month")}>This Month</Button>
             </div>
-            <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto]">
+            <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto]">
               <div>
                 <label className="text-sm text-[var(--muted)]">Start Date</label>
                 <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
               </div>
               <div>
-              <label className="text-sm text-[var(--muted)]">End Date</label>
-              <Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
-            </div>
+                <label className="text-sm text-[var(--muted)]">End Date</label>
+                <Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+              </div>
               <div className="flex items-end">
-                <Button onClick={() => loadSummary()} disabled={loadingSummary}>
+                <Button className="w-full sm:w-auto" onClick={() => loadSummary()} disabled={loadingSummary}>
                   {loadingSummary ? "Loading..." : "Refresh Summary"}
                 </Button>
               </div>
@@ -405,7 +428,7 @@ export default function EmailSummaryPage() {
           </CardContent>
         </Card>
 
-        <section className={`grid gap-4 md:grid-cols-2 ${steelOverview ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
+        <section className={`grid gap-4 sm:grid-cols-2 ${steelOverview ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
           <Card>
             <CardHeader>
               <div className="text-sm text-[var(--muted)]">Plan</div>
@@ -463,7 +486,7 @@ export default function EmailSummaryPage() {
           ) : null}
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {sendReadinessCards.map((item) => (
             <div
               key={item.label}
@@ -484,7 +507,7 @@ export default function EmailSummaryPage() {
             <CardContent className="space-y-4">
               {summary ? (
                 <>
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                       <div className="text-sm text-[var(--muted)]">Units</div>
                       <div className="mt-1 text-xl font-semibold">
@@ -509,8 +532,8 @@ export default function EmailSummaryPage() {
                         {summary.totals.manpower_present} present / {summary.totals.manpower_absent} absent
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-cyan-400/30 bg-[rgba(34,211,238,0.08)] p-4 md:col-span-2">
-                      <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="rounded-2xl border border-cyan-400/30 bg-[rgba(34,211,238,0.08)] p-4 sm:col-span-2">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
                           <div className="text-sm text-cyan-100/80">Verified OCR Feed</div>
                           <div className="mt-1 text-xl font-semibold text-cyan-50">
@@ -518,10 +541,10 @@ export default function EmailSummaryPage() {
                           </div>
                         </div>
                         <Link href="/ocr/verify">
-                          <Button variant="outline">Open Review Documents</Button>
+                          <Button variant="outline" className="w-full sm:w-auto">Open Review Documents</Button>
                         </Link>
                       </div>
-                      <div className="mt-3 grid gap-3 md:grid-cols-3">
+                      <div className="mt-3 grid gap-3 sm:grid-cols-3">
                         <div className="rounded-2xl border border-white/10 bg-black/10 p-3">
                           <div className="text-xs uppercase tracking-[0.18em] text-cyan-100/80">Trusted rows</div>
                           <div className="mt-1 text-lg font-semibold text-white">{ocrSummary?.trusted_rows ?? 0}</div>
@@ -549,8 +572,8 @@ export default function EmailSummaryPage() {
                       </div>
                     </div>
                     {steelOverview ? (
-                      <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.08)] p-4 md:col-span-2">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.08)] p-4 sm:col-span-2">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                           <div>
                             <div className="text-sm text-red-100/80">Owner Risk Watch</div>
                             <div className="mt-1 text-xl font-semibold text-red-50">
@@ -566,12 +589,12 @@ export default function EmailSummaryPage() {
                               | Stock trust: {Number(steelOverview.confidence_counts.red || 0)} red / {Number(steelOverview.confidence_counts.yellow || 0)} watch
                             </div>
                           </div>
-                          <div className="flex flex-wrap gap-2">
+                          <div className="grid gap-2 sm:flex sm:flex-wrap">
                             <Link href="/premium/dashboard">
-                              <Button variant="outline">Owner Desk</Button>
+                              <Button variant="outline" className="w-full sm:w-auto">Owner Desk</Button>
                             </Link>
                             <Link href="/steel/charts">
-                              <Button variant="ghost">Steel Charts</Button>
+                              <Button variant="ghost" className="w-full sm:w-auto">Steel Charts</Button>
                             </Link>
                           </div>
                         </div>
@@ -621,30 +644,31 @@ export default function EmailSummaryPage() {
                 <label className="text-sm text-[var(--muted)]">Subject</label>
                 <Input value={subject} onChange={(event) => setSubject(event.target.value)} />
               </div>
-              <div className="flex flex-wrap gap-3">
+              <div className="grid gap-3 sm:flex sm:flex-wrap">
                 <Button
+                  className="w-full sm:w-auto"
                   onClick={handleGenerate}
                   disabled={generating || !summary?.can_send}
                 >
                   {generating ? "Generating..." : "Generate AI Draft"}
                 </Button>
-                <Button variant="outline" onClick={handleUseSuggestedRecipients} disabled={!summary?.suggested_recipients?.length}>
+                <Button className="w-full sm:w-auto" variant="outline" onClick={handleUseSuggestedRecipients} disabled={!summary?.suggested_recipients?.length}>
                   Use Suggested Recipients
                 </Button>
-                <Button variant="outline" onClick={handleResetDraft} disabled={!summary}>
+                <Button className="w-full sm:w-auto" variant="outline" onClick={handleResetDraft} disabled={!summary}>
                   Reset Draft
                 </Button>
                 {ownerRiskLines.length ? (
-                  <Button variant="outline" onClick={handleAppendOwnerRisk}>
+                  <Button className="w-full sm:w-auto" variant="outline" onClick={handleAppendOwnerRisk}>
                     Append Owner Risk Lines
                   </Button>
                 ) : null}
-                <Button variant="outline" onClick={handleCopy} disabled={!body}>
+                <Button className="w-full sm:w-auto" variant="outline" onClick={handleCopy} disabled={!body}>
                   Copy Body
                 </Button>
                 {!summary?.can_send ? (
                   <Link href="/plans">
-                    <Button variant="ghost">Upgrade Plan</Button>
+                    <Button className="w-full sm:w-auto" variant="ghost">Upgrade Plan</Button>
                   </Link>
                 ) : null}
               </div>
@@ -657,15 +681,15 @@ export default function EmailSummaryPage() {
                   placeholder="Generate the AI draft or write your own email here."
                 />
               </div>
-              <div className="flex flex-wrap gap-3">
+              <div className="grid gap-3 sm:flex sm:flex-wrap">
                 <a href={composeLinks.gmail} target="_blank" rel="noreferrer">
-                  <Button>Open Gmail</Button>
+                  <Button className="w-full sm:w-auto">Open Gmail</Button>
                 </a>
                 <a href={composeLinks.outlook} target="_blank" rel="noreferrer">
-                  <Button variant="outline">Open Outlook</Button>
+                  <Button className="w-full sm:w-auto" variant="outline">Open Outlook</Button>
                 </a>
                 <a href={composeLinks.mailto}>
-                  <Button variant="ghost">Open Mail App</Button>
+                  <Button className="w-full sm:w-auto" variant="ghost">Open Mail App</Button>
                 </a>
               </div>
               <div className="text-xs text-[var(--muted)]">
@@ -675,10 +699,6 @@ export default function EmailSummaryPage() {
           </Card>
         </section>
 
-        {status ? <div className="text-sm text-green-400">{status}</div> : null}
-        {ocrWarning ? <div className="text-sm text-amber-300">{ocrWarning}</div> : null}
-        {steelWarning ? <div className="text-sm text-amber-300">{steelWarning}</div> : null}
-        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
     </main>
   );
