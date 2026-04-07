@@ -212,10 +212,10 @@ export function SteelReconciliationsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Reconciliations</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Approval history for stock confidence</h1>
@@ -223,18 +223,29 @@ export function SteelReconciliationsPage() {
                 Review submitted physical counts, approve trusted stock evidence, and reject mismatched counts with clear reasons.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="grid gap-3 sm:flex sm:flex-wrap">
               <Link href="/steel">
-                <Button variant="outline">Back to Steel</Button>
+                <Button variant="outline" className="w-full sm:w-auto">Back to Steel</Button>
               </Link>
               <Link href="/steel/customers">
-                <Button variant="ghost">Customer Ledger</Button>
+                <Button variant="ghost" className="w-full sm:w-auto">Customer Ledger</Button>
               </Link>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-3">
+        {status ? (
+          <div className="rounded-3xl border border-emerald-400/30 bg-emerald-400/12 px-4 py-3 text-sm text-emerald-100">
+            {status}
+          </div>
+        ) : null}
+        {error || sessionError ? (
+          <div className="rounded-3xl border border-rose-400/30 bg-rose-400/12 px-4 py-3 text-sm text-rose-100">
+            {error || sessionError}
+          </div>
+        ) : null}
+
+        <section className="grid gap-4 sm:grid-cols-3">
           <Card>
             <CardHeader><CardTitle className="text-base">Pending</CardTitle></CardHeader>
             <CardContent className="text-2xl font-semibold text-white">{summary.pending}</CardContent>
@@ -249,12 +260,12 @@ export function SteelReconciliationsPage() {
           </Card>
         </section>
 
-        <Card>
+        <Card className="overflow-hidden">
           <CardHeader>
             <CardTitle className="text-xl">History</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="text-sm text-[var(--muted)]">Status</label>
                 <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
@@ -279,9 +290,9 @@ export function SteelReconciliationsPage() {
 
             <div className="space-y-4">
               {reconciliations.map((row) => (
-                <div key={row.id} className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
+                <div key={row.id} className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4 sm:p-5">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
                       <div className="text-lg font-semibold text-white">{row.item_code} - {row.item_name}</div>
                       <div className="mt-1 text-xs text-[var(--muted)]">
                         Counted by {row.counted_by_name || "Unknown"} on {row.counted_at}
@@ -297,7 +308,7 @@ export function SteelReconciliationsPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-4">
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                     <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
                       <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">System</div>
                       <div className="mt-1 text-sm font-semibold text-white">{formatKg(row.system_qty_kg)} KG</div>
@@ -317,7 +328,7 @@ export function SteelReconciliationsPage() {
                   </div>
 
                   {row.notes ? <div className="mt-3 text-sm text-[var(--muted)]">Count note: {row.notes}</div> : null}
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
+                  <div className="mt-2 flex flex-col items-start gap-3 text-sm sm:flex-row sm:flex-wrap sm:items-center">
                     <div className="rounded-full border border-[var(--border)] bg-[rgba(8,14,24,0.6)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
                       Cause: {formatMismatchCause(mismatchCauses[row.id] || row.mismatch_cause)}
                     </div>
@@ -354,8 +365,9 @@ export function SteelReconciliationsPage() {
                           Select the root cause before approving or rejecting this mismatch.
                         </div>
                       ) : null}
-                      <div className="flex flex-wrap gap-3">
+                      <div className="grid gap-3 sm:flex sm:flex-wrap">
                         <Button
+                          className="w-full sm:w-auto"
                           disabled={busyId === row.id || (Math.abs(Number(row.variance_kg || 0)) > 0.001 && !(mismatchCauses[row.id] || row.mismatch_cause))}
                           onClick={() => void handleApprove(row.id)}
                         >
@@ -363,6 +375,7 @@ export function SteelReconciliationsPage() {
                         </Button>
                         <Button
                           variant="outline"
+                          className="w-full sm:w-auto"
                           disabled={busyId === row.id || (Math.abs(Number(row.variance_kg || 0)) > 0.001 && !(mismatchCauses[row.id] || row.mismatch_cause))}
                           onClick={() => void handleReject(row.id)}
                         >
@@ -381,9 +394,6 @@ export function SteelReconciliationsPage() {
             </div>
           </CardContent>
         </Card>
-
-        {status ? <div className="text-sm text-green-400">{status}</div> : null}
-        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
     </main>
   );
