@@ -137,10 +137,10 @@ export default function AttendanceReportsPage() {
 
   if (loading || (pageLoading && user && canView && !hasLoadedOnce)) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-7xl space-y-6">
+      <main className="min-h-screen px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8">
+        <div className="mx-auto max-w-7xl space-y-5 sm:space-y-6">
           <Skeleton className="h-36 rounded-[2rem]" />
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
               <Skeleton key={index} className="h-32 rounded-2xl" />
             ))}
@@ -172,7 +172,7 @@ export default function AttendanceReportsPage() {
           <CardHeader><CardTitle>Attendance Reports</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-[var(--muted)]">Attendance reports are available to reporting and management roles.</div>
-            <Link href="/attendance"><Button>Open Attendance</Button></Link>
+            <Link href="/attendance" className="w-full sm:w-auto"><Button className="w-full sm:w-auto">Open Attendance</Button></Link>
           </CardContent>
         </Card>
       </main>
@@ -180,26 +180,26 @@ export default function AttendanceReportsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.9)] p-6 shadow-2xl backdrop-blur">
+    <main className="min-h-screen px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8">
+      <div className="mx-auto max-w-7xl space-y-5 sm:space-y-6">
+        <section className="rounded-[1.75rem] border border-[var(--border)] bg-[rgba(20,24,36,0.9)] p-5 shadow-2xl backdrop-blur sm:p-6">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">Attendance Reports</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Daily attendance signal across the selected range</h1>
+              <h1 className="mt-2 text-2xl font-semibold sm:text-3xl md:text-4xl">Daily attendance signal across the selected range</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 Watch attendance completion, pending review load, late arrivals, and overtime from one reporting surface for {payload?.factory_name || activeFactory?.name || user.factory_name}.
               </p>
             </div>
-            <div className="space-y-3">
-              <div className="flex flex-wrap gap-3">
-                <Link href="/attendance/live"><Button variant="outline">Live Board</Button></Link>
-                <Link href="/attendance/review"><Button variant="outline">Review Queue</Button></Link>
+            <div className="w-full space-y-3 lg:w-auto">
+              <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
+                <Link href="/attendance/live" className="w-full sm:w-auto"><Button variant="outline" className="w-full sm:w-auto">Live Board</Button></Link>
+                <Link href="/attendance/review" className="w-full sm:w-auto"><Button variant="outline" className="w-full sm:w-auto">Review Queue</Button></Link>
               </div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                 <Button
                   variant="outline"
-                  className="px-4 py-2 text-xs"
+                  className="w-full px-4 py-2 text-xs sm:w-auto"
                   onClick={() => {
                     void loadReports({ background: true });
                   }}
@@ -230,7 +230,7 @@ export default function AttendanceReportsPage() {
         <Card>
           <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div><CardTitle className="text-xl">Report Range</CardTitle></div>
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid w-full gap-4 sm:grid-cols-2 lg:w-auto">
               <div>
                 <label className="text-sm text-[var(--muted)]">Date From</label>
                 <Input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
@@ -241,10 +241,10 @@ export default function AttendanceReportsPage() {
               </div>
             </div>
           </CardHeader>
-          <CardContent><Button variant="ghost" onClick={() => void loadReports({ background: true })} disabled={refreshing}>{refreshing ? "Refreshing..." : "Refresh Report"}</Button></CardContent>
+          <CardContent><Button variant="ghost" className="w-full sm:w-auto" onClick={() => void loadReports({ background: true })} disabled={refreshing}>{refreshing ? "Refreshing..." : "Refresh Report"}</Button></CardContent>
         </Card>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Card><CardHeader><div className="text-sm text-[var(--muted)]">Present Records</div><CardTitle>{payload?.totals.present_records || 0}</CardTitle></CardHeader><CardContent className="text-sm text-[var(--muted)]">Punch-ins recorded across the selected range.</CardContent></Card>
           <Card><CardHeader><div className="text-sm text-[var(--muted)]">Completed</div><CardTitle>{payload?.totals.completed_records || 0}</CardTitle></CardHeader><CardContent className="text-sm text-[var(--muted)]">Rows with a closed attendance record.</CardContent></Card>
           <Card><CardHeader><div className="text-sm text-[var(--muted)]">Pending Review</div><CardTitle>{payload?.totals.pending_review || 0}</CardTitle></CardHeader><CardContent className="text-sm text-[var(--muted)]">Open review load still sitting with supervisors.</CardContent></Card>
@@ -258,36 +258,71 @@ export default function AttendanceReportsPage() {
           </CardHeader>
           <CardContent>
             {payload?.days.length ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full text-left text-sm">
-                  <thead className="text-[var(--muted)]">
-                    <tr className="border-b border-[var(--border)]">
-                      <th className="px-3 py-3 font-medium">Date</th>
-                      <th className="px-3 py-3 font-medium">Assigned</th>
-                      <th className="px-3 py-3 font-medium">Punched In</th>
-                      <th className="px-3 py-3 font-medium">Completed</th>
-                      <th className="px-3 py-3 font-medium">Not Punched</th>
-                      <th className="px-3 py-3 font-medium">Pending Review</th>
-                      <th className="px-3 py-3 font-medium">Late</th>
-                      <th className="px-3 py-3 font-medium">Overtime</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {payload.days.map((day) => (
-                      <tr key={day.attendance_date} className="border-b border-[var(--border)]/60">
-                        <td className="px-3 py-3 font-semibold text-[var(--text)]">{formatDate(day.attendance_date)}</td>
-                        <td className="px-3 py-3">{day.total_people}</td>
-                        <td className="px-3 py-3">{day.punched_in}</td>
-                        <td className="px-3 py-3">{day.completed}</td>
-                        <td className="px-3 py-3">{day.not_punched}</td>
-                        <td className="px-3 py-3">{day.pending_review}</td>
-                        <td className="px-3 py-3">{day.late}</td>
-                        <td className="px-3 py-3">{day.overtime}</td>
+              <>
+                <div className="space-y-3 md:hidden">
+                  {payload.days.map((day) => (
+                    <div key={day.attendance_date} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                      <div className="font-semibold text-[var(--text)]">{formatDate(day.attendance_date)}</div>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
+                          <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Assigned</div>
+                          <div className="mt-1 font-medium text-[var(--text)]">{day.total_people}</div>
+                        </div>
+                        <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
+                          <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Punched In</div>
+                          <div className="mt-1 font-medium text-[var(--text)]">{day.punched_in}</div>
+                        </div>
+                        <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
+                          <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Completed</div>
+                          <div className="mt-1 font-medium text-[var(--text)]">{day.completed}</div>
+                        </div>
+                        <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
+                          <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Not Punched</div>
+                          <div className="mt-1 font-medium text-[var(--text)]">{day.not_punched}</div>
+                        </div>
+                        <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
+                          <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Pending Review</div>
+                          <div className="mt-1 font-medium text-[var(--text)]">{day.pending_review}</div>
+                        </div>
+                        <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
+                          <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Late / Overtime</div>
+                          <div className="mt-1 font-medium text-[var(--text)]">{day.late} / {day.overtime}</div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="hidden overflow-x-auto md:block">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="text-[var(--muted)]">
+                      <tr className="border-b border-[var(--border)]">
+                        <th className="px-3 py-3 font-medium">Date</th>
+                        <th className="px-3 py-3 font-medium">Assigned</th>
+                        <th className="px-3 py-3 font-medium">Punched In</th>
+                        <th className="px-3 py-3 font-medium">Completed</th>
+                        <th className="px-3 py-3 font-medium">Not Punched</th>
+                        <th className="px-3 py-3 font-medium">Pending Review</th>
+                        <th className="px-3 py-3 font-medium">Late</th>
+                        <th className="px-3 py-3 font-medium">Overtime</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {payload.days.map((day) => (
+                        <tr key={day.attendance_date} className="border-b border-[var(--border)]/60">
+                          <td className="px-3 py-3 font-semibold text-[var(--text)]">{formatDate(day.attendance_date)}</td>
+                          <td className="px-3 py-3">{day.total_people}</td>
+                          <td className="px-3 py-3">{day.punched_in}</td>
+                          <td className="px-3 py-3">{day.completed}</td>
+                          <td className="px-3 py-3">{day.not_punched}</td>
+                          <td className="px-3 py-3">{day.pending_review}</td>
+                          <td className="px-3 py-3">{day.late}</td>
+                          <td className="px-3 py-3">{day.overtime}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             ) : (
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                 No attendance data is available for the selected range yet.
