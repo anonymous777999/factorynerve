@@ -253,10 +253,10 @@ export function SteelCustomersPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Customer Ledger</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Track receivables, payments, and buyer history</h1>
@@ -264,21 +264,24 @@ export function SteelCustomersPage() {
                 This keeps invoice value, recorded payments, and outstanding exposure in one place so steel dispatch and billing stay tied to real customer balances.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/steel">
-                <Button variant="outline">Back to Steel</Button>
+            <div className="grid gap-3 sm:flex sm:flex-wrap">
+              <Link href="/steel" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto" variant="outline">Back to Steel</Button>
               </Link>
-              <Link href="/steel/invoices">
-                <Button variant="ghost">Open Invoices</Button>
+              <Link href="/steel/invoices" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto" variant="ghost">Open Invoices</Button>
               </Link>
-              <Link href="/steel/dispatches">
-                <Button variant="ghost">Open Dispatch</Button>
+              <Link href="/steel/dispatches" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto" variant="ghost">Open Dispatch</Button>
               </Link>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        {status ? <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
+        {error || sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error || sessionError}</div> : null}
+
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
           <Card>
             <CardHeader><CardTitle className="text-base">Customers</CardTitle></CardHeader>
             <CardContent className="text-2xl font-semibold text-white">{customers.length}</CardContent>
@@ -301,7 +304,7 @@ export function SteelCustomersPage() {
           </Card>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
           <Card>
             <CardHeader>
               <div className="text-sm text-[var(--muted)]">Create Customer</div>
@@ -312,7 +315,7 @@ export function SteelCustomersPage() {
                 <label className="text-sm text-[var(--muted)]">Customer Name</label>
                 <Input value={form.name} onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))} placeholder="Buyer / customer name" />
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="text-sm text-[var(--muted)]">Contact Person</label>
                   <Input value={form.contact_person} onChange={(event) => setForm((current) => ({ ...current, contact_person: event.target.value }))} placeholder="Primary contact person" />
@@ -322,7 +325,7 @@ export function SteelCustomersPage() {
                   <Input value={form.designation} onChange={(event) => setForm((current) => ({ ...current, designation: event.target.value }))} placeholder="Purchase manager / owner" />
                 </div>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="text-sm text-[var(--muted)]">Phone</label>
                   <Input type="tel" autoComplete="tel" inputMode="tel" value={form.phone} onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))} placeholder="+91..." />
@@ -336,7 +339,7 @@ export function SteelCustomersPage() {
                 <label className="text-sm text-[var(--muted)]">Address</label>
                 <Textarea value={form.address} onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))} placeholder="Billing / delivery address" />
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="text-sm text-[var(--muted)]">City</label>
                   <Input value={form.city} onChange={(event) => setForm((current) => ({ ...current, city: event.target.value }))} placeholder="Mumbai" />
@@ -346,7 +349,7 @@ export function SteelCustomersPage() {
                   <Input value={form.state} onChange={(event) => setForm((current) => ({ ...current, state: event.target.value }))} placeholder="Maharashtra" />
                 </div>
               </div>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 <div>
                   <label className="text-sm text-[var(--muted)]">GST</label>
                   <Input value={form.gst_number} onChange={(event) => setForm((current) => ({ ...current, gst_number: event.target.value }))} placeholder="GST number" />
@@ -360,7 +363,7 @@ export function SteelCustomersPage() {
                   <Input value={form.tax_id} onChange={(event) => setForm((current) => ({ ...current, tax_id: event.target.value }))} placeholder="Optional tax identifier" />
                 </div>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="text-sm text-[var(--muted)]">Company Type</label>
                   <Select value={form.company_type} onChange={(event) => setForm((current) => ({ ...current, company_type: event.target.value }))}>
@@ -379,7 +382,7 @@ export function SteelCustomersPage() {
                   </Select>
                 </div>
               </div>
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="text-sm text-[var(--muted)]">Credit Limit</label>
                   <Input type="number" min="0" step="0.01" value={form.credit_limit} onChange={(event) => setForm((current) => ({ ...current, credit_limit: event.target.value }))} placeholder="500000" />
@@ -393,7 +396,7 @@ export function SteelCustomersPage() {
                 <label className="text-sm text-[var(--muted)]">Notes</label>
                 <Textarea value={form.notes} onChange={(event) => setForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Payment habits, follow-up notes, preferred material" />
               </div>
-              <Button disabled={busy || !canManage} onClick={() => void submitCustomer()}>
+              <Button className="w-full sm:w-auto" disabled={busy || !canManage} onClick={() => void submitCustomer()}>
                 {canManage ? (busy ? "Saving Customer..." : "Create Steel Customer") : "Owner / manager / admin / accountant access required"}
               </Button>
             </CardContent>
@@ -405,7 +408,56 @@ export function SteelCustomersPage() {
               <CardTitle className="text-xl">Receivables and recovery at a glance</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+              <div className="space-y-3 md:hidden">
+                {customers.length ? customers.map((customer) => (
+                  <div key={`mobile-customer-${customer.id}`} className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <div className="font-semibold text-white">{customer.name}</div>
+                        <div className="mt-1 text-xs text-[var(--muted)]">
+                          {customer.customer_code || "Code pending"} - {customer.contact_person || customer.phone || customer.email || "Contact pending"}
+                        </div>
+                      </div>
+                      <div className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${verificationBadgeClass(customer.verification_status)}`}>
+                        {customer.verification_status.replace("_", " ")}
+                      </div>
+                    </div>
+                    <div className="mt-3 grid gap-3 text-sm">
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[var(--muted)]">Risk</span>
+                        <span className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${riskBadgeClass(customer.risk_level)}`}>
+                          {customer.risk_level}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[var(--muted)]">Outstanding</span>
+                        <span className="text-right text-white">{formatCurrency(customer.outstanding_amount_inr)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[var(--muted)]">Overdue</span>
+                        <span className="text-right text-white">{formatCurrency(customer.overdue_amount_inr)}</span>
+                      </div>
+                      <div className="flex items-center justify-between gap-3">
+                        <span className="text-[var(--muted)]">Follow-up</span>
+                        <span className="text-right text-white">
+                          {customer.open_follow_up_count ? `${customer.open_follow_up_count} task${customer.open_follow_up_count === 1 ? "" : "s"}` : "Clear"}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-3 text-xs text-[var(--muted)]">
+                      <span>{customer.overdue_days} overdue days - score {customer.risk_score.toFixed(0)}</span>
+                      <Link href={`/steel/customers/${customer.id}`} className="font-medium text-[var(--accent)] hover:underline">
+                        Open ledger
+                      </Link>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] px-4 py-6 text-center text-sm text-[var(--muted)]">
+                    No steel customers yet. Add the first buyer profile or create an invoice to auto-create one from the customer name.
+                  </div>
+                )}
+              </div>
+              <div className="hidden overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] md:block">
                 <table className="min-w-full text-left text-sm">
                   <thead className="text-[var(--muted)]">
                     <tr className="border-b border-[var(--border)]">
@@ -428,7 +480,7 @@ export function SteelCustomersPage() {
                             </div>
                           </div>
                           <div className="text-xs text-[var(--muted)]">
-                            {customer.customer_code || "Code pending"} {" · "} {customer.contact_person || customer.phone || customer.email || "Contact pending"}
+                            {customer.customer_code || "Code pending"} {" - "} {customer.contact_person || customer.phone || customer.email || "Contact pending"}
                           </div>
                         </td>
                         <td className="px-3 py-3">
@@ -436,7 +488,7 @@ export function SteelCustomersPage() {
                             {customer.risk_level}
                           </div>
                           <div className="mt-2 text-xs text-[var(--muted)]">
-                            {customer.overdue_days} overdue days {" · "} score {customer.risk_score.toFixed(0)}
+                            {customer.overdue_days} overdue days {" - "} score {customer.risk_score.toFixed(0)}
                           </div>
                         </td>
                         <td className="px-3 py-3">
