@@ -197,10 +197,10 @@ export function SteelChartsPage() {
   const topLossBatch = overview?.top_loss_batch || overview?.anomaly_batches?.[0] || null;
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_32%),linear-gradient(180deg,#ecf4fa_0%,#f8fbfd_48%,#eef3f8_100%)] px-4 py-8 text-slate-900 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_32%),linear-gradient(180deg,#ecf4fa_0%,#f8fbfd_48%,#eef3f8_100%)] px-4 py-6 pb-24 text-slate-900 md:px-8 md:pb-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <section className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(239,248,255,0.92))] p-6 shadow-[0_22px_55px_rgba(15,23,42,0.08)] backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.28em] text-sky-700">Steel Charts</div>
               <h1 className="mt-2 text-2xl font-semibold text-slate-900 md:text-4xl">
@@ -225,21 +225,27 @@ export function SteelChartsPage() {
                 </span>
               </div>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="outline" disabled={refreshing} onClick={() => void handleRefresh()}>
+            <div className="grid gap-3 sm:flex sm:flex-wrap">
+              <Button variant="outline" className="w-full sm:w-auto" disabled={refreshing} onClick={() => void handleRefresh()}>
                 {refreshing ? "Refreshing..." : "Refresh Charts"}
               </Button>
               <Link href="/steel">
-                <Button variant="ghost">Steel Hub</Button>
+                <Button variant="ghost" className="w-full sm:w-auto">Steel Hub</Button>
               </Link>
               <Link href="/reports">
-                <Button variant="ghost">Reports</Button>
+                <Button variant="ghost" className="w-full sm:w-auto">Reports</Button>
               </Link>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {error || sessionError ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error || sessionError}
+          </div>
+        ) : null}
+
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Card className="rounded-[1.6rem] border border-emerald-200 bg-[linear-gradient(180deg,#ffffff,#f4fbf6)] shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
             <CardHeader>
               <div className="text-xs uppercase tracking-[0.18em] text-emerald-700">Signal</div>
@@ -251,7 +257,7 @@ export function SteelChartsPage() {
                 {confidenceTotal} tracked positions | Watch {watchConfidenceCount} | Critical {criticalConfidenceCount}
               </div>
               <Link href="/steel/reconciliations">
-                <Button variant="outline">Open Stock Review</Button>
+                <Button variant="outline" className="w-full sm:w-auto">Open Stock Review</Button>
               </Link>
             </CardContent>
           </Card>
@@ -267,7 +273,7 @@ export function SteelChartsPage() {
                 Avg loss {formatPercent(overview?.batch_metrics.average_loss_percent)} across {Number(overview?.batch_metrics.total_batches || 0)} batches
               </div>
               <Link href="/steel?tab=risk">
-                <Button variant="outline">Open Risk Review</Button>
+                <Button variant="outline" className="w-full sm:w-auto">Open Risk Review</Button>
               </Link>
             </CardContent>
           </Card>
@@ -283,7 +289,7 @@ export function SteelChartsPage() {
                 {dispatchCount} recent dispatches with invoice closure and truck movement context.
               </div>
               <Link href="/steel/dispatches">
-                <Button variant="outline">Open Dispatch</Button>
+                <Button variant="outline" className="w-full sm:w-auto">Open Dispatch</Button>
               </Link>
             </CardContent>
           </Card>
@@ -303,13 +309,13 @@ export function SteelChartsPage() {
                   : "Financial values stay hidden for your current role."}
               </div>
               <Link href="/steel/invoices">
-                <Button variant="outline">Open Invoices</Button>
+                <Button variant="outline" className="w-full sm:w-auto">Open Invoices</Button>
               </Link>
             </CardContent>
           </Card>
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-3">
+        <section className="grid gap-4 lg:grid-cols-3">
           <Card className="rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
             <CardHeader>
               <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Action Lane</div>
@@ -328,7 +334,7 @@ export function SteelChartsPage() {
                     Use stock review first when physical and system quantities start drifting.
                   </div>
                   <Link href="/steel/reconciliations">
-                    <Button variant="outline">Open mismatch review</Button>
+                    <Button variant="outline" className="w-full sm:w-auto">Open mismatch review</Button>
                   </Link>
                 </>
               ) : (
@@ -352,12 +358,12 @@ export function SteelChartsPage() {
                   <div className="text-xs text-slate-500">
                     Highest-risk operator signal: {topRiskOperator}
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="grid gap-2 sm:flex sm:flex-wrap">
                     <Link href={`/steel/batches/${topLossBatch.id}`}>
-                      <Button variant="outline">Open batch</Button>
+                      <Button variant="outline" className="w-full sm:w-auto">Open batch</Button>
                     </Link>
                     <Link href="/steel?tab=risk">
-                      <Button variant="ghost">Risk lane</Button>
+                      <Button variant="ghost" className="w-full sm:w-auto">Risk lane</Button>
                     </Link>
                   </div>
                 </>
@@ -382,26 +388,20 @@ export function SteelChartsPage() {
               <div className="text-xs text-slate-500">
                 Customer and invoice follow-through is strongest when the chart signal is matched with dispatch proof.
               </div>
-              <div className="flex flex-wrap gap-2">
+              <div className="grid gap-2 sm:flex sm:flex-wrap">
                 <Link href="/steel/invoices">
-                  <Button variant="outline">Open invoices</Button>
+                  <Button variant="outline" className="w-full sm:w-auto">Open invoices</Button>
                 </Link>
                 <Link href="/steel/dispatches">
-                  <Button variant="ghost">Dispatch desk</Button>
+                  <Button variant="ghost" className="w-full sm:w-auto">Dispatch desk</Button>
                 </Link>
               </div>
             </CardContent>
           </Card>
         </section>
 
-        {error || sessionError ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error || sessionError}
-          </div>
-        ) : null}
-
         <section className="space-y-3">
-          <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="text-sm uppercase tracking-[0.22em] text-slate-500">Interactive Board</div>
               <h2 className="mt-1 text-2xl font-semibold text-slate-900">Read signals, filter patterns, and drill into action</h2>
@@ -410,12 +410,12 @@ export function SteelChartsPage() {
                 the charts for deeper decisions.
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid gap-2 sm:flex sm:flex-wrap">
               <Link href="/steel/customers">
-                <Button variant="outline">Customer Ledger</Button>
+                <Button variant="outline" className="w-full sm:w-auto">Customer Ledger</Button>
               </Link>
               <Link href="/reports">
-                <Button variant="ghost">Reports</Button>
+                <Button variant="ghost" className="w-full sm:w-auto">Reports</Button>
               </Link>
             </div>
           </div>
