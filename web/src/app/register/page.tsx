@@ -27,6 +27,25 @@ export default function RegisterPage() {
   const isPreviewMode = deliveryMode === "preview";
   const isEmailFailure = deliveryMode === "email_failed";
   const isEmailDelivery = !!success && !isPreviewMode && !isEmailFailure;
+  const successState = success
+    ? {
+        title: isEmailFailure
+          ? "Pending signup saved"
+          : isEmailDelivery
+            ? "Inbox verification required"
+            : "Verification link ready",
+        detail: isEmailFailure
+          ? "The signup request is stored safely. You only need to resend verification after email delivery recovers."
+          : isEmailDelivery
+            ? "The real account stays locked until this inbox opens the verification email and activates the signup."
+            : "Preview mode is active, so you can open the verification link directly from this screen.",
+        className: isEmailFailure
+          ? "border-[rgba(245,158,11,0.28)] bg-[rgba(245,158,11,0.10)] text-amber-100"
+          : isEmailDelivery
+            ? "border-[rgba(34,197,94,0.22)] bg-[rgba(34,197,94,0.08)] text-green-100"
+            : "border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.08)] text-sky-100",
+      }
+    : null;
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -129,6 +148,13 @@ export default function RegisterPage() {
     >
       {success ? (
         <div className="space-y-5">
+              {successState ? (
+                <div className={`rounded-2xl border p-4 text-sm ${successState.className}`}>
+                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/80">Signup Status</div>
+                  <div className="mt-2 text-base font-semibold text-[var(--text)]">{successState.title}</div>
+                  <div className="mt-2 leading-6">{successState.detail}</div>
+                </div>
+              ) : null}
               <div className="rounded-2xl border border-[rgba(245,158,11,0.28)] bg-[rgba(245,158,11,0.10)] p-4 text-sm">
                 <div className="font-semibold text-amber-300">
                   {isEmailFailure
@@ -181,12 +207,14 @@ export default function RegisterPage() {
                     <div className="text-[var(--muted)]">
                       Local preview mode is active, so your verification link is shown here directly.
                     </div>
-                    <a
-                      href={success.verification_link}
-                      className="inline-flex rounded-full border border-[rgba(62,166,255,0.4)] bg-[rgba(62,166,255,0.12)] px-4 py-2 text-sm font-semibold text-[var(--text)] transition hover:bg-[rgba(62,166,255,0.18)]"
-                    >
-                      Open Verification Page
-                    </a>
+                    <div className="grid gap-3 sm:flex sm:flex-wrap">
+                      <a
+                        href={success.verification_link}
+                        className="inline-flex w-full items-center justify-center rounded-full border border-[rgba(62,166,255,0.4)] bg-[rgba(62,166,255,0.12)] px-4 py-2 text-sm font-semibold text-[var(--text)] transition hover:bg-[rgba(62,166,255,0.18)] sm:w-auto"
+                      >
+                        Open Verification Page
+                      </a>
+                    </div>
                     <div className="break-all text-xs text-[var(--muted)]">{success.verification_link}</div>
                   </div>
                 ) : isEmailFailure ? (
@@ -200,11 +228,11 @@ export default function RegisterPage() {
                 )}
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <Button type="button" variant="outline" onClick={onResend} disabled={resending}>
+              <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center">
+                <Button type="button" variant="outline" onClick={onResend} disabled={resending} className="w-full sm:w-auto">
                   {resending ? "Sending..." : "Resend Verification Email"}
                 </Button>
-                <Link href="/login" className="text-sm text-[var(--accent)] underline">
+                <Link href="/login" className="inline-flex w-full items-center justify-center text-sm text-[var(--accent)] underline sm:w-auto">
                   Back to sign in
                 </Link>
               </div>
@@ -282,13 +310,17 @@ export default function RegisterPage() {
                 />
               </div>
 
-              {error ? <div className="md:col-span-2 text-sm text-red-400">{error}</div> : null}
+              {error ? (
+                <div className="md:col-span-2 rounded-lg border border-[rgba(239,68,68,0.24)] bg-[rgba(239,68,68,0.08)] p-3 text-sm text-red-300">
+                  {error}
+                </div>
+              ) : null}
 
-              <div className="md:col-span-2 flex flex-wrap items-center gap-3">
-                <Button type="submit" disabled={loading}>
+              <div className="md:col-span-2 grid gap-3 sm:flex sm:flex-wrap sm:items-center">
+                <Button type="submit" disabled={loading} className="w-full sm:w-auto">
                   {loading ? "Creating account..." : "Register"}
                 </Button>
-                <Link href="/login" className="text-sm text-[var(--accent)] underline">
+                <Link href="/login" className="inline-flex w-full items-center justify-center text-sm text-[var(--accent)] underline sm:w-auto">
                   Already have an account? Sign in
                 </Link>
               </div>
