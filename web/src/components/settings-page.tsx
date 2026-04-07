@@ -368,6 +368,17 @@ export default function SettingsPage() {
           </div>
         </section>
 
+        {status ? (
+          <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">
+            {status}
+          </div>
+        ) : null}
+        {error || sessionError ? (
+          <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">
+            {error || sessionError}
+          </div>
+        ) : null}
+
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <Card>
             <CardHeader>
@@ -375,7 +386,7 @@ export default function SettingsPage() {
               <CardTitle>{factory.factory_name || user.factory_name || "-"}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-[var(--muted)]">
-              {(factory.industry_label || factory.factory_type || "Factory type not set yet.")} · {factory.workflow_template_label || "No template"}
+              {(factory.industry_label || factory.factory_type || "Factory type not set yet.")} - {factory.workflow_template_label || "No template"}
             </CardContent>
           </Card>
           <Card>
@@ -470,11 +481,11 @@ export default function SettingsPage() {
                     "Choose the operating template that becomes the default starter pack for this factory."}
                 </p>
               </div>
-              <div className="md:col-span-2">
+              <div className="sm:col-span-2">
                 <label className="text-sm text-[var(--muted)]">Address</label>
                 <Input value={factory.address} onChange={(e) => setFactory((prev) => ({ ...prev, address: e.target.value }))} />
               </div>
-              <div className="md:col-span-2 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+              <div className="sm:col-span-2 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                 <div className="text-sm font-semibold">Starter Modules</div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {(selectedFactoryTemplate?.modules || factory.starter_modules || []).map((module) => (
@@ -519,7 +530,7 @@ export default function SettingsPage() {
                 <label className="text-sm text-[var(--muted)]">Night Target</label>
                 <Input type="number" min={0} step={1} inputMode="numeric" value={factory.target_night} onChange={(e) => setFactory((prev) => ({ ...prev, target_night: coerceIntegerInput(e.target.value, 0) }))} />
               </div>
-              <div className="md:col-span-2">
+              <div className="sm:col-span-2">
                 <Button
                   className="w-full sm:w-auto"
                   onClick={() =>
@@ -646,11 +657,11 @@ export default function SettingsPage() {
                     <div className="space-y-3">
                       {factoryDirectory.map((item) => (
                         <div key={item.factory_id} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
                               <div className="text-sm font-semibold">{item.name}</div>
                               <div className="mt-1 text-xs text-[var(--muted)]">
-                                {item.industry_label} · {item.workflow_template_label}
+                                {item.industry_label} - {item.workflow_template_label}
                               </div>
                             </div>
                             {item.is_active_context ? (
@@ -688,10 +699,10 @@ export default function SettingsPage() {
                     <div className="space-y-3 md:hidden">
                       {users.map((row) => (
                         <div key={`mobile:${row.id}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0">
                               <div className="text-sm font-semibold">{row.name}</div>
-                              <div className="mt-1 text-xs text-[var(--muted)]">#{row.user_code} · {row.role}</div>
+                              <div className="mt-1 text-xs text-[var(--muted)]">#{row.user_code} - {row.role}</div>
                             </div>
                             <div className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">
                               {row.is_active ? "Active" : "Inactive"}
@@ -838,13 +849,13 @@ export default function SettingsPage() {
                               return (
                                 <label
                                   key={factoryOption.factory_id}
-                                  className="flex items-start justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4"
+                                  className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 sm:flex-row sm:items-start sm:justify-between"
                                 >
                                   <div>
                                     <div className="text-sm font-semibold">{factoryOption.name}</div>
                                     <div className="mt-1 text-xs text-[var(--muted)]">
-                                      {factoryOption.industry_label} · Members {factoryOption.member_count}
-                                      {factoryOption.is_primary ? " · Primary context" : ""}
+                                      {factoryOption.industry_label} - Members {factoryOption.member_count}
+                                      {factoryOption.is_primary ? " - Primary context" : ""}
                                     </div>
                                     {factoryOption.location ? (
                                       <div className="mt-1 text-xs text-[var(--muted)]">{factoryOption.location}</div>
@@ -1042,9 +1053,6 @@ export default function SettingsPage() {
             </Card>
           </div>
         ) : null}
-
-        {status ? <div className="text-sm text-green-400">{status}</div> : null}
-        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
     </main>
   );
