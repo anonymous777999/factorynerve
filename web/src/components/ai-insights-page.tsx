@@ -257,9 +257,10 @@ export default function AiInsightsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
+    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+        <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">AI Insights</div>
             <h1 className="mt-2 text-3xl font-semibold">Smart suggestions, anomalies, and natural language answers</h1>
@@ -268,15 +269,16 @@ export default function AiInsightsPage() {
             </p>
           </div>
           <div className="space-y-3">
-            <div className="flex flex-wrap gap-3">
+            <div className="grid gap-3 sm:flex sm:flex-wrap">
               <Link href="/entry">
-                <Button>Open DPR Entry</Button>
+                <Button className="w-full sm:w-auto">Open DPR Entry</Button>
               </Link>
               <Link href="/reports">
-                <Button variant="outline">Open Reports</Button>
+                <Button variant="outline" className="w-full sm:w-auto">Open Reports</Button>
               </Link>
               <Button
                 variant="outline"
+                className="w-full sm:w-auto"
                 onClick={() => {
                   void loadAiHome({ background: true, selectedDays: Number(days) || 14 });
                 }}
@@ -293,6 +295,7 @@ export default function AiInsightsPage() {
                   : "Live updates every 45 seconds"}
             </div>
           </div>
+          </div>
         </section>
 
         {refreshing ? (
@@ -300,8 +303,18 @@ export default function AiInsightsPage() {
             Refreshing AI insights in the background...
           </div>
         ) : null}
+        {status ? (
+          <div className="rounded-3xl border border-emerald-400/30 bg-emerald-400/12 px-4 py-3 text-sm text-emerald-100">
+            {status}
+          </div>
+        ) : null}
+        {error || sessionError ? (
+          <div className="rounded-3xl border border-rose-400/30 bg-rose-400/12 px-4 py-3 text-sm text-rose-100">
+            {error || sessionError}
+          </div>
+        ) : null}
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4 sm:grid-cols-3">
           <Card>
             <CardHeader>
               <div className="flex items-start justify-between gap-3">
@@ -366,9 +379,9 @@ export default function AiInsightsPage() {
                 <div className="text-sm text-[var(--muted)]">Anomaly Alerts</div>
                 <CardTitle className="text-xl">Operational drift scanner</CardTitle>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="grid gap-3 sm:flex sm:items-center">
                 <select
-                  className="rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm"
+                  className="w-full rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm sm:w-auto"
                   value={days}
                   onChange={(event) => setDays(event.target.value)}
                 >
@@ -378,6 +391,7 @@ export default function AiInsightsPage() {
                 </select>
                 <Button
                   variant="outline"
+                  className="w-full sm:w-auto"
                   onClick={() => {
                     void loadAiHome({ background: true, selectedDays: Number(days) || 14 });
                   }}
@@ -395,7 +409,7 @@ export default function AiInsightsPage() {
                 <div className="space-y-3">
                   {anomalies.items.map((item) => (
                     <div key={`${item.entry_id}-${item.anomaly_type}`} className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
-                      <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="font-semibold">
                           {item.anomaly_type.replaceAll("_", " ")} - {item.shift} - {item.date}
                         </div>
@@ -451,13 +465,13 @@ export default function AiInsightsPage() {
                     );
                   })}
                 </div>
-                <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                   <Input
                     value={presetName}
                     onChange={(event) => setPresetName(event.target.value)}
                     placeholder="Optional preset label"
                   />
-                  <Button variant="outline" onClick={handleSavePreset} disabled={savingPreset}>
+                  <Button variant="outline" className="w-full sm:w-auto" onClick={handleSavePreset} disabled={savingPreset}>
                     {savingPreset ? "Saving..." : "Save Current Prompt"}
                   </Button>
                 </div>
@@ -466,11 +480,11 @@ export default function AiInsightsPage() {
                 <label className="text-sm text-[var(--muted)]">Question</label>
                 <Input value={question} onChange={(event) => setQuestion(event.target.value)} />
               </div>
-              <div className="flex flex-wrap gap-3">
-                <Button onClick={handleQuestion} disabled={queryBusy}>
+              <div className="grid gap-3 sm:flex sm:flex-wrap">
+                <Button className="w-full sm:w-auto" onClick={handleQuestion} disabled={queryBusy}>
                   {queryBusy ? "Thinking..." : "Run Query"}
                 </Button>
-                <Button variant="outline" onClick={() => setQuestion(BUILT_IN_PRESETS[1].question)}>
+                <Button className="w-full sm:w-auto" variant="outline" onClick={() => setQuestion(BUILT_IN_PRESETS[1].question)}>
                   Load Example
                 </Button>
               </div>
@@ -491,7 +505,7 @@ export default function AiInsightsPage() {
                 <div className="space-y-2 rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
                   <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Data Points</div>
                   {nlqResult.data_points.map((item) => (
-                    <div key={item.group} className="flex items-center justify-between gap-3 text-sm">
+                    <div key={item.group} className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
                       <span className="text-[var(--muted)]">{item.group}</span>
                       <span className="font-semibold">{item.value}</span>
                     </div>
@@ -501,9 +515,6 @@ export default function AiInsightsPage() {
             </CardContent>
           </Card>
         </section>
-
-        {status ? <div className="text-sm text-emerald-300">{status}</div> : null}
-        {error || sessionError ? <div className="text-sm text-red-300">{error || sessionError}</div> : null}
       </div>
     </main>
   );
