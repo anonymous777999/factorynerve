@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -123,13 +123,13 @@ export function SteelBatchDetailPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-red-400">{error || sessionError || "Batch not found."}</div>
-            <div className="flex gap-3">
-              <Link href="/steel">
-                <Button variant="outline">Back to Steel</Button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link href="/steel" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto">Back to Steel</Button>
               </Link>
               {!user ? (
-                <Link href="/login">
-                  <Button>Open Login</Button>
+                <Link href="/login" className="w-full sm:w-auto">
+                  <Button className="w-full sm:w-auto">Open Login</Button>
                 </Link>
               ) : null}
             </div>
@@ -140,13 +140,18 @@ export function SteelBatchDetailPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
+    <main className="min-h-screen px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
+        {error ? (
+          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/12 px-4 py-3 text-sm text-rose-100">
+            {error}
+          </div>
+        ) : null}
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Batch Traceability</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{detail.batch.batch_code}</h1>
+              <h1 className="mt-2 text-2xl font-semibold sm:text-3xl md:text-4xl">{detail.batch.batch_code}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 Expected-vs-actual batch detail with live ledger movements, balance checkpoints, and audit visibility.
               </p>
@@ -159,15 +164,15 @@ export function SteelBatchDetailPage() {
                 </span>
               </div>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/steel">
-                <Button variant="outline">Back to Steel</Button>
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
+              <Link href="/steel" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto">Back to Steel</Button>
               </Link>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Card>
             <CardHeader><CardTitle className="text-base">Input</CardTitle></CardHeader>
             <CardContent className="text-2xl font-semibold text-white">{formatKg(detail.batch.input_quantity_kg)} KG</CardContent>
@@ -195,7 +200,7 @@ export function SteelBatchDetailPage() {
               <CardTitle className="text-xl">Loss and responsibility context</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <div className="text-[var(--muted)]">Production Date</div>
                   <div className="font-semibold text-white">{formatDate(detail.batch.production_date)}</div>
@@ -215,13 +220,13 @@ export function SteelBatchDetailPage() {
                 <div>
                   <div className="text-[var(--muted)]">Loss</div>
                   <div className="font-semibold text-white">
-                    {formatKg(detail.batch.loss_kg)} KG • {detail.batch.loss_percent.toFixed(2)}%
+                    {formatKg(detail.batch.loss_kg)} KG - {detail.batch.loss_percent.toFixed(2)}%
                   </div>
                 </div>
                 <div>
                   <div className="text-[var(--muted)]">Expected vs Actual</div>
                   <div className="font-semibold text-white">
-                    {formatKg(detail.batch.expected_output_kg)} KG → {formatKg(detail.batch.actual_output_kg)} KG
+                    {formatKg(detail.batch.expected_output_kg)} KG to {formatKg(detail.batch.actual_output_kg)} KG
                   </div>
                 </div>
               </div>
@@ -239,11 +244,11 @@ export function SteelBatchDetailPage() {
               <div className="text-sm text-[var(--muted)]">Material Traceability</div>
               <CardTitle className="text-xl">Ledger checkpoint before and after the batch</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4 lg:grid-cols-2">
+            <CardContent className="grid gap-4 xl:grid-cols-2">
               <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
                 <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Input Material</div>
                 <div className="mt-2 text-lg font-semibold text-white">
-                  {detail.traceability.input_item.item_code} • {detail.traceability.input_item.name}
+                  {detail.traceability.input_item.item_code} - {detail.traceability.input_item.name}
                 </div>
                 <div className="mt-3 space-y-2 text-sm text-[var(--muted)]">
                   <div>Current stock: <span className="font-semibold text-white">{formatKg(detail.traceability.input_item.current_stock_kg)} KG</span></div>
@@ -255,7 +260,7 @@ export function SteelBatchDetailPage() {
               <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
                 <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Output Material</div>
                 <div className="mt-2 text-lg font-semibold text-white">
-                  {detail.traceability.output_item.item_code} • {detail.traceability.output_item.name}
+                  {detail.traceability.output_item.item_code} - {detail.traceability.output_item.name}
                 </div>
                 <div className="mt-3 space-y-2 text-sm text-[var(--muted)]">
                   <div>Current stock: <span className="font-semibold text-white">{formatKg(detail.traceability.output_item.current_stock_kg)} KG</span></div>
@@ -274,8 +279,36 @@ export function SteelBatchDetailPage() {
               <div className="text-sm text-[var(--muted)]">Linked Ledger</div>
               <CardTitle className="text-xl">Every movement posted by this batch</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+            <CardContent className="space-y-4">
+              <div className="space-y-3 md:hidden">
+                {detail.inventory_movements.map((movement) => (
+                  <div key={movement.id} className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4 text-sm">
+                    <div className="space-y-1">
+                      <div className="font-semibold text-white">{movement.item_code}</div>
+                      <div className="text-xs text-[var(--muted)]">{movement.item_name}</div>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Type</div>
+                        <div className="mt-1 text-white">{movement.transaction_type}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Qty</div>
+                        <div className="mt-1 text-white">{formatKg(movement.quantity_kg)} KG</div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Before</div>
+                        <div className="mt-1 text-white">{formatKg(movement.balance_before_kg)} KG</div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">After</div>
+                        <div className="mt-1 text-white">{formatKg(movement.balance_after_kg)} KG</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] md:block">
                 <table className="min-w-full text-left text-sm">
                   <thead className="text-[var(--muted)]">
                     <tr className="border-b border-[var(--border)]">
@@ -314,7 +347,7 @@ export function SteelBatchDetailPage() {
               {detail.audit_events.length ? (
                 detail.audit_events.map((event) => (
                   <div key={event.id} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div className="font-semibold text-white">{event.action}</div>
                       <div className="text-xs text-[var(--muted)]">{formatDateTime(event.timestamp)}</div>
                     </div>
@@ -331,7 +364,6 @@ export function SteelBatchDetailPage() {
           </Card>
         </section>
 
-        {error ? <div className="text-sm text-red-400">{error}</div> : null}
       </div>
     </main>
   );

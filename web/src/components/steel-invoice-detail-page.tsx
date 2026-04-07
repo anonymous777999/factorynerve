@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -107,13 +107,13 @@ export function SteelInvoiceDetailPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-red-400">{error || sessionError || "Invoice not found."}</div>
-            <div className="flex gap-3">
-              <Link href="/steel/invoices">
-                <Button variant="outline">Back to Invoices</Button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link href="/steel/invoices" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto">Back to Invoices</Button>
               </Link>
               {!user ? (
-                <Link href="/login">
-                  <Button>Open Login</Button>
+                <Link href="/login" className="w-full sm:w-auto">
+                  <Button className="w-full sm:w-auto">Open Login</Button>
                 </Link>
               ) : null}
             </div>
@@ -132,37 +132,42 @@ export function SteelInvoiceDetailPage() {
   const latestDispatch = linkedDispatches[0] || null;
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
+    <main className="min-h-screen px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
+        {error ? (
+          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/12 px-4 py-3 text-sm text-rose-100">
+            {error}
+          </div>
+        ) : null}
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Invoice</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{detail.invoice.invoice_number}</h1>
+              <h1 className="mt-2 text-2xl font-semibold sm:text-3xl md:text-4xl">{detail.invoice.invoice_number}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 Weight-based invoice detail tied to finished steel items and optional production batches.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/steel/invoices">
-                <Button variant="outline">Back to Invoices</Button>
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
+              <Link href="/steel/invoices" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto">Back to Invoices</Button>
               </Link>
               {detail.invoice.customer_id ? (
-                <Link href={`/steel/customers/${detail.invoice.customer_id}`}>
-                  <Button variant="ghost">Open Customer</Button>
+                <Link href={`/steel/customers/${detail.invoice.customer_id}`} className="w-full sm:w-auto">
+                  <Button variant="ghost" className="w-full sm:w-auto">Open Customer</Button>
                 </Link>
               ) : null}
-              <Link href="/steel/dispatches">
-                <Button variant="ghost">Open Dispatch</Button>
+              <Link href="/steel/dispatches" className="w-full sm:w-auto">
+                <Button variant="ghost" className="w-full sm:w-auto">Open Dispatch</Button>
               </Link>
-              <Link href="/steel">
-                <Button variant="ghost">Back to Steel</Button>
+              <Link href="/steel" className="w-full sm:w-auto">
+                <Button variant="ghost" className="w-full sm:w-auto">Back to Steel</Button>
               </Link>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
+        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           <Card>
             <CardHeader><CardTitle className="text-base">Customer</CardTitle></CardHeader>
             <CardContent className="text-xl font-semibold text-white">{detail.invoice.customer_name}</CardContent>
@@ -188,10 +193,10 @@ export function SteelInvoiceDetailPage() {
             <CardContent className="space-y-1">
               <div className="text-xl font-semibold text-white">{formatKg(dispatchedWeight)} KG</div>
               <div className="text-xs text-[var(--muted)]">
-                {fullyDispatchedCount}/{invoiceLines.length} lines closed {" · "} {formatKg(remainingWeight)} KG remaining
+                {fullyDispatchedCount}/{invoiceLines.length} lines closed {" - "} {formatKg(remainingWeight)} KG remaining
               </div>
               <div className="text-xs text-[var(--muted)]">
-                {detail.dispatch_summary.dispatch_count} dispatches {" · "} {dispatchCompletionPercent.toFixed(1)}% shipped
+                {detail.dispatch_summary.dispatch_count} dispatches {" - "} {dispatchCompletionPercent.toFixed(1)}% shipped
               </div>
             </CardContent>
           </Card>
@@ -203,8 +208,53 @@ export function SteelInvoiceDetailPage() {
               <div className="text-sm text-[var(--muted)]">Invoice Lines</div>
               <CardTitle className="text-xl">Weight x rate with dispatch progress</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+            <CardContent className="space-y-4">
+              <div className="space-y-3 md:hidden">
+                {invoiceLines.map((line) => (
+                  <div key={line.id} className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4 text-sm">
+                    <div className="space-y-1">
+                      <div className="font-semibold text-white">{line.item_code}</div>
+                      <div className="text-xs text-[var(--muted)]">{line.item_name}</div>
+                      {line.description ? <div className="text-xs text-[var(--muted)]">{line.description}</div> : null}
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Batch</div>
+                        <div className="mt-1 text-white">
+                          {line.batch_id ? (
+                            <Link href={`/steel/batches/${line.batch_id}`} className="text-[var(--accent)] hover:underline">
+                              {line.batch_code}
+                            </Link>
+                          ) : (
+                            "No batch link"
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Ordered</div>
+                        <div className="mt-1 text-white">{formatKg(line.weight_kg)} KG</div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Dispatched</div>
+                        <div className="mt-1 text-white">{formatKg(line.dispatched_weight_kg)} KG</div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Remaining</div>
+                        <div className="mt-1 text-white">{formatKg(line.remaining_weight_kg)} KG</div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Rate</div>
+                        <div className="mt-1 text-white">{formatCurrency(line.rate_per_kg)}</div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Total</div>
+                        <div className="mt-1 text-white">{formatCurrency(line.line_total)}</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] md:block">
                 <table className="min-w-full text-left text-sm">
                   <thead className="text-[var(--muted)]">
                     <tr className="border-b border-[var(--border)]">
@@ -269,7 +319,7 @@ export function SteelInvoiceDetailPage() {
               <CardTitle className="text-xl">Commercial trust and dispatch readiness</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                   <div className="text-[var(--muted)]">Paid / Outstanding</div>
                   <div className="mt-1 font-semibold text-white">
@@ -277,26 +327,26 @@ export function SteelInvoiceDetailPage() {
                   </div>
                   <div className="mt-2 text-[var(--muted)]">Terms</div>
                   <div className="mt-1 font-semibold text-white">
-                    {detail.invoice.payment_terms_days} day terms {" · "} {detail.invoice.status}
+                    {detail.invoice.payment_terms_days} day terms {" - "} {detail.invoice.status}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                   <div className="text-[var(--muted)]">Dispatch State</div>
                   <div className="mt-1 font-semibold text-white">
-                    {formatKg(dispatchedWeight)} KG dispatched {" · "} {formatKg(remainingWeight)} KG pending
+                    {formatKg(dispatchedWeight)} KG dispatched {" - "} {formatKg(remainingWeight)} KG pending
                   </div>
                   <div className="mt-2 text-[var(--muted)]">Next action</div>
                   <div className="mt-1 font-semibold text-white">
                     {remainingWeight > 0.001 ? "Open dispatch for remaining quantity" : "Invoice fully dispatched"}
                   </div>
                   <div className="mt-2 text-xs text-[var(--muted)]">
-                    {detail.dispatch_summary.active_count} active dispatches {" · "} {detail.dispatch_summary.delivered_count} delivered {" · "}
+                    {detail.dispatch_summary.active_count} active dispatches {" - "} {detail.dispatch_summary.delivered_count} delivered {" - "}
                     {detail.dispatch_summary.last_dispatch_date ? ` last truck ${formatDate(detail.dispatch_summary.last_dispatch_date)}` : " no truck recorded yet"}
                   </div>
                 </div>
               </div>
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div>
                     <div className="text-[var(--muted)]">Invoice to dispatch chain</div>
                     <div className="mt-1 font-semibold text-white">
@@ -304,12 +354,12 @@ export function SteelInvoiceDetailPage() {
                     </div>
                   </div>
                   {latestDispatch ? (
-                    <Link href={`/steel/dispatches/${latestDispatch.id}`}>
-                      <Button variant="outline">Open Latest Dispatch</Button>
+                    <Link href={`/steel/dispatches/${latestDispatch.id}`} className="w-full sm:w-auto">
+                      <Button variant="outline" className="w-full sm:w-auto">Open Latest Dispatch</Button>
                     </Link>
                   ) : (
-                    <Link href="/steel/dispatches">
-                      <Button variant="outline">Open Dispatch Desk</Button>
+                    <Link href="/steel/dispatches" className="w-full sm:w-auto">
+                      <Button variant="outline" className="w-full sm:w-auto">Open Dispatch Desk</Button>
                     </Link>
                   )}
                 </div>
@@ -317,11 +367,11 @@ export function SteelInvoiceDetailPage() {
                   {linkedDispatches.length ? (
                     linkedDispatches.map((dispatch) => (
                       <div key={dispatch.id} className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.6)] p-3">
-                        <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                           <div>
                             <div className="font-semibold text-white">{dispatch.dispatch_number}</div>
                             <div className="text-xs text-[var(--muted)]">
-                              Gate pass {dispatch.gate_pass_number} {" · "} {formatDate(dispatch.dispatch_date)} {" · "} {dispatch.truck_number}
+                              Gate pass {dispatch.gate_pass_number} {" - "} {formatDate(dispatch.dispatch_date)} {" - "} {dispatch.truck_number}
                             </div>
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
@@ -334,7 +384,7 @@ export function SteelInvoiceDetailPage() {
                           </div>
                         </div>
                         <div className="mt-2 text-xs text-[var(--muted)]">
-                          {formatKg(dispatch.total_weight_kg)} KG {" · "}
+                          {formatKg(dispatch.total_weight_kg)} KG {" - "}
                           {dispatch.delivered_at ? `delivered ${formatDateTime(dispatch.delivered_at)}` : "delivery pending"}
                         </div>
                       </div>
@@ -359,7 +409,7 @@ export function SteelInvoiceDetailPage() {
               {detail.audit_events.length ? (
                 detail.audit_events.map((event) => (
                   <div key={event.id} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                       <div className="font-semibold text-white">{event.action}</div>
                       <div className="text-xs text-[var(--muted)]">{formatDateTime(event.timestamp)}</div>
                     </div>
@@ -376,7 +426,6 @@ export function SteelInvoiceDetailPage() {
           </Card>
         </section>
 
-        {error ? <div className="text-sm text-red-400">{error}</div> : null}
       </div>
     </main>
   );

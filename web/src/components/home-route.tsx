@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -38,7 +38,7 @@ const homepageSteps = [
   {
     step: "01",
     title: "Capture the floor fast",
-    detail: "Start from shift entry, attendance, or document scan depending on the worker’s job.",
+    detail: "Start from shift entry, attendance, or document scan depending on the worker's job.",
   },
   {
     step: "02",
@@ -148,15 +148,15 @@ export default function HomeRoute() {
                   </p>
                 </div>
 
-                <div className="flex flex-wrap gap-3">
-                  <Link href="/login">
-                    <Button size="lg">Sign in</Button>
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                  <Link href="/login" className="w-full sm:w-auto">
+                    <Button size="lg" className="w-full sm:w-auto">Sign in</Button>
                   </Link>
-                  <Link href="/register">
-                    <Button variant="outline" size="lg">Create account</Button>
+                  <Link href="/register" className="w-full sm:w-auto">
+                    <Button variant="outline" size="lg" className="w-full sm:w-auto">Create account</Button>
                   </Link>
-                  <Link href="/ocr/scan">
-                    <Button variant="ghost" size="lg">See OCR Flow</Button>
+                  <Link href="/ocr/scan" className="w-full sm:w-auto">
+                    <Button variant="ghost" size="lg" className="w-full sm:w-auto">See OCR Flow</Button>
                   </Link>
                 </div>
 
@@ -231,12 +231,12 @@ export default function HomeRoute() {
                   Open the workspace now if you already have an account, or create one and move into the factory flow immediately.
                 </p>
               </div>
-              <div className="flex flex-wrap gap-3">
-                <Link href="/login">
-                  <Button size="lg">Open Workspace</Button>
+              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                <Link href="/login" className="w-full sm:w-auto">
+                  <Button size="lg" className="w-full sm:w-auto">Open Workspace</Button>
                 </Link>
-                <Link href="/register">
-                  <Button variant="outline" size="lg">Create Account</Button>
+                <Link href="/register" className="w-full sm:w-auto">
+                  <Button variant="outline" size="lg" className="w-full sm:w-auto">Create Account</Button>
                 </Link>
               </div>
             </div>
@@ -286,8 +286,8 @@ export default function HomeRoute() {
                 <div className="mt-2 text-lg font-semibold text-text-primary">Continue</div>
               </div>
             </div>
-            <Link href={destination}>
-              <Button size="lg">Continue to workspace</Button>
+            <Link href={destination} className="w-full sm:w-auto">
+              <Button size="lg" className="w-full sm:w-auto">Continue to workspace</Button>
             </Link>
           </CardContent>
         </Card>

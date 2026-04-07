@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -150,13 +150,13 @@ export function SteelDispatchDetailPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-red-400">{error || sessionError || "Dispatch not found."}</div>
-            <div className="flex gap-3">
-              <Link href="/steel/dispatches">
-                <Button variant="outline">Back to Dispatches</Button>
+            <div className="flex flex-col gap-3 sm:flex-row">
+              <Link href="/steel/dispatches" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto">Back to Dispatches</Button>
               </Link>
               {!user ? (
-                <Link href="/login">
-                  <Button>Open Login</Button>
+                <Link href="/login" className="w-full sm:w-auto">
+                  <Button className="w-full sm:w-auto">Open Login</Button>
                 </Link>
               ) : null}
             </div>
@@ -207,32 +207,42 @@ export function SteelDispatchDetailPage() {
   ];
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
+    <main className="min-h-screen px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
+        {status ? (
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/12 px-4 py-3 text-sm text-emerald-100">
+            {status}
+          </div>
+        ) : null}
+        {error ? (
+          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/12 px-4 py-3 text-sm text-rose-100">
+            {error}
+          </div>
+        ) : null}
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Dispatch</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{detail.dispatch.dispatch_number}</h1>
+              <h1 className="mt-2 text-2xl font-semibold sm:text-3xl md:text-4xl">{detail.dispatch.dispatch_number}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 Gate pass, truck manifest, status progression, and the ledger movements tied to this dispatch.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
               <div className={`inline-flex rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em] ${statusBadgeClass(detail.dispatch.status)}`}>
                 {detail.dispatch.status}
               </div>
-              <Link href="/steel/dispatches">
-                <Button variant="outline">Back to Dispatches</Button>
+              <Link href="/steel/dispatches" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto">Back to Dispatches</Button>
               </Link>
-              <Link href={`/steel/invoices/${detail.dispatch.invoice_id}`}>
-                <Button variant="ghost">Open Invoice</Button>
+              <Link href={`/steel/invoices/${detail.dispatch.invoice_id}`} className="w-full sm:w-auto">
+                <Button variant="ghost" className="w-full sm:w-auto">Open Invoice</Button>
               </Link>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Card>
             <CardHeader><CardTitle className="text-base">Gate Pass</CardTitle></CardHeader>
             <CardContent className="text-xl font-semibold text-white">{detail.dispatch.gate_pass_number}</CardContent>
@@ -258,7 +268,7 @@ export function SteelDispatchDetailPage() {
               <CardTitle className="text-xl">Material list and logistics</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm">
                   <div className="text-[var(--muted)]">Invoice</div>
                   <div className="mt-1 font-semibold text-white">{detail.dispatch.invoice_number}</div>
@@ -284,7 +294,39 @@ export function SteelDispatchDetailPage() {
                   <div className="mt-1 font-semibold text-white">{detail.dispatch.truck_capacity_kg ? `${formatKg(detail.dispatch.truck_capacity_kg)} KG` : "Not recorded"}</div>
                 </div>
               </div>
-              <div className="overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+              <div className="space-y-3 md:hidden">
+                {(detail.dispatch.lines || []).map((line) => (
+                  <div key={line.id} className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4 text-sm">
+                    <div className="space-y-1">
+                      <div className="font-semibold text-white">{line.item_code}</div>
+                      <div className="text-xs text-[var(--muted)]">{line.item_name}</div>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Batch</div>
+                        <div className="mt-1 text-white">
+                          {line.batch_id ? (
+                            <Link href={`/steel/batches/${line.batch_id}`} className="text-[var(--accent)] hover:underline">
+                              {line.batch_code}
+                            </Link>
+                          ) : (
+                            "No batch link"
+                          )}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Dispatched</div>
+                        <div className="mt-1 text-white">{formatKg(line.weight_kg)} KG</div>
+                      </div>
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Invoice Line</div>
+                        <div className="mt-1 text-white">{formatKg(line.invoice_line_weight_kg)} KG</div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] md:block">
                 <table className="min-w-full text-left text-sm">
                   <thead className="text-[var(--muted)]">
                     <tr className="border-b border-[var(--border)]">
@@ -344,7 +386,7 @@ export function SteelDispatchDetailPage() {
                     const completed = Boolean(entry.value);
                     return (
                       <div key={entry.id} className={`rounded-2xl border p-3 text-sm ${timelineTone(completed)}`}>
-                        <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                           <div>
                             <div className="font-semibold text-white">
                               {index + 1}. {entry.label}
@@ -364,7 +406,7 @@ export function SteelDispatchDetailPage() {
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm">
                 <div className="text-[var(--muted)]">Weight consistency</div>
                 <div className="mt-1 font-semibold text-white">
-                  {formatKg(detail.dispatch.total_weight_kg)} KG on this truck {" · "} {formatKg(invoiceReferenceWeight)} KG linked to invoice lines
+                  {formatKg(detail.dispatch.total_weight_kg)} KG on this truck - {formatKg(invoiceReferenceWeight)} KG linked to invoice lines
                 </div>
                 <div className="mt-2 text-[var(--muted)]">Dispatch coverage</div>
                 <div className="mt-1 font-semibold text-white">
@@ -380,7 +422,7 @@ export function SteelDispatchDetailPage() {
                 <div className="text-xs text-[var(--muted)]">
                   Drafts can move to loaded, then dispatched, then delivered. Cancel is available only before inventory is posted.
                 </div>
-                <div className="grid gap-3 md:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2">
                   <div>
                     <label className="text-sm text-[var(--muted)]">Entry Time</label>
                     <Input type="datetime-local" value={entryTime} onChange={(event) => setEntryTime(event.target.value)} />
@@ -398,17 +440,17 @@ export function SteelDispatchDetailPage() {
                   <label className="text-sm text-[var(--muted)]">POD Notes</label>
                   <Textarea value={podNotes} onChange={(event) => setPodNotes(event.target.value)} placeholder="Delivery note / proof details" />
                 </div>
-                <div className="flex flex-wrap gap-3">
-                  <Button variant="outline" disabled={!canMarkLoaded} onClick={() => void updateStatus("loaded")}>
+                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                  <Button variant="outline" className="w-full sm:w-auto" disabled={!canMarkLoaded} onClick={() => void updateStatus("loaded")}>
                     Mark Loaded
                   </Button>
-                  <Button variant="outline" disabled={!canMarkDispatched} onClick={() => void updateStatus("dispatched")}>
+                  <Button variant="outline" className="w-full sm:w-auto" disabled={!canMarkDispatched} onClick={() => void updateStatus("dispatched")}>
                     Mark Dispatched
                   </Button>
-                  <Button disabled={!canMarkDelivered} onClick={() => void updateStatus("delivered")}>
+                  <Button className="w-full sm:w-auto" disabled={!canMarkDelivered} onClick={() => void updateStatus("delivered")}>
                     Mark Delivered
                   </Button>
-                  <Button variant="ghost" disabled={!canCancelDraft} onClick={() => void updateStatus("cancelled")}>
+                  <Button variant="ghost" className="w-full sm:w-auto" disabled={!canCancelDraft} onClick={() => void updateStatus("cancelled")}>
                     Cancel Draft
                   </Button>
                 </div>
@@ -418,7 +460,7 @@ export function SteelDispatchDetailPage() {
                 <div className="text-[var(--muted)]">Dispatch Notes</div>
                 <div className="mt-1 text-[var(--text)]">{detail.dispatch.notes || "No notes were captured for this dispatch."}</div>
                 <div className="mt-3 text-[var(--muted)]">Receiver / POD</div>
-                <div className="mt-1 text-[var(--text)]">{detail.dispatch.receiver_name || "Receiver not recorded"} · {detail.dispatch.pod_notes || "No POD notes yet."}</div>
+                <div className="mt-1 text-[var(--text)]">{detail.dispatch.receiver_name || "Receiver not recorded"} - {detail.dispatch.pod_notes || "No POD notes yet."}</div>
               </div>
 
               <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
@@ -426,11 +468,11 @@ export function SteelDispatchDetailPage() {
                 <div className="mt-3 space-y-3">
                   {detail.ledger_movements.map((movement) => (
                     <div key={movement.id} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3 text-sm">
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div className="font-semibold text-white">{movement.transaction_type}</div>
                         <div className="text-xs text-[var(--muted)]">{formatDateTime(movement.created_at)}</div>
                       </div>
-                      <div className="mt-2 text-[var(--muted)]">{movement.item_code} · {formatKg(movement.quantity_kg)} KG</div>
+                      <div className="mt-2 text-[var(--muted)]">{movement.item_code} - {formatKg(movement.quantity_kg)} KG</div>
                     </div>
                   ))}
                   {!detail.ledger_movements.length ? (
@@ -446,7 +488,7 @@ export function SteelDispatchDetailPage() {
                 <div className="mt-3 space-y-3">
                   {detail.audit_events.map((event) => (
                     <div key={event.id} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3 text-sm">
-                      <div className="flex items-center justify-between gap-2">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                         <div className="font-semibold text-white">{event.action}</div>
                         <div className="text-xs text-[var(--muted)]">{formatDateTime(event.timestamp)}</div>
                       </div>
@@ -460,8 +502,6 @@ export function SteelDispatchDetailPage() {
           </Card>
         </section>
 
-        {status ? <div className="text-sm text-green-400">{status}</div> : null}
-        {error ? <div className="text-sm text-red-400">{error}</div> : null}
       </div>
     </main>
   );
