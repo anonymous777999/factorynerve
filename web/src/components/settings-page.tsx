@@ -340,9 +340,9 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
+    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+        <section className="flex flex-col gap-4 rounded-[1.9rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-5 shadow-2xl backdrop-blur sm:p-6 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Settings</div>
             <h1 className="mt-2 text-3xl font-semibold">Factory profile and team management</h1>
@@ -350,25 +350,25 @@ export default function SettingsPage() {
               Update factory targets, invite users, manage roles, and monitor plan usage from the Next.js app.
             </p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/dashboard">
-              <Button variant="outline">Dashboard</Button>
+          <div className="grid gap-3 sm:flex sm:flex-wrap">
+            <Link href="/dashboard" className="w-full sm:w-auto">
+              <Button variant="outline" className="w-full sm:w-auto">Dashboard</Button>
             </Link>
-            <Link href="/reports">
-              <Button>Open Reports</Button>
+            <Link href="/reports" className="w-full sm:w-auto">
+              <Button className="w-full sm:w-auto">Open Reports</Button>
             </Link>
-            <Link href="/plans">
-              <Button variant="outline">Plans</Button>
+            <Link href="/plans" className="w-full sm:w-auto">
+              <Button variant="outline" className="w-full sm:w-auto">Plans</Button>
             </Link>
             {canViewBilling ? (
-              <Link href="/billing">
-                <Button variant="outline">Billing</Button>
+              <Link href="/billing" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto">Billing</Button>
               </Link>
             ) : null}
           </div>
         </section>
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <Card>
             <CardHeader>
               <div className="text-sm text-[var(--muted)]">Current Factory</div>
@@ -402,21 +402,21 @@ export default function SettingsPage() {
 
         <Card>
           <CardHeader>
-            <div className="flex flex-wrap gap-3">
-              <Button variant={tab === "factory" ? "primary" : "outline"} onClick={() => setTab("factory")}>Factory Profile</Button>
-              <Button variant={tab === "users" ? "primary" : "outline"} onClick={() => setTab("users")}>Users</Button>
-              <Button variant={tab === "usage" ? "primary" : "outline"} onClick={() => setTab("usage")}>Usage & Billing</Button>
+            <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
+              <Button className="shrink-0" variant={tab === "factory" ? "primary" : "outline"} onClick={() => setTab("factory")}>Factory Profile</Button>
+              <Button className="shrink-0" variant={tab === "users" ? "primary" : "outline"} onClick={() => setTab("users")}>Users</Button>
+              <Button className="shrink-0" variant={tab === "usage" ? "primary" : "outline"} onClick={() => setTab("usage")}>Usage & Billing</Button>
             </div>
           </CardHeader>
         </Card>
 
         {tab === "factory" ? (
-          <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+          <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
             <Card>
               <CardHeader>
                 <CardTitle className="text-xl">Factory Profile</CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-4 md:grid-cols-2">
+              <CardContent className="grid gap-4 sm:grid-cols-2">
               <div>
                 <label className="text-sm text-[var(--muted)]">Factory Name</label>
                 <Input value={factory.factory_name} onChange={(e) => setFactory((prev) => ({ ...prev, factory_name: e.target.value }))} />
@@ -487,7 +487,7 @@ export default function SettingsPage() {
                   ))}
                 </div>
                 {selectedFactoryTemplate?.sections?.length ? (
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     {selectedFactoryTemplate.sections.map((section) => (
                       <div key={section.key} className="rounded-2xl border border-[var(--border)]/70 bg-[rgba(8,12,20,0.55)] p-4">
                         <div className="text-sm font-semibold">{section.label}</div>
@@ -521,6 +521,7 @@ export default function SettingsPage() {
               </div>
               <div className="md:col-span-2">
                 <Button
+                  className="w-full sm:w-auto"
                   onClick={() =>
                     handleAction(async () => {
                       await updateFactorySettings(factory);
@@ -609,6 +610,7 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <Button
+                    className="w-full sm:w-auto"
                     onClick={() =>
                       handleAction(async () => {
                         const created = await createFactory(newFactoryForm);
@@ -675,14 +677,41 @@ export default function SettingsPage() {
         ) : null}
 
         {tab === "users" ? (
-          <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
             <Card>
               <CardHeader>
                 <CardTitle className="text-xl">Users</CardTitle>
               </CardHeader>
               <CardContent>
                 {users.length ? (
-                  <div className="overflow-x-auto">
+                  <>
+                    <div className="space-y-3 md:hidden">
+                      {users.map((row) => (
+                        <div key={`mobile:${row.id}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <div className="text-sm font-semibold">{row.name}</div>
+                              <div className="mt-1 text-xs text-[var(--muted)]">#{row.user_code} · {row.role}</div>
+                            </div>
+                            <div className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">
+                              {row.is_active ? "Active" : "Inactive"}
+                            </div>
+                          </div>
+                          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                            <div>
+                              <div className="text-xs text-[var(--muted)]">Email</div>
+                              <div className="mt-1 text-sm">{row.email}</div>
+                            </div>
+                            <div>
+                              <div className="text-xs text-[var(--muted)]">Factory Access</div>
+                              <div className="mt-1 text-sm">{row.factory_count === 1 ? "1 factory" : `${row.factory_count} factories`}</div>
+                              <div className="text-xs text-[var(--muted)]">{row.factory_name}</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="hidden overflow-x-auto md:block">
                     <table className="min-w-full text-left text-sm">
                       <thead className="text-[var(--muted)]">
                         <tr className="border-b border-[var(--border)]">
@@ -712,7 +741,8 @@ export default function SettingsPage() {
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                    </div>
+                  </>
                 ) : (
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                     No managed users found.
@@ -746,6 +776,7 @@ export default function SettingsPage() {
                     </Select>
                   </div>
                   <Button
+                    className="w-full sm:w-auto"
                     onClick={() =>
                       handleAction(async () => {
                         const result = await inviteUser({
@@ -833,6 +864,7 @@ export default function SettingsPage() {
                             Owners and admins can place one user across multiple factories. At least one factory must stay selected.
                           </div>
                           <Button
+                            className="w-full sm:w-auto"
                             onClick={() =>
                               handleAction(async () => {
                                 if (!accessSnapshot) {
@@ -909,8 +941,9 @@ export default function SettingsPage() {
                     <label className="text-sm text-[var(--muted)]">Type DOWNGRADE to confirm lower roles</label>
                     <Input value={downgradeConfirm} onChange={(e) => setDowngradeConfirm(e.target.value)} />
                   </div>
-                  <div className="flex flex-wrap gap-3">
+                  <div className="grid gap-3 sm:flex sm:flex-wrap">
                     <Button
+                      className="w-full sm:w-auto"
                       onClick={() =>
                         handleAction(async () => {
                           const result = await updateUserRole(resolveManagedUserId(roleUserId), newRole, downgradeConfirm);
@@ -929,6 +962,7 @@ export default function SettingsPage() {
                     <div className="mt-3">
                       <Button
                         variant="outline"
+                        className="w-full sm:w-auto"
                         onClick={() =>
                           handleAction(async () => {
                             await deactivateUser(resolveManagedUserId(deactivateUserId));
@@ -949,13 +983,13 @@ export default function SettingsPage() {
         ) : null}
 
         {tab === "usage" ? (
-          <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+          <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
             <Card>
               <CardHeader>
                 <CardTitle className="text-xl">Usage Summary</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2">
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                     <div className="text-sm text-[var(--muted)]">Requests Used</div>
                     <div className="mt-1 text-xl font-semibold">{usage?.requests_used ?? 0}</div>
@@ -989,7 +1023,7 @@ export default function SettingsPage() {
                   <div className="text-[var(--muted)]">Status</div>
                   <div className="mt-1 text-lg font-semibold">{billing?.status || "-"}</div>
                 </div>
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <div className="text-[var(--muted)]">Trial Ends</div>
                     <div>{billing?.trial_end_at || "-"}</div>
