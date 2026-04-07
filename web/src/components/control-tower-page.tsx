@@ -72,10 +72,10 @@ export default function ControlTowerPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div>
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Control Tower</div>
               <h1 className="mt-2 text-3xl font-semibold">Multi-factory command view</h1>
@@ -84,14 +84,14 @@ export default function ControlTowerPage() {
                 without going through settings.
               </p>
             </div>
-            <div className="flex flex-wrap gap-3">
+            <div className="grid gap-3 sm:flex sm:flex-wrap">
               <Link href="/dashboard">
-                <Button variant="outline">Dashboard</Button>
+                <Button variant="outline" className="w-full sm:w-auto">Dashboard</Button>
               </Link>
               <Link href="/settings">
-                <Button variant="outline">Factory Settings</Button>
+                <Button variant="outline" className="w-full sm:w-auto">Factory Settings</Button>
               </Link>
-              <Button variant="outline" onClick={() => void loadControlTower()} disabled={loading}>
+              <Button variant="outline" className="w-full sm:w-auto" onClick={() => void loadControlTower()} disabled={loading}>
                 {loading ? "Refreshing..." : "Refresh"}
               </Button>
             </div>
@@ -99,14 +99,14 @@ export default function ControlTowerPage() {
         </section>
 
         {error ? (
-          <Card>
-            <CardContent className="py-6 text-sm text-red-300">{error}</CardContent>
-          </Card>
+          <div className="rounded-3xl border border-rose-400/30 bg-rose-400/12 px-4 py-3 text-sm text-rose-100">
+            {error}
+          </div>
         ) : null}
 
         {payload ? (
           <>
-            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <Card>
                 <CardHeader>
                   <CardTitle>Total Factories</CardTitle>
@@ -155,11 +155,11 @@ export default function ControlTowerPage() {
               {payload.factories.map((factory) => (
                 <Card key={factory.factory_id} className={factoryTone(factory)}>
                   <CardHeader className="space-y-2">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
                         <CardTitle className="text-xl">{factory.name}</CardTitle>
                         <div className="mt-2 text-sm text-[var(--muted)]">
-                          {factory.industry_label} · {factory.workflow_template_label}
+                          {factory.industry_label} - {factory.workflow_template_label}
                         </div>
                       </div>
                       <div className="rounded-full border border-[var(--border)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
@@ -195,8 +195,9 @@ export default function ControlTowerPage() {
                         ))}
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="grid gap-2 sm:flex sm:flex-wrap">
                       <Button
+                        className="w-full sm:w-auto"
                         onClick={() => void handleSwitch(factory.factory_id)}
                         disabled={switchingFactoryId === factory.factory_id || factory.factory_id === activeFactoryId}
                       >
@@ -207,10 +208,10 @@ export default function ControlTowerPage() {
                             : "Switch Context"}
                       </Button>
                       <Link href="/dashboard">
-                        <Button variant="outline">Open Dashboard</Button>
+                        <Button variant="outline" className="w-full sm:w-auto">Open Dashboard</Button>
                       </Link>
                       <Link href="/entry">
-                        <Button variant="outline">Open Entry</Button>
+                        <Button variant="outline" className="w-full sm:w-auto">Open Entry</Button>
                       </Link>
                     </div>
                   </CardContent>
