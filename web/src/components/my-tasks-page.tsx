@@ -294,8 +294,8 @@ export default function MyTasksPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <section className="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">
             <div className="text-sm uppercase tracking-[0.32em] text-[var(--accent)]">Daily Work</div>
@@ -307,10 +307,10 @@ export default function MyTasksPage() {
           <div className="space-y-2 text-sm text-[var(--muted)]">
             <div>Active factory: <span className="font-semibold text-[var(--text)]">{activeFactory?.name || user.factory_name}</span></div>
             <div>Workflow: <span className="font-semibold text-[var(--text)]">{templateContext?.workflow_template_label || activeFactory?.workflow_template_label || "Standard"}</span></div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
               <Button
                 variant="outline"
-                className="px-4 py-2 text-xs"
+                className="w-full px-4 py-2 text-xs sm:w-auto"
                 onClick={() => {
                   void loadTasks({ background: true });
                 }}
@@ -337,7 +337,7 @@ export default function MyTasksPage() {
         ) : null}
         {sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{sessionError}</div> : null}
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Card className={highlightCard(focus === "today") || undefined}>
             <CardHeader>
               <div className="text-sm text-[var(--muted)]">Pending Shifts</div>
@@ -346,7 +346,7 @@ export default function MyTasksPage() {
             <CardContent className="space-y-3 text-sm text-[var(--muted)]">
               <div>{pendingShifts > 0 ? `${nextShift} shift is next in line.` : "All shift slots have already been entered today."}</div>
               <Link href={`/entry?date=${draft?.date || localDateValue()}&shift=${nextShift}`}>
-                <Button variant="outline" className="px-4 py-2 text-xs">Open Shift Entry</Button>
+                <Button variant="outline" className="w-full px-4 py-2 text-xs sm:w-auto">Open Shift Entry</Button>
               </Link>
             </CardContent>
           </Card>
@@ -358,7 +358,7 @@ export default function MyTasksPage() {
             <CardContent className="space-y-3 text-sm text-[var(--muted)]">
               <div>{draft ? `Saved for ${formatDate(draft.date)}.` : "Nothing is waiting in local draft storage right now."}</div>
               <Link href={draft ? `/entry?date=${draft.date}&shift=${draft.shift}&focus=draft` : "/entry"}>
-                <Button variant="outline" className="px-4 py-2 text-xs">{draft ? "Continue Draft" : "Open Entry"}</Button>
+                <Button variant="outline" className="w-full px-4 py-2 text-xs sm:w-auto">{draft ? "Continue Draft" : "Open Entry"}</Button>
               </Link>
             </CardContent>
           </Card>
@@ -370,7 +370,7 @@ export default function MyTasksPage() {
             <CardContent className="space-y-3 text-sm text-[var(--muted)]">
               <div>{queueCount > 0 ? `${queueCount} item${queueCount === 1 ? " is" : "s are"} still waiting to sync.` : "This device has no waiting offline work."}</div>
               <Link href="/entry?focus=offline">
-                <Button variant="outline" className="px-4 py-2 text-xs">Open Entry & Sync</Button>
+                <Button variant="outline" className="w-full px-4 py-2 text-xs sm:w-auto">Open Entry & Sync</Button>
               </Link>
             </CardContent>
           </Card>
@@ -382,7 +382,7 @@ export default function MyTasksPage() {
             <CardContent className="space-y-3 text-sm text-[var(--muted)]">
               <div>{alerts.length ? "Factory alerts are waiting for attention on the board." : "No unread alerts right now."}</div>
               <Link href="/dashboard">
-                <Button variant="outline" className="px-4 py-2 text-xs">Open Operations Board</Button>
+                <Button variant="outline" className="w-full px-4 py-2 text-xs sm:w-auto">Open Operations Board</Button>
               </Link>
             </CardContent>
           </Card>
@@ -397,13 +397,13 @@ export default function MyTasksPage() {
             <CardContent className="space-y-3">
               {quickTasks.map((task) => (
                 <div key={`${task.title}-${task.href}`} className={`rounded-2xl border px-4 py-4 ${taskTone(task.tone)}`}>
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
                       <div className="text-sm font-semibold text-[var(--text)]">{task.title}</div>
                       <div className="mt-1 text-xs leading-5 text-[var(--muted)]">{task.detail}</div>
                     </div>
                     <Link href={task.href}>
-                      <Button variant="outline" className="px-4 py-2 text-xs">Open</Button>
+                      <Button variant="outline" className="w-full px-4 py-2 text-xs sm:w-auto">Open</Button>
                     </Link>
                   </div>
                 </div>
@@ -419,13 +419,13 @@ export default function MyTasksPage() {
             <CardContent className="space-y-3">
               {todayEntries.length ? todayEntries.map((entry) => (
                 <div key={entry.id} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
                       <div className="text-sm font-semibold text-[var(--text)]">{entry.shift} shift</div>
                       <div className="mt-1 text-xs text-[var(--muted)]">{entry.units_produced} units produced - {entry.status}</div>
                     </div>
                     <Link href={`/entry/${entry.id}`}>
-                      <Button variant="outline" className="px-4 py-2 text-xs">Open</Button>
+                      <Button variant="outline" className="w-full px-4 py-2 text-xs sm:w-auto">Open</Button>
                     </Link>
                   </div>
                 </div>
@@ -467,11 +467,11 @@ export default function MyTasksPage() {
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                 Use this page when you want the shortest path back into work instead of opening the full dashboard first.
               </div>
-              <div className="flex flex-wrap gap-3">
-                <Link href="/entry"><Button variant="outline">Shift Entry</Button></Link>
-                <Link href="/ocr/scan"><Button variant="outline">Document Capture</Button></Link>
-                {isSteelFactory ? <Link href="/steel"><Button variant="outline">Steel Operations</Button></Link> : null}
-                <Link href="/dashboard"><Button variant="ghost">Operations Board</Button></Link>
+              <div className="grid gap-3 sm:flex sm:flex-wrap">
+                <Link href="/entry"><Button variant="outline" className="w-full sm:w-auto">Shift Entry</Button></Link>
+                <Link href="/ocr/scan"><Button variant="outline" className="w-full sm:w-auto">Document Capture</Button></Link>
+                {isSteelFactory ? <Link href="/steel"><Button variant="outline" className="w-full sm:w-auto">Steel Operations</Button></Link> : null}
+                <Link href="/dashboard"><Button variant="ghost" className="w-full sm:w-auto">Operations Board</Button></Link>
               </div>
             </CardContent>
           </Card>
