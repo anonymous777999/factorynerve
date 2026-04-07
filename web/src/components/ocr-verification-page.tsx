@@ -236,6 +236,10 @@ function sortWeight(status: OcrVerificationRecord["status"]) {
   }
 }
 
+function isCompactReviewWorkspace() {
+  return typeof window !== "undefined" && window.innerWidth < 1024;
+}
+
 function SurfaceBadge({
   children,
   className,
@@ -1334,7 +1338,7 @@ export default function OcrVerificationPage() {
     setMobileTab("issues");
     setSelectedIssueKey("");
     setResolvedIssueKeys([]);
-    setMobileWorkspaceOpen(typeof window !== "undefined" && window.innerWidth < 1280);
+    setMobileWorkspaceOpen(isCompactReviewWorkspace());
   }, []);
 
   const loadVerifications = useCallback(async (focusId?: number) => {
@@ -1426,7 +1430,7 @@ export default function OcrVerificationPage() {
       setMobileTab("issues");
       setSelectedIssueKey("");
       setResolvedIssueKeys([]);
-      setMobileWorkspaceOpen(typeof window !== "undefined" && window.innerWidth < 1280);
+      setMobileWorkspaceOpen(isCompactReviewWorkspace());
       setStatus("Document read successfully. Check the highlighted values, then save or send it forward.");
     } catch (err) {
       if (err instanceof ApiError) {
@@ -1874,9 +1878,9 @@ export default function OcrVerificationPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.09),transparent_24%),radial-gradient(circle_at_top_right,rgba(34,197,94,0.06),transparent_20%)] px-4 py-4 md:px-6">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.09),transparent_24%),radial-gradient(circle_at_top_right,rgba(34,197,94,0.06),transparent_20%)] px-4 py-4 pb-24 md:px-6 md:pb-8">
       <div className="w-full space-y-4">
-        <section className="sticky top-3 z-20 overflow-hidden rounded-[2rem] border border-[var(--border-strong)] bg-[linear-gradient(135deg,rgba(18,27,42,0.97),rgba(11,18,30,0.98))] p-5 shadow-2xl backdrop-blur md:p-6">
+        <section className="z-20 overflow-hidden rounded-[1.9rem] border border-[var(--border-strong)] bg-[linear-gradient(135deg,rgba(18,27,42,0.97),rgba(11,18,30,0.98))] p-4 shadow-2xl backdrop-blur sm:p-5 md:p-6 lg:sticky lg:top-3">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.18),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.1),transparent_28%)]" />
           <div className="relative grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_24rem]">
             <div>
@@ -1920,11 +1924,11 @@ export default function OcrVerificationPage() {
                   {pendingCount} waiting in queue
                 </SurfaceBadge>
               </div>
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Link href="/ocr/scan">
-                  <Button>Open scan desk</Button>
+              <div className="mt-5 grid gap-3 sm:flex sm:flex-wrap">
+                <Link href="/ocr/scan" className="w-full sm:w-auto">
+                  <Button className="w-full sm:w-auto">Open scan desk</Button>
                 </Link>
-                <Button variant="outline" onClick={() => setShowQuickIntake((current) => !current)}>
+                <Button variant="outline" className="w-full sm:w-auto" onClick={() => setShowQuickIntake((current) => !current)}>
                   {showQuickIntake ? "Hide upload" : "Upload document"}
                 </Button>
               </div>
@@ -1949,8 +1953,36 @@ export default function OcrVerificationPage() {
         {status ? <div className="rounded-[1.35rem] border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
         {error || sessionError ? <div className="rounded-[1.35rem] border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error || sessionError}</div> : null}
 
-        <section className="grid gap-4 xl:grid-cols-[19rem_minmax(0,1fr)]">
-          <aside className="space-y-4 xl:sticky xl:top-28 xl:self-start">
+        {(activeVerification || preview) && !mobileWorkspaceOpen ? (
+          <section className="rounded-[1.35rem] border border-cyan-400/20 bg-[rgba(10,16,28,0.88)] p-4 lg:hidden">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-100">Current document</div>
+                <div className="mt-2 truncate text-base font-semibold text-[var(--text)]">
+                  {activeVerification?.source_filename || file?.name || "Unsaved review draft"}
+                </div>
+                <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.14em]">
+                  {activeVerification?.status ? (
+                    <span className={cn("rounded-full border px-3 py-1", statusBadgeClass(activeVerification.status))}>
+                      {activeVerification.status}
+                    </span>
+                  ) : null}
+                  <span className={cn("rounded-full border px-3 py-1", unresolvedCriticalCount ? metricTone("danger") : metricTone("primary"))}>
+                    {unresolvedCriticalCount ? `${unresolvedCriticalCount} critical left` : "Ready to review"}
+                  </span>
+                </div>
+              </div>
+              <div className="grid gap-3 sm:w-auto">
+                <Button className="w-full sm:w-auto" onClick={() => setMobileWorkspaceOpen(true)}>
+                  Open review workspace
+                </Button>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        <section className="grid gap-4 lg:grid-cols-[19rem_minmax(0,1fr)]">
+          <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
             <Card className="overflow-hidden border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(15,22,35,0.97),rgba(11,17,29,0.98))]">
               <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <SectionHeading
@@ -1970,7 +2002,7 @@ export default function OcrVerificationPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
                   <MetricCard label="Queue size" value={filteredVerifications.length} detail="Documents matching the current search and status filters." />
                   <MetricCard label="Pending approvals" value={pendingCount} detail="Sheets waiting for an approver to unlock trusted export." />
                 </div>
@@ -2050,7 +2082,7 @@ export default function OcrVerificationPage() {
                       ))}
                     </Select>
                   </div>
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
                     <div>
                       <label className="text-sm text-[var(--muted)]">Expected columns</label>
                       <Input type="number" min={1} max={8} value={columns} onChange={(event) => setColumns(Math.max(1, Number(event.target.value) || 1))} />
@@ -2067,11 +2099,11 @@ export default function OcrVerificationPage() {
                     </div>
                   </div>
                   {templateGate ? <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">{templateGate}</div> : null}
-                  <div className="flex flex-wrap gap-3">
-                    <Button onClick={handleRunPreview} disabled={busy || !file}>
+                  <div className="grid gap-3 sm:flex sm:flex-wrap">
+                    <Button className="w-full sm:w-auto" onClick={handleRunPreview} disabled={busy || !file}>
                       {busy ? "Reading document..." : "Read document"}
                     </Button>
-                    <Button variant="ghost" onClick={resetWorkspace} disabled={busy}>
+                    <Button variant="ghost" className="w-full sm:w-auto" onClick={resetWorkspace} disabled={busy}>
                       Clear workspace
                     </Button>
                   </div>
@@ -2080,7 +2112,7 @@ export default function OcrVerificationPage() {
             ) : null}
           </aside>
 
-          <div className="hidden xl:block min-w-0">
+          <div className="hidden lg:block min-w-0">
             <ReviewWorkspace
               key={`workspace-desktop-${activeVerificationId ?? "draft"}-${activeVerification?.updated_at || localImageUrl || "new"}`}
               activeVerification={activeVerification}
@@ -2123,9 +2155,15 @@ export default function OcrVerificationPage() {
       </div>
 
       {mobileWorkspaceOpen ? (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(4,8,16,0.96)] px-4 py-4 xl:hidden">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(4,8,16,0.96)] px-4 py-4 lg:hidden">
           <div className="mx-auto max-w-4xl space-y-4">
-            <div className="flex justify-end">
+            <div className="sticky top-0 z-10 flex items-center justify-between rounded-[1.25rem] border border-[var(--border)] bg-[rgba(10,14,24,0.94)] px-4 py-3 backdrop-blur">
+              <div className="min-w-0">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Review workspace</div>
+                <div className="truncate text-sm font-semibold text-[var(--text)]">
+                  {activeVerification?.source_filename || file?.name || "Unsaved review draft"}
+                </div>
+              </div>
               <Button variant="ghost" onClick={() => setMobileWorkspaceOpen(false)}>
                 Close
               </Button>
