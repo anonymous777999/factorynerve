@@ -637,6 +637,7 @@ export function SteelCommandCenterPage() {
             loading={pageLoading}
             industryType="steel"
             dataByRange={steelDashboardData}
+            embedded
           />
         </section>
         ) : null}
