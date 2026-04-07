@@ -228,9 +228,9 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
+    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+        <section className="flex flex-col gap-4 rounded-[1.9rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-5 shadow-2xl backdrop-blur sm:p-6 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Analytics</div>
             <h1 className="mt-2 text-3xl font-semibold">Performance insights</h1>
@@ -238,19 +238,19 @@ export default function AnalyticsPage() {
               Weekly production, monthly summary, trend diagnostics, and manager-level insights using the existing FastAPI analytics endpoints.
             </p>
           </div>
-          <div className="space-y-3">
-            <div className="flex flex-wrap gap-3">
-              <Link href="/dashboard">
-                <Button variant="outline">Dashboard</Button>
+          <div className="grid gap-3">
+            <div className="grid gap-3 sm:flex sm:flex-wrap">
+              <Link href="/dashboard" className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto">Dashboard</Button>
               </Link>
-              <Link href="/reports">
-                <Button>Open Reports</Button>
+              <Link href="/reports" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto">Open Reports</Button>
               </Link>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
               <Button
                 variant="outline"
-                className="px-4 py-2 text-xs"
+                className="w-full px-4 py-2 text-xs sm:w-auto"
                 onClick={() => {
                   void loadAnalytics({ background: true });
                 }}
@@ -275,7 +275,7 @@ export default function AnalyticsPage() {
           </div>
         ) : null}
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <Card>
             <CardHeader>
               <div className="text-sm text-[var(--muted)]">Plan</div>
@@ -308,28 +308,45 @@ export default function AnalyticsPage() {
           </Card>
         ) : null}
 
-        <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
           <Card>
             <CardHeader>
               <CardTitle className="text-xl">Weekly Production</CardTitle>
             </CardHeader>
             <CardContent>
               {weekly.length ? (
-                <div className="grid grid-cols-7 gap-3">
-                  {weekly.map((point) => (
-                    <div key={point.date} className="space-y-2 text-center">
-                      <div className="flex h-40 items-end justify-center rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
-                        <div
-                          className="w-full rounded-full bg-[linear-gradient(180deg,#3ea6ff,#2dd4bf)]"
-                          style={{ height: `${Math.max(8, Math.min(100, point.production_percent))}%` }}
-                        />
+                <>
+                  <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 md:hidden">
+                    {weekly.map((point) => (
+                      <div key={`mobile:${point.date}`} className="min-w-[9rem] rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                        <div className="text-xs text-[var(--muted)]">{formatDate(point.date)}</div>
+                        <div className="mt-2 text-lg font-semibold">{point.production_percent.toFixed(0)}%</div>
+                        <div className="mt-1 text-xs text-[var(--muted)]">{point.units} units</div>
+                        <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--border)]">
+                          <div
+                            className="h-full rounded-full bg-[linear-gradient(90deg,#3ea6ff,#2dd4bf)]"
+                            style={{ width: `${Math.max(8, Math.min(100, point.production_percent))}%` }}
+                          />
+                        </div>
                       </div>
-                      <div className="text-xs text-[var(--muted)]">{formatDate(point.date)}</div>
-                      <div className="text-sm font-semibold">{point.production_percent.toFixed(0)}%</div>
-                      <div className="text-xs text-[var(--muted)]">{point.units} units</div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                  <div className="hidden grid-cols-7 gap-3 md:grid">
+                    {weekly.map((point) => (
+                      <div key={point.date} className="space-y-2 text-center">
+                        <div className="flex h-40 items-end justify-center rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
+                          <div
+                            className="w-full rounded-full bg-[linear-gradient(180deg,#3ea6ff,#2dd4bf)]"
+                            style={{ height: `${Math.max(8, Math.min(100, point.production_percent))}%` }}
+                          />
+                        </div>
+                        <div className="text-xs text-[var(--muted)]">{formatDate(point.date)}</div>
+                        <div className="text-sm font-semibold">{point.production_percent.toFixed(0)}%</div>
+                        <div className="text-xs text-[var(--muted)]">{point.units} units</div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                   No weekly analytics data available.
@@ -345,7 +362,7 @@ export default function AnalyticsPage() {
             <CardContent className="space-y-4">
               {monthly ? (
                 <>
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                       <div className="text-sm text-[var(--muted)]">Best Day</div>
                       <div className="mt-1 text-lg font-semibold">{monthly.best_day ? `${formatDate(monthly.best_day.date)} - ${monthly.best_day.performance.toFixed(1)}%` : "-"}</div>
@@ -369,7 +386,7 @@ export default function AnalyticsPage() {
           </Card>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
           <Card>
             <CardHeader>
               <CardTitle className="text-xl">Trend Diagnostics</CardTitle>
@@ -402,7 +419,7 @@ export default function AnalyticsPage() {
             <CardContent className="space-y-4 text-sm">
               {manager ? (
                 <>
-                  <div className="grid gap-4 md:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                       <div className="text-[var(--muted)]">Total Units</div>
                       <div className="mt-1 text-xl font-semibold">{manager.totals.total_units}</div>
@@ -412,7 +429,24 @@ export default function AnalyticsPage() {
                       <div className="mt-1 text-xl font-semibold">{manager.totals.average_performance.toFixed(1)}%</div>
                     </div>
                   </div>
-                  <div className="overflow-x-auto">
+                  <div className="space-y-3 md:hidden">
+                    {manager.supervisor_summary.map((row) => (
+                      <div key={`mobile:${row.name}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                        <div className="text-sm font-semibold">{row.name}</div>
+                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                          <div>
+                            <div className="text-xs text-[var(--muted)]">Production</div>
+                            <div className="mt-1 text-sm font-semibold">{row.production_percent.toFixed(1)}%</div>
+                          </div>
+                          <div>
+                            <div className="text-xs text-[var(--muted)]">Downtime</div>
+                            <div className="mt-1 text-sm font-semibold">{row.downtime_minutes} min</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden overflow-x-auto md:block">
                     <table className="min-w-full text-left text-sm">
                       <thead className="text-[var(--muted)]">
                         <tr className="border-b border-[var(--border)]">
