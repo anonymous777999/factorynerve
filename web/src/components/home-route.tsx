@@ -139,14 +139,14 @@ export default function HomeRoute() {
 
   if (!user) {
     return (
-      <main className="relative min-h-screen overflow-hidden px-4 py-6 md:px-6 md:py-8">
+      <main className="relative min-h-screen overflow-hidden px-4 py-6 md:px-6 md:py-8 xl:px-8 2xl:px-10">
         <div className="absolute inset-0">
           <div className="absolute left-[-4rem] top-8 h-48 w-48 rounded-full bg-[rgba(77,163,255,0.14)] blur-3xl" />
           <div className="absolute right-[-3rem] top-20 h-56 w-56 rounded-full bg-[rgba(20,184,166,0.12)] blur-3xl" />
           <div className="absolute bottom-[-4rem] left-[30%] h-64 w-64 rounded-full bg-[rgba(245,158,11,0.08)] blur-3xl" />
         </div>
 
-        <div className="relative mx-auto max-w-6xl space-y-8">
+        <div className="relative mx-auto max-w-[92rem] space-y-8">
           <header className="surface-panel-soft flex flex-col gap-4 rounded-[1.6rem] px-4 py-4 sm:flex-row sm:items-center sm:justify-between md:px-5">
             <div className="flex min-w-0 items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,rgba(77,163,255,0.24),rgba(20,184,166,0.2))] text-sm font-semibold uppercase tracking-[0.2em] text-[rgba(214,237,255,0.96)]">
@@ -167,9 +167,9 @@ export default function HomeRoute() {
             </div>
           </header>
 
-          <section className="relative isolate overflow-hidden rounded-[2.2rem] border border-[rgba(214,228,255,0.14)] bg-[linear-gradient(140deg,rgba(8,16,28,0.92),rgba(11,22,38,0.76)_52%,rgba(6,16,28,0.94))] px-5 py-6 shadow-[0_34px_90px_rgba(2,8,18,0.42)] md:px-7 md:py-7 xl:px-8 xl:py-8">
+          <section className="relative isolate overflow-hidden rounded-[2.2rem] border border-[rgba(214,228,255,0.14)] bg-[linear-gradient(140deg,rgba(8,16,28,0.92),rgba(11,22,38,0.76)_52%,rgba(6,16,28,0.94))] px-5 py-6 shadow-[0_34px_90px_rgba(2,8,18,0.42)] md:px-7 md:py-7 xl:px-9 xl:py-9 2xl:px-10">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(77,163,255,0.2),transparent_26%),radial-gradient(circle_at_86%_12%,rgba(20,184,166,0.16),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_28%)]" />
-            <div className="relative z-10 grid gap-8 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] xl:items-center">
+            <div className="relative z-10 grid gap-10 xl:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)] xl:items-center 2xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
               <div className="space-y-6">
                 <div className="flex flex-wrap gap-2">
                   <span className="rounded-full border border-[rgba(77,163,255,0.26)] bg-[rgba(77,163,255,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(166,211,255,0.96)]">
@@ -181,10 +181,10 @@ export default function HomeRoute() {
                 </div>
 
                 <div className="space-y-4">
-                  <h1 className="max-w-3xl text-4xl font-semibold leading-[0.98] tracking-[-0.05em] text-white md:text-5xl xl:text-[4.5rem]">
+                  <h1 className="max-w-[40rem] text-4xl font-semibold leading-[0.98] tracking-[-0.05em] text-white md:text-5xl xl:text-[4.8rem] 2xl:text-[5.35rem]">
                     Run the factory from one mobile-ready system.
                   </h1>
-                  <p className="max-w-2xl text-base leading-7 text-[rgba(224,231,255,0.78)] md:text-lg">
+                  <p className="max-w-[36rem] text-base leading-7 text-[rgba(224,231,255,0.78)] md:text-lg xl:text-[1.08rem]">
                     Replace paper registers, WhatsApp follow-up, and scattered Excel sheets with one connected workflow for attendance, shift entry, OCR, approvals, and reports.
                   </p>
                 </div>
@@ -220,8 +220,8 @@ export default function HomeRoute() {
                 </div>
               </div>
 
-              <div className="relative mx-auto min-h-[31rem] w-full max-w-[44rem] xl:min-h-[33rem]">
-                <div className="absolute inset-x-6 top-8 rounded-[2rem] border border-[rgba(215,231,255,0.14)] bg-[linear-gradient(180deg,rgba(20,30,46,0.92),rgba(10,18,29,0.96))] p-4 shadow-[0_28px_70px_rgba(3,8,18,0.45)]">
+              <div className="relative mx-auto min-h-[32rem] w-full max-w-[52rem] xl:min-h-[35rem] 2xl:max-w-[58rem] 2xl:min-h-[37rem]">
+                <div className="absolute inset-x-4 top-8 rounded-[2rem] border border-[rgba(215,231,255,0.14)] bg-[linear-gradient(180deg,rgba(20,30,46,0.92),rgba(10,18,29,0.96))] p-4 shadow-[0_28px_70px_rgba(3,8,18,0.45)] md:inset-x-6 md:p-5 2xl:top-10">
                   <div className="flex items-center justify-between gap-3 border-b border-[rgba(255,255,255,0.08)] pb-3">
                     <div>
                       <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(112,184,255,0.96)]">
@@ -234,7 +234,7 @@ export default function HomeRoute() {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.2fr)_minmax(15rem,0.8fr)]">
+                  <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.18fr)_minmax(17rem,0.82fr)] 2xl:grid-cols-[minmax(0,1.16fr)_minmax(18rem,0.84fr)]">
                     <div className="space-y-4">
                       <div className="grid gap-3 sm:grid-cols-3">
                         <div className="rounded-[1.25rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4">
@@ -316,7 +316,7 @@ export default function HomeRoute() {
                   </div>
                 </div>
 
-                <div className="absolute bottom-0 left-0 w-[15.5rem] rounded-[2rem] border border-[rgba(226,237,255,0.18)] bg-[linear-gradient(180deg,rgba(12,23,36,0.95),rgba(7,13,22,0.98))] p-4 shadow-[0_24px_58px_rgba(2,8,18,0.5)]">
+                <div className="absolute bottom-0 left-0 w-[15.5rem] rounded-[2rem] border border-[rgba(226,237,255,0.18)] bg-[linear-gradient(180deg,rgba(12,23,36,0.95),rgba(7,13,22,0.98))] p-4 shadow-[0_24px_58px_rgba(2,8,18,0.5)] md:w-[17rem] 2xl:w-[18rem]">
                   <div className="mx-auto mb-3 h-1.5 w-14 rounded-full bg-[rgba(255,255,255,0.14)]" />
                   <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(112,184,255,0.96)]">
                     Worker view
@@ -337,7 +337,7 @@ export default function HomeRoute() {
                   </div>
                 </div>
 
-                <div className="absolute right-0 top-0 w-[14rem] rounded-[1.6rem] border border-[rgba(255,255,255,0.14)] bg-[linear-gradient(180deg,rgba(17,31,49,0.94),rgba(9,18,29,0.96))] p-4 shadow-[0_18px_44px_rgba(3,8,18,0.42)]">
+                <div className="absolute right-0 top-0 w-[14rem] rounded-[1.6rem] border border-[rgba(255,255,255,0.14)] bg-[linear-gradient(180deg,rgba(17,31,49,0.94),rgba(9,18,29,0.96))] p-4 shadow-[0_18px_44px_rgba(3,8,18,0.42)] md:w-[15.5rem] 2xl:w-[16.5rem]">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(112,184,255,0.96)]">
                     OCR lane
                   </div>
@@ -363,7 +363,7 @@ export default function HomeRoute() {
             ))}
           </section>
 
-          <section id="workflow" className="grid gap-4 xl:grid-cols-[minmax(0,1.08fr)_minmax(0,0.92fr)]">
+          <section id="workflow" className="grid gap-4 xl:grid-cols-[minmax(0,1.14fr)_minmax(0,0.86fr)]">
             <div className="surface-panel-strong rounded-[2rem] p-5 md:p-7">
               <div className="max-w-2xl space-y-3">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[rgba(112,184,255,0.96)]">
