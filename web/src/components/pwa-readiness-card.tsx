@@ -70,6 +70,13 @@ type DeviceProfile = {
   pixelRatio: string;
 };
 
+type SessionReadiness = {
+  score: number;
+  label: string;
+  tone: "good" | "warn" | "danger";
+  blockers: string[];
+};
+
 type ChecklistKey =
   | "browser_install"
   | "standalone_launch"
@@ -281,6 +288,113 @@ function readDeviceProfile(): DeviceProfile {
       "ontouchstart" in window ||
       (window.navigator.maxTouchPoints || 0) > 0,
     pixelRatio: `${window.devicePixelRatio.toFixed(1)}x`,
+  };
+}
+
+function deriveSessionReadiness(input: {
+  standalone: boolean;
+  installState: string;
+  serviceWorkerRegistered: boolean;
+  serviceWorkerControlling: boolean;
+  updateReady: boolean;
+  routeCoverageCount: number;
+  routeCoverageTotal: number;
+  checklistCompleted: number;
+  checklistTotal: number;
+  authStatus: string;
+  pendingSync: number;
+  canQueueEntries: boolean;
+  online: boolean;
+}): SessionReadiness {
+  const weights = {
+    install: 10,
+    serviceWorker: 15,
+    routes: 25,
+    checklist: 25,
+    auth: 15,
+    queue: input.canQueueEntries ? 5 : 0,
+    online: 5,
+    update: 5,
+  };
+
+  const totalWeight = Object.values(weights).reduce((sum, value) => sum + value, 0);
+  let earned = 0;
+  const blockers: string[] = [];
+
+  if (input.standalone || input.installState === "Installed") {
+    earned += weights.install;
+  } else {
+    blockers.push("Run the installed app from the home screen before final sign-off.");
+  }
+
+  if (input.serviceWorkerRegistered) {
+    earned += input.serviceWorkerControlling ? weights.serviceWorker : Math.round(weights.serviceWorker * 0.45);
+    if (!input.serviceWorkerControlling) {
+      blockers.push("The service worker is registered but not fully controlling this session yet.");
+    }
+  } else {
+    blockers.push("Service worker control is missing in this session.");
+  }
+
+  earned += Math.round(weights.routes * (input.routeCoverageTotal ? input.routeCoverageCount / input.routeCoverageTotal : 0));
+  if (input.routeCoverageCount < input.routeCoverageTotal) {
+    blockers.push("Not all priority routes were opened in this QA cycle.");
+  }
+
+  earned += Math.round(weights.checklist * (input.checklistTotal ? input.checklistCompleted / input.checklistTotal : 0));
+  if (input.checklistCompleted < input.checklistTotal) {
+    blockers.push("The PWA QA checklist is still incomplete.");
+  }
+
+  if (input.authStatus === "Healthy") {
+    earned += weights.auth;
+  } else if (input.authStatus === "Slow wake") {
+    earned += Math.round(weights.auth * 0.66);
+    blockers.push("Backend/session auth is working but still waking slowly.");
+  } else {
+    blockers.push("Run a passing auth probe before launch sign-off.");
+  }
+
+  if (!input.canQueueEntries || input.pendingSync === 0) {
+    earned += weights.queue;
+  } else {
+    blockers.push("Queued entry work is still waiting to sync.");
+  }
+
+  if (input.online) {
+    earned += weights.online;
+  } else {
+    blockers.push("The device is offline right now.");
+  }
+
+  if (!input.updateReady) {
+    earned += weights.update;
+  } else {
+    blockers.push("A newer build is waiting. Refresh the app before final QA sign-off.");
+  }
+
+  const score = totalWeight ? Math.round((earned / totalWeight) * 100) : 0;
+  if (score >= 85) {
+    return {
+      score,
+      label: "Ready to sign off",
+      tone: "good",
+      blockers,
+    };
+  }
+  if (score >= 65) {
+    return {
+      score,
+      label: "Close, but not ready",
+      tone: "warn",
+      blockers,
+    };
+  }
+  return {
+    score,
+    label: "Needs more QA",
+    tone: "danger",
+    blockers,
   };
 }
 
@@ -626,6 +740,42 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
     () => PWA_PRIORITY_ROUTES.filter((route) => Boolean(routeCoverage[route.key]?.lastVisitedAt)).length,
     [routeCoverage],
   );
+  const sessionReadiness = useMemo(
+    () =>
+      deriveSessionReadiness({
+        standalone: snapshot.standalone,
+        installState: installStatus.label,
+        serviceWorkerRegistered: snapshot.serviceWorkerRegistered,
+        serviceWorkerControlling: snapshot.serviceWorkerControlling,
+        updateReady: snapshot.updateReady,
+        routeCoverageCount: visitedRouteCount,
+        routeCoverageTotal: PWA_PRIORITY_ROUTES.length,
+        checklistCompleted: completedChecklistCount,
+        checklistTotal: QA_CHECKLIST.length,
+        authStatus: authStatusLabel,
+        pendingSync: snapshot.pendingSync,
+        canQueueEntries,
+        online,
+      }),
+    [
+      authStatusLabel,
+      canQueueEntries,
+      completedChecklistCount,
+      installStatus.label,
+      online,
+      snapshot.pendingSync,
+      snapshot.serviceWorkerControlling,
+      snapshot.serviceWorkerRegistered,
+      snapshot.standalone,
+      snapshot.updateReady,
+      visitedRouteCount,
+    ],
+  );
+  const previousCheckpointDelta = useMemo(() => {
+    const latestScore = qaHistory[0]?.score;
+    if (typeof latestScore !== "number") return null;
+    return sessionReadiness.score - latestScore;
+  }, [qaHistory, sessionReadiness.score]);
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -790,6 +940,9 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
       `Last sync summary: ${syncState.lastSummary || "Not recorded yet"}`,
       `Auth check: ${authStatusLabel}`,
       `Auth summary: ${authCheckState.summary || "Not run yet"}`,
+      `Readiness verdict: ${sessionReadiness.label}`,
+      `Readiness score: ${sessionReadiness.score}/100`,
+      ...sessionReadiness.blockers.map((item) => `Blocker: ${item}`),
       "",
       "Priority route coverage:",
       ...PWA_PRIORITY_ROUTES.map((route) => {
@@ -809,6 +962,7 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
     installStatus.label,
     networkLabel,
     routeCoverage,
+    sessionReadiness,
     snapshot,
     syncState.lastSummary,
     syncStatusLabel,
@@ -854,6 +1008,8 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
       checklistCompleted: completedChecklistCount,
       checklistTotal: QA_CHECKLIST.length,
       pendingSync: canQueueEntries ? `${snapshot.pendingSync}` : "N/A",
+      score: sessionReadiness.score,
+      verdict: sessionReadiness.label,
       summary: lines.join("\n"),
     };
     savePwaQaCheckpoint(checkpoint);
@@ -982,6 +1138,56 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
             tone={syncTone}
           />
           <ReadinessPill label="Auth Check" value={authStatusLabel} tone={authStatusTone} />
+        </div>
+
+        <div className="rounded-[1.5rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
+          <div className="grid gap-3 text-sm text-slate-200 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,0.7fr)]">
+            <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+              <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Readiness Verdict</div>
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                <div className="text-2xl font-semibold text-white">{sessionReadiness.label}</div>
+                <div
+                  className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] ${
+                    sessionReadiness.tone === "good"
+                      ? "border-emerald-400/30 bg-emerald-400/14 text-emerald-100"
+                      : sessionReadiness.tone === "warn"
+                        ? "border-amber-400/30 bg-amber-400/14 text-amber-100"
+                        : "border-red-400/30 bg-red-400/14 text-red-100"
+                  }`}
+                >
+                  {sessionReadiness.score}/100
+                </div>
+              </div>
+              <div className="mt-3 space-y-2 text-sm text-slate-300">
+                {sessionReadiness.blockers.length ? (
+                  sessionReadiness.blockers.slice(0, 4).map((blocker) => (
+                    <div key={blocker} className="rounded-[1rem] border border-white/10 bg-[rgba(8,12,20,0.46)] px-3 py-2">
+                      {blocker}
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-[1rem] border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-emerald-100">
+                    This session covers the major PWA sign-off gates.
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+              <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Checkpoint Delta</div>
+              <div className="mt-2 font-semibold text-white">
+                {previousCheckpointDelta == null
+                  ? "No prior scored checkpoint"
+                  : previousCheckpointDelta > 0
+                    ? `+${previousCheckpointDelta} vs last saved pass`
+                    : previousCheckpointDelta < 0
+                      ? `${previousCheckpointDelta} vs last saved pass`
+                      : "Same score as last saved pass"}
+              </div>
+              <div className="mt-2 text-slate-300">
+                Save checkpoints after browser-mode and installed-mode QA to track whether readiness is improving or slipping.
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="rounded-[1.5rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
@@ -1209,12 +1415,12 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
                       <div className="text-sm font-semibold text-white">
                         {checkpoint.device} · {checkpoint.browser}
                       </div>
-                      <div className="mt-2 text-sm text-slate-300">
-                        {formatVisitTime(checkpoint.createdAt)} · {checkpoint.appMode === "installed" ? "installed app" : "browser mode"}
-                      </div>
+                    <div className="mt-2 text-sm text-slate-300">
+                      {formatVisitTime(checkpoint.createdAt)} · {checkpoint.appMode === "installed" ? "installed app" : "browser mode"}
+                    </div>
                     </div>
                     <div className="rounded-full border border-white/10 bg-[rgba(8,12,20,0.5)] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-300">
-                      {checkpoint.authStatus}
+                      {checkpoint.verdict || checkpoint.authStatus}
                     </div>
                   </div>
                   <div className="mt-3 space-y-1 text-xs text-slate-400">
@@ -1223,6 +1429,7 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
                     <div>Routes: {checkpoint.routeCoverageCount}/{checkpoint.routeCoverageTotal}</div>
                     <div>Checklist: {checkpoint.checklistCompleted}/{checkpoint.checklistTotal}</div>
                     <div>Pending sync: {checkpoint.pendingSync}</div>
+                    {typeof checkpoint.score === "number" ? <div>Readiness score: {checkpoint.score}/100</div> : null}
                   </div>
                   <div className="mt-4">
                     <Button type="button" variant="outline" className="h-10 w-full" onClick={() => void handleCopyCheckpoint(checkpoint)}>

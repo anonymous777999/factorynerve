@@ -66,6 +66,7 @@ Current strengths:
 - in-app readiness now includes an explicit backend/session auth probe for Android QA
 - in-app readiness now captures device/browser/viewport context for QA evidence
 - in-app readiness now supports local QA checkpoint history for repeated device test passes
+- in-app readiness now gives a simple launch-readiness verdict and checkpoint score comparison
 - installed launches now target `/dashboard` instead of dropping back on the marketing page
 
 Current weaknesses:
@@ -439,6 +440,7 @@ Use this section as the running status board. Update it as work ships.
 - [x] in-app priority route coverage exists
 - [x] in-app device profile diagnostics exist
 - [x] in-app QA checkpoint history exists
+- [x] in-app readiness verdict exists
 - [ ] Android Chrome browser QA
 - [ ] Android installed PWA QA
 - [ ] service worker update QA

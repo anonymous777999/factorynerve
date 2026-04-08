@@ -14,6 +14,8 @@ export type PwaQaCheckpoint = {
   checklistCompleted: number;
   checklistTotal: number;
   pendingSync: string;
+  score?: number | null;
+  verdict?: string | null;
   summary: string;
 };
 
