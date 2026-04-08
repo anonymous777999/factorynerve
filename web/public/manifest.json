@@ -3,7 +3,7 @@
   "short_name": "FactoryNerve",
   "id": "/",
   "scope": "/",
-  "start_url": "/",
+  "start_url": "/dashboard",
   "lang": "en",
   "dir": "ltr",
   "display": "standalone",

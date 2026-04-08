@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { writePwaInstallState } from "@/lib/pwa-install-state";
 import { cn } from "@/lib/utils";
 
 const DISMISS_KEY = "factorynerve:pwa-install-dismissed:v1";
@@ -92,6 +93,18 @@ export function PwaInstallPrompt() {
     if (!isLikelyMobileWidth()) return false;
     return Boolean(deferredPrompt || iosMode);
   }, [deferredPrompt, dismissed, hiddenByRoute, installed, iosMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    writePwaInstallState({
+      installed,
+      iosManualMode: iosMode,
+      promptAvailable: Boolean(deferredPrompt),
+      dismissed,
+      mobileViewport: isLikelyMobileWidth(),
+      updatedAt: new Date().toISOString(),
+    });
+  }, [deferredPrompt, dismissed, installed, iosMode]);
 
   const bottomOffsetClass = SHELL_HIDDEN_ROUTES.has(pathname || "")
     ? "bottom-[max(1rem,calc(1rem+env(safe-area-inset-bottom)))]"

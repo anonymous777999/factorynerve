@@ -61,6 +61,8 @@ Current strengths:
 - branded PWA icons, maskable icons, and Apple touch icon now exist
 - in-app readiness now exposes build and service worker cache version details
 - in-app route coverage now tracks which priority routes were opened and in which mode
+- in-app readiness now exposes current installability state for the active device session
+- installed launches now target `/dashboard` instead of dropping back on the marketing page
 
 Current weaknesses:
 
@@ -179,6 +181,7 @@ Tasks:
 - add "Open in app" / "Install app" guidance on supported devices
 - refine app icons if needed
 - make app naming consistent as `FactoryNerve`
+- make installed launches land on the first real work route
 - verify splash, theme color, and standalone appearance
 - confirm safe-area spacing on launch screens and main shell
 
@@ -387,6 +390,7 @@ Use this section as the running status board. Update it as work ships.
 - [x] Apple touch icon exists
 - [x] Install prompt UI exists
 - [x] PWA install guidance exists in-app
+- [x] Installed launch defaults to `/dashboard`
 - [x] Versioned cache strategy exists
 - [x] Update-ready prompt exists
 - [x] Standalone shell polish exists
@@ -423,6 +427,7 @@ Use this section as the running status board. Update it as work ships.
 ### QA
 
 - [x] in-app PWA readiness diagnostics exist
+- [x] in-app install-state visibility exists
 - [x] in-app PWA QA checklist exists
 - [x] in-app update version visibility exists
 - [x] in-app priority route coverage exists

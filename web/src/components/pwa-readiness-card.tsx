@@ -5,6 +5,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { countQueuedEntries, subscribeToQueueUpdates } from "@/lib/offline-entries";
 import {
+  loadPwaInstallState,
+  subscribeToPwaInstallState,
+  type PwaInstallState,
+} from "@/lib/pwa-install-state";
+import {
   clearPwaRouteCoverage,
   loadPwaRouteCoverage,
   PWA_PRIORITY_ROUTES,
@@ -221,6 +226,7 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
   const [refreshing, setRefreshing] = useState(false);
   const [checklist, setChecklist] = useState<Record<ChecklistKey, boolean>>(() => emptyChecklistState());
   const [routeCoverage, setRouteCoverage] = useState<Record<string, PwaRouteVisit>>({});
+  const [installState, setInstallState] = useState<PwaInstallState>(() => loadPwaInstallState());
 
   const readSnapshot = useCallback(async (options?: { announceUpdateCheck?: boolean }) => {
     const serviceWorkerSupported =
@@ -294,6 +300,17 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const refresh = () => {
+      setInstallState(loadPwaInstallState());
+    };
+
+    refresh();
+    return subscribeToPwaInstallState(refresh);
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
 
     const refresh = async () => {
@@ -348,6 +365,54 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
     }
     return "Healthy";
   }, [constrained, effectiveType, online]);
+
+  const installStatus = useMemo(() => {
+    if (snapshot.standalone || installState.installed) {
+      return {
+        label: "Installed",
+        tone: "good" as const,
+        detail: "FactoryNerve is already running like an installed app on this device.",
+      };
+    }
+
+    if (!installState.mobileViewport) {
+      return {
+        label: "Desktop browser",
+        tone: "default" as const,
+        detail: "Install prompts are mainly expected during phone-sized QA sessions.",
+      };
+    }
+
+    if (installState.promptAvailable) {
+      return {
+        label: "Prompt ready",
+        tone: "good" as const,
+        detail: "Chrome can show the install prompt from this session right now.",
+      };
+    }
+
+    if (installState.iosManualMode) {
+      return {
+        label: "Safari manual",
+        tone: "warn" as const,
+        detail: "Install through Safari Share -> Add to Home Screen on iPhone.",
+      };
+    }
+
+    if (installState.dismissed) {
+      return {
+        label: "Dismissed",
+        tone: "warn" as const,
+        detail: "The install helper was dismissed in this browser session and can be reopened later.",
+      };
+    }
+
+    return {
+      label: "Not available",
+      tone: "warn" as const,
+      detail: "This session is not currently surfacing a supported install path.",
+    };
+  }, [installState, snapshot.standalone]);
 
   const networkTone = !online ? "danger" : constrained ? "warn" : "good";
   const installTone = snapshot.standalone ? "good" : "warn";
@@ -404,6 +469,7 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
       "FactoryNerve PWA QA Summary",
       `Checked at: ${snapshot.checkedAt || "Not checked"}`,
       `App mode: ${snapshot.standalone ? "Installed app" : "Browser tab"}`,
+      `Install state: ${installStatus.label}`,
       `Network: ${networkLabel}`,
       `Service worker: ${
         snapshot.serviceWorkerSupported
@@ -492,11 +558,16 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
         </div>
       </CardHeader>
       <CardContent className="space-y-5 pt-6">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <ReadinessPill
             label="App Mode"
             value={snapshot.standalone ? "Installed app" : "Browser tab"}
             tone={installTone}
+          />
+          <ReadinessPill
+            label="Install State"
+            value={installStatus.label}
+            tone={installStatus.tone}
           />
           <ReadinessPill label="Network" value={networkLabel} tone={networkTone} />
           <ReadinessPill
@@ -524,7 +595,7 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
         </div>
 
         <div className="rounded-[1.5rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-          <div className="grid gap-3 text-sm text-slate-200 sm:grid-cols-2">
+          <div className="grid gap-3 text-sm text-slate-200 xl:grid-cols-3">
             <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] px-4 py-3">
               <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Update State</div>
               <div className="mt-2 font-semibold text-white">
@@ -539,6 +610,15 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
                 <div>Build: {BUILD_VERSION}</div>
                 <div>Active cache: {snapshot.activeCacheVersion || "Unavailable"}</div>
                 <div>Waiting cache: {snapshot.waitingCacheVersion || "None"}</div>
+              </div>
+            </div>
+            <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+              <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Installability</div>
+              <div className="mt-2 font-semibold text-white">{installStatus.label}</div>
+              <div className="mt-2 text-slate-300">{installStatus.detail}</div>
+              <div className="mt-3 space-y-1 text-xs text-slate-400">
+                <div>Last change: {formatCheckedAt(installState.updatedAt)}</div>
+                <div>Viewport: {installState.mobileViewport ? "Phone/tablet" : "Desktop/laptop"}</div>
               </div>
             </div>
             <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] px-4 py-3">
