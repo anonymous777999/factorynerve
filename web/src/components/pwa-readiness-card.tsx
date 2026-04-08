@@ -11,6 +11,13 @@ import {
   type PwaAuthCheckState,
 } from "@/lib/pwa-auth-check-state";
 import {
+  clearPwaQaHistory,
+  loadPwaQaHistory,
+  savePwaQaCheckpoint,
+  subscribeToPwaQaHistory,
+  type PwaQaCheckpoint,
+} from "@/lib/pwa-qa-history";
+import {
   listQueuedEntries,
   subscribeToQueueUpdates,
   type QueuedEntry,
@@ -326,6 +333,7 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
   const [authCheckState, setAuthCheckState] = useState<PwaAuthCheckState>(() => loadPwaAuthCheckState());
   const [authChecking, setAuthChecking] = useState(false);
   const [deviceProfile, setDeviceProfile] = useState<DeviceProfile>(() => readDeviceProfile());
+  const [qaHistory, setQaHistory] = useState<PwaQaCheckpoint[]>(() => loadPwaQaHistory());
 
   const readSnapshot = useCallback(async (options?: { announceUpdateCheck?: boolean }) => {
     const serviceWorkerSupported =
@@ -498,6 +506,17 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
       window.removeEventListener("orientationchange", refresh);
       document.removeEventListener("visibilitychange", refresh);
     };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const refresh = () => {
+      setQaHistory(loadPwaQaHistory());
+    };
+
+    refresh();
+    return subscribeToPwaQaHistory(refresh);
   }, []);
 
   const networkLabel = useMemo(() => {
@@ -740,8 +759,8 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
     }));
   };
 
-  const handleCopySummary = async () => {
-    const lines = [
+  const buildQaSummaryLines = useCallback(() => {
+    return [
       "FactoryNerve PWA QA Summary",
       `Checked at: ${snapshot.checkedAt || "Not checked"}`,
       `App mode: ${snapshot.standalone ? "Installed app" : "Browser tab"}`,
@@ -781,6 +800,22 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
       "QA checklist:",
       ...QA_CHECKLIST.map((item) => `- [${checklist[item.key] ? "x" : " "}] ${item.label}`),
     ];
+  }, [
+    authCheckState.summary,
+    authStatusLabel,
+    canQueueEntries,
+    checklist,
+    deviceProfile,
+    installStatus.label,
+    networkLabel,
+    routeCoverage,
+    snapshot,
+    syncState.lastSummary,
+    syncStatusLabel,
+  ]);
+
+  const handleCopySummary = async () => {
+    const lines = buildQaSummaryLines();
 
     try {
       await navigator.clipboard.writeText(lines.join("\n"));
@@ -798,6 +833,65 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
         durationMs: 4200,
       });
     }
+  };
+
+  const handleSaveCheckpoint = () => {
+    const lines = buildQaSummaryLines();
+    const checkpoint: PwaQaCheckpoint = {
+      id:
+        typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+          ? crypto.randomUUID()
+          : `qa_${Date.now()}`,
+      createdAt: new Date().toISOString(),
+      appMode: snapshot.standalone ? "installed" : "browser",
+      installState: installStatus.label,
+      device: deviceProfile.platform,
+      browser: deviceProfile.browser,
+      viewport: deviceProfile.viewport,
+      authStatus: authStatusLabel,
+      routeCoverageCount: visitedRouteCount,
+      routeCoverageTotal: PWA_PRIORITY_ROUTES.length,
+      checklistCompleted: completedChecklistCount,
+      checklistTotal: QA_CHECKLIST.length,
+      pendingSync: canQueueEntries ? `${snapshot.pendingSync}` : "N/A",
+      summary: lines.join("\n"),
+    };
+    savePwaQaCheckpoint(checkpoint);
+    pushAppToast({
+      title: "QA checkpoint saved",
+      description: "This readiness snapshot is now stored locally for later comparison.",
+      tone: "success",
+      durationMs: 3600,
+    });
+  };
+
+  const handleCopyCheckpoint = async (checkpoint: PwaQaCheckpoint) => {
+    try {
+      await navigator.clipboard.writeText(checkpoint.summary);
+      pushAppToast({
+        title: "Checkpoint copied",
+        description: "The saved QA checkpoint was copied to your clipboard.",
+        tone: "success",
+        durationMs: 3200,
+      });
+    } catch {
+      pushAppToast({
+        title: "Copy failed",
+        description: "Clipboard access was blocked for the saved checkpoint.",
+        tone: "error",
+        durationMs: 4200,
+      });
+    }
+  };
+
+  const handleClearQaHistory = () => {
+    clearPwaQaHistory();
+    pushAppToast({
+      title: "QA history cleared",
+      description: "Saved PWA checkpoints were removed from this browser.",
+      tone: "info",
+      durationMs: 3200,
+    });
   };
 
   const handleResetRouteCoverage = () => {
@@ -1073,6 +1167,9 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
               Refresh App Now
             </Button>
           ) : null}
+          <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={handleSaveCheckpoint}>
+            Save QA Checkpoint
+          </Button>
           <Button type="button" variant="outline" className="w-full sm:w-auto" onClick={() => void handleCopySummary()}>
             Copy QA Summary
           </Button>
@@ -1081,6 +1178,65 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
               Open FactoryNerve from the home screen to verify standalone mode, auth persistence, and bottom safe-area behavior.
             </div>
           ) : null}
+        </div>
+
+        <div className="rounded-[1.5rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">QA Checkpoints</div>
+              <div className="mt-2 text-lg font-semibold text-white">
+                {qaHistory.length ? `${qaHistory.length} saved device snapshots` : "No saved snapshots yet"}
+              </div>
+              <div className="mt-2 text-sm text-slate-300">
+                Save checkpoints during browser-mode and installed-mode testing so you can compare exact device evidence later.
+              </div>
+            </div>
+            {qaHistory.length ? (
+              <Button type="button" variant="outline" className="h-10 sm:w-auto" onClick={handleClearQaHistory}>
+                Clear QA History
+              </Button>
+            ) : null}
+          </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {qaHistory.length ? (
+              qaHistory.map((checkpoint) => (
+                <div
+                  key={checkpoint.id}
+                  className="rounded-[1.25rem] border border-white/10 bg-white/[0.04] px-4 py-4"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-white">
+                        {checkpoint.device} · {checkpoint.browser}
+                      </div>
+                      <div className="mt-2 text-sm text-slate-300">
+                        {formatVisitTime(checkpoint.createdAt)} · {checkpoint.appMode === "installed" ? "installed app" : "browser mode"}
+                      </div>
+                    </div>
+                    <div className="rounded-full border border-white/10 bg-[rgba(8,12,20,0.5)] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-300">
+                      {checkpoint.authStatus}
+                    </div>
+                  </div>
+                  <div className="mt-3 space-y-1 text-xs text-slate-400">
+                    <div>Viewport: {checkpoint.viewport}</div>
+                    <div>Install state: {checkpoint.installState}</div>
+                    <div>Routes: {checkpoint.routeCoverageCount}/{checkpoint.routeCoverageTotal}</div>
+                    <div>Checklist: {checkpoint.checklistCompleted}/{checkpoint.checklistTotal}</div>
+                    <div>Pending sync: {checkpoint.pendingSync}</div>
+                  </div>
+                  <div className="mt-4">
+                    <Button type="button" variant="outline" className="h-10 w-full" onClick={() => void handleCopyCheckpoint(checkpoint)}>
+                      Copy Saved Checkpoint
+                    </Button>
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-sm text-slate-300 lg:col-span-2">
+                Save your first checkpoint after a browser or installed-device QA pass. The checkpoint will keep the exact diagnostics from that moment.
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="rounded-[1.5rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
