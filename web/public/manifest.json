@@ -19,37 +19,79 @@
       "name": "Today Board",
       "short_name": "Board",
       "url": "/dashboard",
-      "description": "Open daily priorities and live factory signals."
+      "description": "Open daily priorities and live factory signals.",
+      "icons": [
+        {
+          "src": "/icons/shortcut-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Attendance",
       "short_name": "Attendance",
       "url": "/attendance",
-      "description": "Punch, check attendance status, and review manpower."
+      "description": "Punch, check attendance status, and review manpower.",
+      "icons": [
+        {
+          "src": "/icons/shortcut-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Scan Document",
       "short_name": "Scan",
       "url": "/ocr/scan",
-      "description": "Capture a register image and send it into OCR."
+      "description": "Capture a register image and send it into OCR.",
+      "icons": [
+        {
+          "src": "/icons/shortcut-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
     },
     {
       "name": "Review Queue",
       "short_name": "Approvals",
       "url": "/approvals",
-      "description": "Clear pending review, OCR, attendance, and stock work."
+      "description": "Clear pending review, OCR, attendance, and stock work.",
+      "icons": [
+        {
+          "src": "/icons/shortcut-96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
     }
   ],
   "icons": [
     {
       "src": "/icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "/icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }

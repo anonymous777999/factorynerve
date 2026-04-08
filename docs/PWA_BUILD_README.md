@@ -58,6 +58,7 @@ Current strengths:
 - in-app PWA readiness diagnostics now exist on the profile screen
 - in-app PWA QA checklist now exists on the profile screen
 - installed mode now gets tighter shell chrome and standalone-safe scroll behavior
+- branded PWA icons, maskable icons, and Apple touch icon now exist
 
 Current weaknesses:
 
@@ -342,7 +343,7 @@ Definition of done:
 
 ### Medium Priority
 
-- better app icons and app branding
+- keep refining app branding if device installs still need stronger recognition
 - more standalone-specific UI polish if device QA still reveals browser-like feel
 - lower-priority route QA after core PWA checks
 
@@ -377,6 +378,9 @@ Use this section as the running status board. Update it as work ships.
 - [x] Manifest exists
 - [x] Service worker exists
 - [x] Standalone metadata exists
+- [x] Branded app icons exist
+- [x] Maskable Android icons exist
+- [x] Apple touch icon exists
 - [x] Install prompt UI exists
 - [x] PWA install guidance exists in-app
 - [x] Versioned cache strategy exists
