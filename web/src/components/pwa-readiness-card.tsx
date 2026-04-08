@@ -54,6 +54,15 @@ type PwaSnapshot = {
   checkedAt: string;
 };
 
+type DeviceProfile = {
+  platform: string;
+  browser: string;
+  viewport: string;
+  screen: string;
+  touch: boolean;
+  pixelRatio: string;
+};
+
 type ChecklistKey =
   | "browser_install"
   | "standalone_launch"
@@ -217,6 +226,57 @@ function formatEntryShift(value: QueuedEntry["payload"]["shift"]) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
+function detectBrowser() {
+  if (typeof window === "undefined") return "Unknown";
+  const userAgent = window.navigator.userAgent;
+  if (/Edg\//.test(userAgent)) return "Edge";
+  if (/OPR\//.test(userAgent) || /Opera/.test(userAgent)) return "Opera";
+  if (/SamsungBrowser\//.test(userAgent)) return "Samsung Internet";
+  if (/CriOS\//.test(userAgent) || /Chrome\//.test(userAgent)) return "Chrome";
+  if (/Firefox\//.test(userAgent) || /FxiOS\//.test(userAgent)) return "Firefox";
+  if (/Safari\//.test(userAgent) && !/Chrome|CriOS|Edg\//.test(userAgent)) return "Safari";
+  return "Unknown";
+}
+
+function detectPlatform() {
+  if (typeof window === "undefined") return "Unknown";
+  const userAgent = window.navigator.userAgent;
+  const platform =
+    (window.navigator as Navigator & { userAgentData?: { platform?: string } }).userAgentData?.platform ||
+    window.navigator.platform ||
+    "";
+  if (/Android/i.test(userAgent) || /Android/i.test(platform)) return "Android";
+  if (/iPhone|iPad|iPod/i.test(userAgent) || /iPhone|iPad|iPod/i.test(platform)) return "iOS";
+  if (/Windows/i.test(platform) || /Windows/i.test(userAgent)) return "Windows";
+  if (/Mac/i.test(platform) || /Macintosh/i.test(userAgent)) return "macOS";
+  if (/Linux/i.test(platform) || /Linux/i.test(userAgent)) return "Linux";
+  return "Unknown";
+}
+
+function readDeviceProfile(): DeviceProfile {
+  if (typeof window === "undefined") {
+    return {
+      platform: "Unknown",
+      browser: "Unknown",
+      viewport: "0 x 0",
+      screen: "0 x 0",
+      touch: false,
+      pixelRatio: "1.0x",
+    };
+  }
+
+  return {
+    platform: detectPlatform(),
+    browser: detectBrowser(),
+    viewport: `${window.innerWidth} x ${window.innerHeight}`,
+    screen: `${window.screen.width} x ${window.screen.height}`,
+    touch:
+      "ontouchstart" in window ||
+      (window.navigator.maxTouchPoints || 0) > 0,
+    pixelRatio: `${window.devicePixelRatio.toFixed(1)}x`,
+  };
+}
+
 function ReadinessPill({
   label,
   value,
@@ -265,6 +325,7 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
   const [queuedEntries, setQueuedEntries] = useState<QueuedEntry[]>([]);
   const [authCheckState, setAuthCheckState] = useState<PwaAuthCheckState>(() => loadPwaAuthCheckState());
   const [authChecking, setAuthChecking] = useState(false);
+  const [deviceProfile, setDeviceProfile] = useState<DeviceProfile>(() => readDeviceProfile());
 
   const readSnapshot = useCallback(async (options?: { announceUpdateCheck?: boolean }) => {
     const serviceWorkerSupported =
@@ -419,6 +480,25 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
     if (typeof window === "undefined") return;
     window.localStorage.setItem(CHECKLIST_STORAGE_KEY, JSON.stringify(checklist));
   }, [checklist]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const refresh = () => {
+      setDeviceProfile(readDeviceProfile());
+    };
+
+    refresh();
+    window.addEventListener("resize", refresh);
+    window.addEventListener("orientationchange", refresh);
+    document.addEventListener("visibilitychange", refresh);
+
+    return () => {
+      window.removeEventListener("resize", refresh);
+      window.removeEventListener("orientationchange", refresh);
+      document.removeEventListener("visibilitychange", refresh);
+    };
+  }, []);
 
   const networkLabel = useMemo(() => {
     if (!online) return "Offline";
@@ -666,6 +746,12 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
       `Checked at: ${snapshot.checkedAt || "Not checked"}`,
       `App mode: ${snapshot.standalone ? "Installed app" : "Browser tab"}`,
       `Install state: ${installStatus.label}`,
+      `Device platform: ${deviceProfile.platform}`,
+      `Browser: ${deviceProfile.browser}`,
+      `Viewport: ${deviceProfile.viewport}`,
+      `Screen: ${deviceProfile.screen}`,
+      `Touch: ${deviceProfile.touch ? "Yes" : "No"}`,
+      `Pixel ratio: ${deviceProfile.pixelRatio}`,
       `Network: ${networkLabel}`,
       `Service worker: ${
         snapshot.serviceWorkerSupported
@@ -894,6 +980,35 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
                   {authCheckState.error}
                 </div>
               ) : null}
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[1.5rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
+          <div className="grid gap-3 text-sm text-slate-200 xl:grid-cols-2">
+            <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+              <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Device Profile</div>
+              <div className="mt-2 font-semibold text-white">
+                {deviceProfile.platform} · {deviceProfile.browser}
+              </div>
+              <div className="mt-2 text-slate-300">
+                Use this to confirm whether the QA notes you copy came from the correct phone, browser, and viewport.
+              </div>
+              <div className="mt-3 space-y-1 text-xs text-slate-400">
+                <div>Viewport: {deviceProfile.viewport}</div>
+                <div>Screen: {deviceProfile.screen}</div>
+                <div>Touch support: {deviceProfile.touch ? "Yes" : "No"}</div>
+                <div>Pixel ratio: {deviceProfile.pixelRatio}</div>
+              </div>
+            </div>
+            <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+              <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">QA Context</div>
+              <div className="mt-2 font-semibold text-white">
+                {snapshot.standalone ? "Installed-mode evidence is active." : "Browser-mode evidence is active."}
+              </div>
+              <div className="mt-2 text-slate-300">
+                Copy the QA summary after each route pass so the device profile, auth probe, queue state, and update state stay attached to the same session.
+              </div>
             </div>
           </div>
         </div>

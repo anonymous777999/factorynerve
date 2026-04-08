@@ -64,6 +64,7 @@ Current strengths:
 - in-app readiness now exposes current installability state for the active device session
 - in-app readiness now exposes persistent queue and sync diagnostics for installed-mode QA
 - in-app readiness now includes an explicit backend/session auth probe for Android QA
+- in-app readiness now captures device/browser/viewport context for QA evidence
 - installed launches now target `/dashboard` instead of dropping back on the marketing page
 
 Current weaknesses:
@@ -435,6 +436,7 @@ Use this section as the running status board. Update it as work ships.
 - [x] in-app PWA QA checklist exists
 - [x] in-app update version visibility exists
 - [x] in-app priority route coverage exists
+- [x] in-app device profile diagnostics exist
 - [ ] Android Chrome browser QA
 - [ ] Android installed PWA QA
 - [ ] service worker update QA
