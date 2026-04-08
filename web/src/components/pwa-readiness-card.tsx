@@ -19,6 +19,8 @@ type PwaSnapshot = {
   serviceWorkerRegistered: boolean;
   serviceWorkerControlling: boolean;
   updateReady: boolean;
+  activeCacheVersion: string | null;
+  waitingCacheVersion: string | null;
   pendingSync: number;
   checkedAt: string;
 };
@@ -44,6 +46,7 @@ type ChecklistItem = {
 };
 
 const CHECKLIST_STORAGE_KEY = "factorynerve:pwa-qa-checklist:v1";
+const BUILD_VERSION = (process.env.NEXT_PUBLIC_RELEASE_VERSION || "").trim() || "Local build";
 
 const QA_CHECKLIST: ChecklistItem[] = [
   {
@@ -123,6 +126,28 @@ function isStandaloneMode() {
   );
 }
 
+function readWorkerVersion(worker: ServiceWorker | null) {
+  if (!worker) return Promise.resolve<string | null>(null);
+
+  return new Promise<string | null>((resolve) => {
+    const channel = new MessageChannel();
+    const timeout = window.setTimeout(() => resolve(null), 1800);
+
+    channel.port1.onmessage = (event) => {
+      window.clearTimeout(timeout);
+      const payload = event.data as { cacheVersion?: string } | undefined;
+      resolve(payload?.cacheVersion || null);
+    };
+
+    try {
+      worker.postMessage({ type: "GET_VERSION" }, [channel.port2]);
+    } catch {
+      window.clearTimeout(timeout);
+      resolve(null);
+    }
+  });
+}
+
 function formatCheckedAt(value: string | null) {
   if (!value) return "Not checked yet";
   const parsed = new Date(value);
@@ -167,6 +192,8 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
     serviceWorkerRegistered: false,
     serviceWorkerControlling: false,
     updateReady: false,
+    activeCacheVersion: null,
+    waitingCacheVersion: null,
     pendingSync: 0,
     checkedAt: "",
   });
@@ -182,6 +209,10 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
       : null;
     const pendingSync =
       canQueueEntries && userId != null ? await countQueuedEntries(userId).catch(() => 0) : 0;
+    const [activeCacheVersion, waitingCacheVersion] = await Promise.all([
+      readWorkerVersion(registration?.active || navigator.serviceWorker?.controller || null),
+      readWorkerVersion(registration?.waiting || null),
+    ]);
 
     if (options?.announceUpdateCheck) {
       if (registration?.waiting) {
@@ -207,6 +238,8 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
       serviceWorkerRegistered: Boolean(registration),
       serviceWorkerControlling: Boolean(navigator.serviceWorker?.controller),
       updateReady: Boolean(registration?.waiting),
+      activeCacheVersion,
+      waitingCacheVersion,
       pendingSync,
       checkedAt: new Date().toISOString(),
     });
@@ -343,6 +376,9 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
             : "Not registered"
           : "Unsupported"
       }`,
+      `Build version: ${BUILD_VERSION}`,
+      `Active cache version: ${snapshot.activeCacheVersion || "Unavailable"}`,
+      `Waiting cache version: ${snapshot.waitingCacheVersion || "None"}`,
       `Update ready: ${snapshot.updateReady ? "Yes" : "No"}`,
       `Pending sync: ${
         canQueueEntries ? snapshot.pendingSync : "Not used on this account"
@@ -446,6 +482,11 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
                 {snapshot.serviceWorkerControlling
                   ? "This tab is controlled by the installed app cache."
                   : "This tab will use app cache fully after the next controlled load."}
+              </div>
+              <div className="mt-3 space-y-1 text-xs text-slate-400">
+                <div>Build: {BUILD_VERSION}</div>
+                <div>Active cache: {snapshot.activeCacheVersion || "Unavailable"}</div>
+                <div>Waiting cache: {snapshot.waitingCacheVersion || "None"}</div>
               </div>
             </div>
             <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] px-4 py-3">

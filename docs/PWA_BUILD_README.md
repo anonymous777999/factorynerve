@@ -59,6 +59,7 @@ Current strengths:
 - in-app PWA QA checklist now exists on the profile screen
 - installed mode now gets tighter shell chrome and standalone-safe scroll behavior
 - branded PWA icons, maskable icons, and Apple touch icon now exist
+- in-app readiness now exposes build and service worker cache version details
 
 Current weaknesses:
 
@@ -306,6 +307,7 @@ Tasks:
 - test on Android installed home-screen mode
 - test on at least one smaller Android phone
 - use the in-app readiness card to confirm install mode, service worker control, pending sync state, and update readiness before route QA
+- compare active vs waiting cache versions during service worker update QA
 - test login, attendance, entry, OCR, approvals, and reports
 - test offline / reconnect behavior
 - test service worker update after a deploy
@@ -420,6 +422,7 @@ Use this section as the running status board. Update it as work ships.
 
 - [x] in-app PWA readiness diagnostics exist
 - [x] in-app PWA QA checklist exists
+- [x] in-app update version visibility exists
 - [ ] Android Chrome browser QA
 - [ ] Android installed PWA QA
 - [ ] service worker update QA

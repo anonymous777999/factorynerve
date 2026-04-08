@@ -95,6 +95,16 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") {
     self.skipWaiting();
+    return;
+  }
+
+  if (event.data?.type === "GET_VERSION") {
+    event.ports?.[0]?.postMessage({
+      cacheVersion: CACHE_VERSION,
+      shellCache: SHELL_CACHE,
+      staticCache: STATIC_CACHE,
+      runtimeCache: RUNTIME_CACHE,
+    });
   }
 });
 
