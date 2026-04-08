@@ -15,7 +15,8 @@
     "next": "16.2.1",
     "react": "19.2.4",
     "react-apexcharts": "^2.1.0",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "three": "^0.183.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.2",
@@ -23,6 +24,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "^0.183.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
     "openapi-typescript": "^7.13.0",
