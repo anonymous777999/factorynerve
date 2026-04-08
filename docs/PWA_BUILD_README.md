@@ -57,6 +57,7 @@ Current strengths:
 - weak-network state is now surfaced in the shared shell
 - in-app PWA readiness diagnostics now exist on the profile screen
 - in-app PWA QA checklist now exists on the profile screen
+- installed mode now gets tighter shell chrome and standalone-safe scroll behavior
 
 Current weaknesses:
 
@@ -342,7 +343,7 @@ Definition of done:
 ### Medium Priority
 
 - better app icons and app branding
-- standalone-specific UI polish
+- more standalone-specific UI polish if device QA still reveals browser-like feel
 - lower-priority route QA after core PWA checks
 
 ### Low Priority
@@ -380,6 +381,7 @@ Use this section as the running status board. Update it as work ships.
 - [x] PWA install guidance exists in-app
 - [x] Versioned cache strategy exists
 - [x] Update-ready prompt exists
+- [x] Standalone shell polish exists
 
 ### Reliability
 

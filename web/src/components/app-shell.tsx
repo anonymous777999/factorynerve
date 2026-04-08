@@ -23,6 +23,7 @@ import {
 } from "@/lib/role-navigation";
 import { warmRouteData } from "@/lib/route-warmup";
 import { listSteelReconciliations } from "@/lib/steel";
+import { useDisplayMode } from "@/lib/use-display-mode";
 import { subscribeToWorkflowRefresh } from "@/lib/workflow-sync";
 import { useI18n } from "@/lib/i18n";
 import { useSession } from "@/lib/use-session";
@@ -1137,6 +1138,7 @@ function MobileBottomNav({
   badgeCounts,
   onWarm,
   onNavigate,
+  standaloneMode,
   translate,
 }: {
   pathname: string;
@@ -1144,11 +1146,24 @@ function MobileBottomNav({
   badgeCounts: Record<NavBadgeKey, number>;
   onWarm: (href: string) => void;
   onNavigate?: () => void;
+  standaloneMode: boolean;
   translate?: TranslateFn;
 }) {
   return (
-    <nav className="safe-inline-pad fixed inset-x-0 bottom-0 z-40 pb-[calc(0.95rem+env(safe-area-inset-bottom))] pt-3 lg:hidden">
-      <div className="surface-panel-strong mx-auto flex max-w-xl items-end justify-between gap-1 rounded-[2rem] px-2 pb-2 pt-2 shadow-[0_24px_50px_rgba(3,8,20,0.34)]">
+    <nav
+      className={cn(
+        "safe-inline-pad fixed inset-x-0 bottom-0 z-40 lg:hidden",
+        standaloneMode
+          ? "pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-2"
+          : "pb-[calc(0.95rem+env(safe-area-inset-bottom))] pt-3",
+      )}
+    >
+      <div
+        className={cn(
+          "surface-panel-strong mx-auto flex max-w-xl items-end justify-between gap-1 shadow-[0_24px_50px_rgba(3,8,20,0.34)]",
+          standaloneMode ? "rounded-[1.75rem] px-2 pb-1.5 pt-1.5" : "rounded-[2rem] px-2 pb-2 pt-2",
+        )}
+      >
         {items.map((item) => {
           const active = item.match(pathname);
           const badgeCount = getMobileNavBadgeCount(item, badgeCounts);
@@ -1213,6 +1228,7 @@ function AppShellFrame({
   pathname: string;
 }) {
   const shellLayout = useMemo(() => getShellLayout(pathname), [pathname]);
+  const { standalone } = useDisplayMode();
   const immersiveScannerRoute = shellLayout.mode === "camera";
   const router = useRouter();
   const { language, setLanguage, t } = useI18n();
@@ -1892,8 +1908,18 @@ function AppShellFrame({
         )}
       >
         {shellLayout.mobileTopBar ? (
-          <div className="safe-inline-pad sticky top-0 z-30 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] lg:hidden">
-            <div className="surface-panel flex items-center gap-3 rounded-[1.65rem] px-3 py-2.5">
+          <div
+            className={cn(
+              "safe-inline-pad sticky top-0 z-30 lg:hidden",
+              standalone ? "pb-2 pt-[max(0.4rem,env(safe-area-inset-top))]" : "pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]",
+            )}
+          >
+            <div
+              className={cn(
+                "surface-panel flex items-center gap-3 px-3",
+                standalone ? "rounded-[1.45rem] py-2" : "rounded-[1.65rem] py-2.5",
+              )}
+            >
               {mobileTabActive ? (
                 <div className="h-10 w-10 shrink-0" />
               ) : (
@@ -1910,8 +1936,15 @@ function AppShellFrame({
               )}
 
               <div className="min-w-0 flex-1 text-center">
-                <div className="truncate text-[10px] font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
-                  {activeFactory?.name || user?.factory_name || "DPR.ai"}
+                <div className="flex items-center justify-center gap-2">
+                  <div className="truncate text-[10px] font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
+                    {activeFactory?.name || user?.factory_name || "DPR.ai"}
+                  </div>
+                  {standalone ? (
+                    <span className="hidden rounded-full border border-[rgba(77,163,255,0.24)] bg-[rgba(77,163,255,0.12)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-[rgba(186,229,255,0.96)] min-[390px]:inline-flex">
+                      App
+                    </span>
+                  ) : null}
                 </div>
                 <div className="truncate text-sm font-semibold text-[var(--text)]">{currentItem.label}</div>
               </div>
@@ -1937,7 +1970,11 @@ function AppShellFrame({
         <div
           className={cn(
             "app-shell-content min-w-0 flex-1",
-            shellLayout.mobileBottomNav ? "pb-[calc(6.9rem+env(safe-area-inset-bottom))] lg:pb-0" : "",
+            shellLayout.mobileBottomNav
+              ? standalone
+                ? "pb-[calc(6.25rem+env(safe-area-inset-bottom))] lg:pb-0"
+                : "pb-[calc(6.9rem+env(safe-area-inset-bottom))] lg:pb-0"
+              : "",
           )}
         >
           {!immersiveScannerRoute ? <WorkflowReminderStrip /> : null}
@@ -1988,6 +2025,7 @@ function AppShellFrame({
           badgeCounts={badgeCounts}
           onWarm={warmRoute}
           onNavigate={handleNavNavigate}
+          standaloneMode={standalone}
           translate={t}
         />
       ) : null}

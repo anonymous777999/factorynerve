@@ -145,6 +145,15 @@ html {
   overflow-x: clip;
 }
 
+html[data-display-mode="standalone"],
+html[data-display-mode="standalone"] body {
+  overscroll-behavior-y: contain;
+}
+
+html[data-display-mode="standalone"] body {
+  min-height: 100dvh;
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(151, 164, 183, 0.34) transparent;

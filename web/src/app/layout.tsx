@@ -4,6 +4,7 @@ import "./globals.css";
 import { AppProviders } from "@/components/app-providers";
 import { AppShell } from "@/components/app-shell";
 import { BetaRolloutBanner } from "@/components/beta-rollout-banner";
+import { DisplayModeAgent } from "@/components/display-mode-agent";
 import { FrontendErrorMonitor } from "@/components/frontend-error-monitor";
 import { OfflineSyncAgent } from "@/components/offline-sync-agent";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
@@ -54,6 +55,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col bg-[var(--bg)] text-[var(--text)]">
         <AppProviders>
+          <DisplayModeAgent />
           <BetaRolloutBanner />
           <AppShell>{children}</AppShell>
           <PwaInstallPrompt />
