@@ -11,6 +11,7 @@ import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { PwaRouteCoverageAgent } from "@/components/pwa-route-coverage-agent";
 import { ServiceWorker } from "@/components/service-worker";
 import { ToastCenter } from "@/components/toast-center";
+import { DottedSurface } from "@/components/ui/dotted-surface";
 
 const fontBody = DM_Sans({
   variable: "--font-body",
@@ -62,7 +63,11 @@ export default function RootLayout({
       lang="en"
       className={`${fontBody.variable} ${fontDisplay.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[var(--bg)] text-[var(--text)]">
+      <body className="relative isolate min-h-full flex flex-col overflow-x-clip bg-[var(--bg)] text-[var(--text)]">
+        <div aria-hidden="true" className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+          <DottedSurface className="fixed inset-0 opacity-[0.9]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_14%,rgba(77,163,255,0.16),transparent_24%),radial-gradient(circle_at_84%_18%,rgba(20,184,166,0.12),transparent_24%),linear-gradient(180deg,rgba(9,19,29,0.24),rgba(9,19,29,0.12)_38%,rgba(9,19,29,0.28))]" />
+        </div>
         <AppProviders>
           <DisplayModeAgent />
           <PwaRouteCoverageAgent />
