@@ -53,6 +53,8 @@ Current strengths:
 - installability basics are already in place
 - app update prompt now exists for newer production builds
 - all priority routes have received a first mobile-hardening pass
+- reconnect sync feedback now exists in-app
+- weak-network state is now surfaced in the shared shell
 
 Current weaknesses:
 
@@ -402,6 +404,8 @@ Use this section as the running status board. Update it as work ships.
 - [x] entry offline behavior fully documented
 - [x] OCR offline-safe behavior defined
 - [x] queue and sync states made clearer in-app
+- [x] reconnect sync feedback exists
+- [x] weak-network state is surfaced in-app
 
 ### QA
 

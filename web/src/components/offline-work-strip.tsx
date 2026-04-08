@@ -5,11 +5,11 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { countQueuedEntries, loadDraft, subscribeToQueueUpdates } from "@/lib/offline-entries";
-import { useOnlineStatus } from "@/lib/use-online-status";
+import { useNetworkStatus } from "@/lib/use-network-status";
 import { useSession } from "@/lib/use-session";
 import { cn } from "@/lib/utils";
 
-type StripTone = "offline" | "queue" | "draft";
+type StripTone = "offline" | "queue" | "draft" | "slow";
 
 type StripConfig = {
   title: string;
@@ -46,6 +46,9 @@ function toneClassName(tone: StripTone) {
   if (tone === "offline") {
     return "border-[rgba(245,158,11,0.28)] bg-[rgba(245,158,11,0.12)]";
   }
+  if (tone === "slow") {
+    return "border-[rgba(249,115,22,0.28)] bg-[rgba(249,115,22,0.12)]";
+  }
   if (tone === "queue") {
     return "border-[rgba(56,189,248,0.28)] bg-[rgba(56,189,248,0.12)]";
   }
@@ -55,6 +58,8 @@ function toneClassName(tone: StripTone) {
 function buildStripConfig(
   pathname: string,
   online: boolean,
+  constrained: boolean,
+  effectiveType: string | null,
   queueCount: number,
   hasDraft: boolean,
 ): StripConfig | null {
@@ -94,7 +99,9 @@ function buildStripConfig(
   if (queueCount > 0) {
     return {
       title: `${queueLabel(queueCount)} waiting to sync`,
-      detail: "This browser still has offline DPR work waiting. Open Shift Entry to watch sync status or resolve anything still pending.",
+      detail: constrained
+        ? `This browser still has offline DPR work waiting, and the current ${effectiveType || "mobile"} connection is weak, so sync may take longer than usual.`
+        : "This browser still has offline DPR work waiting. Open Shift Entry to watch sync status or resolve anything still pending.",
       actionHref: "/entry?focus=offline",
       actionLabel: "Open entry queue",
       tone: "queue",
@@ -104,10 +111,25 @@ function buildStripConfig(
   if (hasDraft) {
     return {
       title: "Saved shift draft is ready",
-      detail: "Shift Entry already has a local draft on this device. Resume it before starting a fresh entry.",
+      detail: constrained
+        ? "Shift Entry already has a local draft on this device. Resume it and keep uploads short while the network is weak."
+        : "Shift Entry already has a local draft on this device. Resume it before starting a fresh entry.",
       actionHref: "/entry?focus=draft",
       actionLabel: "Resume draft",
       tone: "draft",
+    };
+  }
+
+  if (constrained) {
+    return {
+      title: "Weak connection detected",
+      detail:
+        effectiveType === "3g"
+          ? "FactoryNerve is online, but this looks like a slower mobile connection. Live counts, OCR uploads, and review refreshes may take longer."
+          : "FactoryNerve is online, but the current connection looks constrained. Keep actions focused and wait for sync feedback before leaving the screen.",
+      actionHref: "/dashboard",
+      actionLabel: "Open dashboard",
+      tone: "slow",
     };
   }
 
@@ -117,7 +139,7 @@ function buildStripConfig(
 export function OfflineWorkStrip() {
   const pathname = usePathname() || "/";
   const { user } = useSession();
-  const online = useOnlineStatus();
+  const network = useNetworkStatus();
   const [queueCount, setQueueCount] = useState(0);
   const [hasDraft, setHasDraft] = useState(false);
 
@@ -164,8 +186,16 @@ export function OfflineWorkStrip() {
   const visibleHasDraft = canTrackLocalState ? hasDraft : false;
 
   const stripConfig = useMemo(
-    () => buildStripConfig(pathname, online, visibleQueueCount, visibleHasDraft),
-    [online, pathname, visibleHasDraft, visibleQueueCount],
+    () =>
+      buildStripConfig(
+        pathname,
+        network.online,
+        network.constrained,
+        network.effectiveType,
+        visibleQueueCount,
+        visibleHasDraft,
+      ),
+    [network.constrained, network.effectiveType, network.online, pathname, visibleHasDraft, visibleQueueCount],
   );
 
   if (!user || shouldHide(pathname) || !stripConfig) {
@@ -183,18 +213,23 @@ export function OfflineWorkStrip() {
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="min-w-0">
             <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(224,231,255,0.92)]">
-              {online ? "Local Work Status" : "Offline Mode"}
+              {network.online ? "Local Work Status" : "Offline Mode"}
             </div>
             <div className="mt-1 text-sm font-semibold text-[var(--text)]">{stripConfig.title}</div>
             <div className="mt-1 text-sm leading-6 text-[var(--muted)]">{stripConfig.detail}</div>
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             <span className="rounded-full border border-white/10 bg-[rgba(8,12,20,0.42)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text)]">
-              {online ? "Online" : "Offline"}
+              {network.online ? "Online" : "Offline"}
             </span>
             {visibleQueueCount > 0 ? (
               <span className="rounded-full border border-white/10 bg-[rgba(8,12,20,0.42)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text)]">
                 {queueLabel(visibleQueueCount)}
+              </span>
+            ) : null}
+            {network.constrained && network.online ? (
+              <span className="rounded-full border border-white/10 bg-[rgba(8,12,20,0.42)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--text)]">
+                {network.effectiveType ? `${network.effectiveType} network` : "Weak network"}
               </span>
             ) : null}
             {visibleHasDraft ? (
