@@ -51,14 +51,15 @@ Current strengths:
 - same-origin `/api` proxy keeps auth and frontend simpler
 - service worker already caches shell routes and static assets
 - installability basics are already in place
+- app update prompt now exists for newer production builds
+- all priority routes have received a first mobile-hardening pass
 
 Current weaknesses:
 
-- there is no user-facing install prompt flow yet
-- offline behavior is still shell-level, not workflow-complete
+- offline behavior is clearer now, but still not workflow-complete for every module
 - login depends on a Render backend that can cold start
-- service worker strategy is still basic and not versioned around business-critical modules
-- some routes are still desktop-heavy on mobile
+- installed-mode QA still needs real device verification
+- service worker behavior still needs real deploy/update QA on devices
 - there is no dedicated PWA QA checklist tied to route-by-route acceptance
 
 ## PWA Scope
@@ -327,17 +328,17 @@ Definition of done:
 
 ### High Priority
 
-- add install prompt flow
-- harden login reliability
-- finish mobile compatibility for priority routes
-- define offline behavior for attendance, entry, and OCR
-- improve queue / sync visibility
+- QA standalone auth on Android installed mode
+- QA service worker update flow after production deploys
+- verify slow-network and reconnect behavior on real phones
+- move backend off Render free hibernation
+- keep queue / sync visibility consistent across installed mode
 
 ### Medium Priority
 
 - better app icons and app branding
-- cleaner service worker cache strategy
 - standalone-specific UI polish
+- lower-priority route QA after core PWA checks
 
 ### Low Priority
 
@@ -372,6 +373,8 @@ Use this section as the running status board. Update it as work ships.
 - [x] Standalone metadata exists
 - [x] Install prompt UI exists
 - [x] PWA install guidance exists in-app
+- [x] Versioned cache strategy exists
+- [x] Update-ready prompt exists
 
 ### Reliability
 
@@ -388,9 +391,9 @@ Use this section as the running status board. Update it as work ships.
 - [x] `/attendance` first mobile pass
 - [x] `/entry` first mobile pass
 - [x] `/ocr/scan` first mobile pass across all steps
-- [ ] `/approvals` mobile hardening
-- [ ] `/work-queue` mobile hardening
-- [ ] `/reports` mobile hardening
+- [x] `/approvals` mobile hardening
+- [x] `/work-queue` mobile hardening
+- [x] `/reports` mobile hardening
 
 ### Offline
 
@@ -418,6 +421,6 @@ Use this section as the running status board. Update it as work ships.
 ## Immediate Next Steps
 
 1. QA standalone auth on Android home-screen mode, including Google login, logout, and switch account.
-2. Continue route-by-route mobile hardening with `/approvals` and `/work-queue`.
-3. Define explicit offline behavior for attendance, entry, and OCR.
+2. QA service worker update behavior after a fresh production deploy.
+3. Run slow-network and offline/reconnect checks on Android Chrome and installed PWA mode.
 4. Move the backend to an always-on hosting tier when possible.

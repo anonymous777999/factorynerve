@@ -1,8 +1,19 @@
-const CACHE_NAME = "dpr-shell-v4";
-const SHELL_ROUTES = [
+const CACHE_VERSION = "2026-04-08-v1";
+const SHELL_CACHE = `factorynerve-shell-${CACHE_VERSION}`;
+const STATIC_CACHE = `factorynerve-static-${CACHE_VERSION}`;
+const RUNTIME_CACHE = `factorynerve-runtime-${CACHE_VERSION}`;
+const ALL_CACHES = [SHELL_CACHE, STATIC_CACHE, RUNTIME_CACHE];
+
+const PRECACHE_ROUTES = [
   "/",
   "/dashboard",
+  "/attendance",
   "/entry",
+  "/ocr",
+  "/ocr/scan",
+  "/approvals",
+  "/work-queue",
+  "/reports",
   "/offline",
   "/login",
   "/register",
@@ -11,11 +22,61 @@ const SHELL_ROUTES = [
   "/icons/icon-512.png",
 ];
 
+const APP_SHELL_ROUTES = new Set([
+  "/",
+  "/dashboard",
+  "/attendance",
+  "/entry",
+  "/ocr",
+  "/ocr/scan",
+  "/approvals",
+  "/work-queue",
+  "/reports",
+  "/offline",
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/verify-email",
+]);
+
+function isCacheableResponse(response) {
+  return Boolean(response && response.ok && (response.type === "basic" || response.type === "default"));
+}
+
+async function addToCache(cacheName, request, response) {
+  if (!isCacheableResponse(response)) return response;
+  const cache = await caches.open(cacheName);
+  await cache.put(request, response.clone());
+  return response;
+}
+
+async function matchDocumentFallback(request) {
+  const exact = await caches.match(request, { ignoreSearch: true });
+  if (exact) return exact;
+
+  const url = new URL(request.url);
+  const normalized = await caches.match(url.pathname);
+  if (normalized) return normalized;
+
+  return null;
+}
+
+function getNavigationFallback(pathname) {
+  if (pathname === "/login" || pathname === "/register" || pathname === "/forgot-password" || pathname === "/reset-password" || pathname === "/verify-email") {
+    return pathname;
+  }
+  if (APP_SHELL_ROUTES.has(pathname)) {
+    return pathname;
+  }
+  return "/offline";
+}
+
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
-      .open(CACHE_NAME)
-      .then((cache) => cache.addAll(SHELL_ROUTES))
+      .open(SHELL_CACHE)
+      .then((cache) => cache.addAll(PRECACHE_ROUTES))
       .then(() => self.skipWaiting()),
   );
 });
@@ -25,33 +86,42 @@ self.addEventListener("activate", (event) => {
     caches
       .keys()
       .then((keys) =>
-        Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))),
+        Promise.all(keys.filter((key) => !ALL_CACHES.includes(key)).map((key) => caches.delete(key))),
       )
       .then(() => self.clients.claim()),
   );
 });
 
-async function networkFirst(request, fallbackUrl = "/offline") {
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
+
+async function networkFirst(request, { cacheName = RUNTIME_CACHE, fallbackUrl = "/offline" } = {}) {
   try {
     const response = await fetch(request);
-    const cache = await caches.open(CACHE_NAME);
-    cache.put(request, response.clone());
+    await addToCache(cacheName, request, response);
     return response;
   } catch {
-    const cached = await caches.match(request);
-    return cached || caches.match(fallbackUrl);
+    const cached = await matchDocumentFallback(request);
+    if (cached) return cached;
+    if (fallbackUrl) {
+      const fallback = await caches.match(fallbackUrl);
+      if (fallback) return fallback;
+    }
+    return Response.error();
   }
 }
 
-async function staleWhileRevalidate(request) {
-  const cache = await caches.open(CACHE_NAME);
-  const cached = await cache.match(request);
+async function staleWhileRevalidate(request, cacheName = STATIC_CACHE) {
+  const cache = await caches.open(cacheName);
+  const cached = await cache.match(request, { ignoreSearch: true });
+
   const networkPromise = fetch(request)
-    .then((response) => {
-      cache.put(request, response.clone());
-      return response;
-    })
-    .catch(() => cached);
+    .then((response) => addToCache(cacheName, request, response))
+    .catch(() => cached || Response.error());
+
   return cached || networkPromise;
 }
 
@@ -63,24 +133,37 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/api/")) return;
 
   if (event.request.mode === "navigate") {
-    event.respondWith(networkFirst(event.request));
+    event.respondWith(
+      networkFirst(event.request, {
+        cacheName: RUNTIME_CACHE,
+        fallbackUrl: getNavigationFallback(url.pathname),
+      }),
+    );
     return;
   }
 
   const destination = event.request.destination;
-  if (["style", "script", "image", "font"].includes(destination)) {
-    event.respondWith(staleWhileRevalidate(event.request));
+
+  if (
+    ["style", "script", "font", "image", "worker"].includes(destination) ||
+    url.pathname.startsWith("/_next/static/") ||
+    url.pathname === "/manifest.json" ||
+    url.pathname.startsWith("/icons/")
+  ) {
+    event.respondWith(staleWhileRevalidate(event.request, STATIC_CACHE));
+    return;
+  }
+
+  if (APP_SHELL_ROUTES.has(url.pathname)) {
+    event.respondWith(staleWhileRevalidate(event.request, RUNTIME_CACHE));
     return;
   }
 
   event.respondWith(
-    caches.match(event.request).then((cached) => {
+    caches.match(event.request, { ignoreSearch: true }).then((cached) => {
       if (cached) return cached;
       return fetch(event.request)
-        .then((response) => {
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, response.clone()));
-          return response;
-        })
+        .then((response) => addToCache(RUNTIME_CACHE, event.request, response))
         .catch(() => caches.match("/offline"));
     }),
   );
