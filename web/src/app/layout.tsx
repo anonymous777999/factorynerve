@@ -8,6 +8,7 @@ import { DisplayModeAgent } from "@/components/display-mode-agent";
 import { FrontendErrorMonitor } from "@/components/frontend-error-monitor";
 import { OfflineSyncAgent } from "@/components/offline-sync-agent";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
+import { PwaRouteCoverageAgent } from "@/components/pwa-route-coverage-agent";
 import { ServiceWorker } from "@/components/service-worker";
 import { ToastCenter } from "@/components/toast-center";
 
@@ -64,6 +65,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-[var(--bg)] text-[var(--text)]">
         <AppProviders>
           <DisplayModeAgent />
+          <PwaRouteCoverageAgent />
           <BetaRolloutBanner />
           <AppShell>{children}</AppShell>
           <PwaInstallPrompt />

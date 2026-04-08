@@ -1,8 +1,16 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { countQueuedEntries, subscribeToQueueUpdates } from "@/lib/offline-entries";
+import {
+  clearPwaRouteCoverage,
+  loadPwaRouteCoverage,
+  PWA_PRIORITY_ROUTES,
+  subscribeToPwaRouteCoverage,
+  type PwaRouteVisit,
+} from "@/lib/pwa-route-coverage";
 import { pushAppToast } from "@/lib/toast";
 import { useNetworkStatus } from "@/lib/use-network-status";
 import { Button } from "@/components/ui/button";
@@ -158,6 +166,18 @@ function formatCheckedAt(value: string | null) {
   });
 }
 
+function formatVisitTime(value: string | null) {
+  if (!value) return "Not opened yet";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return "Not opened yet";
+  return parsed.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
 function ReadinessPill({
   label,
   value,
@@ -200,6 +220,7 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [checklist, setChecklist] = useState<Record<ChecklistKey, boolean>>(() => emptyChecklistState());
+  const [routeCoverage, setRouteCoverage] = useState<Record<string, PwaRouteVisit>>({});
 
   const readSnapshot = useCallback(async (options?: { announceUpdateCheck?: boolean }) => {
     const serviceWorkerSupported =
@@ -259,6 +280,17 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
     } catch {
       // Ignore invalid local storage state and keep defaults.
     }
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const refresh = () => {
+      setRouteCoverage(loadPwaRouteCoverage());
+    };
+
+    refresh();
+    return subscribeToPwaRouteCoverage(refresh);
   }, []);
 
   useEffect(() => {
@@ -326,6 +358,10 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
     () => QA_CHECKLIST.filter((item) => checklist[item.key]).length,
     [checklist],
   );
+  const visitedRouteCount = useMemo(
+    () => PWA_PRIORITY_ROUTES.filter((route) => Boolean(routeCoverage[route.key]?.lastVisitedAt)).length,
+    [routeCoverage],
+  );
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -384,6 +420,12 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
         canQueueEntries ? snapshot.pendingSync : "Not used on this account"
       }`,
       "",
+      "Priority route coverage:",
+      ...PWA_PRIORITY_ROUTES.map((route) => {
+        const visit = routeCoverage[route.key];
+        return `- ${route.label}: ${visit ? `${formatVisitTime(visit.lastVisitedAt)} (${visit.mode})` : "not opened yet"}`;
+      }),
+      "",
       "QA checklist:",
       ...QA_CHECKLIST.map((item) => `- [${checklist[item.key] ? "x" : " "}] ${item.label}`),
     ];
@@ -404,6 +446,16 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
         durationMs: 4200,
       });
     }
+  };
+
+  const handleResetRouteCoverage = () => {
+    clearPwaRouteCoverage();
+    pushAppToast({
+      title: "Route coverage cleared",
+      description: "Priority-route visit tracking was reset for the next PWA QA pass.",
+      tone: "info",
+      durationMs: 3200,
+    });
   };
 
   return (
@@ -517,6 +569,67 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
               Open FactoryNerve from the home screen to verify standalone mode, auth persistence, and bottom safe-area behavior.
             </div>
           ) : null}
+        </div>
+
+        <div className="rounded-[1.5rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Priority Route Coverage</div>
+              <div className="mt-2 text-lg font-semibold text-white">
+                {visitedRouteCount} / {PWA_PRIORITY_ROUTES.length} priority routes opened
+              </div>
+              <div className="mt-2 text-sm text-slate-300">
+                These timestamps help confirm whether real device QA happened in browser mode or installed mode.
+              </div>
+            </div>
+            <Button type="button" variant="outline" className="h-10 sm:w-auto" onClick={handleResetRouteCoverage}>
+              Reset Route Coverage
+            </Button>
+          </div>
+          <div className="mt-4 grid gap-3 lg:grid-cols-2">
+            {PWA_PRIORITY_ROUTES.map((route) => {
+              const visit = routeCoverage[route.key];
+              const done = Boolean(visit?.lastVisitedAt);
+              return (
+                <div
+                  key={route.key}
+                  className={`rounded-[1.25rem] border px-4 py-4 ${
+                    done
+                      ? "border-[rgba(77,163,255,0.24)] bg-[rgba(77,163,255,0.08)]"
+                      : "border-white/10 bg-white/[0.04]"
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-white">{route.label}</div>
+                      <div className="mt-2 text-sm leading-6 text-slate-300">
+                        {visit
+                          ? `${formatVisitTime(visit.lastVisitedAt)} in ${visit.mode === "standalone" ? "installed app" : "browser mode"}.`
+                          : "Not opened yet in this QA cycle."}
+                      </div>
+                    </div>
+                    <div
+                      className={`inline-flex h-7 min-w-7 items-center justify-center rounded-full border px-2 text-xs font-semibold ${
+                        done
+                          ? "border-sky-300/30 bg-sky-300/16 text-sky-100"
+                          : "border-white/10 bg-[rgba(8,12,20,0.5)] text-slate-300"
+                      }`}
+                    >
+                      {done ? "Seen" : "Open"}
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <Link
+                      href={route.href}
+                      className="inline-flex h-10 items-center justify-center rounded-full border border-white/12 bg-[rgba(8,12,20,0.46)] px-4 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--text)] transition hover:border-[rgba(62,166,255,0.32)] hover:bg-[rgba(20,24,36,0.78)]"
+                    >
+                      Open Route
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <div className="rounded-[1.5rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
