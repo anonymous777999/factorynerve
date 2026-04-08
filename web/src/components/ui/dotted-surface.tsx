@@ -23,7 +23,7 @@ function getGridConfig(width: number): GridConfig {
       amountX: 16,
       amountY: 24,
       separation: 92,
-      pointSize: 4.6,
+      pointSize: 5.2,
       amplitudeX: 15,
       amplitudeY: 22,
       speed: 0.019,
@@ -35,7 +35,7 @@ function getGridConfig(width: number): GridConfig {
       amountX: 22,
       amountY: 30,
       separation: 104,
-      pointSize: 5.2,
+      pointSize: 6,
       amplitudeX: 18,
       amplitudeY: 26,
       speed: 0.016,
@@ -46,7 +46,7 @@ function getGridConfig(width: number): GridConfig {
     amountX: 28,
     amountY: 40,
     separation: 112,
-    pointSize: 5.8,
+    pointSize: 6.8,
     amplitudeX: 20,
     amplitudeY: 30,
     speed: 0.014,
@@ -61,7 +61,7 @@ export function DottedSurface({ className, ...props }: DottedSurfaceProps) {
     if (!container) return;
 
     const scene = new THREE.Scene();
-    scene.fog = new THREE.FogExp2(new THREE.Color("#09131d"), 0.0004);
+    scene.fog = new THREE.FogExp2(new THREE.Color("#07111b"), 0.00022);
 
     const camera = new THREE.PerspectiveCamera(46, 1, 1, 4000);
     camera.position.set(0, 165, 860);
@@ -74,13 +74,14 @@ export function DottedSurface({ className, ...props }: DottedSurfaceProps) {
     });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
     renderer.setClearAlpha(0);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.domElement.setAttribute("aria-hidden", "true");
     renderer.domElement.className = "h-full w-full";
     container.appendChild(renderer.domElement);
 
     const prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const colorNear = new THREE.Color("#8ec5ff");
-    const colorFar = new THREE.Color("#4ecdc4");
+    const colorNear = new THREE.Color("#d7ebff");
+    const colorFar = new THREE.Color("#7be7dd");
 
     let animationFrame = 0;
     let points: THREE.Points<THREE.BufferGeometry, THREE.PointsMaterial> | null = null;
@@ -117,7 +118,7 @@ export function DottedSurface({ className, ...props }: DottedSurfaceProps) {
           const x = ix * config.separation - (config.amountX * config.separation) / 2;
           const z = iy * config.separation - (config.amountY * config.separation) / 2;
           const mix = config.amountY > 1 ? iy / (config.amountY - 1) : 0;
-          const brightness = 0.72 + (ix / Math.max(1, config.amountX - 1)) * 0.18;
+          const brightness = 0.9 + (ix / Math.max(1, config.amountX - 1)) * 0.22;
           const dotColor = colorNear.clone().lerp(colorFar, mix * 0.72).multiplyScalar(brightness);
 
           positions.push(x, 0, z);
@@ -133,7 +134,7 @@ export function DottedSurface({ className, ...props }: DottedSurfaceProps) {
         size: config.pointSize,
         vertexColors: true,
         transparent: true,
-        opacity: width < 640 ? 0.34 : 0.42,
+        opacity: width < 640 ? 0.52 : 0.62,
         sizeAttenuation: true,
         depthWrite: false,
         blending: THREE.AdditiveBlending,

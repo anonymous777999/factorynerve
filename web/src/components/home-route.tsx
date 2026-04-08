@@ -129,8 +129,8 @@ export default function HomeRoute() {
 
         <div className="relative mx-auto max-w-6xl space-y-6">
           <section className="surface-panel-strong relative isolate overflow-hidden rounded-[2rem] p-5 md:p-8">
-            <DottedSurface className="absolute inset-0 opacity-80" />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(77,163,255,0.18),transparent_28%),radial-gradient(circle_at_82%_18%,rgba(20,184,166,0.14),transparent_26%),linear-gradient(115deg,rgba(7,14,24,0.84)_4%,rgba(7,14,24,0.56)_48%,rgba(7,14,24,0.82)_100%)]" />
+            <DottedSurface className="absolute inset-0 opacity-95" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(77,163,255,0.26),transparent_30%),radial-gradient(circle_at_82%_18%,rgba(20,184,166,0.2),transparent_28%),linear-gradient(115deg,rgba(7,14,24,0.72)_4%,rgba(7,14,24,0.34)_48%,rgba(7,14,24,0.7)_100%)]" />
             <div className="relative z-10 grid gap-6 lg:grid-cols-[minmax(0,1.2fr)_minmax(18rem,0.8fr)] lg:items-end">
               <div className="space-y-5">
                 <div className="flex flex-wrap gap-2">
