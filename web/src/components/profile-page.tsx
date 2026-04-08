@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 
 import { PasswordField } from "@/components/password-field";
+import { PwaReadinessCard } from "@/components/pwa-readiness-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -1016,6 +1017,8 @@ export default function ProfilePage() {
                 </div>
               </CardContent>
             </Card>
+
+            <PwaReadinessCard userId={profile.id} canQueueEntries={canSubmit} />
 
             {showActivity ? (
               <Card className="rounded-[2rem] border-white/10 bg-[rgba(20,24,36,0.9)]">

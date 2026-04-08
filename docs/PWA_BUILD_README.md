@@ -55,6 +55,7 @@ Current strengths:
 - all priority routes have received a first mobile-hardening pass
 - reconnect sync feedback now exists in-app
 - weak-network state is now surfaced in the shared shell
+- in-app PWA readiness diagnostics now exist on the profile screen
 
 Current weaknesses:
 
@@ -301,6 +302,7 @@ Tasks:
 - test on Android Chrome in browser mode
 - test on Android installed home-screen mode
 - test on at least one smaller Android phone
+- use the in-app readiness card to confirm install mode, service worker control, pending sync state, and update readiness before route QA
 - test login, attendance, entry, OCR, approvals, and reports
 - test offline / reconnect behavior
 - test service worker update after a deploy
@@ -409,6 +411,7 @@ Use this section as the running status board. Update it as work ships.
 
 ### QA
 
+- [x] in-app PWA readiness diagnostics exist
 - [ ] Android Chrome browser QA
 - [ ] Android installed PWA QA
 - [ ] service worker update QA
@@ -425,6 +428,7 @@ Use this section as the running status board. Update it as work ships.
 ## Immediate Next Steps
 
 1. QA standalone auth on Android home-screen mode, including Google login, logout, and switch account.
-2. QA service worker update behavior after a fresh production deploy.
-3. Run slow-network and offline/reconnect checks on Android Chrome and installed PWA mode.
-4. Move the backend to an always-on hosting tier when possible.
+2. Use `Profile -> App readiness` to confirm install mode, update state, and queue state before each device QA pass.
+3. QA service worker update behavior after a fresh production deploy.
+4. Run slow-network and offline/reconnect checks on Android Chrome and installed PWA mode.
+5. Move the backend to an always-on hosting tier when possible.
