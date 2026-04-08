@@ -56,6 +56,7 @@ Current strengths:
 - reconnect sync feedback now exists in-app
 - weak-network state is now surfaced in the shared shell
 - in-app PWA readiness diagnostics now exist on the profile screen
+- in-app PWA QA checklist now exists on the profile screen
 
 Current weaknesses:
 
@@ -63,7 +64,7 @@ Current weaknesses:
 - login depends on a Render backend that can cold start
 - installed-mode QA still needs real device verification
 - service worker behavior still needs real deploy/update QA on devices
-- there is no dedicated PWA QA checklist tied to route-by-route acceptance
+- route acceptance still needs to be executed on real devices, not only checked in code
 
 ## PWA Scope
 
@@ -412,6 +413,7 @@ Use this section as the running status board. Update it as work ships.
 ### QA
 
 - [x] in-app PWA readiness diagnostics exist
+- [x] in-app PWA QA checklist exists
 - [ ] Android Chrome browser QA
 - [ ] Android installed PWA QA
 - [ ] service worker update QA
