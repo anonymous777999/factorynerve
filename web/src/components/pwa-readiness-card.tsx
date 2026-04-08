@@ -3,6 +3,13 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { API_BASE_URL } from "@/lib/api";
+import {
+  loadPwaAuthCheckState,
+  subscribeToPwaAuthCheckState,
+  writePwaAuthCheckState,
+  type PwaAuthCheckState,
+} from "@/lib/pwa-auth-check-state";
 import {
   listQueuedEntries,
   subscribeToQueueUpdates,
@@ -192,6 +199,20 @@ function formatVisitTime(value: string | null) {
   });
 }
 
+function formatLatency(value: number | null) {
+  if (value == null) return "Not measured";
+  return `${value} ms`;
+}
+
+function createTimeoutController(timeoutMs: number) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  return {
+    controller,
+    clear: () => window.clearTimeout(timeoutId),
+  };
+}
+
 function formatEntryShift(value: QueuedEntry["payload"]["shift"]) {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
@@ -242,6 +263,8 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
   const [installState, setInstallState] = useState<PwaInstallState>(() => loadPwaInstallState());
   const [syncState, setSyncState] = useState<PwaSyncState>(() => loadPwaSyncState());
   const [queuedEntries, setQueuedEntries] = useState<QueuedEntry[]>([]);
+  const [authCheckState, setAuthCheckState] = useState<PwaAuthCheckState>(() => loadPwaAuthCheckState());
+  const [authChecking, setAuthChecking] = useState(false);
 
   const readSnapshot = useCallback(async (options?: { announceUpdateCheck?: boolean }) => {
     const serviceWorkerSupported =
@@ -336,6 +359,17 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
 
     refresh();
     return subscribeToPwaSyncState(refresh);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const refresh = () => {
+      setAuthCheckState(loadPwaAuthCheckState());
+    };
+
+    refresh();
+    return subscribeToPwaAuthCheckState(refresh);
   }, []);
 
   useEffect(() => {
@@ -465,6 +499,26 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
         return "Waiting";
     }
   }, [syncState.syncStatus]);
+  const authStatusLabel = useMemo(() => {
+    switch (authCheckState.status) {
+      case "checking":
+        return "Checking";
+      case "healthy":
+        return "Healthy";
+      case "slow":
+        return "Slow wake";
+      case "error":
+        return "Blocked";
+      default:
+        return "Not run";
+    }
+  }, [authCheckState.status]);
+  const authStatusTone = useMemo(() => {
+    if (authCheckState.status === "healthy") return "good" as const;
+    if (authCheckState.status === "slow") return "warn" as const;
+    if (authCheckState.status === "error") return "danger" as const;
+    return "default" as const;
+  }, [authCheckState.status]);
   const completedChecklistCount = useMemo(
     () => QA_CHECKLIST.filter((item) => checklist[item.key]).length,
     [checklist],
@@ -503,6 +557,102 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
     registration.waiting.postMessage({ type: "SKIP_WAITING" });
   };
 
+  const handleRunAuthCheck = async () => {
+    if (typeof window === "undefined") return;
+    setAuthChecking(true);
+    writePwaAuthCheckState({
+      ...loadPwaAuthCheckState(),
+      status: "checking",
+      checkedAt: new Date().toISOString(),
+      summary: "Checking backend readiness and session reload from this device session.",
+      error: null,
+    });
+
+    try {
+      const readyTimer = createTimeoutController(20_000);
+      const readyStart = performance.now();
+      let readyOk = false;
+      try {
+        const readyResponse = await fetch(`${API_BASE_URL}/observability/ready`, {
+          method: "GET",
+          cache: "no-store",
+          credentials: "include",
+          signal: readyTimer.controller.signal,
+        });
+        readyOk = readyResponse.ok;
+      } finally {
+        readyTimer.clear();
+      }
+      const readyLatencyMs = Math.round(performance.now() - readyStart);
+
+      const sessionTimer = createTimeoutController(20_000);
+      const sessionStart = performance.now();
+      let sessionOk = false;
+      let sessionStatus = 0;
+      try {
+        const sessionResponse = await fetch(`${API_BASE_URL}/auth/me`, {
+          method: "GET",
+          cache: "no-store",
+          credentials: "include",
+          headers: {
+            "X-Response-Envelope": "v1",
+          },
+          signal: sessionTimer.controller.signal,
+        });
+        sessionOk = sessionResponse.ok;
+        sessionStatus = sessionResponse.status;
+      } finally {
+        sessionTimer.clear();
+      }
+      const sessionLatencyMs = Math.round(performance.now() - sessionStart);
+
+      const slow = readyLatencyMs > 4000 || sessionLatencyMs > 4000;
+      const nextStatus =
+        readyOk && sessionOk ? (slow ? "slow" : "healthy") : "error";
+      const summary = readyOk && sessionOk
+        ? slow
+          ? `Backend/session check passed but woke slowly (${readyLatencyMs} ms ready, ${sessionLatencyMs} ms session).`
+          : `Backend/session check passed quickly (${readyLatencyMs} ms ready, ${sessionLatencyMs} ms session).`
+        : `Backend/session check failed (${readyOk ? "ready ok" : "ready blocked"}, session status ${sessionStatus || "timeout"}).`;
+
+      writePwaAuthCheckState({
+        status: nextStatus,
+        readyOk,
+        readyLatencyMs,
+        sessionOk,
+        sessionLatencyMs,
+        checkedAt: new Date().toISOString(),
+        summary,
+        error: nextStatus === "error" ? "Standalone auth needs attention before launch readiness sign-off." : null,
+      });
+      pushAppToast({
+        title: nextStatus === "error" ? "Auth check found an issue" : "Auth check finished",
+        description: summary,
+        tone: nextStatus === "error" ? "error" : nextStatus === "slow" ? "info" : "success",
+        durationMs: 5200,
+      });
+    } catch {
+      writePwaAuthCheckState({
+        status: "error",
+        readyOk: null,
+        readyLatencyMs: null,
+        sessionOk: null,
+        sessionLatencyMs: null,
+        checkedAt: new Date().toISOString(),
+        summary: "Backend/session probe did not complete. Retry from the same device session.",
+        error: "The auth check timed out or the backend was unavailable.",
+      });
+      pushAppToast({
+        title: "Auth check failed",
+        description: "FactoryNerve could not complete the backend/session probe.",
+        tone: "error",
+        durationMs: 4800,
+      });
+    } finally {
+      setAuthChecking(false);
+    }
+  };
+
   const handleToggleChecklist = (key: ChecklistKey) => {
     setChecklist((current) => ({
       ...current,
@@ -533,6 +683,8 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
       }`,
       `Sync status: ${syncStatusLabel}`,
       `Last sync summary: ${syncState.lastSummary || "Not recorded yet"}`,
+      `Auth check: ${authStatusLabel}`,
+      `Auth summary: ${authCheckState.summary || "Not run yet"}`,
       "",
       "Priority route coverage:",
       ...PWA_PRIORITY_ROUTES.map((route) => {
@@ -602,11 +754,20 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
             >
               Check App Update
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-10 w-full"
+              onClick={() => void handleRunAuthCheck()}
+              disabled={authChecking}
+            >
+              {authChecking ? "Checking Auth..." : "Run Auth Check"}
+            </Button>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-5 pt-6">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
           <ReadinessPill
             label="App Mode"
             value={snapshot.standalone ? "Installed app" : "Browser tab"}
@@ -640,6 +801,7 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
             }
             tone={syncTone}
           />
+          <ReadinessPill label="Auth Check" value={authStatusLabel} tone={authStatusTone} />
         </div>
 
         <div className="rounded-[1.5rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
@@ -699,6 +861,39 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
               <div className="mt-2 text-slate-300">
                 Last checked at {formatCheckedAt(snapshot.checkedAt)}. Recheck after deploys, reconnects, and install steps.
               </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-[1.5rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
+          <div className="grid gap-3 text-sm text-slate-200 xl:grid-cols-2">
+            <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+              <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Backend and Auth Probe</div>
+              <div className="mt-2 font-semibold text-white">{authStatusLabel}</div>
+              <div className="mt-2 text-slate-300">
+                {authCheckState.summary || "Run this from browser mode and installed mode before signing off Android auth QA."}
+              </div>
+              <div className="mt-3 space-y-1 text-xs text-slate-400">
+                <div>Ready check: {authCheckState.readyOk == null ? "Not run" : authCheckState.readyOk ? "OK" : "Blocked"}</div>
+                <div>Ready latency: {formatLatency(authCheckState.readyLatencyMs)}</div>
+                <div>Session check: {authCheckState.sessionOk == null ? "Not run" : authCheckState.sessionOk ? "OK" : "Blocked"}</div>
+                <div>Session latency: {formatLatency(authCheckState.sessionLatencyMs)}</div>
+                <div>Checked: {formatCheckedAt(authCheckState.checkedAt)}</div>
+              </div>
+            </div>
+            <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+              <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Auth QA Guidance</div>
+              <div className="mt-2 font-semibold text-white">
+                {snapshot.standalone ? "Run this after app relaunch, login, and Google sign-in." : "Install the app, then compare browser and installed auth checks."}
+              </div>
+              <div className="mt-2 text-slate-300">
+                Slow checks usually indicate backend wake-up pain. A blocked session check means standalone auth is not ready for sign-off.
+              </div>
+              {authCheckState.error ? (
+                <div className="mt-3 rounded-[1rem] border border-red-400/25 bg-red-400/10 px-3 py-2 text-xs text-red-100">
+                  {authCheckState.error}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>

@@ -63,6 +63,7 @@ Current strengths:
 - in-app route coverage now tracks which priority routes were opened and in which mode
 - in-app readiness now exposes current installability state for the active device session
 - in-app readiness now exposes persistent queue and sync diagnostics for installed-mode QA
+- in-app readiness now includes an explicit backend/session auth probe for Android QA
 - installed launches now target `/dashboard` instead of dropping back on the marketing page
 
 Current weaknesses:
@@ -402,6 +403,7 @@ Use this section as the running status board. Update it as work ships.
 - [x] Google sign-in pre-warm exists
 - [x] Session and workspace wake retry exists
 - [x] Logout / switch-account wake retry exists
+- [x] In-app backend/session auth diagnostics exist
 - [ ] Backend moved off Render free hibernation
 - [ ] Standalone auth fully QA-tested
 
