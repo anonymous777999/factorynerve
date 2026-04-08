@@ -3,12 +3,21 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { countQueuedEntries, subscribeToQueueUpdates } from "@/lib/offline-entries";
+import {
+  listQueuedEntries,
+  subscribeToQueueUpdates,
+  type QueuedEntry,
+} from "@/lib/offline-entries";
 import {
   loadPwaInstallState,
   subscribeToPwaInstallState,
   type PwaInstallState,
 } from "@/lib/pwa-install-state";
+import {
+  loadPwaSyncState,
+  subscribeToPwaSyncState,
+  type PwaSyncState,
+} from "@/lib/pwa-sync-state";
 import {
   clearPwaRouteCoverage,
   loadPwaRouteCoverage,
@@ -183,6 +192,10 @@ function formatVisitTime(value: string | null) {
   });
 }
 
+function formatEntryShift(value: QueuedEntry["payload"]["shift"]) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
 function ReadinessPill({
   label,
   value,
@@ -227,6 +240,8 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
   const [checklist, setChecklist] = useState<Record<ChecklistKey, boolean>>(() => emptyChecklistState());
   const [routeCoverage, setRouteCoverage] = useState<Record<string, PwaRouteVisit>>({});
   const [installState, setInstallState] = useState<PwaInstallState>(() => loadPwaInstallState());
+  const [syncState, setSyncState] = useState<PwaSyncState>(() => loadPwaSyncState());
+  const [queuedEntries, setQueuedEntries] = useState<QueuedEntry[]>([]);
 
   const readSnapshot = useCallback(async (options?: { announceUpdateCheck?: boolean }) => {
     const serviceWorkerSupported =
@@ -234,8 +249,9 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
     const registration = serviceWorkerSupported
       ? await navigator.serviceWorker.getRegistration().catch(() => null)
       : null;
-    const pendingSync =
-      canQueueEntries && userId != null ? await countQueuedEntries(userId).catch(() => 0) : 0;
+    const queueItems =
+      canQueueEntries && userId != null ? await listQueuedEntries(userId).catch(() => []) : [];
+    const pendingSync = queueItems.length;
     const [activeCacheVersion, waitingCacheVersion] = await Promise.all([
       readWorkerVersion(registration?.active || navigator.serviceWorker?.controller || null),
       readWorkerVersion(registration?.waiting || null),
@@ -270,6 +286,7 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
       pendingSync,
       checkedAt: new Date().toISOString(),
     });
+    setQueuedEntries(queueItems.slice().reverse().slice(0, 3));
     setLoading(false);
   }, [canQueueEntries, userId]);
 
@@ -308,6 +325,17 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
 
     refresh();
     return subscribeToPwaInstallState(refresh);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const refresh = () => {
+      setSyncState(loadPwaSyncState());
+    };
+
+    refresh();
+    return subscribeToPwaSyncState(refresh);
   }, []);
 
   useEffect(() => {
@@ -419,6 +447,24 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
   const serviceWorkerTone = snapshot.serviceWorkerRegistered ? "good" : "warn";
   const syncTone =
     !canQueueEntries || snapshot.pendingSync === 0 ? "good" : online ? "warn" : "danger";
+  const syncStatusLabel = useMemo(() => {
+    switch (syncState.syncStatus) {
+      case "checking":
+        return "Checking queue";
+      case "empty":
+        return "Queue clear";
+      case "success":
+        return "Sync complete";
+      case "partial":
+        return "Sync partial";
+      case "error":
+        return "Sync blocked";
+      case "offline":
+        return "Offline hold";
+      default:
+        return "Waiting";
+    }
+  }, [syncState.syncStatus]);
   const completedChecklistCount = useMemo(
     () => QA_CHECKLIST.filter((item) => checklist[item.key]).length,
     [checklist],
@@ -485,6 +531,8 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
       `Pending sync: ${
         canQueueEntries ? snapshot.pendingSync : "Not used on this account"
       }`,
+      `Sync status: ${syncStatusLabel}`,
+      `Last sync summary: ${syncState.lastSummary || "Not recorded yet"}`,
       "",
       "Priority route coverage:",
       ...PWA_PRIORITY_ROUTES.map((route) => {
@@ -595,7 +643,7 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
         </div>
 
         <div className="rounded-[1.5rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-          <div className="grid gap-3 text-sm text-slate-200 xl:grid-cols-3">
+          <div className="grid gap-3 text-sm text-slate-200 xl:grid-cols-2">
             <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] px-4 py-3">
               <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Update State</div>
               <div className="mt-2 font-semibold text-white">
@@ -621,6 +669,26 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
                 <div>Viewport: {installState.mobileViewport ? "Phone/tablet" : "Desktop/laptop"}</div>
               </div>
             </div>
+            {canQueueEntries ? (
+              <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] px-4 py-3">
+                <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Queue and Sync</div>
+                <div className="mt-2 font-semibold text-white">{syncStatusLabel}</div>
+                <div className="mt-2 text-slate-300">
+                  {syncState.lastSummary || "FactoryNerve will record queue sync activity here during mobile QA."}
+                </div>
+                <div className="mt-3 space-y-1 text-xs text-slate-400">
+                  <div>Queued now: {snapshot.pendingSync}</div>
+                  <div>Last sync: {formatCheckedAt(syncState.lastSyncAt)}</div>
+                  <div>Last offline: {formatCheckedAt(syncState.lastOfflineAt)}</div>
+                  <div>Last online: {formatCheckedAt(syncState.lastOnlineAt)}</div>
+                </div>
+                {syncState.lastError ? (
+                  <div className="mt-3 rounded-[1rem] border border-red-400/25 bg-red-400/10 px-3 py-2 text-xs text-red-100">
+                    {syncState.lastError}
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
             <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.04] px-4 py-3">
               <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">QA Hint</div>
               <div className="mt-2 font-semibold text-white">
@@ -634,6 +702,60 @@ export function PwaReadinessCard({ userId, canQueueEntries }: PwaReadinessCardPr
             </div>
           </div>
         </div>
+
+        {canQueueEntries ? (
+          <div className="rounded-[1.5rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">Queued Entry Detail</div>
+                <div className="mt-2 text-lg font-semibold text-white">
+                  {snapshot.pendingSync ? `${snapshot.pendingSync} entries waiting locally` : "Queue clear"}
+                </div>
+                <div className="mt-2 text-sm text-slate-300">
+                  Use this during installed-mode QA to confirm which local entries are still waiting to sync.
+                </div>
+              </div>
+            </div>
+            <div className="mt-4 grid gap-3 lg:grid-cols-3">
+              {queuedEntries.length ? (
+                queuedEntries.map((entry) => (
+                  <div
+                    key={entry.id ?? `${entry.payload.date}-${entry.payload.shift}-${entry.createdAt}`}
+                    className="rounded-[1.25rem] border border-white/10 bg-white/[0.04] px-4 py-4"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="text-sm font-semibold text-white">
+                          {entry.payload.date} · {formatEntryShift(entry.payload.shift)}
+                        </div>
+                        <div className="mt-2 text-sm text-slate-300">
+                          Produced {entry.payload.units_produced} / {entry.payload.units_target} units
+                        </div>
+                      </div>
+                      <div className="rounded-full border border-white/10 bg-[rgba(8,12,20,0.5)] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-slate-300">
+                        {entry.status}
+                      </div>
+                    </div>
+                    <div className="mt-3 space-y-1 text-xs text-slate-400">
+                      <div>Queued: {formatVisitTime(entry.createdAt)}</div>
+                      <div>Retries: {entry.retries}</div>
+                      <div>Last attempt: {formatCheckedAt(entry.lastAttemptAt || "")}</div>
+                    </div>
+                    {entry.lastError ? (
+                      <div className="mt-3 rounded-[1rem] border border-red-400/25 bg-red-400/10 px-3 py-2 text-xs text-red-100">
+                        {entry.lastError}
+                      </div>
+                    ) : null}
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.04] px-4 py-4 text-sm text-slate-300 lg:col-span-3">
+                  No queued entries are currently waiting on this device.
+                </div>
+              )}
+            </div>
+          </div>
+        ) : null}
 
         <div className="grid gap-3 sm:flex sm:flex-wrap">
           {snapshot.updateReady ? (

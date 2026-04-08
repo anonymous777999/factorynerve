@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 import { getMe } from "@/lib/auth";
 import { createEntry, getEntryConflict } from "@/lib/entries";
 import { countQueuedEntries, flushQueue } from "@/lib/offline-entries";
+import { patchPwaSyncState } from "@/lib/pwa-sync-state";
 import { pushAppToast } from "@/lib/toast";
 
 export function OfflineSyncAgent() {
@@ -28,10 +29,28 @@ export function OfflineSyncAgent() {
     const syncQueuedEntries = async (options?: { announceReconnect?: boolean }) => {
       if (cancelled || syncingRef.current || !navigator.onLine) return;
       syncingRef.current = true;
+      patchPwaSyncState({
+        syncStatus: "checking",
+        lastCheckedAt: new Date().toISOString(),
+        lastOnlineAt: new Date().toISOString(),
+        lastError: null,
+      });
       try {
         const user = await getMe({ timeoutMs: 4000 });
         const queueCount = await countQueuedEntries(user.id);
         if (!queueCount) {
+          const checkedAt = new Date().toISOString();
+          patchPwaSyncState({
+            queueCount: 0,
+            syncStatus: "empty",
+            lastCheckedAt: checkedAt,
+            lastSyncAt: checkedAt,
+            lastSummary: options?.announceReconnect
+              ? "Back online. No queued entries are waiting."
+              : "Queue clear. No offline entry sync needed.",
+            lastError: null,
+            lastOnlineAt: checkedAt,
+          });
           if (options?.announceReconnect) {
             pushAppToast({
               title: "Back online",
@@ -73,7 +92,26 @@ export function OfflineSyncAgent() {
             durationMs: 5200,
           });
         }
+
+        patchPwaSyncState({
+          queueCount: result.remaining,
+          syncStatus: result.failed ? "partial" : "success",
+          lastCheckedAt: new Date().toISOString(),
+          lastSyncAt: new Date().toISOString(),
+          lastSummary:
+            parts.join(", ") ||
+            (result.remaining ? `${result.remaining} queued entries still waiting.` : "Queue clear after sync."),
+          lastError: result.failed ? `${result.failed} queued entr${result.failed === 1 ? "y is" : "ies are"} still waiting.` : null,
+          lastOnlineAt: new Date().toISOString(),
+        });
       } catch {
+        patchPwaSyncState({
+          syncStatus: "error",
+          lastCheckedAt: new Date().toISOString(),
+          lastSummary: "Sync attempt did not complete. The app will retry when the session is visible again.",
+          lastError: "FactoryNerve could not finish the queued-entry sync attempt.",
+          lastOnlineAt: new Date().toISOString(),
+        });
         // Silent by design: page-level UI can surface explicit sync failures.
       } finally {
         syncingRef.current = false;
@@ -89,6 +127,12 @@ export function OfflineSyncAgent() {
     const onOffline = () => {
       if (wasOfflineRef.current) return;
       wasOfflineRef.current = true;
+      patchPwaSyncState({
+        syncStatus: "offline",
+        lastCheckedAt: new Date().toISOString(),
+        lastOfflineAt: new Date().toISOString(),
+        lastSummary: "Device is offline. Saved drafts and queued entries will wait on this device.",
+      });
       pushAppToast({
         title: "You are offline",
         description: "Saved drafts and queued entries stay on this device until the connection returns.",
@@ -104,6 +148,15 @@ export function OfflineSyncAgent() {
     };
 
     wasOfflineRef.current = !navigator.onLine;
+    patchPwaSyncState({
+      syncStatus: navigator.onLine ? "idle" : "offline",
+      lastCheckedAt: new Date().toISOString(),
+      lastOnlineAt: navigator.onLine ? new Date().toISOString() : "",
+      lastOfflineAt: navigator.onLine ? "" : new Date().toISOString(),
+      lastSummary: navigator.onLine
+        ? "Online. FactoryNerve can check queued entry sync."
+        : "Offline. Queued entries stay on this device until the connection returns.",
+    });
 
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
