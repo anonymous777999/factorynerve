@@ -167,10 +167,10 @@ export default function HomeRoute() {
             </div>
           </header>
 
-          <section className="relative isolate overflow-hidden rounded-[2.2rem] border border-[rgba(214,228,255,0.14)] bg-[linear-gradient(140deg,rgba(8,16,28,0.92),rgba(11,22,38,0.76)_52%,rgba(6,16,28,0.94))] px-5 py-6 shadow-[0_34px_90px_rgba(2,8,18,0.42)] md:px-7 md:py-7 xl:px-9 xl:py-9 2xl:px-10">
+          <section className="relative isolate overflow-hidden rounded-[2.2rem] border border-[rgba(214,228,255,0.14)] bg-[linear-gradient(140deg,rgba(8,16,28,0.92),rgba(11,22,38,0.76)_52%,rgba(6,16,28,0.94))] px-5 py-5 shadow-[0_34px_90px_rgba(2,8,18,0.42)] md:px-7 md:py-6 xl:px-8 xl:py-7 2xl:px-9">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(77,163,255,0.2),transparent_26%),radial-gradient(circle_at_86%_12%,rgba(20,184,166,0.16),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_28%)]" />
-            <div className="relative z-10 grid gap-10 xl:grid-cols-[minmax(0,0.86fr)_minmax(0,1.14fr)] xl:items-center 2xl:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
-              <div className="space-y-6">
+            <div className="relative z-10 grid gap-8 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] xl:items-center">
+              <div className="space-y-5">
                 <div className="flex flex-wrap gap-2">
                   <span className="rounded-full border border-[rgba(77,163,255,0.26)] bg-[rgba(77,163,255,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(166,211,255,0.96)]">
                     FactoryNerve
@@ -181,10 +181,10 @@ export default function HomeRoute() {
                 </div>
 
                 <div className="space-y-4">
-                  <h1 className="max-w-[40rem] text-4xl font-semibold leading-[0.98] tracking-[-0.05em] text-white md:text-5xl xl:text-[4.8rem] 2xl:text-[5.35rem]">
+                  <h1 className="max-w-[34rem] text-[clamp(3rem,5vw,4.8rem)] font-semibold leading-[0.96] tracking-[-0.05em] text-white">
                     Run the factory from one mobile-ready system.
                   </h1>
-                  <p className="max-w-[36rem] text-base leading-7 text-[rgba(224,231,255,0.78)] md:text-lg xl:text-[1.08rem]">
+                  <p className="max-w-[34rem] text-base leading-7 text-[rgba(224,231,255,0.78)] md:text-lg">
                     Replace paper registers, WhatsApp follow-up, and scattered Excel sheets with one connected workflow for attendance, shift entry, OCR, approvals, and reports.
                   </p>
                 </div>
@@ -220,141 +220,158 @@ export default function HomeRoute() {
                 </div>
               </div>
 
-              <div className="relative mx-auto min-h-[32rem] w-full max-w-[52rem] xl:min-h-[35rem] 2xl:max-w-[58rem] 2xl:min-h-[37rem]">
-                <div className="absolute inset-x-4 top-8 rounded-[2rem] border border-[rgba(215,231,255,0.14)] bg-[linear-gradient(180deg,rgba(20,30,46,0.92),rgba(10,18,29,0.96))] p-4 shadow-[0_28px_70px_rgba(3,8,18,0.45)] md:inset-x-6 md:p-5 2xl:top-10">
-                  <div className="flex items-center justify-between gap-3 border-b border-[rgba(255,255,255,0.08)] pb-3">
-                    <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(112,184,255,0.96)]">
-                        Today Board
+              <div className="mx-auto w-full max-w-[54rem] xl:max-w-[58rem]">
+                <div className="grid gap-4">
+                  <div className="rounded-[2rem] border border-[rgba(215,231,255,0.14)] bg-[linear-gradient(180deg,rgba(20,30,46,0.92),rgba(10,18,29,0.96))] p-4 shadow-[0_28px_70px_rgba(3,8,18,0.45)] md:p-5">
+                    <div className="flex items-center justify-between gap-3 border-b border-[rgba(255,255,255,0.08)] pb-3">
+                      <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(112,184,255,0.96)]">
+                          Today Board
+                        </div>
+                        <div className="mt-1 text-lg font-semibold text-white">One board for the full day</div>
                       </div>
-                      <div className="mt-1 text-lg font-semibold text-white">One board for the full day</div>
-                    </div>
-                    <div className="rounded-full border border-[rgba(77,163,255,0.24)] bg-[rgba(77,163,255,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[rgba(191,225,255,0.96)]">
-                      Network live
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.18fr)_minmax(17rem,0.82fr)] 2xl:grid-cols-[minmax(0,1.16fr)_minmax(18rem,0.84fr)]">
-                    <div className="space-y-4">
-                      <div className="grid gap-3 sm:grid-cols-3">
-                        <div className="rounded-[1.25rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">Attendance</div>
-                          <div className="mt-2 text-2xl font-semibold text-white">Live</div>
-                          <div className="mt-2 text-xs leading-5 text-text-secondary">Punch and shift status stay visible.</div>
-                        </div>
-                        <div className="rounded-[1.25rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">OCR</div>
-                          <div className="mt-2 text-2xl font-semibold text-white">Review</div>
-                          <div className="mt-2 text-xs leading-5 text-text-secondary">Registers move into one approval lane.</div>
-                        </div>
-                        <div className="rounded-[1.25rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">Reports</div>
-                          <div className="mt-2 text-2xl font-semibold text-white">Trusted</div>
-                          <div className="mt-2 text-xs leading-5 text-text-secondary">Exports follow reviewed data.</div>
-                        </div>
+                      <div className="rounded-full border border-[rgba(77,163,255,0.24)] bg-[rgba(77,163,255,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[rgba(191,225,255,0.96)]">
+                        Network live
                       </div>
+                    </div>
 
-                      <div className="rounded-[1.5rem] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(112,184,255,0.96)]">
-                            Attention now
+                    <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.12fr)_minmax(16rem,0.88fr)]">
+                      <div className="space-y-4">
+                        <div className="grid gap-3 sm:grid-cols-3">
+                          <div className="rounded-[1.25rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">Attendance</div>
+                            <div className="mt-2 text-2xl font-semibold text-white">Live</div>
+                            <div className="mt-2 text-xs leading-5 text-text-secondary">Punch and shift status stay visible.</div>
                           </div>
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
-                            Review queue connected
+                          <div className="rounded-[1.25rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">OCR</div>
+                            <div className="mt-2 text-2xl font-semibold text-white">Review</div>
+                            <div className="mt-2 text-xs leading-5 text-text-secondary">Registers move into one approval lane.</div>
+                          </div>
+                          <div className="rounded-[1.25rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">Reports</div>
+                            <div className="mt-2 text-2xl font-semibold text-white">Trusted</div>
+                            <div className="mt-2 text-xs leading-5 text-text-secondary">Exports follow reviewed data.</div>
                           </div>
                         </div>
-                        <div className="mt-4 space-y-3">
-                          {[
-                            ["Missed punches", "Visible to supervisors"],
-                            ["OCR exceptions", "Approved before reports"],
-                            ["Exports", "Pulled from trusted rows"],
-                          ].map(([label, value]) => (
-                            <div
-                              key={label}
-                              className="flex items-center justify-between gap-4 rounded-[1rem] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.025)] px-3 py-3"
-                            >
-                              <div className="text-sm font-medium text-white">{label}</div>
-                              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary">{value}</div>
+
+                        <div className="rounded-[1.5rem] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(112,184,255,0.96)]">
+                              Attention now
                             </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4">
-                      <div className="rounded-[1.5rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(112,184,255,0.96)]">
-                          Supervisor lane
-                        </div>
-                        <div className="mt-3 text-lg font-semibold text-white">Clear the right blockers fast</div>
-                        <div className="mt-3 space-y-2 text-sm leading-6 text-text-secondary">
-                          <div className="flex items-center justify-between gap-3">
-                            <span>Attendance review</span>
-                            <span className="rounded-full border border-[rgba(255,255,255,0.08)] px-2 py-1 text-[11px] uppercase tracking-[0.16em]">Ready</span>
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                              Review queue connected
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between gap-3">
-                            <span>OCR verify</span>
-                            <span className="rounded-full border border-[rgba(255,255,255,0.08)] px-2 py-1 text-[11px] uppercase tracking-[0.16em]">Linked</span>
-                          </div>
-                          <div className="flex items-center justify-between gap-3">
-                            <span>Approvals queue</span>
-                            <span className="rounded-full border border-[rgba(255,255,255,0.08)] px-2 py-1 text-[11px] uppercase tracking-[0.16em]">Live</span>
+                          <div className="mt-4 space-y-3">
+                            {[
+                              ["Missed punches", "Visible to supervisors"],
+                              ["OCR exceptions", "Approved before reports"],
+                              ["Exports", "Pulled from trusted rows"],
+                            ].map(([label, value]) => (
+                              <div
+                                key={label}
+                                className="flex items-center justify-between gap-4 rounded-[1rem] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.025)] px-3 py-3"
+                              >
+                                <div className="text-sm font-medium text-white">{label}</div>
+                                <div className="text-xs font-semibold uppercase tracking-[0.16em] text-text-secondary">{value}</div>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       </div>
 
-                      <div className="rounded-[1.5rem] border border-[rgba(77,163,255,0.16)] bg-[linear-gradient(180deg,rgba(77,163,255,0.1),rgba(77,163,255,0.03))] p-4">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(166,211,255,0.96)]">
-                          Owner context
+                      <div className="space-y-4">
+                        <div className="rounded-[1.5rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(112,184,255,0.96)]">
+                            Supervisor lane
+                          </div>
+                          <div className="mt-3 text-lg font-semibold text-white">Clear the right blockers fast</div>
+                          <div className="mt-3 space-y-2 text-sm leading-6 text-text-secondary">
+                            <div className="flex items-center justify-between gap-3">
+                              <span>Attendance review</span>
+                              <span className="rounded-full border border-[rgba(255,255,255,0.08)] px-2 py-1 text-[11px] uppercase tracking-[0.16em]">Ready</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <span>OCR verify</span>
+                              <span className="rounded-full border border-[rgba(255,255,255,0.08)] px-2 py-1 text-[11px] uppercase tracking-[0.16em]">Linked</span>
+                            </div>
+                            <div className="flex items-center justify-between gap-3">
+                              <span>Approvals queue</span>
+                              <span className="rounded-full border border-[rgba(255,255,255,0.08)] px-2 py-1 text-[11px] uppercase tracking-[0.16em]">Live</span>
+                            </div>
+                          </div>
                         </div>
-                        <div className="mt-3 text-lg font-semibold text-white">Leadership sees the trusted picture</div>
-                        <div className="mt-2 text-sm leading-6 text-[rgba(224,231,255,0.74)]">
-                          Reports, exports, and factory risk become easier to read once capture and review stay connected.
+
+                        <div className="rounded-[1.5rem] border border-[rgba(77,163,255,0.16)] bg-[linear-gradient(180deg,rgba(77,163,255,0.1),rgba(77,163,255,0.03))] p-4">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(166,211,255,0.96)]">
+                            Owner context
+                          </div>
+                          <div className="mt-3 text-lg font-semibold text-white">Leadership sees the trusted picture</div>
+                          <div className="mt-2 text-sm leading-6 text-[rgba(224,231,255,0.74)]">
+                            Reports, exports, and factory risk become easier to read once capture and review stay connected.
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="absolute bottom-0 left-0 w-[15.5rem] rounded-[2rem] border border-[rgba(226,237,255,0.18)] bg-[linear-gradient(180deg,rgba(12,23,36,0.95),rgba(7,13,22,0.98))] p-4 shadow-[0_24px_58px_rgba(2,8,18,0.5)] md:w-[17rem] 2xl:w-[18rem]">
-                  <div className="mx-auto mb-3 h-1.5 w-14 rounded-full bg-[rgba(255,255,255,0.14)]" />
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(112,184,255,0.96)]">
-                    Worker view
-                  </div>
-                  <div className="mt-2 text-lg font-semibold text-white">Attendance desk</div>
-                  <div className="mt-4 rounded-[1.35rem] border border-[rgba(77,163,255,0.18)] bg-[rgba(77,163,255,0.1)] p-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[rgba(166,211,255,0.96)]">
-                      Next action
+                  <div className="grid gap-4 md:grid-cols-[minmax(15rem,0.78fr)_minmax(0,1fr)]">
+                    <div className="rounded-[2rem] border border-[rgba(226,237,255,0.18)] bg-[linear-gradient(180deg,rgba(12,23,36,0.95),rgba(7,13,22,0.98))] p-4 shadow-[0_24px_58px_rgba(2,8,18,0.5)]">
+                      <div className="mx-auto mb-3 h-1.5 w-14 rounded-full bg-[rgba(255,255,255,0.14)]" />
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(112,184,255,0.96)]">
+                        Worker view
+                      </div>
+                      <div className="mt-2 text-lg font-semibold text-white">Attendance desk</div>
+                      <div className="mt-4 rounded-[1.35rem] border border-[rgba(77,163,255,0.18)] bg-[rgba(77,163,255,0.1)] p-4">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[rgba(166,211,255,0.96)]">
+                          Next action
+                        </div>
+                        <div className="mt-3 text-2xl font-semibold text-white">Punch in</div>
+                        <div className="mt-2 text-sm leading-6 text-[rgba(224,231,255,0.76)]">
+                          Shift status, timing, and history stay in one screen.
+                        </div>
+                      </div>
+                      <div className="mt-4 flex items-center justify-between rounded-[1rem] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] px-3 py-3 text-xs text-text-secondary">
+                        <span>Review updates</span>
+                        <span className="font-semibold uppercase tracking-[0.16em] text-white">Synced</span>
+                      </div>
                     </div>
-                    <div className="mt-3 text-2xl font-semibold text-white">Punch in</div>
-                    <div className="mt-2 text-sm leading-6 text-[rgba(224,231,255,0.76)]">
-                      Shift status, timing, and history stay in one screen.
-                    </div>
-                  </div>
-                  <div className="mt-4 flex items-center justify-between rounded-[1rem] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] px-3 py-3 text-xs text-text-secondary">
-                    <span>Review updates</span>
-                    <span className="font-semibold uppercase tracking-[0.16em] text-white">Synced</span>
-                  </div>
-                </div>
 
-                <div className="absolute right-0 top-0 w-[14rem] rounded-[1.6rem] border border-[rgba(255,255,255,0.14)] bg-[linear-gradient(180deg,rgba(17,31,49,0.94),rgba(9,18,29,0.96))] p-4 shadow-[0_18px_44px_rgba(3,8,18,0.42)] md:w-[15.5rem] 2xl:w-[16.5rem]">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(112,184,255,0.96)]">
-                    OCR lane
-                  </div>
-                  <div className="mt-2 text-lg font-semibold text-white">Paper register to verified row</div>
-                  <div className="mt-3 space-y-2 text-sm leading-6 text-text-secondary">
-                    <div className="rounded-[1rem] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] px-3 py-2.5">Capture the image</div>
-                    <div className="rounded-[1rem] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] px-3 py-2.5">Verify the extracted rows</div>
-                    <div className="rounded-[1rem] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] px-3 py-2.5">Push trusted data into reports</div>
+                    <div className="rounded-[1.6rem] border border-[rgba(255,255,255,0.14)] bg-[linear-gradient(180deg,rgba(17,31,49,0.94),rgba(9,18,29,0.96))] p-4 shadow-[0_18px_44px_rgba(3,8,18,0.42)]">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(112,184,255,0.96)]">
+                            OCR lane
+                          </div>
+                          <div className="mt-2 text-lg font-semibold text-white">Paper register to verified row</div>
+                        </div>
+                        <div className="rounded-full border border-[rgba(255,255,255,0.08)] px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-secondary">
+                          Live
+                        </div>
+                      </div>
+                      <div className="mt-4 grid gap-2 sm:grid-cols-3 md:grid-cols-1 xl:grid-cols-3">
+                        <div className="rounded-[1rem] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] px-3 py-3 text-sm leading-6 text-text-secondary">
+                          Capture the image
+                        </div>
+                        <div className="rounded-[1rem] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] px-3 py-3 text-sm leading-6 text-text-secondary">
+                          Verify the extracted rows
+                        </div>
+                        <div className="rounded-[1rem] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] px-3 py-3 text-sm leading-6 text-text-secondary">
+                          Push trusted data into reports
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           </section>
 
-          <section className="grid gap-3 rounded-[1.85rem] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.035)] p-4 md:grid-cols-2 xl:grid-cols-4">
+          <section className="grid gap-3 rounded-[1.5rem] border border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.03)] p-3 md:grid-cols-2 xl:grid-cols-4">
             {trustSignals.map((item) => (
-              <div key={item.label} className="rounded-[1.25rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-4 py-4">
+              <div key={item.label} className="rounded-[1rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.02)] px-4 py-3">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(112,184,255,0.96)]">
                   {item.label}
                 </div>
