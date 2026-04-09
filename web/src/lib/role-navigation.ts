@@ -36,7 +36,7 @@ export function getHomeDestination(role?: string | null, accessibleFactories = 0
     case "manager":
       return "/dashboard";
     case "admin":
-      return "/settings";
+      return "/dashboard";
     case "owner":
       return accessibleFactories > 1 ? "/control-tower" : "/premium/dashboard";
     default:
