@@ -154,6 +154,31 @@ html[data-display-mode="standalone"] body {
   min-height: 100dvh;
 }
 
+html[data-runtime-tier="safe"] .surface-panel,
+html[data-runtime-tier="safe"] .surface-panel-strong,
+html[data-runtime-tier="safe"] .surface-panel-soft,
+html[data-runtime-tier="safe"] .surface-pill,
+html[data-runtime-tier="safe"] .backdrop-blur,
+html[data-runtime-tier="safe"] .backdrop-blur-sm,
+html[data-runtime-tier="safe"] .backdrop-blur-xl,
+html[data-runtime-tier="safe"] .backdrop-blur-2xl {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-runtime-tier="safe"] .surface-panel,
+html[data-runtime-tier="safe"] .surface-panel-strong,
+html[data-runtime-tier="safe"] .surface-panel-soft,
+html[data-runtime-tier="safe"] .surface-pill {
+  box-shadow: 0 10px 28px rgba(3, 8, 18, 0.2) !important;
+}
+
+html[data-runtime-tier="safe"] .blur-3xl,
+html[data-runtime-tier="safe"] .blur-\[30px\] {
+  filter: blur(10px) !important;
+  opacity: 0.45 !important;
+}
+
 * {
   scrollbar-width: thin;
   scrollbar-color: rgba(151, 164, 183, 0.34) transparent;

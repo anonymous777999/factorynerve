@@ -9,6 +9,7 @@ import { FrontendErrorMonitor } from "@/components/frontend-error-monitor";
 import { OfflineSyncAgent } from "@/components/offline-sync-agent";
 import { PwaInstallPrompt } from "@/components/pwa-install-prompt";
 import { PwaRouteCoverageAgent } from "@/components/pwa-route-coverage-agent";
+import { RuntimeCapabilityAgent } from "@/components/runtime-capability-agent";
 import { ServiceWorker } from "@/components/service-worker";
 import { ToastCenter } from "@/components/toast-center";
 import { DottedSurface } from "@/components/ui/dotted-surface";
@@ -69,6 +70,7 @@ export default function RootLayout({
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_14%,rgba(77,163,255,0.16),transparent_24%),radial-gradient(circle_at_84%_18%,rgba(20,184,166,0.12),transparent_24%),linear-gradient(180deg,rgba(9,19,29,0.24),rgba(9,19,29,0.12)_38%,rgba(9,19,29,0.28))]" />
         </div>
         <AppProviders>
+          <RuntimeCapabilityAgent />
           <DisplayModeAgent />
           <PwaRouteCoverageAgent />
           <BetaRolloutBanner />
