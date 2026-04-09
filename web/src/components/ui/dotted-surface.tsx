@@ -379,7 +379,12 @@ export function DottedSurface({ className, ...props }: DottedSurfaceProps) {
   return (
     <div
       ref={containerRef}
-      className={cn("pointer-events-none overflow-hidden", className)}
+      className={cn(
+        "pointer-events-none overflow-hidden",
+        "bg-[radial-gradient(circle_at_14%_16%,rgba(77,163,255,0.12),transparent_24%),radial-gradient(circle_at_84%_18%,rgba(20,184,166,0.08),transparent_22%),radial-gradient(rgba(215,235,255,0.10)_1px,transparent_1px)]",
+        "[background-position:center,center,center] [background-size:auto,auto,24px_24px]",
+        className,
+      )}
       {...props}
     />
   );

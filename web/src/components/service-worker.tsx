@@ -12,8 +12,80 @@ const UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000;
 const BANNER_HIDDEN_ROUTES = ["/ocr/scan", "/offline"];
 const SHELL_HIDDEN_ROUTES = new Set(["/", "/login", "/register", "/forgot-password", "/reset-password"]);
 
+type RuntimeNavigator = Navigator & {
+  deviceMemory?: number;
+  hardwareConcurrency?: number;
+};
+
 function routeMatches(pathname: string, route: string) {
   return pathname === route || pathname.startsWith(`${route}/`);
+}
+
+function isLowCapabilityRuntime() {
+  if (typeof window === "undefined") return false;
+
+  const nav = navigator as RuntimeNavigator;
+  const deviceMemory = nav.deviceMemory ?? 8;
+  const hardwareConcurrency = nav.hardwareConcurrency ?? 8;
+  const coarsePointer =
+    window.matchMedia("(pointer: coarse)").matches || (nav.maxTouchPoints ?? 0) > 0;
+  const compactViewport = window.innerWidth < 768;
+  const isAndroid = /android/i.test(nav.userAgent);
+
+  return (
+    deviceMemory <= 4 ||
+    hardwareConcurrency <= 4 ||
+    (isAndroid && coarsePointer && compactViewport && (deviceMemory <= 6 || hardwareConcurrency <= 6))
+  );
+}
+
+function scheduleDeferredRegistration(task: () => void) {
+  if (typeof window === "undefined") {
+    task();
+    return () => undefined;
+  }
+
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  let idleId = 0;
+  let detached = false;
+  let loadHandler: (() => void) | null = null;
+
+  const runTask = () => {
+    if (detached) return;
+
+    if (typeof window.requestIdleCallback === "function") {
+      idleId = window.requestIdleCallback(task, { timeout: 2500 });
+    } else {
+      timeoutId = globalThis.setTimeout(task, 1200);
+    }
+  };
+
+  if (document.readyState === "complete") {
+    runTask();
+  } else {
+    loadHandler = () => {
+      if (loadHandler) {
+        window.removeEventListener("load", loadHandler);
+        loadHandler = null;
+      }
+      runTask();
+    };
+    window.addEventListener("load", loadHandler, { once: true });
+  }
+
+  return () => {
+    detached = true;
+    if (loadHandler) {
+      window.removeEventListener("load", loadHandler);
+      loadHandler = null;
+    }
+    if (idleId && "cancelIdleCallback" in window) {
+      window.cancelIdleCallback(idleId);
+    }
+    if (timeoutId) {
+      globalThis.clearTimeout(timeoutId);
+    }
+  };
 }
 
 export function ServiceWorker() {
@@ -35,6 +107,8 @@ export function ServiceWorker() {
     }
 
     let mounted = true;
+    const lowCapabilityRuntime = isLowCapabilityRuntime();
+    let cancelDeferredRegistration: (() => void) | null = null;
 
     const announceWaitingWorker = (registration: ServiceWorkerRegistration, worker: ServiceWorker | null) => {
       if (!mounted || !worker) return;
@@ -101,7 +175,13 @@ export function ServiceWorker() {
       }
     };
 
-    void registerWorker();
+    if (lowCapabilityRuntime) {
+      cancelDeferredRegistration = scheduleDeferredRegistration(() => {
+        void registerWorker();
+      });
+    } else {
+      void registerWorker();
+    }
 
     navigator.serviceWorker.addEventListener("controllerchange", handleControllerChange);
     window.addEventListener("online", checkForUpdate);
@@ -111,6 +191,7 @@ export function ServiceWorker() {
 
     return () => {
       mounted = false;
+      cancelDeferredRegistration?.();
       navigator.serviceWorker.removeEventListener("controllerchange", handleControllerChange);
       window.removeEventListener("online", checkForUpdate);
       window.removeEventListener("focus", checkForUpdate);
