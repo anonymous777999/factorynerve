@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { register, resendEmailVerification, type RegisterResponse } from "@/lib/auth";
@@ -11,7 +12,23 @@ import { GoogleAuthButton } from "@/components/google-auth-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+function destinationLabel(path: string) {
+  switch (path) {
+    case "/attendance":
+      return "the attendance desk";
+    case "/dashboard":
+      return "the operations board";
+    case "/approvals":
+      return "the review queue";
+    case "/reports":
+      return "the reports desk";
+    default:
+      return "the workspace";
+  }
+}
+
 export default function RegisterPage() {
+  const searchParams = useSearchParams();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,6 +40,9 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState<RegisterResponse | null>(null);
   const [resending, setResending] = useState(false);
   const [resendStatus, setResendStatus] = useState("");
+  const nextPath = searchParams.get("next") || "/";
+  const nextDestination = destinationLabel(nextPath);
+  const hasRedirectTarget = nextPath !== "/";
   const deliveryMode = success?.delivery_mode ?? null;
   const isPreviewMode = deliveryMode === "preview";
   const isEmailFailure = deliveryMode === "email_failed";
@@ -125,9 +145,17 @@ export default function RegisterPage() {
     <AuthShell
       badge="Public Signup"
       title="Create your account"
-      description="Public signup creates an attendance-worker signup request. The account stays locked until the email owner verifies it."
+      description={
+        hasRedirectTarget
+          ? `Create the account first, verify the inbox, then continue into ${nextDestination}.`
+          : "Public signup creates an attendance-worker signup request. The account stays locked until the email owner verifies it."
+      }
       journeyTitle="Bring workers into the system without risking factory access."
-      journeyDescription="We keep public registration intentionally narrow: collect the details, verify the inbox owner, then create the real account only after confirmation."
+      journeyDescription={
+        hasRedirectTarget
+          ? `The account will stay locked until the inbox is verified, then the user can sign in and continue into ${nextDestination}.`
+          : "We keep public registration intentionally narrow: collect the details, verify the inbox owner, then create the real account only after confirmation."
+      }
       steps={[
         {
           title: "Submit worker details",
@@ -148,6 +176,15 @@ export default function RegisterPage() {
     >
       {success ? (
         <div className="space-y-5">
+          {hasRedirectTarget ? (
+            <div className="rounded-2xl border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.08)] p-4 text-sm text-text-primary">
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-text-muted">After verification</div>
+              <div className="mt-2 text-base font-semibold">Sign in to continue into {nextDestination}.</div>
+              <div className="mt-2 leading-6 text-text-secondary">
+                This signup only prepares the account safely. The inbox still needs to verify ownership first.
+              </div>
+            </div>
+          ) : null}
               {successState ? (
                 <div className={`rounded-2xl border p-4 text-sm ${successState.className}`}>
                   <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/80">Signup Status</div>
@@ -245,6 +282,15 @@ export default function RegisterPage() {
             </div>
       ) : (
         <div className="space-y-5">
+          {hasRedirectTarget ? (
+            <div className="rounded-2xl border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.08)] p-4 text-sm text-text-primary">
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-text-muted">Start here first</div>
+              <div className="mt-2 text-base font-semibold">After verification, the user can continue into {nextDestination}.</div>
+              <div className="mt-2 leading-6 text-text-secondary">
+                We collect the details now, verify the inbox owner, and only then unlock the actual account.
+              </div>
+            </div>
+          ) : null}
           <div className="rounded-2xl border border-[rgba(77,163,255,0.18)] bg-[rgba(77,163,255,0.08)] p-4">
             <div className="text-sm font-semibold text-text-primary">Prefer the faster Google route?</div>
             <div className="mt-1 text-sm leading-6 text-text-secondary">

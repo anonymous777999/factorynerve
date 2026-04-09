@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Factory,
+  LoaderCircle,
   Shield,
 } from "lucide-react";
 
@@ -17,73 +18,55 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getHomeDestination } from "@/lib/role-navigation";
 import { useSession } from "@/lib/use-session";
 
-const trustSignals = [
-  {
-    value: "5 min",
-    label: "to launch the first floor workflow",
-  },
-  {
-    value: "1 lane",
-    label: "from capture to review to report",
-  },
-  {
-    value: "4 roles",
-    label: "workers, supervisors, managers, owners",
-  },
-  {
-    value: "Mobile",
-    label: "built first for the factory floor",
-  },
+const trustStrip = [
+  "Built for phone-first factory teams",
+  "Offline-aware on weak networks",
+  "Role-based by default",
+  "Review before export",
 ];
 
-const featureCards = [
+const valueCards = [
   {
     icon: ClipboardCheck,
-    label: "Floor capture",
-    title: "Attendance, shift entry, and OCR stay in one worker-ready flow",
+    label: "Capture on the floor",
+    title: "Workers finish attendance, entry, and OCR from one place",
     detail:
-      "Workers use the phone they already carry instead of bouncing between paper registers, chat messages, and side notes.",
+      "The daily floor work stays on one phone-ready desk instead of getting scattered across paper registers, chat follow-up, and side sheets.",
   },
   {
     icon: Shield,
-    label: "Review lane",
-    title: "Supervisors clear exceptions before they become reporting mistakes",
+    label: "Review in one lane",
+    title: "Supervisors clear only the items that need trust",
     detail:
-      "Attendance review, OCR verification, and approvals stay connected so bad data gets stopped before it spreads.",
+      "Attendance exceptions, OCR corrections, and approvals stay connected so bad data gets stopped before it spreads into the rest of the business.",
   },
   {
     icon: BarChart3,
-    label: "Trusted reporting",
+    label: "Report from trusted data",
     title: "Managers export from reviewed rows instead of cleanup work",
     detail:
-      "Once the floor data is captured and reviewed, reports, exports, and owner visibility become much cleaner and faster.",
+      "Once the floor data is captured and reviewed, reporting becomes much cleaner, faster, and easier to trust.",
   },
 ];
 
-const workflowLanes = [
+const workflowSteps = [
   {
     step: "01",
-    title: "Capture from the floor",
+    title: "Capture the daily work",
     detail:
-      "Punch attendance, finish entry, and scan paper registers from one mobile-ready system.",
+      "Workers punch attendance, complete shift entry, and scan paper registers from the same mobile-ready workflow.",
   },
   {
     step: "02",
-    title: "Review what actually needs trust",
+    title: "Review the exceptions",
     detail:
-      "Supervisors only step into exceptions, approvals, and OCR corrections instead of checking everything manually.",
+      "Supervisors verify OCR rows, clear attendance issues, and approve what matters before the next shift loses time.",
   },
   {
     step: "03",
     title: "Push trusted data into reports",
     detail:
-      "Reports and exports come from the same verified rows the floor already approved.",
-  },
-  {
-    step: "04",
-    title: "Give every role a cleaner desk",
-    detail:
-      "Workers stay fast, supervisors stay focused, and managers keep context without drowning in admin screens.",
+      "Managers and owners move into exports and reporting from verified rows, not from late follow-up and cleanup.",
   },
 ];
 
@@ -108,6 +91,159 @@ function destinationLabel(href: string) {
   }
 }
 
+function LandingFeatureCard({
+  icon: Icon,
+  label,
+  title,
+  detail,
+}: {
+  icon: typeof ClipboardCheck;
+  label: string;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <article className="surface-panel rounded-[1.6rem] p-5 md:p-6">
+      <div className="inline-flex rounded-2xl border border-[rgba(77,163,255,0.18)] bg-[rgba(77,163,255,0.1)] p-3 text-[rgba(166,211,255,0.96)]">
+        <Icon className="h-5 w-5" />
+      </div>
+      <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(112,184,255,0.96)]">
+        {label}
+      </div>
+      <h3 className="mt-3 text-xl font-semibold leading-tight text-white">{title}</h3>
+      <p className="mt-3 text-sm leading-6 text-text-secondary">{detail}</p>
+    </article>
+  );
+}
+
+function WorkflowStepCard({
+  step,
+  title,
+  detail,
+}: {
+  step: string;
+  title: string;
+  detail: string;
+}) {
+  return (
+    <article className="grid gap-3 rounded-[1.3rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.025)] p-4 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-start">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[rgba(77,163,255,0.12)] text-sm font-semibold uppercase tracking-[0.18em] text-[rgba(166,211,255,0.96)]">
+        {step}
+      </div>
+      <div>
+        <h3 className="text-lg font-semibold text-white">{title}</h3>
+        <p className="mt-2 text-sm leading-6 text-text-secondary">{detail}</p>
+      </div>
+    </article>
+  );
+}
+
+function LandingHeroVisual() {
+  return (
+    <div className="mx-auto w-full max-w-[60rem]">
+      <div className="surface-panel-strong rounded-[2rem] p-4 md:p-5">
+        <div className="flex flex-col gap-3 border-b border-[rgba(255,255,255,0.08)] pb-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(112,184,255,0.96)]">
+              Live workflow
+            </div>
+            <div className="mt-1 text-lg font-semibold text-white">
+              One board from floor capture to trusted report
+            </div>
+          </div>
+          <div className="rounded-full border border-[rgba(77,163,255,0.24)] bg-[rgba(77,163,255,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[rgba(191,225,255,0.96)]">
+            Network live
+          </div>
+        </div>
+
+        <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(15rem,0.7fr)_minmax(0,1fr)]">
+          <div className="rounded-[1.6rem] border border-[rgba(226,237,255,0.18)] bg-[linear-gradient(180deg,rgba(12,23,36,0.95),rgba(7,13,22,0.98))] p-4 shadow-[0_22px_54px_rgba(2,8,18,0.44)]">
+            <div className="mx-auto mb-3 h-1.5 w-14 rounded-full bg-[rgba(255,255,255,0.14)]" />
+            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(112,184,255,0.96)]">
+              Worker desk
+            </div>
+            <div className="mt-2 text-lg font-semibold text-white">Punch in and keep the shift moving</div>
+            <div className="mt-4 rounded-[1.3rem] border border-[rgba(77,163,255,0.18)] bg-[rgba(77,163,255,0.1)] p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[rgba(166,211,255,0.96)]">
+                Next action
+              </div>
+              <div className="mt-3 text-2xl font-semibold text-white">Punch in</div>
+              <div className="mt-2 text-sm leading-6 text-[rgba(224,231,255,0.76)]">
+                Attendance, shift timing, and history stay visible on one screen.
+              </div>
+            </div>
+            <div className="mt-4 flex items-center justify-between rounded-[1rem] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] px-3 py-3 text-xs text-text-secondary">
+              <span>Shift status visible</span>
+              <span className="font-semibold uppercase tracking-[0.16em] text-white">Synced</span>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <div className="grid gap-3 sm:grid-cols-3">
+              {[
+                ["Attendance", "Live", "Punch and shift status stay visible."],
+                ["Review", "Queue", "Exceptions move into one approval lane."],
+                ["Reports", "Trusted", "Exports follow reviewed rows."],
+              ].map(([label, value, detail]) => (
+                <div
+                  key={label}
+                  className="rounded-[1.2rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4"
+                >
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">
+                    {label}
+                  </div>
+                  <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
+                  <div className="mt-2 text-xs leading-5 text-text-secondary">{detail}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-[minmax(0,1.15fr)_minmax(15rem,0.85fr)]">
+              <div className="rounded-[1.4rem] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-4">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(112,184,255,0.96)]">
+                    Why teams switch
+                  </div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                    One source of truth
+                  </div>
+                </div>
+                <div className="mt-4 space-y-3">
+                  {[
+                    ["Capture", "Workers move faster without paper follow-up."],
+                    ["Review", "Supervisors clear the blockers before they spread."],
+                    ["Report", "Managers export from trusted rows instead of cleanup work."],
+                  ].map(([label, detail]) => (
+                    <div
+                      key={label}
+                      className="rounded-[1rem] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.025)] px-3 py-3"
+                    >
+                      <div className="text-sm font-semibold text-white">{label}</div>
+                      <div className="mt-1 text-sm leading-6 text-text-secondary">{detail}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="rounded-[1.4rem] border border-[rgba(77,163,255,0.16)] bg-[linear-gradient(180deg,rgba(77,163,255,0.1),rgba(77,163,255,0.03))] p-4">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(166,211,255,0.96)]">
+                  Leadership context
+                </div>
+                <div className="mt-3 text-lg font-semibold text-white">
+                  Owners and managers see the cleaner picture
+                </div>
+                <div className="mt-2 text-sm leading-6 text-[rgba(224,231,255,0.74)]">
+                  Reports, exports, and factory risk become easier to read once capture and review stay connected.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function HomeRoute() {
   const router = useRouter();
   const { user, organization, loading, error } = useSession();
@@ -119,6 +255,7 @@ export default function HomeRoute() {
 
   useEffect(() => {
     if (!loading && user) {
+      void router.prefetch(destination);
       router.replace(destination);
     }
   }, [destination, loading, router, user]);
@@ -142,8 +279,17 @@ export default function HomeRoute() {
               <p className="text-sm leading-6 text-[var(--muted)]">
                 Checking your session and opening the right desk for your role.
               </p>
-              <div className="surface-panel-soft rounded-[1.25rem] p-4 text-sm text-text-secondary">
-                Attendance, OCR, review, and reporting are lining up now.
+              <div className="space-y-3 rounded-[1.25rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4 text-sm text-text-secondary">
+                {[
+                  "Checking your saved session",
+                  "Matching the correct role and factory",
+                  "Opening the right desk for today",
+                ].map((item) => (
+                  <div key={item} className="flex items-center gap-3">
+                    <LoaderCircle className="h-4 w-4 animate-spin text-[rgba(112,184,255,0.96)]" />
+                    <span>{item}</span>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -184,23 +330,23 @@ export default function HomeRoute() {
 
           <section className="relative isolate overflow-hidden rounded-[2.35rem] border border-[rgba(214,228,255,0.14)] bg-[linear-gradient(140deg,rgba(8,16,28,0.94),rgba(11,22,38,0.82)_52%,rgba(6,16,28,0.96))] px-5 py-6 shadow-[0_34px_90px_rgba(2,8,18,0.42)] md:px-7 md:py-7 xl:px-8 xl:py-8 2xl:px-10">
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(77,163,255,0.2),transparent_26%),radial-gradient(circle_at_86%_12%,rgba(20,184,166,0.16),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.03),transparent_28%)]" />
-            <div className="relative z-10 grid gap-8 lg:grid-cols-[minmax(0,0.84fr)_minmax(0,1.16fr)] lg:items-center">
+            <div className="relative z-10 grid gap-8 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] lg:items-center">
               <div className="space-y-6">
                 <div className="flex flex-wrap gap-2">
                   <span className="rounded-full border border-[rgba(77,163,255,0.26)] bg-[rgba(77,163,255,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(166,211,255,0.96)]">
-                    FactoryNerve
+                    Built for daily factory operations
                   </span>
                   <span className="rounded-full border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
-                    Built for daily factory operations
+                    Mobile-ready from the floor up
                   </span>
                 </div>
 
                 <div className="space-y-5">
-                  <h1 className="max-w-[40rem] text-[clamp(2.8rem,4.4vw,4.7rem)] font-semibold leading-[0.95] tracking-[-0.05em] text-white">
-                    Replace paper follow-up with one cleaner factory workflow.
+                  <h1 className="max-w-[38rem] text-[clamp(2.8rem,4.5vw,5rem)] font-semibold leading-[0.94] tracking-[-0.055em] text-white">
+                    Run daily factory work without paper, WhatsApp follow-up, or spreadsheet chaos.
                   </h1>
-                  <p className="max-w-[39rem] text-base leading-7 text-[rgba(224,231,255,0.78)] md:text-lg">
-                    FactoryNerve gives workers, supervisors, managers, and owners one connected system for attendance, shift entry, OCR, approvals, and trusted reports.
+                  <p className="max-w-[36rem] text-base leading-7 text-[rgba(224,231,255,0.78)] md:text-lg">
+                    FactoryNerve gives workers, supervisors, managers, and owners one connected system for attendance, shift entry, OCR review, approvals, and trusted reporting.
                   </p>
                 </div>
 
@@ -213,9 +359,6 @@ export default function HomeRoute() {
                   </Link>
                   <Link href="#workflow" className="w-full sm:w-auto">
                     <Button variant="outline" size="lg" className="w-full sm:w-auto">See how it works</Button>
-                  </Link>
-                  <Link href="/login" className="w-full sm:w-auto">
-                    <Button variant="ghost" size="lg" className="w-full sm:w-auto">Sign in</Button>
                   </Link>
                 </div>
 
@@ -230,7 +373,7 @@ export default function HomeRoute() {
                     "Workers use one phone-ready desk instead of paper and chat.",
                     "Supervisors clear exceptions before numbers reach reports.",
                     "Managers export from trusted data, not cleanup work.",
-                    "Each role only sees the power it actually needs.",
+                    "Every role sees only the tools it actually needs.",
                   ].map((item) => (
                     <div key={item} className="flex items-start gap-2 rounded-[1rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] px-3 py-3">
                       <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-[rgba(112,184,255,0.96)]" />
@@ -240,195 +383,61 @@ export default function HomeRoute() {
                 </div>
               </div>
 
-              <div className="mx-auto w-full max-w-[62rem]">
-                <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(17rem,0.68fr)]">
-                  <div className="rounded-[2rem] border border-[rgba(215,231,255,0.14)] bg-[linear-gradient(180deg,rgba(20,30,46,0.92),rgba(10,18,29,0.96))] p-4 shadow-[0_28px_70px_rgba(3,8,18,0.45)] md:p-5">
-                    <div className="flex items-center justify-between gap-3 border-b border-[rgba(255,255,255,0.08)] pb-3">
-                      <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(112,184,255,0.96)]">
-                          Operations board
-                        </div>
-                        <div className="mt-1 text-lg font-semibold text-white">One place to capture, review, and report</div>
-                      </div>
-                      <div className="rounded-full border border-[rgba(77,163,255,0.24)] bg-[rgba(77,163,255,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[rgba(191,225,255,0.96)]">
-                        Network live
-                      </div>
-                    </div>
-
-                    <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(15rem,0.72fr)_minmax(0,1fr)]">
-                      <div className="rounded-[1.65rem] border border-[rgba(226,237,255,0.18)] bg-[linear-gradient(180deg,rgba(12,23,36,0.95),rgba(7,13,22,0.98))] p-4 shadow-[0_24px_58px_rgba(2,8,18,0.5)]">
-                        <div className="mx-auto mb-3 h-1.5 w-14 rounded-full bg-[rgba(255,255,255,0.14)]" />
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(112,184,255,0.96)]">
-                          Worker desk
-                        </div>
-                        <div className="mt-2 text-lg font-semibold text-white">Punch in and keep the shift moving</div>
-                        <div className="mt-4 rounded-[1.35rem] border border-[rgba(77,163,255,0.18)] bg-[rgba(77,163,255,0.1)] p-4">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[rgba(166,211,255,0.96)]">
-                            Next action
-                          </div>
-                          <div className="mt-3 text-2xl font-semibold text-white">Punch in</div>
-                          <div className="mt-2 text-sm leading-6 text-[rgba(224,231,255,0.76)]">
-                            Attendance, shift timing, and history stay visible on one screen.
-                          </div>
-                        </div>
-                        <div className="mt-4 flex items-center justify-between rounded-[1rem] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] px-3 py-3 text-xs text-text-secondary">
-                          <span>Shift status visible</span>
-                          <span className="font-semibold uppercase tracking-[0.16em] text-white">Synced</span>
-                        </div>
-                      </div>
-
-                      <div className="space-y-4">
-                        <div className="grid gap-3 sm:grid-cols-3">
-                          {[
-                            ["Attendance", "Live", "Punch and shift status stay visible."],
-                            ["Review", "Queue", "Exceptions move into one approval lane."],
-                            ["Reports", "Trusted", "Exports follow reviewed rows."],
-                          ].map(([label, value, detail]) => (
-                            <div key={label} className="rounded-[1.25rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4">
-                              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">{label}</div>
-                              <div className="mt-2 text-2xl font-semibold text-white">{value}</div>
-                              <div className="mt-2 text-xs leading-5 text-text-secondary">{detail}</div>
-                            </div>
-                          ))}
-                        </div>
-
-                        <div className="rounded-[1.5rem] border border-[rgba(255,255,255,0.08)] bg-[linear-gradient(180deg,rgba(255,255,255,0.045),rgba(255,255,255,0.02))] p-4">
-                          <div className="flex items-center justify-between gap-3">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(112,184,255,0.96)]">
-                              Why teams switch
-                            </div>
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
-                              One source of truth
-                            </div>
-                          </div>
-                          <div className="mt-4 space-y-3">
-                            {[
-                              ["Capture", "Workers move faster without paper follow-up."],
-                              ["Review", "Supervisors catch the blockers that matter now."],
-                              ["Report", "Managers export from trusted rows instead of cleanup work."],
-                            ].map(([label, detail]) => (
-                              <div
-                                key={label}
-                                className="rounded-[1rem] border border-[rgba(255,255,255,0.06)] bg-[rgba(255,255,255,0.025)] px-3 py-3"
-                              >
-                                <div className="text-sm font-semibold text-white">{label}</div>
-                                <div className="mt-1 text-sm leading-6 text-text-secondary">{detail}</div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="rounded-[1.75rem] border border-[rgba(255,255,255,0.12)] bg-[linear-gradient(180deg,rgba(17,31,49,0.94),rgba(9,18,29,0.96))] p-5 shadow-[0_18px_44px_rgba(3,8,18,0.42)]">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(112,184,255,0.96)]">
-                        OCR lane
-                      </div>
-                      <div className="mt-3 text-lg font-semibold text-white">Paper register to verified row</div>
-                      <div className="mt-4 space-y-2">
-                        {[
-                          "Capture the image",
-                          "Verify only the extracted rows that need correction",
-                          "Push trusted data into reports",
-                        ].map((detail) => (
-                          <div key={detail} className="rounded-[1rem] border border-[rgba(255,255,255,0.07)] bg-[rgba(255,255,255,0.03)] px-3 py-3 text-sm leading-6 text-text-secondary">
-                            {detail}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="rounded-[1.75rem] border border-[rgba(77,163,255,0.16)] bg-[linear-gradient(180deg,rgba(77,163,255,0.1),rgba(77,163,255,0.03))] p-5">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(166,211,255,0.96)]">
-                        Leadership context
-                      </div>
-                      <div className="mt-3 text-lg font-semibold text-white">Owners and managers see a cleaner operating picture</div>
-                      <div className="mt-2 text-sm leading-6 text-[rgba(224,231,255,0.74)]">
-                        Reports, exports, and factory risk become easier to read once capture and review stay connected.
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <LandingHeroVisual />
             </div>
           </section>
 
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {trustSignals.map((item) => (
-              <div key={item.label} className="surface-panel-soft rounded-[1.2rem] px-4 py-4">
-                <div className="text-2xl font-semibold tracking-[-0.03em] text-white">{item.value}</div>
-                <div className="mt-2 text-sm leading-6 text-text-secondary">{item.label}</div>
+            {trustStrip.map((item) => (
+              <div key={item} className="surface-panel-soft rounded-[1.2rem] px-4 py-4 text-sm font-medium leading-6 text-text-secondary">
+                {item}
               </div>
             ))}
           </section>
 
-          <section id="workflow" className="grid gap-4 xl:grid-cols-[minmax(0,1.02fr)_minmax(0,0.98fr)]">
-            <div className="surface-panel-strong rounded-[2rem] p-5 md:p-7">
+          <section className="grid gap-4 md:grid-cols-3">
+            {valueCards.map((card) => (
+              <LandingFeatureCard key={card.title} {...card} />
+            ))}
+          </section>
+
+          <section id="workflow" className="grid gap-4 xl:grid-cols-[minmax(0,1.03fr)_minmax(0,0.97fr)]">
+            <div className="surface-panel rounded-[2rem] p-5 md:p-7">
               <div className="max-w-2xl space-y-3">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[rgba(112,184,255,0.96)]">
-                  Why factories move off paper
+                  Simple workflow
                 </div>
                 <div className="text-2xl font-semibold leading-tight text-white md:text-3xl">
-                  The product stays simple because the work follows one clear operating path.
+                  One operating path from floor capture to trusted report.
                 </div>
                 <p className="text-sm leading-6 text-text-secondary">
-                  FactoryNerve works best when teams stop bouncing between paper, chats, Excel, and manual follow-up. Capture, review, and reporting stay connected instead.
+                  The product works best when teams stop bouncing between paper, chats, and spreadsheets. Capture, review, and reporting stay connected instead.
                 </p>
               </div>
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
-                {featureCards.map((item) => {
-                  const Icon = item.icon;
-                  return (
-                    <div
-                      key={item.title}
-                      className="rounded-[1.5rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.025)] p-5"
-                    >
-                      <div className="inline-flex rounded-2xl border border-[rgba(77,163,255,0.18)] bg-[rgba(77,163,255,0.1)] p-3 text-[rgba(166,211,255,0.96)]">
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div className="mt-4 text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(112,184,255,0.96)]">
-                        {item.label}
-                      </div>
-                      <div className="mt-3 text-xl font-semibold leading-tight text-white">{item.title}</div>
-                      <p className="mt-3 text-sm leading-6 text-text-secondary">{item.detail}</p>
-                    </div>
-                  );
-                })}
+              <div className="mt-6 space-y-3">
+                {workflowSteps.map((step) => (
+                  <WorkflowStepCard key={step.step} {...step} />
+                ))}
               </div>
             </div>
 
             <div className="space-y-4">
               <div className="surface-panel rounded-[1.8rem] p-5 md:p-6">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[rgba(112,184,255,0.96)]">
-                  How teams start
+                  Built for every desk
                 </div>
                 <div className="mt-3 text-2xl font-semibold leading-tight text-white">
-                  Launch the worker flow first, then grow into trusted reporting.
+                  Workers stay fast. Supervisors stay focused. Managers keep context.
                 </div>
-                <div className="mt-5 space-y-3">
-                  {workflowLanes.map((item) => (
-                    <div
-                      key={item.step}
-                      className="grid gap-3 rounded-[1.3rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.025)] p-4 sm:grid-cols-[auto_minmax(0,1fr)]"
-                    >
-                      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[rgba(77,163,255,0.12)] text-sm font-semibold uppercase tracking-[0.18em] text-[rgba(166,211,255,0.96)]">
-                        {item.step}
-                      </div>
-                      <div>
-                        <div className="text-lg font-semibold text-white">{item.title}</div>
-                        <p className="mt-2 text-sm leading-6 text-text-secondary">{item.detail}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                <p className="mt-3 text-sm leading-6 text-text-secondary">
+                  The system changes by role so normal users are not dragged into screens they do not need to touch.
+                </p>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 {[
                   ["Operators", "Fast shift work on mobile"],
-                  ["Supervisors", "One clear review lane"],
+                  ["Supervisors", "One clean review lane"],
                   ["Managers", "Daily context without spreadsheet chasing"],
                   ["Owners", "Leadership visibility without digging"],
                 ].map(([label, detail]) => (
@@ -450,10 +459,10 @@ export default function HomeRoute() {
                   Start the factory flow
                 </div>
                 <div className="text-2xl font-semibold leading-tight text-white md:text-3xl">
-                  Give first-time users a clean start instead of sending them straight into complexity.
+                  Give your team one cleaner system instead of five disconnected tools.
                 </div>
                 <p className="max-w-3xl text-sm leading-6 text-text-secondary">
-                  Create an account to launch the mobile-ready workflow, or sign in if your team is already live inside FactoryNerve.
+                  Create an account to launch the worker-ready workflow, or sign in if your team is already live inside FactoryNerve.
                 </p>
               </div>
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -466,6 +475,10 @@ export default function HomeRoute() {
               </div>
             </div>
           </section>
+
+          <footer className="px-2 pb-3 pt-1 text-center text-sm text-text-tertiary">
+            FactoryNerve helps factory teams replace paper, chats, and spreadsheet follow-up with one connected operating workflow.
+          </footer>
         </div>
       </main>
     );
@@ -491,6 +504,15 @@ export default function HomeRoute() {
             <p className="max-w-2xl text-sm leading-6 text-[var(--muted)]">
               Your role-based home is ready. If the redirect takes longer than expected, continue directly below.
             </p>
+            <div className="rounded-[1.25rem] border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.03)] p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
+                Redirect status
+              </div>
+              <div className="mt-3 flex items-center gap-3 text-sm text-text-secondary">
+                <LoaderCircle className="h-4 w-4 animate-spin text-[rgba(112,184,255,0.96)]" />
+                <span>Matching your last active factory and opening {destinationLabel(destination)}.</span>
+              </div>
+            </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="surface-panel-soft rounded-[1.25rem] p-4">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[rgba(77,163,255,0.92)]">

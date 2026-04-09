@@ -12,6 +12,27 @@ import { PasswordField } from "@/components/password-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
+function destinationLabel(path: string) {
+  switch (path) {
+    case "/attendance":
+      return "your attendance desk";
+    case "/dashboard":
+      return "your operations board";
+    case "/approvals":
+      return "your review queue";
+    case "/reports":
+      return "your reports desk";
+    case "/settings":
+      return "your admin desk";
+    case "/control-tower":
+      return "your factory network";
+    case "/premium/dashboard":
+      return "your owner desk";
+    default:
+      return "your workspace";
+  }
+}
+
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -54,6 +75,8 @@ export default function LoginPage() {
     }
     return raw;
   }, [searchParams]);
+  const nextDestination = useMemo(() => destinationLabel(nextPath), [nextPath]);
+  const hasRedirectTarget = nextPath !== "/";
 
   useEffect(() => {
     void warmBackendConnection();
@@ -158,9 +181,17 @@ export default function LoginPage() {
     <AuthShell
       badge="Secure Sign In"
       title="Sign in"
-      description="Sign in with your verified email and password."
+      description={
+        hasRedirectTarget
+          ? `Sign in to continue to ${nextDestination}.`
+          : "Sign in with your verified email and password."
+      }
       journeyTitle="Keep access simple for workers and safe for the factory."
-      journeyDescription="DPR.ai uses verified email ownership, cookie-backed sessions, and role-based access so the right person sees the right workflow after sign-in."
+      journeyDescription={
+        hasRedirectTarget
+          ? `We will verify the session first, then open ${nextDestination} automatically.`
+          : "DPR.ai uses verified email ownership, cookie-backed sessions, and role-based access so the right person sees the right workflow after sign-in."
+      }
       steps={[
         {
           title: "Use the verified inbox",
@@ -180,10 +211,23 @@ export default function LoginPage() {
       cardClassName="max-w-xl"
     >
       <form onSubmit={onSubmit} className="space-y-5">
+        {hasRedirectTarget ? (
+          <div className="rounded-lg border border-color-primary/20 bg-color-primary/10 p-4 text-sm text-text-primary">
+            <div className="text-xs font-semibold uppercase tracking-widest text-text-muted">After sign-in</div>
+            <div className="mt-2 text-base font-semibold">You will open {nextDestination}.</div>
+            <div className="mt-2 leading-6 text-text-secondary">
+              Use the same verified inbox that already belongs to this workspace.
+            </div>
+          </div>
+        ) : null}
         <div className="space-y-4">
           <GoogleAuthButton
             nextPath={nextPath}
-            hint="Use your Google account to open the same factory-safe session without typing a password."
+            hint={
+              hasRedirectTarget
+                ? `Use Google to open the same factory-safe session and continue to ${nextDestination} without typing a password.`
+                : "Use your Google account to open the same factory-safe session without typing a password."
+            }
           />
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -256,7 +300,11 @@ export default function LoginPage() {
           variant="primary"
           className="w-full h-12 text-base font-semibold"
         >
-          {loading ? "Signing in..." : "Sign in"}
+          {loading
+            ? "Signing in..."
+            : hasRedirectTarget
+              ? `Sign in and continue`
+              : "Sign in"}
         </Button>
       </form>
       <div className="mt-6 pt-4 border-t border-border text-center text-sm text-text-muted">
