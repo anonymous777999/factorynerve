@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/api";
 import { login, resendEmailVerification, warmBackendConnection } from "@/lib/auth";
+import { getHomeDestination } from "@/lib/role-navigation";
 
 function destinationLabel(path: string) {
   switch (path) {
@@ -95,8 +96,12 @@ export default function LoginPage() {
     setInfoTone("neutral");
 
     try {
-      await login(email, password);
-      router.replace(nextPath);
+      const authContext = await login(email, password);
+      const roleHome = getHomeDestination(
+        authContext.user.role,
+        authContext.organization?.accessible_factories ?? authContext.factories?.length ?? 0,
+      );
+      router.replace(nextPath === "/" ? roleHome : nextPath);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(
