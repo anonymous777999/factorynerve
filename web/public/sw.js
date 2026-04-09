@@ -1,4 +1,4 @@
-const CACHE_VERSION = "2026-04-08-v1";
+const CACHE_VERSION = "2026-04-09-v2";
 const SHELL_CACHE = `factorynerve-shell-${CACHE_VERSION}`;
 const STATIC_CACHE = `factorynerve-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `factorynerve-runtime-${CACHE_VERSION}`;
