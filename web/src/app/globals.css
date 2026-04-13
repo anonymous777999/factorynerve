@@ -246,6 +246,10 @@ input[type="checkbox"] {
     padding-bottom: max(1rem, calc(1rem + env(safe-area-inset-bottom)));
   }
 
+  .shell-bottom-clearance {
+    padding-bottom: max(7rem, calc(var(--shell-mobile-fixed-stack-clearance, 0px) + env(safe-area-inset-bottom)));
+  }
+
   .safe-inline-pad {
     padding-left: max(1rem, calc(1rem + env(safe-area-inset-left)));
     padding-right: max(1rem, calc(1rem + env(safe-area-inset-right)));

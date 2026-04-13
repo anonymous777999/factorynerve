@@ -1,6 +1,6 @@
 from http import HTTPStatus
 
-from tests.utils import create_entry_payload, register_user
+from tests.utils import create_entry_payload, mark_entry_approved, register_user
 
 
 def test_free_plan_blocked_from_analytics(http_client):
@@ -21,6 +21,7 @@ def test_free_plan_pdf_blocked_excel_allowed(http_client):
     entry_resp = http_client.post("/entries", json=create_entry_payload(), headers=headers)
     assert entry_resp.status_code == HTTPStatus.CREATED, entry_resp.text
     entry_id = entry_resp.json()["id"]
+    mark_entry_approved(entry_id, user["user_id"])
 
     pdf = http_client.get(f"/reports/pdf/{entry_id}", headers=headers)
     assert pdf.status_code == HTTPStatus.PAYMENT_REQUIRED

@@ -5,7 +5,7 @@ import time
 from http import HTTPStatus
 
 from backend.services import background_jobs
-from tests.utils import create_entry_payload, register_user, set_org_plan_for_user_email
+from tests.utils import create_entry_payload, mark_entry_approved, register_user, set_org_plan_for_user_email
 
 PNG_1X1_BYTES = base64.b64decode(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4////fwAJ+wP9KobjigAAAABJRU5ErkJggg=="
@@ -108,6 +108,7 @@ def test_shared_report_pdf_job_and_cancel(http_client):
     created = http_client.post("/entries", json=create_entry_payload(index=22), headers=headers)
     assert created.status_code == HTTPStatus.CREATED, created.text
     entry_id = created.json()["id"]
+    mark_entry_approved(entry_id, user["user_id"])
 
     pdf_job = http_client.post(f"/reports/pdf/{entry_id}/jobs", headers=headers)
     assert pdf_job.status_code == HTTPStatus.OK, pdf_job.text

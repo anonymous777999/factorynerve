@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 
 import { JobsDrawer } from "@/components/jobs-drawer";
 import { OfflineWorkStrip } from "@/components/offline-work-strip";
@@ -49,7 +49,6 @@ const ATTENDANCE_REPORT_NAV_ROLES = ["accountant"] as const;
 const OWNER_DESK_NAV_ROLES = ["owner"] as const;
 const FACTORY_NETWORK_NAV_ROLES = ["owner"] as const;
 const EMAIL_SUMMARY_NAV_ROLES = ["accountant", "manager", "owner"] as const;
-const AI_INSIGHTS_NAV_ROLES = ["owner"] as const;
 const ATTENDANCE_ADMIN_NAV_ROLES = ["admin"] as const;
 const FACTORY_ADMIN_NAV_ROLES = ["admin"] as const;
 const TASK_ROLES = ["operator", "supervisor"] as const;
@@ -294,13 +293,6 @@ const navSections: NavSection[] = [
         roles: EMAIL_SUMMARY_NAV_ROLES,
         match: (pathname) => pathname === "/email-summary" || pathname.startsWith("/email-summary/"),
       },
-      {
-        label: "AI Insights",
-        href: "/ai",
-        description: "Advanced anomaly scans, suggestions, and KPI questions",
-        roles: AI_INSIGHTS_NAV_ROLES,
-        match: (pathname) => pathname === "/ai" || pathname.startsWith("/ai/"),
-      },
     ],
   },
   {
@@ -529,6 +521,14 @@ const LANGUAGE_CHOICES: Array<{ value: AppLanguage; key: string; fallback: strin
 ];
 
 const shellHiddenRoutes = new Set(["/", "/login", "/register", "/forgot-password", "/reset-password"]);
+const MOBILE_FIXED_STACK_CLEARANCE = {
+  browser: "9.75rem",
+  standalone: "9.25rem",
+} as const;
+const MOBILE_JOBS_FLOAT_OFFSET = {
+  browser: "6.15rem",
+  standalone: "5.7rem",
+} as const;
 
 function navLinkClasses(active: boolean) {
   return cn(
@@ -1250,6 +1250,20 @@ function AppShellFrame({
     () => factories.filter((factory) => Boolean(factory.factory_id)),
     [factories],
   );
+  const showMobileJobsDock = shellLayout.mobileBottomNav && !immersiveScannerRoute;
+  const showDesktopJobsDock = !immersiveScannerRoute;
+  const showDesktopJobsTray = showDesktopJobsDock && !sidebarOpen;
+  const mobileFixedStackClearance = showMobileJobsDock
+    ? standalone
+      ? MOBILE_FIXED_STACK_CLEARANCE.standalone
+      : MOBILE_FIXED_STACK_CLEARANCE.browser
+    : "0px";
+  const mobileJobsBottomOffset = standalone
+    ? MOBILE_JOBS_FLOAT_OFFSET.standalone
+    : MOBILE_JOBS_FLOAT_OFFSET.browser;
+  const shellFrameStyle = {
+    "--shell-mobile-fixed-stack-clearance": mobileFixedStackClearance,
+  } as CSSProperties;
   const resolvedRole = hydrated ? user?.role : null;
   const activeIndustryType = hydrated ? activeFactory?.industry_type || null : null;
   const visibleNavSections = useMemo(
@@ -1668,7 +1682,7 @@ function AppShellFrame({
   }, [organization?.accessible_factories, resolvedRole, router, shellLayout.fallbackHref]);
 
   return (
-    <div className="relative flex min-h-screen overflow-hidden">
+    <div className="relative flex min-h-screen overflow-hidden" style={shellFrameStyle}>
       {sidebarOpen ? (
         <button
           type="button"
@@ -1845,6 +1859,17 @@ function AppShellFrame({
             </div>
           </div>
 
+          {showDesktopJobsDock ? (
+            <div className="mt-3 hidden border-t border-[var(--border)] pt-3 lg:block">
+              <div className="rounded-[1.25rem] border border-[rgba(62,166,255,0.16)] bg-[rgba(8,12,20,0.58)] p-2.5">
+                <div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                  Jobs
+                </div>
+                <JobsDrawer />
+              </div>
+            </div>
+          ) : null}
+
           <div className="mt-3 border-t border-[var(--border)] pt-3">
             <div className="flex items-center gap-2">
               <label className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
@@ -1967,14 +1992,17 @@ function AppShellFrame({
           </div>
         ) : null}
 
+        {showDesktopJobsTray ? (
+          <div className="hidden px-6 pt-6 lg:flex lg:justify-end">
+            <div className="w-[17.5rem]">
+              <JobsDrawer />
+            </div>
+          </div>
+        ) : null}
+
         <div
           className={cn(
             "app-shell-content min-w-0 flex-1",
-            shellLayout.mobileBottomNav
-              ? standalone
-                ? "pb-[calc(6.25rem+env(safe-area-inset-bottom))] lg:pb-0"
-                : "pb-[calc(6.9rem+env(safe-area-inset-bottom))] lg:pb-0"
-              : "",
           )}
         >
           {!immersiveScannerRoute ? <WorkflowReminderStrip /> : null}
@@ -2029,14 +2057,16 @@ function AppShellFrame({
           translate={t}
         />
       ) : null}
-      <div
-        className={cn(
-          "fixed bottom-[calc(6.15rem+env(safe-area-inset-bottom))] right-[max(1rem,calc(1rem+env(safe-area-inset-right)))] z-40 w-[min(22rem,calc(100vw-2rem))] lg:bottom-4 lg:right-6",
-          immersiveScannerRoute ? "hidden" : "",
-        )}
-      >
-        <JobsDrawer />
-      </div>
+      {showMobileJobsDock ? (
+        <div
+          className="safe-inline-pad fixed inset-x-0 z-[41] lg:hidden"
+          style={{ bottom: `calc(${mobileJobsBottomOffset} + env(safe-area-inset-bottom))` }}
+        >
+          <div className="mx-auto w-full max-w-xl">
+            <JobsDrawer />
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

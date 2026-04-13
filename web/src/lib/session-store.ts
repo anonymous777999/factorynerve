@@ -109,6 +109,10 @@ function toSessionError(err: unknown) {
   return "Session check failed.";
 }
 
+function shouldResetSession(err: unknown) {
+  return err instanceof ApiError && err.status === 401;
+}
+
 export function getSessionSnapshot() {
   return sessionState;
 }
@@ -225,16 +229,21 @@ export async function ensureSessionLoaded(loader: () => Promise<CurrentUser | Au
       if (sessionState.loadedAt > loadStartedAt) {
         return;
       }
-      setSessionState({
-        user: null,
-        factories: [],
-        activeFactoryId: null,
-        activeFactory: null,
-        organization: null,
+      const nextState: Partial<SessionState> = {
         loading: false,
         error: toSessionError(err),
         loadedAt: Date.now(),
-      });
+      };
+      // Keep the last known session during transient wake-up and network failures
+      // so protected routes do not collapse into login placeholders mid-session.
+      if (shouldResetSession(err)) {
+        nextState.user = null;
+        nextState.factories = [];
+        nextState.activeFactoryId = null;
+        nextState.activeFactory = null;
+        nextState.organization = null;
+      }
+      setSessionState(nextState);
     })
     .finally(() => {
       inflightSessionLoad = null;

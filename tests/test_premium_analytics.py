@@ -3,7 +3,7 @@ from http import HTTPStatus
 from backend.database import SessionLocal, init_db
 from backend.models.organization import Organization
 from backend.models.user import User
-from tests.utils import create_entry_payload, register_user
+from tests.utils import create_entry_payload, mark_entry_approved, register_user
 
 
 init_db()
@@ -41,9 +41,11 @@ def test_premium_dashboard_and_pdf_work_for_factory_plan(http_client):
 
     created_one = http_client.post("/entries", json=first_payload, headers=_auth_headers(user["access_token"]))
     assert created_one.status_code == HTTPStatus.CREATED, created_one.text
+    mark_entry_approved(created_one.json()["id"], user["user_id"])
 
     created_two = http_client.post("/entries", json=second_payload, headers=_auth_headers(user["access_token"]))
     assert created_two.status_code == HTTPStatus.CREATED, created_two.text
+    mark_entry_approved(created_two.json()["id"], user["user_id"])
 
     dashboard = http_client.get("/premium/dashboard?days=14", headers=_auth_headers(user["access_token"]))
     assert dashboard.status_code == HTTPStatus.OK, dashboard.text

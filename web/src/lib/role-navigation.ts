@@ -34,7 +34,7 @@ export function getHomeDestination(role?: string | null, accessibleFactories = 0
     case "accountant":
       return "/reports";
     case "manager":
-      return "/dashboard";
+      return "/approvals";
     case "admin":
       return "/dashboard";
     case "owner":
@@ -55,11 +55,11 @@ export function getRolePrimaryHrefs(role?: string | null) {
     case "accountant":
       return ["/reports", "/attendance/reports", "/email-summary", "/steel/customers", "/steel/invoices"];
     case "manager":
-      return ["/dashboard", "/approvals", "/reports", "/steel", "/analytics", "/work-queue"];
+      return ["/approvals", "/dashboard", "/reports", "/steel", "/analytics", "/work-queue"];
     case "admin":
       return ["/settings", "/settings/attendance", "/reports", "/approvals", "/analytics", "/dashboard"];
     case "owner":
-      return ["/premium/dashboard", "/control-tower", "/reports", "/ai", "/email-summary", "/steel/charts"];
+      return ["/premium/dashboard", "/control-tower", "/reports", "/email-summary", "/steel/charts"];
     default:
       return ["/dashboard", "/work-queue", "/profile"];
   }
@@ -76,11 +76,11 @@ export function getRoleDefaultFavoriteHrefs(role?: string | null) {
     case "accountant":
       return ["/reports", "/attendance/reports", "/email-summary", "/steel/customers", "/steel/invoices"];
     case "manager":
-      return ["/dashboard", "/approvals", "/reports", "/steel", "/analytics"];
+      return ["/approvals", "/dashboard", "/reports", "/steel", "/analytics"];
     case "admin":
       return ["/settings", "/settings/attendance", "/reports", "/approvals", "/analytics"];
     case "owner":
-      return ["/premium/dashboard", "/control-tower", "/reports", "/email-summary", "/ai"];
+      return ["/premium/dashboard", "/control-tower", "/reports", "/email-summary"];
     default:
       return ["/dashboard", "/work-queue", "/profile"];
   }
@@ -97,11 +97,11 @@ export function getRoleMobileNavHrefs(role?: string | null) {
     case "accountant":
       return ["/reports", "/attendance/reports", "/email-summary", "/steel/customers", "/profile"];
     case "manager":
-      return ["/dashboard", "/approvals", "/reports", "/steel", "/analytics"];
+      return ["/approvals", "/dashboard", "/reports", "/steel", "/analytics"];
     case "admin":
       return ["/settings", "/reports", "/approvals", "/analytics", "/profile"];
     case "owner":
-      return ["/premium/dashboard", "/reports", "/control-tower", "/ai", "/email-summary"];
+      return ["/premium/dashboard", "/reports", "/control-tower", "/email-summary"];
     default:
       return ["/dashboard", "/work-queue", "/ocr/scan", "/attendance", "/profile"];
   }
@@ -156,7 +156,7 @@ export function getRoleWorkflowHint(role?: string | null, industryType?: string 
     case "manager":
       return {
         title: "Manager flow",
-        detail: "Use the operations board for the next decision, then move into reports and the review queue.",
+        detail: "Start in the review queue for the next decision, then move into reports and the operations board.",
       };
     case "admin":
       return {
@@ -166,7 +166,7 @@ export function getRoleWorkflowHint(role?: string | null, industryType?: string 
     case "owner":
       return {
         title: "Owner flow",
-        detail: "Start from risk, summary, and money exposure. Drill into AI or factory comparison only when a signal needs proof.",
+        detail: "Start from risk, summary, and money exposure. Drill into factory comparison only when a signal needs proof.",
       };
     default:
       return {

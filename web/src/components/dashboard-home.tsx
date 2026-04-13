@@ -527,9 +527,9 @@ export default function DashboardHome() {
           title: "Check anomaly and leakage signals",
           detail: anomalyCount
             ? `${anomalyCount} live signal${anomalyCount === 1 ? "" : "s"} need owner attention.`
-            : "AI insight is quiet right now, which makes this the right time to verify reporting trust.",
-          href: "/ai",
-          action: "Open AI Insights",
+            : "Owner risk is quiet right now, which makes this the right time to verify reporting trust.",
+          href: "/premium/dashboard?notice=ai-coming-soon",
+          action: "Open Owner Desk",
         },
         {
           eyebrow: t("dashboard.card.eyebrow.grow", "Grow"),
@@ -799,8 +799,8 @@ export default function DashboardHome() {
             detail: anomalyCount
               ? `${anomalyCount} live signal${anomalyCount === 1 ? "" : "s"} are ready for owner review.`
               : "The radar is calm, which makes this the right time to confirm reporting trust and repeated patterns.",
-            href: "/ai",
-            action: "Open AI Insights",
+            href: "/premium/dashboard?notice=ai-coming-soon",
+            action: "Open Owner Desk",
           },
           {
             title: "Finish with the outbound summary",
@@ -898,8 +898,8 @@ export default function DashboardHome() {
           variant: "outline",
         },
         {
-          href: "/ai",
-          label: "AI Insights",
+          href: "/reports",
+          label: "Trusted Reports",
           variant: "ghost",
         },
       ];
@@ -1026,8 +1026,8 @@ export default function DashboardHome() {
           label: "Risk Signals",
           value: anomalyCount,
           detail: topAnomaly ? topAnomaly.message : "No live anomaly is asking for owner attention right now.",
-          href: "/ai",
-          action: "Open AI Insights",
+          href: "/premium/dashboard?notice=ai-coming-soon",
+          action: "Open Owner Desk",
         },
         {
           label: "Trusted OCR Docs",
@@ -1457,7 +1457,7 @@ export default function DashboardHome() {
 
   if (isOperatorHome) {
     return (
-      <main className="min-h-screen bg-bg px-4 py-4 pb-28 md:px-6 lg:py-8">
+      <main className="min-h-screen bg-bg px-4 py-4 shell-bottom-clearance md:px-6 lg:py-8">
         <div className="mx-auto max-w-4xl space-y-4">
           {status ? (
             <div className="rounded-md border border-success/30 bg-success/12 px-4 py-3 text-sm text-success">
@@ -1622,7 +1622,7 @@ export default function DashboardHome() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-28 md:px-8">
+    <main className="min-h-screen px-4 py-6 shell-bottom-clearance md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
         {status ? (
           <div className="rounded-[1.2rem] border border-success/30 bg-success/12 px-4 py-3 text-sm text-success">
@@ -2239,8 +2239,10 @@ export default function DashboardHome() {
                     <div className="text-sm text-[var(--muted)]">{t("dashboard.ai.title", "AI Anomaly Radar")}</div>
                     <CardTitle className="text-xl">{t("dashboard.ai.subtitle", "Factory drift preview")}</CardTitle>
                   </div>
-                  <Link href="/ai">
-                    <Button variant="outline">{t("dashboard.action.open_ai", "Open AI Insights")}</Button>
+                  <Link href={user?.role === "owner" ? "/premium/dashboard?notice=ai-coming-soon" : "/reports"}>
+                    <Button variant="outline">
+                      {user?.role === "owner" ? "Open Owner Desk" : t("dashboard.action.open_reports", "Open Reports")}
+                    </Button>
                   </Link>
                 </CardHeader>
                 <CardContent className="space-y-4">

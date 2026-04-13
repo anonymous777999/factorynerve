@@ -25,6 +25,7 @@ from backend.plans import has_plan_feature, min_plan_for_feature, get_org_plan
 from backend.rbac import require_any_role
 from backend.tenancy import resolve_factory_id, resolve_org_id
 from backend.query_helpers import apply_org_scope, apply_role_scope, can_view_entry, factory_user_ids_query
+from backend.services.report_trust import build_report_trust_summary, get_entry_approval_signoffs
 from backend.services.background_jobs import (
     create_job,
     get_job,
@@ -93,7 +94,59 @@ def _scoped_entries_query(
     return query
 
 
-def _render_pdf_bytes(entry: Entry) -> bytes:
+def _entry_shift_label(entry: Entry) -> str:
+    raw = entry.shift.value if hasattr(entry.shift, "value") else str(entry.shift)
+    return str(raw)
+
+
+def _entry_approval_metadata(
+    db: Session,
+    current_user: User,
+    entry: Entry,
+) -> dict[str, Any]:
+    payload = get_entry_approval_signoffs(db, current_user, [entry], factory_id=entry.factory_id).get(entry.id, {})
+    return {
+        "approved_by_name": payload.get("approved_by_name"),
+        "approved_at": payload.get("approved_at"),
+    }
+
+
+def _require_entry_export_ready(
+    db: Session,
+    current_user: User,
+    entry: Entry,
+) -> dict[str, Any]:
+    if entry.status != "approved":
+        raise HTTPException(
+            status_code=409,
+            detail="This shift entry is not approved yet. Approve it before exporting.",
+        )
+    return _entry_approval_metadata(db, current_user, entry)
+
+
+def _require_trust_ready(
+    db: Session,
+    current_user: User,
+    *,
+    start: date,
+    end: date,
+    shift: str | None = None,
+    factory_id: str | None = None,
+) -> dict[str, Any]:
+    trust_summary = build_report_trust_summary(
+        db,
+        current_user,
+        start=start,
+        end=end,
+        shift=shift,
+        factory_id=factory_id,
+    )
+    if not trust_summary["can_send"]:
+        raise HTTPException(status_code=409, detail=trust_summary["blocking_reason"])
+    return trust_summary
+
+
+def _render_pdf_bytes(entry: Entry, *, approved_by_name: str | None = None, approved_at: str | None = None) -> bytes:
     buffer = BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
@@ -111,6 +164,12 @@ def _render_pdf_bytes(entry: Entry) -> bytes:
     c.drawString(40, y, f"Submitted By: {submitted_by}")
     y -= 20
     c.drawString(40, y, f"Submitted At: {submitted_at}")
+    y -= 20
+    c.drawString(40, y, f"Review Status: {entry.status}")
+    y -= 20
+    c.drawString(40, y, f"Approved By: {approved_by_name or '-'}")
+    y -= 20
+    c.drawString(40, y, f"Approved At: {approved_at or '-'}")
     y -= 20
     c.drawString(40, y, f"Units Produced: {entry.units_produced} / Target: {entry.units_target}")
     y -= 20
@@ -134,7 +193,11 @@ def _render_pdf_bytes(entry: Entry) -> bytes:
     return buffer.getvalue()
 
 
-def _render_entries_excel(entries: list[Entry]) -> bytes:
+def _render_entries_excel(
+    entries: list[Entry],
+    *,
+    entry_approvals: dict[int, dict[str, Any]] | None = None,
+) -> bytes:
     wb = Workbook()
     ws = wb.active
     ws.title = "Factory Report"
@@ -146,6 +209,8 @@ def _render_entries_excel(entries: list[Entry]) -> bytes:
         "Submitted By",
         "Submitted At",
         "Status",
+        "Approved By",
+        "Approved At",
         "Units Target",
         "Units Produced",
         "Manpower Present",
@@ -160,15 +225,18 @@ def _render_entries_excel(entries: list[Entry]) -> bytes:
     ]
     ws.append(headers)
     for entry in entries:
+        approval = (entry_approvals or {}).get(entry.id, {})
         ws.append(
             [
                 entry.id,
                 str(entry.date),
-                str(entry.shift),
+                _entry_shift_label(entry),
                 entry.department or "",
                 entry.submitted_by or "",
                 entry.created_at.isoformat() if entry.created_at else "",
                 entry.status,
+                approval.get("approved_by_name") or "",
+                approval.get("approved_at") or "",
                 entry.units_target,
                 entry.units_produced,
                 entry.manpower_present,
@@ -630,13 +698,15 @@ def _queue_range_export_job(
                 raise RuntimeError("User is no longer available for export.")
             job_user.active_org_id = org_id
             job_user.active_factory_id = factory_id
+            _require_trust_ready(job_db, job_user, start=start, end=end, factory_id=factory_id)
             entries = (
                 _scoped_entries_query(job_db, job_user, start=start, end=end)
                 .order_by(Entry.date.asc(), Entry.created_at.asc())
                 .all()
             )
             update(70, f"Rendering {len(entries)} rows into Excel")
-            excel_bytes = _render_entries_excel(entries)
+            approvals = get_entry_approval_signoffs(job_db, job_user, entries, factory_id=factory_id)
+            excel_bytes = _render_entries_excel(entries, entry_approvals=approvals)
             file_meta = write_job_file(
                 job["job_id"],
                 filename=f"reports-{start.isoformat()}-to-{end.isoformat()}.xlsx",
@@ -692,8 +762,13 @@ def _queue_entry_pdf_job(
                 raise RuntimeError("Entry not found.")
             if not _can_view_entry(job_db, job_user, entry):
                 raise RuntimeError("Access denied for this entry export.")
+            approval = _require_entry_export_ready(job_db, job_user, entry)
             update(75, "Rendering PDF")
-            pdf_bytes = _render_pdf_bytes(entry)
+            pdf_bytes = _render_pdf_bytes(
+                entry,
+                approved_by_name=approval.get("approved_by_name"),
+                approved_at=approval.get("approved_at"),
+            )
             file_meta = write_job_file(
                 job["job_id"],
                 filename=f"entry-{entry_id}.pdf",
@@ -802,6 +877,36 @@ def report_insights(
     )
 
 
+@router.get("/trust-summary")
+def report_trust_summary(
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    shift: str | None = Query(default=None),
+    factory_id: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict[str, Any]:
+    require_any_role(
+        current_user,
+        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER},
+    )
+    start = start_date or (date.today() - timedelta(days=6))
+    end = end_date or date.today()
+    if start > end:
+        raise HTTPException(status_code=400, detail="Start date cannot be after end date.")
+    normalized_shift = (shift or "").strip().lower() or None
+    if normalized_shift and normalized_shift not in {"morning", "evening", "night"}:
+        raise HTTPException(status_code=400, detail=f"Unknown shift '{shift}'.")
+    return build_report_trust_summary(
+        db,
+        current_user,
+        start=start,
+        end=end,
+        shift=normalized_shift,
+        factory_id=factory_id,
+    )
+
+
 @router.get("/pdf/{entry_id}")
 def download_pdf(
     entry_id: int,
@@ -825,7 +930,12 @@ def download_pdf(
         raise HTTPException(status_code=404, detail="Entry not found.")
     if not _can_view_entry(db, current_user, entry):
         raise HTTPException(status_code=403, detail="Access denied.")
-    pdf_bytes = _render_pdf_bytes(entry)
+    approval = _require_entry_export_ready(db, current_user, entry)
+    pdf_bytes = _render_pdf_bytes(
+        entry,
+        approved_by_name=approval.get("approved_by_name"),
+        approved_at=approval.get("approved_at"),
+    )
     return Response(content=pdf_bytes, media_type="application/pdf")
 
 
@@ -852,6 +962,7 @@ def download_pdf_job(
         raise HTTPException(status_code=404, detail="Entry not found.")
     if not _can_view_entry(db, current_user, entry):
         raise HTTPException(status_code=403, detail="Access denied.")
+    _require_entry_export_ready(db, current_user, entry)
     return _queue_entry_pdf_job(
         owner_id=current_user.id,
         org_id=org_id,
@@ -910,6 +1021,7 @@ def download_excel(
         raise HTTPException(status_code=404, detail="Entry not found.")
     if not _can_view_entry(db, current_user, entry):
         raise HTTPException(status_code=403, detail="Access denied.")
+    approval = _require_entry_export_ready(db, current_user, entry)
 
     wb = Workbook()
     ws = wb.active
@@ -920,6 +1032,9 @@ def download_excel(
         ("Department", entry.department or ""),
         ("Submitted By", entry.submitted_by or ""),
         ("Submitted At", entry.created_at.isoformat() if entry.created_at else ""),
+        ("Review Status", entry.status),
+        ("Approved By", approval.get("approved_by_name") or ""),
+        ("Approved At", approval.get("approved_at") or ""),
         ("Units Target", entry.units_target),
         ("Units Produced", entry.units_produced),
         ("Manpower Present", entry.manpower_present),
@@ -955,16 +1070,17 @@ def weekly_export(
     end = date.today()
 
     def build_payload() -> list[dict]:
-        entries = (
-            _scoped_entries_query(db, current_user, start=start, end=end)
-            .with_entities(Entry.date, Entry.shift, Entry.units_produced, Entry.units_target)
-            .order_by(Entry.date.asc(), Entry.shift.asc())
-            .all()
-        )
+        _require_trust_ready(db, current_user, start=start, end=end)
+        entries = _scoped_entries_query(db, current_user, start=start, end=end).order_by(Entry.date.asc(), Entry.created_at.asc()).all()
+        approvals = get_entry_approval_signoffs(db, current_user, entries)
         return [
             {
+                "entry_id": row.id,
                 "date": row.date.isoformat(),
-                "shift": row.shift,
+                "shift": _entry_shift_label(row),
+                "status": row.status,
+                "approved_by_name": approvals.get(row.id, {}).get("approved_by_name"),
+                "approved_at": approvals.get(row.id, {}).get("approved_at"),
                 "units_produced": row.units_produced,
                 "units_target": row.units_target,
             }
@@ -991,16 +1107,17 @@ def monthly_export(
     end = date.today()
 
     def build_payload() -> list[dict]:
-        entries = (
-            _scoped_entries_query(db, current_user, start=start, end=end)
-            .with_entities(Entry.date, Entry.shift, Entry.units_produced, Entry.units_target)
-            .order_by(Entry.date.asc(), Entry.shift.asc())
-            .all()
-        )
+        _require_trust_ready(db, current_user, start=start, end=end)
+        entries = _scoped_entries_query(db, current_user, start=start, end=end).order_by(Entry.date.asc(), Entry.created_at.asc()).all()
+        approvals = get_entry_approval_signoffs(db, current_user, entries)
         return [
             {
+                "entry_id": row.id,
                 "date": row.date.isoformat(),
-                "shift": row.shift,
+                "shift": _entry_shift_label(row),
+                "status": row.status,
+                "approved_by_name": approvals.get(row.id, {}).get("approved_by_name"),
+                "approved_at": approvals.get(row.id, {}).get("approved_at"),
                 "units_produced": row.units_produced,
                 "units_target": row.units_target,
             }
@@ -1036,8 +1153,11 @@ def export_factory_excel(
 
     start = start_date or (date.today() - timedelta(days=6))
     end = end_date or date.today()
+    _require_trust_ready(db, current_user, start=start, end=end)
     entries = _scoped_entries_query(db, current_user, start=start, end=end).order_by(Entry.date.asc(), Entry.created_at.asc())
-    excel_bytes = _render_entries_excel(entries.all())
+    rows = entries.all()
+    approvals = get_entry_approval_signoffs(db, current_user, rows)
+    excel_bytes = _render_entries_excel(rows, entry_approvals=approvals)
     return Response(
         content=excel_bytes,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1066,6 +1186,7 @@ def export_factory_excel_job(
 
     start = start_date or (date.today() - timedelta(days=6))
     end = end_date or date.today()
+    _require_trust_ready(db, current_user, start=start, end=end)
     return _queue_range_export_job(
         owner_id=current_user.id,
         org_id=org_id,

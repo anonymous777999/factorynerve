@@ -884,6 +884,219 @@ function presetLabel(preset: QueuePreset) {
   }
 }
 
+function QueueFilterControls({
+  activePreset,
+  applyPreset,
+  taskFilter,
+  setTaskFilter,
+  severityFilter,
+  setSeverityFilter,
+  ageFilter,
+  setAgeFilter,
+  search,
+  setSearch,
+  mobile = false,
+  onDone,
+}: {
+  activePreset: QueuePreset;
+  applyPreset: (preset: QueuePreset) => void;
+  taskFilter: TaskFilter;
+  setTaskFilter: (value: TaskFilter) => void;
+  severityFilter: SeverityFilter;
+  setSeverityFilter: (value: SeverityFilter) => void;
+  ageFilter: AgeFilter;
+  setAgeFilter: (value: AgeFilter) => void;
+  search: string;
+  setSearch: (value: string) => void;
+  mobile?: boolean;
+  onDone?: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Quick presets</div>
+            <div className="mt-1 text-sm text-[var(--text)]">
+              Active preset: <span className="font-semibold">{presetLabel(activePreset)}</span>
+            </div>
+            <div className="mt-1 text-xs text-[var(--muted)]">
+              Jump between fresh work, SLA backlog, and source-specific lanes without rebuilding filters by hand.
+            </div>
+          </div>
+          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
+            {(["all", "today", "sla8", "stale", "stock", "ocr"] as QueuePreset[]).map((preset) => (
+              <Button
+                key={`preset:${preset}`}
+                variant={activePreset === preset ? "primary" : "outline"}
+                className="shrink-0 px-3 py-2 text-xs"
+                onClick={() => applyPreset(preset)}
+              >
+                {presetLabel(preset)}
+              </Button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className={cn("grid gap-4", mobile ? "" : "sm:grid-cols-2 xl:grid-cols-4")}>
+        <div>
+          <label className="text-sm text-[var(--muted)]">Task type</label>
+          <Select value={taskFilter} onChange={(event) => setTaskFilter(event.target.value as TaskFilter)}>
+            <option value="all">All review work</option>
+            <option value="attendance">Attendance review</option>
+            <option value="entry">DPR entries</option>
+            <option value="ocr">OCR review</option>
+            <option value="reconciliation">Stock review</option>
+          </Select>
+        </div>
+        <div>
+          <label className="text-sm text-[var(--muted)]">Severity</label>
+          <Select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value as SeverityFilter)}>
+            <option value="all">All severities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="warning">Warning</option>
+            <option value="info">Info</option>
+          </Select>
+        </div>
+        <div>
+          <label className="text-sm text-[var(--muted)]">Queue age</label>
+          <Select value={ageFilter} onChange={(event) => setAgeFilter(event.target.value as AgeFilter)}>
+            <option value="all">All ages</option>
+            <option value="sla8">8h+ waiting (SLA)</option>
+            <option value="stale">24h+ waiting</option>
+            <option value="aging">8h to 24h waiting</option>
+            <option value="fresh">Fresh</option>
+          </Select>
+        </div>
+        <div>
+          <label className="text-sm text-[var(--muted)]">Search</label>
+          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search review work or signals" />
+        </div>
+      </div>
+
+      {mobile && onDone ? (
+        <div className="flex justify-end">
+          <Button className="px-4 py-2 text-xs" onClick={onDone}>
+            Done
+          </Button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function BulkDecisionPanel({
+  selectedTaskCount,
+  selectedApproveCount,
+  selectedRejectCount,
+  selectedNoDecisionCount,
+  visibleActionableTaskKeys,
+  allVisibleActionableSelected,
+  toggleVisibleActionableSelection,
+  clearSelection,
+  bulkNote,
+  setBulkNote,
+  bulkBusy,
+  bulkApproveBusy,
+  bulkRejectBusy,
+  openBulkDecisionConfirm,
+  bulkApproveReasonMissing,
+  bulkRejectReasonMissing,
+}: {
+  selectedTaskCount: number;
+  selectedApproveCount: number;
+  selectedRejectCount: number;
+  selectedNoDecisionCount: number;
+  visibleActionableTaskKeys: string[];
+  allVisibleActionableSelected: boolean;
+  toggleVisibleActionableSelection: () => void;
+  clearSelection: () => void;
+  bulkNote: string;
+  setBulkNote: (value: string) => void;
+  bulkBusy: boolean;
+  bulkApproveBusy: boolean;
+  bulkRejectBusy: boolean;
+  openBulkDecisionConfirm: (decision: BulkDecision) => void;
+  bulkApproveReasonMissing: boolean;
+  bulkRejectReasonMissing: boolean;
+}) {
+  if (selectedTaskCount) {
+    return (
+      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Bulk decisions</div>
+            <div className="mt-1 text-sm text-[var(--text)]">
+              Selected: {selectedTaskCount} | Approve-ready: {selectedApproveCount} | Reject-ready: {selectedRejectCount}
+            </div>
+            {selectedNoDecisionCount > 0 ? (
+              <div className="mt-1 text-xs text-amber-200">
+                {selectedNoDecisionCount} selected item(s) are role-restricted and cannot be actioned.
+              </div>
+            ) : null}
+          </div>
+          <div className="grid gap-2 sm:flex sm:flex-wrap">
+            <Button
+              variant="outline"
+              className="px-3 py-2 text-xs"
+              onClick={toggleVisibleActionableSelection}
+              disabled={!visibleActionableTaskKeys.length}
+            >
+              {allVisibleActionableSelected ? "Unselect visible" : "Select visible actionable"}
+            </Button>
+            <Button
+              variant="ghost"
+              className="px-3 py-2 text-xs"
+              onClick={clearSelection}
+              disabled={!selectedTaskCount}
+            >
+              Clear selection
+            </Button>
+          </div>
+        </div>
+        <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
+          <Textarea
+            rows={2}
+            value={bulkNote}
+            onChange={(event) => setBulkNote(event.target.value)}
+            placeholder="Shared decision note. Required for bulk reject and for high-risk approvals."
+          />
+          <Button
+            className="px-4 py-2 text-xs"
+            disabled={bulkBusy || !selectedApproveCount}
+            onClick={() => openBulkDecisionConfirm("approve")}
+          >
+            {bulkApproveBusy ? "Approving..." : "Approve selected"}
+          </Button>
+          <Button
+            variant="ghost"
+            className="px-4 py-2 text-xs"
+            disabled={bulkBusy || !selectedRejectCount}
+            onClick={() => openBulkDecisionConfirm("reject")}
+          >
+            {bulkRejectBusy ? "Rejecting..." : "Reject selected"}
+          </Button>
+        </div>
+        <div className={cn("text-xs", bulkApproveReasonMissing || bulkRejectReasonMissing ? "text-amber-200" : "text-[var(--muted)]")}>
+          {bulkRejectReasonMissing
+            ? "Bulk rejection is blocked until a reason note is added."
+            : bulkApproveReasonMissing
+              ? "High-risk approvals are selected, so add one shared review note before confirming."
+              : "Use one shared note when the same decision context applies across multiple selected items."}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4 text-sm text-[var(--muted)]">
+      Select one or more actionable tasks to unlock bulk decisions. The queue stays lighter until you actually need bulk actions.
+    </div>
+  );
+}
+
 function SummaryMetric({
   label,
   value,
@@ -1121,6 +1334,7 @@ export default function ApprovalsPage() {
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [ageFilter, setAgeFilter] = useState<AgeFilter>("all");
   const [search, setSearch] = useState("");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [selectedKey, setSelectedKey] = useState("");
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
   const [showDetailPanel, setShowDetailPanel] = useState(true);
@@ -1469,6 +1683,10 @@ export default function ApprovalsPage() {
     setSelectedTaskKeys((current) => (current.includes(key) ? current.filter((item) => item !== key) : [...current, key]));
   }, []);
 
+  const clearSelection = useCallback(() => {
+    setSelectedTaskKeys([]);
+  }, []);
+
   const toggleVisibleActionableSelection = useCallback(() => {
     setSelectedTaskKeys((current) => {
       if (!visibleActionableTaskKeys.length) return current;
@@ -1678,6 +1896,12 @@ export default function ApprovalsPage() {
   const bulkApproveBusy = actionKey === "bulk:approve";
   const bulkRejectBusy = actionKey === "bulk:reject";
   const bulkBusy = bulkApproveBusy || bulkRejectBusy;
+  const activeFilterCount = [
+    taskFilter !== "all",
+    severityFilter !== "all",
+    ageFilter !== "all",
+    Boolean(searchTerm),
+  ].filter(Boolean).length;
   const sla8TaskCount = taskItems.filter((item) => item.ageBand !== "fresh").length;
   const sla8UrgentCount = taskItems.filter(
     (item) => item.ageBand !== "fresh" && (item.severity === "critical" || item.severity === "high"),
@@ -1697,7 +1921,7 @@ export default function ApprovalsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
+      <main className="min-h-screen px-4 py-8 shell-bottom-clearance md:px-8">
         <div className="mx-auto max-w-7xl space-y-6">
           <Skeleton className="h-36 rounded-[2rem]" />
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -1716,7 +1940,7 @@ export default function ApprovalsPage() {
 
   if (!user) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
+      <main className="min-h-screen px-4 py-8 shell-bottom-clearance md:px-8">
         <div className="mx-auto max-w-4xl">
           <Card>
             <CardHeader>
@@ -1739,7 +1963,7 @@ export default function ApprovalsPage() {
 
   if (!canReview) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
+      <main className="min-h-screen px-4 py-8 shell-bottom-clearance md:px-8">
         <div className="mx-auto max-w-4xl">
           <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
             <CardHeader>
@@ -1766,29 +1990,8 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
+    <main className="min-h-screen px-4 py-6 shell-bottom-clearance md:px-8 md:pb-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <section className="flex flex-col gap-4 rounded-[1.9rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-5 shadow-2xl backdrop-blur sm:p-6 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-2">
-            <div className="text-sm uppercase tracking-[0.32em] text-[var(--accent)]">Review</div>
-            <h1 className="text-3xl font-semibold sm:text-4xl">Review Queue</h1>
-            <p className="max-w-3xl text-sm text-[var(--muted)]">
-              One prioritized inbox for attendance, DPR, OCR, and stock review decisions. Tasks stay at the top, signals stay separate, and the right side keeps full context on screen.
-            </p>
-          </div>
-          <div className="grid gap-3 text-sm text-[var(--muted)] md:text-right">
-            <span>
-              Active factory: <span className="font-semibold text-[var(--text)]">{activeFactory?.name || user.factory_name}</span>
-            </span>
-            <span>
-              Last refresh: <span className="font-semibold text-[var(--text)]">{refreshedLabel}</span>
-            </span>
-            <Button variant="outline" className="w-full md:w-auto" onClick={() => void loadInbox()}>
-              {busy ? "Refreshing..." : "Refresh Queue"}
-            </Button>
-          </div>
-        </section>
-
         {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
         {status ? <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
 
@@ -1798,150 +2001,30 @@ export default function ApprovalsPage() {
             showDetailPanel ? "lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.95fr)]" : "lg:grid-cols-1",
           )}
         >
-          <div className="space-y-6">
-            <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+          <div className="flex flex-col gap-6">
+            <Card className="order-3 hidden border-[var(--border)] bg-[rgba(18,22,34,0.92)] lg:block">
               <CardHeader>
-                <div className="text-sm text-[var(--muted)]">Queue controls</div>
-                <CardTitle className="text-xl">Prioritize what needs a decision now</CardTitle>
+                <div className="text-sm text-[var(--muted)]">Queue filters</div>
+                <CardTitle className="text-xl">Preset and filter controls</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div>
-                      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Quick presets</div>
-                      <div className="mt-1 text-sm text-[var(--text)]">
-                        Active preset: <span className="font-semibold">{presetLabel(activePreset)}</span>
-                      </div>
-                      <div className="mt-1 text-xs text-[var(--muted)]">
-                        Jump between fresh work, SLA backlog, and source-specific lanes without rebuilding filters by hand.
-                      </div>
-                    </div>
-                    <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
-                      {(["all", "today", "sla8", "stale", "stock", "ocr"] as QueuePreset[]).map((preset) => (
-                        <Button
-                          key={`preset:${preset}`}
-                          variant={activePreset === preset ? "primary" : "outline"}
-                          className="shrink-0 px-3 py-2 text-xs"
-                          onClick={() => applyPreset(preset)}
-                        >
-                          {presetLabel(preset)}
-                        </Button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Task type</label>
-                    <Select value={taskFilter} onChange={(event) => setTaskFilter(event.target.value as TaskFilter)}>
-                      <option value="all">All review work</option>
-                      <option value="attendance">Attendance review</option>
-                      <option value="entry">DPR entries</option>
-                      <option value="ocr">OCR review</option>
-                      <option value="reconciliation">Stock review</option>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Severity</label>
-                    <Select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value as SeverityFilter)}>
-                      <option value="all">All severities</option>
-                      <option value="critical">Critical</option>
-                      <option value="high">High</option>
-                      <option value="warning">Warning</option>
-                      <option value="info">Info</option>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Queue age</label>
-                    <Select value={ageFilter} onChange={(event) => setAgeFilter(event.target.value as AgeFilter)}>
-                      <option value="all">All ages</option>
-                      <option value="sla8">8h+ waiting (SLA)</option>
-                      <option value="stale">24h+ waiting</option>
-                      <option value="aging">8h to 24h waiting</option>
-                      <option value="fresh">Fresh</option>
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Search</label>
-                    <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search review work or signals" />
-                  </div>
-                </div>
-
-                {selectedTaskCount ? (
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Bulk decisions</div>
-                        <div className="mt-1 text-sm text-[var(--text)]">
-                          Selected: {selectedTaskCount} | Approve-ready: {selectedApproveCount} | Reject-ready: {selectedRejectCount}
-                        </div>
-                        {selectedNoDecisionCount > 0 ? (
-                          <div className="mt-1 text-xs text-amber-200">
-                            {selectedNoDecisionCount} selected item(s) are role-restricted and cannot be actioned.
-                          </div>
-                        ) : null}
-                      </div>
-                      <div className="grid gap-2 sm:flex sm:flex-wrap">
-                        <Button
-                          variant="outline"
-                          className="px-3 py-2 text-xs"
-                          onClick={toggleVisibleActionableSelection}
-                          disabled={!visibleActionableTaskKeys.length}
-                        >
-                          {allVisibleActionableSelected ? "Unselect visible" : "Select visible actionable"}
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          className="px-3 py-2 text-xs"
-                          onClick={() => setSelectedTaskKeys([])}
-                          disabled={!selectedTaskCount}
-                        >
-                          Clear selection
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
-                      <Textarea
-                        rows={2}
-                        value={bulkNote}
-                        onChange={(event) => setBulkNote(event.target.value)}
-                        placeholder="Shared decision note. Required for bulk reject and for high-risk approvals."
-                      />
-                      <Button
-                        className="px-4 py-2 text-xs"
-                        disabled={bulkBusy || !selectedApproveCount}
-                        onClick={() => openBulkDecisionConfirm("approve")}
-                      >
-                        {bulkApproveBusy ? "Approving..." : "Approve selected"}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="px-4 py-2 text-xs"
-                        disabled={bulkBusy || !selectedRejectCount}
-                        onClick={() => openBulkDecisionConfirm("reject")}
-                      >
-                        {bulkRejectBusy ? "Rejecting..." : "Reject selected"}
-                      </Button>
-                    </div>
-                    <div className={cn("text-xs", bulkApproveReasonMissing || bulkRejectReasonMissing ? "text-amber-200" : "text-[var(--muted)]")}>
-                      {bulkRejectReasonMissing
-                        ? "Bulk rejection is blocked until a reason note is added."
-                        : bulkApproveReasonMissing
-                          ? "High-risk approvals are selected, so add one shared review note before confirming."
-                          : "Use one shared note when the same decision context applies across multiple selected items."}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4 text-sm text-[var(--muted)]">
-                    Select one or more actionable tasks to unlock bulk decisions. The queue stays lighter until you actually need bulk actions.
-                  </div>
-                )}
+              <CardContent>
+                <QueueFilterControls
+                  activePreset={activePreset}
+                  applyPreset={applyPreset}
+                  taskFilter={taskFilter}
+                  setTaskFilter={setTaskFilter}
+                  severityFilter={severityFilter}
+                  setSeverityFilter={setSeverityFilter}
+                  ageFilter={ageFilter}
+                  setAgeFilter={setAgeFilter}
+                  search={search}
+                  setSearch={setSearch}
+                />
               </CardContent>
             </Card>
 
             {!showDetailPanel ? (
-              <div className="hidden rounded-2xl border border-[rgba(77,163,255,0.18)] bg-[rgba(77,163,255,0.08)] px-4 py-4 lg:block">
+              <div className="order-2 hidden rounded-2xl border border-[rgba(77,163,255,0.18)] bg-[rgba(77,163,255,0.08)] px-4 py-4 lg:block">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div className="space-y-1">
                     <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[rgba(77,163,255,0.92)]">
@@ -1967,25 +2050,91 @@ export default function ApprovalsPage() {
               </div>
             ) : null}
 
-            <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
-              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-sm text-[var(--muted)]">Decision queue</div>
-                  <CardTitle className="text-xl">Tasks waiting for review</CardTitle>
-                  <div className="mt-1 text-xs text-[var(--muted)]">
-                    Mix: Attendance {attendanceTaskCount} | DPR {dprTaskCount} | OCR {ocrTaskCount} | Stock {stockTaskCount}
+            <Card className="order-1 overflow-hidden border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+              <CardHeader className="space-y-4 border-b border-[var(--border)]/60 pb-4">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div className="text-sm text-[var(--muted)]">Decision queue</div>
+                    <CardTitle className="text-xl">Review next item</CardTitle>
+                    <div className="mt-1 text-xs text-[var(--muted)]">
+                      {filteredTasks.length} live task(s). Highest risk and oldest items stay at the top.
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 sm:justify-end">
+                    <Button
+                      variant="outline"
+                      className="px-3 py-2 text-xs lg:hidden"
+                      onClick={() => setMobileFiltersOpen(true)}
+                    >
+                      Filter queue{activeFilterCount ? ` (${activeFilterCount})` : ""}
+                    </Button>
+                    <Button variant="outline" className="hidden px-3 py-2 text-xs lg:inline-flex" onClick={toggleDetailPanel}>
+                      {showDetailPanel ? "Hide detail panel" : "Show detail panel"}
+                    </Button>
                   </div>
                 </div>
-                <div className="flex flex-col gap-3 sm:items-end">
-                  <div className="text-sm text-[var(--muted)] sm:text-right">
-                    {restrictedTaskCount ? `${restrictedTaskCount} item(s) require escalation by role.` : "Highest risk and oldest items stay at the top."}
-                  </div>
-                  <Button variant="outline" className="hidden px-3 py-2 text-xs lg:inline-flex" onClick={toggleDetailPanel}>
-                    {showDetailPanel ? "Hide detail panel" : "Show detail panel"}
-                  </Button>
+                <div className="flex flex-wrap gap-2 text-xs">
+                  <span className="rounded-full border border-[var(--border)] bg-[var(--card-strong)] px-3 py-1 text-[var(--muted)]">
+                    Preset: <span className="font-semibold text-[var(--text)]">{presetLabel(activePreset)}</span>
+                  </span>
+                  {taskFilter !== "all" ? (
+                    <span className="rounded-full border border-[var(--border)] bg-[var(--card-strong)] px-3 py-1 text-[var(--muted)]">
+                      Type: <span className="font-semibold text-[var(--text)]">{taskFilter}</span>
+                    </span>
+                  ) : null}
+                  {severityFilter !== "all" ? (
+                    <span className="rounded-full border border-[var(--border)] bg-[var(--card-strong)] px-3 py-1 text-[var(--muted)]">
+                      Severity: <span className="font-semibold text-[var(--text)]">{severityFilter}</span>
+                    </span>
+                  ) : null}
+                  {ageFilter !== "all" ? (
+                    <span className="rounded-full border border-[var(--border)] bg-[var(--card-strong)] px-3 py-1 text-[var(--muted)]">
+                      Age: <span className="font-semibold text-[var(--text)]">{ageFilter === "sla8" ? "8h+" : ageFilter}</span>
+                    </span>
+                  ) : null}
+                  {searchTerm ? (
+                    <span className="rounded-full border border-[var(--border)] bg-[var(--card-strong)] px-3 py-1 text-[var(--muted)]">
+                      Search: <span className="font-semibold text-[var(--text)]">{search.trim()}</span>
+                    </span>
+                  ) : null}
+                  {!activeFilterCount ? (
+                    <span className="rounded-full border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-3 py-1 text-emerald-100">
+                      All review work is visible
+                    </span>
+                  ) : null}
+                  {restrictedTaskCount ? (
+                    <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-amber-100">
+                      {restrictedTaskCount} item(s) require escalation
+                    </span>
+                  ) : null}
+                </div>
+                <div className="text-xs text-[var(--muted)]">
+                  Mix: Attendance {attendanceTaskCount} | DPR {dprTaskCount} | OCR {ocrTaskCount} | Stock {stockTaskCount}
                 </div>
               </CardHeader>
               <CardContent className="px-0 pb-0">
+                {selectedTaskCount ? (
+                  <div className="border-b border-[var(--border)]/60 px-6 py-4">
+                    <BulkDecisionPanel
+                      selectedTaskCount={selectedTaskCount}
+                      selectedApproveCount={selectedApproveCount}
+                      selectedRejectCount={selectedRejectCount}
+                      selectedNoDecisionCount={selectedNoDecisionCount}
+                      visibleActionableTaskKeys={visibleActionableTaskKeys}
+                      allVisibleActionableSelected={allVisibleActionableSelected}
+                      toggleVisibleActionableSelection={toggleVisibleActionableSelection}
+                      clearSelection={clearSelection}
+                      bulkNote={bulkNote}
+                      setBulkNote={setBulkNote}
+                      bulkBusy={bulkBusy}
+                      bulkApproveBusy={bulkApproveBusy}
+                      bulkRejectBusy={bulkRejectBusy}
+                      openBulkDecisionConfirm={openBulkDecisionConfirm}
+                      bulkApproveReasonMissing={bulkApproveReasonMissing}
+                      bulkRejectReasonMissing={bulkRejectReasonMissing}
+                    />
+                  </div>
+                ) : null}
                 {filteredTasks.length ? (
                   <>
                     <div className="hidden lg:block">
@@ -2085,7 +2234,7 @@ export default function ApprovalsPage() {
                       </div>
                     </div>
 
-                    <div className="space-y-4 lg:hidden">
+                    <div className="space-y-4 px-4 pb-4 lg:hidden">
                       {filteredTasks.map((item) => (
                         <Card key={item.key} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
                           <CardContent className="space-y-4 px-5 py-5">
@@ -2151,7 +2300,7 @@ export default function ApprovalsPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+            <Card className="order-4 border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
               <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <div className="text-sm text-[var(--muted)]">Signals</div>
@@ -2212,6 +2361,23 @@ export default function ApprovalsPage() {
               </div>
             </div>
           ) : null}
+        </section>
+
+        <section className="grid gap-3 rounded-[1.4rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-4 text-sm text-[var(--muted)] shadow-2xl backdrop-blur md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
+          <div className="flex flex-wrap gap-x-5 gap-y-2">
+            <span>
+              Active factory: <span className="font-semibold text-[var(--text)]">{activeFactory?.name || user.factory_name}</span>
+            </span>
+            <span>
+              Live queue: <span className="font-semibold text-[var(--text)]">{filteredTasks.length}</span> tasks
+            </span>
+            <span>
+              Last refresh: <span className="font-semibold text-[var(--text)]">{refreshedLabel}</span>
+            </span>
+          </div>
+          <Button variant="outline" className="w-full md:w-auto" onClick={() => void loadInbox()}>
+            {busy ? "Refreshing..." : "Refresh Queue"}
+          </Button>
         </section>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -2322,6 +2488,52 @@ export default function ApprovalsPage() {
           </Card>
         </section>
       </div>
+
+      {mobileFiltersOpen ? (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[51] bg-[rgba(4,8,16,0.78)] lg:hidden"
+            aria-label="Close queue filters"
+            onClick={() => setMobileFiltersOpen(false)}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Queue filters"
+            className="fixed inset-x-0 bottom-0 z-[52] max-h-[85vh] overflow-y-auto rounded-t-[2rem] border border-[var(--border)] bg-[rgba(17,21,33,0.98)] px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-5 shadow-2xl lg:hidden"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-[var(--border)]/60 pb-4">
+              <div className="space-y-1">
+                <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Queue filters</div>
+                <div className="text-lg font-semibold text-[var(--text)]">Refine the review list</div>
+                <div className="text-sm text-[var(--muted)]">
+                  Pick a preset or narrow by type, severity, age, and search without pushing the queue below the fold.
+                </div>
+              </div>
+              <Button variant="ghost" className="px-3 py-2 text-xs" onClick={() => setMobileFiltersOpen(false)}>
+                Close
+              </Button>
+            </div>
+            <div className="pt-4">
+              <QueueFilterControls
+                activePreset={activePreset}
+                applyPreset={applyPreset}
+                taskFilter={taskFilter}
+                setTaskFilter={setTaskFilter}
+                severityFilter={severityFilter}
+                setSeverityFilter={setSeverityFilter}
+                ageFilter={ageFilter}
+                setAgeFilter={setAgeFilter}
+                search={search}
+                setSearch={setSearch}
+                mobile
+                onDone={() => setMobileFiltersOpen(false)}
+              />
+            </div>
+          </div>
+        </>
+      ) : null}
 
       {bulkConfirmDecision ? (
         <div className="fixed inset-0 z-[55] flex items-center justify-center bg-[rgba(5,10,18,0.84)] px-4 py-4">

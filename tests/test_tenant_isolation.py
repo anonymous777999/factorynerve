@@ -3,7 +3,7 @@ from __future__ import annotations
 from http import HTTPStatus
 import time
 
-from tests.utils import create_entry_payload, register_user, set_org_plan_for_user_email, unique_email, unique_factory
+from tests.utils import create_entry_payload, mark_entry_approved, register_user, set_org_plan_for_user_email, unique_email, unique_factory
 
 
 def _auth_headers(token: str) -> dict[str, str]:
@@ -84,6 +84,7 @@ def _setup_multi_factory_manager(http_client, *, plan: str = "factory") -> dict[
 
     return {
         "manager_token": access_token,
+        "manager_user_id": str(manager_row["id"]),
         "first_factory_id": first_factory_id,
         "second_factory_id": second_factory_id,
     }
@@ -124,6 +125,7 @@ def test_factory_switch_scopes_sync_entries_analytics_reports_and_ai(http_client
     created_second = http_client.post("/entries", json=second_payload, headers=second_headers)
     assert created_second.status_code == HTTPStatus.CREATED, created_second.text
     second_entry_id = created_second.json()["id"]
+    mark_entry_approved(second_entry_id, int(setup["manager_user_id"]))
 
     manager_token = _switch_factory(http_client, manager_token, first_factory_id)
     first_headers = _auth_headers(manager_token)
@@ -210,6 +212,7 @@ def test_factory_switch_scopes_async_report_and_ai_jobs(http_client):
     created_second = http_client.post("/entries", json=second_payload, headers=second_headers)
     assert created_second.status_code == HTTPStatus.CREATED, created_second.text
     second_entry_id = created_second.json()["id"]
+    mark_entry_approved(second_entry_id, int(setup["manager_user_id"]))
 
     pdf_job = http_client.post(f"/reports/pdf/{second_entry_id}/jobs", headers=second_headers)
     assert pdf_job.status_code == HTTPStatus.OK, pdf_job.text

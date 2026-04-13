@@ -4,7 +4,7 @@ import time
 from backend.database import SessionLocal, init_db
 from backend.models.organization import Organization
 from backend.models.user import User
-from tests.utils import create_entry_payload, register_user
+from tests.utils import create_entry_payload, mark_entry_approved, register_user
 
 
 init_db()
@@ -43,6 +43,7 @@ def test_excel_range_export_job_completes_and_downloads(http_client):
     for index in range(3):
         created = http_client.post("/entries", json=create_entry_payload(index=index), headers=headers)
         assert created.status_code in {HTTPStatus.CREATED, HTTPStatus.OK}, created.text
+        mark_entry_approved(created.json()["id"], user["user_id"])
 
     response = http_client.post("/reports/excel-range/jobs", headers=headers)
     assert response.status_code == HTTPStatus.OK, response.text

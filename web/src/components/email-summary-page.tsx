@@ -10,9 +10,12 @@ import {
   getEmailSummary,
   type EmailSummarySnapshot,
 } from "@/lib/email-summary";
+import { buildTrustAppendix, getReportTrustSummary, type ReportTrustSummary } from "@/lib/report-trust";
 import { getOcrVerificationSummary, type OcrVerificationSummary } from "@/lib/ocr";
 import { getSteelOverview, type SteelOverview } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
+import { AiActivationNotice } from "@/components/ai-activation-notice";
+import { TrustChecklist } from "@/components/trust-checklist";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -52,6 +55,7 @@ export default function EmailSummaryPage() {
   const [startDate, setStartDate] = useState(daysAgo(7));
   const [endDate, setEndDate] = useState(todayValue());
   const [summary, setSummary] = useState<EmailSummarySnapshot | null>(null);
+  const [trustSummary, setTrustSummary] = useState<ReportTrustSummary | null>(null);
   const [ocrSummary, setOcrSummary] = useState<OcrVerificationSummary | null>(null);
   const [steelOverview, setSteelOverview] = useState<SteelOverview | null>(null);
   const [recipientsRaw, setRecipientsRaw] = useState("");
@@ -62,6 +66,7 @@ export default function EmailSummaryPage() {
   const [generating, setGenerating] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
+  const [trustError, setTrustError] = useState("");
   const [ocrWarning, setOcrWarning] = useState("");
   const [steelWarning, setSteelWarning] = useState("");
 
@@ -72,11 +77,13 @@ export default function EmailSummaryPage() {
     setLoadingSummary(true);
     setError("");
     setStatus("");
+    setTrustError("");
     setOcrWarning("");
     setSteelWarning("");
     try {
-      const [summaryResult, ocrResult, steelResult] = await Promise.allSettled([
+      const [summaryResult, trustResult, ocrResult, steelResult] = await Promise.allSettled([
         getEmailSummary(startDate, endDate),
+        getReportTrustSummary({ startDate, endDate }),
         getOcrVerificationSummary(),
         steelMode ? getSteelOverview() : Promise.resolve(null),
       ]);
@@ -85,6 +92,18 @@ export default function EmailSummaryPage() {
         setSummary(summaryResult.value);
       } else {
         throw summaryResult.reason;
+      }
+
+      if (trustResult.status === "fulfilled") {
+        setTrustSummary(trustResult.value);
+      } else {
+        setTrustSummary(null);
+        const reason = trustResult.reason;
+        setTrustError(
+          reason instanceof Error
+            ? `Trust checklist is unavailable right now: ${reason.message}`
+            : "Trust checklist is unavailable right now.",
+        );
       }
 
       if (ocrResult.status === "fulfilled") {
@@ -111,6 +130,7 @@ export default function EmailSummaryPage() {
         );
       }
     } catch (err) {
+      setTrustSummary(null);
       if (err instanceof ApiError) {
         setError(err.message);
       } else if (err instanceof Error) {
@@ -138,7 +158,24 @@ export default function EmailSummaryPage() {
     setInitializedRangeKey(rangeKey);
   }, [initializedRangeKey, summary]);
 
+  const ensureTrustReady = useCallback(() => {
+    if (!trustSummary) {
+      setError(trustError || "Trust checklist is still loading. Refresh the summary and try again.");
+      setStatus("");
+      return false;
+    }
+    if (!trustSummary.can_send) {
+      setError(trustSummary.blocking_reason || "Trust review is still in progress.");
+      setStatus("");
+      return false;
+    }
+    return true;
+  }, [trustError, trustSummary]);
+
   const handleGenerate = async () => {
+    if (!ensureTrustReady()) {
+      return;
+    }
     setGenerating(true);
     setError("");
     setStatus("");
@@ -161,8 +198,16 @@ export default function EmailSummaryPage() {
   };
 
   const handleCopy = async () => {
+    if (!ensureTrustReady()) {
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(body);
+      const messageBody = composedBody.trim();
+      if (!messageBody) {
+        setError("Write or generate the email body before copying it.");
+        return;
+      }
+      await navigator.clipboard.writeText(messageBody);
       setStatus("Email body copied to clipboard.");
       setError("");
     } catch {
@@ -174,8 +219,17 @@ export default function EmailSummaryPage() {
     .split(/[\n,]/)
     .map((item) => item.trim())
     .filter(Boolean);
-  const composeLinks = buildComposeLinks(recipients, subject, body);
+  const trustReady = Boolean(trustSummary?.can_send);
+  const trustAppendix = trustSummary ? buildTrustAppendix(trustSummary) : "";
+  const composedBody = useMemo(() => {
+    if (!trustAppendix) {
+      return body;
+    }
+    return body.trim() ? `${body.trim()}\n\n${trustAppendix}` : trustAppendix;
+  }, [body, trustAppendix]);
+  const composeLinks = buildComposeLinks(recipients, subject, composedBody);
   const draftReady = Boolean(recipients.length && subject.trim() && body.trim());
+  const composeReady = Boolean(draftReady && trustReady);
   const ownerRiskLines = useMemo(() => {
     if (!steelOverview) return [];
     const highRiskBatchCount =
@@ -193,6 +247,10 @@ export default function EmailSummaryPage() {
     return lines;
   }, [steelOverview]);
   const bodyHasOwnerRisk = body.includes("Owner Risk Watch");
+  const showEmailAiActivation = !summary || !summary.can_send;
+  const emailAiSupport = !summary
+    ? "Refresh the date range and keep using trusted reports or manual compose while the AI draft layer finishes activating."
+    : `AI drafting activates on the ${summary.min_plan} plan and above. Keep the manual message flow active until this workspace is ready.`;
   const sendReadinessCards = useMemo(
     () => [
       {
@@ -208,16 +266,16 @@ export default function EmailSummaryPage() {
             : "Add recipients before sending the update out.",
       },
       {
-        label: "Trusted OCR",
-        value: `${ocrSummary?.trusted_documents ?? 0} docs`,
+        label: "Trust Gate",
+        value: trustReady ? "Ready" : "Blocked",
         tone:
-          (ocrSummary?.pending_documents ?? 0) === 0
+          trustReady
             ? "border-cyan-400/25 bg-[rgba(34,211,238,0.08)] text-cyan-50"
             : "border-amber-400/25 bg-[rgba(245,158,11,0.08)] text-amber-50",
         detail:
-          (ocrSummary?.pending_documents ?? 0) === 0
-            ? "Approved OCR is clear for this range."
-            : `${ocrSummary?.pending_documents ?? 0} OCR document${(ocrSummary?.pending_documents ?? 0) === 1 ? "" : "s"} still need review.`,
+          trustReady
+            ? trustSummary?.confirmation || "All records are reviewed and safe to send."
+            : trustSummary?.blocking_reason || trustError || "Review is still pending for this reporting window.",
       },
       {
         label: "Risk Framing",
@@ -244,7 +302,7 @@ export default function EmailSummaryPage() {
             : "Generate or write the body before opening Gmail or Outlook.",
       },
     ],
-    [bodyHasOwnerRisk, draftReady, ocrSummary?.pending_documents, ocrSummary?.trusted_documents, ownerRiskLines.length, recipients.length],
+    [bodyHasOwnerRisk, draftReady, ownerRiskLines.length, recipients.length, trustError, trustReady, trustSummary],
   );
 
   const handleAppendOwnerRisk = useCallback(() => {
@@ -423,68 +481,78 @@ export default function EmailSummaryPage() {
               </div>
             </div>
             <div className="text-xs text-[var(--muted)]">
-              Recommended flow: refresh the range, confirm trust cards, generate the draft, then open your mail client.
+              {showEmailAiActivation
+                ? "Recommended flow: refresh the range, confirm trust cards, write the message in your own words, then open your mail client."
+                : "Recommended flow: refresh the range, confirm trust cards, generate the draft, then open your mail client."}
             </div>
           </CardContent>
         </Card>
 
-        <section className={`grid gap-4 sm:grid-cols-2 ${steelOverview ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Plan</div>
-              <CardTitle>{summary?.plan || "-"}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Email AI requires {summary?.min_plan || "growth"} or higher. Owner risk wording lands best when this is paired with trusted OCR and steel review.
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Provider</div>
-              <CardTitle>{summary?.provider || "-"}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Estimated tokens: {summary?.estimated_tokens || 0}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Top Performer</div>
-              <CardTitle>{summary?.top_performer?.name || "-"}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              {summary?.top_performer
-                ? `${summary.top_performer.production_percent.toFixed(1)}% production`
-                : "No data for this range."}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Most Downtime</div>
-              <CardTitle>{summary?.most_downtime?.name || "-"}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              {summary?.most_downtime
-                ? `${summary.most_downtime.downtime_minutes} min`
-                : "No downtime spikes found."}
-            </CardContent>
-          </Card>
-          {steelOverview ? (
+        {summary ? (
+          <section className={`grid gap-4 sm:grid-cols-2 ${steelOverview ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
             <Card>
               <CardHeader>
-                <div className="text-sm text-[var(--muted)]">Money At Risk</div>
-                <CardTitle>
-                  {steelOverview.financial_access
-                    ? formatCurrency(steelOverview.anomaly_summary.total_estimated_leakage_value_inr)
-                    : "Restricted"}
-                </CardTitle>
+                <div className="text-sm text-[var(--muted)]">Plan</div>
+                <CardTitle>{summary.plan}</CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-[var(--muted)]">
-                {Number(steelOverview.anomaly_summary.high_batches || 0) + Number(steelOverview.anomaly_summary.critical_batches || 0)} high-risk steel anomaly signals are active.
+                Email AI requires {summary.min_plan} or higher. Owner risk wording lands best when this is paired with trusted OCR and steel review.
               </CardContent>
             </Card>
-          ) : null}
-        </section>
+            <Card>
+              <CardHeader>
+                <div className="text-sm text-[var(--muted)]">Provider</div>
+                <CardTitle>{summary.provider}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-[var(--muted)]">
+                Estimated tokens: {summary.estimated_tokens}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="text-sm text-[var(--muted)]">Top Performer</div>
+                <CardTitle>{summary.top_performer?.name || "No data in range"}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-[var(--muted)]">
+                {summary.top_performer
+                  ? `${summary.top_performer.production_percent.toFixed(1)}% production`
+                  : "No data for this range."}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="text-sm text-[var(--muted)]">Most Downtime</div>
+                <CardTitle>{summary.most_downtime?.name || "No downtime spike"}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-[var(--muted)]">
+                {summary.most_downtime
+                  ? `${summary.most_downtime.downtime_minutes} min`
+                  : "No downtime spikes found."}
+              </CardContent>
+            </Card>
+            {steelOverview ? (
+              <Card>
+                <CardHeader>
+                  <div className="text-sm text-[var(--muted)]">Money At Risk</div>
+                  <CardTitle>
+                    {steelOverview.financial_access
+                      ? formatCurrency(steelOverview.anomaly_summary.total_estimated_leakage_value_inr)
+                      : "Restricted"}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-[var(--muted)]">
+                  {Number(steelOverview.anomaly_summary.high_batches || 0) + Number(steelOverview.anomaly_summary.critical_batches || 0)} high-risk steel anomaly signals are active.
+                </CardContent>
+              </Card>
+            ) : null}
+          </section>
+        ) : (
+          <AiActivationNotice
+            support="Use trusted reports and scheduled updates while the AI summary layer finishes activating for this workspace."
+            primaryAction={{ href: "/reports", label: "Open Trusted Reports" }}
+            secondaryAction={{ href: "/premium/dashboard?notice=ai-coming-soon", label: "Open Owner Desk", variant: "outline" }}
+          />
+        )}
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {sendReadinessCards.map((item) => (
@@ -619,9 +687,11 @@ export default function EmailSummaryPage() {
                   </div>
                 </>
               ) : (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  Load a date range to see the summary snapshot.
-                </div>
+                <AiActivationNotice
+                  className="bg-[linear-gradient(145deg,rgba(62,166,255,0.1),rgba(12,16,26,0.88))]"
+                  support="Keep the manual summary flow active from trusted reports until this workspace has a live AI snapshot."
+                  primaryAction={{ href: "/reports", label: "Open Trusted Reports" }}
+                />
               )}
             </CardContent>
           </Card>
@@ -631,6 +701,21 @@ export default function EmailSummaryPage() {
               <CardTitle className="text-xl">Email Draft</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <TrustChecklist
+                summary={trustSummary}
+                loading={loadingSummary}
+                error={trustError}
+                title="Send gate for this email"
+                description="Email and copy actions stay locked until OCR, shift entry, and attendance review are complete for this date range."
+              />
+              {showEmailAiActivation ? (
+                <AiActivationNotice
+                  className="bg-[linear-gradient(145deg,rgba(62,166,255,0.1),rgba(12,16,26,0.88))]"
+                  support={emailAiSupport}
+                  primaryAction={{ href: "/reports", label: "Open Trusted Reports" }}
+                  secondaryAction={{ href: summary ? "/plans" : "/premium/dashboard?notice=ai-coming-soon", label: summary ? "Review Plans" : "Open Owner Desk", variant: "outline" }}
+                />
+              ) : null}
               <div>
                 <label className="text-sm text-[var(--muted)]">Recipients</label>
                 <Textarea
@@ -645,13 +730,15 @@ export default function EmailSummaryPage() {
                 <Input value={subject} onChange={(event) => setSubject(event.target.value)} />
               </div>
               <div className="grid gap-3 sm:flex sm:flex-wrap">
-                <Button
-                  className="w-full sm:w-auto"
-                  onClick={handleGenerate}
-                  disabled={generating || !summary?.can_send}
-                >
-                  {generating ? "Generating..." : "Generate AI Draft"}
-                </Button>
+                {summary?.can_send ? (
+                  <Button
+                    className="w-full sm:w-auto"
+                    onClick={handleGenerate}
+                    disabled={generating || !trustReady}
+                  >
+                    {generating ? "Generating..." : "Generate AI Draft"}
+                  </Button>
+                ) : null}
                 <Button className="w-full sm:w-auto" variant="outline" onClick={handleUseSuggestedRecipients} disabled={!summary?.suggested_recipients?.length}>
                   Use Suggested Recipients
                 </Button>
@@ -663,7 +750,7 @@ export default function EmailSummaryPage() {
                     Append Owner Risk Lines
                   </Button>
                 ) : null}
-                <Button className="w-full sm:w-auto" variant="outline" onClick={handleCopy} disabled={!body}>
+                <Button className="w-full sm:w-auto" variant="outline" onClick={handleCopy} disabled={!body || !trustReady}>
                   Copy Body
                 </Button>
                 {!summary?.can_send ? (
@@ -678,20 +765,40 @@ export default function EmailSummaryPage() {
                   rows={14}
                   value={body}
                   onChange={(event) => setBody(event.target.value)}
-                  placeholder="Generate the AI draft or write your own email here."
+                  placeholder={showEmailAiActivation ? "Write your owner update here." : "Generate the AI draft or write your own email here."}
                 />
               </div>
-              <div className="grid gap-3 sm:flex sm:flex-wrap">
-                <a href={composeLinks.gmail} target="_blank" rel="noreferrer">
-                  <Button className="w-full sm:w-auto">Open Gmail</Button>
-                </a>
-                <a href={composeLinks.outlook} target="_blank" rel="noreferrer">
-                  <Button className="w-full sm:w-auto" variant="outline">Open Outlook</Button>
-                </a>
-                <a href={composeLinks.mailto}>
-                  <Button className="w-full sm:w-auto" variant="ghost">Open Mail App</Button>
-                </a>
+              <div className="rounded-2xl border border-border bg-[rgba(255,255,255,0.03)] px-4 py-3 text-xs text-[var(--muted)]">
+                Trust appendix auto-attached on copy and mail compose. Recipients will see who approved each OCR document, shift entry, and attendance record in this window.
               </div>
+              <div className="grid gap-3 sm:flex sm:flex-wrap">
+                {composeReady ? (
+                  <a href={composeLinks.gmail} target="_blank" rel="noreferrer">
+                    <Button className="w-full sm:w-auto">Open Gmail</Button>
+                  </a>
+                ) : (
+                  <Button className="w-full sm:w-auto" disabled>Open Gmail</Button>
+                )}
+                {composeReady ? (
+                  <a href={composeLinks.outlook} target="_blank" rel="noreferrer">
+                    <Button className="w-full sm:w-auto" variant="outline">Open Outlook</Button>
+                  </a>
+                ) : (
+                  <Button className="w-full sm:w-auto" variant="outline" disabled>Open Outlook</Button>
+                )}
+                {composeReady ? (
+                  <a href={composeLinks.mailto}>
+                    <Button className="w-full sm:w-auto" variant="ghost">Open Mail App</Button>
+                  </a>
+                ) : (
+                  <Button className="w-full sm:w-auto" variant="ghost" disabled>Open Mail App</Button>
+                )}
+              </div>
+              {!trustReady && trustSummary?.blocking_reason ? (
+                <div className="rounded-2xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-sm text-amber-100">
+                  {trustSummary.blocking_reason}
+                </div>
+              ) : null}
               <div className="text-xs text-[var(--muted)]">
                 Server-side sending is intentionally disabled right now. That is deliberate: the final send stays in your own mail client so leadership can review the message before it leaves the factory.
               </div>

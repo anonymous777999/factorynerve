@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Fragment, useEffect, useMemo, useState } from "react";
 
 import { ApiError } from "@/lib/api";
@@ -14,9 +15,12 @@ import {
   type PremiumSeriesPoint,
   type PremiumSummary,
 } from "@/lib/premium";
+import { getReportTrustSummary, type ReportTrustSummary } from "@/lib/report-trust";
 import { triggerBlobDownload } from "@/lib/reports";
 import { getSteelOverview, type SteelOverview } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
+import { AiActivationNotice } from "@/components/ai-activation-notice";
+import { TrustChecklist } from "@/components/trust-checklist";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
@@ -63,6 +67,19 @@ function formatDateTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+function todayValue() {
+  const now = new Date();
+  const offset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+}
+
+function daysAgoValue(days: number) {
+  const now = new Date();
+  now.setDate(now.getDate() - days);
+  const offset = now.getTimezoneOffset() * 60000;
+  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
 }
 
 function shiftLabel(value: string) {
@@ -294,11 +311,14 @@ function ShiftChart({
 }
 
 export default function PremiumDashboardPage() {
+  const searchParams = useSearchParams();
   const { user, loading, error: sessionError, activeFactory } = useSession();
   const [dashboard, setDashboard] = useState<PremiumDashboardResponse | null>(null);
   const [auditTrail, setAuditTrail] = useState<PremiumAuditItem[]>([]);
   const [ocrSummary, setOcrSummary] = useState<OcrVerificationSummary | null>(null);
   const [steelOverview, setSteelOverview] = useState<SteelOverview | null>(null);
+  const [trustSummary, setTrustSummary] = useState<ReportTrustSummary | null>(null);
+  const [loadingTrust, setLoadingTrust] = useState(false);
   const [days, setDays] = useState(14);
   const [selectedFactoryId, setSelectedFactoryId] = useState<string | null>(null);
   const [selectedShift, setSelectedShift] = useState<string | null>(null);
@@ -309,6 +329,7 @@ export default function PremiumDashboardPage() {
   const [auditWarning, setAuditWarning] = useState("");
   const [ocrWarning, setOcrWarning] = useState("");
   const [steelWarning, setSteelWarning] = useState("");
+  const [trustError, setTrustError] = useState("");
   const [status, setStatus] = useState("");
 
   useEffect(() => {
@@ -406,6 +427,46 @@ export default function PremiumDashboardPage() {
       alive = false;
     };
   }, [activeFactory?.factory_id, activeFactory?.industry_type, dashboard, locked, user]);
+
+  useEffect(() => {
+    if (!user || locked) {
+      return;
+    }
+    let alive = true;
+    queueMicrotask(() => {
+      if (!alive) return;
+      setLoadingTrust(true);
+      setTrustError("");
+    });
+    getReportTrustSummary({
+      startDate: daysAgoValue(days - 1),
+      endDate: todayValue(),
+      shift: selectedShift,
+      factoryId: selectedFactoryId,
+    })
+      .then((nextSummary) => {
+        if (!alive) return;
+        setTrustSummary(nextSummary);
+      })
+      .catch((reason) => {
+        if (!alive) return;
+        setTrustSummary(null);
+        setTrustError(
+          reason instanceof Error
+            ? `Trust checklist is temporarily unavailable: ${reason.message}`
+            : "Trust checklist is temporarily unavailable.",
+        );
+      })
+      .finally(() => {
+        if (alive) {
+          setLoadingTrust(false);
+        }
+      });
+
+    return () => {
+      alive = false;
+    };
+  }, [days, locked, selectedFactoryId, selectedShift, user]);
 
   const filteredSeries = useMemo(() => {
     if (!dashboard) return [];
@@ -520,6 +581,16 @@ export default function PremiumDashboardPage() {
   }, [auditTrail]);
 
   const handleExportPdf = async () => {
+    if (!trustSummary) {
+      setError(trustError || "Trust checklist is still loading. Refresh and try again.");
+      setStatus("");
+      return;
+    }
+    if (!trustSummary.can_send) {
+      setError(trustSummary.blocking_reason || "Trust review is still in progress.");
+      setStatus("");
+      return;
+    }
     setStatus("");
     setError("");
     try {
@@ -591,6 +662,7 @@ export default function PremiumDashboardPage() {
   const topDaySignals = steelOverview?.responsibility_analytics.by_day.slice(0, 3) || [];
   const topBatchSignals = steelOverview?.responsibility_analytics.by_batch.slice(0, 3) || [];
   const stockTrustHotspots = steelOverview?.low_confidence_items.slice(0, 3) || [];
+  const showAiActivationNotice = searchParams.get("notice") === "ai-coming-soon";
   const ownerRiskCards = steelOverview
     ? [
         {
@@ -646,7 +718,7 @@ export default function PremiumDashboardPage() {
     : [];
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
+    <main className="min-h-screen px-4 py-6 shell-bottom-clearance md:px-8 md:pb-8">
       <div className="mx-auto flex max-w-[1500px] flex-col gap-6">
         <section className="rounded-[2rem] border border-[rgba(62,166,255,0.18)] bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.18),rgba(11,14,20,0.92)_50%)] p-6 shadow-[0_40px_120px_rgba(3,8,20,0.45)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -660,9 +732,6 @@ export default function PremiumDashboardPage() {
               </p>
             </div>
             <div className="grid gap-3 sm:flex sm:flex-wrap">
-              <Button variant="outline" className="w-full sm:w-auto" onClick={() => void handleExportPdf()}>
-                Executive PDF
-              </Button>
               <Link href="/analytics">
                 <Button variant="outline" className="w-full sm:w-auto">Basic Analytics</Button>
               </Link>
@@ -701,6 +770,15 @@ export default function PremiumDashboardPage() {
           </div>
         </section>
 
+        {showAiActivationNotice ? (
+          <AiActivationNotice
+            eyebrow="Owner feature gate"
+            support="Stay in the owner desk, trusted reports, and scheduled updates while AI activation finishes for this factory."
+            primaryAction={{ href: "/reports", label: "Open Trusted Reports" }}
+            secondaryAction={{ href: "/email-summary", label: "Open Scheduled Updates", variant: "outline" }}
+          />
+        ) : null}
+
         {busy ? (
           <div className="rounded-3xl border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-4 py-3 text-sm text-[var(--muted)]">
             Refreshing premium analytics...
@@ -726,10 +804,50 @@ export default function PremiumDashboardPage() {
             {steelWarning}
           </div>
         ) : null}
+        {!locked && trustError ? (
+          <div className="rounded-3xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-sm text-amber-100">
+            {trustError}
+          </div>
+        ) : null}
         {error || sessionError ? (
           <div className="rounded-3xl border border-rose-400/30 bg-rose-400/12 px-4 py-3 text-sm text-rose-100">
             {error || sessionError}
           </div>
+        ) : null}
+
+        {!locked ? (
+          <section className="grid gap-4 xl:grid-cols-[1fr_320px]">
+          <TrustChecklist
+            summary={trustSummary}
+            loading={loadingTrust}
+            error={trustError}
+            title="Executive export gate"
+            description="Owner exports stay locked until OCR, shift entry, and attendance review are complete for the selected premium window."
+          />
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl">Executive Export</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4 text-sm text-[var(--muted)]">
+                Export the owner brief only after the trust gate is green. The PDF now carries the review appendix with approver names and timestamps.
+              </div>
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => void handleExportPdf()}
+                disabled={busy || loadingTrust || !trustSummary?.can_send}
+              >
+                Executive PDF
+              </Button>
+              {!trustSummary?.can_send && trustSummary?.blocking_reason ? (
+                <div className="rounded-2xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-sm text-amber-100">
+                  {trustSummary.blocking_reason}
+                </div>
+              ) : null}
+            </CardContent>
+          </Card>
+          </section>
         ) : null}
 
         <Card>

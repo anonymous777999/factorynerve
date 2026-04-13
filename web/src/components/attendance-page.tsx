@@ -323,7 +323,7 @@ export default function AttendancePage() {
 
   if (loading || (pageLoading && Boolean(user) && !hasLoadedOnce)) {
     return (
-      <main className="min-h-screen bg-bg px-4 py-8 md:px-6 pb-20 md:pb-8">
+      <main className="min-h-screen bg-bg px-4 py-8 shell-bottom-clearance md:px-6 md:pb-8">
         <div className="mx-auto max-w-6xl space-y-6">
           <Skeleton className="h-96 rounded-lg" />
           <div className="hidden gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -356,7 +356,7 @@ export default function AttendancePage() {
   }
 
   return (
-    <main className="min-h-screen bg-bg px-4 py-6 text-text-primary md:px-6 lg:py-8 pb-20 md:pb-8">
+    <main className="min-h-screen bg-bg px-4 py-6 text-text-primary shell-bottom-clearance md:px-6 md:pb-8 lg:py-8">
       <div className="mx-auto max-w-6xl">
         {status ? (
           <div className="mb-4 rounded-lg border border-color-success/25 bg-color-success/10 px-4 py-3 text-sm text-color-success">

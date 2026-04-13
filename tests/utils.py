@@ -1,11 +1,13 @@
 import uuid
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 from urllib.parse import parse_qs, urlparse
 
 import httpx
 
 from backend.database import SessionLocal, init_db
+from backend.models.entry import Entry
 from backend.models.organization import Organization
+from backend.models.report import AuditLog
 from backend.models.user import User
 from backend.models.user_factory_role import UserFactoryRole
 from backend.plans import normalize_plan
@@ -114,6 +116,29 @@ def set_org_plan_for_user_email(email: str, plan: str) -> None:
         org.plan = normalize_plan(plan)
         org.plan_expires_at = None
         db.add(org)
+        db.commit()
+    finally:
+        db.close()
+
+
+def mark_entry_approved(entry_id: int, approver_user_id: int) -> None:
+    init_db()
+    db = SessionLocal()
+    try:
+        entry = db.query(Entry).filter(Entry.id == entry_id).first()
+        assert entry is not None
+        entry.status = "approved"
+        db.add(
+            AuditLog(
+                user_id=approver_user_id,
+                org_id=entry.org_id,
+                factory_id=entry.factory_id,
+                action="ENTRY_APPROVED",
+                details=f"entry_id={entry.id}",
+                ip_address=None,
+                timestamp=datetime.now(timezone.utc),
+            )
+        )
         db.commit()
     finally:
         db.close()

@@ -232,7 +232,7 @@ export default function MyTasksPage() {
 
   if (loading || (pageLoading && !hasLoadedOnce)) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
+      <main className="min-h-screen px-4 py-8 shell-bottom-clearance md:px-8">
         <div className="mx-auto max-w-7xl space-y-6">
           <Skeleton className="h-32 rounded-[2rem]" />
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -252,7 +252,7 @@ export default function MyTasksPage() {
 
   if (!user) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
+      <main className="min-h-screen px-4 py-8 shell-bottom-clearance md:px-8">
         <div className="mx-auto max-w-4xl">
           <Card>
             <CardHeader>
@@ -271,7 +271,7 @@ export default function MyTasksPage() {
 
   if (!canUseTasks) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
+      <main className="min-h-screen px-4 py-8 shell-bottom-clearance md:px-8">
         <div className="mx-auto max-w-4xl">
           <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
             <CardHeader>
@@ -294,7 +294,7 @@ export default function MyTasksPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
+    <main className="min-h-screen px-4 py-6 shell-bottom-clearance md:px-8 md:pb-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <section className="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">

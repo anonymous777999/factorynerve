@@ -4,12 +4,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import {
-  getAiJob,
-  startExecutiveSummaryJob,
-  type AiJob,
-  type ExecutiveSummaryResponse,
-} from "@/lib/ai";
 import { ApiError } from "@/lib/api";
 import { listEntries, type Entry } from "@/lib/entries";
 import {
@@ -25,11 +19,14 @@ import {
   type ReportInsights,
   type ReportJob,
 } from "@/lib/reports";
+import { getReportTrustSummary, type ReportTrustSummary } from "@/lib/report-trust";
 import { getOcrVerificationSummary, type OcrVerificationSummary } from "@/lib/ocr";
 import { getSteelOverview, type SteelOverview } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
+import { AiActivationNotice } from "@/components/ai-activation-notice";
 import ReportInsightsBoard from "@/components/report-insights-board";
 import { ReportsPageSkeleton } from "@/components/page-skeletons";
+import { TrustChecklist } from "@/components/trust-checklist";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -96,10 +93,33 @@ function formatDateTime(value?: string) {
   });
 }
 
-function toCsv(rows: Entry[]) {
-  const headers = ["id", "date", "shift", "department", "status", "units_target", "units_produced", "downtime_minutes", "notes"];
+function toCsv(rows: Entry[], approvals: Map<number, { approvedBy?: string | null; approvedAt?: string | null }>) {
+  const headers = [
+    "id",
+    "date",
+    "shift",
+    "department",
+    "status",
+    "approved_by_name",
+    "approved_at",
+    "units_target",
+    "units_produced",
+    "downtime_minutes",
+    "notes",
+  ];
   const escape = (value: unknown) => `"${String(value ?? "").replaceAll('"', '""')}"`;
-  return [headers.join(","), ...rows.map((row) => headers.map((header) => escape((row as Record<string, unknown>)[header])).join(","))].join("\n");
+  return [
+    headers.join(","),
+    ...rows.map((row) => {
+      const approval = approvals.get(row.id);
+      const payload: Record<string, unknown> = {
+        ...row,
+        approved_by_name: approval?.approvedBy || "",
+        approved_at: approval?.approvedAt || "",
+      };
+      return headers.map((header) => escape(payload[header])).join(",");
+    }),
+  ].join("\n");
 }
 
 function progressWidth(progress?: number) {
@@ -137,12 +157,15 @@ export default function ReportsPage() {
   const [refreshingInsights, setRefreshingInsights] = useState(false);
   const [steelOverview, setSteelOverview] = useState<SteelOverview | null>(null);
   const [ocrSummary, setOcrSummary] = useState<OcrVerificationSummary | null>(null);
-  const [executiveSummary, setExecutiveSummary] = useState<ExecutiveSummaryResponse | null>(null);
-  const [executiveBusy, setExecutiveBusy] = useState(false);
+  const [rangeTrust, setRangeTrust] = useState<ReportTrustSummary | null>(null);
+  const [weeklyTrust, setWeeklyTrust] = useState<ReportTrustSummary | null>(null);
+  const [monthlyTrust, setMonthlyTrust] = useState<ReportTrustSummary | null>(null);
+  const [loadingTrust, setLoadingTrust] = useState(false);
+  const [trustError, setTrustError] = useState("");
+  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+  const [mobileAiExpanded, setMobileAiExpanded] = useState(false);
   const [reportJob, setReportJob] = useState<ReportJob | null>(null);
-  const [summaryJob, setSummaryJob] = useState<AiJob | null>(null);
   const completedReportDownloads = useRef<Set<string>>(new Set());
-  const completedSummaryJobs = useRef<Set<string>>(new Set());
   const presetAppliedRef = useRef(false);
 
   const isAccountant = user?.role === "accountant";
@@ -151,6 +174,18 @@ export default function ReportsPage() {
   const trustedOcrDocuments = ocrSummary?.trusted_documents ?? 0;
   const pendingOcrDocuments = ocrSummary?.pending_documents ?? 0;
   const pendingTrustedWork = pendingOcrDocuments + (steelOverview ? Number(steelOverview.confidence_counts.red || 0) : 0);
+  const shiftApprovalMap = useMemo(
+    () => new Map(
+      (rangeTrust?.approval_register.shift_entries || []).map((record) => [
+        record.id,
+        {
+          approvedBy: record.approved_by_name,
+          approvedAt: record.approved_at,
+        },
+      ]),
+    ),
+    [rangeTrust],
+  );
 
   const loadRows = useCallback(async (options?: { background?: boolean }) => {
     if (!user || isAccountant) {
@@ -260,6 +295,65 @@ export default function ReportsPage() {
     }
   }, [activeFactory?.industry_type, appliedFilters, hasLoadedRows, user]);
 
+  const loadTrustSummaries = useCallback(async () => {
+    if (!user) {
+      setRangeTrust(null);
+      setWeeklyTrust(null);
+      setMonthlyTrust(null);
+      setLoadingTrust(false);
+      return;
+    }
+    setLoadingTrust(true);
+    setTrustError("");
+    try {
+      const weeklyStart = daysAgo(6);
+      const monthlyStart = daysAgo(29);
+      const [rangeResult, weeklyResult, monthlyResult] = await Promise.allSettled([
+        getReportTrustSummary({
+          startDate: appliedFilters.startDate,
+          endDate: appliedFilters.endDate,
+        }),
+        getReportTrustSummary({
+          startDate: weeklyStart,
+          endDate: todayValue(),
+        }),
+        getReportTrustSummary({
+          startDate: monthlyStart,
+          endDate: todayValue(),
+        }),
+      ]);
+
+      if (rangeResult.status === "fulfilled") {
+        setRangeTrust(rangeResult.value);
+      } else {
+        setRangeTrust(null);
+        throw rangeResult.reason;
+      }
+
+      if (weeklyResult.status === "fulfilled") {
+        setWeeklyTrust(weeklyResult.value);
+      } else {
+        setWeeklyTrust(null);
+      }
+
+      if (monthlyResult.status === "fulfilled") {
+        setMonthlyTrust(monthlyResult.value);
+      } else {
+        setMonthlyTrust(null);
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setTrustError(err.message);
+      } else if (err instanceof Error) {
+        setTrustError(err.message);
+      } else {
+        setTrustError("Could not load the trust checklist.");
+      }
+    } finally {
+      setLoadingTrust(false);
+    }
+  }, [appliedFilters.endDate, appliedFilters.startDate, user]);
+
   useEffect(() => {
     if (presetAppliedRef.current) return;
     const preset = searchParams.get("preset");
@@ -304,10 +398,14 @@ export default function ReportsPage() {
   useEffect(() => {
     setError("");
     setStatus("");
+    setTrustError("");
     setLastUpdatedAt(null);
     setHasLoadedRows(false);
     setRefreshing(false);
     setRefreshingInsights(false);
+    setRangeTrust(null);
+    setWeeklyTrust(null);
+    setMonthlyTrust(null);
     if (!user || isAccountant) {
       setRows([]);
       setTotal(0);
@@ -324,12 +422,17 @@ export default function ReportsPage() {
   }, [loadInsights]);
 
   useEffect(() => {
+    void loadTrustSummaries();
+  }, [loadTrustSummaries]);
+
+  useEffect(() => {
     if (!user || isAccountant || !hasLoadedRows) return;
     const refreshAll = () => {
       if (!document.hidden) {
         void Promise.all([
           loadRows({ background: true }),
           loadInsights({ background: true }),
+          loadTrustSummaries(),
         ]);
       }
     };
@@ -339,7 +442,7 @@ export default function ReportsPage() {
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", refreshAll);
     };
-  }, [hasLoadedRows, isAccountant, loadInsights, loadRows, user]);
+  }, [hasLoadedRows, isAccountant, loadInsights, loadRows, loadTrustSummaries, user]);
 
   useEffect(() => {
     if (page > pageCount) {
@@ -375,13 +478,13 @@ export default function ReportsPage() {
       {
         eyebrow: "Distribution",
         title: "Finish with an owner-ready update",
-        metric: executiveSummary?.provider ? `${executiveSummary.provider} summary ready` : "Owner summary lane",
+        metric: "AI activation pending",
         detail:
           activeFactory?.industry_type === "steel"
             ? pendingTrustedWork > 0
-              ? `Steel risk and pending trust checks are still active (${pendingTrustedWork.toLocaleString("en-IN")} items), so use the outbound summary after those are acknowledged.`
-              : "Pair exports with owner risk wording so dispatch, stock, and leakage exposure are visible in the same story."
-            : "Move from report filters to AI summary or outbound update without rewriting the same factory story by hand.",
+              ? `Steel risk and pending trust checks are still active (${pendingTrustedWork.toLocaleString("en-IN")} items), so hold the owner update until those checks are acknowledged.`
+              : "Use trusted exports and the owner update desk while AI insights finish activating for this factory."
+            : "Use trusted exports and the owner update desk while AI insights finish activating for this factory.",
         href: "/email-summary",
         action: "Open Email Summary",
       },
@@ -392,7 +495,6 @@ export default function ReportsPage() {
     activeFactory?.industry_type,
     appliedFilters.endDate,
     appliedFilters.startDate,
-    executiveSummary?.provider,
     isAccountant,
     ocrSummary,
     pendingOcrDocuments,
@@ -435,6 +537,7 @@ export default function ReportsPage() {
       void Promise.all([
         loadRows({ background: true }),
         loadInsights({ background: true }),
+        loadTrustSummaries(),
       ]);
     }
   };
@@ -450,10 +553,38 @@ export default function ReportsPage() {
     void Promise.all([
       loadRows({ background: true }),
       loadInsights({ background: true }),
+      loadTrustSummaries(),
     ]);
   };
+
+  const ensureTrustReady = useCallback((summary: ReportTrustSummary | null, fallbackMessage: string) => {
+    if (!summary) {
+      setError(fallbackMessage);
+      setStatus("");
+      return false;
+    }
+    if (!summary.can_send) {
+      setError(summary.blocking_reason || fallbackMessage);
+      setStatus("");
+      return false;
+    }
+    return true;
+  }, []);
+
+  const ensureEntryApproved = useCallback((entry: Entry) => {
+    if (entry.status === "approved") {
+      return true;
+    }
+    setError("This shift entry is not approved yet. Approve it before exporting.");
+    setStatus("");
+    return false;
+  }, []);
+
   const handleDownloadCurrentPage = () => {
-    const blob = new Blob([toCsv(filteredRows)], { type: "text/csv;charset=utf-8" });
+    if (!ensureTrustReady(rangeTrust, "Trust checklist is still loading. Refresh and try again.")) {
+      return;
+    }
+    const blob = new Blob([toCsv(filteredRows, shiftApprovalMap)], { type: "text/csv;charset=utf-8" });
     triggerBlobDownload(blob, `reports-page-${page}.csv`);
   };
 
@@ -479,6 +610,13 @@ export default function ReportsPage() {
   };
 
   const handleJsonExport = async (kind: "weekly" | "monthly") => {
+    const trustSummary = kind === "weekly" ? weeklyTrust : monthlyTrust;
+    const fallbackMessage = kind === "weekly"
+      ? "Weekly trust status is still loading. Refresh and try again."
+      : "Monthly trust status is still loading. Refresh and try again.";
+    if (!ensureTrustReady(trustSummary, fallbackMessage)) {
+      return;
+    }
     setBusy(true);
     setError("");
     setStatus(`Preparing the ${kind} summary export...`);
@@ -501,6 +639,9 @@ export default function ReportsPage() {
   };
 
   const handleRangeExcelJob = async () => {
+    if (!ensureTrustReady(rangeTrust, "Trust checklist is still loading. Refresh and try again.")) {
+      return;
+    }
     setBusy(true);
     setError("");
     setStatus("Queueing the date-range Excel export...");
@@ -521,6 +662,13 @@ export default function ReportsPage() {
   };
 
   const handleEntryPdfJob = async (entryId: number) => {
+    const row = filteredRows.find((candidate) => candidate.id === entryId);
+    if (!ensureTrustReady(rangeTrust, "Trust checklist is still loading. Refresh and try again.")) {
+      return;
+    }
+    if (row && !ensureEntryApproved(row)) {
+      return;
+    }
     setBusy(true);
     setError("");
     setStatus(`Queueing the PDF export for entry #${entryId}...`);
@@ -540,24 +688,14 @@ export default function ReportsPage() {
     }
   };
 
-  const handleExecutiveSummary = async () => {
-    setExecutiveBusy(true);
-    setError("");
-    setStatus("Queueing an executive summary for the selected date range...");
-    try {
-      const job = await startExecutiveSummaryJob(appliedFilters.startDate, appliedFilters.endDate);
-      setSummaryJob(job);
-      setStatus("Executive summary job queued. You can track or retry it from the Jobs drawer if needed.");
-    } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError("Could not generate executive summary.");
-      }
-      setExecutiveBusy(false);
+  const handleEntryExcelDownload = (row: Entry) => {
+    if (!ensureTrustReady(rangeTrust, "Trust checklist is still loading. Refresh and try again.")) {
+      return;
     }
+    if (!ensureEntryApproved(row)) {
+      return;
+    }
+    void handleBinaryDownload(() => downloadEntryReport(row.id, "excel"), `entry-${row.id}.xlsx`);
   };
 
   useEffect(() => {
@@ -598,47 +736,13 @@ export default function ReportsPage() {
     return () => window.clearInterval(interval);
   }, [appliedFilters.endDate, appliedFilters.startDate, reportJob]);
 
-  useEffect(() => {
-    if (!summaryJob || ["succeeded", "failed", "canceled"].includes(summaryJob.status)) {
-      return undefined;
-    }
-    const interval = window.setInterval(async () => {
-      try {
-        const next = await getAiJob(summaryJob.job_id);
-        setSummaryJob(next);
-        if (next.status === "succeeded" && next.result && !completedSummaryJobs.current.has(next.job_id)) {
-          completedSummaryJobs.current.add(next.job_id);
-          setExecutiveSummary(next.result);
-          setStatus(`Executive summary generated with ${next.result.provider}.`);
-          setExecutiveBusy(false);
-        } else if (next.status === "failed") {
-          setError(next.error || "Executive summary failed.");
-          setExecutiveBusy(false);
-        } else if (next.status === "canceled") {
-          setStatus(next.message || "Executive summary was canceled.");
-          setExecutiveBusy(false);
-        } else {
-          setStatus(next.message || "Executive summary is still running...");
-        }
-      } catch (err) {
-        if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError("Could not track executive summary progress.");
-        }
-        setExecutiveBusy(false);
-      }
-    }, 1200);
-    return () => window.clearInterval(interval);
-  }, [summaryJob]);
-
   if (loading || (user && !isAccountant && loadingRows && !hasLoadedRows)) {
     return <ReportsPageSkeleton />;
   }
 
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 pb-20 md:pb-8">
+      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 shell-bottom-clearance md:pb-8">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Reports</CardTitle>
@@ -654,61 +758,276 @@ export default function ReportsPage() {
     );
   }
 
-  return (
-    <main className="min-h-screen bg-bg px-4 py-6 pb-24 md:px-8 md:pb-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <section className="flex flex-col gap-4 rounded-[1.9rem] border border-border bg-card p-5 shadow-2xl backdrop-blur sm:p-6 lg:flex-row lg:items-start lg:justify-between">
+  const defaultFilters = buildDefaultFilters();
+  const appliedSearch = appliedFilters.search.trim();
+  const activeFilterCount = [
+    appliedFilters.startDate !== defaultFilters.startDate || appliedFilters.endDate !== defaultFilters.endDate,
+    Boolean(appliedFilters.shift),
+    appliedFilters.hasIssues !== "any",
+    appliedFilters.status !== "any",
+    Boolean(appliedSearch),
+  ].filter(Boolean).length;
+  const mobileFilterBadges = [
+    appliedFilters.shift ? `Shift: ${appliedFilters.shift}` : null,
+    appliedFilters.status !== "any" ? `Status: ${appliedFilters.status}` : null,
+    appliedFilters.hasIssues !== "any"
+      ? appliedFilters.hasIssues === "yes"
+        ? "Issues only"
+        : "No issues only"
+      : null,
+    appliedSearch ? `Search: ${appliedSearch}` : null,
+  ].filter(Boolean) as string[];
+  const trustActionHref = pendingOcrDocuments > 0 ? "/ocr/verify" : "/approvals";
+  const trustActionLabel = pendingOcrDocuments > 0 ? "Review OCR" : "Open Review Queue";
 
+  const renderFilterControls = (mobile = false) => (
+    <div className="space-y-4">
+      <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
+        <Button variant="outline" onClick={() => handleQuickRange("today")}>Today</Button>
+        <Button variant="outline" onClick={() => handleQuickRange("week")}>Last 7 Days</Button>
+        <Button variant="outline" onClick={() => handleQuickRange("month")}>This Month</Button>
+        <Button variant="outline" onClick={resetFilters}>Reset Filters</Button>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div>
-          <div className="text-sm uppercase tracking-[0.28em] text-color-primary">Reports</div>
-          <h1 className="mt-2 text-3xl font-semibold text-text-primary">Reporting hub for trusted factory output</h1>
-          <p className="mt-2 max-w-3xl text-sm text-text-muted">
-            Pull daily operations, trusted OCR, and owner-facing summaries into one desk. This page should answer three things fast: what is safe to report, what still needs review, and what format should leave the factory next.
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2 text-xs">
-            <span className="rounded-full border border-color-primary/25 bg-color-primary/8 px-3 py-1 text-color-primary-light">
-              Trusted outputs only
-            </span>
-            <span className="rounded-full border border-border bg-card-elevated px-3 py-1 text-text-muted">
-              {activeFactory?.name || "Current factory"}
-            </span>
-            <span className="rounded-full border border-border bg-card-elevated px-3 py-1 text-text-muted">
-              {isAccountant ? "Accounts-first view" : "Operations + management view"}
-            </span>
-          </div>
+          <label className="text-sm text-text-muted">Start Date</label>
+          <Input
+            type="date"
+            value={draftFilters.startDate}
+            onChange={(e) => setDraftFilters((current) => ({ ...current, startDate: e.target.value }))}
+            className="h-11"
+          />
         </div>
-        <div className="grid gap-3">
-          <div className="grid gap-3 sm:flex sm:flex-wrap">
-            <Link href="/dashboard" className="w-full sm:w-auto">
-              <Button variant="outline" className="w-full sm:w-auto">Dashboard</Button>
-            </Link>
-            <Link href="/email-summary" className="w-full sm:w-auto">
-              <Button className="w-full sm:w-auto">Owner Update Desk</Button>
-            </Link>
-            <Link href="/entry" className="w-full sm:w-auto">
-              <Button variant="outline" className="w-full sm:w-auto">New Entry</Button>
-            </Link>
+        <div>
+          <label className="text-sm text-text-muted">End Date</label>
+          <Input
+            type="date"
+            value={draftFilters.endDate}
+            onChange={(e) => setDraftFilters((current) => ({ ...current, endDate: e.target.value }))}
+            className="h-11"
+          />
+        </div>
+        <div>
+          <label className="text-sm text-text-muted">Shift</label>
+          <Select
+            value={draftFilters.shift}
+            onChange={(e) => setDraftFilters((current) => ({ ...current, shift: e.target.value }))}
+          >
+            <option value="">All Shifts</option>
+            <option value="morning">Morning</option>
+            <option value="evening">Evening</option>
+            <option value="night">Night</option>
+          </Select>
+        </div>
+        <div>
+          <label className="text-sm text-text-muted">Has Issues</label>
+          <Select
+            value={draftFilters.hasIssues}
+            onChange={(e) => setDraftFilters((current) => ({ ...current, hasIssues: e.target.value as IssueFilter }))}
+          >
+            <option value="any">Any</option>
+            <option value="yes">Yes</option>
+            <option value="no">No</option>
+          </Select>
+        </div>
+        <div>
+          <label className="text-sm text-text-muted">Status</label>
+          <Select
+            value={draftFilters.status}
+            onChange={(e) => setDraftFilters((current) => ({ ...current, status: e.target.value }))}
+          >
+            <option value="any">Any</option>
+            <option value="submitted">Submitted</option>
+            <option value="approved">Approved</option>
+            <option value="rejected">Rejected</option>
+          </Select>
+        </div>
+        <div className="md:col-span-2">
+          <label className="text-sm text-text-muted">Search notes / department</label>
+          <Input
+            value={draftFilters.search}
+            onChange={(e) => setDraftFilters((current) => ({ ...current, search: e.target.value }))}
+            placeholder="Search notes, downtime reason, department..."
+            className="h-11"
+          />
+        </div>
+        <div>
+          <label className="text-sm text-text-muted">Page</label>
+          <Input
+            type="number"
+            min={1}
+            max={pageCount}
+            value={page}
+            onChange={(e) => setPage(Math.max(1, Math.min(pageCount, Number(e.target.value) || 1)))}
+            className="h-11"
+          />
+        </div>
+        <div className="grid gap-2 sm:flex sm:items-end">
+          <Button
+            variant="primary"
+            onClick={() => {
+              applyFilters();
+              if (mobile) setMobileFiltersOpen(false);
+            }}
+            disabled={loadingRows || isAccountant}
+            className="h-11 w-full sm:w-auto"
+          >
+            {loadingRows && !hasLoadedRows ? "Loading..." : "Apply Filters"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={resetFilters}
+            disabled={loadingRows || isAccountant}
+            className="h-11 w-full sm:w-auto"
+          >
+            Reset
+          </Button>
+        </div>
+        <div className="text-xs text-text-muted md:col-span-2 xl:col-span-4">
+          Applied range: {appliedFilters.startDate} to {appliedFilters.endDate}
+        </div>
+      </div>
+    </div>
+  );
+
+  const exportActions = (
+    <div className="space-y-3">
+      <div className="rounded-2xl border border-border bg-card-elevated p-4 text-sm text-text-muted">
+        Use range Excel for shared plant files, JSON for system handoff, and the owner update desk when leadership needs the same reporting story in plain language.
+      </div>
+      <Button
+        variant="outline"
+        onClick={handleRangeExcelJob}
+        disabled={busy || loadingTrust || !rangeTrust?.can_send}
+        className="h-11 w-full sm:w-auto"
+      >
+        Export Date Range to Excel
+      </Button>
+      <Button
+        variant="outline"
+        onClick={() => handleJsonExport("weekly")}
+        disabled={busy || loadingTrust || !weeklyTrust?.can_send}
+        className="h-11 w-full sm:w-auto"
+      >
+        Export Weekly Summary JSON
+      </Button>
+      <Button
+        variant="outline"
+        onClick={() => handleJsonExport("monthly")}
+        disabled={busy || loadingTrust || !monthlyTrust?.can_send}
+        className="h-11 w-full sm:w-auto"
+      >
+        Export Monthly Summary JSON
+      </Button>
+      {!isAccountant ? (
+        <Button
+          variant="outline"
+          onClick={handleDownloadCurrentPage}
+          disabled={!filteredRows.length || loadingTrust || !rangeTrust?.can_send}
+          className="h-11 w-full sm:w-auto"
+        >
+          Export Visible Page CSV
+        </Button>
+      ) : (
+        <div className="rounded-2xl border border-border bg-card-elevated p-4 text-sm text-text-muted">
+          Accountant view keeps raw entries hidden, but summary exports still work.
+        </div>
+      )}
+      {!rangeTrust?.can_send && rangeTrust?.blocking_reason ? (
+        <div className="rounded-2xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-xs text-amber-100">
+          Range exports blocked: {rangeTrust.blocking_reason}
+        </div>
+      ) : null}
+      {!weeklyTrust?.can_send && weeklyTrust?.blocking_reason ? (
+        <div className="rounded-2xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-xs text-amber-100">
+          Weekly JSON blocked: {weeklyTrust.blocking_reason}
+        </div>
+      ) : null}
+      {!monthlyTrust?.can_send && monthlyTrust?.blocking_reason ? (
+        <div className="rounded-2xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-xs text-amber-100">
+          Monthly JSON blocked: {monthlyTrust.blocking_reason}
+        </div>
+      ) : null}
+      <div className="grid gap-3 pt-1 sm:flex sm:flex-wrap">
+        <Link href="/attendance/reports" className="w-full sm:w-auto">
+          <Button variant="ghost" className="w-full sm:w-auto">Attendance Reports</Button>
+        </Link>
+        <Link href="/email-summary" className="w-full sm:w-auto">
+          <Button variant="ghost" className="w-full sm:w-auto">Email Summary</Button>
+        </Link>
+      </div>
+      {reportJob ? (
+        <div className="rounded-2xl border border-border bg-card-elevated p-4">
+          <div className="flex items-center justify-between gap-4 text-xs uppercase tracking-[0.18em] text-text-muted">
+            <span>Range Export Job</span>
+            <span>{reportJob.progress}%</span>
           </div>
-          {!isAccountant ? (
-            <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
-              <Button
-                variant="outline"
-                className="w-full px-4 py-2 text-xs sm:w-auto"
-                onClick={handleRefreshAll}
-                disabled={loadingRows || loadingInsights || refreshing || refreshingInsights}
-              >
-                {refreshing || refreshingInsights ? "Refreshing..." : "Refresh Reports"}
-              </Button>
-              <span className="text-xs text-[var(--muted)]">
-                {refreshing || refreshingInsights
-                  ? "Updating reports and charts..."
-                  : lastUpdatedAt
-                    ? `Updated ${formatDateTime(lastUpdatedAt)}`
-                    : "Live updates every 40 seconds"}
-              </span>
-            </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-border">
+            <div className="h-full rounded-full bg-color-primary transition-all" style={{ width: progressWidth(reportJob.progress) }} />
+          </div>
+          <div className="mt-3 text-sm text-text-primary">{reportJob.message}</div>
+          {reportJob.status === "failed" && reportJob.error ? (
+            <div className="mt-2 text-sm text-color-danger">{reportJob.error}</div>
           ) : null}
         </div>
+      ) : null}
+    </div>
+  );
+
+  return (
+    <main className="min-h-screen bg-bg px-4 py-6 shell-bottom-clearance md:px-8 md:pb-8">
+      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+        <section className="flex flex-col gap-3 rounded-[1.6rem] border border-border bg-card p-4 shadow-2xl backdrop-blur sm:p-6 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <div className="text-xs uppercase tracking-[0.28em] text-color-primary">Reports</div>
+            <h1 className="mt-2 text-2xl font-semibold text-text-primary sm:text-3xl">Trusted reporting desk</h1>
+            <p className="mt-2 hidden max-w-3xl text-sm text-text-muted sm:block">
+              Pull daily operations, trusted OCR, and owner-facing summaries into one desk. This page should answer three things fast: what is safe to report, what still needs review, and what format should leave the factory next.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2 text-xs">
+              <span className="rounded-full border border-color-primary/25 bg-color-primary/8 px-3 py-1 text-color-primary-light">
+                Trusted outputs only
+              </span>
+              <span className="rounded-full border border-border bg-card-elevated px-3 py-1 text-text-muted">
+                {activeFactory?.name || "Current factory"}
+              </span>
+              <span className="rounded-full border border-border bg-card-elevated px-3 py-1 text-text-muted">
+                {isAccountant ? "Accounts-first view" : "Operations + management view"}
+              </span>
+            </div>
+          </div>
+          <div className="grid gap-2 lg:justify-items-end">
+            <div className="grid gap-2 sm:flex sm:flex-wrap">
+              <Link href="/email-summary" className="w-full sm:w-auto">
+                <Button className="w-full sm:w-auto">Owner Update Desk</Button>
+              </Link>
+              <Link href="/dashboard" className="hidden sm:block">
+                <Button variant="outline">Dashboard</Button>
+              </Link>
+              <Link href="/entry" className="hidden sm:block">
+                <Button variant="outline">New Entry</Button>
+              </Link>
+            </div>
+            {!isAccountant ? (
+              <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+                <Button
+                  variant="outline"
+                  className="px-4 py-2 text-xs"
+                  onClick={handleRefreshAll}
+                  disabled={loadingRows || loadingInsights || loadingTrust || refreshing || refreshingInsights}
+                >
+                  {refreshing || refreshingInsights || loadingTrust ? "Refreshing..." : "Refresh Reports"}
+                </Button>
+                <span className="hidden text-xs text-[var(--muted)] sm:inline">
+                  {refreshing || refreshingInsights || loadingTrust
+                    ? "Updating reports, charts, and trust..."
+                    : lastUpdatedAt
+                      ? `Updated ${formatDateTime(lastUpdatedAt)}`
+                      : "Live updates every 40 seconds"}
+                </span>
+              </div>
+            ) : null}
+          </div>
         </section>
 
         {error ? <div className="rounded-2xl border border-color-danger/30 bg-color-danger/10 px-4 py-3 text-sm text-color-danger-light">{error}</div> : null}
@@ -719,7 +1038,141 @@ export default function ReportsPage() {
         ) : null}
         {sessionError ? <div className="rounded-2xl border border-color-danger/30 bg-color-danger/10 px-4 py-3 text-sm text-color-danger-light">{sessionError}</div> : null}
 
-        <section className="order-3 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <Card className="order-1 border border-border bg-card">
+          <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+            <div>
+              <div className="text-sm uppercase tracking-[0.22em] text-color-primary-light">Trust status</div>
+              <CardTitle className="mt-2 text-xl text-text-primary">Current report period must clear trust before export</CardTitle>
+              <div className="mt-2 max-w-3xl text-sm text-text-muted">
+                Review gates stay ahead of reporting. When the checklist passes, every exported file carries approver names and timestamps.
+              </div>
+            </div>
+            <div className="grid gap-2 sm:flex sm:flex-wrap">
+              <Link href={trustActionHref} className="w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto">{trustActionLabel}</Button>
+              </Link>
+              <Link href="/email-summary" className="w-full sm:w-auto">
+                <Button variant="ghost" className="w-full sm:w-auto">Owner Update Desk</Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <TrustChecklist
+              summary={rangeTrust}
+              loading={loadingTrust}
+              error={trustError}
+              title="Current report period"
+              description="Date-range exports and row downloads stay locked until OCR, shift entry, and attendance review are all complete."
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="order-2 lg:hidden">
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <div>
+              <div className="text-sm text-text-muted">Filters</div>
+              <CardTitle className="text-xl text-text-primary">Current report scope</CardTitle>
+            </div>
+            <Button variant="outline" className="h-11 shrink-0" onClick={() => setMobileFiltersOpen(true)}>
+              Filter{activeFilterCount ? ` (${activeFilterCount})` : ""}
+            </Button>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="rounded-2xl border border-border bg-card-elevated p-4 text-sm text-text-muted">
+              Range: {appliedFilters.startDate} to {appliedFilters.endDate}
+            </div>
+            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
+              <Button variant="outline" onClick={() => handleQuickRange("today")}>Today</Button>
+              <Button variant="outline" onClick={() => handleQuickRange("week")}>Last 7 Days</Button>
+              <Button variant="outline" onClick={() => handleQuickRange("month")}>This Month</Button>
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs">
+              {mobileFilterBadges.length ? (
+                mobileFilterBadges.map((badge) => (
+                  <span key={badge} className="rounded-full border border-border bg-card-elevated px-3 py-1 text-text-muted">
+                    {badge}
+                  </span>
+                ))
+              ) : (
+                <span className="rounded-full border border-emerald-400/30 bg-emerald-400/12 px-3 py-1 text-emerald-100">
+                  All shifts and statuses are visible
+                </span>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <section className="order-3 hidden gap-5 lg:grid xl:grid-cols-[1.15fr_0.85fr]">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl">Filter Reports</CardTitle>
+            </CardHeader>
+            <CardContent>{renderFilterControls()}</CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl">Export Reports</CardTitle>
+            </CardHeader>
+            <CardContent>{exportActions}</CardContent>
+          </Card>
+        </section>
+
+        <Card className="order-5 lg:hidden">
+          <CardHeader>
+            <div className="text-sm text-text-muted">Exports</div>
+            <CardTitle className="text-xl text-text-primary">Send trusted output</CardTitle>
+          </CardHeader>
+          <CardContent>{exportActions}</CardContent>
+        </Card>
+
+        <div className="order-6">
+          <ReportInsightsBoard insights={insights} loading={loadingInsights} role={user.role} steelOverview={steelOverview} />
+        </div>
+
+        {ocrSummary ? (
+          <Card className="order-7 border border-border bg-card">
+            <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+              <div>
+                <div className="text-sm uppercase tracking-[0.22em] text-color-primary-light">OCR Trust Summary</div>
+                <CardTitle className="mt-2 text-xl text-text-primary">Approved OCR is the reporting-safe layer</CardTitle>
+                <div className="mt-2 max-w-3xl text-sm text-text-muted">
+                  {ocrSummary.trust_note}
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Link href="/ocr/verify">
+                  <Button variant="outline">Open Review Documents</Button>
+                </Link>
+                <Link href="/approvals">
+                  <Button variant="ghost">Open Review Queue</Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="grid gap-4 md:grid-cols-4">
+              <div className="rounded-2xl border border-color-primary/20 bg-card-elevated p-4">
+                <div className="text-xs uppercase tracking-[0.18em] text-color-primary-light">Approved Docs</div>
+                <div className="mt-2 text-2xl font-semibold text-text-primary">{ocrSummary.trusted_documents}</div>
+              </div>
+              <div className="rounded-2xl border border-color-primary/20 bg-card-elevated p-4">
+                <div className="text-xs uppercase tracking-[0.18em] text-color-primary-light">Trusted Rows</div>
+                <div className="mt-2 text-2xl font-semibold text-text-primary">{ocrSummary.trusted_rows}</div>
+              </div>
+              <div className="rounded-2xl border border-color-warning/20 bg-card-elevated p-4">
+                <div className="text-xs uppercase tracking-[0.18em] text-color-warning-light">Pending Review</div>
+                <div className="mt-2 text-2xl font-semibold text-text-primary">{ocrSummary.pending_documents}</div>
+              </div>
+              <div className="rounded-2xl border border-border bg-card-elevated p-4">
+                <div className="text-xs uppercase tracking-[0.18em] text-text-muted">Last Trusted Approval</div>
+                <div className="mt-2 text-lg font-semibold text-text-primary">{formatDateTime(ocrSummary.last_trusted_at || undefined)}</div>
+                <div className="mt-1 text-xs text-text-muted">
+                  Approval rate: {ocrSummary.approval_rate != null ? `${ocrSummary.approval_rate}%` : "-"}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
+
+        <section className="order-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {reportHubCards.map((card) => (
             <Card key={card.title} className="border border-border bg-card">
               <CardHeader>
@@ -737,279 +1190,37 @@ export default function ReportsPage() {
           ))}
         </section>
 
-        <Card className="order-4">
-          <CardHeader>
-            <CardTitle className="text-xl">Quick Filters</CardTitle>
-          </CardHeader>
-          <CardContent className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
-            <Button variant="outline" onClick={() => handleQuickRange("today")}>Today</Button>
-            <Button variant="outline" onClick={() => handleQuickRange("week")}>Last 7 Days</Button>
-            <Button variant="outline" onClick={() => handleQuickRange("month")}>This Month</Button>
-            <Button variant="outline" onClick={resetFilters}>Reset Filters</Button>
-          </CardContent>
-        </Card>
-
-        <div className="order-5">
-          <ReportInsightsBoard insights={insights} loading={loadingInsights} role={user.role} steelOverview={steelOverview} />
-        </div>
-
-      {ocrSummary ? (
-        <Card className="order-6 border border-border bg-card">
-          <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+        <Card className="order-9">
+          <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <div>
-              <div className="text-sm uppercase tracking-[0.22em] text-color-primary-light">OCR Trust Summary</div>
-              <CardTitle className="mt-2 text-xl text-text-primary">Approved OCR is the reporting-safe layer</CardTitle>
-              <div className="mt-2 max-w-3xl text-sm text-text-muted">
-                {ocrSummary.trust_note}
-              </div>
+              <div className="text-sm text-text-muted">Owner updates</div>
+              <CardTitle className="text-xl text-text-primary">Executive AI Summary</CardTitle>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/ocr/verify">
-                <Button variant="outline">Open Review Documents</Button>
-              </Link>
-              <Link href="/approvals">
-                <Button variant="ghost">Open Review Queue</Button>
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent className="grid gap-4 md:grid-cols-4">
-            <div className="rounded-2xl border border-color-primary/20 bg-card-elevated p-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-color-primary-light">Approved Docs</div>
-              <div className="mt-2 text-2xl font-semibold text-text-primary">{ocrSummary.trusted_documents}</div>
-            </div>
-            <div className="rounded-2xl border border-color-primary/20 bg-card-elevated p-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-color-primary-light">Trusted Rows</div>
-              <div className="mt-2 text-2xl font-semibold text-text-primary">{ocrSummary.trusted_rows}</div>
-            </div>
-            <div className="rounded-2xl border border-color-warning/20 bg-card-elevated p-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-color-warning-light">Pending Review</div>
-              <div className="mt-2 text-2xl font-semibold text-text-primary">{ocrSummary.pending_documents}</div>
-            </div>
-            <div className="rounded-2xl border border-border bg-card-elevated p-4">
-              <div className="text-xs uppercase tracking-[0.18em] text-text-muted">Last Trusted Approval</div>
-              <div className="mt-2 text-lg font-semibold text-text-primary">{formatDateTime(ocrSummary.last_trusted_at || undefined)}</div>
-              <div className="mt-1 text-xs text-text-muted">
-                Approval rate: {ocrSummary.approval_rate != null ? `${ocrSummary.approval_rate}%` : "-"}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      ) : null}
-
-      <section className="order-1 grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">Filter Reports</CardTitle>
-          </CardHeader>
-          <CardContent className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div>
-              <label className="text-sm text-text-muted">Start Date</label>
-              <Input
-                type="date"
-                value={draftFilters.startDate}
-                onChange={(e) => setDraftFilters((current) => ({ ...current, startDate: e.target.value }))}
-                className="h-11"
-              />
-            </div>
-            <div>
-              <label className="text-sm text-text-muted">End Date</label>
-              <Input
-                type="date"
-                value={draftFilters.endDate}
-                onChange={(e) => setDraftFilters((current) => ({ ...current, endDate: e.target.value }))}
-                className="h-11"
-              />
-            </div>
-            <div>
-              <label className="text-sm text-text-muted">Shift</label>
-              <Select
-                value={draftFilters.shift}
-                onChange={(e) => setDraftFilters((current) => ({ ...current, shift: e.target.value }))}
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                className="h-11 lg:hidden"
+                onClick={() => setMobileAiExpanded((current) => !current)}
               >
-                <option value="">All Shifts</option>
-                <option value="morning">Morning</option>
-                <option value="evening">Evening</option>
-                <option value="night">Night</option>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm text-text-muted">Has Issues</label>
-              <Select
-                value={draftFilters.hasIssues}
-                onChange={(e) => setDraftFilters((current) => ({ ...current, hasIssues: e.target.value as IssueFilter }))}
-              >
-                <option value="any">Any</option>
-                <option value="yes">Yes</option>
-                <option value="no">No</option>
-              </Select>
-            </div>
-            <div>
-              <label className="text-sm text-text-muted">Status</label>
-              <Select
-                value={draftFilters.status}
-                onChange={(e) => setDraftFilters((current) => ({ ...current, status: e.target.value }))}
-              >
-                <option value="any">Any</option>
-                <option value="submitted">Submitted</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-              </Select>
-            </div>
-            <div className="md:col-span-2">
-              <label className="text-sm text-text-muted">Search notes / department</label>
-              <Input
-                value={draftFilters.search}
-                onChange={(e) => setDraftFilters((current) => ({ ...current, search: e.target.value }))}
-                placeholder="Search notes, downtime reason, department..."
-                className="h-11"
-              />
-            </div>
-            <div>
-              <label className="text-sm text-text-muted">Page</label>
-              <Input
-                type="number"
-                min={1}
-                max={pageCount}
-                value={page}
-                onChange={(e) => setPage(Math.max(1, Math.min(pageCount, Number(e.target.value) || 1)))}
-                className="h-11"
-              />
-            </div>
-            <div className="grid gap-2 sm:flex sm:items-end">
-              <Button variant="primary" onClick={applyFilters} disabled={loadingRows || isAccountant} className="h-11 w-full sm:w-auto">
-                {loadingRows && !hasLoadedRows ? "Loading..." : "Apply Filters"}
+                {mobileAiExpanded ? "Hide AI Summary" : "Show AI Summary"}
               </Button>
-              <Button variant="outline" onClick={resetFilters} disabled={loadingRows || isAccountant} className="h-11 w-full sm:w-auto">
-                Reset
-              </Button>
+              <Link href="/email-summary" className="hidden lg:block">
+                <Button variant="outline" className="h-11">Open Owner Update Desk</Button>
+              </Link>
             </div>
-            <div className="md:col-span-2 xl:col-span-4 text-xs text-text-muted">
-              Applied range: {appliedFilters.startDate} to {appliedFilters.endDate}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">Quick Exports</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="rounded-2xl border border-border bg-card-elevated p-4 text-sm text-text-muted">
-              Use range Excel for shared plant files, JSON for system handoff, and the executive summary or email desk when leadership needs the same reporting story in plain language.
-            </div>
-            <Button variant="outline" onClick={handleRangeExcelJob} disabled={busy} className="h-11 w-full sm:w-auto">
-              Export Date Range to Excel
-            </Button>
-            <Button variant="outline" onClick={() => handleJsonExport("weekly")} disabled={busy} className="h-11 w-full sm:w-auto">
-              Export Weekly Summary JSON
-            </Button>
-            <Button variant="outline" onClick={() => handleJsonExport("monthly")} disabled={busy} className="h-11 w-full sm:w-auto">
-              Export Monthly Summary JSON
-            </Button>
-            {!isAccountant ? (
-              <Button variant="outline" onClick={handleDownloadCurrentPage} disabled={!filteredRows.length} className="h-11 w-full sm:w-auto">
-                Export Visible Page CSV
-              </Button>
-            ) : (
-              <div className="rounded-2xl border border-border bg-card-elevated p-4 text-sm text-text-muted">
-                Accountant view keeps raw entries hidden, but summary exports still work.
-              </div>
-            )}
-            <div className="grid gap-3 pt-1 sm:flex sm:flex-wrap">
-              <Link href="/attendance/reports" className="w-full sm:w-auto">
-                <Button variant="ghost" className="w-full sm:w-auto">Attendance Reports</Button>
-              </Link>
-              <Link href="/email-summary" className="w-full sm:w-auto">
-                <Button variant="ghost" className="w-full sm:w-auto">Email Summary</Button>
-              </Link>
-            </div>
-            {reportJob ? (
-              <div className="rounded-2xl border border-border bg-card-elevated p-4">
-                <div className="flex items-center justify-between gap-4 text-xs uppercase tracking-[0.18em] text-text-muted">
-                  <span>Range Export Job</span>
-                  <span>{reportJob.progress}%</span>
-                </div>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-border">
-                  <div className="h-full rounded-full bg-color-primary transition-all" style={{ width: progressWidth(reportJob.progress) }} />
-                </div>
-                <div className="mt-3 text-sm text-text-primary">{reportJob.message}</div>
-                {reportJob.status === "failed" && reportJob.error ? (
-                  <div className="mt-2 text-sm text-color-danger">{reportJob.error}</div>
-                ) : null}
-              </div>
-            ) : null}
+          <CardContent className={mobileAiExpanded ? "block" : "hidden lg:block"}>
+            <AiActivationNotice
+              eyebrow="AI summary gate"
+              support="Use trusted exports and the owner update desk while the executive AI summary lane finishes activating for this workspace."
+              primaryAction={{ href: "/email-summary", label: "Open Owner Update Desk" }}
+              secondaryAction={{ href: "/premium/dashboard?notice=ai-coming-soon", label: "Open Owner Desk", variant: "outline" }}
+            />
           </CardContent>
         </Card>
-      </section>
-
-      <Card className="order-7">
-        <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-          <div>
-            <div className="text-sm text-text-muted">Phase 7</div>
-            <CardTitle className="text-xl text-text-primary">Executive AI Summary</CardTitle>
-          </div>
-          <Button variant="primary" onClick={handleExecutiveSummary} disabled={executiveBusy} className="h-11">
-            {executiveBusy ? "Generating..." : "Generate Executive Summary"}
-          </Button>
-        </CardHeader>
-        <CardContent className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-          <div className="rounded-2xl border border-border bg-card-elevated p-4">
-            <div className="text-xs uppercase tracking-[0.18em] text-text-muted">Summary</div>
-            <div className="mt-3 text-sm leading-7 text-text-primary">
-              {executiveSummary?.summary || "Generate a management summary for the currently selected date range."}
-            </div>
-          </div>
-          <div className="rounded-2xl border border-border bg-card-elevated p-4">
-            <div className="text-xs uppercase tracking-[0.18em] text-text-muted">Metrics</div>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-              <div>
-                <div className="text-xs text-text-muted">Units</div>
-                <div className="mt-1 text-lg font-semibold text-text-primary">{executiveSummary?.metrics?.total_units ?? "-"}</div>
-              </div>
-              <div>
-                <div className="text-xs text-text-muted">Target</div>
-                <div className="mt-1 text-lg font-semibold text-text-primary">{executiveSummary?.metrics?.total_target ?? "-"}</div>
-              </div>
-              <div>
-                <div className="text-xs text-text-muted">Performance</div>
-                <div className="mt-1 text-lg font-semibold text-text-primary">
-                  {executiveSummary?.metrics?.average_performance != null ? `${executiveSummary.metrics.average_performance}%` : "-"}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs text-text-muted">Downtime</div>
-                <div className="mt-1 text-lg font-semibold text-text-primary">{executiveSummary?.metrics?.total_downtime ?? "-"}</div>
-              </div>
-              <div>
-                <div className="text-xs text-text-muted">Best Shift</div>
-                <div className="mt-1 text-lg font-semibold capitalize text-text-primary">{String(executiveSummary?.metrics?.best_shift || "-")}</div>
-              </div>
-              <div>
-                <div className="text-xs text-text-muted">Provider</div>
-                <div className="mt-1 text-lg font-semibold text-text-primary">{executiveSummary?.provider || "-"}</div>
-              </div>
-            </div>
-            {summaryJob ? (
-              <div className="mt-4 rounded-2xl border border-border bg-card-elevated p-4">
-                <div className="flex items-center justify-between gap-4 text-xs uppercase tracking-[0.18em] text-text-muted">
-                  <span>Summary Job</span>
-                  <span>{summaryJob.progress}%</span>
-                </div>
-                <div className="mt-3 h-2 overflow-hidden rounded-full bg-border">
-                  <div className="h-full rounded-full bg-color-primary transition-all" style={{ width: progressWidth(summaryJob.progress) }} />
-                </div>
-                <div className="mt-3 text-sm text-text-primary">{summaryJob.message}</div>
-                {summaryJob.status === "failed" && summaryJob.error ? (
-                  <div className="mt-2 text-sm text-color-danger">{summaryJob.error}</div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </CardContent>
-      </Card>
 
       {!isAccountant ? (
-        <Card className="order-2">
+        <Card className="order-4">
           <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
             <div>
               <div className="text-sm text-text-muted">Results</div>
@@ -1067,6 +1278,7 @@ export default function ReportsPage() {
                           type="button"
                           variant="ghost"
                           className="w-full sm:w-auto"
+                          disabled={busy || loadingTrust || !rangeTrust?.can_send || row.status !== "approved"}
                           onClick={() => handleEntryPdfJob(row.id)}
                         >
                           PDF
@@ -1075,7 +1287,8 @@ export default function ReportsPage() {
                           type="button"
                           variant="ghost"
                           className="w-full sm:w-auto"
-                          onClick={() => handleBinaryDownload(() => downloadEntryReport(row.id, "excel"), `entry-${row.id}.xlsx`)}
+                          disabled={busy || loadingTrust || !rangeTrust?.can_send || row.status !== "approved"}
+                          onClick={() => handleEntryExcelDownload(row)}
                         >
                           Excel
                         </Button>
@@ -1115,15 +1328,17 @@ export default function ReportsPage() {
                             </Link>
                             <button
                               type="button"
-                              className="text-color-primary underline underline-offset-4 hover:text-color-primary-light"
+                              className="text-color-primary underline underline-offset-4 hover:text-color-primary-light disabled:cursor-not-allowed disabled:no-underline disabled:opacity-45"
+                              disabled={busy || loadingTrust || !rangeTrust?.can_send || row.status !== "approved"}
                               onClick={() => handleEntryPdfJob(row.id)}
                             >
                               PDF
                             </button>
                             <button
                               type="button"
-                              className="text-color-primary underline underline-offset-4 hover:text-color-primary-light"
-                              onClick={() => handleBinaryDownload(() => downloadEntryReport(row.id, "excel"), `entry-${row.id}.xlsx`)}
+                              className="text-color-primary underline underline-offset-4 hover:text-color-primary-light disabled:cursor-not-allowed disabled:no-underline disabled:opacity-45"
+                              disabled={busy || loadingTrust || !rangeTrust?.can_send || row.status !== "approved"}
+                              onClick={() => handleEntryExcelDownload(row)}
                             >
                               Excel
                             </button>
@@ -1153,6 +1368,39 @@ export default function ReportsPage() {
             )}
           </CardContent>
         </Card>
+      ) : null}
+
+      {mobileFiltersOpen ? (
+        <>
+          <button
+            type="button"
+            className="fixed inset-0 z-[51] bg-[rgba(4,8,16,0.78)] lg:hidden"
+            aria-label="Close report filters"
+            onClick={() => setMobileFiltersOpen(false)}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Report filters"
+            className="fixed inset-x-0 bottom-0 z-[52] max-h-[85vh] overflow-y-auto rounded-t-[2rem] border border-border bg-card px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-5 shadow-2xl lg:hidden"
+          >
+            <div className="flex items-start justify-between gap-4 border-b border-border/60 pb-4">
+              <div className="space-y-1">
+                <div className="text-xs uppercase tracking-[0.18em] text-text-muted">Filter reports</div>
+                <div className="text-lg font-semibold text-text-primary">Adjust range and advanced filters</div>
+                <div className="text-sm text-text-muted">
+                  Date range, status, issue flags, and search stay in this drawer so trusted reporting actions remain above the fold.
+                </div>
+              </div>
+              <Button variant="ghost" className="px-3 py-2 text-xs" onClick={() => setMobileFiltersOpen(false)}>
+                Close
+              </Button>
+            </div>
+            <div className="pt-4">
+              {renderFilterControls(true)}
+            </div>
+          </div>
+        </>
       ) : null}
 
       {status ? <div className="text-sm text-color-success">{status}</div> : null}
