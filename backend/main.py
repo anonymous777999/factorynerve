@@ -32,6 +32,7 @@ from backend.routers.plans import router as plans_router
 from backend.routers.billing import router as billing_router
 from backend.routers.premium import router as premium_router
 from backend.routers.steel import router as steel_router
+from backend.routers.ui_autonomy import router as ui_autonomy_router
 from backend.utils import get_config, setup_logging
 from backend.metrics import (
     record_exception,
@@ -95,6 +96,7 @@ app.include_router(plans_router, prefix="/plans")
 app.include_router(billing_router, prefix="/billing")
 app.include_router(premium_router, prefix="/premium")
 app.include_router(steel_router, prefix="/steel")
+app.include_router(ui_autonomy_router, prefix="/autonomy")
 
 apply_security(app)
 apply_response_envelope(app)

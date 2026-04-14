@@ -5,6 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 
 import { formatApiErrorMessage } from "@/lib/api";
+import { humanizeAiProvider, humanizePlanLabel } from "@/lib/ai-labels";
 import { transferBlob } from "@/lib/blob-transfer";
 import {
   approveEntry,
@@ -404,8 +405,8 @@ export default function EntryDetailPage() {
               </div>
               {summaryMeta ? (
                 <div className="grid gap-3 text-sm text-[var(--muted)] sm:grid-cols-2">
-                  <div>Provider: <span className="text-[var(--text)]">{summaryMeta.provider}</span></div>
-                  <div>Plan: <span className="text-[var(--text)]">{summaryMeta.plan}</span></div>
+                  <div>AI service: <span className="text-[var(--text)]">{humanizeAiProvider(summaryMeta.provider)}</span></div>
+                  <div>Plan: <span className="text-[var(--text)]">{humanizePlanLabel(summaryMeta.plan)}</span></div>
                   <div>Estimated tokens: <span className="text-[var(--text)]">~{summaryMeta.estimated_tokens}</span></div>
                   <div>Last regenerated: <span className="text-[var(--text)]">{formatDateTime(summaryMeta.last_regenerated_at || undefined)}</span></div>
                 </div>

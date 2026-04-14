@@ -514,13 +514,13 @@ export default function DashboardHome() {
       return [
         {
           eyebrow: t("dashboard.card.eyebrow.review", "Review"),
-          title: ownerHomeHref === "/control-tower" ? "Open the factory network" : "Open the owner desk",
+          title: ownerHomeHref === "/control-tower" ? "Open the factory network" : "Open the owner dashboard",
           detail:
             ownerHomeHref === "/control-tower"
               ? "Compare factories first, then drill into the one that is creating risk."
               : "Start from trusted risk, performance, and anomaly signals instead of raw daily screens.",
           href: ownerHomeHref,
-          action: ownerHomeHref === "/control-tower" ? "Open Factory Network" : "Open Owner Desk",
+          action: ownerHomeHref === "/control-tower" ? "Open Factory Network" : "Open Owner Dashboard",
         },
         {
           eyebrow: t("dashboard.card.eyebrow.control", "Control"),
@@ -528,8 +528,8 @@ export default function DashboardHome() {
           detail: anomalyCount
             ? `${anomalyCount} live signal${anomalyCount === 1 ? "" : "s"} need owner attention.`
             : "Owner risk is quiet right now, which makes this the right time to verify reporting trust.",
-          href: "/premium/dashboard?notice=ai-coming-soon",
-          action: "Open Owner Desk",
+          href: "/ai",
+          action: "Open AI Insights",
         },
         {
           eyebrow: t("dashboard.card.eyebrow.grow", "Grow"),
@@ -786,21 +786,21 @@ export default function DashboardHome() {
         detail: "Owners should not hunt through daily screens. Start from risk, verify the evidence, then send the decision-ready summary.",
         steps: [
           {
-            title: ownerHomeHref === "/control-tower" ? "Compare factories first" : "Open the owner desk",
+            title: ownerHomeHref === "/control-tower" ? "Compare factories first" : "Open the owner dashboard",
             detail:
               ownerHomeHref === "/control-tower"
                 ? "Find the factory creating the biggest risk before drilling into details."
                 : "Start from money at risk, stock trust, and dispatch exposure instead of raw operations.",
             href: ownerHomeHref,
-            action: ownerHomeHref === "/control-tower" ? "Open Factory Network" : "Open Owner Desk",
+            action: ownerHomeHref === "/control-tower" ? "Open Factory Network" : "Open Owner Dashboard",
           },
           {
             title: "Verify anomaly and leakage signals",
             detail: anomalyCount
               ? `${anomalyCount} live signal${anomalyCount === 1 ? "" : "s"} are ready for owner review.`
               : "The radar is calm, which makes this the right time to confirm reporting trust and repeated patterns.",
-            href: "/premium/dashboard?notice=ai-coming-soon",
-            action: "Open Owner Desk",
+            href: "/ai",
+            action: "Open AI Insights",
           },
           {
             title: "Finish with the outbound summary",
@@ -894,7 +894,7 @@ export default function DashboardHome() {
       return [
         {
           href: ownerHomeHref,
-          label: ownerHomeHref === "/control-tower" ? "Factory Network" : "Owner Desk",
+          label: ownerHomeHref === "/control-tower" ? "Factory Network" : "Owner Dashboard",
           variant: "outline",
         },
         {
@@ -1026,8 +1026,8 @@ export default function DashboardHome() {
           label: "Risk Signals",
           value: anomalyCount,
           detail: topAnomaly ? topAnomaly.message : "No live anomaly is asking for owner attention right now.",
-          href: "/premium/dashboard?notice=ai-coming-soon",
-          action: "Open Owner Desk",
+          href: "/ai",
+          action: "Open AI Insights",
         },
         {
           label: "Trusted OCR Docs",
@@ -1041,7 +1041,7 @@ export default function DashboardHome() {
           value: organization?.accessible_factories || factories.length || 1,
           detail: "Use factory comparison before drilling into one plant's loss or stock story.",
           href: ownerHomeHref,
-          action: ownerHomeHref === "/control-tower" ? "Open Factory Network" : "Open Owner Desk",
+          action: ownerHomeHref === "/control-tower" ? "Open Factory Network" : "Open Owner Dashboard",
         },
         {
           label: "Outbound Summary",
@@ -1121,7 +1121,7 @@ export default function DashboardHome() {
       const ownerHomeHref = (organization?.accessible_factories || 0) > 1 ? "/control-tower" : "/premium/dashboard";
       return {
         href: ownerHomeHref,
-        label: ownerHomeHref === "/control-tower" ? "Open Factory Network" : "Open Owner Desk",
+        label: ownerHomeHref === "/control-tower" ? "Open Factory Network" : "Open Owner Dashboard",
       };
     }
     return {
@@ -2239,9 +2239,9 @@ export default function DashboardHome() {
                     <div className="text-sm text-[var(--muted)]">{t("dashboard.ai.title", "AI Anomaly Radar")}</div>
                     <CardTitle className="text-xl">{t("dashboard.ai.subtitle", "Factory drift preview")}</CardTitle>
                   </div>
-                  <Link href={user?.role === "owner" ? "/premium/dashboard?notice=ai-coming-soon" : "/reports"}>
+                  <Link href={user?.role === "owner" ? "/ai" : "/reports"}>
                     <Button variant="outline">
-                      {user?.role === "owner" ? "Open Owner Desk" : t("dashboard.action.open_reports", "Open Reports")}
+                      {user?.role === "owner" ? "Open AI Insights" : t("dashboard.action.open_reports", "Open Reports")}
                     </Button>
                   </Link>
                 </CardHeader>

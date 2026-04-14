@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import AiInsightsPage from "@/components/ai-insights-page";
 
 export default function AiRoutePage() {
-  redirect("/premium/dashboard?notice=ai-coming-soon");
+  return <AiInsightsPage />;
 }

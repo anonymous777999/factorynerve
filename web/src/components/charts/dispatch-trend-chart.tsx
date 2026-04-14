@@ -17,6 +17,10 @@ export function DispatchTrendChart({
   loading?: boolean;
   onDrillDown?: (meta: { chartId: string; label: string; seriesName: string; value: number }) => void;
 }) {
+  const populatedWindows = useMemo(
+    () => data.filter((item) => item.valueKg > 0).length,
+    [data],
+  );
   const categories = useMemo(() => data.map((item) => item.label), [data]);
   const series = useMemo(
     () => [
@@ -53,6 +57,14 @@ export function DispatchTrendChart({
       title="Dispatch Trend"
       description="Outbound weight movement across the last seven dispatch windows. Smooth area shape helps managers spot transport slowdowns quickly."
       loading={loading}
+      emptyState={
+        !loading && populatedWindows < 2
+          ? {
+              title: "Not enough dispatch history yet",
+              description: "Record at least two dispatch windows before reading trend direction here.",
+            }
+          : null
+      }
     >
       <ApexChartClient type="area" options={options} series={series} height={320} />
     </ChartCard>

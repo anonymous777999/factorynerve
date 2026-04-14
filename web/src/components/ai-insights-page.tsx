@@ -16,6 +16,7 @@ import {
   type AnomalyResponse,
   type NaturalLanguageQueryResponse,
 } from "@/lib/ai";
+import { humanizeAiProvider, humanizeAiStatus, humanizePlanLabel } from "@/lib/ai-labels";
 import { getQuotaHealth, quotaLabel } from "@/lib/quota-health";
 import { useSession } from "@/lib/use-session";
 
@@ -178,7 +179,7 @@ export default function AiInsightsPage() {
     try {
       const response = await askNaturalLanguageQuery(question);
       setNlqResult(response);
-      setStatus(`NLQ answered with ${response.provider}.`);
+      setStatus(humanizeAiStatus(response.provider));
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -263,9 +264,9 @@ export default function AiInsightsPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">AI Insights</div>
-            <h1 className="mt-2 text-3xl font-semibold">Smart suggestions, anomalies, and natural language answers</h1>
+            <h1 className="mt-2 text-3xl font-semibold">Factory intelligence, risk signals, and plain-language answers</h1>
             <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
-              This is the Phase 7 command layer: use your plan-gated AI quota carefully, see anomaly scans, and ask KPI questions without leaving the app.
+              Read anomaly drift, monitor AI capacity, and ask factory questions in business language without leaving DPR.ai.
             </p>
           </div>
           <div className="space-y-3">
@@ -364,10 +365,10 @@ export default function AiInsightsPage() {
           <Card>
             <CardHeader>
               <div className="text-sm text-[var(--muted)]">Current Plan</div>
-              <CardTitle className="capitalize">{usage?.plan || "-"}</CardTitle>
+              <CardTitle>{humanizePlanLabel(usage?.plan)}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-[var(--muted)]">
-              NLQ starts at {usage?.nlq_min_plan || "-"}, anomalies at {usage?.anomaly_min_plan || "-"}.
+              Natural-language answers start on {humanizePlanLabel(usage?.nlq_min_plan)}, and anomaly scanning starts on {humanizePlanLabel(usage?.anomaly_min_plan)}.
             </CardContent>
           </Card>
         </section>
@@ -403,7 +404,7 @@ export default function AiInsightsPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4 text-sm text-[var(--muted)]">
-                {anomalies?.summary || "Run the scan to load anomaly insight."}
+                {anomalies?.summary || "Run a fresh scan to build the latest anomaly brief for this factory."}
               </div>
               {anomalies?.items?.length ? (
                 <div className="space-y-3">
@@ -426,7 +427,7 @@ export default function AiInsightsPage() {
                 </div>
               ) : (
                 <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4 text-sm text-[var(--muted)]">
-                  No anomaly cards are loaded yet.
+                  No anomaly drift is standing out in the selected window yet.
                 </div>
               )}
             </CardContent>
@@ -491,13 +492,13 @@ export default function AiInsightsPage() {
               <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
                 <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Answer</div>
                 <div className="mt-3 text-sm leading-6 text-[var(--text)]">
-                  {nlqResult?.answer || "Run a query to see the answer here."}
+                  {nlqResult?.answer || "Ask a factory question to see a plain-language answer here."}
                 </div>
                 {nlqResult ? (
                   <div className="mt-4 space-y-2 text-xs text-[var(--muted)]">
-                    <div>Provider: {nlqResult.provider}</div>
+                    <div>Answer service: {humanizeAiProvider(nlqResult.provider)}</div>
                     <div>Generated: {formatDateTime(nlqResult.generated_at)}</div>
-                    <div>Query shape: {JSON.stringify(nlqResult.structured_query)}</div>
+                    <div>Structured factory lookup prepared for this question.</div>
                   </div>
                 ) : null}
               </div>

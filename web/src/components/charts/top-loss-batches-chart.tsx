@@ -18,6 +18,7 @@ export function TopLossBatchesChart({
   onDrillDown?: (meta: { chartId: string; label: string; seriesName: string; value: number }) => void;
 }) {
   const sorted = useMemo(() => [...data].sort((left, right) => right.lossKg - left.lossKg), [data]);
+  const rankedBatches = useMemo(() => sorted.filter((item) => item.lossKg > 0).length, [sorted]);
   const categories = useMemo(() => sorted.map((item) => item.batch), [sorted]);
   const series = useMemo(
     () => [
@@ -58,6 +59,14 @@ export function TopLossBatchesChart({
       title="Top Loss Batches"
       description="The worst-performing batches sorted by loss weight. The highest-loss batch is highlighted in red for immediate review."
       loading={loading}
+      emptyState={
+        !loading && rankedBatches < 2
+          ? {
+              title: "Not enough batch loss evidence yet",
+              description: "Approve more production batches before ranking the highest-loss runs.",
+            }
+          : null
+      }
     >
       <ApexChartClient type="bar" options={options} series={series} height={320} />
     </ChartCard>

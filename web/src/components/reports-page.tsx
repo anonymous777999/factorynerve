@@ -21,7 +21,9 @@ import {
 } from "@/lib/reports";
 import { getReportTrustSummary, type ReportTrustSummary } from "@/lib/report-trust";
 import { getOcrVerificationSummary, type OcrVerificationSummary } from "@/lib/ocr";
+import { useMobileRouteFunnel } from "@/lib/mobile-route-funnel";
 import { getSteelOverview, type SteelOverview } from "@/lib/steel";
+import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/use-session";
 import { AiActivationNotice } from "@/components/ai-activation-notice";
 import ReportInsightsBoard from "@/components/report-insights-board";
@@ -30,6 +32,15 @@ import { TrustChecklist } from "@/components/trust-checklist";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  RecordReviewStateNote,
+  recordReviewAccentFillClass,
+  recordReviewActionClass,
+  recordReviewBadgeClass,
+  recordReviewSurfaceClass,
+  recordReviewToneFromStatus,
+  type RecordReviewTone,
+} from "@/components/ui/record-review-state";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -93,6 +104,33 @@ function formatDateTime(value?: string) {
   });
 }
 
+function reportRowTone(row: Entry): RecordReviewTone {
+  if (row.status === "approved") return "approved";
+  if (row.status === "rejected" || (row.quality_issues && row.status !== "approved")) return "flagged";
+  const tone = recordReviewToneFromStatus(row.status);
+  return tone === "unreviewed" ? "pending" : tone;
+}
+
+function reportRowStateDetail(row: Entry, approval?: { approvedBy?: string | null; approvedAt?: string | null }) {
+  const tone = reportRowTone(row);
+  if (tone === "approved") {
+    if (approval?.approvedBy || approval?.approvedAt) {
+      return `Approved by ${approval?.approvedBy || "Unassigned"} on ${formatDateTime(approval?.approvedAt || undefined)}`;
+    }
+    return "Approved record is locked and ready for trusted export.";
+  }
+  if (tone === "flagged") {
+    if (row.quality_details?.trim()) return row.quality_details.trim();
+    if (row.notes?.trim()) return row.notes.trim();
+    if (row.status === "rejected") return "This entry was rejected and must be corrected before export.";
+    return "Quality or review issues still need attention before this record can be trusted.";
+  }
+  if (tone === "pending") {
+    return "Approve this shift entry in the review queue before sending it in reports.";
+  }
+  return "Review and submit this record before it joins trusted reporting.";
+}
+
 function toCsv(rows: Entry[], approvals: Map<number, { approvedBy?: string | null; approvedAt?: string | null }>) {
   const headers = [
     "id",
@@ -140,6 +178,7 @@ function filtersEqual(a: ReportFilters, b: ReportFilters) {
 export default function ReportsPage() {
   const searchParams = useSearchParams();
   const { user, activeFactory, loading, error: sessionError } = useSession();
+  const trackPrimaryAction = useMobileRouteFunnel("/reports", user?.role, Boolean(user));
   const [draftFilters, setDraftFilters] = useState<ReportFilters>(() => buildDefaultFilters());
   const [appliedFilters, setAppliedFilters] = useState<ReportFilters>(() => buildDefaultFilters());
   const [page, setPage] = useState(1);
@@ -586,6 +625,7 @@ export default function ReportsPage() {
     }
     const blob = new Blob([toCsv(filteredRows, shiftApprovalMap)], { type: "text/csv;charset=utf-8" });
     triggerBlobDownload(blob, `reports-page-${page}.csv`);
+    trackPrimaryAction("export_report");
   };
 
   const handleBinaryDownload = async (work: () => Promise<Blob>, filename: string) => {
@@ -596,6 +636,7 @@ export default function ReportsPage() {
       const blob = await work();
       triggerBlobDownload(blob, filename);
       setStatus(`Download started: ${filename}`);
+      trackPrimaryAction("export_report");
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -625,6 +666,7 @@ export default function ReportsPage() {
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
       triggerBlobDownload(blob, `${kind}-summary.json`);
       setStatus(`${kind} summary export started.`);
+      trackPrimaryAction("export_report");
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -649,6 +691,7 @@ export default function ReportsPage() {
       const job = await startRangeExcelJob(appliedFilters.startDate, appliedFilters.endDate);
       setReportJob(job);
       setStatus("Range export queued. The Jobs drawer can now cancel, retry, or download it from anywhere.");
+      trackPrimaryAction("export_report");
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -676,6 +719,7 @@ export default function ReportsPage() {
       const job = await startEntryPdfJob(entryId);
       setReportJob(job);
       setStatus(`Entry #${entryId} PDF queued. We will download it as soon as it is ready.`);
+      trackPrimaryAction("export_report");
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -1214,7 +1258,7 @@ export default function ReportsPage() {
               eyebrow="AI summary gate"
               support="Use trusted exports and the owner update desk while the executive AI summary lane finishes activating for this workspace."
               primaryAction={{ href: "/email-summary", label: "Open Owner Update Desk" }}
-              secondaryAction={{ href: "/premium/dashboard?notice=ai-coming-soon", label: "Open Owner Desk", variant: "outline" }}
+              secondaryAction={{ href: "/ai", label: "Open AI Insights", variant: "outline" }}
             />
           </CardContent>
         </Card>
@@ -1245,8 +1289,12 @@ export default function ReportsPage() {
             ) : filteredRows.length ? (
               <>
                 <div className="space-y-3 md:hidden">
-                  {filteredRows.map((row) => (
-                    <div key={`card:${row.id}`} className="rounded-2xl border border-border bg-card-elevated p-4">
+                  {filteredRows.map((row) => {
+                    const approval = shiftApprovalMap.get(row.id);
+                    const rowTone = reportRowTone(row);
+                    const rowStateDetail = reportRowStateDetail(row, approval);
+                    return (
+                    <div key={`card:${row.id}`} className={cn("rounded-2xl p-4", recordReviewSurfaceClass(rowTone))}>
                       <div className="flex items-start justify-between gap-3">
                         <div>
                           <div className="text-sm font-semibold text-text-primary">{row.date}</div>
@@ -1254,7 +1302,7 @@ export default function ReportsPage() {
                             {row.shift} · {row.department || "-"}
                           </div>
                         </div>
-                        <div className="rounded-full border border-border px-3 py-1 text-xs text-text-muted">
+                        <div className={cn("rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em]", recordReviewBadgeClass(rowTone))}>
                           {row.status}
                         </div>
                       </div>
@@ -1270,31 +1318,46 @@ export default function ReportsPage() {
                           <div className="mt-1 text-sm text-text-primary">{formatDateTime(row.created_at)}</div>
                         </div>
                       </div>
-                      <div className="mt-4 grid gap-3 sm:flex sm:flex-wrap">
-                        <Link href={`/entry/${row.id}`} className="w-full sm:w-auto">
-                          <Button variant="outline" className="w-full sm:w-auto">Open</Button>
-                        </Link>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          className="w-full sm:w-auto"
-                          disabled={busy || loadingTrust || !rangeTrust?.can_send || row.status !== "approved"}
-                          onClick={() => handleEntryPdfJob(row.id)}
-                        >
-                          PDF
-                        </Button>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          className="w-full sm:w-auto"
-                          disabled={busy || loadingTrust || !rangeTrust?.can_send || row.status !== "approved"}
-                          onClick={() => handleEntryExcelDownload(row)}
-                        >
-                          Excel
-                        </Button>
+                      <RecordReviewStateNote tone={rowTone} detail={rowStateDetail} className="mt-4" />
+                      <div className={cn("mt-4 grid gap-3 sm:flex sm:flex-wrap", recordReviewActionClass(rowTone))}>
+                        {rowTone === "approved" ? (
+                          <>
+                            <Link href={`/entry/${row.id}`} className="w-full sm:w-auto">
+                              <Button variant="outline" className="w-full sm:w-auto">Open</Button>
+                            </Link>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="w-full sm:w-auto"
+                              disabled={busy || loadingTrust || !rangeTrust?.can_send}
+                              onClick={() => handleEntryPdfJob(row.id)}
+                            >
+                              PDF
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              className="w-full sm:w-auto"
+                              disabled={busy || loadingTrust || !rangeTrust?.can_send}
+                              onClick={() => handleEntryExcelDownload(row)}
+                            >
+                              Excel
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <Link href="/approvals" className="w-full sm:w-auto">
+                              <Button className="w-full sm:w-auto">Review in queue</Button>
+                            </Link>
+                            <Link href={`/entry/${row.id}`} className="w-full sm:w-auto">
+                              <Button variant="outline" className="w-full sm:w-auto">Open entry</Button>
+                            </Link>
+                          </>
+                        )}
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
 
                 <div className="hidden overflow-x-auto md:block">
@@ -1311,41 +1374,83 @@ export default function ReportsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRows.map((row) => (
-                      <tr key={row.id} className="border-b border-border/60 hover:bg-card-elevated transition-colors">
-                        <td className="px-3 py-3 text-text-primary">{row.date}</td>
+                    {filteredRows.map((row) => {
+                      const approval = shiftApprovalMap.get(row.id);
+                      const rowTone = reportRowTone(row);
+                      const rowStateDetail = reportRowStateDetail(row, approval);
+                      return (
+                      <tr
+                        key={row.id}
+                        className={cn(
+                          "border-b border-border/60 transition-colors",
+                          rowTone === "approved"
+                            ? "bg-[rgba(34,197,94,0.04)] hover:bg-[rgba(34,197,94,0.08)]"
+                            : rowTone === "flagged"
+                              ? "bg-[rgba(239,68,68,0.05)] hover:bg-[rgba(239,68,68,0.08)]"
+                              : rowTone === "pending"
+                                ? "bg-[rgba(245,158,11,0.04)] hover:bg-[rgba(245,158,11,0.08)]"
+                                : "hover:bg-card-elevated",
+                        )}
+                      >
+                        <td className="px-3 py-3 text-text-primary">
+                          <div className="flex items-start gap-3">
+                            <span className={cn("mt-0.5 h-10 w-1 shrink-0 rounded-full", recordReviewAccentFillClass(rowTone))} />
+                            <div>{row.date}</div>
+                          </div>
+                        </td>
                         <td className="px-3 py-3 text-text-primary">{row.shift}</td>
                         <td className="px-3 py-3 text-text-primary">{row.department || "-"}</td>
-                        <td className="px-3 py-3 text-text-primary">{row.status}</td>
+                        <td className="px-3 py-3 text-text-primary">
+                          <div className="space-y-2">
+                            <span className={cn("inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]", recordReviewBadgeClass(rowTone))}>
+                              {row.status}
+                            </span>
+                            <RecordReviewStateNote tone={rowTone} detail={rowStateDetail} compact />
+                          </div>
+                        </td>
                         <td className="px-3 py-3 text-text-primary">
                           {row.units_produced} / {row.units_target}
                         </td>
                         <td className="px-3 py-3 text-text-muted">{formatDateTime(row.created_at)}</td>
                         <td className="px-3 py-3">
-                          <div className="flex flex-wrap gap-3">
-                            <Link href={`/entry/${row.id}`} className="text-color-primary underline underline-offset-4 hover:text-color-primary-light">
-                              Open
-                            </Link>
-                            <button
-                              type="button"
-                              className="text-color-primary underline underline-offset-4 hover:text-color-primary-light disabled:cursor-not-allowed disabled:no-underline disabled:opacity-45"
-                              disabled={busy || loadingTrust || !rangeTrust?.can_send || row.status !== "approved"}
-                              onClick={() => handleEntryPdfJob(row.id)}
-                            >
-                              PDF
-                            </button>
-                            <button
-                              type="button"
-                              className="text-color-primary underline underline-offset-4 hover:text-color-primary-light disabled:cursor-not-allowed disabled:no-underline disabled:opacity-45"
-                              disabled={busy || loadingTrust || !rangeTrust?.can_send || row.status !== "approved"}
-                              onClick={() => handleEntryExcelDownload(row)}
-                            >
-                              Excel
-                            </button>
+                          <div className={cn("flex flex-wrap gap-3", recordReviewActionClass(rowTone))}>
+                            {rowTone === "approved" ? (
+                              <>
+                                <Link href={`/entry/${row.id}`} className="text-color-primary underline underline-offset-4 hover:text-color-primary-light">
+                                  Open
+                                </Link>
+                                <button
+                                  type="button"
+                                  className="text-color-primary underline underline-offset-4 hover:text-color-primary-light disabled:cursor-not-allowed disabled:no-underline disabled:opacity-45"
+                                  disabled={busy || loadingTrust || !rangeTrust?.can_send}
+                                  onClick={() => handleEntryPdfJob(row.id)}
+                                >
+                                  PDF
+                                </button>
+                                <button
+                                  type="button"
+                                  className="text-color-primary underline underline-offset-4 hover:text-color-primary-light disabled:cursor-not-allowed disabled:no-underline disabled:opacity-45"
+                                  disabled={busy || loadingTrust || !rangeTrust?.can_send}
+                                  onClick={() => handleEntryExcelDownload(row)}
+                                >
+                                  Excel
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <Link href="/approvals" className="text-color-primary underline underline-offset-4 hover:text-color-primary-light">
+                                  Review in queue
+                                </Link>
+                                <Link href={`/entry/${row.id}`} className="text-color-primary underline underline-offset-4 hover:text-color-primary-light">
+                                  Open entry
+                                </Link>
+                              </>
+                            )}
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                   </table>
                 </div>

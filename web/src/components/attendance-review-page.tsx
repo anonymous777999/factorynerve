@@ -18,6 +18,13 @@ import { signalWorkflowRefresh, subscribeToWorkflowRefresh } from "@/lib/workflo
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  RecordReviewStateNote,
+  recordReviewAccentFillClass,
+  recordReviewBadgeClass,
+  recordReviewSurfaceClass,
+  type RecordReviewTone,
+} from "@/components/ui/record-review-state";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -288,6 +295,16 @@ function infoCardClasses(severity: ReviewSeverity) {
   if (severity === "critical") return "border-red-400/25 bg-[rgba(239,68,68,0.07)]";
   if (severity === "warning") return "border-amber-400/25 bg-[rgba(245,158,11,0.07)]";
   return "border-sky-400/25 bg-[rgba(56,189,248,0.07)]";
+}
+
+function attendanceReviewTone(review: DerivedReviewItem): RecordReviewTone {
+  return review.severity === "critical" ? "flagged" : "pending";
+}
+
+function attendanceReviewDetail(review: DerivedReviewItem) {
+  return review.severity === "critical"
+    ? `${review.issueLabel}: ${review.headline}`
+    : `Action needed: ${review.headline}`;
 }
 
 function SummaryCard({ label, value, helper }: { label: string; value: number | string; helper: string }) {
@@ -1055,17 +1072,23 @@ export default function AttendanceReviewPage() {
                         <tbody>
                           {filteredItems.map((review) => {
                             const isActive = review.item.attendance_id === selectedAttendanceId;
+                            const reviewTone = attendanceReviewTone(review);
                             return (
                               <tr
                                 key={review.item.attendance_id}
                                 className={cn(
-                                  "cursor-pointer border-t border-[var(--border)]/60 text-sm transition hover:bg-[rgba(255,255,255,0.02)]",
-                                  isActive ? "bg-[rgba(34,211,238,0.08)]" : "bg-transparent",
+                                  "cursor-pointer border-t border-[var(--border)]/60 text-sm transition",
+                                  isActive
+                                    ? "bg-[rgba(34,211,238,0.08)]"
+                                    : reviewTone === "flagged"
+                                      ? "bg-[rgba(239,68,68,0.04)] hover:bg-[rgba(239,68,68,0.08)]"
+                                      : "bg-[rgba(245,158,11,0.04)] hover:bg-[rgba(245,158,11,0.08)]",
                                 )}
                                 onClick={() => openReview(review.item.attendance_id)}
                               >
                                 <td className="px-6 py-4 align-top">
                                   <div className="flex items-start gap-3">
+                                    <span className={cn("mt-1 h-10 w-1 shrink-0 rounded-full", recordReviewAccentFillClass(reviewTone))} />
                                     <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(34,211,238,0.16)] text-sm font-semibold text-cyan-50">
                                       {getAvatarLabel(review.item.name)}
                                     </div>
@@ -1095,10 +1118,12 @@ export default function AttendanceReviewPage() {
                                   </div>
                                 </td>
                                 <td className="px-4 py-4">
-                                  <div className="text-sm font-semibold text-[var(--text)]">
-                                    {review.item.review_status.replaceAll("_", " ")}
+                                  <div className="space-y-2">
+                                    <span className={cn("inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", recordReviewBadgeClass(reviewTone))}>
+                                      {review.item.review_status.replaceAll("_", " ")}
+                                    </span>
+                                    <RecordReviewStateNote tone={reviewTone} detail={attendanceReviewDetail(review)} compact />
                                   </div>
-                                  <div className="mt-1 text-xs text-[var(--muted)]">{review.severityLabel}</div>
                                 </td>
                                 <td className="px-6 py-4 text-right">
                                   <Button
@@ -1121,8 +1146,10 @@ export default function AttendanceReviewPage() {
                 </Card>
 
                 <div className="space-y-4 lg:hidden">
-                  {filteredItems.map((review) => (
-                    <Card key={review.item.attendance_id} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+                  {filteredItems.map((review) => {
+                    const reviewTone = attendanceReviewTone(review);
+                    return (
+                    <Card key={review.item.attendance_id} className={cn("bg-[rgba(18,22,34,0.92)]", recordReviewSurfaceClass(reviewTone))}>
                       <CardContent className="space-y-4 px-5 py-5">
                         <div className="flex items-start justify-between gap-3">
                           <div>
@@ -1141,6 +1168,8 @@ export default function AttendanceReviewPage() {
                           </span>
                         </div>
 
+                        <RecordReviewStateNote tone={reviewTone} detail={attendanceReviewDetail(review)} />
+
                         <div className="space-y-2">
                           <div className="text-sm font-semibold text-[var(--text)]">{review.issueLabel}</div>
                           <div className="text-sm leading-6 text-[var(--muted)]">{review.headline}</div>
@@ -1158,11 +1187,12 @@ export default function AttendanceReviewPage() {
                         </div>
 
                         <Button className="w-full" onClick={() => openReview(review.item.attendance_id, true)}>
-                          {review.actionLabel}
+                          {reviewTone === "flagged" ? "Resolve flagged record" : review.actionLabel}
                         </Button>
                       </CardContent>
                     </Card>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             ) : (

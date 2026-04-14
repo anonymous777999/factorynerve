@@ -14,6 +14,7 @@ import { buildTrustAppendix, getReportTrustSummary, type ReportTrustSummary } fr
 import { getOcrVerificationSummary, type OcrVerificationSummary } from "@/lib/ocr";
 import { getSteelOverview, type SteelOverview } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
+import { humanizeAiProvider, humanizeAiStatus, humanizePlanLabel } from "@/lib/ai-labels";
 import { AiActivationNotice } from "@/components/ai-activation-notice";
 import { TrustChecklist } from "@/components/trust-checklist";
 import { Button } from "@/components/ui/button";
@@ -183,7 +184,7 @@ export default function EmailSummaryPage() {
       const draft = await generateEmailSummary(startDate, endDate);
       setSubject(draft.subject);
       setBody(draft.body);
-      setStatus(`AI draft generated with ${draft.provider}.`);
+      setStatus(humanizeAiStatus(draft.provider));
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -493,19 +494,19 @@ export default function EmailSummaryPage() {
             <Card>
               <CardHeader>
                 <div className="text-sm text-[var(--muted)]">Plan</div>
-                <CardTitle>{summary.plan}</CardTitle>
+                <CardTitle>{humanizePlanLabel(summary.plan)}</CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-[var(--muted)]">
-                Email AI requires {summary.min_plan} or higher. Owner risk wording lands best when this is paired with trusted OCR and steel review.
+                Email AI requires the {humanizePlanLabel(summary.min_plan)} plan or higher. Owner risk wording lands best when this is paired with trusted OCR and steel review.
               </CardContent>
             </Card>
             <Card>
               <CardHeader>
-                <div className="text-sm text-[var(--muted)]">Provider</div>
-                <CardTitle>{summary.provider}</CardTitle>
+                <div className="text-sm text-[var(--muted)]">Drafting Service</div>
+                <CardTitle>{humanizeAiProvider(summary.provider)}</CardTitle>
               </CardHeader>
               <CardContent className="text-sm text-[var(--muted)]">
-                Estimated tokens: {summary.estimated_tokens}
+                Approximate draft size: {summary.estimated_tokens} tokens
               </CardContent>
             </Card>
             <Card>
@@ -550,7 +551,7 @@ export default function EmailSummaryPage() {
           <AiActivationNotice
             support="Use trusted reports and scheduled updates while the AI summary layer finishes activating for this workspace."
             primaryAction={{ href: "/reports", label: "Open Trusted Reports" }}
-            secondaryAction={{ href: "/premium/dashboard?notice=ai-coming-soon", label: "Open Owner Desk", variant: "outline" }}
+            secondaryAction={{ href: "/ai", label: "Open AI Insights", variant: "outline" }}
           />
         )}
 
@@ -713,7 +714,7 @@ export default function EmailSummaryPage() {
                   className="bg-[linear-gradient(145deg,rgba(62,166,255,0.1),rgba(12,16,26,0.88))]"
                   support={emailAiSupport}
                   primaryAction={{ href: "/reports", label: "Open Trusted Reports" }}
-                  secondaryAction={{ href: summary ? "/plans" : "/premium/dashboard?notice=ai-coming-soon", label: summary ? "Review Plans" : "Open Owner Desk", variant: "outline" }}
+                  secondaryAction={{ href: summary ? "/plans" : "/ai", label: summary ? "Review Plans" : "Open AI Insights", variant: "outline" }}
                 />
               ) : null}
               <div>

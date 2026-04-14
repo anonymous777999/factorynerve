@@ -14,6 +14,25 @@ export function IndustrialKpiTable({
 }: {
   rows: KpiTableRow[];
 }) {
+  if (!rows.length) {
+    return (
+      <Card className="rounded-[1.8rem] border border-[#dce5ef] bg-white text-slate-900 shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
+        <CardHeader>
+          <div className="text-xs uppercase tracking-[0.22em] text-slate-500">Monthly KPI Review</div>
+          <CardTitle className="mt-2 text-xl text-slate-900">Compact KPI table</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center">
+            <div className="text-sm font-semibold text-slate-900">Not enough approved periods yet</div>
+            <div className="mt-2 text-sm leading-6 text-slate-500">
+              Keep approving production, dispatch, and invoice activity. KPI comparisons will unlock once this window has enough history.
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="rounded-[1.8rem] border border-[#dce5ef] bg-white text-slate-900 shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
       <CardHeader>

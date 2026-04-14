@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ApiError } from "@/lib/api";
+import { useMobileRouteFunnel } from "@/lib/mobile-route-funnel";
 import { selectFactory } from "@/lib/auth";
 import { getControlTower, type ControlTowerPayload, type FactorySummary } from "@/lib/settings";
 import { useSession } from "@/lib/use-session";
@@ -20,6 +21,7 @@ function factoryTone(factory: FactorySummary) {
 
 export default function ControlTowerPage() {
   const { user, loading: sessionLoading, activeFactoryId } = useSession();
+  const trackPrimaryAction = useMobileRouteFunnel("/control-tower", user?.role, Boolean(user));
   const [payload, setPayload] = useState<ControlTowerPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [switchingFactoryId, setSwitchingFactoryId] = useState<string | null>(null);
@@ -54,18 +56,30 @@ export default function ControlTowerPage() {
       industries: new Set(factories.map((item) => item.industry_type)).size,
     };
   }, [payload]);
+  const sortedFactories = useMemo(() => {
+    return [...(payload?.factories || [])].sort((left, right) => {
+      if (left.is_active_context && !right.is_active_context) return -1;
+      if (!left.is_active_context && right.is_active_context) return 1;
+      return right.member_count - left.member_count;
+    });
+  }, [payload]);
+  const activeContextFactory = useMemo(
+    () => sortedFactories.find((item) => item.factory_id === activeFactoryId) || sortedFactories[0] || null,
+    [activeFactoryId, sortedFactories],
+  );
 
   const handleSwitch = useCallback(async (factoryId: string) => {
     setSwitchingFactoryId(factoryId);
     setError("");
     try {
       await selectFactory(factoryId);
+      trackPrimaryAction("switch_factory");
       window.location.href = "/dashboard";
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not switch factory context.");
       setSwitchingFactoryId(null);
     }
-  }, []);
+  }, [trackPrimaryAction]);
 
   if (sessionLoading || (loading && !payload && !error)) {
     return <DashboardPageSkeleton />;
@@ -106,7 +120,92 @@ export default function ControlTowerPage() {
 
         {payload ? (
           <>
-            <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <section className="grid gap-3 lg:hidden">
+              <Card className="border-[rgba(62,166,255,0.25)] bg-[rgba(62,166,255,0.08)]">
+                <CardHeader>
+                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Active context</div>
+                  <CardTitle>{activeContextFactory?.name || "Factory not selected"}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-2 text-sm text-[var(--muted)]">
+                  <div>
+                    {activeContextFactory
+                      ? `${activeContextFactory.industry_label} | ${activeContextFactory.workflow_template_label}`
+                      : "Choose a factory to open the correct owner, report, and entry surfaces."}
+                  </div>
+                  <div>
+                    {payload.organization.total_factories} factories | {totals.members} members | plan {payload.organization.plan}
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Quick switch</div>
+                  <CardTitle>Pick the next plant without scrolling the full desktop board</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {sortedFactories.map((factory) => (
+                    <div key={`mobile:${factory.factory_id}`} className={`rounded-2xl border p-4 ${factoryTone(factory)}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="text-sm font-semibold text-[var(--text)]">{factory.name}</div>
+                          <div className="mt-1 text-xs text-[var(--muted)]">
+                            {factory.industry_label} | {factory.workflow_template_label}
+                          </div>
+                        </div>
+                        <div className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
+                          {factory.is_active_context ? "Active" : factory.my_role || "Member"}
+                        </div>
+                      </div>
+                      <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-[var(--muted)]">
+                        <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.55)] px-3 py-2">
+                          <div>Members</div>
+                          <div className="mt-1 text-sm font-semibold text-[var(--text)]">{factory.member_count}</div>
+                        </div>
+                        <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.55)] px-3 py-2">
+                          <div>Modules</div>
+                          <div className="mt-1 text-sm font-semibold text-[var(--text)]">{factory.starter_modules.length}</div>
+                        </div>
+                      </div>
+                      <div className="mt-3 grid gap-2">
+                        <Button
+                          className="w-full"
+                          onClick={() => void handleSwitch(factory.factory_id)}
+                          disabled={switchingFactoryId === factory.factory_id || factory.factory_id === activeFactoryId}
+                        >
+                          {factory.factory_id === activeFactoryId
+                            ? "Current Context"
+                            : switchingFactoryId === factory.factory_id
+                              ? "Switching..."
+                              : "Switch Context"}
+                        </Button>
+                        <details className="rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.48)] px-4 py-3">
+                          <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                            Factory details
+                          </summary>
+                          <div className="mt-3 space-y-2 text-sm text-[var(--muted)]">
+                            <div>Factory code: <span className="text-[var(--text)]">{factory.factory_code || "-"}</span></div>
+                            <div>Timezone: <span className="text-[var(--text)]">{factory.timezone || "-"}</span></div>
+                            <div>Location: <span className="text-[var(--text)]">{factory.location || "-"}</span></div>
+                            <div className="flex flex-wrap gap-2 pt-1">
+                              {factory.starter_modules.map((module) => (
+                                <span
+                                  key={`${factory.factory_id}:${module}`}
+                                  className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] text-[var(--muted)]"
+                                >
+                                  {module}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </details>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </section>
+
+            <section className="hidden gap-4 lg:grid sm:grid-cols-2 xl:grid-cols-4">
               <Card>
                 <CardHeader>
                   <CardTitle>Total Factories</CardTitle>
@@ -151,8 +250,8 @@ export default function ControlTowerPage() {
               </Card>
             </section>
 
-            <section className="grid gap-4 lg:grid-cols-3">
-              {payload.factories.map((factory) => (
+            <section className="hidden gap-4 lg:grid lg:grid-cols-3">
+              {sortedFactories.map((factory) => (
                 <Card key={factory.factory_id} className={factoryTone(factory)}>
                   <CardHeader className="space-y-2">
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

@@ -478,6 +478,27 @@ def _issue_refresh_token(
     return token
 
 
+def _preferred_factory_id_from_recent_tokens(db: Session, *, user_id: int) -> str | None:
+    preferred_factory_id: str | None = None
+    preferred_at: datetime | None = None
+    tokens = (
+        db.query(RefreshToken)
+        .filter(
+            RefreshToken.user_id == user_id,
+            RefreshToken.factory_id.isnot(None),
+        )
+        .all()
+    )
+    for token in tokens:
+        candidate_at = token.last_used_at or token.created_at
+        if candidate_at is None:
+            continue
+        if preferred_at is None or candidate_at > preferred_at:
+            preferred_at = candidate_at
+            preferred_factory_id = token.factory_id
+    return preferred_factory_id
+
+
 def _get_factory_access(db: Session, *, user_id: int) -> list[FactoryAccess]:
     rows = (
         db.query(UserFactoryRole, Factory)
@@ -612,17 +633,23 @@ def _revoke_refresh_token(db: Session, *, token: str, user_id: int) -> None:
 def _resolve_active_factory_id(
     db: Session, *, user_id: int, preferred_factory_id: str | None
 ) -> str | None:
+    candidates: list[str] = []
     if preferred_factory_id:
+        candidates.append(preferred_factory_id)
+    recent_factory_id = _preferred_factory_id_from_recent_tokens(db, user_id=user_id)
+    if recent_factory_id and recent_factory_id not in candidates:
+        candidates.append(recent_factory_id)
+    for candidate_factory_id in candidates:
         row = (
             db.query(UserFactoryRole)
             .filter(
                 UserFactoryRole.user_id == user_id,
-                UserFactoryRole.factory_id == preferred_factory_id,
+                UserFactoryRole.factory_id == candidate_factory_id,
             )
             .first()
         )
         if row:
-            return preferred_factory_id
+            return candidate_factory_id
     row = (
         db.query(UserFactoryRole)
         .filter(UserFactoryRole.user_id == user_id)
@@ -938,13 +965,29 @@ def login_user(
 
         user.last_login = datetime.now(timezone.utc)
         _clear_attempts(ip_address)
-        role_row = (
-            db.query(UserFactoryRole)
-            .filter(UserFactoryRole.user_id == user.id)
-            .order_by(UserFactoryRole.assigned_at.asc())
-            .first()
+        active_factory_id = _resolve_active_factory_id(
+            db,
+            user_id=user.id,
+            preferred_factory_id=None,
         )
-        active_factory_id = role_row.factory_id if role_row else None
+        role_row = None
+        if active_factory_id:
+            role_row = (
+                db.query(UserFactoryRole)
+                .filter(
+                    UserFactoryRole.user_id == user.id,
+                    UserFactoryRole.factory_id == active_factory_id,
+                )
+                .first()
+            )
+        if not role_row:
+            role_row = (
+                db.query(UserFactoryRole)
+                .filter(UserFactoryRole.user_id == user.id)
+                .order_by(UserFactoryRole.assigned_at.asc())
+                .first()
+            )
+            active_factory_id = role_row.factory_id if role_row else None
         active_role = role_row.role.value if role_row else user.role.value
         _log_auth_event(
             db,

@@ -2,8 +2,12 @@ import { apiFetch, ApiError } from "@/lib/api";
 import { transferBlob, type BlobTransferResult } from "@/lib/blob-transfer";
 
 export type ReportRangeSummary = {
+  entry_id?: number;
   date: string;
   shift: string;
+  status?: string;
+  approved_by_name?: string | null;
+  approved_at?: string | null;
   units_produced: number;
   units_target: number;
 };

@@ -88,7 +88,19 @@ export function LossTypeDonutChart({
   );
 
   return (
-    <ChartCard title={title} description={subtitle} loading={loading}>
+    <ChartCard
+      title={title}
+      description={subtitle}
+      loading={loading}
+      emptyState={
+        !loading && total <= 0
+          ? {
+              title: "Not enough trust signals yet",
+              description: "Approve more flagged or reviewed records before the severity mix can split the risk clearly.",
+            }
+          : null
+      }
+    >
       <ApexChartClient type="donut" options={options} series={series} height={320} />
     </ChartCard>
   );

@@ -18,6 +18,10 @@ export function RevenueChart({
   loading?: boolean;
   onDrillDown?: (meta: { chartId: string; label: string; seriesName: string; value: number }) => void;
 }) {
+  const bookedPeriods = useMemo(
+    () => data.filter((item) => item.valueInr > 0).length,
+    [data],
+  );
   const categories = useMemo(() => data.map((item) => item.label), [data]);
   const series = useMemo(
     () => [
@@ -83,6 +87,14 @@ export function RevenueChart({
       title="Revenue Chart"
       description="Monthly realized revenue in rupees with a business-style run-rate overlay inspired by executive OPEX reviews."
       loading={loading}
+      emptyState={
+        !loading && bookedPeriods < 2
+          ? {
+              title: "Not enough invoice coverage yet",
+              description: "Close at least two billing periods before the revenue run-rate becomes useful.",
+            }
+          : null
+      }
     >
       <ApexChartClient type="line" options={options} series={series} height={320} />
     </ChartCard>

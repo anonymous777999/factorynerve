@@ -25,7 +25,7 @@ from backend.security import get_current_user
 from backend.rbac import require_any_role
 from backend.tenancy import resolve_factory_id, resolve_org_id
 from backend.query_helpers import apply_org_scope, apply_role_scope, factory_user_ids_query
-from backend.services.report_trust import build_report_trust_summary
+from backend.services.report_trust import evaluate_report_trust_gate
 
 
 router = APIRouter(tags=["Email"])
@@ -190,9 +190,10 @@ def _require_email_trust_ready(
     start: date,
     end: date,
 ) -> dict[str, Any]:
-    trust_summary = build_report_trust_summary(
+    trust_summary = evaluate_report_trust_gate(
         db,
         current_user,
+        route="/email-summary",
         start=start,
         end=end,
     )

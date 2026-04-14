@@ -292,3 +292,48 @@ def build_report_trust_summary(
             "attendance": attendance_register,
         },
     }
+
+
+def evaluate_report_trust_gate(
+    db: Session,
+    current_user: User,
+    *,
+    route: str,
+    start: date,
+    end: date,
+    shift: str | None = None,
+    factory_id: str | None = None,
+) -> dict[str, Any]:
+    summary = build_report_trust_summary(
+        db,
+        current_user,
+        start=start,
+        end=end,
+        shift=shift,
+        factory_id=factory_id,
+    )
+    try:
+        from backend.services.product_analytics import track_product_event
+
+        track_product_event(
+            event_name="report_trust_gate_evaluated",
+            current_user=current_user,
+            properties={
+                "route": route,
+                "user_role": current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role),
+                "period_start": start.isoformat(),
+                "period_end": end.isoformat(),
+                "passed": bool(summary["can_send"]),
+                "block_reason": summary["blocking_reason"],
+                "ocr_approved": int(summary["ocr"]["approved_count"]),
+                "ocr_total": int(summary["ocr"]["total_count"]),
+                "shift_approved": int(summary["shift_entries"]["approved_count"]),
+                "shift_total": int(summary["shift_entries"]["total_count"]),
+                "attendance_reviewed": summary["attendance"]["status"] == "reviewed",
+                "trust_score": float(summary["overall_trust_score"]),
+            },
+        )
+    except Exception:
+        # Tracking stays best-effort and must not interfere with send/export flows.
+        pass
+    return summary

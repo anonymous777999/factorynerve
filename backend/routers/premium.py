@@ -25,7 +25,7 @@ from backend.premium_access import premium_required, require_premium_plan
 from backend.query_helpers import apply_org_scope, apply_role_scope, factory_user_ids_query
 from backend.rbac import require_any_role
 from backend.security import get_current_user
-from backend.services.report_trust import build_report_trust_summary
+from backend.services.report_trust import evaluate_report_trust_gate
 from backend.tenancy import resolve_factory_id, resolve_org_id
 
 
@@ -663,9 +663,10 @@ def premium_executive_pdf(
     require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
     start = _start_day(days)
     end = date.today()
-    trust_summary = build_report_trust_summary(
+    trust_summary = evaluate_report_trust_gate(
         db,
         current_user,
+        route="/premium/dashboard",
         start=start,
         end=end,
         shift=shift.value if shift else None,

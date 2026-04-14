@@ -25,7 +25,7 @@ from backend.plans import has_plan_feature, min_plan_for_feature, get_org_plan
 from backend.rbac import require_any_role
 from backend.tenancy import resolve_factory_id, resolve_org_id
 from backend.query_helpers import apply_org_scope, apply_role_scope, can_view_entry, factory_user_ids_query
-from backend.services.report_trust import build_report_trust_summary, get_entry_approval_signoffs
+from backend.services.report_trust import build_report_trust_summary, evaluate_report_trust_gate, get_entry_approval_signoffs
 from backend.services.background_jobs import (
     create_job,
     get_job,
@@ -128,14 +128,16 @@ def _require_trust_ready(
     db: Session,
     current_user: User,
     *,
+    route: str,
     start: date,
     end: date,
     shift: str | None = None,
     factory_id: str | None = None,
 ) -> dict[str, Any]:
-    trust_summary = build_report_trust_summary(
+    trust_summary = evaluate_report_trust_gate(
         db,
         current_user,
+        route=route,
         start=start,
         end=end,
         shift=shift,
@@ -1070,7 +1072,7 @@ def weekly_export(
     end = date.today()
 
     def build_payload() -> list[dict]:
-        _require_trust_ready(db, current_user, start=start, end=end)
+        _require_trust_ready(db, current_user, route="/reports", start=start, end=end)
         entries = _scoped_entries_query(db, current_user, start=start, end=end).order_by(Entry.date.asc(), Entry.created_at.asc()).all()
         approvals = get_entry_approval_signoffs(db, current_user, entries)
         return [
@@ -1107,7 +1109,7 @@ def monthly_export(
     end = date.today()
 
     def build_payload() -> list[dict]:
-        _require_trust_ready(db, current_user, start=start, end=end)
+        _require_trust_ready(db, current_user, route="/reports", start=start, end=end)
         entries = _scoped_entries_query(db, current_user, start=start, end=end).order_by(Entry.date.asc(), Entry.created_at.asc()).all()
         approvals = get_entry_approval_signoffs(db, current_user, entries)
         return [
@@ -1153,7 +1155,7 @@ def export_factory_excel(
 
     start = start_date or (date.today() - timedelta(days=6))
     end = end_date or date.today()
-    _require_trust_ready(db, current_user, start=start, end=end)
+    _require_trust_ready(db, current_user, route="/reports", start=start, end=end)
     entries = _scoped_entries_query(db, current_user, start=start, end=end).order_by(Entry.date.asc(), Entry.created_at.asc())
     rows = entries.all()
     approvals = get_entry_approval_signoffs(db, current_user, rows)
@@ -1186,7 +1188,7 @@ def export_factory_excel_job(
 
     start = start_date or (date.today() - timedelta(days=6))
     end = end_date or date.today()
-    _require_trust_ready(db, current_user, start=start, end=end)
+    _require_trust_ready(db, current_user, route="/reports", start=start, end=end)
     return _queue_range_export_job(
         owner_id=current_user.id,
         org_id=org_id,

@@ -17,7 +17,14 @@ import {
   type SteelStockMismatchCause,
   type SteelStockItem,
 } from "@/lib/steel";
+import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/use-session";
+import {
+  RecordReviewStateNote,
+  recordReviewBadgeClass,
+  recordReviewSurfaceClass,
+  type RecordReviewTone,
+} from "@/components/ui/record-review-state";
 
 function formatKg(value: number | null | undefined) {
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value || 0);
@@ -27,6 +34,37 @@ function badgeTone(value: string) {
   if (value === "approved" || value === "green") return "border-emerald-400/35 bg-emerald-400/12 text-emerald-200";
   if (value === "pending" || value === "yellow") return "border-amber-400/35 bg-amber-400/12 text-amber-200";
   return "border-rose-400/35 bg-rose-400/12 text-rose-200";
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function reconciliationTone(row: SteelReconciliation): RecordReviewTone {
+  if (row.status === "approved") return "approved";
+  if (row.status === "rejected") return "flagged";
+  return "pending";
+}
+
+function reconciliationDetail(row: SteelReconciliation) {
+  const tone = reconciliationTone(row);
+  if (tone === "approved") {
+    return `Approved by ${row.approved_by_name || "Unassigned"} on ${formatDateTime(row.approved_at)}`;
+  }
+  if (tone === "flagged") {
+    if (row.rejection_reason?.trim()) return row.rejection_reason.trim();
+    return `Rejected by ${row.rejected_by_name || "Unassigned"} on ${formatDateTime(row.rejected_at)}`;
+  }
+  return "Pending stock trust decision. Select the mismatch cause, then approve or reject this count.";
 }
 
 function formatMismatchCause(value: SteelStockMismatchCause | string | null | undefined) {
@@ -289,17 +327,19 @@ export function SteelReconciliationsPage() {
             </div>
 
             <div className="space-y-4">
-              {reconciliations.map((row) => (
-                <div key={row.id} className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4 sm:p-5">
+              {reconciliations.map((row) => {
+                const rowTone = reconciliationTone(row);
+                return (
+                <div key={row.id} className={cn("rounded-3xl p-4 sm:p-5", recordReviewSurfaceClass(rowTone))}>
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <div className="text-lg font-semibold text-white">{row.item_code} - {row.item_name}</div>
                       <div className="mt-1 text-xs text-[var(--muted)]">
-                        Counted by {row.counted_by_name || "Unknown"} on {row.counted_at}
+                        Counted by {row.counted_by_name || "Unknown"} on {formatDateTime(row.counted_at)}
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeTone(row.status)}`}>
+                      <span className={cn("rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.18em]", recordReviewBadgeClass(rowTone))}>
                         {row.status}
                       </span>
                       <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeTone(row.confidence_status)}`}>
@@ -336,6 +376,7 @@ export function SteelReconciliationsPage() {
                       {mismatchActionLink(mismatchCauses[row.id] || row.mismatch_cause).label}
                     </Link>
                   </div>
+                  <RecordReviewStateNote tone={rowTone} detail={reconciliationDetail(row)} className="mt-3" />
                   {row.approver_notes ? <div className="mt-2 text-sm text-[var(--muted)]">Approver note: {row.approver_notes}</div> : null}
                   {row.rejection_reason ? <div className="mt-2 text-sm text-red-300">Rejection: {row.rejection_reason}</div> : null}
 
@@ -385,7 +426,8 @@ export function SteelReconciliationsPage() {
                     </div>
                   ) : null}
                 </div>
-              ))}
+                );
+              })}
               {!reconciliations.length ? (
                 <div className="rounded-3xl border border-dashed border-[var(--border)] px-4 py-10 text-center text-sm text-[var(--muted)]">
                   No reconciliation records match the current filters.

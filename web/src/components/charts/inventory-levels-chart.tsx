@@ -19,6 +19,10 @@ export function InventoryLevelsChart({
   loading?: boolean;
   onDrillDown?: (meta: { chartId: string; label: string; seriesName: string; value: number }) => void;
 }) {
+  const trackedCategories = useMemo(
+    () => data.filter((item) => item.valueKg > 0).length,
+    [data],
+  );
   const categories = useMemo(() => data.map((item) => item.category), [data]);
   const series = useMemo(
     () => [
@@ -52,6 +56,14 @@ export function InventoryLevelsChart({
       title="Inventory Levels"
       description="Live stock posture by stage. Raw material, WIP, and finished goods stay expressed in kilograms for plant-floor trust."
       loading={loading}
+      emptyState={
+        !loading && trackedCategories === 0
+          ? {
+              title: "Not enough stock positions yet",
+              description: "Run at least one trusted stock update before the inventory chart can compare stages.",
+            }
+          : null
+      }
     >
       <ApexChartClient type="bar" options={options} series={series} height={300} />
     </ChartCard>

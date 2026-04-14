@@ -59,7 +59,7 @@ export function getRolePrimaryHrefs(role?: string | null) {
     case "admin":
       return ["/settings", "/settings/attendance", "/reports", "/approvals", "/analytics", "/dashboard"];
     case "owner":
-      return ["/premium/dashboard", "/control-tower", "/reports", "/email-summary", "/steel/charts"];
+      return ["/premium/dashboard", "/ai", "/control-tower", "/reports", "/email-summary", "/steel/charts"];
     default:
       return ["/dashboard", "/work-queue", "/profile"];
   }
@@ -80,7 +80,7 @@ export function getRoleDefaultFavoriteHrefs(role?: string | null) {
     case "admin":
       return ["/settings", "/settings/attendance", "/reports", "/approvals", "/analytics"];
     case "owner":
-      return ["/premium/dashboard", "/control-tower", "/reports", "/email-summary"];
+      return ["/premium/dashboard", "/ai", "/control-tower", "/reports", "/email-summary"];
     default:
       return ["/dashboard", "/work-queue", "/profile"];
   }
@@ -101,7 +101,7 @@ export function getRoleMobileNavHrefs(role?: string | null) {
     case "admin":
       return ["/settings", "/reports", "/approvals", "/analytics", "/profile"];
     case "owner":
-      return ["/premium/dashboard", "/reports", "/control-tower", "/email-summary"];
+      return ["/premium/dashboard", "/ai", "/reports", "/control-tower", "/email-summary"];
     default:
       return ["/dashboard", "/work-queue", "/ocr/scan", "/attendance", "/profile"];
   }
@@ -122,7 +122,7 @@ export function getRoleDesktopQuickLinkHrefs(role?: string | null) {
     case "admin":
       return ["/settings", "/settings/attendance", "/reports"];
     case "owner":
-      return ["/premium/dashboard", "/control-tower", "/email-summary"];
+      return ["/premium/dashboard", "/ai", "/control-tower", "/email-summary"];
     default:
       return ["/dashboard", "/work-queue", "/profile"];
   }

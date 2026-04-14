@@ -124,3 +124,43 @@ services:
         value: production
       - key: SENTRY_TRACES_SAMPLE_RATE
         value: "0.1"
+
+  - type: cron
+    name: dpr-monitor-mobile-dropoff-weekly
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./deploy/render/backend.Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    schedule: "20 1 * * MON"
+    # Manual verification after deploy: open this cron service in Render and click Trigger Run.
+    dockerCommand: python scripts/run_monitoring_alerts.py --rule mobile_dropoff_threshold_breach
+    envVars:
+      # Shared backend bootstrap/config envs come from the existing env group instead of being duplicated here.
+      - fromGroup: factorynerve-backend-shared
+      # AI bootstrap dependency: backend.database loads the global backend config on startup,
+      # so AI_PROVIDER and one provider key must exist even though this job itself is not using AI logic.
+      - key: MONITORING_OPS_WEBHOOK_URL
+        sync: false
+      # Render cron jobs have no persistent disk. This /tmp file is intentionally ephemeral;
+      # the webhook notification is the durable alert signal.
+      - key: MONITORING_BACKLOG_PATH
+        value: /tmp/monitoring_backlog.jsonl
+
+  - type: cron
+    name: dpr-monitor-manager-session-daily
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./deploy/render/backend.Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    schedule: "5 1 * * *"
+    # Manual verification after deploy: open this cron service in Render and click Trigger Run.
+    dockerCommand: python scripts/run_monitoring_alerts.py --rule manager_session_health_degraded
+    envVars:
+      # Shared backend bootstrap/config envs come from the existing env group instead of being duplicated here.
+      - fromGroup: factorynerve-backend-shared
+      # AI bootstrap dependency: backend.database loads the global backend config on startup,
+      # so AI_PROVIDER and one provider key must exist even though this job itself is not using AI logic.
+      - key: MONITORING_ENGINEERING_WEBHOOK_URL
+        sync: false

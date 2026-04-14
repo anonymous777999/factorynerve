@@ -34,6 +34,12 @@ import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import {
+  RecordReviewStateNote,
+  recordReviewBadgeClass,
+  recordReviewSurfaceClass,
+  type RecordReviewTone,
+} from "@/components/ui/record-review-state";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -126,6 +132,28 @@ function statusBadgeClass(status: string) {
     default:
       return "border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100";
   }
+}
+
+function verificationRecordTone(record: OcrVerificationRecord): RecordReviewTone {
+  if (record.status === "approved") return "approved";
+  if (record.status === "rejected") return "flagged";
+  if (record.status === "pending") return "pending";
+  return "unreviewed";
+}
+
+function verificationRecordDetail(record: OcrVerificationRecord) {
+  const tone = verificationRecordTone(record);
+  if (tone === "approved") {
+    return `Approved by ${actorDisplayName(record.approved_by_name, record.approved_by)} on ${formatTimestamp(record.approved_at)}`;
+  }
+  if (tone === "flagged") {
+    if (record.rejection_reason?.trim()) return record.rejection_reason.trim();
+    return `${record.warnings.length || 0} flagged field(s) still need correction before this sheet can be trusted again.`;
+  }
+  if (tone === "pending") {
+    return "Reviewed rows are waiting for approver sign-off before they become the trusted export source.";
+  }
+  return "This working draft still needs review before it can move into trusted export.";
 }
 
 function metricTone(type: "primary" | "warning" | "success" | "danger") {
@@ -1957,13 +1985,21 @@ export default function OcrVerificationPage() {
           <section className="rounded-[1.35rem] border border-cyan-400/20 bg-[rgba(10,16,28,0.88)] p-4 lg:hidden">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0">
+                {activeVerification ? (
+                  <RecordReviewStateNote
+                    tone={verificationRecordTone(activeVerification)}
+                    detail={verificationRecordDetail(activeVerification)}
+                    compact
+                    className="mb-3"
+                  />
+                ) : null}
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-100">Current document</div>
                 <div className="mt-2 truncate text-base font-semibold text-[var(--text)]">
                   {activeVerification?.source_filename || file?.name || "Unsaved review draft"}
                 </div>
                 <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.14em]">
                   {activeVerification?.status ? (
-                    <span className={cn("rounded-full border px-3 py-1", statusBadgeClass(activeVerification.status))}>
+                    <span className={cn("rounded-full border px-3 py-1", recordReviewBadgeClass(verificationRecordTone(activeVerification)))}>
                       {activeVerification.status}
                     </span>
                   ) : null}
@@ -2010,16 +2046,18 @@ export default function OcrVerificationPage() {
                   filteredVerifications.map((verification) => {
                     const warningCount = verification.warnings.length;
                     const isActive = activeVerificationId === verification.id;
+                    const queueTone = verificationRecordTone(verification);
                     return (
                       <button
                         key={verification.id}
                         type="button"
                         onClick={() => hydrateFromRecord(verification)}
                         className={cn(
-                          "w-full rounded-[1.35rem] border p-4 text-left transition",
+                          "w-full rounded-[1.35rem] p-4 text-left transition",
+                          recordReviewSurfaceClass(queueTone, !isActive),
                           isActive
-                            ? "border-[var(--accent)] bg-[linear-gradient(180deg,rgba(62,166,255,0.12),rgba(62,166,255,0.05))]"
-                            : "border-[var(--border)] bg-[var(--card-strong)] hover:-translate-y-0.5 hover:border-[var(--accent)]/40",
+                            ? "ring-1 ring-[var(--accent)]"
+                            : "",
                         )}
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -2031,7 +2069,7 @@ export default function OcrVerificationPage() {
                               {verification.template_name || "No template"} | {formatTimestamp(verification.updated_at)}
                             </div>
                             <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.14em]">
-                              <span className={cn("rounded-full border px-3 py-1", statusBadgeClass(verification.status))}>
+                              <span className={cn("rounded-full border px-3 py-1", recordReviewBadgeClass(queueTone))}>
                                 {verification.status}
                               </span>
                               <span className={cn("rounded-full border px-3 py-1", verification.trusted_export ? metricTone("success") : metricTone("primary"))}>
@@ -2046,6 +2084,12 @@ export default function OcrVerificationPage() {
                             {warningCount ? `${warningCount} warning${warningCount === 1 ? "" : "s"}` : "Clean read"}
                           </div>
                         </div>
+                        <RecordReviewStateNote
+                          tone={queueTone}
+                          detail={verificationRecordDetail(verification)}
+                          compact
+                          className="mt-3"
+                        />
                       </button>
                     );
                   })

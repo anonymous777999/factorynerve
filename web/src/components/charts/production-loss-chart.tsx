@@ -17,6 +17,10 @@ export function ProductionLossChart({
   loading?: boolean;
   onDrillDown?: (meta: { chartId: string; label: string; seriesName: string; value: number }) => void;
 }) {
+  const populatedDays = useMemo(
+    () => data.filter((item) => item.production > 0 || item.loss > 0).length,
+    [data],
+  );
   const categories = useMemo(() => data.map((item) => item.label), [data]);
   const series = useMemo(
     () => [
@@ -76,6 +80,14 @@ export function ProductionLossChart({
       title="Production vs Loss"
       description="Daily production output versus daily process loss. Darker red bars call out abnormal loss above 150 KG."
       loading={loading}
+      emptyState={
+        !loading && populatedDays < 2
+          ? {
+              title: "Not enough production history yet",
+              description: "Approve at least two production windows before this trend becomes meaningful.",
+            }
+          : null
+      }
     >
       <ApexChartClient type="bar" options={options} series={series} height={320} />
     </ChartCard>

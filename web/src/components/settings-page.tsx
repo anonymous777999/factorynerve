@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ApiError } from "@/lib/api";
 import { getAuthContext, selectFactory } from "@/lib/auth";
+import { useMobileRouteFunnel } from "@/lib/mobile-route-funnel";
 import { primeSession } from "@/lib/session-store";
 import { coerceIntegerInput, digitsOnly } from "@/lib/validation";
 import {
@@ -66,6 +67,7 @@ function findTemplate(payload: FactoryTemplatesPayload | null, templateKey: stri
 
 export default function SettingsPage() {
   const { user, loading, error: sessionError, activeFactoryId } = useSession();
+  const trackPrimaryAction = useMobileRouteFunnel("/settings", user?.role, Boolean(user));
   const [tab, setTab] = useState<TabKey>("factory");
   const [factory, setFactory] = useState<FactorySettings>(() => emptyFactorySettings());
   const [users, setUsers] = useState<ManagedUser[]>([]);
@@ -121,6 +123,24 @@ export default function SettingsPage() {
     () => findTemplate(newFactoryTemplates, newFactoryForm.workflow_template_key),
     [newFactoryForm.workflow_template_key, newFactoryTemplates],
   );
+  const mobileTabSummary = useMemo(() => {
+    if (tab === "factory") {
+      return {
+        title: "Factory setup workbench",
+        detail: "Keep the active factory profile clean first, then create new factories only when the starter workflow is clear.",
+      };
+    }
+    if (tab === "users") {
+      return {
+        title: "Team access workbench",
+        detail: "Invite users, adjust multi-factory access, and change roles from one mobile-friendly admin lane.",
+      };
+    }
+    return {
+      title: "Usage and billing workbench",
+      detail: "Check plan limits, request volume, and billing state here before dropping into the full billing desk.",
+    };
+  }, [tab]);
 
   const loadAll = useCallback(async () => {
     if (!canManage) return;
@@ -396,7 +416,7 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="text-sm text-[var(--muted)]">
               {controlTower?.organization.industry_breakdown.length
-                ? controlTower.organization.industry_breakdown.map((item) => `${item.industry_label}: ${item.count}`).join(" · ")
+                ? controlTower.organization.industry_breakdown.map((item) => `${item.industry_label}: ${item.count}`).join(" | ")
                 : "Visible factories in your current organization."}
             </CardContent>
           </Card>
@@ -406,7 +426,7 @@ export default function SettingsPage() {
               <CardTitle>{activeCount}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-[var(--muted)]">
-              Plan {billing?.plan || usage?.plan || "-"} · Billing status: {billing?.status || "-"}
+              Plan {billing?.plan || usage?.plan || "-"} | Billing status: {billing?.status || "-"}
             </CardContent>
           </Card>
         </section>
@@ -419,6 +439,26 @@ export default function SettingsPage() {
               <Button className="shrink-0" variant={tab === "usage" ? "primary" : "outline"} onClick={() => setTab("usage")}>Usage & Billing</Button>
             </div>
           </CardHeader>
+        </Card>
+
+        <Card className="md:hidden">
+          <CardHeader>
+            <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">{mobileTabSummary.title}</div>
+            <CardTitle className="text-lg">Current admin focus</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3 text-sm text-[var(--muted)]">
+            <div>{mobileTabSummary.detail}</div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Active factory</div>
+                <div className="mt-1 text-sm font-semibold text-[var(--text)]">{factory.factory_name || user.factory_name || "-"}</div>
+              </div>
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Organization scope</div>
+                <div className="mt-1 text-sm font-semibold text-[var(--text)]">{controlTower?.organization.total_factories || factoryDirectory.length || 1} factories</div>
+              </div>
+            </div>
+          </CardContent>
         </Card>
 
         {tab === "factory" ? (
@@ -544,6 +584,7 @@ export default function SettingsPage() {
                       }
                       await loadAll();
                       setStatus("Factory settings saved.");
+                      trackPrimaryAction("save_setting");
                     })
                   }
                   disabled={busy}
@@ -636,6 +677,7 @@ export default function SettingsPage() {
                         });
                         setNewFactoryTemplates(null);
                         await loadAll();
+                        trackPrimaryAction("save_setting");
                       })
                     }
                     disabled={busy || !newFactoryForm.name.trim()}
@@ -651,7 +693,7 @@ export default function SettingsPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="text-sm text-[var(--muted)]">
-                    Org: {controlTower?.organization.name || factory.factory_name || "Current organization"} · Plan {controlTower?.organization.plan || billing?.plan || "-"}
+                    Org: {controlTower?.organization.name || factory.factory_name || "Current organization"} | Plan {controlTower?.organization.plan || billing?.plan || "-"}
                   </div>
                   {factoryDirectory.length ? (
                     <div className="space-y-3">
@@ -671,7 +713,7 @@ export default function SettingsPage() {
                             ) : null}
                           </div>
                           <div className="mt-3 text-xs text-[var(--muted)]">
-                            Code {item.factory_code || "-"} · Members {item.member_count} · Role {item.my_role || "-"}
+                            Code {item.factory_code || "-"} | Members {item.member_count} | Role {item.my_role || "-"}
                           </div>
                         </div>
                       ))}
@@ -908,6 +950,7 @@ export default function SettingsPage() {
                                 }
                                 await loadAll();
                                 setStatus(result.message);
+                                trackPrimaryAction("save_setting");
                               })
                             }
                             disabled={busy || !accessSnapshot || !accessFactoryIds.length}
@@ -960,6 +1003,7 @@ export default function SettingsPage() {
                           const result = await updateUserRole(resolveManagedUserId(roleUserId), newRole, downgradeConfirm);
                           setStatus(result.message);
                           await loadAll();
+                          trackPrimaryAction("save_setting");
                         })
                       }
                       disabled={busy || !roleUserId}
@@ -979,6 +1023,7 @@ export default function SettingsPage() {
                             await deactivateUser(resolveManagedUserId(deactivateUserId));
                             setStatus("User deactivated.");
                             await loadAll();
+                            trackPrimaryAction("save_setting");
                           })
                         }
                         disabled={busy || !deactivateUserId}
@@ -1057,3 +1102,4 @@ export default function SettingsPage() {
     </main>
   );
 }
+

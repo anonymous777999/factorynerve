@@ -19,6 +19,7 @@ import {
   rejectOcrVerification,
   type OcrVerificationRecord,
 } from "@/lib/ocr";
+import { useMobileRouteFunnel } from "@/lib/mobile-route-funnel";
 import {
   approveSteelReconciliation,
   getSteelOverview,
@@ -1325,6 +1326,7 @@ function QueueDetailPanel({
 
 export default function ApprovalsPage() {
   const { user, loading, activeFactory } = useSession();
+  const trackPrimaryAction = useMobileRouteFunnel("/approvals", user?.role, Boolean(user));
   const [state, setState] = useState<InboxState>(() => emptyInboxState());
   const [busy, setBusy] = useState(false);
   const [actionKey, setActionKey] = useState("");
@@ -1770,10 +1772,11 @@ export default function ApprovalsPage() {
       selectedItem.key,
       async () => {
         await runTaskDecision(selectedItem, "approve", selectedNote);
+        trackPrimaryAction("approve_record");
       },
       `${selectedItem.typeLabel} approved.`,
     );
-  }, [runInboxAction, runTaskDecision, selectedItem, selectedNote]);
+  }, [runInboxAction, runTaskDecision, selectedItem, selectedNote, trackPrimaryAction]);
 
   const handleRejectSelected = useCallback(() => {
     if (!selectedItem || selectedItem.bucket !== "task" || !selectedNote.trim()) return;
@@ -1848,6 +1851,9 @@ export default function ApprovalsPage() {
             ? `${successCount}/${candidates.length} selected task(s) approved.`
             : `${successCount}/${candidates.length} selected task(s) rejected.`,
         );
+        if (decision === "approve" && successCount > 0) {
+          trackPrimaryAction("approve_record");
+        }
         setSelectedTaskKeys([]);
         if (decision === "reject") {
           setBulkNote("");
@@ -1862,7 +1868,7 @@ export default function ApprovalsPage() {
         setActionKey("");
       }
     })();
-  }, [bulkConfirmDecision, bulkNote, loadInbox, runTaskDecision, selectedTaskItems]);
+  }, [bulkConfirmDecision, bulkNote, loadInbox, runTaskDecision, selectedTaskItems, trackPrimaryAction]);
 
   const handleSignalAction = useCallback(() => {
     if (!selectedItem || selectedItem.bucket !== "signal") return;

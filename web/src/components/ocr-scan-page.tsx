@@ -25,6 +25,7 @@ import {
   type OcrPreviewResult,
 } from "@/lib/ocr";
 import { useOnlineStatus } from "@/lib/use-online-status";
+import { useMobileRouteFunnel } from "@/lib/mobile-route-funnel";
 import { useSession } from "@/lib/use-session";
 import { signalWorkflowRefresh } from "@/lib/workflow-sync";
 import { cn } from "@/lib/utils";
@@ -79,6 +80,11 @@ const FILTER_OPTIONS: Array<{ value: FilterPreset; label: string; detail: string
   { value: "clean", label: "Clean", detail: "Best default for paper registers, moderate shadows, and standard handwriting." },
   { value: "contrast", label: "Contrast", detail: "Pushes row separation harder for faded ink, glare, or low-contrast pages." },
 ];
+const SCAN_TIPS = [
+  "Keep the full page inside the frame and avoid cutting off the top or bottom edge.",
+  "Use flash only when the page is dim. If you see glare, turn it off and step back slightly.",
+  "If the page looks tilted or cropped, retake it before review so the trust path starts with a clean document.",
+] as const;
 
 function buildEnhancedFile(blob: Blob, originalName: string) {
   const base = originalName.replace(/\.[^.]+$/, "");
@@ -401,6 +407,7 @@ function SpinnerIcon() {
 
 export default function OcrScanPage() {
   const { user, loading, error: sessionError } = useSession();
+  const trackPrimaryAction = useMobileRouteFunnel("/ocr/scan", user?.role, Boolean(user));
   const online = useOnlineStatus();
 
   const [screen, setScreen] = useState<ScanScreen>("camera");
@@ -413,6 +420,7 @@ export default function OcrScanPage() {
   const [busyEnhance, setBusyEnhance] = useState(false);
   const [busyAction, setBusyAction] = useState(false);
   const [showInsights, setShowInsights] = useState(false);
+  const [showScanTips, setShowScanTips] = useState(false);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
 
@@ -472,6 +480,7 @@ export default function OcrScanPage() {
     setBusyEnhance(false);
     setBusyAction(false);
     setShowInsights(false);
+    setShowScanTips(false);
     setError("");
     setStatus("");
     setOriginalFile(null);
@@ -706,7 +715,8 @@ export default function OcrScanPage() {
     setError("");
     setStatus("");
     setScreen("crop");
-  }, []);
+    trackPrimaryAction("capture_scan");
+  }, [trackPrimaryAction]);
 
   const handleFlashToggle = useCallback(async () => {
     const track = streamRef.current?.getVideoTracks?.()[0];
@@ -750,7 +760,8 @@ export default function OcrScanPage() {
     setError("");
     setStatus("");
     setScreen("crop");
-  }, []);
+    trackPrimaryAction("capture_scan");
+  }, [trackPrimaryAction]);
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     handlePickedFile(event.target.files?.[0] || null);
@@ -950,7 +961,7 @@ export default function OcrScanPage() {
         </div>
       ) : null}
       {screen === "camera" ? (
-        <section className="relative flex min-h-screen flex-col overflow-hidden bg-bg pb-20 md:pb-8">
+        <section className="relative flex min-h-screen flex-col overflow-x-hidden bg-bg pb-20 md:pb-8">
           <div className="absolute inset-0">
             {cameraReady ? (
               <video
@@ -968,34 +979,27 @@ export default function OcrScanPage() {
             <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,8,18,0.28),rgba(0,0,0,0.02),rgba(3,8,18,0.7))]" />
           </div>
 
-          <div className="relative z-10 px-4 pt-5 sm:px-7 sm:pt-7">
-            <div className="mx-auto w-full max-w-5xl">
-              <div className="inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-400/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-100">
-                OCR Capture Desk
+          <div className="relative z-10 px-4 pt-3 sm:px-7 sm:pt-6">
+            <div className="mx-auto flex w-full max-w-5xl flex-col gap-3">
+              <div className="flex items-center justify-between gap-3">
+                <div className="inline-flex items-center gap-2 rounded-full border border-sky-300/20 bg-sky-400/12 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-sky-100">
+                  OCR Capture Desk
+                </div>
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[rgba(8,14,24,0.62)] px-3 py-1 text-[11px] font-semibold text-slate-100 md:hidden">
+                  <span>Camera</span>
+                  <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", cameraReady ? "bg-emerald-400/16 text-emerald-100" : "bg-amber-400/16 text-amber-100")}>
+                    {cameraReady ? "Live" : "Upload fallback"}
+                  </span>
+                </div>
               </div>
-              <div className="mt-4 grid gap-4 md:grid-cols-[minmax(0,1fr)_18rem] md:items-start">
-                <div>
+              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_18rem] md:items-start">
+                <div className="hidden md:block">
                   <h1 className="max-w-2xl text-[2rem] font-semibold tracking-[-0.04em] text-white sm:text-[2.8rem]">
                     Scan registers with a calmer, cleaner capture flow.
                   </h1>
                   <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-200/82 sm:text-base sm:leading-7">
                     Capture from the camera or upload from the gallery, then crop, enhance, review, and export the same trusted draft to Excel or PDF.
                   </p>
-                  <div className="mt-4 grid grid-cols-2 gap-2 md:hidden">
-                    <div className="rounded-2xl border border-white/10 bg-[rgba(8,14,24,0.62)] px-3 py-2.5 text-sm text-slate-100">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Camera</div>
-                      <div className="mt-1 flex items-center justify-between gap-3">
-                        <span>Capture</span>
-                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-semibold", cameraReady ? "bg-emerald-400/16 text-emerald-100" : "bg-amber-400/16 text-amber-100")}>
-                          {cameraReady ? "Live" : "Upload"}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="rounded-2xl border border-white/10 bg-[rgba(8,14,24,0.62)] px-3 py-2.5 text-sm text-slate-100">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-400">Review path</div>
-                      <div className="mt-1 text-xs text-slate-300">Draft before trust</div>
-                    </div>
-                  </div>
                 </div>
                 <div className="hidden rounded-[1.6rem] border border-white/10 bg-[rgba(8,14,24,0.62)] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.26)] backdrop-blur-xl md:block">
                   <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Live readiness</div>
@@ -1020,14 +1024,14 @@ export default function OcrScanPage() {
             </div>
           </div>
 
-          <div className="relative flex flex-1 items-center justify-center px-4 py-6 sm:px-6 md:py-10">
-            <div className="pointer-events-none relative aspect-[0.72] w-full max-w-[28rem] rounded-[2.7rem] border border-white/45 shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_32px_100px_rgba(0,0,0,0.42)]">
-              <div className="absolute inset-0 rounded-[2.7rem] border border-cyan-300/30 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))]" />
-              <div className="absolute left-5 top-5 h-10 w-10 rounded-tl-[1.2rem] border-l-[3px] border-t-[3px] border-cyan-300" />
-              <div className="absolute right-5 top-5 h-10 w-10 rounded-tr-[1.2rem] border-r-[3px] border-t-[3px] border-cyan-300" />
-              <div className="absolute bottom-5 left-5 h-10 w-10 rounded-bl-[1.2rem] border-b-[3px] border-l-[3px] border-cyan-300" />
-              <div className="absolute bottom-5 right-5 h-10 w-10 rounded-br-[1.2rem] border-b-[3px] border-r-[3px] border-cyan-300" />
-              <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full border border-white/12 bg-[rgba(8,14,24,0.68)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-200">
+          <div className="relative flex flex-1 items-start justify-center px-4 pb-4 pt-3 sm:px-6 md:items-center md:py-10">
+            <div className="pointer-events-none relative aspect-[0.72] w-full max-w-[19.5rem] rounded-[2.35rem] border border-white/45 shadow-[0_0_0_1px_rgba(255,255,255,0.08),0_32px_100px_rgba(0,0,0,0.42)] sm:max-w-[22rem] sm:rounded-[2.7rem] md:max-w-[28rem]">
+              <div className="absolute inset-0 rounded-[2.35rem] border border-cyan-300/30 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(255,255,255,0.01))] sm:rounded-[2.7rem]" />
+              <div className="absolute left-4 top-4 h-8 w-8 rounded-tl-[1rem] border-l-[3px] border-t-[3px] border-cyan-300 sm:left-5 sm:top-5 sm:h-10 sm:w-10 sm:rounded-tl-[1.2rem]" />
+              <div className="absolute right-4 top-4 h-8 w-8 rounded-tr-[1rem] border-r-[3px] border-t-[3px] border-cyan-300 sm:right-5 sm:top-5 sm:h-10 sm:w-10 sm:rounded-tr-[1.2rem]" />
+              <div className="absolute bottom-4 left-4 h-8 w-8 rounded-bl-[1rem] border-b-[3px] border-l-[3px] border-cyan-300 sm:bottom-5 sm:left-5 sm:h-10 sm:w-10 sm:rounded-bl-[1.2rem]" />
+              <div className="absolute bottom-4 right-4 h-8 w-8 rounded-br-[1rem] border-b-[3px] border-r-[3px] border-cyan-300 sm:bottom-5 sm:right-5 sm:h-10 sm:w-10 sm:rounded-br-[1.2rem]" />
+              <div className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full border border-white/12 bg-[rgba(8,14,24,0.68)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-200 sm:top-4 sm:px-3 sm:text-[11px] sm:tracking-[0.22em]">
                 Align the full page
               </div>
               <div className="absolute inset-x-6 top-1/2 h-px -translate-y-1/2 bg-[linear-gradient(90deg,transparent,rgba(34,211,238,0.95),transparent)] shadow-[0_0_24px_rgba(34,211,238,0.7)] animate-pulse" />
@@ -1036,30 +1040,40 @@ export default function OcrScanPage() {
 
           <div
             className="relative z-10 border-t border-white/10 bg-[rgba(8,11,18,0.74)] backdrop-blur-2xl"
-            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
+            style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 16px)" }}
           >
-            <div className="mx-auto w-full max-w-5xl px-5 pt-5 sm:px-6">
-              <div className="rounded-[2rem] border border-white/10 bg-[rgba(8,14,24,0.68)] p-4 shadow-[0_22px_70px_rgba(0,0,0,0.26)]">
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div>
+            <div className="mx-auto w-full max-w-5xl px-4 pt-3 sm:px-6">
+              <div className="rounded-[1.75rem] border border-white/10 bg-[rgba(8,14,24,0.68)] p-3 shadow-[0_22px_70px_rgba(0,0,0,0.26)] sm:rounded-[2rem] sm:p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="hidden md:block">
                     <div className="text-lg font-semibold tracking-[-0.02em] text-white">Capture or upload</div>
                     <div className="mt-1 text-sm text-slate-300">
                       Use the live camera for the cleanest result, or jump straight to gallery upload if you already have the image.
                     </div>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
+                  <div className="grid grid-cols-2 gap-2 text-[11px] text-slate-200 md:hidden">
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Review path</div>
+                      <div className="mt-1 text-slate-100">Draft before trust</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-2">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">Input</div>
+                      <div className="mt-1 text-slate-100">Camera or gallery</div>
+                    </div>
+                  </div>
+                  <div className="hidden flex-wrap items-center gap-2 text-xs text-slate-400 md:flex">
                     <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">PNG / JPG / HEIC</span>
                     <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1">Factory-safe review flow</span>
                   </div>
                 </div>
-                <div className="mt-5 flex items-end justify-between gap-3 sm:gap-5">
+                <div className="mt-3 flex items-end justify-between gap-3 sm:mt-5 sm:gap-5">
                   <button
                     type="button"
                     aria-label="Open gallery"
-                    className="group flex min-w-0 flex-1 flex-col items-center gap-2 rounded-[1.4rem] border border-white/10 bg-white/[0.04] px-3 py-4 text-slate-100 transition hover:border-sky-300/20 hover:bg-sky-400/10"
+                    className="group flex min-w-0 flex-1 flex-col items-center gap-2 rounded-[1.2rem] border border-white/10 bg-white/[0.04] px-2.5 py-3 text-slate-100 transition hover:border-sky-300/20 hover:bg-sky-400/10 sm:rounded-[1.4rem] sm:px-3 sm:py-4"
                     onClick={() => galleryInputRef.current?.click()}
                   >
-                    <span className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/12 bg-white/6 transition group-hover:bg-white/10">
+                    <span className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/12 bg-white/6 transition group-hover:bg-white/10 sm:h-14 sm:w-14">
                       <GalleryIcon />
                     </span>
                     <span className="text-sm font-semibold">Gallery</span>
@@ -1069,30 +1083,49 @@ export default function OcrScanPage() {
                   <button
                     type="button"
                     aria-label="Capture scan"
-                    className="relative -mt-8 inline-flex h-24 w-24 shrink-0 items-center justify-center rounded-full border border-white/40 bg-white/8 shadow-[0_0_0_14px_rgba(255,255,255,0.06),0_28px_55px_rgba(0,0,0,0.32)] transition hover:scale-[1.02]"
+                    className="relative -mt-5 inline-flex h-20 w-20 shrink-0 items-center justify-center rounded-full border border-white/40 bg-white/8 shadow-[0_0_0_10px_rgba(255,255,255,0.06),0_24px_48px_rgba(0,0,0,0.32)] transition hover:scale-[1.02] sm:-mt-8 sm:h-24 sm:w-24 sm:shadow-[0_0_0_14px_rgba(255,255,255,0.06),0_28px_55px_rgba(0,0,0,0.32)]"
                     onClick={() => void captureCurrentFrame()}
                   >
-                    <span className="absolute inset-[11px] rounded-full border border-white/25" />
-                    <span className="h-16 w-16 rounded-full bg-white" />
+                    <span className="absolute inset-[10px] rounded-full border border-white/25 sm:inset-[11px]" />
+                    <span className="h-14 w-14 rounded-full bg-white sm:h-16 sm:w-16" />
                   </button>
 
                   <button
                     type="button"
                     aria-label="Toggle flash"
                     className={cn(
-                      "group flex min-w-0 flex-1 flex-col items-center gap-2 rounded-[1.4rem] border px-3 py-4 text-slate-100 transition",
+                      "group flex min-w-0 flex-1 flex-col items-center gap-2 rounded-[1.2rem] border px-2.5 py-3 text-slate-100 transition sm:rounded-[1.4rem] sm:px-3 sm:py-4",
                       flashEnabled
                         ? "border-cyan-300/35 bg-cyan-300/12"
                         : "border-white/10 bg-white/[0.04] hover:border-sky-300/20 hover:bg-sky-400/10",
                     )}
                     onClick={() => void handleFlashToggle()}
                   >
-                    <span className="inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/12 bg-white/6">
+                    <span className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/12 bg-white/6 sm:h-14 sm:w-14">
                       <FlashIcon active={flashEnabled} />
                     </span>
                     <span className="text-sm font-semibold">Flash</span>
                     <span className="text-center text-[11px] text-slate-400">{flashEnabled ? "Torch requested" : "Use in low light"}</span>
                   </button>
+                </div>
+                <div className="mt-3 border-t border-white/10 pt-3 md:hidden">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-[1.2rem] border border-white/10 bg-white/[0.04] px-3 py-2.5 text-left text-sm font-semibold text-slate-100"
+                    onClick={() => setShowScanTips((current) => !current)}
+                  >
+                    <span>How to scan</span>
+                    <span className="text-xs text-slate-400">{showScanTips ? "Hide tips" : "Show tips"}</span>
+                  </button>
+                  {showScanTips ? (
+                    <div className="mt-3 space-y-2 rounded-[1.2rem] border border-white/10 bg-white/[0.04] p-3 text-sm leading-6 text-slate-200">
+                      {SCAN_TIPS.map((tip) => (
+                        <div key={tip} className="rounded-2xl border border-white/8 bg-[rgba(255,255,255,0.03)] px-3 py-2.5">
+                          {tip}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>

@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import secrets
 from datetime import datetime, timezone, timedelta
-from urllib.parse import urlencode, urlparse, urlunparse
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import httpx
 from fastapi import APIRouter, HTTPException, Request, Depends
@@ -18,7 +18,7 @@ from sqlalchemy.orm import Session
 from backend.auth_cookies import set_auth_cookies
 from backend.database import get_db
 from backend.models.user_factory_role import UserFactoryRole
-from backend.routers.auth import _issue_refresh_token, _log_auth_event
+from backend.routers.auth import _issue_refresh_token, _log_auth_event, _resolve_active_factory_id
 from backend.security import create_access_token
 from backend.services.auth_service import get_or_create_google_user
 from backend.utils import get_config
@@ -49,20 +49,36 @@ def _sanitize_next_path(raw: str | None) -> str:
     return raw
 
 
-def _build_frontend_redirect(path: str, params: dict[str, str] | None = None) -> str:
+def _build_frontend_redirect(
+    path: str,
+    params: dict[str, str] | None = None,
+    *,
+    allow_auth_path: bool = False,
+) -> str:
     base = _frontend_redirect_url().rstrip("/")
     parsed = urlparse(base)
     if not parsed.scheme or not parsed.netloc:
         raise HTTPException(status_code=500, detail="Frontend OAuth redirect is invalid.")
-    next_path = _sanitize_next_path(path)
+    next_path = path if allow_auth_path else _sanitize_next_path(path)
+    next_parsed = urlparse(next_path)
     base_path = parsed.path.rstrip("/")
-    final_path = f"{base_path}{next_path}" if base_path else next_path
-    query = urlencode(params or {})
+    final_path = f"{base_path}{next_parsed.path}" if base_path else next_parsed.path
+    query_items = parse_qsl(parsed.query, keep_blank_values=True)
+    query_items.extend(parse_qsl(next_parsed.query, keep_blank_values=True))
+    if params:
+        query_items.extend(params.items())
+    query = urlencode(query_items)
     return urlunparse(parsed._replace(path=final_path, query=query))
 
 
 def _login_error_redirect(message: str) -> RedirectResponse:
-    return RedirectResponse(_build_frontend_redirect("/login", {"oauth_error": message}))
+    return RedirectResponse(
+        _build_frontend_redirect(
+            "/login",
+            {"oauth_error": message},
+            allow_auth_path=True,
+        )
+    )
 
 
 def _encode_state(remember: bool, next_path: str) -> str:
@@ -96,8 +112,6 @@ def google_login(request: Request) -> RedirectResponse:
         "redirect_uri": redirect_uri,
         "response_type": "code",
         "scope": "openid email profile",
-        "access_type": "offline",
-        "prompt": "consent",
         "state": state,
     }
     url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params)
@@ -156,8 +170,11 @@ def google_callback(request: Request, db: Session = Depends(get_db)) -> Redirect
     name = id_info.get("name") or email
     picture = id_info.get("picture")
     google_id = id_info.get("sub")
+    email_verified = id_info.get("email_verified")
     if not email or not google_id:
         return _login_error_redirect("Your Google account did not provide an email address.")
+    if email_verified not in {True, "true", "True", 1, "1"}:
+        return _login_error_redirect("Your Google account email is not verified.")
 
     user, org_id, factory_id = get_or_create_google_user(
         db,
@@ -166,13 +183,29 @@ def google_callback(request: Request, db: Session = Depends(get_db)) -> Redirect
         google_id=google_id,
         picture=picture,
     )
-    role_row = (
-        db.query(UserFactoryRole)
-        .filter(UserFactoryRole.user_id == user.id)
-        .order_by(UserFactoryRole.assigned_at.asc())
-        .first()
+    active_factory_id = _resolve_active_factory_id(
+        db,
+        user_id=user.id,
+        preferred_factory_id=None,
     )
-    active_factory_id = role_row.factory_id if role_row else factory_id
+    role_row = None
+    if active_factory_id:
+        role_row = (
+            db.query(UserFactoryRole)
+            .filter(
+                UserFactoryRole.user_id == user.id,
+                UserFactoryRole.factory_id == active_factory_id,
+            )
+            .first()
+        )
+    if not role_row:
+        role_row = (
+            db.query(UserFactoryRole)
+            .filter(UserFactoryRole.user_id == user.id)
+            .order_by(UserFactoryRole.assigned_at.asc())
+            .first()
+        )
+        active_factory_id = role_row.factory_id if role_row else factory_id
     active_role = role_row.role.value if role_row else user.role.value
     user.last_login = datetime.now(timezone.utc)
     _log_auth_event(

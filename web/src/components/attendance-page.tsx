@@ -12,6 +12,7 @@ import {
   type AttendanceToday,
 } from "@/lib/attendance";
 import { useI18n } from "@/lib/i18n";
+import { useMobileRouteFunnel } from "@/lib/mobile-route-funnel";
 import { useOnlineStatus } from "@/lib/use-online-status";
 import { useSession } from "@/lib/use-session";
 import { signalWorkflowRefresh, subscribeToWorkflowRefresh } from "@/lib/workflow-sync";
@@ -162,6 +163,7 @@ function buildMainAction(today: AttendanceToday | null) {
 export default function AttendancePage() {
   const { locale } = useI18n();
   const { user, activeFactory, loading, error: sessionError } = useSession();
+  const trackPrimaryAction = useMobileRouteFunnel("/attendance", user?.role, Boolean(user));
   const [today, setToday] = useState<AttendanceToday | null>(null);
   const [selectedShift, setSelectedShift] = useState<AttendanceShift>("morning");
   const [pageLoading, setPageLoading] = useState(true);
@@ -306,6 +308,7 @@ export default function AttendancePage() {
       setToday(next);
       setSelectedShift(next.shift);
       setStatus(action === "in" ? "Punch in recorded." : "Punch out recorded.");
+      trackPrimaryAction("mark_attendance");
       await loadAttendance({ background: true });
       signalWorkflowRefresh(`attendance-${action}`);
     } catch (err) {
