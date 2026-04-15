@@ -1574,9 +1574,7 @@ export default function OcrScanPage() {
                 <CheckIcon />
               </div>
               <h2 className="mt-4 text-2xl font-semibold tracking-[-0.04em] text-white sm:text-3xl">Conversion complete</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300 sm:leading-7">
-                Your scan has been turned into a review-safe draft. Download what you need now, or open the same draft in Review Documents for trust checks.
-              </p>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300 sm:leading-7">Draft ready.</p>
             </div>
 
             <div className="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[rgba(255,255,255,0.03)]">

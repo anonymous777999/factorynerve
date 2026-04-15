@@ -477,7 +477,7 @@ export function SteelDispatchDetailPage() {
                   ))}
                   {!detail.ledger_movements.length ? (
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3 text-sm text-[var(--muted)]">
-                      No inventory movement has been posted yet. This usually means the dispatch is still a draft.
+                      No inventory movement yet.
                     </div>
                   ) : null}
                 </div>

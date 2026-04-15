@@ -184,7 +184,7 @@ export default function EntryDetailPage() {
         if (job.status === "succeeded") {
           setSummaryJobId(null);
           await loadEntry();
-          setStatus("AI summary finished and the entry view has been refreshed.");
+          setStatus("Summary refreshed.");
           setBusy(false);
         } else if (job.status === "failed") {
           setSummaryJobId(null);

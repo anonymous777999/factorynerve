@@ -429,9 +429,6 @@ export default function HomeRoute() {
                 <div className="mt-3 text-2xl font-semibold leading-tight text-white">
                   Workers stay fast. Supervisors stay focused. Managers keep context.
                 </div>
-                <p className="mt-3 text-sm leading-6 text-text-secondary">
-                  The system changes by role so normal users are not dragged into screens they do not need to touch.
-                </p>
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -493,9 +490,6 @@ export default function HomeRoute() {
       <div className="relative mx-auto flex min-h-[80vh] max-w-4xl items-center justify-center">
         <Card variant="elevated" className="w-full max-w-2xl overflow-hidden">
           <CardHeader>
-            <div className="surface-pill inline-flex w-fit rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-[rgba(77,163,255,0.92)]">
-              Welcome back
-            </div>
             <CardTitle className="mt-4 text-3xl md:text-4xl">
               Opening {destinationLabel(destination)}
             </CardTitle>

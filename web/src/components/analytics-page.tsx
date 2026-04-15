@@ -194,7 +194,7 @@ export default function AnalyticsPage() {
             <CardTitle>Analytics</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Please login to continue."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
             <Link href="/login">
               <Button>Open Login</Button>
             </Link>

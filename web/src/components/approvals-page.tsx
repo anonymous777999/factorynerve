@@ -766,7 +766,7 @@ function detailSummary(item: ReviewQueueItem) {
         checks: [
           "Confirm punch times or final status match the employee request.",
           "Check the regularization reason before closing the exception.",
-          "Make sure shift and worked-minute impact look realistic.",
+          "Check shift impact.",
         ],
       };
     case "entry":
@@ -1977,9 +1977,7 @@ export default function ApprovalsPage() {
               <CardTitle>Review work is assigned to supervisors and above</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-[var(--muted)]">
-              <p>
-                Your current role is <span className="font-semibold text-[var(--text)]">{user.role}</span>. We kept this queue focused on review decisions so daily operators do not land in approval-heavy screens by mistake.
-              </p>
+              <p>Supervisors and above only.</p>
               <div className="flex flex-wrap gap-3">
                 <Link href="/dashboard">
                   <Button>Open Operations Board</Button>

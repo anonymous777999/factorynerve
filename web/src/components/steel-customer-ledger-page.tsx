@@ -234,7 +234,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
         reference_number: paymentForm.reference_number || undefined,
         notes: paymentForm.notes || undefined,
       });
-      setStatus("Customer payment recorded successfully.");
+      setStatus("Payment recorded.");
       setPaymentForm({
         invoice_id: "",
         payment_date: todayValue(),
@@ -407,7 +407,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
             <CardTitle>Steel Customer Ledger</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Please login to continue."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
             <Link href="/login" className="w-full sm:w-auto">
               <Button className="w-full sm:w-auto">Open Login</Button>
             </Link>

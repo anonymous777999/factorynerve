@@ -257,7 +257,7 @@ export default function MyTasksPage() {
           <Card>
             <CardHeader>
               <div className="text-sm uppercase tracking-[0.26em] text-[var(--accent)]">My Tasks</div>
-              <CardTitle>Please login to open your task board</CardTitle>
+              <CardTitle>Login required.</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
               <Link href="/login"><Button>Open Login</Button></Link>
@@ -279,9 +279,7 @@ export default function MyTasksPage() {
               <CardTitle>This worker board is kept simple on purpose</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-[var(--muted)]">
-              <p>
-                Your current role is <span className="font-semibold text-[var(--text)]">{user.role}</span>. We keep this page for worker-first daily use so managers and owners stay on the main operations and reporting boards.
-              </p>
+              <p>Operators only.</p>
               <div className="flex flex-wrap gap-3">
                 <Link href="/dashboard"><Button>Open Operations Board</Button></Link>
                 <Link href="/approvals"><Button variant="outline">Open Approval Inbox</Button></Link>
@@ -300,9 +298,6 @@ export default function MyTasksPage() {
           <div className="space-y-2">
             <div className="text-sm uppercase tracking-[0.32em] text-[var(--accent)]">Daily Work</div>
             <h1 className="text-3xl font-semibold md:text-4xl">My Tasks</h1>
-            <p className="max-w-3xl text-sm text-[var(--muted)]">
-              This page keeps the day simple: what still needs entry, what is saved offline, and what factory signals need your attention.
-            </p>
           </div>
           <div className="space-y-2 text-sm text-[var(--muted)]">
             <div>Active factory: <span className="font-semibold text-[var(--text)]">{activeFactory?.name || user.factory_name}</span></div>
@@ -431,7 +426,7 @@ export default function MyTasksPage() {
                 </div>
               )) : (
                 <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-6 text-sm text-[var(--muted)]">
-                  No shift entry has been submitted today yet.
+                  No shift entry today.
                 </div>
               )}
             </CardContent>
@@ -464,9 +459,6 @@ export default function MyTasksPage() {
               <CardTitle className="text-xl">Factory shortcuts</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                Use this page when you want the shortest path back into work instead of opening the full dashboard first.
-              </div>
               <div className="grid gap-3 sm:flex sm:flex-wrap">
                 <Link href="/entry"><Button variant="outline" className="w-full sm:w-auto">Shift Entry</Button></Link>
                 <Link href="/ocr/scan"><Button variant="outline" className="w-full sm:w-auto">Document Capture</Button></Link>

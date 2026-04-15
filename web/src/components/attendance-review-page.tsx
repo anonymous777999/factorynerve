@@ -261,7 +261,7 @@ function suggestedFixFromItem(item: AttendanceReviewItem, issueType: ReviewIssue
     case "overtime":
       return "Validate overtime minutes before sending this record to payroll.";
     case "shift_correction":
-      return "Review the requested shift and make sure the record belongs to the correct shift window.";
+      return "Confirm shift window.";
     case "status_correction":
       return "Compare requested status with the actual punch evidence before approval.";
     case "timing_correction":
@@ -858,7 +858,7 @@ export default function AttendanceReviewPage() {
             <CardTitle>Attendance Review</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Please login to continue."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
             <Link href="/login">
               <Button>Open Login</Button>
             </Link>

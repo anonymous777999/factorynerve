@@ -237,8 +237,8 @@ export function SteelInvoicesPage() {
         })),
       };
       setBusy(true);
-      const created = await createSteelInvoice(payload);
-      setStatus(`Steel invoice ${created.invoice.invoice_number} created successfully.`);
+      await createSteelInvoice(payload);
+      setStatus("Invoice created.");
       setSelectedCustomerId("");
       setCustomerName("");
       setPaymentTermsDays("30");
@@ -273,7 +273,7 @@ export function SteelInvoicesPage() {
             <CardTitle>Steel Invoicing</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Please login to continue."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
             <Link href="/login">
               <Button>Open Login</Button>
             </Link>

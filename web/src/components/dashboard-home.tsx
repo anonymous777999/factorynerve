@@ -750,7 +750,7 @@ export default function DashboardHome() {
       return {
         eyebrow: "Manager Guide",
         title: "Decide from one trusted operating view",
-        detail: "Use reports and approvals as the operating truth before you drill into analytics or plant control.",
+        detail: "Start with reports and approvals.",
         steps: [
           {
             title: "Start with the next blocked decision",

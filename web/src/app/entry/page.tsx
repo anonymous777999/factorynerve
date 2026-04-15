@@ -618,8 +618,8 @@ export default function EntryPage() {
 
         const baseMessage =
           created.client_request_id === payload.client_request_id
-            ? `Entry submitted successfully. Entry ID ${created.id}.`
-            : `Entry synced successfully. Entry ID ${created.id}.`;
+            ? "Entry submitted."
+            : "Entry synced.";
 
         setStatus(
           created.summary_job_id
@@ -803,7 +803,7 @@ export default function EntryPage() {
       ? {
           tone: "queue" as const,
           title: "Queued entry sync is still in progress",
-          detail: `${queueCount} offline entr${queueCount === 1 ? "y is" : "ies are"} still waiting. Leave this page open or press Sync Queue once the network feels stable.`,
+          detail: `Syncing ${queueCount} queued entr${queueCount === 1 ? "y" : "ies"}...`,
         }
       : null;
 

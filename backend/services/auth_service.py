@@ -15,13 +15,12 @@ from backend.models.factory import Factory
 from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
 from backend.plans import DEFAULT_PLAN
-from backend.security import hash_password
+from backend.security import make_unusable_password_hash
 from backend.services.user_code_service import (
     MAX_USER_CODE_ATTEMPTS,
     is_user_code_collision,
     next_user_code,
 )
-import secrets
 
 
 logger = logging.getLogger(__name__)
@@ -95,7 +94,7 @@ def get_or_create_google_user(
         org_id=org_id,
         name=name or org_name,
         email=email,
-        password_hash=hash_password(secrets.token_urlsafe(32)),
+        password_hash=make_unusable_password_hash("google"),
         role=UserRole.ADMIN,
         factory_name=factory.name,
         is_active=True,

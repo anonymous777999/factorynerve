@@ -498,7 +498,7 @@ export default function ReportsPage() {
         metric: isAccountant ? "Summary-first desk" : `${total.toLocaleString("en-IN")} records in range`,
         detail: isAccountant
           ? "Use this desk for trusted summaries, exports, and owner-ready reporting without exposing raw operator rows."
-          : `Current range runs ${appliedFilters.startDate} to ${appliedFilters.endDate}. Use this page when management needs one trusted view instead of manual Excel cleanup.`,
+          : `${appliedFilters.startDate} to ${appliedFilters.endDate}.`,
         href: "/attendance/reports",
         action: "Open Attendance Reports",
       },
@@ -792,7 +792,7 @@ export default function ReportsPage() {
             <CardTitle>Reports</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-color-danger">{sessionError || "Please login to continue."}</div>
+            <div className="text-sm text-color-danger">{sessionError || "Login required."}</div>
             <Link href="/login">
               <Button>Open Login</Button>
             </Link>
@@ -1025,9 +1025,6 @@ export default function ReportsPage() {
           <div>
             <div className="text-xs uppercase tracking-[0.28em] text-color-primary">Reports</div>
             <h1 className="mt-2 text-2xl font-semibold text-text-primary sm:text-3xl">Trusted reporting desk</h1>
-            <p className="mt-2 hidden max-w-3xl text-sm text-text-muted sm:block">
-              Pull daily operations, trusted OCR, and owner-facing summaries into one desk. This page should answer three things fast: what is safe to report, what still needs review, and what format should leave the factory next.
-            </p>
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
               <span className="rounded-full border border-color-primary/25 bg-color-primary/8 px-3 py-1 text-color-primary-light">
                 Trusted outputs only

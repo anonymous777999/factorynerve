@@ -3,35 +3,51 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import { ArrowRight, Factory, LoaderCircle, ShieldCheck } from "lucide-react";
+import { KeyRound, LoaderCircle, LockKeyhole, ShieldCheck } from "lucide-react";
 
 import { GoogleAuthButton } from "@/components/google-auth-button";
-import { PasswordField } from "@/components/password-field";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ApiError } from "@/lib/api";
 import { login, resendEmailVerification, warmBackendConnection } from "@/lib/auth";
 import { getHomeDestination } from "@/lib/role-navigation";
 
+const trustSignals = [
+  {
+    title: "Verified Email",
+    caption: "Verify your email",
+    Icon: ShieldCheck,
+  },
+  {
+    title: "Secure Session",
+    caption: "Secure sign in",
+    Icon: LockKeyhole,
+  },
+  {
+    title: "Role-Based Access",
+    caption: "Role controls",
+    Icon: KeyRound,
+  },
+];
+
 function destinationLabel(path: string) {
   switch (path) {
     case "/attendance":
-      return "your attendance desk";
+      return "attendance desk";
     case "/dashboard":
-      return "your operations board";
+      return "operations board";
     case "/approvals":
-      return "your review queue";
+      return "review queue";
     case "/reports":
-      return "your reports desk";
+      return "reports desk";
     case "/settings":
-      return "your admin desk";
+      return "admin desk";
     case "/control-tower":
-      return "your factory network";
+      return "control tower";
     case "/premium/dashboard":
-      return "your owner desk";
+      return "owner desk";
     default:
-      return "your workspace";
+      return "workspace";
   }
 }
 
@@ -40,6 +56,7 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -56,13 +73,13 @@ export default function LoginPage() {
     }
     if (searchParams.get("reset") === "1") {
       return {
-        message: "Password updated successfully. Sign in with your new password.",
+        message: "Password updated.",
         tone: "success" as const,
       };
     }
     if (searchParams.get("verified") === "1") {
       return {
-        message: "Email verified successfully. You can sign in now.",
+        message: "Email verified.",
         tone: "success" as const,
       };
     }
@@ -104,13 +121,9 @@ export default function LoginPage() {
       router.replace(nextPath === "/" ? roleHome : nextPath);
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(
-          err.status === 503
-            ? "FactoryNerve is waking up on the backend. Please wait a few seconds and try again."
-            : err.message,
-        );
+        setError(err.status === 503 ? "Waking backend... Try again in a moment." : err.message);
       } else if (err instanceof Error && err.message.includes("Failed to fetch")) {
-        setError("Backend not reachable. Check that FastAPI is running and NEXT_PUBLIC_API_BASE_URL is correct.");
+        setError("Backend not reachable. Check FastAPI and your API base URL.");
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -123,7 +136,7 @@ export default function LoginPage() {
 
   const onResendVerification = async () => {
     if (!email) {
-      setInfo("Enter the same email address first, then resend verification.");
+      setInfo("Enter your signup email first.");
       setInfoTone("neutral");
       return;
     }
@@ -151,211 +164,199 @@ export default function LoginPage() {
   };
 
   const notice = useMemo(() => {
-    if (routeInfo) {
+    if (error) {
       return {
-        title: routeInfo.tone === "success" ? "Ready to continue" : "Sign-in needs attention",
-        detail: routeInfo.message,
-        className:
-          routeInfo.tone === "success"
-            ? "border-color-success/25 bg-color-success/10 text-color-success"
-            : "border-color-danger/25 bg-color-danger/10 text-color-danger",
+        title: canResendVerification ? "Verification required" : "Sign-in blocked",
+        detail: error,
+        className: canResendVerification
+          ? "border-[rgba(245,158,11,0.26)] bg-[rgba(245,158,11,0.12)] text-[rgba(255,218,161,0.96)]"
+          : "border-[rgba(239,68,68,0.24)] bg-[rgba(239,68,68,0.10)] text-[rgba(255,188,188,0.96)]",
       };
     }
 
     if (info) {
       return {
-        title: infoTone === "success" ? "Verification updated" : "Action needed",
+        title: infoTone === "success" ? "Verification updated" : "Factory note",
         detail: info,
         className:
           infoTone === "success"
-            ? "border-color-success/25 bg-color-success/10 text-color-success"
-            : "border-border bg-card-elevated text-text-primary",
+            ? "border-[rgba(96,165,250,0.24)] bg-[rgba(96,165,250,0.10)] text-[rgba(197,226,255,0.96)]"
+            : "border-white/10 bg-[rgba(255,255,255,0.04)] text-[rgba(218,226,239,0.88)]",
+      };
+    }
+
+    if (routeInfo) {
+      return {
+        title: routeInfo.tone === "success" ? "Access updated" : "Google sign-in blocked",
+        detail: routeInfo.message,
+        className:
+          routeInfo.tone === "success"
+            ? "border-[rgba(96,165,250,0.24)] bg-[rgba(96,165,250,0.10)] text-[rgba(197,226,255,0.96)]"
+            : "border-[rgba(239,68,68,0.24)] bg-[rgba(239,68,68,0.10)] text-[rgba(255,188,188,0.96)]",
       };
     }
 
     return null;
-  }, [info, infoTone, routeInfo]);
+  }, [canResendVerification, error, info, infoTone, routeInfo]);
 
   return (
-    <main className="relative min-h-screen overflow-hidden px-4 py-8 sm:px-6 lg:px-8">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(76,176,255,0.18),transparent_28%),radial-gradient(circle_at_85%_16%,rgba(34,197,94,0.10),transparent_24%),linear-gradient(180deg,rgba(5,11,19,0.98),rgba(11,19,31,0.96))]" />
-      <div className="pointer-events-none absolute inset-0 opacity-30 [background-image:linear-gradient(rgba(148,163,184,0.08)_1px,transparent_1px),linear-gradient(90deg,rgba(148,163,184,0.08)_1px,transparent_1px)] [background-position:center] [background-size:72px_72px]" />
-      <div className="pointer-events-none absolute -left-12 top-20 h-52 w-52 rounded-full bg-sky-400/10 blur-3xl" />
-      <div className="pointer-events-none absolute -right-12 bottom-16 h-56 w-56 rounded-full bg-emerald-400/10 blur-3xl" />
+    <main className="industrial-auth-shell relative min-h-screen overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 opacity-[0.42] [background-image:linear-gradient(rgba(111,168,255,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(111,168,255,0.12)_1px,transparent_1px)] [background-size:52px_52px]" />
+      <div className="pointer-events-none absolute inset-x-[7%] top-[72px] h-px bg-[rgba(125,176,255,0.14)]" />
+      <div className="pointer-events-none absolute inset-x-[7%] bottom-[88px] h-px bg-[rgba(125,176,255,0.10)]" />
+      <div className="pointer-events-none absolute inset-y-[10%] left-[7%] w-px bg-[rgba(125,176,255,0.14)]" />
+      <div className="pointer-events-none absolute inset-y-[10%] right-[7%] w-px bg-[rgba(125,176,255,0.14)]" />
+      <div className="pointer-events-none absolute left-[7%] top-[10%] h-2 w-2 rounded-full bg-[rgba(140,184,255,0.28)]" />
+      <div className="pointer-events-none absolute right-[7%] top-[10%] h-2 w-2 rounded-full bg-[rgba(140,184,255,0.28)]" />
+      <div className="pointer-events-none absolute left-[7%] bottom-[10%] h-2 w-2 rounded-full bg-[rgba(140,184,255,0.24)]" />
+      <div className="pointer-events-none absolute right-[7%] bottom-[10%] h-2 w-2 rounded-full bg-[rgba(140,184,255,0.24)]" />
+      <div className="pointer-events-none absolute left-1/2 top-[18%] h-56 w-56 -translate-x-1/2 rounded-full bg-[rgba(59,130,246,0.16)] blur-3xl" />
+      <div className="pointer-events-none absolute left-1/2 top-[52%] h-[22rem] w-[22rem] -translate-x-1/2 rounded-full bg-[rgba(14,165,233,0.08)] blur-3xl" />
 
-      <div className="relative mx-auto flex min-h-[calc(100vh-4rem)] max-w-5xl items-center justify-center">
-        <div className="w-full max-w-xl">
-          <Link
-            href="/"
-            className="mb-5 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300 backdrop-blur"
-          >
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-[linear-gradient(135deg,rgba(77,163,255,0.24),rgba(20,184,166,0.2))] text-[rgba(214,237,255,0.96)]">
-              <Factory className="h-4 w-4" />
+      <div className="relative mx-auto flex min-h-screen max-w-6xl items-center justify-center px-4 py-10 sm:px-6">
+        <section className="industrial-auth-card w-full max-w-[34rem] rounded-[2rem] px-6 py-7 sm:px-10 sm:py-10">
+          <div className="text-center">
+            <div className="inline-flex items-center gap-3">
+              <span className="industrial-auth-mark">
+                <span>D</span>
+              </span>
+              <span className="text-[2.15rem] font-black tracking-[-0.05em] text-white sm:text-[2.35rem]">
+                DPR.ai
+              </span>
             </div>
-            <div>
-              <div className="font-semibold text-white">FactoryNerve</div>
-              <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Secure sign in</div>
-            </div>
-          </Link>
 
-          <Card className="overflow-hidden border border-white/10 bg-[linear-gradient(180deg,rgba(14,22,35,0.9),rgba(10,16,26,0.96))] shadow-[0_24px_80px_rgba(2,6,23,0.55)] backdrop-blur">
-            <CardHeader className="space-y-4 border-b border-white/8 pb-6">
-              <div className="inline-flex w-fit rounded-full border border-white/12 bg-white/6 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300">
-                Secure Sign In
-              </div>
-              <div className="space-y-2">
-                <CardTitle className="text-2xl text-white sm:text-[2rem]">Sign in</CardTitle>
-                <p className="text-sm leading-7 text-slate-300">
-                  {hasRedirectTarget
-                    ? `Use your verified email or Google account to continue to ${nextDestination}.`
-                    : "Use your verified email or Google account to continue into your workspace."}
-                </p>
-              </div>
+            <h1 className="mt-9 text-[2.35rem] font-black leading-[1.04] tracking-[-0.065em] text-white sm:text-[3.15rem]">
+              Secure Factory Sign-In
+            </h1>
+            <p className="mx-auto mt-4 max-w-[25rem] text-[1.02rem] leading-8 text-[rgba(214,224,238,0.7)] sm:text-[1.05rem]">
+              Modern industrial AI operations platform dashboard for factory management.
+            </p>
+            {hasRedirectTarget ? (
+              <p className="mx-auto mt-3 max-w-[22rem] text-[0.82rem] font-medium uppercase tracking-[0.18em] text-[rgba(170,202,244,0.62)]">
+                Continuing to {nextDestination}
+              </p>
+            ) : null}
+          </div>
 
-              {hasRedirectTarget ? (
-                <div className="rounded-xl border border-color-primary/20 bg-color-primary/10 p-4 text-sm text-text-primary">
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-text-muted">After sign-in</div>
-                  <div className="mt-2 text-base font-semibold">You will open {nextDestination}.</div>
-                  <div className="mt-2 leading-6 text-text-secondary">
-                    Sign in with the same verified inbox that already belongs to this workspace.
-                  </div>
-                </div>
-              ) : null}
+          <div className="mt-8">
+            <GoogleAuthButton
+              nextPath={nextPath}
+              label="Sign in with Google"
+              className="space-y-3"
+              buttonClassName="industrial-google-button h-[3.95rem] rounded-[1rem] border-[rgba(255,255,255,0.22)] bg-[rgba(255,255,255,0.035)] px-4 text-[1.02rem] font-semibold text-white hover:bg-[rgba(255,255,255,0.055)] [&>span:first-child]:h-11 [&>span:first-child]:w-11 [&>span:first-child]:rounded-[0.85rem] [&>span:first-child]:border-white/12 [&>span:first-child]:shadow-[0_10px_24px_rgba(15,23,42,0.32)]"
+              errorClassName="text-center text-[0.84rem] text-[rgba(255,188,188,0.96)]"
+            />
+          </div>
 
-              {notice ? (
-                <div className={`rounded-xl border p-4 text-sm ${notice.className}`}>
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-text-muted">Status</div>
-                  <div className="mt-2 text-base font-semibold text-text-primary">{notice.title}</div>
-                  <div className="mt-2 leading-6">{notice.detail}</div>
-                </div>
-              ) : null}
-            </CardHeader>
+          <div className="industrial-auth-divider mt-8">
+            <span>Or continue with email</span>
+          </div>
 
-            <CardContent className="space-y-5 pt-6">
-              <GoogleAuthButton
-                nextPath={nextPath}
-                hint={
-                  hasRedirectTarget
-                    ? `Use Google to continue to ${nextDestination} without typing a password.`
-                    : "Use your Google account to open the same factory-safe session without typing a password."
-                }
+          <form onSubmit={onSubmit} className="mt-7 space-y-[1.15rem]">
+            <div className="space-y-2.5">
+              <label className="text-[1rem] font-medium text-white">Email</label>
+              <Input
+                type="email"
+                autoComplete="email"
+                placeholder="Email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+                className="industrial-auth-input h-[3.65rem] rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-[1.1rem] text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
               />
-
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <span className="w-full border-t border-border" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase tracking-[0.18em] text-text-muted">
-                  <span className="bg-[rgba(10,16,26,0.96)] px-3">or continue with email</span>
-                </div>
-              </div>
-
-              <form onSubmit={onSubmit} className="space-y-5">
-                <div className="space-y-2">
-                  <label className="block text-sm font-medium text-text-primary">Email Address</label>
-                  <Input
-                    type="email"
-                    autoComplete="email"
-                    placeholder="your@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    className="w-full"
-                  />
-                </div>
-
-                <PasswordField
-                  label="Password"
-                  autoComplete="current-password"
-                  value={password}
-                  onChange={setPassword}
-                  required
-                  className="w-full"
-                />
-
-                {error ? (
-                  <div
-                    className={
-                      canResendVerification
-                        ? "rounded-lg border border-color-warning/25 bg-color-warning/10 p-4 text-sm text-color-warning"
-                        : "rounded-lg border border-color-danger/25 bg-color-danger/10 p-4 text-sm text-color-danger"
-                    }
-                  >
-                    <div className="font-medium">{error}</div>
-                    {canResendVerification ? (
-                      <div className="mt-2 text-xs text-color-warning/80">
-                        This inbox still needs verification before sign-in can continue.
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {canResendVerification ? (
-                  <div className="rounded-xl border border-border bg-card-elevated p-4">
-                    <div className="text-sm font-semibold text-text-primary">Need a fresh verification email?</div>
-                    <div className="mt-2 text-sm leading-6 text-text-secondary">
-                      Enter the same signup email above, then resend verification and come back after the inbox confirms the account.
-                    </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={onResendVerification}
-                      disabled={resending}
-                      className="mt-4 w-full h-11"
-                    >
-                      {resending ? "Sending..." : "Resend Verification Email"}
-                    </Button>
-                  </div>
-                ) : null}
-
-                <div className="flex items-center justify-between gap-4 text-sm">
-                  <div className="text-text-muted">Use the inbox already linked to your workspace.</div>
-                  <Link href="/forgot-password" className="font-medium text-color-primary hover:underline">
-                    Forgot password?
-                  </Link>
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={loading}
-                  variant="primary"
-                  className="h-12 w-full text-base font-semibold"
-                >
-                  {loading ? (
-                    <span className="inline-flex items-center gap-2">
-                      <LoaderCircle className="h-4 w-4 animate-spin" />
-                      Signing in...
-                    </span>
-                  ) : hasRedirectTarget ? (
-                    "Sign in and continue"
-                  ) : (
-                    "Sign in"
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/8 bg-white/5 p-4 text-sm text-slate-300 backdrop-blur">
-              <div className="flex items-center gap-2 font-semibold text-white">
-                <ShieldCheck className="h-4 w-4 text-[rgba(112,184,255,0.96)]" />
-                Secure session
-              </div>
-              <div className="mt-2 leading-6">Cookie-backed sign-in keeps the factory session safer after authentication.</div>
             </div>
-            <div className="rounded-2xl border border-white/8 bg-white/5 p-4 text-sm text-slate-300 backdrop-blur">
-              <div className="font-semibold text-white">Need a new workspace?</div>
-              <div className="mt-2 leading-6">
-                Create an account first if your team has not been onboarded yet.
+
+            <div className="space-y-2.5">
+              <label className="text-[1rem] font-medium text-white">Password</label>
+              <div className="relative">
+                <Input
+                  type={passwordVisible ? "text" : "password"}
+                  autoComplete="current-password"
+                  placeholder="Password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  required
+                  className="industrial-auth-input h-[3.65rem] rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 pr-24 text-[1.1rem] text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 h-10 -translate-y-1/2 rounded-[0.8rem] border border-white/10 bg-[rgba(255,255,255,0.06)] px-4 text-[0.95rem] font-semibold text-[rgba(222,231,242,0.82)] transition hover:bg-[rgba(255,255,255,0.1)] hover:text-white"
+                  onClick={() => setPasswordVisible((current) => !current)}
+                >
+                  {passwordVisible ? "Hide" : "Show"}
+                </button>
               </div>
-              <Link href="/register" className="mt-3 inline-flex items-center gap-2 font-medium text-color-primary hover:underline">
-                Create account
-                <ArrowRight className="h-4 w-4" />
+            </div>
+
+            {notice ? (
+              <div className={`rounded-[1rem] border px-4 py-3 text-sm ${notice.className}`}>
+                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">
+                  Status
+                </div>
+                <div className="mt-2 text-base font-semibold text-white">{notice.title}</div>
+                <div className="mt-1 leading-6">{notice.detail}</div>
+              </div>
+            ) : null}
+
+            {canResendVerification ? (
+              <div className="rounded-[1rem] border border-[rgba(245,158,11,0.22)] bg-[rgba(245,158,11,0.08)] px-4 py-4 text-sm text-[rgba(255,226,179,0.88)]">
+                <div className="font-semibold text-white">Need a fresh verification email?</div>
+                <div className="mt-2 leading-6">
+                  Use the same signup inbox, resend verification, then return after the inbox confirms the account.
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onResendVerification}
+                  disabled={resending}
+                  className="mt-4 h-11 w-full rounded-[0.95rem] border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.04)] text-white hover:bg-[rgba(255,255,255,0.08)]"
+                >
+                  {resending ? "Sending..." : "Resend Verification Email"}
+                </Button>
+              </div>
+            ) : null}
+
+            <div className="pt-0.5">
+              <Link href="/forgot-password" className="text-[0.97rem] text-[rgba(182,212,255,0.92)] underline-offset-4 hover:text-white hover:underline">
+                Forgot password?
               </Link>
             </div>
+
+            <Button
+              type="submit"
+              disabled={loading}
+              className="industrial-auth-submit h-[3.85rem] w-full rounded-[1rem] text-[1.15rem] font-bold tracking-[-0.01em]"
+            >
+              {loading ? (
+                <span className="inline-flex items-center gap-2">
+                  <LoaderCircle className="h-5 w-5 animate-spin" />
+                  Signing in...
+                </span>
+              ) : (
+                "Sign in and continue"
+              )}
+            </Button>
+          </form>
+
+          <div className="mt-10 grid gap-4 border-t border-white/8 pt-7 sm:grid-cols-3">
+            {trustSignals.map(({ title, caption, Icon }) => (
+              <div key={title} className="industrial-auth-feature text-center">
+                <span className="industrial-auth-feature-icon">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <div className="mt-3 text-[1rem] font-semibold text-white">{title}</div>
+                <div className="mt-1 text-[0.92rem] text-[rgba(193,204,218,0.64)]">{caption}</div>
+              </div>
+            ))}
           </div>
-        </div>
+
+          <div className="mt-8 text-center text-[1.02rem] text-[rgba(214,224,238,0.76)]">
+            New here?{" "}
+            <Link href="/register" className="font-medium text-[rgba(195,221,255,0.96)] underline underline-offset-4 hover:text-white">
+              Create an account
+            </Link>
+          </div>
+        </section>
       </div>
     </main>
   );

@@ -361,7 +361,7 @@ export default function EmailSummaryPage() {
             <CardTitle>Email Summary</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Please login to continue."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
             <Link href="/login">
               <Button>Open Login</Button>
             </Link>
@@ -406,9 +406,6 @@ export default function EmailSummaryPage() {
               Email Summary
             </div>
             <h1 className="mt-2 text-3xl font-semibold">Compose trusted factory updates in minutes</h1>
-            <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
-              Pull reporting data, layer in trusted OCR and steel risk context, then open Gmail or Outlook with an update that explains exposure, not just activity. This page should help accounts, managers, and owners leave the factory with one consistent weekly story.
-            </p>
             <div className="mt-4 flex flex-wrap gap-2 text-xs">
               <span className="rounded-full border border-cyan-400/25 bg-[rgba(34,211,238,0.08)] px-3 py-1 text-cyan-100">
                 Trust before send

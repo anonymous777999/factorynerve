@@ -1459,7 +1459,7 @@ export default function OcrVerificationPage() {
       setSelectedIssueKey("");
       setResolvedIssueKeys([]);
       setMobileWorkspaceOpen(isCompactReviewWorkspace());
-      setStatus("Document read successfully. Check the highlighted values, then save or send it forward.");
+      setStatus("Document ready.");
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -1870,7 +1870,7 @@ export default function OcrVerificationPage() {
             <CardTitle>Review Documents</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Please login to continue."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
             <Link href="/login">
               <Button>Open Login</Button>
             </Link>

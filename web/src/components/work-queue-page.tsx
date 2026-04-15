@@ -613,7 +613,7 @@ export default function WorkQueuePage() {
           id: `missing-shift-${shift}`,
           section: "today",
           title: `${formatShift(shift)} shift entry is still open`,
-          detail: `No ${shift} shift entry has been recorded for ${formatDate(today)} in the active factory.`,
+          detail: `No ${shift} shift entry for ${formatDate(today)}.`,
           href: `/entry?date=${today}&shift=${shift}`,
           action: "Open Entry",
           tone: index === 0 ? "action" : "watch",
@@ -852,7 +852,7 @@ export default function WorkQueuePage() {
         id: `worker-open-shift-${shift}`,
         section: "today",
         title: `${formatShift(shift)} shift entry is pending`,
-        detail: `No ${shift} entry has been submitted for ${formatDate(localDateValue())}.`,
+        detail: `No ${shift} entry for ${formatDate(localDateValue())}.`,
         href: `/entry?date=${localDateValue()}&shift=${shift}`,
         action: "Start Entry",
         tone: "danger",
@@ -1004,7 +1004,7 @@ export default function WorkQueuePage() {
           <Card>
             <CardHeader>
               <div className="text-sm uppercase tracking-[0.26em] text-[var(--accent)]">Work Queue</div>
-              <CardTitle>Please login to open the shared work queue</CardTitle>
+              <CardTitle>Login required.</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
               <Link href="/login">

@@ -8,6 +8,7 @@ from datetime import datetime, timezone, timedelta
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import httpx
+import requests
 from fastapi import APIRouter, HTTPException, Request, Depends
 from fastapi.responses import RedirectResponse
 from jose import jwt
@@ -26,6 +27,9 @@ from backend.utils import get_config
 
 router = APIRouter(tags=["Authentication"])
 config = get_config()
+_google_http_client = httpx.Client(timeout=httpx.Timeout(8.0, connect=3.0))
+_google_verify_session = requests.Session()
+_google_verify_request = grequests.Request(session=_google_verify_session)
 
 
 def _google_config() -> tuple[str, str, str]:
@@ -81,6 +85,29 @@ def _login_error_redirect(message: str) -> RedirectResponse:
     )
 
 
+def _exchange_google_token(
+    *,
+    code: str,
+    client_id: str,
+    client_secret: str,
+    redirect_uri: str,
+):
+    return _google_http_client.post(
+        "https://oauth2.googleapis.com/token",
+        data={
+            "code": code,
+            "client_id": client_id,
+            "client_secret": client_secret,
+            "redirect_uri": redirect_uri,
+            "grant_type": "authorization_code",
+        },
+    )
+
+
+def _verify_google_id_token(raw_id_token: str, client_id: str):
+    return id_token.verify_oauth2_token(raw_id_token, _google_verify_request, client_id)
+
+
 def _encode_state(remember: bool, next_path: str) -> str:
     payload = {
         "nonce": secrets.token_urlsafe(16),
@@ -134,18 +161,12 @@ def google_callback(request: Request, db: Session = Depends(get_db)) -> Redirect
         client_id, client_secret, redirect_uri = _google_config()
     except HTTPException:
         return _login_error_redirect("Google sign-in is not configured yet.")
-    token_url = "https://oauth2.googleapis.com/token"
     try:
-        token_resp = httpx.post(
-            token_url,
-            data={
-                "code": code,
-                "client_id": client_id,
-                "client_secret": client_secret,
-                "redirect_uri": redirect_uri,
-                "grant_type": "authorization_code",
-            },
-            timeout=10,
+        token_resp = _exchange_google_token(
+            code=code,
+            client_id=client_id,
+            client_secret=client_secret,
+            redirect_uri=redirect_uri,
         )
     except httpx.RequestError:
         return _login_error_redirect("Could not reach Google during sign-in.")
@@ -158,7 +179,7 @@ def google_callback(request: Request, db: Session = Depends(get_db)) -> Redirect
         return _login_error_redirect("Google did not return an ID token.")
 
     try:
-        id_info = id_token.verify_oauth2_token(raw_id_token, grequests.Request(), client_id)
+        id_info = _verify_google_id_token(raw_id_token, client_id)
     except Exception:
         return _login_error_redirect("Could not verify the Google account response.")
 

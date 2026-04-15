@@ -20,7 +20,7 @@ export function BetaRolloutBanner() {
             Beta {betaStage}
           </span>
           <span className="leading-6">
-            {betaBannerText || "This release is under monitored beta rollout. Please report anything that feels off before full cutover."}
+            {betaBannerText || "Beta rollout active. Report issues."}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.16em]">

@@ -380,7 +380,7 @@ export default function ProfilePage() {
       const updated = await uploadProfilePicture(croppedFile);
       setProfile(updated);
       clearSelectedPhoto();
-      setPhotoMessage("Profile photo updated successfully.");
+      setPhotoMessage("Photo updated.");
     } catch (error) {
       if (error instanceof ApiError) {
         setPhotoError(error.message);
@@ -435,7 +435,7 @@ export default function ProfilePage() {
         phone_number: updated.phone_number || "",
       });
       setEditingProfile(false);
-      setProfileMessage("Profile updated successfully.");
+      setProfileMessage("Profile updated.");
     } catch (error) {
       if (error instanceof ApiError) {
         setProfileError(error.message);
@@ -463,7 +463,7 @@ export default function ProfilePage() {
       });
       setPasswordForm({ old_password: "", new_password: "", confirm_password: "" });
       setShowPasswordForm(false);
-      setSecurityMessage("Password changed successfully.");
+      setSecurityMessage("Password changed.");
     } catch (error) {
       if (error instanceof ApiError) {
         setSecurityError(error.message);
@@ -538,7 +538,7 @@ export default function ProfilePage() {
             <CardTitle>Profile</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Please login to continue."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
             <Link href="/login">
               <Button>Open Login</Button>
             </Link>

@@ -2,28 +2,46 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { KeyRound, LoaderCircle, LockKeyhole, ShieldCheck } from "lucide-react";
 
-import { register, resendEmailVerification, type RegisterResponse } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
-import { validatePhoneNumber } from "@/lib/validation";
-import { AuthShell } from "@/components/auth-shell";
+import { register, resendEmailVerification, type RegisterResponse } from "@/lib/auth";
 import { GoogleAuthButton } from "@/components/google-auth-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { validatePhoneNumber } from "@/lib/validation";
+
+const trustSignals = [
+  {
+    title: "Verified Email",
+    caption: "Inbox activation",
+    Icon: ShieldCheck,
+  },
+  {
+    title: "Secure Session",
+    caption: "Protected access",
+    Icon: LockKeyhole,
+  },
+  {
+    title: "Role-Based Access",
+    caption: "Attendance-first",
+    Icon: KeyRound,
+  },
+];
 
 function destinationLabel(path: string) {
   switch (path) {
     case "/attendance":
-      return "the attendance desk";
+      return "attendance desk";
     case "/dashboard":
-      return "the operations board";
+      return "operations board";
     case "/approvals":
-      return "the review queue";
+      return "review queue";
     case "/reports":
-      return "the reports desk";
+      return "reports desk";
     default:
-      return "the workspace";
+      return "workspace";
   }
 }
 
@@ -40,6 +58,7 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState<RegisterResponse | null>(null);
   const [resending, setResending] = useState(false);
   const [resendStatus, setResendStatus] = useState("");
+
   const nextPath = searchParams.get("next") || "/";
   const nextDestination = destinationLabel(nextPath);
   const hasRedirectTarget = nextPath !== "/";
@@ -47,40 +66,45 @@ export default function RegisterPage() {
   const isPreviewMode = deliveryMode === "preview";
   const isEmailFailure = deliveryMode === "email_failed";
   const isEmailDelivery = !!success && !isPreviewMode && !isEmailFailure;
-  const successState = success
-    ? {
-        title: isEmailFailure
-          ? "Pending signup saved"
-          : isEmailDelivery
-            ? "Inbox verification required"
-            : "Verification link ready",
-        detail: isEmailFailure
-          ? "The signup request is stored safely. You only need to resend verification after email delivery recovers."
-          : isEmailDelivery
-            ? "The real account stays locked until this inbox opens the verification email and activates the signup."
-            : "Preview mode is active, so you can open the verification link directly from this screen.",
-        className: isEmailFailure
-          ? "border-[rgba(245,158,11,0.28)] bg-[rgba(245,158,11,0.10)] text-amber-100"
-          : isEmailDelivery
-            ? "border-[rgba(34,197,94,0.22)] bg-[rgba(34,197,94,0.08)] text-green-100"
-            : "border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.08)] text-sky-100",
-      }
-    : null;
+
+  const successState = useMemo(() => {
+    if (!success) return null;
+    return {
+      title: isEmailFailure
+        ? "Verification email failed"
+        : isEmailDelivery
+          ? "Check your inbox"
+          : "Verification link ready",
+      detail: isEmailFailure
+        ? "Your signup is saved. Send a fresh verification email when delivery recovers."
+        : isEmailDelivery
+          ? "This account stays locked until the inbox owner opens the verification email."
+          : "Preview mode is active, so the verification link is available below.",
+      className: isEmailFailure
+        ? "border-[rgba(245,158,11,0.26)] bg-[rgba(245,158,11,0.12)] text-[rgba(255,218,161,0.96)]"
+        : isEmailDelivery
+          ? "border-[rgba(96,165,250,0.24)] bg-[rgba(96,165,250,0.10)] text-[rgba(197,226,255,0.96)]"
+          : "border-[rgba(96,165,250,0.24)] bg-[rgba(96,165,250,0.10)] text-[rgba(197,226,255,0.96)]",
+    };
+  }, [isEmailDelivery, isEmailFailure, success]);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
     setSuccess(null);
     setResendStatus("");
+
     if (companyCode.trim() && !factoryName.trim()) {
-      setError("Factory/Company name is required to verify the company code.");
+      setError("Factory name is required to verify the company code.");
       return;
     }
+
     const phoneError = validatePhoneNumber(phoneNumber, "Phone number");
     if (phoneError) {
       setError(phoneError);
       return;
     }
+
     setLoading(true);
     try {
       const result = await register({
@@ -97,9 +121,9 @@ export default function RegisterPage() {
       if (err instanceof ApiError) {
         setError(err.message);
       } else if (err instanceof Error && err.message.includes("Failed to fetch")) {
-        setError("Backend not reachable. Check that FastAPI is running and NEXT_PUBLIC_API_BASE_URL is correct.");
+        setError("Backend not reachable. Check FastAPI and your API base URL.");
       } else if (err instanceof Error && err.message.includes("Request timed out")) {
-        setError("Signup is taking too long waiting for email delivery. Please try again or retry in a minute.");
+        setError("Verification email delayed. Retry in a minute.");
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
@@ -142,237 +166,247 @@ export default function RegisterPage() {
   };
 
   return (
-    <AuthShell
-      badge="Public Signup"
-      title="Create your account"
-      description={
-        hasRedirectTarget
-          ? `Create the account first, verify the inbox, then continue into ${nextDestination}.`
-          : "Public signup creates an attendance-worker signup request. The account stays locked until the email owner verifies it."
-      }
-      journeyTitle="Bring workers into the system without risking factory access."
-      journeyDescription={
-        hasRedirectTarget
-          ? `The account will stay locked until the inbox is verified, then the user can sign in and continue into ${nextDestination}.`
-          : "We keep public registration intentionally narrow: collect the details, verify the inbox owner, then create the real account only after confirmation."
-      }
-      steps={[
-        {
-          title: "Submit worker details",
-          description: "Collect the person, factory, and contact details needed to prepare a pending signup safely.",
-        },
-        {
-          title: "Verify the email inbox",
-          description: "Only the inbox owner can open the verification link and activate the real DPR.ai account.",
-        },
-        {
-          title: "Unlock sign-in",
-          description: "After verification, the worker returns to sign in and start using the attendance-first workflow.",
-        },
-      ]}
-      supportTitle="Why this feels stricter now"
-      supportDescription="Wrong or fake emails can no longer create a working account. They only create a pending signup that stays locked until the real inbox verifies it."
-      cardClassName="max-w-3xl"
-    >
-      {success ? (
-        <div className="space-y-5">
-          {hasRedirectTarget ? (
-            <div className="rounded-2xl border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.08)] p-4 text-sm text-text-primary">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-text-muted">After verification</div>
-              <div className="mt-2 text-base font-semibold">Sign in to continue into {nextDestination}.</div>
-              <div className="mt-2 leading-6 text-text-secondary">
-                This signup only prepares the account safely. The inbox still needs to verify ownership first.
-              </div>
+    <main className="industrial-auth-shell relative min-h-screen overflow-hidden">
+      <div className="pointer-events-none absolute inset-0 opacity-[0.42] [background-image:linear-gradient(rgba(111,168,255,0.12)_1px,transparent_1px),linear-gradient(90deg,rgba(111,168,255,0.12)_1px,transparent_1px)] [background-size:52px_52px]" />
+      <div className="pointer-events-none absolute inset-x-[7%] top-[72px] h-px bg-[rgba(125,176,255,0.14)]" />
+      <div className="pointer-events-none absolute inset-x-[7%] bottom-[88px] h-px bg-[rgba(125,176,255,0.10)]" />
+      <div className="pointer-events-none absolute inset-y-[10%] left-[7%] w-px bg-[rgba(125,176,255,0.14)]" />
+      <div className="pointer-events-none absolute inset-y-[10%] right-[7%] w-px bg-[rgba(125,176,255,0.14)]" />
+      <div className="pointer-events-none absolute left-[7%] top-[10%] h-2 w-2 rounded-full bg-[rgba(140,184,255,0.28)]" />
+      <div className="pointer-events-none absolute right-[7%] top-[10%] h-2 w-2 rounded-full bg-[rgba(140,184,255,0.28)]" />
+      <div className="pointer-events-none absolute left-[7%] bottom-[10%] h-2 w-2 rounded-full bg-[rgba(140,184,255,0.24)]" />
+      <div className="pointer-events-none absolute right-[7%] bottom-[10%] h-2 w-2 rounded-full bg-[rgba(140,184,255,0.24)]" />
+      <div className="pointer-events-none absolute left-1/2 top-[18%] h-56 w-56 -translate-x-1/2 rounded-full bg-[rgba(59,130,246,0.16)] blur-3xl" />
+      <div className="pointer-events-none absolute left-1/2 top-[52%] h-[22rem] w-[22rem] -translate-x-1/2 rounded-full bg-[rgba(14,165,233,0.08)] blur-3xl" />
+
+      <div className="relative mx-auto flex min-h-screen max-w-6xl items-center justify-center px-4 py-10 sm:px-6">
+        <section className="industrial-auth-card w-full max-w-[38rem] rounded-[2rem] px-6 py-7 sm:px-10 sm:py-10">
+          <div className="text-center">
+            <div className="inline-flex items-center gap-3">
+              <span className="industrial-auth-mark">
+                <span>D</span>
+              </span>
+              <span className="text-[2.15rem] font-black tracking-[-0.05em] text-white sm:text-[2.35rem]">
+                DPR.ai
+              </span>
             </div>
-          ) : null}
+
+            <h1 className="mt-9 text-[2.2rem] font-black leading-[1.04] tracking-[-0.065em] text-white sm:text-[2.9rem]">
+              Create Factory Access
+            </h1>
+            <p className="mx-auto mt-4 max-w-[28rem] text-[1rem] leading-8 text-[rgba(214,224,238,0.7)] sm:text-[1.04rem]">
+              Set up a verified attendance account for the factory team, then unlock sign-in after inbox confirmation.
+            </p>
+            {hasRedirectTarget ? (
+              <p className="mx-auto mt-3 max-w-[24rem] text-[0.82rem] font-medium uppercase tracking-[0.18em] text-[rgba(170,202,244,0.62)]">
+                After verification, continue to {nextDestination}
+              </p>
+            ) : null}
+          </div>
+
+          {success ? (
+            <div className="mt-8 space-y-4">
               {successState ? (
-                <div className={`rounded-2xl border p-4 text-sm ${successState.className}`}>
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/80">Signup Status</div>
-                  <div className="mt-2 text-base font-semibold text-[var(--text)]">{successState.title}</div>
-                  <div className="mt-2 leading-6">{successState.detail}</div>
+                <div className={`rounded-[1rem] border px-4 py-4 text-sm ${successState.className}`}>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/70">
+                    Signup status
+                  </div>
+                  <div className="mt-2 text-base font-semibold text-white">{successState.title}</div>
+                  <div className="mt-1 leading-6">{successState.detail}</div>
                 </div>
               ) : null}
-              <div className="rounded-2xl border border-[rgba(245,158,11,0.28)] bg-[rgba(245,158,11,0.10)] p-4 text-sm">
-                <div className="font-semibold text-amber-300">
-                  {isEmailFailure
-                    ? "Signup saved, but email delivery needs another try"
-                    : isEmailDelivery
-                      ? "Check your inbox to finish signup"
-                      : "Verification link ready"}
+
+              <div className="rounded-[1rem] border border-white/10 bg-[rgba(255,255,255,0.04)] px-4 py-4 text-sm text-[rgba(219,227,239,0.84)]">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">
+                  Next step
                 </div>
-                <div className="mt-2 text-[var(--text)]/90">{success.message}</div>
-                <div className="mt-3 text-[var(--muted)]">
-                  We saved a pending signup for <span className="font-medium text-[var(--text)]">{email}</span>.
-                  The account cannot sign in until that inbox opens the verification link.
+                <div className="mt-2 leading-6">
+                  We saved the signup for <span className="font-semibold text-white">{email}</span>. The account stays locked until that inbox opens the verification link.
                 </div>
-                <div className="mt-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3">
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
-                    What to do next
-                  </div>
-                  <ol className="mt-3 space-y-2 text-sm text-[var(--text)]/90">
-                    <li>1. {isEmailFailure ? "Wait a minute, then request a fresh verification email." : `Open the inbox for ${email}.`}</li>
-                    <li>
-                      2. {isEmailFailure
-                        ? "Use Resend Verification Email below until the message arrives."
-                        : isEmailDelivery
-                          ? "Click the verification email from DPR.ai."
-                          : "Open the preview link below."}
-                    </li>
-                    <li>3. Return here and sign in after verification is complete.</li>
-                  </ol>
-                </div>
-                {isEmailFailure ? (
-                  <div className="mt-3 rounded-xl border border-[rgba(248,113,113,0.28)] bg-[rgba(127,29,29,0.28)] p-3 text-xs text-red-100">
-                    The signup request is safe in the system, but the first verification email did not leave successfully. You do not need to fill the form again.
-                  </div>
-                ) : null}
-                {isEmailDelivery ? (
-                  <div className="mt-3 rounded-xl border border-[rgba(34,197,94,0.18)] bg-[rgba(34,197,94,0.08)] p-3 text-xs text-[var(--muted)]">
-                    If you do not see the email within a minute, check spam or promotions, then use
-                    {" "}
-                    <span className="font-medium text-[var(--text)]">Resend Verification Email</span>.
-                  </div>
-                ) : null}
-                <div className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-xs text-[var(--muted)]">
-                  Random or wrong emails can create a pending record, but they do not get working access. Only the person who can open that inbox can activate the account.
-                </div>
-                <div className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-xs text-[var(--muted)]">
-                  Password reset works only after verification is complete. Until then, use <span className="font-medium text-[var(--text)]">Resend Verification Email</span> instead of forgot password.
-                </div>
-                {success.verification_link ? (
-                  <div className="mt-4 space-y-3">
-                    <div className="text-[var(--muted)]">
-                      Local preview mode is active, so your verification link is shown here directly.
-                    </div>
-                    <div className="grid gap-3 sm:flex sm:flex-wrap">
-                      <a
-                        href={success.verification_link}
-                        className="inline-flex w-full items-center justify-center rounded-full border border-[rgba(62,166,255,0.4)] bg-[rgba(62,166,255,0.12)] px-4 py-2 text-sm font-semibold text-[var(--text)] transition hover:bg-[rgba(62,166,255,0.18)] sm:w-auto"
-                      >
-                        Open Verification Page
-                      </a>
-                    </div>
-                    <div className="break-all text-xs text-[var(--muted)]">{success.verification_link}</div>
-                  </div>
-                ) : isEmailFailure ? (
-                  <div className="mt-3 text-[var(--muted)]">
-                    Use resend once the email service is healthy again. The pending signup is already stored.
-                  </div>
-                ) : (
-                  <div className="mt-3 text-[var(--muted)]">
-                    Check your inbox and spam folder for the verification email.
-                  </div>
-                )}
               </div>
 
-              <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center">
-                <Button type="button" variant="outline" onClick={onResend} disabled={resending} className="w-full sm:w-auto">
-                  {resending ? "Sending..." : "Resend Verification Email"}
+              {success.verification_link ? (
+                <div className="rounded-[1rem] border border-[rgba(96,165,250,0.24)] bg-[rgba(96,165,250,0.08)] px-4 py-4 text-sm text-[rgba(214,229,247,0.88)]">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/70">
+                    Preview link
+                  </div>
+                  <a
+                    href={success.verification_link}
+                    className="mt-3 inline-flex h-11 items-center justify-center rounded-[0.9rem] border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.06)] px-4 font-semibold text-white transition hover:bg-[rgba(255,255,255,0.09)]"
+                  >
+                    Open verification page
+                  </a>
+                  <div className="mt-3 break-all text-xs text-[rgba(208,220,236,0.66)]">{success.verification_link}</div>
+                </div>
+              ) : null}
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={onResend}
+                  disabled={resending}
+                  className="h-12 rounded-[0.95rem] border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.04)] text-white hover:bg-[rgba(255,255,255,0.08)]"
+                >
+                  {resending ? "Sending..." : "Resend verification"}
                 </Button>
-                <Link href="/login" className="inline-flex w-full items-center justify-center text-sm text-[var(--accent)] underline sm:w-auto">
+                <Link
+                  href="/login"
+                  className="inline-flex h-12 items-center justify-center rounded-[0.95rem] border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.03)] px-4 text-sm font-semibold text-[rgba(195,221,255,0.96)] transition hover:bg-[rgba(255,255,255,0.08)] hover:text-white"
+                >
                   Back to sign in
                 </Link>
               </div>
 
               {resendStatus ? (
-                <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-sm text-[var(--muted)]">
+                <div className="rounded-[1rem] border border-white/10 bg-[rgba(255,255,255,0.04)] px-4 py-3 text-sm text-[rgba(215,223,236,0.78)]">
                   {resendStatus}
                 </div>
               ) : null}
             </div>
-      ) : (
-        <div className="space-y-5">
-          {hasRedirectTarget ? (
-            <div className="rounded-2xl border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.08)] p-4 text-sm text-text-primary">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-text-muted">Start here first</div>
-              <div className="mt-2 text-base font-semibold">After verification, the user can continue into {nextDestination}.</div>
-              <div className="mt-2 leading-6 text-text-secondary">
-                We collect the details now, verify the inbox owner, and only then unlock the actual account.
-              </div>
-            </div>
-          ) : null}
-          <div className="rounded-2xl border border-[rgba(77,163,255,0.18)] bg-[rgba(77,163,255,0.08)] p-4">
-            <div className="text-sm font-semibold text-text-primary">Prefer the faster Google route?</div>
-            <div className="mt-1 text-sm leading-6 text-text-secondary">
-              Continue with Google to create or link a workspace owner account without filling the full public signup form.
-            </div>
-            <div className="mt-4">
-              <GoogleAuthButton
-                nextPath="/dashboard"
-                hint="Use this when you want the direct workspace-owner flow. The form below still creates the attendance-worker signup request."
-              />
-            </div>
-          </div>
-
-          <form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-2">
-              <div className="md:col-span-1">
-                <label className="text-sm text-[var(--muted)]">Full Name</label>
-                <Input value={name} onChange={(e) => setName(e.target.value)} required />
-              </div>
-              <div className="md:col-span-1">
-                <label className="text-sm text-[var(--muted)]">Email</label>
-                <Input
-                  type="email"
-                  autoComplete="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="md:col-span-1">
-                <label className="text-sm text-[var(--muted)]">Password</label>
-                <Input
-                  type="password"
-                  autoComplete="new-password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                />
-                <p className="mt-2 text-xs text-[var(--muted)]">
-                  Passwords must be 12+ characters with mixed case, number, and symbol.
-                </p>
-              </div>
-              <div className="md:col-span-1">
-                <label className="text-sm text-[var(--muted)]">Account Type</label>
-                <Input value="Attendance worker access" readOnly aria-readonly />
-              </div>
-              <div className="md:col-span-1">
-                <label className="text-sm text-[var(--muted)]">Company / Factory Name</label>
-                <Input value={factoryName} onChange={(e) => setFactoryName(e.target.value)} required />
-              </div>
-              <div className="md:col-span-1">
-                <label className="text-sm text-[var(--muted)]">Company Code (optional)</label>
-                <Input value={companyCode} onChange={(e) => setCompanyCode(e.target.value)} />
-              </div>
-              <div className="md:col-span-2">
-                <label className="text-sm text-[var(--muted)]">Phone Number (optional)</label>
-                <Input
-                  type="tel"
-                  autoComplete="tel"
-                  inputMode="tel"
-                  value={phoneNumber}
-                  onChange={(e) => setPhoneNumber(e.target.value)}
-                  placeholder="+91 98765 43210"
+          ) : (
+            <>
+              <div className="mt-8">
+                <GoogleAuthButton
+                  nextPath="/dashboard"
+                  label="Continue with Google"
+                  className="space-y-3"
+                  hint="Use Google when you want the faster workspace-owner route instead of worker signup."
+                  buttonClassName="industrial-google-button h-[3.95rem] rounded-[1rem] border-[rgba(255,255,255,0.22)] bg-[rgba(255,255,255,0.035)] px-4 text-[1.02rem] font-semibold text-white hover:bg-[rgba(255,255,255,0.055)] [&>span:first-child]:h-11 [&>span:first-child]:w-11 [&>span:first-child]:rounded-[0.85rem] [&>span:first-child]:border-white/12 [&>span:first-child]:shadow-[0_10px_24px_rgba(15,23,42,0.32)]"
+                  hintClassName="text-center text-[0.82rem] text-[rgba(202,213,228,0.62)]"
                 />
               </div>
 
-              {error ? (
-                <div className="md:col-span-2 rounded-lg border border-[rgba(239,68,68,0.24)] bg-[rgba(239,68,68,0.08)] p-3 text-sm text-red-300">
-                  {error}
+              <div className="industrial-auth-divider mt-8">
+                <span>Or continue with email</span>
+              </div>
+
+              <form onSubmit={onSubmit} className="mt-7 space-y-[1.15rem]">
+                <div className="grid gap-[1.15rem] sm:grid-cols-2">
+                  <div className="space-y-2.5">
+                    <label className="text-[1rem] font-medium text-white">Full name</label>
+                    <Input
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
+                      required
+                      className="industrial-auth-input h-[3.65rem] rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-[1.05rem] text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
+                    />
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <label className="text-[1rem] font-medium text-white">Email</label>
+                    <Input
+                      type="email"
+                      autoComplete="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                      className="industrial-auth-input h-[3.65rem] rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-[1.05rem] text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
+                    />
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <label className="text-[1rem] font-medium text-white">Password</label>
+                    <Input
+                      type="password"
+                      autoComplete="new-password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      className="industrial-auth-input h-[3.65rem] rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-[1.05rem] text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
+                    />
+                    <p className="text-[0.8rem] leading-5 text-[rgba(198,209,223,0.58)]">
+                      Use 12+ characters with mixed case, number, and symbol.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <label className="text-[1rem] font-medium text-white">Account type</label>
+                    <Input
+                      value="Attendance worker access"
+                      readOnly
+                      aria-readonly
+                      className="industrial-auth-input h-[3.65rem] rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-[1.05rem] text-[rgba(199,210,226,0.72)]"
+                    />
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <label className="text-[1rem] font-medium text-white">Factory name</label>
+                    <Input
+                      value={factoryName}
+                      onChange={(e) => setFactoryName(e.target.value)}
+                      required
+                      className="industrial-auth-input h-[3.65rem] rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-[1.05rem] text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
+                    />
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <label className="text-[1rem] font-medium text-white">Company code</label>
+                    <Input
+                      value={companyCode}
+                      onChange={(e) => setCompanyCode(e.target.value)}
+                      className="industrial-auth-input h-[3.65rem] rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-[1.05rem] text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
+                    />
+                  </div>
                 </div>
-              ) : null}
 
-              <div className="md:col-span-2 grid gap-3 sm:flex sm:flex-wrap sm:items-center">
-                <Button type="submit" disabled={loading} className="w-full sm:w-auto">
-                  {loading ? "Creating account..." : "Register"}
+                <div className="space-y-2.5">
+                  <label className="text-[1rem] font-medium text-white">Phone number</label>
+                  <Input
+                    type="tel"
+                    autoComplete="tel"
+                    inputMode="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="+91 98765 43210"
+                    className="industrial-auth-input h-[3.65rem] rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-[1.05rem] text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
+                  />
+                </div>
+
+                {error ? (
+                  <div className="rounded-[1rem] border border-[rgba(239,68,68,0.24)] bg-[rgba(239,68,68,0.10)] px-4 py-3 text-sm text-[rgba(255,188,188,0.96)]">
+                    {error}
+                  </div>
+                ) : null}
+
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="industrial-auth-submit h-[3.85rem] w-full rounded-[1rem] text-[1.15rem] font-bold tracking-[-0.01em]"
+                >
+                  {loading ? (
+                    <span className="inline-flex items-center gap-2">
+                      <LoaderCircle className="h-5 w-5 animate-spin" />
+                      Creating account...
+                    </span>
+                  ) : (
+                    "Create account"
+                  )}
                 </Button>
-                <Link href="/login" className="inline-flex w-full items-center justify-center text-sm text-[var(--accent)] underline sm:w-auto">
-                  Already have an account? Sign in
-                </Link>
+
+                <div className="text-center text-[1rem] text-[rgba(214,224,238,0.76)]">
+                  Already have an account?{" "}
+                  <Link href="/login" className="font-medium text-[rgba(195,221,255,0.96)] underline underline-offset-4 hover:text-white">
+                    Sign in
+                  </Link>
+                </div>
+              </form>
+            </>
+          )}
+
+          <div className="mt-10 grid gap-4 border-t border-white/8 pt-7 sm:grid-cols-3">
+            {trustSignals.map(({ title, caption, Icon }) => (
+              <div key={title} className="industrial-auth-feature text-center">
+                <span className="industrial-auth-feature-icon">
+                  <Icon className="h-5 w-5" />
+                </span>
+                <div className="mt-3 text-[1rem] font-semibold text-white">{title}</div>
+                <div className="mt-1 text-[0.92rem] text-[rgba(193,204,218,0.64)]">{caption}</div>
               </div>
-            </form>
-        </div>
-      )}
-    </AuthShell>
+            ))}
+          </div>
+        </section>
+      </div>
+    </main>
   );
 }

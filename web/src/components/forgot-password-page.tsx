@@ -119,7 +119,7 @@ export default function ForgotPasswordPage() {
         },
       ]}
       supportTitle="Privacy-safe by design"
-      supportDescription="This screen intentionally does not confirm whether an email exists. Password reset only works after the signup email has been verified and the real account has been created."
+      supportDescription="No account lookup."
       cardClassName="max-w-xl"
       contentClassName="space-y-5"
     >
@@ -180,7 +180,7 @@ export default function ForgotPasswordPage() {
           </div>
           {isEmailDelivery ? (
             <div className="mt-3 rounded-md border border-border bg-card-elevated p-3 text-xs text-text-muted">
-              For privacy, this page always shows the same result whether the email exists or not. If the account is real, active, and eligible for reset, the email will arrive in that inbox.
+              Same result for every email.
             </div>
           ) : null}
           {response.reset_link ? (

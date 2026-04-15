@@ -493,7 +493,7 @@ function BillingPageInner() {
             <CardTitle>Billing</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Please login to continue."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
             <Link href="/login">
               <Button>Open Login</Button>
             </Link>
@@ -840,7 +840,7 @@ function BillingPageInner() {
                   </Link>
                 </div>
                 <div className="text-xs leading-5 text-[var(--muted)]">
-                  Add only the scan packs this factory still needs. Existing active packs stay visible so you do not double-buy them.
+                  Add needed packs only.
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {addonOptions.map((addon) => {
@@ -968,7 +968,7 @@ function BillingPageInner() {
                 ) : null}
                 {checkoutPlanInfo?.sales_only ? (
                   <div className="rounded-2xl border border-amber-400/25 bg-amber-400/10 p-4 text-sm text-amber-100">
-                    Enterprise is handled through a contact-sales motion. Use this page to review the structure, then move the org with the manual override only during internal QA.
+                    Contact sales for Enterprise.
                   </div>
                 ) : null}
                 {!canWriteBilling ? (

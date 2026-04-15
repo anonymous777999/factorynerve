@@ -196,7 +196,7 @@ export default function OcrPage() {
       setStatus("OCR job retried. We are watching the fresh run now.");
       pushAppToast({
         title: "OCR job retried",
-        description: "A new OCR run has been queued in the shared jobs system.",
+        description: "OCR queued.",
         tone: "success",
       });
     } catch (err) {
@@ -265,7 +265,7 @@ export default function OcrPage() {
       setTemplateColumnNames("");
       setTemplateKeywordJson("");
       setTemplateSamples([]);
-      setStatus("Template created successfully.");
+      setStatus("Template created.");
     } catch (err) {
       if (err instanceof SyntaxError) {
         setError("Column keyword JSON is invalid.");
@@ -308,7 +308,7 @@ export default function OcrPage() {
             <CardTitle>OCR Workspace</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Please login to continue."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
             <Link href="/login">
               <Button>Open Login</Button>
             </Link>

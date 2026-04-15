@@ -105,8 +105,9 @@ export type SessionSummary = {
 };
 
 const AUTH_EMAIL_TIMEOUT_MS = 30_000;
-const BACKEND_WAKE_TIMEOUT_MS = 25_000;
-const BACKEND_WAKE_INTERVAL_MS = 3_000;
+const BACKEND_WAKE_TIMEOUT_MS = 12_000;
+const BACKEND_WAKE_INTERVAL_MS = 1_000;
+const BACKEND_WAKE_REQUEST_TIMEOUT_MS = 2_500;
 
 let backendWarmPromise: Promise<boolean> | null = null;
 
@@ -137,6 +138,17 @@ function delay(ms: number) {
   });
 }
 
+function createWakeTimeoutController(timeoutMs: number) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  return {
+    controller,
+    clear() {
+      window.clearTimeout(timeoutId);
+    },
+  };
+}
+
 export async function warmBackendConnection(force = false): Promise<boolean> {
   if (typeof window === "undefined") {
     return true;
@@ -150,23 +162,34 @@ export async function warmBackendConnection(force = false): Promise<boolean> {
     const deadline = Date.now() + BACKEND_WAKE_TIMEOUT_MS;
 
     while (Date.now() < deadline) {
+      const wakeRequest = createWakeTimeoutController(BACKEND_WAKE_REQUEST_TIMEOUT_MS);
       try {
         const response = await fetch(`${API_BASE_URL}/observability/ready`, {
           method: "GET",
           cache: "no-store",
           credentials: "include",
+          signal: wakeRequest.controller.signal,
         });
+        wakeRequest.clear();
 
         if (response.ok) {
           return true;
         }
 
         const renderRouting = response.headers.get("x-render-routing") || "";
-        if (response.status !== 503 || !renderRouting.includes("hibernate-wake")) {
+        const shouldKeepWaiting =
+          (response.status === 503 && renderRouting.includes("hibernate-wake"))
+          || response.status === 502
+          || response.status === 503
+          || response.status === 504;
+        if (!shouldKeepWaiting) {
           return false;
         }
-      } catch {
-        // Retry a few times while the service wakes up.
+      } catch (error) {
+        wakeRequest.clear();
+        if (!(error instanceof DOMException) || error.name !== "AbortError") {
+          // Retry while the service wakes up or the network settles.
+        }
       }
 
       await delay(BACKEND_WAKE_INTERVAL_MS);
@@ -208,7 +231,7 @@ export async function startGoogleLogin(nextPath?: string | null): Promise<void> 
   const woke = await warmBackendConnection();
   if (!woke) {
     throw new ApiError(
-      "FactoryNerve is waking up. Please try Google sign-in again in a few seconds.",
+      "Waking backend... Retry Google sign-in.",
       503,
     );
   }
@@ -232,7 +255,7 @@ export async function login(email: string, password: string): Promise<AuthRespon
   };
 
   return withBackendWakeRetry(performLogin, {
-    retryMessage: "FactoryNerve is waking up. Please try signing in again in a few seconds.",
+    retryMessage: "Waking backend... Retry sign in.",
   });
 }
 
@@ -259,7 +282,7 @@ export async function logout(): Promise<void> {
   await withBackendWakeRetry(
     () => apiFetch("/auth/logout", { method: "POST" }),
     {
-      retryMessage: "FactoryNerve is waking up. Please wait a few seconds before signing out again.",
+      retryMessage: "Waking backend... Retry sign out.",
     },
   );
   clearSession();
@@ -275,7 +298,7 @@ export async function refresh(): Promise<AuthResponse> {
   const response = await withBackendWakeRetry(
     () => apiFetch<AuthResponse>("/auth/refresh", { method: "POST" }, { cookieAuth: true }),
     {
-      retryMessage: "FactoryNerve is waking up. Please wait a few seconds and refresh your session again.",
+      retryMessage: "Waking backend... Retry session refresh.",
     },
   );
   primeSession(response);
@@ -394,7 +417,7 @@ export async function getMe(options?: {
         { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:me" },
       ),
     {
-      retryMessage: "FactoryNerve is waking up. Please wait a few seconds while your session reloads.",
+      retryMessage: "Reloading session...",
     },
   );
 }
@@ -415,7 +438,7 @@ export async function getAuthContext(options?: {
         { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:context" },
       ),
     {
-      retryMessage: "FactoryNerve is waking up. Please wait a few seconds while your workspace reloads.",
+      retryMessage: "Reloading workspace...",
     },
   );
 }
@@ -432,7 +455,7 @@ export async function selectFactory(factoryId: string): Promise<AuthResponse> {
         { cookieAuth: true },
       ),
     {
-      retryMessage: "FactoryNerve is waking up. Please wait a few seconds before switching factory context again.",
+      retryMessage: "Reloading factory context...",
     },
   );
   primeSession(response);
@@ -448,7 +471,7 @@ export async function getActiveWorkflowTemplate(): Promise<ActiveWorkflowTemplat
         { cacheTtlMs: 30_000, cacheKey: "session:active-template" },
       ),
     {
-      retryMessage: "FactoryNerve is waking up. Please wait a few seconds while the workflow context reloads.",
+      retryMessage: "Reloading workflow context...",
     },
   );
 }
