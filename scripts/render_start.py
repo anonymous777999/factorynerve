@@ -9,7 +9,7 @@ import time
 from pathlib import Path
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, inspect, text
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +29,15 @@ allow_init_db_fallback = env.get("ALLOW_INIT_DB_FALLBACK", "true").strip().lower
 db_wait_attempts = max(1, int(env.get("DB_WAIT_ATTEMPTS", "40")))
 db_wait_delay_seconds = max(1, int(env.get("DB_WAIT_DELAY_SECONDS", "3")))
 db_connect_timeout_seconds = max(2, int(env.get("DB_CONNECT_TIMEOUT_SECONDS", "5")))
+legacy_schema_markers = {
+    "users",
+    "organizations",
+    "org_feature_usage",
+    "org_ocr_usage",
+    "refresh_tokens",
+    "attendance_records",
+    "auth_users",
+}
 
 
 def _format_db_target(url: str) -> str:
@@ -92,6 +101,62 @@ def _wait_for_database(url: str, *, attempts: int = 20, delay_seconds: int = 3) 
     raise RuntimeError("Database readiness check failed without a concrete error.")
 
 
+def _existing_tables(url: str) -> set[str]:
+    normalized = _normalize_database_url(url)
+    engine = create_engine(normalized, future=True, pool_pre_ping=True)
+    try:
+        return set(inspect(engine).get_table_names())
+    finally:
+        engine.dispose()
+
+
+def _run_alembic(*args: str) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [sys.executable, "-m", "alembic", *args],
+        check=False,
+        capture_output=True,
+        text=True,
+        cwd=str(PROJECT_ROOT),
+        env=env,
+    )
+
+
+def _looks_like_legacy_duplicate_failure(url: str, output: str) -> bool:
+    lowered = output.lower()
+    duplicate_markers = (
+        "already exists",
+        "duplicatetable",
+        "duplicatecolumn",
+        "duplicateobject",
+    )
+    if not any(marker in lowered for marker in duplicate_markers):
+        return False
+
+    tables = _existing_tables(url)
+    if "alembic_version" in tables:
+        return False
+
+    detected_markers = sorted(tables.intersection(legacy_schema_markers))
+    if not detected_markers:
+        return False
+
+    print(
+        "[render-start] Existing schema detected without alembic_version. "
+        f"Found legacy tables: {', '.join(detected_markers)}. "
+        "Will stamp the database at head instead of replaying historical migrations."
+    )
+    return True
+
+
+def _print_alembic_output(result: subprocess.CompletedProcess[str]) -> None:
+    stdout = (result.stdout or "").strip()
+    stderr = (result.stderr or "").strip()
+    if stdout:
+        print(stdout)
+    if stderr:
+        print(stderr)
+
+
 database_url = env.get("DATABASE_URL", "").strip()
 if database_url:
     fallback_database_url = (
@@ -131,21 +196,44 @@ if database_url:
             )
 
 if run_migrations:
-    try:
-        subprocess.run(
-            [sys.executable, "-m", "alembic", "upgrade", "head"],
-            check=True,
-            cwd=str(PROJECT_ROOT),
-            env=env,
-        )
+    result = _run_alembic("upgrade", "head")
+    if result.returncode == 0:
         print("[render-start] Alembic migrations applied successfully.")
-    except subprocess.CalledProcessError as error:
-        if not allow_init_db_fallback:
-            raise
-        print(
-            "[render-start] Alembic upgrade failed; falling back to app init_db startup path. "
-            f"Exit status: {error.returncode}"
-        )
+    else:
+        _print_alembic_output(result)
+        if _looks_like_legacy_duplicate_failure(env["DATABASE_URL"], f"{result.stdout}\n{result.stderr}"):
+            stamp_result = _run_alembic("stamp", "head")
+            if stamp_result.returncode == 0:
+                print(
+                    "[render-start] Alembic revision stamped at head for existing legacy schema. "
+                    "Skipping historical replay on this startup."
+                )
+            else:
+                _print_alembic_output(stamp_result)
+                if not allow_init_db_fallback:
+                    raise subprocess.CalledProcessError(
+                        stamp_result.returncode,
+                        stamp_result.args,
+                        output=stamp_result.stdout,
+                        stderr=stamp_result.stderr,
+                    )
+                print(
+                    "[render-start] Alembic stamp failed after duplicate-schema detection; "
+                    "falling back to app init_db startup path. "
+                    f"Exit status: {stamp_result.returncode}"
+                )
+        elif not allow_init_db_fallback:
+            raise subprocess.CalledProcessError(
+                result.returncode,
+                result.args,
+                output=result.stdout,
+                stderr=result.stderr,
+            )
+        else:
+            print(
+                "[render-start] Alembic upgrade failed; falling back to app init_db startup path. "
+                f"Exit status: {result.returncode}"
+            )
 
 os.execvpe(
     sys.executable,
