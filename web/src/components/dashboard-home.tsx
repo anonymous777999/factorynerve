@@ -2,6 +2,20 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  ArrowUpRight,
+  BarChart3,
+  BellRing,
+  Bot,
+  Building2,
+  ClipboardList,
+  Clock3,
+  FileCheck2,
+  FileSpreadsheet,
+  RadioTower,
+  Settings2,
+  type LucideIcon,
+} from "lucide-react";
 
 import { getAnomalyPreview, type AnomalyResponse } from "@/lib/ai";
 import { ApiError, formatApiErrorMessage } from "@/lib/api";
@@ -47,18 +61,40 @@ type RoleLaunchGuide = {
   steps: LaunchGuideStep[];
 };
 
-type DashboardQuickLink = {
-  href: string;
-  label: string;
-  variant: "outline" | "ghost";
-};
-
 type DashboardSnapshotCard = {
   label: string;
   value: string | number;
   detail: string;
   href: string;
   action: string;
+};
+
+type WorkflowHealthCard = {
+  key: string;
+  label: string;
+  value: string | number;
+  detail: string;
+  href: string;
+  action: string;
+  tooltip: string;
+  tone: "stable" | "watch" | "alert" | "locked";
+  Icon: LucideIcon;
+};
+
+type QuickActionTile = {
+  key: string;
+  href: string;
+  label: string;
+  detail: string;
+  meta: string;
+  tone: "primary" | "secondary" | "ghost";
+  Icon: LucideIcon;
+};
+
+type SystemHealthState = {
+  label: string;
+  detail: string;
+  tone: "healthy" | "watch" | "critical";
 };
 
 function emptyState(): DashboardState {
@@ -142,6 +178,66 @@ function severityTone(severity?: string) {
       return "border-[var(--warning)]/40 bg-[rgba(245,158,11,0.12)] text-amber-100";
     default:
       return "border-[var(--success)]/30 bg-[rgba(34,197,94,0.12)] text-emerald-100";
+  }
+}
+
+function workflowCardToneClasses(tone: WorkflowHealthCard["tone"]) {
+  switch (tone) {
+    case "alert":
+      return {
+        card: "border-danger/30 bg-[linear-gradient(180deg,rgba(239,68,68,0.10),rgba(20,24,36,0.92))]",
+        ring: "border-danger/25 text-danger",
+        badge: "text-danger",
+      };
+    case "watch":
+      return {
+        card: "border-warning/28 bg-[linear-gradient(180deg,rgba(245,158,11,0.10),rgba(20,24,36,0.92))]",
+        ring: "border-warning/25 text-warning",
+        badge: "text-warning",
+      };
+    case "locked":
+      return {
+        card: "border-[rgba(77,163,255,0.18)] bg-[linear-gradient(180deg,rgba(77,163,255,0.08),rgba(20,24,36,0.92))]",
+        ring: "border-[rgba(77,163,255,0.2)] text-[rgba(125,188,255,0.94)]",
+        badge: "text-[rgba(125,188,255,0.94)]",
+      };
+    default:
+      return {
+        card: "border-success/22 bg-[linear-gradient(180deg,rgba(34,197,94,0.08),rgba(20,24,36,0.92))]",
+        ring: "border-success/22 text-success",
+        badge: "text-success",
+      };
+  }
+}
+
+function quickActionToneClasses(tone: QuickActionTile["tone"]) {
+  switch (tone) {
+    case "primary":
+      return "border-[rgba(77,163,255,0.26)] bg-[linear-gradient(180deg,rgba(77,163,255,0.16),rgba(20,24,36,0.94))]";
+    case "secondary":
+      return "border-[rgba(45,212,191,0.18)] bg-[linear-gradient(180deg,rgba(45,212,191,0.10),rgba(20,24,36,0.94))]";
+    default:
+      return "border-[var(--border)] bg-[rgba(255,255,255,0.035)]";
+  }
+}
+
+function systemHealthToneClasses(tone: SystemHealthState["tone"]) {
+  switch (tone) {
+    case "critical":
+      return {
+        chip: "border-danger/28 bg-danger/12 text-danger",
+        dot: "bg-danger shadow-[0_0_22px_rgba(239,68,68,0.55)]",
+      };
+    case "watch":
+      return {
+        chip: "border-warning/28 bg-warning/12 text-warning",
+        dot: "bg-warning shadow-[0_0_22px_rgba(245,158,11,0.45)]",
+      };
+    default:
+      return {
+        chip: "border-success/28 bg-success/12 text-success",
+        dot: "bg-success shadow-[0_0_22px_rgba(34,197,94,0.42)]",
+      };
   }
 }
 
@@ -362,20 +458,6 @@ export default function DashboardHome() {
           : user?.role === "supervisor"
             ? "Review Control"
             : t("dashboard.section.operations_board", "Operations Board");
-  const headerTitle =
-    user?.role === "operator"
-      ? `${t("dashboard.header.operator_ready", "Ready for the shift")}, ${user.name}`
-      : user?.role === "supervisor"
-        ? `${t("dashboard.header.supervisor_ready", "Team control is live")}, ${user.name}`
-        : user?.role === "accountant"
-          ? `Reporting control is ready, ${user.name}`
-          : user?.role === "manager"
-            ? `Decision view is ready, ${user.name}`
-            : user?.role === "admin"
-              ? `System control is ready, ${user.name}`
-              : user?.role === "owner"
-                ? `${t("dashboard.header.owner_ready", "Owner review is ready")}, ${user.name}`
-                : `${t("dashboard.header.default", "Good to see you")}, ${user?.name || t("dashboard.header.there", "there")}`;
   const headerCopy =
     user?.role === "operator"
       ? t(
@@ -657,7 +739,6 @@ export default function DashboardHome() {
     anomalyCount,
   ]);
   const primaryAction = roleFocusCards[0];
-  const secondaryActions = roleFocusCards.slice(1, 3);
   const roleLaunchGuide = useMemo<RoleLaunchGuide | null>(() => {
     if (user?.role === "operator") {
       return {
@@ -828,96 +909,6 @@ export default function DashboardHome() {
     steelCommercialMode,
     user?.role,
   ]);
-  const dashboardQuickLinks = useMemo<DashboardQuickLink[]>(() => {
-    if (user?.role === "operator") {
-      return [
-        {
-          href: "/ocr/scan",
-          label: t("dashboard.action.scan_docs", "Scan Docs"),
-          variant: "outline",
-        },
-        {
-          href: "/attendance",
-          label: "Open Attendance",
-          variant: "ghost",
-        },
-      ];
-    }
-
-    if (user?.role === "supervisor") {
-      return [
-        {
-          href: "/ocr/verify",
-          label: "Review Documents",
-          variant: "outline",
-        },
-        {
-          href: "/reports",
-          label: "Open Reports",
-          variant: "ghost",
-        },
-      ];
-    }
-
-    if (user?.role === "accountant") {
-      return [
-        {
-          href: "/attendance/reports",
-          label: "Attendance Reports",
-          variant: "outline",
-        },
-        {
-          href: "/email-summary",
-          label: "Scheduled Updates",
-          variant: "ghost",
-        },
-      ];
-    }
-
-    if (user?.role === "admin") {
-      return [
-        {
-          href: "/settings",
-          label: "Factory Admin",
-          variant: "outline",
-        },
-        {
-          href: "/analytics",
-          label: "Open Analytics",
-          variant: "ghost",
-        },
-      ];
-    }
-
-    if (user?.role === "owner") {
-      const ownerHomeHref = (organization?.accessible_factories || 0) > 1 ? "/control-tower" : "/premium/dashboard";
-      return [
-        {
-          href: ownerHomeHref,
-          label: ownerHomeHref === "/control-tower" ? "Factory Network" : "Owner Dashboard",
-          variant: "outline",
-        },
-        {
-          href: "/reports",
-          label: "Trusted Reports",
-          variant: "ghost",
-        },
-      ];
-    }
-
-    return [
-      {
-        href: canUseSteel ? "/steel" : "/reports",
-        label: canUseSteel ? t("dashboard.action.steel_hub", "Steel Hub") : "Open Reports",
-        variant: "outline",
-      },
-      {
-        href: "/analytics",
-        label: "Open Analysis",
-        variant: "ghost",
-      },
-    ];
-  }, [canUseSteel, organization?.accessible_factories, t, user?.role]);
   const heroHighlights = useMemo(
     () => [
       {
@@ -1130,16 +1121,6 @@ export default function DashboardHome() {
     };
   }, [organization?.accessible_factories, t, user?.role]);
 
-  const heroSecondaryAction = useMemo(() => {
-    if (user?.role === "accountant") {
-      return { href: "/email-summary", label: "Open Scheduled Updates" };
-    }
-    if (primaryAction?.href === "/reports") {
-      return { href: "/analytics", label: "Open Analysis" };
-    }
-    return { href: "/reports", label: t("dashboard.action.open_reports", "Open Reports") };
-  }, [primaryAction?.href, t, user?.role]);
-
   const shouldShowOcrAttention = useMemo(() => {
     if (!state.ocrSummary) {
       return false;
@@ -1152,6 +1133,347 @@ export default function DashboardHome() {
   }, [state.ocrSummary]);
 
   const calmAttentionBoard = state.alerts.length === 0 && anomalyCount === 0 && !shouldShowOcrAttention;
+  const systemHealth = useMemo<SystemHealthState>(() => {
+    const highRiskSignal = topAnomaly?.severity?.toLowerCase() === "high";
+    if (highRiskSignal || state.alerts.length >= 3) {
+      return {
+        label: "Critical Watch",
+        detail: "High-priority review is blocking normal flow.",
+        tone: "critical",
+      };
+    }
+
+    if (state.alerts.length > 0 || anomalyCount > 0 || (state.ocrSummary?.pending_documents || 0) > 0) {
+      return {
+        label: "Needs Review",
+        detail: "Some trust signals still need follow-through.",
+        tone: "watch",
+      };
+    }
+
+    return {
+      label: "System Healthy",
+      detail: "No active blockers. The board is stable.",
+      tone: "healthy",
+    };
+  }, [anomalyCount, state.alerts.length, state.ocrSummary?.pending_documents, topAnomaly?.severity]);
+
+  const oversightTitle = useMemo(() => {
+    switch (user?.role) {
+      case "admin":
+        return "Admin Oversight";
+      case "supervisor":
+        return "Review Oversight";
+      case "accountant":
+        return "Reporting Oversight";
+      case "manager":
+        return "Operations Oversight";
+      case "owner":
+        return "Owner Oversight";
+      default:
+        return "System Oversight";
+    }
+  }, [user?.role]);
+
+  const oversightCopy = useMemo(() => {
+    if (!primaryAction) {
+      return "Use the next recommended action to keep the factory moving.";
+    }
+
+    if (user?.role === "admin") {
+      return "Keep access, workflow setup, and trust controls aligned before issues spread through the factory.";
+    }
+    if (user?.role === "owner") {
+      return "Start from the biggest risk, confirm the proof, and move into decision-ready reporting.";
+    }
+    return primaryAction.detail;
+  }, [primaryAction, user?.role]);
+
+  const workflowHealthCards = useMemo<WorkflowHealthCard[]>(() => {
+    const alertsTone: WorkflowHealthCard["tone"] = state.alerts.length > 0 ? (state.alerts.length >= 3 ? "alert" : "watch") : "stable";
+    const signalsTone: WorkflowHealthCard["tone"] = state.anomalyLocked
+      ? "locked"
+      : anomalyCount > 0
+        ? topAnomaly?.severity?.toLowerCase() === "high"
+          ? "alert"
+          : "watch"
+        : "stable";
+    const pendingShiftTone: WorkflowHealthCard["tone"] = pendingShifts > 0 ? (pendingShifts >= 2 ? "watch" : "watch") : "stable";
+    const ocrTone: WorkflowHealthCard["tone"] = (state.ocrSummary?.pending_documents || 0) > 0 ? "watch" : "stable";
+
+    return [
+      {
+        key: "alerts",
+        label: "Alerts",
+        value: state.alerts.length,
+        detail:
+          state.alerts.length > 0
+            ? `${state.alerts.length} unread alert${state.alerts.length === 1 ? "" : "s"} need review.`
+            : "No alerts - system stable.",
+        href: "/dashboard",
+        action: "Open alert feed",
+        tooltip: "Operational alerts that need human attention before they escalate.",
+        tone: alertsTone,
+        Icon: BellRing,
+      },
+      {
+        key: "signals",
+        label: "Signals",
+        value: state.anomalyLocked ? "Plan" : anomalyCount,
+        detail: state.anomalyLocked
+          ? "Upgrade to unlock anomaly analytics."
+          : anomalyCount > 0
+            ? `${anomalyCount} live signal${anomalyCount === 1 ? "" : "s"} detected.`
+            : "No signals - trend stable.",
+        href: state.anomalyLocked ? "/plans" : user?.role === "owner" ? "/ai" : "/reports",
+        action: state.anomalyLocked ? "View plans" : user?.role === "owner" ? "Open AI insights" : "Open reports",
+        tooltip: "Production drift and anomaly signals surfaced from recent activity.",
+        tone: signalsTone,
+        Icon: RadioTower,
+      },
+      {
+        key: "pending",
+        label: "Pending Shift",
+        value: pendingShifts,
+        detail: pendingShifts > 0
+          ? `${pendingShifts} shift${pendingShifts === 1 ? "" : "s"} still need coverage.`
+          : "No pending shift - day covered.",
+        href: user?.role === "operator" ? "/entry" : "/reports?preset=day&focus=production",
+        action: user?.role === "operator" ? "Open entry" : "Open daily report",
+        tooltip: "Shift coverage still missing from today's factory record.",
+        tone: pendingShiftTone,
+        Icon: Clock3,
+      },
+      {
+        key: "ocr",
+        label: "Trusted OCR",
+        value: state.ocrSummary?.pending_documents ?? 0,
+        detail: (state.ocrSummary?.pending_documents || 0) > 0
+          ? `${state.ocrSummary?.pending_documents || 0} OCR document${(state.ocrSummary?.pending_documents || 0) === 1 ? "" : "s"} still need review.`
+          : "No OCR backlog - trust clear.",
+        href: canReview ? "/approvals" : "/reports",
+        action: canReview ? "Open review queue" : "Open reports",
+        tooltip: "Document trust waiting on OCR review and approval.",
+        tone: ocrTone,
+        Icon: FileCheck2,
+      },
+    ];
+  }, [
+    anomalyCount,
+    canReview,
+    pendingShifts,
+    state.alerts.length,
+    state.anomalyLocked,
+    state.ocrSummary?.pending_documents,
+    topAnomaly?.severity,
+    user?.role,
+  ]);
+
+  const quickActionTiles = useMemo<QuickActionTile[]>(() => {
+    if (user?.role === "accountant") {
+      return [
+        {
+          key: "reports",
+          href: "/reports",
+          label: "Reports",
+          detail: "Open trusted exports and outbound reporting.",
+          meta: "Primary",
+          tone: "primary",
+          Icon: FileSpreadsheet,
+        },
+        {
+          key: "attendance-reports",
+          href: "/attendance/reports",
+          label: "Attendance Reports",
+          detail: "Cross-check manpower before sending finance summaries.",
+          meta: "Review",
+          tone: "secondary",
+          Icon: ClipboardList,
+        },
+        {
+          key: "email-summary",
+          href: "/email-summary",
+          label: "Scheduled Updates",
+          detail: "Prepare the outbound weekly summary.",
+          meta: "Send",
+          tone: "ghost",
+          Icon: ArrowUpRight,
+        },
+        {
+          key: "analytics",
+          href: state.analyticsLocked ? "/plans" : "/analytics",
+          label: state.analyticsLocked ? "Unlock Analytics" : "Analytics",
+          detail: state.analyticsLocked ? "Current plan does not include analytics." : "Open the deeper business breakdown.",
+          meta: state.analyticsLocked ? "Plan" : "Explore",
+          tone: "ghost",
+          Icon: BarChart3,
+        },
+      ];
+    }
+
+    if (user?.role === "admin") {
+      return [
+        {
+          key: "admin",
+          href: "/settings",
+          label: "Factory Admin",
+          detail: "Manage access, workflow setup, and factory configuration.",
+          meta: "Primary",
+          tone: "primary",
+          Icon: Settings2,
+        },
+        {
+          key: "review",
+          href: "/approvals",
+          label: "Review Queue",
+          detail: "Clear pending OCR and approval bottlenecks.",
+          meta: "Queue",
+          tone: "secondary",
+          Icon: ClipboardList,
+        },
+        {
+          key: "reports",
+          href: "/reports",
+          label: "Reports",
+          detail: "Open trusted operational reports and exports.",
+          meta: "Trusted",
+          tone: "ghost",
+          Icon: FileSpreadsheet,
+        },
+        {
+          key: "analytics",
+          href: state.analyticsLocked ? "/plans" : "/analytics",
+          label: state.analyticsLocked ? "Unlock Analytics" : "Analytics",
+          detail: state.analyticsLocked ? "Upgrade to unlock analytics." : "Review trend and performance analysis.",
+          meta: state.analyticsLocked ? "Plan" : "Explore",
+          tone: "ghost",
+          Icon: BarChart3,
+        },
+      ];
+    }
+
+    if (user?.role === "owner") {
+      const ownerHomeHref = (organization?.accessible_factories || 0) > 1 ? "/control-tower" : "/premium/dashboard";
+      return [
+        {
+          key: "owner",
+          href: ownerHomeHref,
+          label: ownerHomeHref === "/control-tower" ? "Factory Network" : "Owner Dashboard",
+          detail: "Open the highest-level decision view first.",
+          meta: "Primary",
+          tone: "primary",
+          Icon: Building2,
+        },
+        {
+          key: "reports",
+          href: "/reports",
+          label: "Trusted Reports",
+          detail: "Move from proof to outbound summaries safely.",
+          meta: "Trusted",
+          tone: "secondary",
+          Icon: FileSpreadsheet,
+        },
+        {
+          key: "insights",
+          href: state.anomalyLocked ? "/plans" : "/ai",
+          label: state.anomalyLocked ? "Unlock Insights" : "AI Insights",
+          detail: state.anomalyLocked ? "Plan gate is blocking insight view." : "Open the live owner insight surface.",
+          meta: state.anomalyLocked ? "Plan" : "Explore",
+          tone: "ghost",
+          Icon: Bot,
+        },
+        {
+          key: "summary",
+          href: "/email-summary",
+          label: "Email Summary",
+          detail: "Prepare owner-ready outbound updates.",
+          meta: "Send",
+          tone: "ghost",
+          Icon: ArrowUpRight,
+        },
+      ];
+    }
+
+    if (user?.role === "supervisor" || user?.role === "manager") {
+      return [
+        {
+          key: "review",
+          href: "/approvals",
+          label: "Review Queue",
+          detail: "Clear the next approval and review bottleneck.",
+          meta: "Primary",
+          tone: "primary",
+          Icon: ClipboardList,
+        },
+        {
+          key: "reports",
+          href: "/reports",
+          label: "Reports",
+          detail: "Open trusted reports and reviewed output.",
+          meta: "Trusted",
+          tone: "secondary",
+          Icon: FileSpreadsheet,
+        },
+        {
+          key: "analytics",
+          href: state.analyticsLocked ? "/plans" : "/analytics",
+          label: state.analyticsLocked ? "Unlock Analytics" : "Analytics",
+          detail: state.analyticsLocked ? "Upgrade to unlock analytics." : "Inspect performance and trend views.",
+          meta: state.analyticsLocked ? "Plan" : "Explore",
+          tone: "ghost",
+          Icon: BarChart3,
+        },
+        {
+          key: "settings",
+          href: canSeeControlTower ? "/control-tower" : "/settings",
+          label: canSeeControlTower ? "Control Tower" : "Settings",
+          detail: canSeeControlTower ? "Move across factories without leaving the dashboard." : "Open system settings and workflow controls.",
+          meta: canSeeControlTower ? "Switch" : "Control",
+          tone: "ghost",
+          Icon: canSeeControlTower ? Building2 : Settings2,
+        },
+      ];
+    }
+
+    return [
+      {
+        key: "entry",
+        href: "/entry",
+        label: "Entry",
+        detail: "Open today's production entry form.",
+        meta: "Primary",
+        tone: "primary",
+        Icon: ClipboardList,
+      },
+      {
+        key: "reports",
+        href: "/reports",
+        label: "Reports",
+        detail: "View the trusted operations report.",
+        meta: "Trusted",
+        tone: "secondary",
+        Icon: FileSpreadsheet,
+      },
+      {
+        key: "analytics",
+        href: state.analyticsLocked ? "/plans" : "/analytics",
+        label: state.analyticsLocked ? "Unlock Analytics" : "Analytics",
+        detail: state.analyticsLocked ? "Upgrade to unlock analytics." : "Review performance trends.",
+        meta: state.analyticsLocked ? "Plan" : "Explore",
+        tone: "ghost",
+        Icon: BarChart3,
+      },
+      {
+        key: "settings",
+        href: "/settings",
+        label: "Settings",
+        detail: "Open factory settings and access control.",
+        meta: "Control",
+        tone: "ghost",
+        Icon: Settings2,
+      },
+    ];
+  }, [canSeeControlTower, organization?.accessible_factories, state.analyticsLocked, state.anomalyLocked, user?.role]);
 
   const handleSync = useCallback(async () => {
     if (!user) return;
@@ -1635,230 +1957,199 @@ export default function DashboardHome() {
           </div>
         ) : null}
 
-        <section className="surface-panel-strong grid gap-6 rounded-[2rem] p-4 sm:p-5 md:p-7 xl:grid-cols-[minmax(0,1.28fr)_minmax(19rem,0.92fr)]">
-          <div className="space-y-5">
-            <div className="flex flex-wrap gap-2">
-              <span className="surface-pill rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
-                {headerEyebrow}
-              </span>
-              <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
-                {activeFactory?.name || user.factory_name || "Factory"}
-              </span>
-              <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${online ? "border-success/30 bg-success/12 text-success" : "border-warning/30 bg-warning/12 text-warning"}`}>
-                {online ? "Network Live" : "Offline Mode"}
-              </span>
+        <section className="space-y-4">
+          <div className="surface-panel-strong rounded-[2rem] p-4 sm:p-5 md:p-6">
+            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+              <div className="flex items-start gap-4">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-[rgba(125,188,255,0.18)] bg-[radial-gradient(circle_at_30%_30%,rgba(125,188,255,0.28),rgba(77,163,255,0.08))] text-xl font-semibold text-white shadow-[0_16px_34px_rgba(29,143,255,0.16)]">
+                  {(user.name || "A").trim().charAt(0).toUpperCase()}
+                </div>
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    <span className="surface-pill rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
+                      {headerEyebrow}
+                    </span>
+                    <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                      {activeFactory?.name || user.factory_name || "Factory"}
+                    </span>
+                    <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${online ? "border-success/30 bg-success/12 text-success" : "border-warning/30 bg-warning/12 text-warning"}`}>
+                      {online ? "Network Live" : "Offline Mode"}
+                    </span>
+                  </div>
+                  <div>
+                    <div className="text-lg text-text-secondary">Welcome,</div>
+                    <h1 className="max-w-3xl text-3xl font-semibold leading-tight tracking-[-0.03em] text-text-primary md:text-[2.8rem]">
+                      {user.name || "Anonymous"}
+                    </h1>
+                  </div>
+                  <p className="max-w-2xl text-sm leading-6 text-text-secondary">{headerCopy}</p>
+                </div>
+              </div>
+
+              <div className={`inline-flex min-h-11 items-center gap-3 self-start rounded-full border px-4 py-2 text-sm font-semibold ${systemHealthToneClasses(systemHealth.tone).chip}`}>
+                <span className={`dashboard-status-pulse h-3 w-3 rounded-full ${systemHealthToneClasses(systemHealth.tone).dot}`} />
+                <div>
+                  <div>{systemHealth.label}</div>
+                  <div className="text-xs font-medium opacity-80">{systemHealth.detail}</div>
+                </div>
+              </div>
             </div>
-            <div className="space-y-3">
-              <h1 className="max-w-3xl text-3xl font-semibold leading-tight md:text-[2.75rem]">{headerTitle}</h1>
-              <p className="max-w-2xl text-sm leading-6 text-text-secondary">{headerCopy}</p>
+
+            <div className="mt-5 flex flex-wrap items-center gap-2">
+              <Button variant="ghost" size="sm" onClick={() => loadDashboard()}>
+                {dashboardLoading
+                  ? t("dashboard.action.refreshing", "Refreshing...")
+                  : t("dashboard.action.refresh_board", "Refresh Board")}
+              </Button>
+              {queueCount > 0 ? (
+                <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
+                  {syncing
+                    ? t("dashboard.sync.syncing", "Syncing...")
+                    : `${t("dashboard.action.sync_queue", "Sync Queue")} (${queueCount})`}
+                </Button>
+              ) : null}
             </div>
-            <div className="space-y-3">
-              <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+          </div>
+
+          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+            <Card variant="elevated" className="overflow-hidden border-[rgba(77,163,255,0.18)]">
+              <CardHeader className="pb-0">
+                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
+                  {oversightTitle}
+                </div>
+                <CardTitle className="mt-3 text-[2rem] leading-tight md:text-[2.25rem]">
+                  {primaryAction?.title || t("dashboard.primary.fallback_title", "Start the next task")}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5 pt-5">
+                <p className="max-w-2xl text-sm leading-7 text-text-secondary">
+                  {oversightCopy}
+                </p>
                 {primaryAction ? (
-                  <Link href={primaryAction.href} className="w-full sm:w-auto">
-                    <Button size="lg" className="w-full sm:w-auto">
+                  <Link href={primaryAction.href} className="block">
+                    <Button size="xl" className="min-h-14 w-full text-lg">
                       {primaryAction.action}
                     </Button>
                   </Link>
                 ) : null}
-                <Link href={heroSecondaryAction.href} className="w-full sm:w-auto">
-                  <Button variant="outline" size="lg" className="w-full sm:w-auto">
-                    {heroSecondaryAction.label}
-                  </Button>
-                </Link>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="ghost" size="sm" onClick={() => loadDashboard()}>
-                  {dashboardLoading
-                    ? t("dashboard.action.refreshing", "Refreshing...")
-                    : t("dashboard.action.refresh_board", "Refresh Board")}
-                </Button>
-                {queueCount > 0 ? (
-                  <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing}>
-                    {syncing
-                      ? t("dashboard.sync.syncing", "Syncing...")
-                      : `${t("dashboard.action.sync_queue", "Sync Queue")} (${queueCount})`}
-                  </Button>
-                ) : null}
-                {dashboardLoading ? (
-                  <span className="rounded-full border border-[rgba(77,163,255,0.22)] bg-[rgba(77,163,255,0.12)] px-3 py-1 text-xs font-semibold text-[rgba(77,163,255,0.92)]">
-                    Refreshing live data
-                  </span>
-                ) : null}
-              </div>
-            </div>
-            <div className="hidden flex-wrap items-center gap-3 text-xs text-text-secondary sm:flex">
-              <span>
-                {t(
-                  "dashboard.hero.supporting_note",
-                  "Keep the hero focused on the next decision. Account and system controls stay in the left rail.",
-                )}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {heroHighlights.map((item) => (
-              <div
-                key={item.label}
-                className="min-w-0 rounded-[1.35rem] border border-[rgba(255,255,255,0.09)] bg-[rgba(255,255,255,0.035)] p-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.035)] sm:p-4"
-              >
-                <div className="truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted sm:text-[11px] sm:tracking-[0.2em]">
-                  {item.label}
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="surface-panel-soft rounded-[1.25rem] px-4 py-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Board State</div>
+                    <div className="mt-2 text-sm font-semibold text-text-primary">
+                      {dashboardLoading ? "Refreshing live data" : calmAttentionBoard ? "Stable and clear" : "Review path active"}
+                    </div>
+                  </div>
+                  <div className="surface-panel-soft rounded-[1.25rem] px-4 py-3">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Plan Access</div>
+                    <div className="mt-2 text-sm font-semibold text-text-primary">
+                      {state.analyticsLocked || state.anomalyLocked ? "Some analytics locked" : "All core actions available"}
+                    </div>
+                  </div>
                 </div>
-                <div className="mt-2 text-xl font-semibold text-text-primary sm:text-2xl">{item.value}</div>
-                <div className="mt-1 hidden text-xs leading-5 text-text-secondary sm:block">{item.detail}</div>
-              </div>
-            ))}
+              </CardContent>
+            </Card>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              {heroHighlights.map((item) => (
+                <div
+                  key={item.label}
+                  className="surface-panel-soft min-w-0 rounded-[1.35rem] p-4"
+                >
+                  <div className="truncate text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">
+                    {item.label}
+                  </div>
+                  <div className="mt-3 text-2xl font-semibold text-text-primary">{item.value}</div>
+                  <div className="mt-2 text-xs leading-5 text-text-secondary">{item.detail}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-[1.08fr_0.94fr_0.98fr]">
-          <Card className="order-2 overflow-hidden xl:order-1">
-            <CardHeader>
+        <section>
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <div>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
-                {t("dashboard.section.now", "Now")}
+                Workflow Health
               </div>
-              <CardTitle className="text-xl">
-                {primaryAction?.title || t("dashboard.primary.fallback_title", "Start the next task")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-sm leading-6 text-text-secondary">
-                {primaryAction?.detail || t("dashboard.primary.fallback_detail", "Keep the floor moving with the next best action.")}
+              <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-text-primary">
+                Review the live system state
+              </h2>
+            </div>
+            {calmAttentionBoard ? (
+              <div className="rounded-full border border-success/22 bg-success/10 px-3 py-1 text-xs font-semibold text-success">
+                No alerts - system stable
               </div>
-              {primaryAction ? (
-                <Link href={primaryAction.href} className="block">
-                  <Button size="lg" className="w-full sm:w-auto">
-                    {primaryAction.action}
-                  </Button>
-                </Link>
-              ) : null}
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="surface-panel-soft rounded-[1.2rem] px-4 py-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Active Factory</div>
-                  <div className="mt-1 text-sm font-semibold text-text-primary">{activeFactory?.name || user.factory_name || "Factory"}</div>
-                </div>
-                <div className="surface-panel-soft rounded-[1.2rem] px-4 py-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Board State</div>
-                  <div className="mt-1 text-sm font-semibold text-text-primary">
-                    {dashboardLoading ? "Refreshing live" : online ? "Live sync ready" : "Offline safe"}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+            ) : null}
+          </div>
 
-          <Card className={`order-1 overflow-hidden xl:order-2 ${calmAttentionBoard ? "" : "border-[rgba(77,163,255,0.2)]"}`}>
-            <CardHeader>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
-                {t("dashboard.section.attention", "Attention")}
-              </div>
-              <CardTitle className="text-xl">{t("dashboard.attention.title", "What needs review now")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                <div className="surface-panel-soft rounded-[1.2rem] p-3">
-                  <div className="text-xs text-[var(--muted)]">{t("dashboard.metric.alerts", "Alerts")}</div>
-                  <div className="mt-1 text-xl font-bold text-text-primary">{state.alerts.length}</div>
-                </div>
-                <div className="surface-panel-soft rounded-[1.2rem] p-3">
-                  <div className="text-xs text-[var(--muted)]">{t("dashboard.metric.signals", "Signals")}</div>
-                  <div className="mt-1 text-xl font-bold text-text-primary">{anomalyCount}</div>
-                </div>
-                <div className="surface-panel-soft col-span-2 rounded-[1.2rem] p-3 sm:col-span-1">
-                  <div className="text-xs text-[var(--muted)]">{t("dashboard.metric.pending_shift", "Pending Shift")}</div>
-                  <div className="mt-1 text-xl font-bold text-text-primary">{pendingShifts}</div>
-                </div>
-              </div>
-              {calmAttentionBoard ? (
-                <div className="rounded-[1.2rem] border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-4 py-3 text-sm text-text-secondary">
-                  {t(
-                    "dashboard.attention.calm",
-                    "The board is calm right now. Use reports or analytics for a broader business check.",
-                  )}
-                </div>
-              ) : null}
-              {topAnomaly ? (
-                <div className={`rounded-[1.2rem] border px-4 py-3 text-xs ${severityTone(topAnomaly.severity)}`}>
-                  <p className="uppercase tracking-wider opacity-80">{topAnomaly.anomaly_type.replaceAll("_", " ")}</p>
-                  <p className="mt-1 font-medium">{topAnomaly.message}</p>
-                </div>
-              ) : null}
-              {shouldShowOcrAttention ? (
-                <div className="rounded-[1.3rem] border border-cyan-400/20 bg-[rgba(34,211,238,0.08)] p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-cyan-100">Trusted OCR</div>
-                  <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                    <div className="rounded-[1.05rem] border border-cyan-400/16 bg-[rgba(255,255,255,0.04)] p-3">
-                      <div className="text-[11px] text-cyan-100/80">Approved</div>
-                      <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary?.trusted_documents ?? 0}</div>
-                    </div>
-                    <div className="rounded-[1.05rem] border border-cyan-400/16 bg-[rgba(255,255,255,0.04)] p-3">
-                      <div className="text-[11px] text-cyan-100/80">Trusted rows</div>
-                      <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary?.trusted_rows ?? 0}</div>
-                    </div>
-                    <div className="rounded-[1.05rem] border border-cyan-400/16 bg-[rgba(255,255,255,0.04)] p-3 sm:col-span-1 col-span-2">
-                      <div className="text-[11px] text-cyan-100/80">Pending</div>
-                      <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary?.pending_documents ?? 0}</div>
-                    </div>
-                  </div>
-                  <div className="mt-3 text-xs text-cyan-50/80">
-                    {state.ocrSummary?.trust_note} Last approved OCR update: {formatDateTime(state.ocrSummary?.last_trusted_at || undefined, locale)}.
-                  </div>
-                </div>
-              ) : null}
-              <div className="grid gap-2 sm:flex sm:flex-wrap">
-                <Link href="/dashboard" className="block">
-                  <Button variant="outline" className="w-full px-4 py-2 text-xs sm:w-auto">
-                    {t("dashboard.action.open_alert_feed", "Open Alert Feed")}
-                  </Button>
-                </Link>
-                {canReview ? (
-                  <Link href="/approvals" className="block">
-                    <Button variant="ghost" className="w-full px-4 py-2 text-xs sm:w-auto">
-                      {t("dashboard.action.open_review_queue", "Open Review Queue")}
-                    </Button>
-                  </Link>
-                ) : null}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="order-3 overflow-hidden">
-            <CardHeader>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
-                {t("dashboard.section.quick_actions", "Quick Actions")}
-              </div>
-              <CardTitle className="text-xl">{t("dashboard.quick.title", "No hunting, just move")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {secondaryActions.map((card, index) => (
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            {workflowHealthCards.map((card) => {
+              const tone = workflowCardToneClasses(card.tone);
+              return (
                 <Link
-                  key={`${card.eyebrow}-${card.href}`}
+                  key={card.key}
                   href={card.href}
-                  className={`${index === 0 ? "surface-panel-strong" : "surface-panel-soft"} block rounded-[1.35rem] p-4 transition hover:border-[rgba(77,163,255,0.24)]`}
+                  title={card.tooltip}
+                  aria-label={`${card.label}: ${card.value}. ${card.tooltip}`}
+                  className={`dashboard-soft-lift block rounded-[1.5rem] border p-4 ${tone.card}`}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{card.eyebrow}</div>
-                      <div className="mt-1 text-sm font-semibold">{card.title}</div>
-                      <div className="mt-1 text-xs leading-5 text-text-secondary">{card.detail}</div>
+                    <div className={`flex h-14 w-14 items-center justify-center rounded-full border ${tone.ring}`}>
+                      <card.Icon className="h-6 w-6" />
                     </div>
-                    <span className="text-xs font-semibold uppercase tracking-[0.16em] text-[rgba(77,163,255,0.92)]">Open</span>
+                    <span className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${tone.badge}`}>
+                      {card.label}
+                    </span>
+                  </div>
+                  <div className="mt-5">
+                    <div className="text-4xl font-semibold tracking-[-0.05em] text-text-primary">{card.value}</div>
+                    <div className="mt-2 text-sm leading-6 text-text-secondary">{card.detail}</div>
+                    <div className="mt-4 inline-flex min-h-11 items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[rgba(77,163,255,0.92)]">
+                      {card.action}
+                      <ArrowUpRight className="h-4 w-4" />
+                    </div>
                   </div>
                 </Link>
-              ))}
-              <div className="grid gap-2 pt-1 sm:flex sm:flex-wrap">
-                {dashboardQuickLinks.map((link) => (
-                  <Link key={`${link.href}-${link.label}`} href={link.href} className="block">
-                    <Button variant={link.variant} className="w-full px-4 py-2 text-xs sm:w-auto">
-                      {link.label}
-                    </Button>
-                  </Link>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
+              );
+            })}
+          </div>
+        </section>
+
+        <section>
+          <div className="mb-3">
+            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
+              {t("dashboard.section.quick_actions", "Quick Actions")}
+            </div>
+            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-text-primary">
+              Most-used routes for this account
+            </h2>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {quickActionTiles.map((action) => (
+              <Link
+                key={action.key}
+                href={action.href}
+                className={`dashboard-soft-lift block min-h-[10.25rem] rounded-[1.5rem] border p-5 ${quickActionToneClasses(action.tone)}`}
+              >
+                <div className="flex h-full flex-col justify-between">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-[1rem] border border-white/10 bg-[rgba(255,255,255,0.04)] text-[rgba(196,226,255,0.9)]">
+                      <action.Icon className="h-6 w-6" />
+                    </div>
+                    <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                      {action.meta}
+                    </span>
+                  </div>
+                  <div className="mt-4">
+                    <div className="text-[1.9rem] font-semibold tracking-[-0.04em] text-text-primary">{action.label}</div>
+                    <div className="mt-2 max-w-md text-sm leading-6 text-text-secondary">{action.detail}</div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
         </section>
 
         {activeFactory?.industry_type === "steel" && ["supervisor", "manager", "owner"].includes(user?.role || "") ? (

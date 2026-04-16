@@ -551,3 +551,51 @@ input[type="checkbox"] {
     letter-spacing: 0.12em;
   }
 }
+
+@keyframes dashboardStatusPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.95;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+}
+
+.dashboard-status-pulse {
+  animation: dashboardStatusPulse 2.2s ease-in-out infinite;
+}
+
+.dashboard-soft-lift {
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+  will-change: transform;
+}
+
+.dashboard-soft-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 34px rgba(3, 8, 18, 0.22);
+}
+
+.dashboard-soft-lift:active {
+  transform: scale(0.992);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-status-pulse {
+    animation: none;
+  }
+
+  .dashboard-soft-lift {
+    transition: none;
+  }
+
+  .dashboard-soft-lift:hover,
+  .dashboard-soft-lift:active {
+    transform: none;
+  }
+}
