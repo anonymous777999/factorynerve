@@ -1958,44 +1958,46 @@ export default function DashboardHome() {
         ) : null}
 
         <section className="space-y-4">
-          <div className="surface-panel-strong rounded-[2rem] p-4 sm:p-5 md:p-6">
-            <div className="flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
-              <div className="flex items-start gap-4">
-                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-[rgba(125,188,255,0.18)] bg-[radial-gradient(circle_at_30%_30%,rgba(125,188,255,0.28),rgba(77,163,255,0.08))] text-xl font-semibold text-white shadow-[0_16px_34px_rgba(29,143,255,0.16)]">
+          <div className="surface-panel-strong rounded-[1.7rem] p-3.5 sm:rounded-[2rem] sm:p-5 md:p-6">
+            <div className="flex flex-col gap-3.5 md:flex-row md:items-center md:justify-between md:gap-5">
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-[rgba(125,188,255,0.18)] bg-[radial-gradient(circle_at_30%_30%,rgba(125,188,255,0.28),rgba(77,163,255,0.08))] text-base font-semibold text-white shadow-[0_10px_22px_rgba(29,143,255,0.14)] sm:h-16 sm:w-16 sm:text-xl sm:shadow-[0_16px_34px_rgba(29,143,255,0.16)]">
                   {(user.name || "A").trim().charAt(0).toUpperCase()}
                 </div>
-                <div className="space-y-2">
-                  <div className="flex flex-wrap gap-2">
-                    <span className="surface-pill rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
+                <div className="min-w-0 space-y-2">
+                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
+                    <span className="surface-pill rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[rgba(77,163,255,0.92)] sm:px-3 sm:text-[11px] sm:tracking-[0.22em]">
                       {headerEyebrow}
                     </span>
-                    <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                    <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-text-secondary sm:px-3 sm:text-[11px] sm:tracking-[0.18em]">
                       {activeFactory?.name || user.factory_name || "Factory"}
                     </span>
-                    <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${online ? "border-success/30 bg-success/12 text-success" : "border-warning/30 bg-warning/12 text-warning"}`}>
+                    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${online ? "border-success/30 bg-success/12 text-success" : "border-warning/30 bg-warning/12 text-warning"} sm:px-3 sm:text-[11px] sm:tracking-[0.18em]`}>
                       {online ? "Network Live" : "Offline Mode"}
                     </span>
                   </div>
-                  <div>
-                    <div className="text-lg text-text-secondary">Welcome,</div>
-                    <h1 className="max-w-3xl text-3xl font-semibold leading-tight tracking-[-0.03em] text-text-primary md:text-[2.8rem]">
+                  <div className="min-w-0">
+                    <div className="text-sm text-text-secondary sm:text-lg">Welcome,</div>
+                    <h1 className="max-w-3xl truncate text-2xl font-semibold leading-tight tracking-[-0.03em] text-text-primary sm:text-3xl md:text-[2.8rem]">
                       {user.name || "Anonymous"}
                     </h1>
                   </div>
-                  <p className="max-w-2xl text-sm leading-6 text-text-secondary">{headerCopy}</p>
+                  <p className="max-w-2xl text-xs leading-5 text-text-secondary sm:text-sm sm:leading-6">
+                    {headerCopy}
+                  </p>
                 </div>
               </div>
 
-              <div className={`inline-flex min-h-11 items-center gap-3 self-start rounded-full border px-4 py-2 text-sm font-semibold ${systemHealthToneClasses(systemHealth.tone).chip}`}>
-                <span className={`dashboard-status-pulse h-3 w-3 rounded-full ${systemHealthToneClasses(systemHealth.tone).dot}`} />
+              <div className={`inline-flex min-h-11 items-center gap-2.5 self-start rounded-full border px-3 py-2 text-xs font-semibold sm:gap-3 sm:px-4 sm:text-sm ${systemHealthToneClasses(systemHealth.tone).chip}`}>
+                <span className={`dashboard-status-pulse h-2.5 w-2.5 rounded-full sm:h-3 sm:w-3 ${systemHealthToneClasses(systemHealth.tone).dot}`} />
                 <div>
                   <div>{systemHealth.label}</div>
-                  <div className="text-xs font-medium opacity-80">{systemHealth.detail}</div>
+                  <div className="text-[11px] font-medium opacity-80 sm:text-xs">{systemHealth.detail}</div>
                 </div>
               </div>
             </div>
 
-            <div className="mt-5 flex flex-wrap items-center gap-2">
+            <div className="mt-3 flex flex-wrap items-center gap-2 sm:mt-5">
               <Button variant="ghost" size="sm" onClick={() => loadDashboard()}>
                 {dashboardLoading
                   ? t("dashboard.action.refreshing", "Refreshing...")
@@ -2011,37 +2013,37 @@ export default function DashboardHome() {
             </div>
           </div>
 
-          <div className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
+          <div className="grid gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] xl:gap-4">
             <Card variant="elevated" className="overflow-hidden border-[rgba(77,163,255,0.18)]">
               <CardHeader className="pb-0">
                 <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
                   {oversightTitle}
                 </div>
-                <CardTitle className="mt-3 text-[2rem] leading-tight md:text-[2.25rem]">
+                <CardTitle className="mt-2.5 text-[1.5rem] leading-tight sm:text-[1.8rem] md:mt-3 md:text-[2.25rem]">
                   {primaryAction?.title || t("dashboard.primary.fallback_title", "Start the next task")}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-5 pt-5">
-                <p className="max-w-2xl text-sm leading-7 text-text-secondary">
+              <CardContent className="space-y-4 pt-4 sm:space-y-5 sm:pt-5">
+                <p className="max-w-2xl text-xs leading-5 text-text-secondary sm:text-sm sm:leading-7">
                   {oversightCopy}
                 </p>
                 {primaryAction ? (
                   <Link href={primaryAction.href} className="block">
-                    <Button size="xl" className="min-h-14 w-full text-lg">
+                    <Button size="xl" className="min-h-12 w-full text-base sm:min-h-14 sm:text-lg">
                       {primaryAction.action}
                     </Button>
                   </Link>
                 ) : null}
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="surface-panel-soft rounded-[1.25rem] px-4 py-3">
+                <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
+                  <div className="surface-panel-soft rounded-[1.15rem] px-3 py-3 sm:rounded-[1.25rem] sm:px-4">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Board State</div>
-                    <div className="mt-2 text-sm font-semibold text-text-primary">
+                    <div className="mt-2 text-xs font-semibold text-text-primary sm:text-sm">
                       {dashboardLoading ? "Refreshing live data" : calmAttentionBoard ? "Stable and clear" : "Review path active"}
                     </div>
                   </div>
-                  <div className="surface-panel-soft rounded-[1.25rem] px-4 py-3">
+                  <div className="surface-panel-soft rounded-[1.15rem] px-3 py-3 sm:rounded-[1.25rem] sm:px-4">
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Plan Access</div>
-                    <div className="mt-2 text-sm font-semibold text-text-primary">
+                    <div className="mt-2 text-xs font-semibold text-text-primary sm:text-sm">
                       {state.analyticsLocked || state.anomalyLocked ? "Some analytics locked" : "All core actions available"}
                     </div>
                   </div>
@@ -2049,17 +2051,17 @@ export default function DashboardHome() {
               </CardContent>
             </Card>
 
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
               {heroHighlights.map((item) => (
                 <div
                   key={item.label}
-                  className="surface-panel-soft min-w-0 rounded-[1.35rem] p-4"
+                  className="surface-panel-soft min-w-0 rounded-[1.15rem] p-3 sm:rounded-[1.35rem] sm:p-4"
                 >
-                  <div className="truncate text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">
+                  <div className="truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted sm:text-[11px] sm:tracking-[0.2em]">
                     {item.label}
                   </div>
-                  <div className="mt-3 text-2xl font-semibold text-text-primary">{item.value}</div>
-                  <div className="mt-2 text-xs leading-5 text-text-secondary">{item.detail}</div>
+                  <div className="mt-2 text-xl font-semibold text-text-primary sm:mt-3 sm:text-2xl">{item.value}</div>
+                  <div className="mt-1.5 text-[11px] leading-4 text-text-secondary sm:mt-2 sm:text-xs sm:leading-5">{item.detail}</div>
                 </div>
               ))}
             </div>
@@ -2072,18 +2074,18 @@ export default function DashboardHome() {
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
                 Workflow Health
               </div>
-              <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-text-primary">
+              <h2 className="mt-1.5 text-xl font-semibold tracking-[-0.03em] text-text-primary sm:mt-2 sm:text-2xl">
                 Review the live system state
               </h2>
             </div>
             {calmAttentionBoard ? (
-              <div className="rounded-full border border-success/22 bg-success/10 px-3 py-1 text-xs font-semibold text-success">
+              <div className="hidden rounded-full border border-success/22 bg-success/10 px-3 py-1 text-xs font-semibold text-success sm:block">
                 No alerts - system stable
               </div>
             ) : null}
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 xl:grid-cols-4">
             {workflowHealthCards.map((card) => {
               const tone = workflowCardToneClasses(card.tone);
               return (
@@ -2092,7 +2094,7 @@ export default function DashboardHome() {
                   href={card.href}
                   title={card.tooltip}
                   aria-label={`${card.label}: ${card.value}. ${card.tooltip}`}
-                  className={`dashboard-soft-lift block rounded-[1.5rem] border p-4 ${tone.card}`}
+                  className={`dashboard-soft-lift block min-h-[15rem] w-[17rem] shrink-0 snap-start rounded-[1.35rem] border p-4 sm:min-h-0 sm:w-auto sm:rounded-[1.5rem] ${tone.card}`}
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className={`flex h-14 w-14 items-center justify-center rounded-full border ${tone.ring}`}>
@@ -2121,17 +2123,17 @@ export default function DashboardHome() {
             <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
               {t("dashboard.section.quick_actions", "Quick Actions")}
             </div>
-            <h2 className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-text-primary">
+            <h2 className="mt-1.5 text-xl font-semibold tracking-[-0.03em] text-text-primary sm:mt-2 sm:text-2xl">
               Most-used routes for this account
             </h2>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0">
             {quickActionTiles.map((action) => (
               <Link
                 key={action.key}
                 href={action.href}
-                className={`dashboard-soft-lift block min-h-[10.25rem] rounded-[1.5rem] border p-5 ${quickActionToneClasses(action.tone)}`}
+                className={`dashboard-soft-lift block min-h-[9.5rem] w-[18rem] shrink-0 snap-start rounded-[1.35rem] border p-4 sm:min-h-[10.25rem] sm:w-auto sm:rounded-[1.5rem] sm:p-5 ${quickActionToneClasses(action.tone)}`}
               >
                 <div className="flex h-full flex-col justify-between">
                   <div className="flex items-start justify-between gap-4">
@@ -2143,8 +2145,8 @@ export default function DashboardHome() {
                     </span>
                   </div>
                   <div className="mt-4">
-                    <div className="text-[1.9rem] font-semibold tracking-[-0.04em] text-text-primary">{action.label}</div>
-                    <div className="mt-2 max-w-md text-sm leading-6 text-text-secondary">{action.detail}</div>
+                    <div className="text-[1.6rem] font-semibold tracking-[-0.04em] text-text-primary sm:text-[1.9rem]">{action.label}</div>
+                    <div className="mt-2 max-w-md text-xs leading-5 text-text-secondary sm:text-sm sm:leading-6">{action.detail}</div>
                   </div>
                 </div>
               </Link>
