@@ -62,7 +62,7 @@ def test_public_registration_bootstraps_first_workspace_creator_as_admin(http_cl
             "password": password,
             "role": "operator",
             "factory_name": unique_factory(),
-            "phone_number": "+910000000000",
+            "phone_number": "+919876543210",
         },
     )
 
@@ -91,7 +91,7 @@ def test_public_registration_blocks_high_roles_for_existing_workspace(http_clien
             "role": "manager",
             "factory_name": admin["factory_name"],
             "company_code": admin["company_code"],
-            "phone_number": "+910000000000",
+            "phone_number": "+919876543210",
         },
     )
 
@@ -113,7 +113,7 @@ def test_public_registration_defaults_existing_workspace_users_to_attendance_rol
             "role": "operator",
             "factory_name": admin["factory_name"],
             "company_code": admin["company_code"],
-            "phone_number": "+910000000000",
+            "phone_number": "+919876543210",
         },
     )
 
@@ -139,7 +139,7 @@ def test_local_registration_requires_email_verification_before_login(http_client
             "password": password,
             "role": "attendance",
             "factory_name": unique_factory(),
-            "phone_number": "+910000000000",
+            "phone_number": "+919876543210",
         },
     )
 
@@ -198,7 +198,7 @@ def test_register_email_mode_sends_verification_without_existing_user(monkeypatc
                 password="StrongPassw0rd!",
                 role=UserRole.ATTENDANCE,
                 factory_name=unique_factory(),
-                phone_number="+910000000000",
+                phone_number="+919876543210",
             ),
             request=Request(scope),
             db=db,
@@ -241,7 +241,7 @@ def test_register_email_mode_keeps_pending_signup_when_delivery_fails(monkeypatc
                 password="StrongPassw0rd!",
                 role=UserRole.ATTENDANCE,
                 factory_name=unique_factory(),
-                phone_number="+910000000000",
+                phone_number="+919876543210",
             ),
             request=Request(scope),
             db=db,

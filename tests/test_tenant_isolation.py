@@ -3,7 +3,7 @@ from __future__ import annotations
 from http import HTTPStatus
 import time
 
-from tests.utils import create_entry_payload, mark_entry_approved, register_user, set_org_plan_for_user_email, unique_email, unique_factory
+from tests.utils import create_entry_payload, invite_and_accept_user, mark_entry_approved, register_user, set_org_plan_for_user_email, unique_email, unique_factory
 
 
 def _auth_headers(token: str) -> dict[str, str]:
@@ -43,18 +43,14 @@ def _setup_multi_factory_manager(http_client, *, plan: str = "factory") -> dict[
     second_factory_id = created.json()["factory"]["factory_id"]
 
     manager_email = unique_email()
-    invited = http_client.post(
-        "/settings/users/invite",
-        headers=admin_headers,
-        json={
-            "name": "QA Isolation Manager",
-            "email": manager_email,
-            "role": "manager",
-            "factory_name": admin["factory_name"],
-        },
+    accepted_manager = invite_and_accept_user(
+        http_client,
+        inviter_token=admin["access_token"],
+        name="QA Isolation Manager",
+        email=manager_email,
+        role="manager",
+        factory_name=admin["factory_name"],
     )
-    assert invited.status_code == HTTPStatus.CREATED, invited.text
-    temp_password = invited.json()["temp_password"]
 
     users = http_client.get("/settings/users", headers=admin_headers)
     assert users.status_code == HTTPStatus.OK, users.text
@@ -72,9 +68,7 @@ def _setup_multi_factory_manager(http_client, *, plan: str = "factory") -> dict[
     )
     assert updated.status_code == HTTPStatus.OK, updated.text
 
-    login = http_client.post("/auth/login", json={"email": manager_email, "password": temp_password})
-    assert login.status_code == HTTPStatus.OK, login.text
-    access_token = login.json()["access_token"]
+    access_token = accepted_manager["access_token"]
 
     context = http_client.get("/auth/context", headers=_auth_headers(access_token))
     assert context.status_code == HTTPStatus.OK, context.text

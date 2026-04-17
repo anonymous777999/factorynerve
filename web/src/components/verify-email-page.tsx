@@ -5,9 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { ApiError } from "@/lib/api";
-import { validateEmailVerificationToken, verifyEmail } from "@/lib/auth";
+import { acceptInvitation, validateEmailVerificationToken, verifyEmail } from "@/lib/auth";
 import { AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function VerifyEmailPage() {
   const searchParams = useSearchParams();
@@ -21,9 +22,16 @@ export default function VerifyEmailPage() {
   const [valid, setValid] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
-  const isPendingSignupToken = status.toLowerCase().includes("create the account");
+  const [flowType, setFlowType] = useState("email_verify");
+  const [inviteDetails, setInviteDetails] = useState<Awaited<ReturnType<typeof validateEmailVerificationToken>>["invite"]>(null);
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
+  const isInviteAcceptance = flowType === "invite_accept";
+  const isPendingSignupToken = flowType === "signup_verify" || status.toLowerCase().includes("create the account");
   const verificationFinished = status.toLowerCase().includes("sign in now") || status.toLowerCase().includes("ready to sign in");
   const loginHref = verificationFinished ? "/login?verified=1" : "/login";
+
   const stateCard = useMemo(() => {
     if (verifying) {
       return {
@@ -41,8 +49,10 @@ export default function VerifyEmailPage() {
     }
     if (valid) {
       return {
-        title: "Ready to activate",
-        detail: "This verification link is valid. Use the button below to redeem it and finish account activation.",
+        title: isInviteAcceptance ? "Ready to accept invitation" : "Ready to activate",
+        detail: isInviteAcceptance
+          ? "This invitation is valid. Set your password, confirm the company details, and accept to create the account."
+          : "This verification link is valid. Use the button below to redeem it and finish account activation.",
         className: "border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.08)] text-sky-100",
       };
     }
@@ -58,7 +68,7 @@ export default function VerifyEmailPage() {
       detail: "Open the secure email link to prove inbox ownership before this account can sign in.",
       className: "border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)]",
     };
-  }, [error, valid, verificationFinished, verifying]);
+  }, [error, isInviteAcceptance, valid, verificationFinished, verifying]);
 
   useEffect(() => {
     let alive = true;
@@ -75,11 +85,15 @@ export default function VerifyEmailPage() {
     setVerifying(true);
     setError("");
     setStatus("");
+    setInviteDetails(null);
+    setFlowType("email_verify");
 
     validateEmailVerificationToken(token)
       .then((result) => {
         if (!alive) return;
         setValid(result.valid);
+        setFlowType(result.flow_type || "email_verify");
+        setInviteDetails(result.invite || null);
         if (result.valid) {
           setStatus(result.message);
         } else {
@@ -132,21 +146,56 @@ export default function VerifyEmailPage() {
     }
   };
 
+  const onAcceptInvitation = async () => {
+    if (!token) {
+      setError("This invitation link is missing a token. Request a new one.");
+      return;
+    }
+    if (!password) {
+      setError("Enter a password to accept this invitation.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    try {
+      const result = await acceptInvitation(token, password);
+      setStatus(result.message);
+      setValid(false);
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Could not accept the invitation.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <AuthShell
       badge="Email Verification"
-      title="Verify email"
+      title={isInviteAcceptance ? "Accept invitation" : "Verify email"}
       description="Confirm your email address so the DPR.ai account can sign in securely."
       journeyTitle="Use inbox ownership as the final gate before account activation."
-      journeyDescription="Verification is the moment DPR.ai turns a pending signup into a real user account or confirms ownership on an existing local account."
+      journeyDescription="Verification is the moment DPR.ai turns a pending signup into a real user account, or lets an invited user accept their company assignment."
       steps={[
         {
           title: "Open the verification link",
           description: "The person who controls the inbox proves they can receive and open the secure verification email.",
         },
         {
-          title: "Confirm account activation",
-          description: "Pending signups become real accounts only at this point, after the verification token is redeemed.",
+          title: isInviteAcceptance ? "Accept the company invitation" : "Confirm account activation",
+          description: isInviteAcceptance
+            ? "Invited users review company details, set a password, and accept before a real account is created."
+            : "Pending signups become real accounts only at this point, after the verification token is redeemed.",
         },
         {
           title: "Return to sign in",
@@ -169,7 +218,7 @@ export default function VerifyEmailPage() {
           <div>{status}</div>
           {verificationFinished ? (
             <div className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-xs text-green-100/90">
-              Next step: return to sign in and use the same email and password from registration.
+              Next step: return to sign in and use the same email and password from this setup.
             </div>
           ) : null}
         </div>
@@ -187,7 +236,60 @@ export default function VerifyEmailPage() {
         <div className="mt-2 leading-6">{stateCard.detail}</div>
       </div>
 
-      {valid && !verifying ? (
+      {valid && !verifying && isInviteAcceptance && inviteDetails ? (
+        <div className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-xl border border-[var(--border)]/70 px-3 py-3">
+              <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Organization</div>
+              <div className="mt-1 text-sm font-semibold text-[var(--text)]">{inviteDetails.organization_name}</div>
+            </div>
+            <div className="rounded-xl border border-[var(--border)]/70 px-3 py-3">
+              <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Assigned Role</div>
+              <div className="mt-1 text-sm font-semibold text-[var(--text)]">{inviteDetails.role_label}</div>
+            </div>
+            <div className="rounded-xl border border-[var(--border)]/70 px-3 py-3">
+              <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Factory</div>
+              <div className="mt-1 text-sm font-semibold text-[var(--text)]">{inviteDetails.factory_name}</div>
+              {inviteDetails.factory_location ? (
+                <div className="mt-1 text-xs text-[var(--muted)]">{inviteDetails.factory_location}</div>
+              ) : null}
+            </div>
+            <div className="rounded-xl border border-[var(--border)]/70 px-3 py-3">
+              <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Company Code</div>
+              <div className="mt-1 text-sm font-semibold text-[var(--text)]">{inviteDetails.company_code || "Not shared"}</div>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-[var(--border)]/70 px-3 py-3 text-sm text-[var(--text)]">
+            <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Role Summary</div>
+            <div className="mt-1">{inviteDetails.role_summary}</div>
+          </div>
+
+          {inviteDetails.custom_note ? (
+            <div className="rounded-xl border border-[var(--border)]/70 px-3 py-3 text-sm text-[var(--text)]">
+              <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Admin Note</div>
+              <div className="mt-1">{inviteDetails.custom_note}</div>
+            </div>
+          ) : null}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label className="text-sm text-[var(--muted)]">Create password</label>
+              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+            </div>
+            <div>
+              <label className="text-sm text-[var(--muted)]">Confirm password</label>
+              <Input type="password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} />
+            </div>
+          </div>
+
+          <Button type="button" onClick={onAcceptInvitation} disabled={loading} className="w-full">
+            {loading ? "Accepting invitation..." : "Accept Invitation and Create Account"}
+          </Button>
+        </div>
+      ) : null}
+
+      {valid && !verifying && !isInviteAcceptance ? (
         <Button type="button" onClick={onVerify} disabled={loading} className="w-full">
           {loading ? "Verifying email..." : isPendingSignupToken ? "Create and Activate Account" : "Verify Email"}
         </Button>

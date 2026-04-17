@@ -27,7 +27,7 @@ def _register(
             "role": role,
             "factory_name": factory_name,
             "company_code": company_code,
-            "phone_number": "+910000000000",
+            "phone_number": "+919876543210",
         },
     )
     assert response.status_code == HTTPStatus.CREATED, response.text

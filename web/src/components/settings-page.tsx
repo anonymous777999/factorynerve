@@ -21,6 +21,7 @@ import {
   listFactories,
   listFactoryProfiles,
   listManagedUsers,
+  previewInviteUser,
   updateFactorySettings,
   updateManagedUserFactoryAccess,
   updateUserRole,
@@ -30,6 +31,7 @@ import {
   type FactoryProfileOption,
   type FactorySettings,
   type FactoryTemplatesPayload,
+  type InvitePreviewPayload,
   type ManagedUser,
   type ManagedUserFactoryAccessPayload,
   type UsageSummary,
@@ -39,6 +41,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 type TabKey = "factory" | "users" | "usage";
 
@@ -81,6 +84,8 @@ export default function SettingsPage() {
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("attendance");
+  const [inviteCustomNote, setInviteCustomNote] = useState("");
+  const [invitePreview, setInvitePreview] = useState<InvitePreviewPayload | null>(null);
   const [accessUserId, setAccessUserId] = useState("");
   const [accessSnapshot, setAccessSnapshot] = useState<ManagedUserFactoryAccessPayload | null>(null);
   const [accessFactoryIds, setAccessFactoryIds] = useState<string[]>([]);
@@ -265,6 +270,10 @@ export default function SettingsPage() {
         // no-op; defaults remain usable
       });
   }, [newFactoryForm.industry_type]);
+
+  useEffect(() => {
+    setInvitePreview(null);
+  }, [inviteName, inviteEmail, inviteRole, inviteCustomNote]);
 
   const activeCount = useMemo(() => users.filter((item) => item.is_active).length, [users]);
   const resolveManagedUserId = (rawValue: string) => {
@@ -828,30 +837,118 @@ export default function SettingsPage() {
                       ))}
                     </Select>
                   </div>
-                  <Button
-                    className="w-full sm:w-auto"
-                    onClick={() =>
-                      handleAction(async () => {
-                        const result = await inviteUser({
-                          name: inviteName,
-                          email: inviteEmail,
-                          role: inviteRole,
-                          factory_name: factory.factory_name || user.factory_name || "",
-                        });
-                        setStatus(
-                          result.temp_password
-                            ? `User ${result.user_code ? `#${result.user_code} ` : ""}invited. Temporary password: ${result.temp_password}`
-                            : result.message,
-                        );
-                        setInviteName("");
-                        setInviteEmail("");
-                        await loadAll();
-                      })
-                    }
-                    disabled={busy}
-                  >
-                    Invite User
-                  </Button>
+                  <div>
+                    <label className="text-sm text-[var(--muted)]">Admin Note</label>
+                    <Textarea
+                      value={inviteCustomNote}
+                      onChange={(e) => setInviteCustomNote(e.target.value)}
+                      placeholder="Optional note the invited user should see before accepting."
+                      className="min-h-28"
+                    />
+                  </div>
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                    No account will be created until the recipient opens the invite, sets a password, and accepts from their side.
+                  </div>
+                  <div className="grid gap-3 sm:flex sm:flex-wrap">
+                    <Button
+                      className="w-full sm:w-auto"
+                      variant="outline"
+                      onClick={() =>
+                        handleAction(async () => {
+                          const preview = await previewInviteUser({
+                            name: inviteName,
+                            email: inviteEmail,
+                            role: inviteRole,
+                            factory_name: factory.factory_name || user.factory_name || "",
+                            custom_note: inviteCustomNote || null,
+                          });
+                          setInvitePreview(preview);
+                          setStatus(preview.message);
+                        })
+                      }
+                      disabled={busy}
+                    >
+                      Preview Invite
+                    </Button>
+                    <Button
+                      className="w-full sm:w-auto"
+                      onClick={() =>
+                        handleAction(async () => {
+                          const result = await inviteUser({
+                            name: inviteName,
+                            email: inviteEmail,
+                            role: inviteRole,
+                            factory_name: factory.factory_name || user.factory_name || "",
+                            custom_note: inviteCustomNote || null,
+                          });
+                          setStatus(
+                            result.verification_link
+                              ? `${result.message} Verification link: ${result.verification_link}`
+                              : result.message,
+                          );
+                          setInviteName("");
+                          setInviteEmail("");
+                          setInviteRole("attendance");
+                          setInviteCustomNote("");
+                          setInvitePreview(null);
+                          await loadAll();
+                        })
+                      }
+                      disabled={busy || !invitePreview?.can_send}
+                    >
+                      Send Invite
+                    </Button>
+                  </div>
+                  {invitePreview ? (
+                    <div className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                      <div>
+                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Invite Preview</div>
+                        <div className="mt-1 text-sm text-[var(--muted)]">{invitePreview.message}</div>
+                      </div>
+                      {invitePreview.preview ? (
+                        <>
+                          <div>
+                            <div className="text-xs text-[var(--muted)]">Subject</div>
+                            <div className="mt-1 text-sm font-semibold text-[var(--text)]">{invitePreview.preview.subject}</div>
+                          </div>
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            {invitePreview.preview.sections.details.map((detail) => (
+                              <div key={`${detail.label}:${detail.value}`} className="rounded-2xl border border-[var(--border)]/70 bg-[rgba(255,255,255,0.03)] p-3">
+                                <div className="text-xs uppercase tracking-[0.12em] text-[var(--muted)]">{detail.label}</div>
+                                <div className="mt-1 text-sm font-medium text-[var(--text)]">{detail.value}</div>
+                              </div>
+                            ))}
+                          </div>
+                          <div>
+                            <div className="text-xs uppercase tracking-[0.12em] text-[var(--muted)]">Role Summary</div>
+                            <div className="mt-1 text-sm text-[var(--text)]">{invitePreview.preview.summary?.role_summary}</div>
+                          </div>
+                          <div>
+                            <div className="text-xs uppercase tracking-[0.12em] text-[var(--muted)]">Next Steps</div>
+                            <div className="mt-2 grid gap-2">
+                              {invitePreview.preview.sections.next_steps.map((step) => (
+                                <div key={step} className="rounded-xl border border-[var(--border)]/60 px-3 py-2 text-sm text-[var(--text)]">
+                                  {step}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          {invitePreview.preview.sections.custom_note ? (
+                            <div>
+                              <div className="text-xs uppercase tracking-[0.12em] text-[var(--muted)]">Admin Note</div>
+                              <div className="mt-1 rounded-xl border border-[var(--border)]/60 px-3 py-3 text-sm text-[var(--text)]">
+                                {invitePreview.preview.sections.custom_note}
+                              </div>
+                            </div>
+                          ) : null}
+                        </>
+                      ) : invitePreview.existing_user ? (
+                        <div className="rounded-2xl border border-[var(--border)]/70 bg-[rgba(255,255,255,0.03)] p-4 text-sm text-[var(--text)]">
+                          Existing same-organization user: #{invitePreview.existing_user.user_code} · {invitePreview.existing_user.email}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
                 </CardContent>
               </Card>
 

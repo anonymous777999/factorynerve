@@ -39,7 +39,7 @@ def register_user(
         "role": "attendance",
         "factory_name": factory_name or unique_factory(),
         "company_code": company_code,
-        "phone_number": "+910000000000",
+        "phone_number": "+919876543210",
     }
     resp = client.post("/auth/register", json=payload)
     assert resp.status_code in (200, 201), resp.text
@@ -83,6 +83,57 @@ def register_user(
         "user_code": auth_data.get("user", {}).get("user_code"),
         "company_code": auth_data.get("user", {}).get("factory_code"),
         "factory_name": auth_data.get("user", {}).get("factory_name") or payload["factory_name"],
+    }
+
+
+def invite_and_accept_user(
+    client: httpx.Client,
+    *,
+    inviter_token: str,
+    name: str,
+    email: str,
+    role: str,
+    factory_name: str,
+    password: str = "StrongPassw0rd!",
+    custom_note: str | None = None,
+) -> dict:
+    invite = client.post(
+        "/settings/users/invite",
+        headers={"Authorization": f"Bearer {inviter_token}"},
+        json={
+            "name": name,
+            "email": email,
+            "role": role,
+            "factory_name": factory_name,
+            "custom_note": custom_note,
+        },
+    )
+    assert invite.status_code in (200, 201), invite.text
+    payload = invite.json()
+    verification_link = payload.get("verification_link")
+    assert verification_link, f"Expected verification link in test mode: {payload}"
+    parsed = urlparse(verification_link)
+    token_values = parse_qs(parsed.query).get("token") or parse_qs(parsed.query).get("verification_token")
+    assert token_values, f"Verification link did not contain token: {verification_link}"
+
+    accept = client.post(
+        "/auth/email/verify/accept",
+        headers={"X-CSRF-Token": client.cookies.get("dpr_csrf")} if client.cookies.get("dpr_csrf") else None,
+        json={"token": token_values[0], "password": password},
+    )
+    assert accept.status_code == 200, accept.text
+
+    login = client.post("/auth/login", json={"email": email, "password": password})
+    assert login.status_code == 200, login.text
+    auth_data = login.json()
+    return {
+        "email": email,
+        "password": password,
+        "access_token": auth_data.get("access_token"),
+        "user_id": auth_data.get("user", {}).get("id"),
+        "user_code": auth_data.get("user", {}).get("user_code"),
+        "company_code": auth_data.get("user", {}).get("factory_code"),
+        "factory_name": auth_data.get("user", {}).get("factory_name") or factory_name,
     }
 
 

@@ -8,6 +8,16 @@ def test_normalize_phone_number_accepts_standard_values():
     assert normalize_phone_number("+91 98765 43210") == "+91 98765 43210"
 
 
+def test_normalize_phone_number_rejects_short_or_obviously_fake_values():
+    for raw in ("123456789", "0000000000", "1234567890"):
+        try:
+            normalize_phone_number(raw)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError(f"Expected invalid phone value to fail validation: {raw}")
+
+
 def test_normalize_phone_number_rejects_email_like_values():
     try:
         normalize_phone_number("worker@example.com")

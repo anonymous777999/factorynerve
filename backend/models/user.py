@@ -96,3 +96,13 @@ class UserReadSchema(UserBaseSchema):
     profile_picture: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# Import related models so SQLAlchemy relationship targets are registered even
+# when tests or routers import `User` directly before full database init runs.
+import backend.models.email_queue  # noqa: E402,F401
+import backend.models.entry  # noqa: E402,F401
+import backend.models.organization  # noqa: E402,F401
+import backend.models.refresh_token  # noqa: E402,F401
+import backend.models.report  # noqa: E402,F401
+import backend.models.user_factory_role  # noqa: E402,F401

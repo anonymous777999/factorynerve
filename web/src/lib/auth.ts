@@ -92,6 +92,22 @@ export type EmailVerificationValidateResponse = {
   valid: boolean;
   message: string;
   email?: string | null;
+  flow_type?: string;
+  invite?: {
+    recipient_name: string;
+    email: string;
+    role: string;
+    role_label: string;
+    role_summary: string;
+    organization_name: string;
+    factory_name: string;
+    factory_location?: string | null;
+    company_code?: string | null;
+    inviter_name: string;
+    custom_note?: string | null;
+    verification_link?: string | null;
+    expires_in_hours: number;
+  } | null;
 };
 
 export type PasswordResetValidateResponse = {
@@ -422,6 +438,17 @@ export async function getMe(options?: {
     {
       retryMessage: "Reloading session...",
     },
+  );
+}
+
+export async function acceptInvitation(token: string, password: string): Promise<EmailVerificationResponse> {
+  return apiFetch<EmailVerificationResponse>(
+    "/auth/email/verify/accept",
+    {
+      method: "POST",
+      body: { token, password },
+    },
+    { useCookies: false },
   );
 }
 

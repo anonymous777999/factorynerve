@@ -120,6 +120,7 @@ def send_email(
     to_emails: Iterable[str],
     subject: str,
     body: str,
+    html_body: str | None = None,
     from_email: str | None = None,
     reply_to: str | None = None,
 ) -> dict:
@@ -145,6 +146,8 @@ def send_email(
     if reply_to:
         msg["Reply-To"] = reply_to
     msg.set_content(body)
+    if html_body:
+        msg.add_alternative(html_body, subtype="html")
 
     if dry_run:
         return {"sent": False, "dry_run": True}

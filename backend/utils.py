@@ -279,8 +279,17 @@ def normalize_phone_number(value: str | None, *, max_length: int = 32) -> str | 
     if not _PHONE_ALLOWED_RE.fullmatch(cleaned):
         raise ValueError("Phone number can only contain digits, spaces, parentheses, periods, and hyphens.")
     digits = re.sub(r"\D", "", cleaned)
-    if len(digits) < 7 or len(digits) > 15:
-        raise ValueError("Phone number must contain 7 to 15 digits.")
+    if len(digits) < 10 or len(digits) > 15:
+        raise ValueError("Phone number must contain 10 to 15 digits.")
+    if len(set(digits)) == 1:
+        raise ValueError("Phone number cannot use the same digit repeatedly.")
+    if digits in {
+        "0123456789",
+        "1234567890",
+        "0987654321",
+        "9876543210",
+    }:
+        raise ValueError("Phone number looks invalid. Enter a real mobile number.")
     return cleaned
 
 

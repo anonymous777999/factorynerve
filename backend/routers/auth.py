@@ -57,6 +57,7 @@ from backend.services.pending_registration_service import (
     create_or_update_pending_registration,
     verify_pending_registration_token,
 )
+from backend.services.invite_email_service import build_invite_email_payload
 from backend.services.password_reset_service import build_reset_link, create_reset_token, verify_reset_token
 from backend.services.user_code_service import (
     MAX_USER_CODE_ATTEMPTS,
@@ -388,6 +389,11 @@ class EmailVerificationTokenRequest(BaseModel):
     token: str
 
 
+class InviteAcceptanceRequest(BaseModel):
+    token: str
+    password: str = Field(min_length=12, max_length=128)
+
+
 class RegisterResponse(BaseModel):
     message: str
     email: EmailStr
@@ -407,6 +413,8 @@ class EmailVerificationValidateResponse(BaseModel):
     valid: bool
     message: str
     email: EmailStr | None = None
+    flow_type: str = "email_verify"
+    invite: dict[str, object] | None = None
 
 
 class PasswordForgotResponse(BaseModel):
@@ -736,6 +744,7 @@ def _activate_pending_registration(
     *,
     pending: PendingRegistration,
     request: Request,
+    password_hash_override: str | None = None,
 ) -> None:
     existing_user = db.query(User).filter(User.email == pending.email.lower()).first()
     if existing_user:
@@ -745,11 +754,33 @@ def _activate_pending_registration(
         sanitize_text(pending.factory_name, max_length=255, preserve_newlines=False)
         or pending.factory_name.strip()
     )
-    organization, factory, factory_code, requested_factory = resolve_registration_context(
-        db,
-        requested_factory=requested_factory,
-        provided_code=pending.company_code,
-    )
+    if pending.invited_by_user_id is not None:
+        organization = (
+            db.query(Organization)
+            .filter(Organization.org_id == pending.org_id, Organization.is_active.is_(True))
+            .first()
+        )
+        if not organization:
+            raise HTTPException(status_code=400, detail="This invitation is no longer attached to an active organization.")
+        factory_query = db.query(Factory).filter(
+            Factory.org_id == organization.org_id,
+            Factory.is_active.is_(True),
+        )
+        if pending.company_code:
+            factory_query = factory_query.filter(Factory.factory_code == pending.company_code)
+        else:
+            factory_query = factory_query.filter(Factory.name == requested_factory)
+        factory = factory_query.first()
+        if not factory:
+            raise HTTPException(status_code=400, detail="This invitation is no longer attached to an active factory.")
+        factory_code = factory.factory_code
+        requested_factory = factory.name
+    else:
+        organization, factory, factory_code, requested_factory = resolve_registration_context(
+            db,
+            requested_factory=requested_factory,
+            provided_code=pending.company_code,
+        )
     resolved_org_id = organization.org_id
     has_existing_org_user = (
         db.query(User.id)
@@ -757,17 +788,19 @@ def _activate_pending_registration(
         .first()
         is not None
     )
-    if has_existing_org_user and pending.requested_role not in {UserRole.ATTENDANCE, UserRole.OPERATOR}:
+    if pending.invited_by_user_id is None and has_existing_org_user and pending.requested_role not in {UserRole.ATTENDANCE, UserRole.OPERATOR}:
         raise HTTPException(
             status_code=403,
             detail="Public registration is limited to attendance accounts. Ask an admin or owner to invite higher roles.",
         )
-    assigned_role = UserRole.ADMIN if not has_existing_org_user else UserRole.ATTENDANCE
+    assigned_role = pending.requested_role if pending.invited_by_user_id is not None else (
+        UserRole.ADMIN if not has_existing_org_user else UserRole.ATTENDANCE
+    )
 
     user = User(
         name=sanitize_text(pending.name, max_length=120, preserve_newlines=False) or pending.name.strip(),
         email=pending.email.lower(),
-        password_hash=pending.password_hash,
+        password_hash=password_hash_override or pending.password_hash,
         role=assigned_role,
         factory_name=requested_factory,
         factory_code=factory_code,
@@ -806,13 +839,49 @@ def _activate_pending_registration(
 
     _log_auth_event(
         db,
-        "USER_REGISTERED_VERIFIED",
-        "Pending public registration activated after email verification.",
+        "USER_REGISTERED_VERIFIED" if pending.invited_by_user_id is None else "USER_INVITE_ACCEPTED",
+        "Pending public registration activated after email verification."
+        if pending.invited_by_user_id is None
+        else "Pending invited account created after recipient accepted the invitation.",
         user.id,
         request,
         org_id=organization.org_id,
         factory_id=factory.factory_id,
     )
+
+
+def _pending_invite_details(db: Session, *, pending: PendingRegistration) -> dict[str, object]:
+    organization = (
+        db.query(Organization)
+        .filter(Organization.org_id == pending.org_id, Organization.is_active.is_(True))
+        .first()
+    )
+    factory = None
+    if organization:
+        factory_query = db.query(Factory).filter(
+            Factory.org_id == organization.org_id,
+            Factory.is_active.is_(True),
+        )
+        if pending.company_code:
+            factory_query = factory_query.filter(Factory.factory_code == pending.company_code)
+        else:
+            factory_query = factory_query.filter(Factory.name == pending.factory_name)
+        factory = factory_query.first()
+    inviter = db.query(User).filter(User.id == pending.invited_by_user_id).first() if pending.invited_by_user_id else None
+    payload = build_invite_email_payload(
+        recipient_name=pending.name,
+        invited_email=pending.email,
+        role=pending.requested_role,
+        organization_name=organization.name if organization else pending.factory_name,
+        factory_name=factory.name if factory else pending.factory_name,
+        factory_location=factory.location if factory else None,
+        company_code=pending.company_code,
+        inviter_name=inviter.name if inviter else "Factory Admin",
+        custom_note=pending.custom_note,
+        verification_link=None,
+        expires_in_hours=max(1, int((pending.expires_at - datetime.now(timezone.utc)).total_seconds() // 3600) or 1),
+    )
+    return payload["summary"]
 
 
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
@@ -828,6 +897,19 @@ def register_user(
         existing_user = db.query(User).filter(User.email == payload.email.lower()).first()
         if existing_user:
             raise HTTPException(status_code=409, detail="Email is already registered.")
+        existing_pending = (
+            db.query(PendingRegistration)
+            .filter(
+                PendingRegistration.email == payload.email.lower(),
+                PendingRegistration.used_at.is_(None),
+            )
+            .first()
+        )
+        if existing_pending and existing_pending.invited_by_user_id is not None:
+            raise HTTPException(
+                status_code=409,
+                detail="This email already has a pending admin invitation. Open the verification email or ask the admin to resend it.",
+            )
 
         requested_factory = (
             sanitize_text(payload.factory_name, max_length=255, preserve_newlines=False)
@@ -843,11 +925,14 @@ def register_user(
             db,
             name=sanitize_text(payload.name, max_length=120, preserve_newlines=False) or payload.name.strip(),
             email=payload.email.lower(),
+            org_id=_org_id_hint,
+            invited_by_user_id=None,
             password_hash=hash_password(payload.password),
             requested_role=payload.role,
             factory_name=requested_factory,
             company_code=payload.company_code,
             phone_number=payload.phone_number,
+            custom_note=None,
             ttl_hours=EMAIL_VERIFICATION_TTL_HOURS,
         )
         verification_link = (
@@ -1226,11 +1311,14 @@ def resend_email_verification(
             db,
             name=pending.name,
             email=pending.email,
+            org_id=pending.org_id,
+            invited_by_user_id=pending.invited_by_user_id,
             password_hash=pending.password_hash,
             requested_role=pending.requested_role,
             factory_name=pending.factory_name,
             company_code=pending.company_code,
             phone_number=pending.phone_number,
+            custom_note=pending.custom_note,
             ttl_hours=EMAIL_VERIFICATION_TTL_HOURS,
         )
         verification_link = (
@@ -1239,16 +1327,38 @@ def resend_email_verification(
         )
         delivered = True
         if delivery_mode == "email":
-            delivered = _send_auth_email(
-                subject=EMAIL_VERIFICATION_EMAIL_SUBJECT,
-                to_email=pending.email,
-                body=(
-                    "You requested a new DPR.ai verification link.\n\n"
-                    f"Verify your email within {EMAIL_VERIFICATION_TTL_HOURS} hours:\n{verification_link}\n\n"
-                    "If you did not request this, you can ignore this email."
-                ),
-                context="resend_verification",
-            )
+            if pending.invited_by_user_id is not None:
+                invite_details = _pending_invite_details(db, pending=pending)
+                invite_payload = build_invite_email_payload(
+                    recipient_name=pending.name,
+                    invited_email=pending.email,
+                    role=pending.requested_role,
+                    organization_name=str(invite_details["organization_name"]),
+                    factory_name=str(invite_details["factory_name"]),
+                    factory_location=invite_details.get("factory_location") if isinstance(invite_details.get("factory_location"), str) else None,
+                    company_code=invite_details.get("company_code") if isinstance(invite_details.get("company_code"), str) else None,
+                    inviter_name=str(invite_details["inviter_name"]),
+                    custom_note=pending.custom_note,
+                    verification_link=verification_link,
+                    expires_in_hours=EMAIL_VERIFICATION_TTL_HOURS,
+                )
+                delivered = _send_auth_email(
+                    subject=str(invite_payload["subject"]),
+                    to_email=pending.email,
+                    body=str(invite_payload["text_body"]),
+                    context="resend_invitation",
+                )
+            else:
+                delivered = _send_auth_email(
+                    subject=EMAIL_VERIFICATION_EMAIL_SUBJECT,
+                    to_email=pending.email,
+                    body=(
+                        "You requested a new DPR.ai verification link.\n\n"
+                        f"Verify your email within {EMAIL_VERIFICATION_TTL_HOURS} hours:\n{verification_link}\n\n"
+                        "If you did not request this, you can ignore this email."
+                    ),
+                    context="resend_verification",
+                )
         if delivered:
             _log_auth_event(
                 db,
@@ -1309,8 +1419,14 @@ def validate_email_verification_token(
     if pending:
         return EmailVerificationValidateResponse(
             valid=True,
-            message="Verification link verified. Confirm to create the account now.",
+            message=(
+                "Invitation verified. Set your password and accept to create the account now."
+                if pending.invited_by_user_id is not None
+                else "Verification link verified. Confirm to create the account now."
+            ),
             email=pending.email,
+            flow_type="invite_accept" if pending.invited_by_user_id is not None else "signup_verify",
+            invite=_pending_invite_details(db, pending=pending) if pending.invited_by_user_id is not None else None,
         )
 
     record = verify_verification_token(db, token=token)
@@ -1318,6 +1434,7 @@ def validate_email_verification_token(
         return EmailVerificationValidateResponse(
             valid=False,
             message="This verification link is invalid or has expired. Request a new one.",
+            flow_type="email_verify",
         )
 
     user = db.query(User).filter(User.id == record.user_id, User.is_active.is_(True)).first()
@@ -1325,17 +1442,20 @@ def validate_email_verification_token(
         return EmailVerificationValidateResponse(
             valid=False,
             message="This verification link is invalid or has expired. Request a new one.",
+            flow_type="email_verify",
         )
     if user.email_verified_at is not None:
         return EmailVerificationValidateResponse(
             valid=True,
             message="Email already verified. You can sign in now.",
             email=user.email,
+            flow_type="email_verify",
         )
     return EmailVerificationValidateResponse(
         valid=True,
         message="Verification link verified. Confirm your email to activate the account.",
         email=user.email,
+        flow_type="email_verify",
     )
 
 
@@ -1347,6 +1467,8 @@ def verify_email_address(
 ) -> EmailVerificationResponse:
     pending = verify_pending_registration_token(db, token=payload.token)
     if pending:
+        if pending.invited_by_user_id is not None:
+            raise HTTPException(status_code=400, detail="This invite needs password setup and acceptance before the account can be created.")
         _activate_pending_registration(db, pending=pending, request=request)
         db.commit()
         return EmailVerificationResponse(
@@ -1381,6 +1503,30 @@ def verify_email_address(
     db.commit()
     return EmailVerificationResponse(
         message="Email verified successfully. You can sign in now.",
+        delivery_mode="email",
+    )
+
+
+@router.post("/email/verify/accept", response_model=EmailVerificationResponse)
+def accept_invited_email(
+    payload: InviteAcceptanceRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> EmailVerificationResponse:
+    validate_password_strength(payload.password)
+    pending = verify_pending_registration_token(db, token=payload.token)
+    if not pending or pending.invited_by_user_id is None:
+        raise HTTPException(status_code=400, detail="Invalid or expired invitation token.")
+
+    _activate_pending_registration(
+        db,
+        pending=pending,
+        request=request,
+        password_hash_override=hash_password(payload.password),
+    )
+    db.commit()
+    return EmailVerificationResponse(
+        message="Invitation accepted. Your account is now created and ready to sign in.",
         delivery_mode="email",
     )
 

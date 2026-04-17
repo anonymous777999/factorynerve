@@ -1,6 +1,6 @@
 from http import HTTPStatus
 
-from tests.utils import register_user
+from tests.utils import invite_and_accept_user, register_user
 
 
 def test_user_code_is_five_digits_and_unique_within_org(http_client):
@@ -20,22 +20,15 @@ def test_user_code_is_five_digits_and_unique_within_org(http_client):
 
 def test_invited_user_receives_org_scoped_user_code(http_client):
     admin = register_user(http_client, use_cookies=True)
-    csrf = http_client.cookies.get("dpr_csrf")
-    assert csrf
-
-    invite = http_client.post(
-        "/settings/users/invite",
-        json={
-            "name": "QA Invite",
-            "email": "invite_" + admin["email"],
-            "role": "operator",
-            "factory_name": admin["factory_name"],
-        },
-        headers={"X-CSRF-Token": csrf},
+    invited = invite_and_accept_user(
+        http_client,
+        inviter_token=admin["access_token"],
+        name="QA Invite",
+        email="invite_" + admin["email"],
+        role="operator",
+        factory_name=admin["factory_name"],
     )
-    assert invite.status_code == HTTPStatus.CREATED, invite.text
 
-    payload = invite.json()
-    assert isinstance(payload.get("user_code"), int)
-    assert payload["user_code"] >= 10000
-    assert payload["user_code"] != admin["user_code"]
+    assert isinstance(invited.get("user_code"), int)
+    assert invited["user_code"] >= 10000
+    assert invited["user_code"] != admin["user_code"]

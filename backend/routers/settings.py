@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import os
-import secrets
 from datetime import date, datetime, timedelta, timezone
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field
@@ -30,6 +30,7 @@ from backend.models.ocr_template import OcrTemplate
 from backend.models.email_queue import EmailQueue
 from backend.models.user_plan import UserPlan
 from backend.models.organization import Organization
+from backend.models.pending_registration import PendingRegistration
 from backend.security import get_current_user, hash_password
 from backend.utils import sanitize_text
 from backend.ocr_limits import get_usage_summary, get_org_usage_summary
@@ -56,9 +57,37 @@ from backend.services.user_code_service import (
     next_user_code,
 )
 from backend.utils import generate_company_code
+from backend.services.pending_registration_service import create_or_update_pending_registration
+from backend.services.email_verification_service import build_verification_link
+from backend.email_service import send_email
+from backend.services.invite_email_service import build_invite_email_payload
 
 
 router = APIRouter(tags=["Settings"])
+INVITE_VERIFICATION_TTL_HOURS = int(os.getenv("EMAIL_VERIFICATION_TTL_HOURS", "24"))
+
+
+def _frontend_verification_link_from_request(request: Request, token: str) -> str | None:
+    origin = (request.headers.get("origin") or "").strip()
+    referer = (request.headers.get("referer") or "").strip()
+
+    if origin.startswith(("http://", "https://")):
+        return f"{origin.rstrip('/')}/verify-email?token={token}"
+
+    if referer.startswith(("http://", "https://")):
+        parsed = urlparse(referer)
+        if parsed.scheme and parsed.netloc:
+            return f"{parsed.scheme}://{parsed.netloc}/verify-email?token={token}"
+
+    return None
+
+
+def _send_invite_email(*, to_email: str, subject: str, body: str, html_body: str | None = None) -> bool:
+    try:
+        send_email(subject=subject, to_emails=[to_email], body=body, html_body=html_body)
+        return True
+    except Exception:  # pylint: disable=broad-except
+        return False
 
 
 def _manual_plan_override_enabled() -> bool:
@@ -204,6 +233,7 @@ class InviteUserRequest(BaseModel):
     email: EmailStr
     role: UserRole
     factory_name: str = Field(min_length=2, max_length=255)
+    custom_note: str | None = Field(default=None, max_length=1200)
 
 
 class RoleUpdateRequest(BaseModel):
@@ -258,6 +288,39 @@ def _issue_factory_code(db: Session) -> str:
         factory_collision = db.query(Factory.factory_id).filter(Factory.factory_code == candidate).first()
         if not user_collision and not factory_collision:
             return candidate
+
+
+def _invite_delivery_mode() -> str:
+    return "preview" if str(os.getenv("EMAIL_VERIFICATION_EXPOSE_LINK", "")).strip().lower() in {"1", "true", "yes", "on"} else "email"
+
+
+def _sanitize_invite_note(custom_note: str | None) -> str | None:
+    if not custom_note:
+        return None
+    return sanitize_text(custom_note, max_length=1200, preserve_newlines=True) or None
+
+
+def _build_invite_preview(
+    *,
+    current_user: User,
+    organization: Organization,
+    factory: Factory,
+    payload: InviteUserRequest,
+    verification_link: str | None,
+) -> dict[str, object]:
+    return build_invite_email_payload(
+        recipient_name=sanitize_text(payload.name, max_length=120, preserve_newlines=False) or payload.name,
+        invited_email=payload.email.lower().strip(),
+        role=payload.role,
+        organization_name=organization.name,
+        factory_name=factory.name,
+        factory_location=factory.location,
+        company_code=factory.factory_code,
+        inviter_name=current_user.name,
+        custom_note=_sanitize_invite_note(payload.custom_note),
+        verification_link=verification_link,
+        expires_in_hours=INVITE_VERIFICATION_TTL_HOURS,
+    )
 
 
 def _factory_template_payload(factory: Factory | None) -> dict:
@@ -800,21 +863,66 @@ def list_users(
         for user in users
     ]
 
+def _handle_existing_org_invite(
+    *,
+    db: Session,
+    existing: User,
+    org_id: str,
+    factory: Factory | None,
+    factory_name: str,
+) -> dict[str, object]:
+    if not factory:
+        raise HTTPException(status_code=400, detail="Active factory could not be resolved for this invite.")
+    existing_membership = (
+        db.query(UserFactoryRole)
+        .filter(
+            UserFactoryRole.user_id == existing.id,
+            UserFactoryRole.factory_id == factory.factory_id,
+            UserFactoryRole.org_id == org_id,
+        )
+        .first()
+    )
+    if existing_membership:
+        if existing.is_active:
+            raise HTTPException(status_code=409, detail="User already has access to this factory.")
+        existing.is_active = True
+        db.commit()
+        return {
+            "message": "Existing user reactivated for this factory.",
+            "user_code": existing.user_code,
+        }
+    db.add(
+        UserFactoryRole(
+            user_id=existing.id,
+            factory_id=factory.factory_id,
+            org_id=org_id,
+            role=existing.role,
+        )
+    )
+    existing.is_active = True
+    db.commit()
+    return {
+        "message": f"Existing user added to {factory_name}. Current role kept as {existing.role.value}.",
+        "user_code": existing.user_code,
+    }
 
-@router.post("/users/invite", status_code=status.HTTP_201_CREATED)
-def invite_user(
+
+def _validate_invite_request(
+    *,
+    db: Session,
+    current_user: User,
     payload: InviteUserRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> dict:
+) -> tuple[Factory | None, str, str | None, str, Organization, User | None]:
     require_role(current_user, UserRole.ADMIN)
     _assert_role_assignment_allowed(db, current_user=current_user, target_role=payload.role)
     factory = _active_factory(db, current_user)
     factory_name = factory.name if factory else _active_factory_name(db, current_user)
-    factory_code = factory.factory_code if factory else current_user.factory_code
     normalized_email = payload.email.lower().strip()
     org_id = resolve_org_id(current_user)
     if not org_id:
+        raise HTTPException(status_code=500, detail="Organization could not be resolved.")
+    organization = db.query(Organization).filter(Organization.org_id == org_id).first()
+    if not organization:
         raise HTTPException(status_code=500, detail="Organization could not be resolved.")
     plan = get_effective_factory_plan(
         db,
@@ -842,13 +950,42 @@ def invite_user(
         )
     except ValueError as error:
         raise HTTPException(status_code=403, detail=str(error)) from error
+
     existing = db.query(User).filter(User.email == normalized_email).first()
-    if existing:
-        if existing.org_id != org_id:
-            raise HTTPException(
-                status_code=409,
-                detail="Email is already registered under another organization.",
-            )
+    if existing and existing.org_id != org_id:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "This email already belongs to another organization. "
+                "Cross-organization invites are blocked. Ask the user to use a different email or leave the other organization first."
+            ),
+        )
+
+    pending = db.query(PendingRegistration).filter(PendingRegistration.email == normalized_email).first()
+    if pending and pending.used_at is None and pending.org_id and pending.org_id != org_id:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "This email already has a pending signup or invitation in another organization. "
+                "Cross-organization invites are blocked until that pending request is completed or expires."
+            ),
+        )
+
+    return factory, factory_name, org_id, normalized_email, organization, existing
+
+
+@router.post("/users/invite/preview")
+def preview_invite_user(
+    payload: InviteUserRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    factory, factory_name, org_id, normalized_email, organization, existing = _validate_invite_request(
+        db=db,
+        current_user=current_user,
+        payload=payload,
+    )
+    if existing and existing.org_id == org_id:
         if not factory:
             raise HTTPException(status_code=400, detail="Active factory could not be resolved for this invite.")
         existing_membership = (
@@ -860,57 +997,123 @@ def invite_user(
             )
             .first()
         )
-        if existing_membership:
-            if existing.is_active:
-                raise HTTPException(status_code=409, detail="User already has access to this factory.")
-            existing.is_active = True
-            db.commit()
-            return {
-                "message": "Existing user reactivated for this factory.",
-                "user_code": existing.user_code,
-            }
-        db.add(
-            UserFactoryRole(
-                user_id=existing.id,
-                factory_id=factory.factory_id,
-                org_id=org_id,
-                role=existing.role,
-            )
-        )
-        existing.is_active = True
-        db.commit()
+        if existing_membership and existing.is_active:
+            raise HTTPException(status_code=409, detail="User already has access to this factory.")
+        action = "reactivate_existing_user" if existing_membership else "add_existing_user_to_factory"
         return {
-            "message": f"Existing user added to {factory_name}. Current role kept as {existing.role.value}.",
-            "user_code": existing.user_code,
+            "action": action,
+            "can_send": True,
+            "message": (
+                "This existing user will be reactivated for the current factory."
+                if existing_membership
+                else f"This existing user will be added to {factory_name} immediately when you confirm."
+            ),
+            "existing_user": {
+                "user_id": existing.id,
+                "user_code": existing.user_code,
+                "email": existing.email,
+                "role": existing.role.value,
+            },
         }
-    temp_password = secrets.token_urlsafe(8)
-    user = User(
+
+    if not factory or not factory.factory_code:
+        raise HTTPException(status_code=400, detail="Active factory could not be resolved for this invite.")
+
+    preview = _build_invite_preview(
+        current_user=current_user,
+        organization=organization,
+        factory=factory,
+        payload=payload,
+        verification_link=None,
+    )
+    return {
+        "action": "invite_preview",
+        "can_send": True,
+        "message": "Preview ready. No account will be created until the recipient accepts the invitation.",
+        "delivery_mode": _invite_delivery_mode(),
+        "preview": preview,
+        "invite_summary": preview["summary"],
+        "email": normalized_email,
+    }
+
+
+@router.post("/users/invite", status_code=status.HTTP_201_CREATED)
+def invite_user(
+    request: Request,
+    payload: InviteUserRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    factory, factory_name, org_id, normalized_email, organization, existing = _validate_invite_request(
+        db=db,
+        current_user=current_user,
+        payload=payload,
+    )
+    if existing and existing.org_id == org_id:
+        return _handle_existing_org_invite(
+            db=db,
+            existing=existing,
+            org_id=org_id,
+            factory=factory,
+            factory_name=factory_name,
+        )
+
+    if not factory or not factory.factory_code:
+        raise HTTPException(status_code=400, detail="Active factory could not be resolved for this invite.")
+
+    verification_token = create_or_update_pending_registration(
+        db,
         name=sanitize_text(payload.name, max_length=120, preserve_newlines=False) or payload.name,
         email=normalized_email,
-        password_hash=hash_password(temp_password),
-        role=payload.role,
-        factory_name=factory_name,
-        factory_code=factory_code,
         org_id=org_id,
-        is_active=True,
-        email_verified_at=datetime.now(timezone.utc),
+        invited_by_user_id=current_user.id,
+        password_hash=hash_password(os.urandom(16).hex()),
+        requested_role=payload.role,
+        factory_name=factory_name,
+        company_code=factory.factory_code,
+        phone_number=None,
+        custom_note=_sanitize_invite_note(payload.custom_note),
+        ttl_hours=INVITE_VERIFICATION_TTL_HOURS,
     )
-    user = _persist_user_with_user_code(db, user)
-    if factory and org_id:
-        db.add(
-            UserFactoryRole(
-                user_id=user.id,
-                factory_id=factory.factory_id,
-                org_id=org_id,
-                role=payload.role,
-            )
+    verification_link = _frontend_verification_link_from_request(request, verification_token) or build_verification_link(verification_token)
+    preview = _build_invite_preview(
+        current_user=current_user,
+        organization=organization,
+        factory=factory,
+        payload=payload,
+        verification_link=verification_link,
+    )
+    delivery_mode = _invite_delivery_mode()
+    delivered = True
+    if delivery_mode == "email":
+        delivered = _send_invite_email(
+            to_email=normalized_email,
+            subject=str(preview["subject"]),
+            body=str(preview["text_body"]),
+            html_body=str(preview["html_body"]),
         )
+    if not delivered:
+        db.rollback()
+        raise HTTPException(
+            status_code=503,
+            detail="Invite was prepared, but the verification email could not be delivered. Try again in a moment.",
+        )
+
+    _write_admin_audit(
+        db,
+        actor_id=current_user.id,
+        org_id=org_id,
+        factory_id=factory.factory_id,
+        action="USER_INVITED_PENDING_ACCEPTANCE",
+        details=f"email={normalized_email} role={payload.role.value}",
+        request=request,
+    )
     db.commit()
-    db.refresh(user)
     return {
-        "message": "User invited.",
-        "temp_password": temp_password,
-        "user_code": user.user_code,
+        "message": "Invitation sent. No account will be created until the recipient accepts.",
+        "delivery_mode": delivery_mode,
+        "verification_link": verification_link if delivery_mode == "preview" else None,
+        "preview": preview,
     }
 
 
