@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 
 import { PasswordField } from "@/components/password-field";
-import { PwaReadinessCard } from "@/components/pwa-readiness-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -463,7 +462,10 @@ export default function ProfilePage() {
       });
       setPasswordForm({ old_password: "", new_password: "", confirm_password: "" });
       setShowPasswordForm(false);
-      setSecurityMessage("Password changed.");
+      setSecurityMessage("Password changed. Sign in again.");
+      if (typeof window !== "undefined") {
+        window.location.href = "/login?password_changed=1";
+      }
     } catch (error) {
       if (error instanceof ApiError) {
         setSecurityError(error.message);
@@ -898,10 +900,11 @@ export default function ProfilePage() {
                     <div className="mt-2 text-sm font-semibold text-white">{formatShortDate(profile.last_login)}</div>
                   </div>
                   <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Active Devices</div>
+                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Active Sessions</div>
                     <div className="mt-2 text-sm font-semibold text-white">
-                      {sessionSummary ? sessionSummary.active_devices : "-"}
+                      {sessionSummary ? sessionSummary.active_sessions : "-"}
                     </div>
+                    <div className="mt-2 text-xs text-slate-400">Signed-in browser or app sessions for this account.</div>
                   </div>
                 </div>
 
@@ -925,7 +928,7 @@ export default function ProfilePage() {
                     }}
                     disabled={accountBusy !== null}
                   >
-                    {accountBusy === "logout_all" ? "Logging out..." : "Logout All Devices"}
+                    {accountBusy === "logout_all" ? "Logging out..." : "Logout All Sessions"}
                   </Button>
                 </div>
 
@@ -1017,8 +1020,6 @@ export default function ProfilePage() {
                 </div>
               </CardContent>
             </Card>
-
-            <PwaReadinessCard userId={profile.id} canQueueEntries={canSubmit} />
 
             {showActivity ? (
               <Card className="rounded-[2rem] border-white/10 bg-[rgba(20,24,36,0.9)]">

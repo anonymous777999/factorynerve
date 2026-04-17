@@ -100,6 +100,7 @@ export type PasswordResetValidateResponse = {
 };
 
 export type SessionSummary = {
+  active_sessions: number;
   active_devices: number;
   last_activity?: string | null;
 };
@@ -399,10 +400,12 @@ export async function changePassword(payload: {
   old_password: string;
   new_password: string;
 }): Promise<{ message: string }> {
-  return apiFetch<{ message: string }>("/auth/change-password", {
+  const response = await apiFetch<{ message: string }>("/auth/change-password", {
     method: "POST",
     body: payload,
   });
+  clearSession();
+  return response;
 }
 
 export async function getMe(options?: {

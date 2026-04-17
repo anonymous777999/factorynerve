@@ -29,7 +29,7 @@ function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDivElement
 function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h2
-      className={cn("text-2xl font-semibold tracking-[-0.02em] text-text-primary", className)}
+      className={cn("type-card-title tracking-[-0.02em] text-text-primary", className)}
       {...props}
     />
   );
@@ -37,7 +37,7 @@ function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElem
 
 function CardSubtitle({ className, ...props }: React.HTMLAttributes<HTMLParagraphElement>) {
   return (
-    <p className={cn("text-sm text-text-secondary mt-1", className)} {...props} />
+    <p className={cn("type-body-secondary mt-1 text-text-secondary", className)} {...props} />
   );
 }
 

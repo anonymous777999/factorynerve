@@ -27,6 +27,12 @@ config = get_config()
 _auth_scheme = HTTPBearer(auto_error=False)
 
 
+def _coerce_utc(value: datetime) -> datetime:
+    if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
@@ -50,13 +56,16 @@ def create_access_token(
     org_id: str | None = None,
     factory_id: str | None = None,
 ) -> str:
-    expire = datetime.now(timezone.utc) + timedelta(hours=config.jwt_expire_hours)
+    issued_at = datetime.now(timezone.utc)
+    expire = issued_at + timedelta(hours=config.jwt_expire_hours)
     payload = {
         "sub": str(user_id),
         "org_id": org_id,
         "factory_id": factory_id,
         "role": role,
         "email": email,
+        "iat": int(issued_at.timestamp()),
+        "iat_ms": int(issued_at.timestamp() * 1000),
         "exp": int(expire.timestamp()),
         "jti": secrets.token_urlsafe(16),
     }
@@ -102,6 +111,20 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id, User.is_active.is_(True)).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
+    issued_at_ms = payload.get("iat_ms")
+    if not isinstance(issued_at_ms, (int, float)):
+        issued_at = payload.get("iat")
+        if isinstance(issued_at, (int, float)):
+            issued_at_ms = int(issued_at) * 1000
+    if not isinstance(issued_at_ms, (int, float)):
+        exp = payload.get("exp")
+        if isinstance(exp, (int, float)):
+            issued_at_seconds = int(exp) - int(timedelta(hours=config.jwt_expire_hours).total_seconds())
+            issued_at_ms = issued_at_seconds * 1000
+    if user.session_invalidated_at and isinstance(issued_at_ms, (int, float)):
+        invalidated_at = _coerce_utc(user.session_invalidated_at)
+        if int(issued_at_ms) <= int(invalidated_at.timestamp() * 1000):
+            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session invalidated. Please log in again.")
     if org_id and user.org_id and org_id != user.org_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session invalidated. Please log in again.")
     active_factory_id = None

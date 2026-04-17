@@ -48,6 +48,17 @@
   --text-tertiary: #9ca3af;
   --text-muted: #6b7280;
 
+  /* Mobile Typography */
+  --type-size-screen-title: 22px;
+  --type-size-section-title: 18px;
+  --type-size-card-title: 16px;
+  --type-size-body-primary: 16px;
+  --type-size-body-secondary: 14px;
+  --type-size-caption: 12px;
+  --type-line-heading: 1.2;
+  --type-line-body-tight: 1.4;
+  --type-line-body: 1.5;
+
   /* Borders & Dividers */
   --border: rgba(209, 213, 219, 0.12);
   --border-strong: rgba(209, 213, 219, 0.25);
@@ -95,6 +106,8 @@ body {
     linear-gradient(180deg, #09131d 0%, #101c2c 44%, #09131d 100%);
   color: var(--text-primary);
   font-family: var(--font-body), "DM Sans", sans-serif;
+  font-size: var(--type-size-body-secondary);
+  line-height: var(--type-line-body);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   overflow-x: clip;
@@ -107,6 +120,21 @@ h4,
 h5,
 h6 {
   font-family: var(--font-display), "Sora", sans-serif;
+}
+
+h1 {
+  font-size: var(--type-size-screen-title);
+  line-height: var(--type-line-heading);
+}
+
+h2 {
+  font-size: var(--type-size-section-title);
+  line-height: var(--type-line-heading);
+}
+
+h3 {
+  font-size: var(--type-size-card-title);
+  line-height: var(--type-line-heading);
 }
 
 button,
@@ -205,6 +233,39 @@ input[type="checkbox"] {
 }
 
 @layer utilities {
+  .type-screen-title {
+    font-size: var(--type-size-screen-title);
+    line-height: var(--type-line-heading);
+    font-weight: 600;
+  }
+
+  .type-section-title {
+    font-size: var(--type-size-section-title);
+    line-height: var(--type-line-heading);
+    font-weight: 600;
+  }
+
+  .type-card-title {
+    font-size: var(--type-size-card-title);
+    line-height: var(--type-line-heading);
+    font-weight: 600;
+  }
+
+  .type-body-primary {
+    font-size: var(--type-size-body-primary);
+    line-height: var(--type-line-body);
+  }
+
+  .type-body-secondary {
+    font-size: var(--type-size-body-secondary);
+    line-height: var(--type-line-body);
+  }
+
+.type-caption {
+  font-size: var(--type-size-caption);
+  line-height: var(--type-line-body-tight);
+  }
+
   .app-shell-content {
     min-width: 0;
     overflow-x: clip;
@@ -253,6 +314,17 @@ input[type="checkbox"] {
   .safe-inline-pad {
     padding-left: max(1rem, calc(1rem + env(safe-area-inset-left)));
     padding-right: max(1rem, calc(1rem + env(safe-area-inset-right)));
+  }
+}
+
+@media (min-width: 1024px) {
+  :root {
+    --type-size-screen-title: 32px;
+    --type-size-section-title: 24px;
+    --type-size-card-title: 20px;
+    --type-size-body-primary: 16px;
+    --type-size-body-secondary: 14px;
+    --type-size-caption: 12px;
   }
 }
 

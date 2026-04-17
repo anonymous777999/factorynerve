@@ -49,7 +49,7 @@ export function GoogleAuthButton({
       <Button
         type="button"
         variant="outline"
-        className={cn("h-12 w-full justify-center gap-3 text-sm font-semibold", buttonClassName)}
+        className={cn("h-11 w-full justify-center gap-3 text-sm font-semibold", buttonClassName)}
         onClick={() => void handleClick()}
         onPointerEnter={() => {
           void warmBackendConnection();
@@ -81,8 +81,8 @@ export function GoogleAuthButton({
         </span>
         {loading ? "Connecting to Google..." : label}
       </Button>
-      {hint ? <div className={cn("text-xs leading-5 text-text-muted", hintClassName)}>{hint}</div> : null}
-      {error ? <div className={cn("text-xs leading-5 text-color-warning", errorClassName)}>{error}</div> : null}
+      {hint ? <div className={cn("type-caption text-text-muted", hintClassName)}>{hint}</div> : null}
+      {error ? <div className={cn("type-caption text-color-warning", errorClassName)}>{error}</div> : null}
     </div>
   );
 }

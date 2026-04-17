@@ -14,11 +14,11 @@ const base =
   "inline-flex items-center justify-center rounded-xl border font-semibold tracking-[-0.01em] transition-all duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:cursor-not-allowed disabled:opacity-60";
 
 const sizes: Record<ButtonSize, string> = {
-  xs: "h-8 px-3 text-xs gap-2",
-  sm: "h-9 px-4 text-sm gap-2",
-  md: "h-10 px-5 text-sm gap-2.5",
-  lg: "h-12 px-6 text-base gap-2.5",
-  xl: "h-14 px-8 text-lg gap-3",
+  xs: "h-11 px-3 text-xs leading-[1.2] gap-2",
+  sm: "h-11 px-4 text-[13px] leading-[1.2] gap-2",
+  md: "h-11 px-5 text-sm leading-[1.2] gap-2.5",
+  lg: "h-12 px-6 text-sm leading-[1.2] gap-2.5",
+  xl: "h-12 px-8 text-base leading-[1.2] gap-3",
 };
 
 const variants: Record<ButtonVariant, string> = {

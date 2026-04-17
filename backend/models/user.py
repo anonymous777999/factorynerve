@@ -51,6 +51,9 @@ class User(Base):
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    session_invalidated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
+    )
 
     entries = relationship("Entry", back_populates="user")
     audit_logs = relationship("AuditLog", back_populates="user")

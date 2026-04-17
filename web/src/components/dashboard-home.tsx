@@ -1752,8 +1752,8 @@ export default function DashboardHome() {
       <main className="flex flex-1 items-center justify-center px-6 py-16">
         <Card className="w-full max-w-xl border border-[var(--border)] bg-[var(--card)] shadow-xl">
           <CardHeader>
-            <CardTitle className="text-2xl">DPR.ai Web Frontend</CardTitle>
-            <p className="text-sm text-[var(--muted)]">
+            <CardTitle className="type-section-title">DPR.ai Web Frontend</CardTitle>
+            <p className="type-body-secondary text-[var(--muted)]">
               {t("dashboard.session.missing", "No active cookie session found. Continue to the login screen.")}
             </p>
           </CardHeader>
@@ -1766,7 +1766,7 @@ export default function DashboardHome() {
                 <Button variant="outline">{t("dashboard.action.register", "Register")}</Button>
               </Link>
             </div>
-            {sessionError ? <div className="text-sm text-red-400">{sessionError}</div> : null}
+            {sessionError ? <div className="type-body-secondary text-red-400">{sessionError}</div> : null}
           </CardContent>
         </Card>
       </main>
@@ -1782,12 +1782,12 @@ export default function DashboardHome() {
       <main className="min-h-screen bg-bg px-4 py-4 shell-bottom-clearance md:px-6 lg:py-8">
         <div className="mx-auto max-w-4xl space-y-4">
           {status ? (
-            <div className="rounded-md border border-success/30 bg-success/12 px-4 py-3 text-sm text-success">
+            <div className="type-body-secondary rounded-md border border-success/30 bg-success/12 px-4 py-3 text-success">
               {status}
             </div>
           ) : null}
           {error || sessionError ? (
-            <div className="rounded-md border border-danger/30 bg-danger/12 px-4 py-3 text-sm text-danger">
+            <div className="type-body-secondary rounded-md border border-danger/30 bg-danger/12 px-4 py-3 text-danger">
               {error || sessionError}
             </div>
           ) : null}
@@ -1798,11 +1798,11 @@ export default function DashboardHome() {
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="space-y-3">
                     <div className="flex flex-wrap gap-2">
-                      <span className="surface-pill rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
+                      <span className="surface-pill type-caption rounded-full px-3 py-1 font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
                         {activeFactory?.name || user.factory_name || "Factory"}
                       </span>
                       <span
-                        className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] ${online
+                        className={`type-caption rounded-full border px-3 py-1 font-semibold uppercase tracking-[0.18em] ${online
                           ? "border-success/30 bg-success/12 text-success"
                           : "border-warning/30 bg-warning/12 text-warning"
                           }`}
@@ -1810,17 +1810,17 @@ export default function DashboardHome() {
                         {online ? "Online" : "Offline"}
                       </span>
                       {state.draft ? (
-                        <span className="rounded-full border border-[rgba(77,163,255,0.24)] bg-[rgba(77,163,255,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-100">
+                        <span className="type-caption rounded-full border border-[rgba(77,163,255,0.24)] bg-[rgba(77,163,255,0.12)] px-3 py-1 font-semibold uppercase tracking-[0.18em] text-sky-100">
                           Draft saved
                         </span>
                       ) : null}
                     </div>
                     <div>
-                      <CardTitle className="text-2xl md:text-[2.35rem]">{workerStatus.title}</CardTitle>
-                      <p className="mt-2 max-w-2xl text-sm leading-6 text-text-secondary">{workerStatus.detail}</p>
+                      <CardTitle className="type-screen-title">{workerStatus.title}</CardTitle>
+                      <p className="type-body-secondary mt-2 max-w-2xl text-text-secondary">{workerStatus.detail}</p>
                     </div>
                   </div>
-                  <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] ${workerStatus.tone}`}>
+                  <div className={`type-caption inline-flex items-center gap-2 rounded-full px-4 py-2 font-semibold uppercase tracking-[0.24em] ${workerStatus.tone}`}>
                     <span className="h-2.5 w-2.5 rounded-full bg-current opacity-80" />
                     {workerStatus.label}
                   </div>
@@ -1829,13 +1829,13 @@ export default function DashboardHome() {
               <CardContent className="space-y-6">
                 <div className="grid gap-3 sm:grid-cols-[minmax(0,1.4fr)_minmax(0,0.9fr)]">
                   <div className="surface-panel-soft rounded-[1.4rem] p-4">
-                    <div className="text-xs font-semibold uppercase tracking-[0.22em] text-text-muted">Main Action</div>
+                    <div className="type-caption font-semibold uppercase tracking-[0.22em] text-text-muted">Main Action</div>
                     <Link href={workerPrimaryAction.href} className="mt-4 block">
-                      <Button className="h-12 w-full text-base md:h-14 md:text-lg" size="lg">
+                      <Button className="h-12 w-full md:h-14" size="lg">
                         {workerPrimaryAction.label}
                       </Button>
                     </Link>
-                    <p className="mt-3 text-sm text-text-secondary">{workerPrimaryAction.detail}</p>
+                    <p className="type-body-secondary mt-3 text-text-secondary">{workerPrimaryAction.detail}</p>
                     <div className="mt-4 flex flex-wrap gap-2">
                       <Link href="/attendance">
                         <Button variant="outline" size="sm">Attendance</Button>
@@ -1849,23 +1849,23 @@ export default function DashboardHome() {
                   <div className="grid gap-3 sm:grid-cols-2 sm:content-start">
                     {operatorSummaryCards.map((card) => (
                       <div key={card.label} className="surface-panel-soft rounded-[1.25rem] p-4">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-text-muted">{card.label}</div>
-                        <div className="mt-2 text-xl font-semibold text-text-primary">{card.value}</div>
-                        <div className="mt-1 text-xs leading-5 text-text-secondary">{card.detail}</div>
+                        <div className="type-caption font-semibold uppercase tracking-[0.2em] text-text-muted">{card.label}</div>
+                        <div className="type-section-title mt-2 font-semibold text-text-primary">{card.value}</div>
+                        <div className="type-caption mt-1 text-text-secondary">{card.detail}</div>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold uppercase tracking-[0.22em] text-text-muted">Quick Actions</label>
+                  <label className="type-caption font-semibold uppercase tracking-[0.22em] text-text-muted">Quick Actions</label>
                   <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                     {workerQuickActions.map((action) => (
                       <Link key={action.key} href={action.href}>
                         <Card variant="interactive" className="h-full p-4 text-left">
-                          <p className="text-sm font-semibold text-text-primary">{action.label}</p>
-                          <p className="mt-2 text-xs text-text-secondary">{action.detail}</p>
-                          <p className="mt-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-[rgba(77,163,255,0.92)]">
+                          <p className="type-body-secondary font-semibold text-text-primary">{action.label}</p>
+                          <p className="type-caption mt-2 text-text-secondary">{action.detail}</p>
+                          <p className="type-caption mt-3 font-semibold uppercase tracking-[0.18em] text-[rgba(77,163,255,0.92)]">
                             {action.meta}
                           </p>
                         </Card>
@@ -1884,20 +1884,20 @@ export default function DashboardHome() {
               <CardContent>
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                   <div className="surface-panel-soft rounded-[1.2rem] p-4">
-                    <p className="text-xs text-text-tertiary">Completed</p>
-                    <p className="mt-2 text-2xl font-bold text-text-primary">{completedShifts}</p>
+                    <p className="type-caption text-text-tertiary">Completed</p>
+                    <p className="type-screen-title mt-2 font-bold text-text-primary">{completedShifts}</p>
                   </div>
                   <div className="surface-panel-soft rounded-[1.2rem] p-4">
-                    <p className="text-xs text-text-tertiary">Pending</p>
-                    <p className="mt-2 text-2xl font-bold text-text-primary">{pendingShifts}</p>
+                    <p className="type-caption text-text-tertiary">Pending</p>
+                    <p className="type-screen-title mt-2 font-bold text-text-primary">{pendingShifts}</p>
                   </div>
                   <div className="surface-panel-soft rounded-[1.2rem] p-4">
-                    <p className="text-xs text-text-tertiary">Offline</p>
-                    <p className="mt-2 text-2xl font-bold text-text-primary">{queueCount}</p>
+                    <p className="type-caption text-text-tertiary">Offline</p>
+                    <p className="type-screen-title mt-2 font-bold text-text-primary">{queueCount}</p>
                   </div>
                   <div className="surface-panel-soft rounded-[1.2rem] p-4">
-                    <p className="text-xs text-text-tertiary">Attendance</p>
-                    <p className="mt-2 text-2xl font-bold text-text-primary">
+                    <p className="type-caption text-text-tertiary">Attendance</p>
+                    <p className="type-screen-title mt-2 font-bold text-text-primary">
                       {state.attendanceToday?.can_punch_out ? "Open" : state.attendanceToday?.can_punch_in ? "Ready" : "Set"}
                     </p>
                   </div>
@@ -1921,12 +1921,12 @@ export default function DashboardHome() {
                     <div key={alert.id} className={`rounded-md border px-4 py-3 ${severityTone(alert.severity)}`}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-current">{alert.message}</p>
-                          <p className="mt-1 text-xs opacity-70">{formatDateTime(alert.created_at, locale)}</p>
+                          <p className="type-body-secondary font-medium text-current">{alert.message}</p>
+                          <p className="type-caption mt-1 opacity-70">{formatDateTime(alert.created_at, locale)}</p>
                         </div>
                         <button
                           type="button"
-                          className="text-xs font-semibold text-current underline"
+                          className="type-caption font-semibold text-current underline"
                           onClick={() => handleMarkAlertRead(alert.id)}
                         >
                           Dismiss
@@ -1947,12 +1947,12 @@ export default function DashboardHome() {
     <main className="min-h-screen px-4 py-6 shell-bottom-clearance md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
         {status ? (
-          <div className="rounded-[1.2rem] border border-success/30 bg-success/12 px-4 py-3 text-sm text-success">
+          <div className="type-body-secondary rounded-[1.2rem] border border-success/30 bg-success/12 px-4 py-3 text-success">
             {status}
           </div>
         ) : null}
         {error || sessionError ? (
-          <div className="rounded-[1.2rem] border border-danger/30 bg-danger/12 px-4 py-3 text-sm text-danger">
+          <div className="type-body-secondary rounded-[1.2rem] border border-danger/30 bg-danger/12 px-4 py-3 text-danger">
             {error || sessionError}
           </div>
         ) : null}
@@ -1966,33 +1966,33 @@ export default function DashboardHome() {
                 </div>
                 <div className="min-w-0 space-y-2">
                   <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                    <span className="surface-pill rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[rgba(77,163,255,0.92)] sm:px-3 sm:text-[11px] sm:tracking-[0.22em]">
+                    <span className="surface-pill type-caption rounded-full px-2.5 py-1 font-semibold uppercase tracking-[0.18em] text-[rgba(77,163,255,0.92)] sm:px-3 sm:tracking-[0.22em]">
                       {headerEyebrow}
                     </span>
-                    <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-text-secondary sm:px-3 sm:text-[11px] sm:tracking-[0.18em]">
+                    <span className="type-caption rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-2.5 py-1 font-semibold uppercase tracking-[0.16em] text-text-secondary sm:px-3 sm:tracking-[0.18em]">
                       {activeFactory?.name || user.factory_name || "Factory"}
                     </span>
-                    <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${online ? "border-success/30 bg-success/12 text-success" : "border-warning/30 bg-warning/12 text-warning"} sm:px-3 sm:text-[11px] sm:tracking-[0.18em]`}>
+                    <span className={`type-caption rounded-full border px-2.5 py-1 font-semibold uppercase tracking-[0.16em] ${online ? "border-success/30 bg-success/12 text-success" : "border-warning/30 bg-warning/12 text-warning"} sm:px-3 sm:tracking-[0.18em]`}>
                       {online ? "Network Live" : "Offline Mode"}
                     </span>
                   </div>
                   <div className="min-w-0">
-                    <div className="text-sm text-text-secondary sm:text-lg">Welcome,</div>
-                    <h1 className="max-w-3xl truncate text-2xl font-semibold leading-tight tracking-[-0.03em] text-text-primary sm:text-3xl md:text-[2.8rem]">
+                    <div className="type-body-secondary text-text-secondary">Welcome,</div>
+                    <h1 className="type-screen-title max-w-3xl truncate font-semibold tracking-[-0.03em] text-text-primary">
                       {user.name || "Anonymous"}
                     </h1>
                   </div>
-                  <p className="max-w-2xl text-xs leading-5 text-text-secondary sm:text-sm sm:leading-6">
+                  <p className="type-body-secondary max-w-2xl text-text-secondary">
                     {headerCopy}
                   </p>
                 </div>
               </div>
 
-              <div className={`inline-flex min-h-11 items-center gap-2.5 self-start rounded-full border px-3 py-2 text-xs font-semibold sm:gap-3 sm:px-4 sm:text-sm ${systemHealthToneClasses(systemHealth.tone).chip}`}>
+              <div className={`type-caption inline-flex min-h-11 items-center gap-2.5 self-start rounded-full border px-3 py-2 font-semibold sm:gap-3 sm:px-4 ${systemHealthToneClasses(systemHealth.tone).chip}`}>
                 <span className={`dashboard-status-pulse h-2.5 w-2.5 rounded-full sm:h-3 sm:w-3 ${systemHealthToneClasses(systemHealth.tone).dot}`} />
                 <div>
                   <div>{systemHealth.label}</div>
-                  <div className="text-[11px] font-medium opacity-80 sm:text-xs">{systemHealth.detail}</div>
+                  <div className="type-caption font-medium opacity-80">{systemHealth.detail}</div>
                 </div>
               </div>
             </div>
@@ -2016,34 +2016,34 @@ export default function DashboardHome() {
           <div className="grid gap-3 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)] xl:gap-4">
             <Card variant="elevated" className="overflow-hidden border-[rgba(77,163,255,0.18)]">
               <CardHeader className="pb-0">
-                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
+                <div className="type-caption font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
                   {oversightTitle}
                 </div>
-                <CardTitle className="mt-2.5 text-[1.5rem] leading-tight sm:text-[1.8rem] md:mt-3 md:text-[2.25rem]">
+                <CardTitle className="type-screen-title mt-2.5 md:mt-3">
                   {primaryAction?.title || t("dashboard.primary.fallback_title", "Start the next task")}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4 pt-4 sm:space-y-5 sm:pt-5">
-                <p className="max-w-2xl text-xs leading-5 text-text-secondary sm:text-sm sm:leading-7">
+                <p className="type-body-secondary max-w-2xl text-text-secondary">
                   {oversightCopy}
                 </p>
                 {primaryAction ? (
                   <Link href={primaryAction.href} className="block">
-                    <Button size="xl" className="min-h-12 w-full text-base sm:min-h-14 sm:text-lg">
+                    <Button size="xl" className="min-h-12 w-full text-base sm:min-h-14">
                       {primaryAction.action}
                     </Button>
                   </Link>
                 ) : null}
                 <div className="grid gap-2.5 sm:grid-cols-2 sm:gap-3">
                   <div className="surface-panel-soft rounded-[1.15rem] px-3 py-3 sm:rounded-[1.25rem] sm:px-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Board State</div>
-                    <div className="mt-2 text-xs font-semibold text-text-primary sm:text-sm">
+                    <div className="type-caption font-semibold uppercase tracking-[0.18em] text-text-muted">Board State</div>
+                    <div className="type-body-secondary mt-2 font-semibold text-text-primary">
                       {dashboardLoading ? "Refreshing live data" : calmAttentionBoard ? "Stable and clear" : "Review path active"}
                     </div>
                   </div>
                   <div className="surface-panel-soft rounded-[1.15rem] px-3 py-3 sm:rounded-[1.25rem] sm:px-4">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-muted">Plan Access</div>
-                    <div className="mt-2 text-xs font-semibold text-text-primary sm:text-sm">
+                    <div className="type-caption font-semibold uppercase tracking-[0.18em] text-text-muted">Plan Access</div>
+                    <div className="type-body-secondary mt-2 font-semibold text-text-primary">
                       {state.analyticsLocked || state.anomalyLocked ? "Some analytics locked" : "All core actions available"}
                     </div>
                   </div>
@@ -2057,11 +2057,11 @@ export default function DashboardHome() {
                   key={item.label}
                   className="surface-panel-soft min-w-0 rounded-[1.15rem] p-3 sm:rounded-[1.35rem] sm:p-4"
                 >
-                  <div className="truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-text-muted sm:text-[11px] sm:tracking-[0.2em]">
+                  <div className="type-caption truncate font-semibold uppercase tracking-[0.18em] text-text-muted sm:tracking-[0.2em]">
                     {item.label}
                   </div>
-                  <div className="mt-2 text-xl font-semibold text-text-primary sm:mt-3 sm:text-2xl">{item.value}</div>
-                  <div className="mt-1.5 text-[11px] leading-4 text-text-secondary sm:mt-2 sm:text-xs sm:leading-5">{item.detail}</div>
+                  <div className="type-section-title mt-2 font-semibold text-text-primary sm:mt-3">{item.value}</div>
+                  <div className="type-body-secondary mt-1.5 text-text-secondary sm:mt-2">{item.detail}</div>
                 </div>
               ))}
             </div>
@@ -2071,10 +2071,10 @@ export default function DashboardHome() {
         <section>
           <div className="mb-3 flex items-center justify-between gap-3">
             <div>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
+              <div className="type-caption font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
                 Workflow Health
               </div>
-              <h2 className="mt-1.5 text-xl font-semibold tracking-[-0.03em] text-text-primary sm:mt-2 sm:text-2xl">
+              <h2 className="type-section-title mt-1.5 tracking-[-0.03em] text-text-primary sm:mt-2">
                 Review the live system state
               </h2>
             </div>
@@ -2100,14 +2100,14 @@ export default function DashboardHome() {
                     <div className={`flex h-14 w-14 items-center justify-center rounded-full border ${tone.ring}`}>
                       <card.Icon className="h-6 w-6" />
                     </div>
-                    <span className={`text-[11px] font-semibold uppercase tracking-[0.18em] ${tone.badge}`}>
+                    <span className={`type-caption font-semibold uppercase tracking-[0.18em] ${tone.badge}`}>
                       {card.label}
                     </span>
                   </div>
                   <div className="mt-5">
-                    <div className="text-4xl font-semibold tracking-[-0.05em] text-text-primary">{card.value}</div>
-                    <div className="mt-2 text-sm leading-6 text-text-secondary">{card.detail}</div>
-                    <div className="mt-4 inline-flex min-h-11 items-center gap-2 text-xs font-semibold uppercase tracking-[0.18em] text-[rgba(77,163,255,0.92)]">
+                    <div className="type-screen-title font-semibold tracking-[-0.05em] text-text-primary">{card.value}</div>
+                    <div className="type-body-secondary mt-2 text-text-secondary">{card.detail}</div>
+                    <div className="type-caption mt-4 inline-flex min-h-11 items-center gap-2 font-semibold uppercase tracking-[0.18em] text-[rgba(77,163,255,0.92)]">
                       {card.action}
                       <ArrowUpRight className="h-4 w-4" />
                     </div>
@@ -2120,10 +2120,10 @@ export default function DashboardHome() {
 
         <section>
           <div className="mb-3">
-            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
+            <div className="type-caption font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
               {t("dashboard.section.quick_actions", "Quick Actions")}
             </div>
-            <h2 className="mt-1.5 text-xl font-semibold tracking-[-0.03em] text-text-primary sm:mt-2 sm:text-2xl">
+            <h2 className="type-section-title mt-1.5 tracking-[-0.03em] text-text-primary sm:mt-2">
               Most-used routes for this account
             </h2>
           </div>
@@ -2140,13 +2140,13 @@ export default function DashboardHome() {
                     <div className="flex h-12 w-12 items-center justify-center rounded-[1rem] border border-white/10 bg-[rgba(255,255,255,0.04)] text-[rgba(196,226,255,0.9)]">
                       <action.Icon className="h-6 w-6" />
                     </div>
-                    <span className="rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                    <span className="type-caption rounded-full border border-[rgba(255,255,255,0.08)] bg-[rgba(255,255,255,0.04)] px-3 py-1 font-semibold uppercase tracking-[0.18em] text-text-secondary">
                       {action.meta}
                     </span>
                   </div>
                   <div className="mt-4">
-                    <div className="text-[1.6rem] font-semibold tracking-[-0.04em] text-text-primary sm:text-[1.9rem]">{action.label}</div>
-                    <div className="mt-2 max-w-md text-xs leading-5 text-text-secondary sm:text-sm sm:leading-6">{action.detail}</div>
+                    <div className="type-card-title font-semibold tracking-[-0.04em] text-text-primary">{action.label}</div>
+                    <div className="type-body-secondary mt-2 max-w-md text-text-secondary">{action.detail}</div>
                   </div>
                 </div>
               </Link>
@@ -2157,14 +2157,14 @@ export default function DashboardHome() {
         {activeFactory?.industry_type === "steel" && ["supervisor", "manager", "owner"].includes(user?.role || "") ? (
           <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
             <CardHeader>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
+              <div className="type-caption font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
                 {t("dashboard.steel.section", "Steel Control")}
               </div>
-              <CardTitle className="text-xl">
+              <CardTitle>
                 {t("dashboard.steel.title", "Steel Control is now a separate module")}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm text-[var(--muted)]">
+            <CardContent className="type-body-secondary space-y-3 text-[var(--muted)]">
               <div>
                 {t(
                   "dashboard.steel.copy",
@@ -2196,8 +2196,8 @@ export default function DashboardHome() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <div className="text-sm text-[var(--muted)]">{t("dashboard.unread_alerts", "Unread Alerts")}</div>
-                <CardTitle className="text-xl">{state.alerts.length} {t("dashboard.active", "active")}</CardTitle>
+                <div className="type-body-secondary text-[var(--muted)]">{t("dashboard.unread_alerts", "Unread Alerts")}</div>
+                <CardTitle>{state.alerts.length} {t("dashboard.active", "active")}</CardTitle>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -2209,9 +2209,9 @@ export default function DashboardHome() {
                   >
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                       <div>
-                        <div className="text-xs uppercase tracking-[0.2em] opacity-80">{alert.alert_type}</div>
-                        <div className="mt-1 text-sm font-medium">{alert.message}</div>
-                        <div className="mt-2 text-xs opacity-70">{formatDateTime(alert.created_at, locale)}</div>
+                        <div className="type-caption uppercase tracking-[0.2em] opacity-80">{alert.alert_type}</div>
+                        <div className="type-body-secondary mt-1 font-medium">{alert.message}</div>
+                        <div className="type-caption mt-2 opacity-70">{formatDateTime(alert.created_at, locale)}</div>
                       </div>
                       <Button
                         variant="ghost"
@@ -2224,7 +2224,7 @@ export default function DashboardHome() {
                   </div>
                 ))
               ) : (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                <div className="type-body-secondary rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-[var(--muted)]">
                   {t("dashboard.alert.none", "No unread alerts right now.")}
                 </div>
               )}
@@ -2233,8 +2233,8 @@ export default function DashboardHome() {
 
           <Card>
             <CardHeader>
-              <div className="text-sm text-[var(--muted)]">{t("dashboard.recent_entries", "Recent Entries")}</div>
-              <CardTitle className="text-xl">{t("dashboard.recent_activity", "Latest production activity")}</CardTitle>
+              <div className="type-body-secondary text-[var(--muted)]">{t("dashboard.recent_entries", "Recent Entries")}</div>
+              <CardTitle>{t("dashboard.recent_activity", "Latest production activity")}</CardTitle>
             </CardHeader>
             <CardContent>
               {recentEntries.length ? (
@@ -2244,23 +2244,23 @@ export default function DashboardHome() {
                       <div key={entry.id} className="surface-panel-soft rounded-[1.25rem] p-4">
                         <div className="flex items-start justify-between gap-3">
                           <div>
-                            <div className="text-sm font-semibold text-text-primary">
+                            <div className="type-body-secondary font-semibold text-text-primary">
                               {formatDate(entry.date, locale)} - {formatShift(entry.shift)}
                             </div>
-                            <div className="mt-1 text-xs text-text-secondary">{entry.department || "-"}</div>
+                            <div className="type-caption mt-1 text-text-secondary">{entry.department || "-"}</div>
                           </div>
-                          <Link href={`/entry/${entry.id}`} className="text-xs font-semibold text-[var(--accent)] underline underline-offset-4">
+                          <Link href={`/entry/${entry.id}`} className="type-caption font-semibold text-[var(--accent)] underline underline-offset-4">
                             {t("common.open", "Open")}
                           </Link>
                         </div>
-                        <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-text-secondary sm:grid-cols-3">
+                        <div className="type-caption mt-3 grid grid-cols-2 gap-3 text-text-secondary sm:grid-cols-3">
                           <div>
                             <div className="text-text-muted">Units</div>
-                            <div className="mt-1 text-sm font-semibold text-text-primary">{entry.units_produced} / {entry.units_target}</div>
+                            <div className="type-body-secondary mt-1 font-semibold text-text-primary">{entry.units_produced} / {entry.units_target}</div>
                           </div>
                           <div>
                             <div className="text-text-muted">Downtime</div>
-                            <div className="mt-1 text-sm font-semibold text-text-primary">{entry.downtime_minutes} {t("table.min", "min")}</div>
+                            <div className="type-body-secondary mt-1 font-semibold text-text-primary">{entry.downtime_minutes} {t("table.min", "min")}</div>
                           </div>
                           <div className="col-span-2 sm:col-span-1">
                             <div className="text-text-muted">Submitted</div>
@@ -2411,7 +2411,7 @@ export default function DashboardHome() {
                 <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                   <div>
                     <div className="text-sm text-[var(--muted)]">{t("dashboard.production_trend", "Production Trend")}</div>
-                    <CardTitle className="text-xl">{t("dashboard.last_7_days", "Last 7 Days")}</CardTitle>
+                    <CardTitle>{t("dashboard.last_7_days", "Last 7 Days")}</CardTitle>
                   </div>
                   {state.usage?.plan ? (
                     <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
@@ -2461,7 +2461,7 @@ export default function DashboardHome() {
               <Card>
                 <CardHeader>
                   <div className="text-sm text-[var(--muted)]">{t("dashboard.plan_limits.title", "Plan & Limits")}</div>
-                  <CardTitle className="text-xl">{state.usage?.plan ? `${state.usage.plan} ${t("common.plan", "plan")}` : t("dashboard.usage_summary", "Usage summary")}</CardTitle>
+                  <CardTitle>{state.usage?.plan ? `${state.usage.plan} ${t("common.plan", "plan")}` : t("dashboard.usage_summary", "Usage summary")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
@@ -2530,7 +2530,7 @@ export default function DashboardHome() {
                 <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                   <div>
                     <div className="text-sm text-[var(--muted)]">{t("dashboard.ai.title", "AI Anomaly Radar")}</div>
-                    <CardTitle className="text-xl">{t("dashboard.ai.subtitle", "Factory drift preview")}</CardTitle>
+                    <CardTitle>{t("dashboard.ai.subtitle", "Factory drift preview")}</CardTitle>
                   </div>
                   <Link href={user?.role === "owner" ? "/ai" : "/reports"}>
                     <Button variant="outline">
@@ -2581,7 +2581,7 @@ export default function DashboardHome() {
               <Card>
                 <CardHeader>
                   <div className="text-sm text-[var(--muted)]">{t("dashboard.top_signals", "Top Signals")}</div>
-                  <CardTitle className="text-xl">{t("dashboard.attention.now", "What needs attention right now")}</CardTitle>
+                  <CardTitle>{t("dashboard.attention.now", "What needs attention right now")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {state.anomalyPreview?.items?.length ? (

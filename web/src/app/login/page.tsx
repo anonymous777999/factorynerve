@@ -220,19 +220,19 @@ export default function LoginPage() {
               <span className="industrial-auth-mark">
                 <span>D</span>
               </span>
-              <span className="text-[2.15rem] font-black tracking-[-0.05em] text-white sm:text-[2.35rem]">
+              <span className="type-screen-title font-black tracking-[-0.05em] text-white">
                 DPR.ai
               </span>
             </div>
 
-            <h1 className="mt-9 text-[2.35rem] font-black leading-[1.04] tracking-[-0.065em] text-white sm:text-[3.15rem]">
+            <h1 className="type-screen-title mt-9 font-black tracking-[-0.065em] text-white">
               Secure Factory Sign-In
             </h1>
-            <p className="mx-auto mt-4 max-w-[25rem] text-[1.02rem] leading-8 text-[rgba(214,224,238,0.7)] sm:text-[1.05rem]">
+            <p className="type-body-secondary mx-auto mt-4 max-w-[25rem] text-[rgba(214,224,238,0.7)]">
               Modern industrial AI operations platform dashboard for factory management.
             </p>
             {hasRedirectTarget ? (
-              <p className="mx-auto mt-3 max-w-[22rem] text-[0.82rem] font-medium uppercase tracking-[0.18em] text-[rgba(170,202,244,0.62)]">
+              <p className="type-caption mx-auto mt-3 max-w-[22rem] font-medium uppercase tracking-[0.18em] text-[rgba(170,202,244,0.62)]">
                 Continuing to {nextDestination}
               </p>
             ) : null}
@@ -243,8 +243,8 @@ export default function LoginPage() {
               nextPath={nextPath}
               label="Sign in with Google"
               className="space-y-3"
-              buttonClassName="industrial-google-button h-[3.95rem] rounded-[1rem] border-[rgba(255,255,255,0.22)] bg-[rgba(255,255,255,0.035)] px-4 text-[1.02rem] font-semibold text-white hover:bg-[rgba(255,255,255,0.055)] [&>span:first-child]:h-11 [&>span:first-child]:w-11 [&>span:first-child]:rounded-[0.85rem] [&>span:first-child]:border-white/12 [&>span:first-child]:shadow-[0_10px_24px_rgba(15,23,42,0.32)]"
-              errorClassName="text-center text-[0.84rem] text-[rgba(255,188,188,0.96)]"
+              buttonClassName="industrial-google-button h-11 rounded-[1rem] border-[rgba(255,255,255,0.22)] bg-[rgba(255,255,255,0.035)] px-4 text-sm font-semibold text-white hover:bg-[rgba(255,255,255,0.055)] [&>span:first-child]:h-11 [&>span:first-child]:w-11 [&>span:first-child]:rounded-[0.85rem] [&>span:first-child]:border-white/12 [&>span:first-child]:shadow-[0_10px_24px_rgba(15,23,42,0.32)]"
+              errorClassName="text-center text-[rgba(255,188,188,0.96)]"
             />
           </div>
 
@@ -254,7 +254,7 @@ export default function LoginPage() {
 
           <form onSubmit={onSubmit} className="mt-7 space-y-[1.15rem]">
             <div className="space-y-2.5">
-              <label className="text-[1rem] font-medium text-white">Email</label>
+              <label className="type-body-secondary font-medium text-white">Email</label>
               <Input
                 type="email"
                 autoComplete="email"
@@ -262,12 +262,12 @@ export default function LoginPage() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required
-                className="industrial-auth-input h-[3.65rem] rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-[1.1rem] text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
+                className="industrial-auth-input h-11 rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-base text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
               />
             </div>
 
             <div className="space-y-2.5">
-              <label className="text-[1rem] font-medium text-white">Password</label>
+              <label className="type-body-secondary font-medium text-white">Password</label>
               <div className="relative">
                 <Input
                   type={passwordVisible ? "text" : "password"}
@@ -276,11 +276,11 @@ export default function LoginPage() {
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
                   required
-                  className="industrial-auth-input h-[3.65rem] rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 pr-24 text-[1.1rem] text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
+                  className="industrial-auth-input h-11 rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 pr-24 text-base text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
                 />
                 <button
                   type="button"
-                  className="absolute right-2 top-1/2 h-10 -translate-y-1/2 rounded-[0.8rem] border border-white/10 bg-[rgba(255,255,255,0.06)] px-4 text-[0.95rem] font-semibold text-[rgba(222,231,242,0.82)] transition hover:bg-[rgba(255,255,255,0.1)] hover:text-white"
+                  className="type-body-secondary absolute right-2 top-1/2 h-11 -translate-y-1/2 rounded-[0.8rem] border border-white/10 bg-[rgba(255,255,255,0.06)] px-4 font-semibold text-[rgba(222,231,242,0.82)] transition hover:bg-[rgba(255,255,255,0.1)] hover:text-white"
                   onClick={() => setPasswordVisible((current) => !current)}
                 >
                   {passwordVisible ? "Hide" : "Show"}
@@ -289,19 +289,19 @@ export default function LoginPage() {
             </div>
 
             {notice ? (
-              <div className={`rounded-[1rem] border px-4 py-3 text-sm ${notice.className}`}>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">
+              <div className={`type-body-secondary rounded-[1rem] border px-4 py-3 ${notice.className}`}>
+                <div className="type-caption font-semibold uppercase tracking-[0.24em] text-white/60">
                   Status
                 </div>
-                <div className="mt-2 text-base font-semibold text-white">{notice.title}</div>
-                <div className="mt-1 leading-6">{notice.detail}</div>
+                <div className="type-card-title mt-2 text-white">{notice.title}</div>
+                <div className="type-body-secondary mt-1">{notice.detail}</div>
               </div>
             ) : null}
 
             {canResendVerification ? (
-              <div className="rounded-[1rem] border border-[rgba(245,158,11,0.22)] bg-[rgba(245,158,11,0.08)] px-4 py-4 text-sm text-[rgba(255,226,179,0.88)]">
-                <div className="font-semibold text-white">Need a fresh verification email?</div>
-                <div className="mt-2 leading-6">
+              <div className="type-body-secondary rounded-[1rem] border border-[rgba(245,158,11,0.22)] bg-[rgba(245,158,11,0.08)] px-4 py-4 text-[rgba(255,226,179,0.88)]">
+                <div className="type-card-title text-white">Need a fresh verification email?</div>
+                <div className="type-body-secondary mt-2">
                   Use the same signup inbox, resend verification, then return after the inbox confirms the account.
                 </div>
                 <Button
@@ -309,7 +309,7 @@ export default function LoginPage() {
                   variant="outline"
                   onClick={onResendVerification}
                   disabled={resending}
-                  className="mt-4 h-11 w-full rounded-[0.95rem] border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.04)] text-white hover:bg-[rgba(255,255,255,0.08)]"
+                  className="mt-4 h-11 w-full rounded-[0.95rem] border-[rgba(255,255,255,0.14)] bg-[rgba(255,255,255,0.04)] text-sm text-white hover:bg-[rgba(255,255,255,0.08)]"
                 >
                   {resending ? "Sending..." : "Resend Verification Email"}
                 </Button>
@@ -317,7 +317,7 @@ export default function LoginPage() {
             ) : null}
 
             <div className="pt-0.5">
-              <Link href="/forgot-password" className="text-[0.97rem] text-[rgba(182,212,255,0.92)] underline-offset-4 hover:text-white hover:underline">
+              <Link href="/forgot-password" className="type-body-secondary text-[rgba(182,212,255,0.92)] underline-offset-4 hover:text-white hover:underline">
                 Forgot password?
               </Link>
             </div>
@@ -325,7 +325,7 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="industrial-auth-submit h-[3.85rem] w-full rounded-[1rem] text-[1.15rem] font-bold tracking-[-0.01em]"
+              className="industrial-auth-submit h-11 w-full rounded-[1rem] text-base font-bold tracking-[-0.01em]"
             >
               {loading ? (
                 <span className="inline-flex items-center gap-2">
@@ -344,13 +344,13 @@ export default function LoginPage() {
                 <span className="industrial-auth-feature-icon">
                   <Icon className="h-5 w-5" />
                 </span>
-                <div className="mt-3 text-[1rem] font-semibold text-white">{title}</div>
-                <div className="mt-1 text-[0.92rem] text-[rgba(193,204,218,0.64)]">{caption}</div>
+                <div className="type-card-title mt-3 text-white">{title}</div>
+                <div className="type-body-secondary mt-1 text-[rgba(193,204,218,0.64)]">{caption}</div>
               </div>
             ))}
           </div>
 
-          <div className="mt-8 text-center text-[1.02rem] text-[rgba(214,224,238,0.76)]">
+          <div className="type-body-secondary mt-8 text-center text-[rgba(214,224,238,0.76)]">
             New here?{" "}
             <Link href="/register" className="font-medium text-[rgba(195,221,255,0.96)] underline underline-offset-4 hover:text-white">
               Create an account

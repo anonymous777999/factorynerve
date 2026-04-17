@@ -186,19 +186,19 @@ export default function RegisterPage() {
               <span className="industrial-auth-mark">
                 <span>D</span>
               </span>
-              <span className="text-[2.15rem] font-black tracking-[-0.05em] text-white sm:text-[2.35rem]">
+              <span className="type-screen-title font-black tracking-[-0.05em] text-white">
                 DPR.ai
               </span>
             </div>
 
-            <h1 className="mt-9 text-[2.2rem] font-black leading-[1.04] tracking-[-0.065em] text-white sm:text-[2.9rem]">
+            <h1 className="type-screen-title mt-9 font-black tracking-[-0.065em] text-white">
               Create Factory Access
             </h1>
-            <p className="mx-auto mt-4 max-w-[28rem] text-[1rem] leading-8 text-[rgba(214,224,238,0.7)] sm:text-[1.04rem]">
+            <p className="type-body-secondary mx-auto mt-4 max-w-[28rem] text-[rgba(214,224,238,0.7)]">
               Set up a verified attendance account for the factory team, then unlock sign-in after inbox confirmation.
             </p>
             {hasRedirectTarget ? (
-              <p className="mx-auto mt-3 max-w-[24rem] text-[0.82rem] font-medium uppercase tracking-[0.18em] text-[rgba(170,202,244,0.62)]">
+              <p className="type-caption mx-auto mt-3 max-w-[24rem] font-medium uppercase tracking-[0.18em] text-[rgba(170,202,244,0.62)]">
                 After verification, continue to {nextDestination}
               </p>
             ) : null}
@@ -207,36 +207,36 @@ export default function RegisterPage() {
           {success ? (
             <div className="mt-8 space-y-4">
               {successState ? (
-                <div className={`rounded-[1rem] border px-4 py-4 text-sm ${successState.className}`}>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/70">
+                <div className={`type-body-secondary rounded-[1rem] border px-4 py-4 ${successState.className}`}>
+                  <div className="type-caption font-semibold uppercase tracking-[0.24em] text-white/70">
                     Signup status
                   </div>
-                  <div className="mt-2 text-base font-semibold text-white">{successState.title}</div>
-                  <div className="mt-1 leading-6">{successState.detail}</div>
+                  <div className="type-card-title mt-2 text-white">{successState.title}</div>
+                  <div className="type-body-secondary mt-1">{successState.detail}</div>
                 </div>
               ) : null}
 
-              <div className="rounded-[1rem] border border-white/10 bg-[rgba(255,255,255,0.04)] px-4 py-4 text-sm text-[rgba(219,227,239,0.84)]">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/60">
+              <div className="type-body-secondary rounded-[1rem] border border-white/10 bg-[rgba(255,255,255,0.04)] px-4 py-4 text-[rgba(219,227,239,0.84)]">
+                <div className="type-caption font-semibold uppercase tracking-[0.24em] text-white/60">
                   Next step
                 </div>
-                <div className="mt-2 leading-6">
+                <div className="type-body-secondary mt-2">
                   We saved the signup for <span className="font-semibold text-white">{email}</span>. The account stays locked until that inbox opens the verification link.
                 </div>
               </div>
 
               {success.verification_link ? (
-                <div className="rounded-[1rem] border border-[rgba(96,165,250,0.24)] bg-[rgba(96,165,250,0.08)] px-4 py-4 text-sm text-[rgba(214,229,247,0.88)]">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-white/70">
+                <div className="type-body-secondary rounded-[1rem] border border-[rgba(96,165,250,0.24)] bg-[rgba(96,165,250,0.08)] px-4 py-4 text-[rgba(214,229,247,0.88)]">
+                  <div className="type-caption font-semibold uppercase tracking-[0.24em] text-white/70">
                     Preview link
                   </div>
                   <a
                     href={success.verification_link}
-                    className="mt-3 inline-flex h-11 items-center justify-center rounded-[0.9rem] border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.06)] px-4 font-semibold text-white transition hover:bg-[rgba(255,255,255,0.09)]"
+                    className="type-body-secondary mt-3 inline-flex h-11 items-center justify-center rounded-[0.9rem] border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.06)] px-4 font-semibold text-white transition hover:bg-[rgba(255,255,255,0.09)]"
                   >
                     Open verification page
                   </a>
-                  <div className="mt-3 break-all text-xs text-[rgba(208,220,236,0.66)]">{success.verification_link}</div>
+                  <div className="type-caption mt-3 break-all text-[rgba(208,220,236,0.66)]">{success.verification_link}</div>
                 </div>
               ) : null}
 
@@ -252,14 +252,14 @@ export default function RegisterPage() {
                 </Button>
                 <Link
                   href="/login"
-                  className="inline-flex h-12 items-center justify-center rounded-[0.95rem] border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.03)] px-4 text-sm font-semibold text-[rgba(195,221,255,0.96)] transition hover:bg-[rgba(255,255,255,0.08)] hover:text-white"
+                  className="type-body-secondary inline-flex h-12 items-center justify-center rounded-[0.95rem] border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.03)] px-4 font-semibold text-[rgba(195,221,255,0.96)] transition hover:bg-[rgba(255,255,255,0.08)] hover:text-white"
                 >
                   Back to sign in
                 </Link>
               </div>
 
               {resendStatus ? (
-                <div className="rounded-[1rem] border border-white/10 bg-[rgba(255,255,255,0.04)] px-4 py-3 text-sm text-[rgba(215,223,236,0.78)]">
+                <div className="type-body-secondary rounded-[1rem] border border-white/10 bg-[rgba(255,255,255,0.04)] px-4 py-3 text-[rgba(215,223,236,0.78)]">
                   {resendStatus}
                 </div>
               ) : null}
@@ -272,8 +272,8 @@ export default function RegisterPage() {
                   label="Continue with Google"
                   className="space-y-3"
                   hint="Use Google when you want the faster workspace-owner route instead of worker signup."
-                  buttonClassName="industrial-google-button h-[3.95rem] rounded-[1rem] border-[rgba(255,255,255,0.22)] bg-[rgba(255,255,255,0.035)] px-4 text-[1.02rem] font-semibold text-white hover:bg-[rgba(255,255,255,0.055)] [&>span:first-child]:h-11 [&>span:first-child]:w-11 [&>span:first-child]:rounded-[0.85rem] [&>span:first-child]:border-white/12 [&>span:first-child]:shadow-[0_10px_24px_rgba(15,23,42,0.32)]"
-                  hintClassName="text-center text-[0.82rem] text-[rgba(202,213,228,0.62)]"
+                  buttonClassName="industrial-google-button h-11 rounded-[1rem] border-[rgba(255,255,255,0.22)] bg-[rgba(255,255,255,0.035)] px-4 text-sm font-semibold text-white hover:bg-[rgba(255,255,255,0.055)] [&>span:first-child]:h-11 [&>span:first-child]:w-11 [&>span:first-child]:rounded-[0.85rem] [&>span:first-child]:border-white/12 [&>span:first-child]:shadow-[0_10px_24px_rgba(15,23,42,0.32)]"
+                  hintClassName="text-center text-[rgba(202,213,228,0.62)]"
                 />
               </div>
 
@@ -284,74 +284,74 @@ export default function RegisterPage() {
               <form onSubmit={onSubmit} className="mt-7 space-y-[1.15rem]">
                 <div className="grid gap-[1.15rem] sm:grid-cols-2">
                   <div className="space-y-2.5">
-                    <label className="text-[1rem] font-medium text-white">Full name</label>
+                    <label className="type-body-secondary font-medium text-white">Full name</label>
                     <Input
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required
-                      className="industrial-auth-input h-[3.65rem] rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-[1.05rem] text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
+                      className="industrial-auth-input h-11 rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-base text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
                     />
                   </div>
 
                   <div className="space-y-2.5">
-                    <label className="text-[1rem] font-medium text-white">Email</label>
+                    <label className="type-body-secondary font-medium text-white">Email</label>
                     <Input
                       type="email"
                       autoComplete="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="industrial-auth-input h-[3.65rem] rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-[1.05rem] text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
+                      className="industrial-auth-input h-11 rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-base text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
                     />
                   </div>
 
                   <div className="space-y-2.5">
-                    <label className="text-[1rem] font-medium text-white">Password</label>
+                    <label className="type-body-secondary font-medium text-white">Password</label>
                     <Input
                       type="password"
                       autoComplete="new-password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      className="industrial-auth-input h-[3.65rem] rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-[1.05rem] text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
+                      className="industrial-auth-input h-11 rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-base text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
                     />
-                    <p className="text-[0.8rem] leading-5 text-[rgba(198,209,223,0.58)]">
+                    <p className="type-caption text-[rgba(198,209,223,0.58)]">
                       Use 12+ characters with mixed case, number, and symbol.
                     </p>
                   </div>
 
                   <div className="space-y-2.5">
-                    <label className="text-[1rem] font-medium text-white">Account type</label>
+                    <label className="type-body-secondary font-medium text-white">Account type</label>
                     <Input
                       value="Attendance worker access"
                       readOnly
                       aria-readonly
-                      className="industrial-auth-input h-[3.65rem] rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-[1.05rem] text-[rgba(199,210,226,0.72)]"
+                      className="industrial-auth-input h-11 rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-base text-[rgba(199,210,226,0.72)]"
                     />
                   </div>
 
                   <div className="space-y-2.5">
-                    <label className="text-[1rem] font-medium text-white">Factory name</label>
+                    <label className="type-body-secondary font-medium text-white">Factory name</label>
                     <Input
                       value={factoryName}
                       onChange={(e) => setFactoryName(e.target.value)}
                       required
-                      className="industrial-auth-input h-[3.65rem] rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-[1.05rem] text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
+                      className="industrial-auth-input h-11 rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-base text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
                     />
                   </div>
 
                   <div className="space-y-2.5">
-                    <label className="text-[1rem] font-medium text-white">Company code</label>
+                    <label className="type-body-secondary font-medium text-white">Company code</label>
                     <Input
                       value={companyCode}
                       onChange={(e) => setCompanyCode(e.target.value)}
-                      className="industrial-auth-input h-[3.65rem] rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-[1.05rem] text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
+                      className="industrial-auth-input h-11 rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-base text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2.5">
-                  <label className="text-[1rem] font-medium text-white">Phone number</label>
+                  <label className="type-body-secondary font-medium text-white">Phone number</label>
                   <Input
                     type="tel"
                     autoComplete="tel"
@@ -359,12 +359,12 @@ export default function RegisterPage() {
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     placeholder="+91 98765 43210"
-                    className="industrial-auth-input h-[3.65rem] rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-[1.05rem] text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
+                    className="industrial-auth-input h-11 rounded-[0.95rem] border-[rgba(255,255,255,0.17)] bg-[rgba(14,20,31,0.7)] px-4 text-base text-[rgba(233,239,246,0.96)] placeholder:text-[rgba(255,255,255,0.24)]"
                   />
                 </div>
 
                 {error ? (
-                  <div className="rounded-[1rem] border border-[rgba(239,68,68,0.24)] bg-[rgba(239,68,68,0.10)] px-4 py-3 text-sm text-[rgba(255,188,188,0.96)]">
+                  <div className="type-body-secondary rounded-[1rem] border border-[rgba(239,68,68,0.24)] bg-[rgba(239,68,68,0.10)] px-4 py-3 text-[rgba(255,188,188,0.96)]">
                     {error}
                   </div>
                 ) : null}
@@ -372,7 +372,7 @@ export default function RegisterPage() {
                 <Button
                   type="submit"
                   disabled={loading}
-                  className="industrial-auth-submit h-[3.85rem] w-full rounded-[1rem] text-[1.15rem] font-bold tracking-[-0.01em]"
+                  className="industrial-auth-submit h-11 w-full rounded-[1rem] text-base font-bold tracking-[-0.01em]"
                 >
                   {loading ? (
                     <span className="inline-flex items-center gap-2">
@@ -384,7 +384,7 @@ export default function RegisterPage() {
                   )}
                 </Button>
 
-                <div className="text-center text-[1rem] text-[rgba(214,224,238,0.76)]">
+                <div className="type-body-secondary text-center text-[rgba(214,224,238,0.76)]">
                   Already have an account?{" "}
                   <Link href="/login" className="font-medium text-[rgba(195,221,255,0.96)] underline underline-offset-4 hover:text-white">
                     Sign in
@@ -400,8 +400,8 @@ export default function RegisterPage() {
                 <span className="industrial-auth-feature-icon">
                   <Icon className="h-5 w-5" />
                 </span>
-                <div className="mt-3 text-[1rem] font-semibold text-white">{title}</div>
-                <div className="mt-1 text-[0.92rem] text-[rgba(193,204,218,0.64)]">{caption}</div>
+                <div className="type-card-title mt-3 text-white">{title}</div>
+                <div className="type-body-secondary mt-1 text-[rgba(193,204,218,0.64)]">{caption}</div>
               </div>
             ))}
           </div>

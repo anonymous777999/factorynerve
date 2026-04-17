@@ -362,6 +362,7 @@ class ActiveWorkflowTemplateResponse(BaseModel):
 
 
 class SessionSummaryResponse(BaseModel):
+    active_sessions: int
     active_devices: int
     last_activity: datetime | None = None
 
@@ -627,7 +628,17 @@ def _revoke_refresh_token(db: Session, *, token: str, user_id: int) -> None:
     record = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
     if record and record.user_id == user_id and record.revoked_at is None:
         record.revoked_at = datetime.now(timezone.utc)
-        db.add(record)
+    db.add(record)
+
+
+def _invalidate_all_user_sessions(db: Session, *, user: User, invalidated_at: datetime | None = None) -> datetime:
+    now = invalidated_at or datetime.now(timezone.utc)
+    user.session_invalidated_at = now
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == user.id,
+        RefreshToken.revoked_at.is_(None),
+    ).update({"revoked_at": now}, synchronize_session=False)
+    return now
 
 
 def _resolve_active_factory_id(
@@ -1091,12 +1102,7 @@ def logout_all_devices(
         if not existing:
             db.add(TokenBlacklist(token_jti=jti, user_id=current_user.id, expires_at=exp))
 
-    now = datetime.now(timezone.utc)
-    db.query(RefreshToken).filter(
-        RefreshToken.user_id == current_user.id,
-        RefreshToken.revoked_at.is_(None),
-        RefreshToken.expires_at > now,
-    ).update({"revoked_at": now}, synchronize_session=False)
+    _invalidate_all_user_sessions(db, user=current_user)
     clear_auth_cookies(response=response)
 
     _log_auth_event(
@@ -1451,11 +1457,7 @@ def password_reset(
     now = datetime.now(timezone.utc)
     user.password_hash = hash_password(payload.new_password)
     record.used_at = now
-
-    db.query(RefreshToken).filter(
-        RefreshToken.user_id == user.id,
-        RefreshToken.revoked_at.is_(None),
-    ).update({"revoked_at": now}, synchronize_session=False)
+    _invalidate_all_user_sessions(db, user=user, invalidated_at=now)
 
     _log_auth_event(
         db,
@@ -1610,8 +1612,10 @@ def get_session_summary(
         if candidate and (last_activity is None or candidate > last_activity):
             last_activity = candidate
 
+    active_sessions = len(active_tokens)
     return SessionSummaryResponse(
-        active_devices=len(active_tokens),
+        active_sessions=active_sessions,
+        active_devices=active_sessions,
         last_activity=last_activity,
     )
 
@@ -1756,6 +1760,7 @@ def delete_profile_photo(
 def change_password(
     payload: ChangePasswordRequest,
     request: Request,
+    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
@@ -1763,10 +1768,13 @@ def change_password(
         raise HTTPException(status_code=401, detail="Invalid credentials.")
     try:
         validate_password_strength(payload.new_password)
+        now = datetime.now(timezone.utc)
         current_user.password_hash = hash_password(payload.new_password)
+        _invalidate_all_user_sessions(db, user=current_user, invalidated_at=now)
+        clear_auth_cookies(response=response)
         _log_auth_event(db, "PASSWORD_CHANGED", "User changed password.", current_user.id, request)
         db.commit()
-        return {"message": "Password changed successfully."}
+        return {"message": "Password changed. Sign in again."}
     except ValueError as error:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(error)) from error

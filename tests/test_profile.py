@@ -69,6 +69,20 @@ def test_change_password_allows_new_login(http_client):
     )
     assert new_login.status_code == HTTPStatus.OK, new_login.text
 
+    me_after_change = http_client.get("/auth/me", headers=headers)
+    assert me_after_change.status_code == HTTPStatus.UNAUTHORIZED, me_after_change.text
+
+
+def test_logout_all_invalidates_existing_access_token(http_client):
+    user = register_user(http_client, role="operator")
+    headers = _auth_headers(user["access_token"])
+
+    logout_all = http_client.post("/auth/logout-all", headers=headers)
+    assert logout_all.status_code == HTTPStatus.OK, logout_all.text
+
+    me_after_logout_all = http_client.get("/auth/me", headers=headers)
+    assert me_after_logout_all.status_code == HTTPStatus.UNAUTHORIZED, me_after_logout_all.text
+
 
 def test_profile_photo_upload_and_remove(http_client):
     user = register_user(http_client, role="operator")
