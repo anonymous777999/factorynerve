@@ -353,7 +353,7 @@ def test_manager_cannot_read_billing_routes(http_client):
     assert config_response.status_code == HTTPStatus.FORBIDDEN, config_response.text
 
 
-def test_admin_can_read_billing_but_cannot_write(http_client):
+def test_admin_can_read_billing_and_checkout_gate_is_not_forbidden(http_client):
     user = register_user(http_client, role="admin")
     headers = {"Authorization": f"Bearer {user['access_token']}"}
 
@@ -367,7 +367,7 @@ def test_admin_can_read_billing_but_cannot_write(http_client):
     assert invoices_response.status_code == HTTPStatus.OK, invoices_response.text
     assert config_response.status_code == HTTPStatus.OK, config_response.text
     assert downgrade_response.status_code == HTTPStatus.FORBIDDEN, downgrade_response.text
-    assert order_response.status_code == HTTPStatus.FORBIDDEN, order_response.text
+    assert order_response.status_code != HTTPStatus.FORBIDDEN, order_response.text
 
 
 def test_owner_can_schedule_and_cancel_downgrade(http_client):

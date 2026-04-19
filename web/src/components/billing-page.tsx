@@ -142,7 +142,8 @@ function BillingPageInner() {
   }, [user]);
 
   const canWriteBilling = useMemo(() => {
-    return (user?.org_role || user?.role || "") === "owner";
+    const role = user?.org_role || user?.role || "";
+    return role === "admin" || role === "owner";
   }, [user]);
 
   useEffect(() => {
@@ -1006,7 +1007,7 @@ function BillingPageInner() {
                 </div>
                 {!canWriteBilling ? (
                   <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] p-4 text-sm text-[var(--muted)]">
-                    Read-only mode: admins can review billing status and invoices, while owners handle checkout and plan changes.
+                    Read-only mode: only admins and owners can handle checkout and plan changes.
                   </div>
                 ) : null}
 
@@ -1030,7 +1031,7 @@ function BillingPageInner() {
                         ? "Sales-Assisted Plan"
                         : canWriteBilling
                           ? "Pay with Razorpay"
-                          : "Owner Access Required"}
+                          : "Admin or Owner Access Required"}
                   </Button>
                   <div className="text-xs text-[var(--muted)]">
                     This estimate uses the backend billing quote, active OCR-pack deductions, and the real active user and factory counts for this organization.

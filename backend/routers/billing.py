@@ -68,6 +68,15 @@ def _require_billing_owner(current_user: User) -> None:
         raise HTTPException(status_code=403, detail="Access denied.")
 
 
+def _require_billing_checkout_access(current_user: User) -> None:
+    role = _org_level_role(current_user)
+    if role not in {UserRole.ADMIN, UserRole.OWNER} and current_user.role not in {
+        UserRole.ADMIN,
+        UserRole.OWNER,
+    }:
+        raise HTTPException(status_code=403, detail="Access denied.")
+
+
 class CreateOrderRequest(BaseModel):
     plan: str = Field(default="starter")
     billing_cycle: str = Field(default="monthly")
@@ -628,7 +637,7 @@ def create_order(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    _require_billing_owner(current_user)
+    _require_billing_checkout_access(current_user)
     normalized_plan = normalize_plan(payload.plan)
     if is_sales_only_plan(normalized_plan):
         raise HTTPException(status_code=400, detail=f"{get_plan(normalized_plan).get('name', 'This plan')} requires a custom sales quote.")
