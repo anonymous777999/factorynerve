@@ -100,6 +100,12 @@ services:
         value: "false"
       - key: SMTP_DRY_RUN
         value: "false"
+      - key: RAZORPAY_KEY_ID
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        sync: false
+      - key: RAZORPAY_WEBHOOK_SECRET
+        sync: false
       - key: EMAIL_VERIFICATION_EMAIL_SUBJECT
         value: Verify your FactoryNerve email
       - key: PASSWORD_RESET_EMAIL_SUBJECT
