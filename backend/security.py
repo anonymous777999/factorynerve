@@ -111,6 +111,7 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id, User.is_active.is_(True)).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
+    org_role = user.role
     issued_at_ms = payload.get("iat_ms")
     if not isinstance(issued_at_ms, (int, float)):
         issued_at = payload.get("iat")
@@ -146,6 +147,7 @@ def get_current_user(
         active_factory_id = factory_id
         active_org_id = membership.org_id or user.org_id
         effective_role = membership.role
+    setattr(user, "org_role", org_role)
     set_committed_value(user, "role", effective_role)
     setattr(user, "active_org_id", active_org_id)
     setattr(user, "active_factory_id", active_factory_id)

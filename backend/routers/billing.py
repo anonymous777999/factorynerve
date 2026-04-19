@@ -56,6 +56,18 @@ PAID_ORDER_STATUSES = {"paid", "captured"}
 RETRYABLE_ORDER_STATUSES = {"failed", "cancelled", "expired"}
 
 
+def _org_level_role(current_user: User) -> UserRole:
+    role = getattr(current_user, "org_role", None) or current_user.role
+    if isinstance(role, UserRole):
+        return role
+    return UserRole(str(role))
+
+
+def _require_billing_owner(current_user: User) -> None:
+    if _org_level_role(current_user) != UserRole.OWNER and current_user.role != UserRole.OWNER:
+        raise HTTPException(status_code=403, detail="Access denied.")
+
+
 class CreateOrderRequest(BaseModel):
     plan: str = Field(default="starter")
     billing_cycle: str = Field(default="monthly")
@@ -587,7 +599,7 @@ def schedule_plan_downgrade(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.OWNER)
+    _require_billing_owner(current_user)
     normalized = normalize_plan(payload.plan)
     if not normalized:
         raise HTTPException(status_code=400, detail="Invalid plan.")
@@ -604,7 +616,7 @@ def cancel_plan_downgrade(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.OWNER)
+    _require_billing_owner(current_user)
     cancel_scheduled_downgrade(db, user_id=current_user.id)
     db.commit()
     return {"message": "Scheduled downgrade cancelled."}
@@ -616,7 +628,7 @@ def create_order(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.OWNER)
+    _require_billing_owner(current_user)
     normalized_plan = normalize_plan(payload.plan)
     if is_sales_only_plan(normalized_plan):
         raise HTTPException(status_code=400, detail=f"{get_plan(normalized_plan).get('name', 'This plan')} requires a custom sales quote.")

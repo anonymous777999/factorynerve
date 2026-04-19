@@ -7,6 +7,7 @@ export type CurrentUser = {
   user_code: number;
   email: string;
   role: string;
+  org_role?: string | null;
   name: string;
   profile_picture?: string | null;
   factory_name: string;

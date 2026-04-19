@@ -137,12 +137,12 @@ function BillingPageInner() {
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
   const canViewBilling = useMemo(() => {
-    const role = user?.role || "";
+    const role = user?.org_role || user?.role || "";
     return role === "admin" || role === "owner";
   }, [user]);
 
   const canWriteBilling = useMemo(() => {
-    return (user?.role || "") === "owner";
+    return (user?.org_role || user?.role || "") === "owner";
   }, [user]);
 
   useEffect(() => {

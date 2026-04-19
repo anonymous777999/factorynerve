@@ -14,7 +14,8 @@ from starlette.requests import Request
 from backend.database import SessionLocal, init_db
 from backend.models.organization import Organization
 from backend.models.payment_order import PaymentOrder
-from backend.models.user import User
+from backend.models.user import User, UserRole
+from backend.models.user_factory_role import UserFactoryRole
 from backend.routers.billing import CreateOrderRequest, create_order, razorpay_webhook
 from tests.utils import register_user, unique_email
 
@@ -190,6 +191,65 @@ def test_create_order_enforces_real_org_footprint(http_client, monkeypatch):
 
     assert raised.value.status_code == HTTPStatus.BAD_REQUEST
     assert "currently has 9 active users" in str(raised.value.detail).lower()
+
+
+def test_org_owner_can_create_order_even_if_factory_role_is_admin(http_client, monkeypatch):
+    user = register_user(http_client, role="owner")
+
+    class DummyOrderApi:
+        def create(self, payload):
+            return {
+                "id": "order_owner_ok_123",
+                "amount": payload["amount"],
+                "currency": payload["currency"],
+                "receipt": payload["receipt"],
+                "status": "created",
+            }
+
+    class DummyClient:
+        def __init__(self, auth):
+            self.order = DummyOrderApi()
+
+    monkeypatch.setenv("RAZORPAY_KEY_ID", "rzp_test_key")
+    monkeypatch.setenv("RAZORPAY_KEY_SECRET", "rzp_test_secret")
+    monkeypatch.setitem(sys.modules, "razorpay", types.SimpleNamespace(Client=DummyClient))
+
+    init_db()
+    db = SessionLocal()
+    try:
+        current_user = db.query(User).filter(User.email == user["email"]).first()
+        assert current_user is not None
+        membership = (
+            db.query(UserFactoryRole)
+            .filter(UserFactoryRole.user_id == current_user.id)
+            .order_by(UserFactoryRole.assigned_at.asc())
+            .first()
+        )
+        assert membership is not None
+        membership.role = UserRole.ADMIN
+        db.add(membership)
+        db.commit()
+
+        current_user = db.query(User).filter(User.email == user["email"]).first()
+        assert current_user is not None
+        current_user.role = UserRole.ADMIN
+        setattr(current_user, "org_role", UserRole.OWNER)
+
+        response = create_order(
+            CreateOrderRequest(
+                plan="starter",
+                billing_cycle="monthly",
+                requested_users=1,
+                requested_factories=1,
+                currency="INR",
+            ),
+            db=db,
+            current_user=current_user,
+        )
+    finally:
+        db.close()
+
+    assert response["order"]["id"] == "order_owner_ok_123"
 
 
 def test_webhook_amount_mismatch_marks_order_and_skips_upgrade(http_client, monkeypatch):

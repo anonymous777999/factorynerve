@@ -571,6 +571,7 @@ def _build_auth_context(
 ) -> dict[str, object]:
     factories = _get_factory_access(db, user_id=user.id)
     active_factory = next((item for item in factories if item.factory_id == active_factory_id), None)
+    setattr(user, "org_role", getattr(user, "org_role", user.role))
     organization = _get_org_context(
         db,
         org_id=user.org_id,

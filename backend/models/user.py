@@ -89,6 +89,7 @@ class UserReadSchema(UserBaseSchema):
     id: int
     user_code: int
     is_active: bool
+    org_role: UserRole | None = None
     email_verified_at: datetime | None = None
     verification_sent_at: datetime | None = None
     created_at: datetime
