@@ -168,6 +168,10 @@ export type BillingStatus = {
     provider?: string | null;
     current_period_end_at?: string | null;
   }>;
+  footprint?: {
+    active_users: number;
+    active_factories: number;
+  };
   usage?: UsageSummary | null;
 };
 

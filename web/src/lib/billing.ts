@@ -61,6 +61,19 @@ export type BillingOrder = {
   idempotent?: boolean;
 };
 
+export type BillingOrderStatus = {
+  order_id: string;
+  status: string;
+  plan: string;
+  amount: number;
+  currency: string;
+  created_at?: string | null;
+  is_paid: boolean;
+  is_terminal: boolean;
+  is_plan_active: boolean;
+  current_plan: string;
+};
+
 export async function getBillingStatus() {
   return apiFetch<BillingStatus>("/billing/status", {}, { cacheTtlMs: 20_000 });
 }
@@ -91,6 +104,12 @@ export async function createBillingOrder(
       addon_ids: addonIds,
       addon_quantities: addonQuantities,
     },
+  });
+}
+
+export async function getBillingOrderStatus(orderId: string) {
+  return apiFetch<BillingOrderStatus>(`/billing/orders/${encodeURIComponent(orderId)}`, {}, {
+    cacheTtlMs: 2_000,
   });
 }
 

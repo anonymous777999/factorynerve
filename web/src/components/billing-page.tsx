@@ -6,12 +6,12 @@ import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
 import {
   cancelScheduledDowngrade,
   createBillingOrder,
+  getBillingOrderStatus,
   getBillingConfig,
   getBillingStatus,
   listInvoices,
@@ -133,9 +133,8 @@ function BillingPageInner() {
   const [overridePlan, setOverridePlan] = useState("free");
   const [checkoutPlan, setCheckoutPlan] = useState("starter");
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
-  const [requestedUsers, setRequestedUsers] = useState(20);
-  const [requestedFactories, setRequestedFactories] = useState(1);
   const [selectedAddonQuantities, setSelectedAddonQuantities] = useState<Record<string, number>>({});
+  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
 
   const canViewBilling = useMemo(() => {
     const role = user?.role || "";
@@ -149,14 +148,10 @@ function BillingPageInner() {
   useEffect(() => {
     const plan = searchParams.get("plan");
     const cycle = searchParams.get("cycle");
-    const users = searchParams.get("users");
-    const factories = searchParams.get("factories");
     const addons = searchParams.get("addons");
     const addonQuantities = searchParams.get("addon_quantities");
     if (plan) setCheckoutPlan(plan);
     if (cycle === "monthly" || cycle === "yearly") setBillingCycle(cycle);
-    if (users && Number(users) > 0) setRequestedUsers(Number(users));
-    if (factories && Number(factories) > 0) setRequestedFactories(Number(factories));
     if (addonQuantities) {
       setSelectedAddonQuantities(parseAddonQuantitiesParam(addonQuantities));
       return;
@@ -328,8 +323,10 @@ function BillingPageInner() {
     () => planOptions.filter((plan) => Number(plan.monthly_price || 0) > 0 && !plan.sales_only),
     [planOptions],
   );
+  const organizationUsers = Math.max(1, Number(billing?.footprint?.active_users || 1));
+  const organizationFactories = Math.max(1, Number(billing?.footprint?.active_factories || 1));
   const checkoutPlanInfo = useMemo(
-    () => planOptions.find((plan) => plan.id === checkoutPlan) || paidPlans[0] || planOptions[0],
+    () => paidPlans.find((plan) => plan.id === checkoutPlan) || paidPlans[0] || planOptions[0],
     [checkoutPlan, paidPlans, planOptions],
   );
   const activeAddonIds = useMemo(
@@ -356,8 +353,8 @@ function BillingPageInner() {
       plansPayload.pricing,
       addonOptions,
       {
-        users: requestedUsers,
-        factories: requestedFactories,
+        users: organizationUsers,
+        factories: organizationFactories,
         selectedAddonQuantities,
         activeAddonIds,
         activeAddonQuantities,
@@ -370,9 +367,9 @@ function BillingPageInner() {
     addonOptions,
     billingCycle,
     checkoutPlanInfo,
+    organizationFactories,
+    organizationUsers,
     plansPayload?.pricing,
-    requestedFactories,
-    requestedUsers,
     selectedAddonQuantities,
   ]);
   const summaryHealth = getQuotaHealth(billing?.usage?.summary_used, billing?.usage?.summary_limit);
@@ -422,11 +419,12 @@ function BillingPageInner() {
       const order = await createBillingOrder(
         checkoutPlanInfo.id,
         billingCycle,
-        requestedUsers,
-        requestedFactories,
+        organizationUsers,
+        organizationFactories,
         selectedAddonIds,
         selectedAddonQuantities,
       );
+      const orderId = order.order.id;
       const checkout = new window.Razorpay({
         key: billingConfig.key_id,
         amount: order.order.amount,
@@ -442,17 +440,13 @@ function BillingPageInner() {
         notes: {
           plan: order.plan,
           billing_cycle: order.billing_cycle,
-          requested_users: String(requestedUsers),
-          requested_factories: String(requestedFactories),
+          requested_users: String(organizationUsers),
+          requested_factories: String(organizationFactories),
           addon_ids: (order.quote?.chargeable_addon_ids || []).join(","),
         },
         handler: () => {
-          setStatus(
-            "Payment submitted to Razorpay. Your plan and add-ons will update automatically once the webhook confirms the payment.",
-          );
-          setTimeout(() => {
-            loadAll().catch(() => undefined);
-          }, 2500);
+          setStatus("Payment received. Waiting for billing confirmation...");
+          setPendingOrderId(orderId);
         },
         modal: {
           ondismiss: () => {
@@ -476,6 +470,54 @@ function BillingPageInner() {
       setBusy(false);
     }
   };
+
+  useEffect(() => {
+    if (!pendingOrderId) return;
+    let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let attempts = 0;
+
+    const poll = async () => {
+      attempts += 1;
+      try {
+        const order = await getBillingOrderStatus(pendingOrderId);
+        if (cancelled) return;
+        if (order.is_paid) {
+          await loadAll();
+          if (cancelled) return;
+          if (order.is_plan_active) {
+            setStatus("Payment confirmed. Billing is now active.");
+            setPendingOrderId(null);
+            return;
+          }
+          setStatus("Payment received. Finalizing the plan and add-ons...");
+        } else if (order.is_terminal) {
+          setError("Payment did not complete. Please try checkout again.");
+          setPendingOrderId(null);
+          return;
+        } else {
+          setStatus("Waiting for Razorpay confirmation...");
+        }
+      } catch {
+        if (cancelled) return;
+      }
+
+      if (attempts >= 18) {
+        setStatus("Billing confirmation is still in progress. Refresh this page in a moment.");
+        setPendingOrderId(null);
+        return;
+      }
+      timeoutId = setTimeout(() => {
+        void poll();
+      }, 2500);
+    };
+
+    void poll();
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [pendingOrderId]);
 
   if (loading) {
     return (
@@ -772,7 +814,7 @@ function BillingPageInner() {
                 <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Step 1</div>
-                    <div className="mt-1 text-sm font-semibold text-white">Choose plan and factory size</div>
+                    <div className="mt-1 text-sm font-semibold text-white">Choose plan and billing cycle</div>
                   </div>
                   <div className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">
                     Razorpay {billingConfig?.configured ? "ready" : "not configured"}
@@ -782,10 +824,9 @@ function BillingPageInner() {
                   <div className="sm:col-span-2">
                     <label className="text-sm text-[var(--muted)]">Upgrade Plan</label>
                     <Select value={checkoutPlan} onChange={(event) => setCheckoutPlan(event.target.value)}>
-                      {planOptions.map((plan) => (
+                      {paidPlans.map((plan) => (
                         <option key={plan.id} value={plan.id}>
                           {plan.name}
-                          {plan.sales_only ? " - contact sales" : ""}
                         </option>
                       ))}
                     </Select>
@@ -801,30 +842,19 @@ function BillingPageInner() {
                     </Select>
                   </div>
                   <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] px-4 py-3">
-                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Included capacity</div>
+                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Current organization</div>
+                    <div className="mt-1 text-sm font-semibold text-white">
+                      {organizationUsers} active users / {organizationFactories} active factories
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] px-4 py-3">
+                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Plan capacity</div>
                     <div className="mt-1 text-sm font-semibold text-white">
                       {(checkoutPlanInfo?.user_limit || 0) > 0 ? checkoutPlanInfo?.user_limit : "Unlimited"} users / {(checkoutPlanInfo?.factory_limit || 0) > 0 ? checkoutPlanInfo?.factory_limit : "Unlimited"} factories
                     </div>
-                  </div>
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Users</label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={requestedUsers}
-                      onChange={(event) => setRequestedUsers(Math.max(1, Number(event.target.value) || 1))}
-                    />
-                  </div>
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Factories</label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={requestedFactories}
-                      onChange={(event) =>
-                        setRequestedFactories(Math.max(1, Number(event.target.value) || 1))
-                      }
-                    />
+                    <div className="mt-2 text-xs leading-5 text-[var(--muted)]">
+                      Checkout uses the real active user and factory counts from this organization.
+                    </div>
                   </div>
                 </div>
               </div>
@@ -971,6 +1001,9 @@ function BillingPageInner() {
                     Contact sales for Enterprise.
                   </div>
                 ) : null}
+                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] p-4 text-sm text-[var(--muted)]">
+                  Need Enterprise? Use the plans page for the sales-assisted tier. Self-serve checkout only shows instantly billable plans.
+                </div>
                 {!canWriteBilling ? (
                   <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] p-4 text-sm text-[var(--muted)]">
                     Read-only mode: admins can review billing status and invoices, while owners handle checkout and plan changes.
@@ -1000,7 +1033,7 @@ function BillingPageInner() {
                           : "Owner Access Required"}
                   </Button>
                   <div className="text-xs text-[var(--muted)]">
-                    This estimate uses the same backend pricing logic as the plans catalog, including hard caps, OCR pack quantities, and active-pack deductions.
+                    This estimate uses the backend billing quote, active OCR-pack deductions, and the real active user and factory counts for this organization.
                   </div>
                 </div>
               </div>
