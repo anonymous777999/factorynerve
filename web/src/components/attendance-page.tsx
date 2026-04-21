@@ -349,7 +349,7 @@ export default function AttendancePage() {
             <p className="text-text-muted text-sm">
               {sessionError || "Login required."}
             </p>
-            <Link href="/login" className="mt-6 inline-block">
+            <Link href="/access" className="mt-6 inline-block">
               <Button variant="primary" className="h-11 px-6">Open Login</Button>
             </Link>
           </CardContent>

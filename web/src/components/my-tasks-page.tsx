@@ -260,7 +260,7 @@ export default function MyTasksPage() {
               <CardTitle>Login required.</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
-              <Link href="/login"><Button>Open Login</Button></Link>
+              <Link href="/access"><Button>Open Login</Button></Link>
               <Link href="/dashboard"><Button variant="outline">Back to Dashboard</Button></Link>
             </CardContent>
           </Card>

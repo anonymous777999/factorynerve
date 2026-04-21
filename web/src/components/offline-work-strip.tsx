@@ -21,6 +21,7 @@ type StripConfig = {
 
 const HIDE_ROUTES = [
   "/",
+  "/access",
   "/login",
   "/register",
   "/forgot-password",

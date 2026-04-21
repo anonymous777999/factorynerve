@@ -155,7 +155,7 @@ export function SteelDispatchDetailPage() {
                 <Button variant="outline" className="w-full sm:w-auto">Back to Dispatches</Button>
               </Link>
               {!user ? (
-                <Link href="/login" className="w-full sm:w-auto">
+                <Link href="/access" className="w-full sm:w-auto">
                   <Button className="w-full sm:w-auto">Open Login</Button>
                 </Link>
               ) : null}

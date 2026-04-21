@@ -925,7 +925,7 @@ export default function OcrScanPage() {
           <div className="text-lg font-semibold text-text-primary">Login required</div>
           <div className="text-sm text-text-muted">{sessionError || "Open login to use Document Desk."}</div>
           <div className="flex justify-center">
-            <Link href="/login">
+            <Link href="/access">
               <Button>Open Login</Button>
             </Link>
           </div>

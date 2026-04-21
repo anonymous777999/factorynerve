@@ -700,7 +700,14 @@ def _queue_range_export_job(
                 raise RuntimeError("User is no longer available for export.")
             job_user.active_org_id = org_id
             job_user.active_factory_id = factory_id
-            _require_trust_ready(job_db, job_user, start=start, end=end, factory_id=factory_id)
+            _require_trust_ready(
+                job_db,
+                job_user,
+                route="/reports",
+                start=start,
+                end=end,
+                factory_id=factory_id,
+            )
             entries = (
                 _scoped_entries_query(job_db, job_user, start=start, end=end)
                 .order_by(Entry.date.asc(), Entry.created_at.asc())

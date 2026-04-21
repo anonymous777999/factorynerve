@@ -42,6 +42,7 @@ export function middleware(request: NextRequest) {
   if (
     pathname.startsWith("/api") ||
     pathname.startsWith("/_next") ||
+    pathname === "/access" ||
     pathname === "/login" ||
     pathname === "/register" ||
     pathname === "/favicon.ico" ||
@@ -55,7 +56,7 @@ export function middleware(request: NextRequest) {
     const hasAccess = request.cookies.get("dpr_access");
     if (!hasAccess) {
       const url = request.nextUrl.clone();
-      url.pathname = "/login";
+      url.pathname = "/access";
       url.searchParams.set("next", pathname);
       return NextResponse.redirect(url);
     }

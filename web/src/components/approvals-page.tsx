@@ -1954,7 +1954,7 @@ export default function ApprovalsPage() {
               <CardTitle>You need an active session first</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
-              <Link href="/login">
+              <Link href="/access">
                 <Button>Open Login</Button>
               </Link>
               <Link href="/dashboard">

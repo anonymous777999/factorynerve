@@ -298,7 +298,7 @@ def list_jobs(*, owner_id: int, limit: int = 12) -> list[dict[str, Any]]:
 def cancel_job(job_id: str, *, owner_id: int | None = None) -> dict[str, Any]:
     record = _require_owned_record(job_id, owner_id)
     if record.status in TERMINAL_STATUSES:
-        raise ValueError("Only queued or running jobs can be canceled.")
+        return _serialize_job(record)
     if record.status == "queued":
         return update_job(
             job_id,

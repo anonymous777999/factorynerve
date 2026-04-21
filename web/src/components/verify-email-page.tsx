@@ -30,7 +30,7 @@ export default function VerifyEmailPage() {
   const isInviteAcceptance = flowType === "invite_accept";
   const isPendingSignupToken = flowType === "signup_verify" || status.toLowerCase().includes("create the account");
   const verificationFinished = status.toLowerCase().includes("sign in now") || status.toLowerCase().includes("ready to sign in");
-  const loginHref = verificationFinished ? "/login?verified=1" : "/login";
+  const loginHref = verificationFinished ? "/access?verified=1" : "/access";
 
   const stateCard = useMemo(() => {
     if (verifying) {

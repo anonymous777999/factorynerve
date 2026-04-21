@@ -520,7 +520,7 @@ const LANGUAGE_CHOICES: Array<{ value: AppLanguage; key: string; fallback: strin
   { value: "mr", key: "language.marathi", fallback: "Marathi" },
 ];
 
-const shellHiddenRoutes = new Set(["/", "/login", "/register", "/forgot-password", "/reset-password"]);
+const shellHiddenRoutes = new Set(["/", "/access", "/login", "/register", "/forgot-password", "/reset-password"]);
 const MOBILE_FIXED_STACK_CLEARANCE = {
   browser: "9.75rem",
   standalone: "9.25rem",

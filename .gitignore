@@ -35,3 +35,5 @@ web/devserver.err
 web/devserver.out
 backend/uvicorn.err
 backend/uvicorn.out
+_tmp_*.log
+_tmp_*.txt

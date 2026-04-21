@@ -1759,7 +1759,7 @@ export default function DashboardHome() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-3">
-              <Link href="/login">
+              <Link href="/access">
                 <Button>{t("dashboard.action.open_login", "Open Login")}</Button>
               </Link>
               <Link href="/register">

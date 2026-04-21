@@ -167,7 +167,7 @@ export default function EntryDetailPage() {
   useEffect(() => {
     if (sessionLoading) return;
     if (!user) {
-      router.push("/login");
+      router.push("/access");
       return;
     }
     loadEntry().catch((err) => {

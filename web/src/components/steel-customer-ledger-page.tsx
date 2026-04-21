@@ -408,7 +408,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
-            <Link href="/login" className="w-full sm:w-auto">
+            <Link href="/access" className="w-full sm:w-auto">
               <Button className="w-full sm:w-auto">Open Login</Button>
             </Link>
           </CardContent>

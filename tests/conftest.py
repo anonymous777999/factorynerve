@@ -27,9 +27,8 @@ else:
     _TEST_DATABASE_URL = f"sqlite:///{_TEST_DB_PATH.as_posix()}"
 
 os.environ["DATABASE_URL"] = _TEST_DATABASE_URL
-os.environ.setdefault("GROQ_API_KEY", "test")
-os.environ.setdefault("ANTHROPIC_API_KEY", "test")
-os.environ.setdefault("GEMINI_API_KEY", "test")
+for key in ("GROQ_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY"):
+    os.environ.pop(key, None)
 os.environ.setdefault("AI_PROVIDER", "groq")
 os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
 os.environ.setdefault("JWT_EXPIRE_HOURS", "24")
@@ -44,6 +43,7 @@ os.environ.setdefault("AUTH_RATE_LIMIT_MAX_ATTEMPTS", "5000")
 os.environ.setdefault("EMAIL_VERIFICATION_EXPOSE_LINK", "1")
 os.environ.setdefault("PASSWORD_RESET_EXPOSE_LINK", "1")
 os.environ.setdefault("SMTP_DRY_RUN", "1")
+os.environ.setdefault("DISABLE_EXTERNAL_AI", "1")
 
 
 def _server_available(url: str) -> bool:

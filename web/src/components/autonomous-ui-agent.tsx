@@ -12,6 +12,7 @@ import {
 
 const AUTONOMY_HIDDEN_ROUTES = new Set([
   "/",
+  "/access",
   "/login",
   "/register",
   "/forgot-password",

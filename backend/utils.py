@@ -87,12 +87,13 @@ def _validate_required_values(raw_values: dict[str, str | None]) -> None:
     if provider not in allowed_providers:
         raise ValueError("AI_PROVIDER must be one of: groq, anthropic, gemini.")
 
+    external_ai_disabled = _to_bool(raw_values.get("DISABLE_EXTERNAL_AI"), default=False)
     provider_keys = {
         "groq": str(raw_values.get("GROQ_API_KEY") or "").strip(),
         "anthropic": str(raw_values.get("ANTHROPIC_API_KEY") or "").strip(),
         "gemini": str(raw_values.get("GEMINI_API_KEY") or "").strip(),
     }
-    if not any(provider_keys.values()):
+    if not external_ai_disabled and not any(provider_keys.values()):
         raise ValueError(
             "At least one AI provider key is required: GROQ_API_KEY, ANTHROPIC_API_KEY, or GEMINI_API_KEY."
         )
@@ -118,6 +119,7 @@ def get_config() -> AppConfig:
         "GROQ_API_KEY": os.getenv("GROQ_API_KEY"),
         "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY"),
         "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY"),
+        "DISABLE_EXTERNAL_AI": os.getenv("DISABLE_EXTERNAL_AI"),
         "AI_PROVIDER": os.getenv("AI_PROVIDER"),
         "JWT_SECRET_KEY": os.getenv("JWT_SECRET_KEY"),
         "JWT_EXPIRE_HOURS": os.getenv("JWT_EXPIRE_HOURS"),

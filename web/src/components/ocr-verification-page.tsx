@@ -1871,7 +1871,7 @@ export default function OcrVerificationPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
-            <Link href="/login">
+            <Link href="/access">
               <Button>Open Login</Button>
             </Link>
           </CardContent>

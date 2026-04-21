@@ -314,7 +314,7 @@ export default function EntryPage() {
         if (userResult.status === "fulfilled") {
           setUser(userResult.value);
         } else {
-          router.push("/login");
+          router.push("/access");
           return;
         }
         if (templateResult.status === "fulfilled") {
