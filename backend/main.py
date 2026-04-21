@@ -77,9 +77,16 @@ if sentry_sdk and os.getenv("SENTRY_DSN"):
     )
     if SentryAsgiMiddleware:
         app.add_middleware(SentryAsgiMiddleware)
+enable_auth_secure_router = os.getenv("ENABLE_AUTH_SECURE_ROUTER", "0").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 app.include_router(auth_router, prefix="/auth")
 app.include_router(auth_google_router, prefix="/auth")
-app.include_router(auth_secure_router, prefix="/auth-secure")
+if enable_auth_secure_router:
+    app.include_router(auth_secure_router, prefix="/auth-secure")
 app.include_router(jobs_router, prefix="/jobs")
 app.include_router(entries_router, prefix="/entries")
 app.include_router(reports_router, prefix="/reports")

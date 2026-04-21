@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 import secrets
 from typing import Any
@@ -25,6 +26,8 @@ from backend.auth_cookies import get_access_cookie
 logger = logging.getLogger(__name__)
 config = get_config()
 _auth_scheme = HTTPBearer(auto_error=False)
+JWT_ISSUER = os.getenv("JWT_ISSUER", "dpr.ai")
+JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "dpr-web")
 
 
 def _coerce_utc(value: datetime) -> datetime:
@@ -57,13 +60,16 @@ def create_access_token(
     factory_id: str | None = None,
 ) -> str:
     issued_at = datetime.now(timezone.utc)
-    expire = issued_at + timedelta(hours=config.jwt_expire_hours)
+    expire = issued_at + timedelta(minutes=config.jwt_access_token_minutes)
     payload = {
         "sub": str(user_id),
         "org_id": org_id,
         "factory_id": factory_id,
         "role": role,
         "email": email,
+        "iss": JWT_ISSUER,
+        "aud": JWT_AUDIENCE,
+        "nbf": int(issued_at.timestamp()),
         "iat": int(issued_at.timestamp()),
         "iat_ms": int(issued_at.timestamp() * 1000),
         "exp": int(expire.timestamp()),
@@ -74,7 +80,20 @@ def create_access_token(
 
 def decode_access_token(token: str) -> dict[str, Any]:
     try:
-        return jwt.decode(token, config.jwt_secret_key, algorithms=["HS256"])
+        return jwt.decode(
+            token,
+            config.jwt_secret_key,
+            algorithms=["HS256"],
+            issuer=JWT_ISSUER,
+            audience=JWT_AUDIENCE,
+            options={
+                "require_sub": True,
+                "require_iat": True,
+                "require_exp": True,
+                "require_iss": True,
+                "require_aud": True,
+            },
+        )
     except JWTError as error:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token.") from error
 
@@ -120,7 +139,7 @@ def get_current_user(
     if not isinstance(issued_at_ms, (int, float)):
         exp = payload.get("exp")
         if isinstance(exp, (int, float)):
-            issued_at_seconds = int(exp) - int(timedelta(hours=config.jwt_expire_hours).total_seconds())
+            issued_at_seconds = int(exp) - int(timedelta(minutes=config.jwt_access_token_minutes).total_seconds())
             issued_at_ms = issued_at_seconds * 1000
     if user.session_invalidated_at and isinstance(issued_at_ms, (int, float)):
         invalidated_at = _coerce_utc(user.session_invalidated_at)

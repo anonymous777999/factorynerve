@@ -7,9 +7,6 @@ import io
 import logging
 import os
 import secrets
-import threading
-import time
-from collections import defaultdict, deque
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
@@ -74,6 +71,7 @@ from backend.auth_cookies import (
     set_auth_cookies,
     wants_cookie_auth,
 )
+from backend.auth_security.rate_limit import RateLimitError, check_rate_limit, reset_rate_limit
 
 
 logger = logging.getLogger(__name__)
@@ -81,7 +79,7 @@ router = APIRouter(tags=["Authentication"])
 
 LOGIN_ATTEMPT_LIMIT = 5
 LOGIN_ATTEMPT_WINDOW_SECONDS = 60
-REFRESH_TOKEN_DAYS = int(os.getenv("REFRESH_TOKEN_DAYS", "30"))
+REFRESH_TOKEN_DAYS = min(int(os.getenv("REFRESH_TOKEN_DAYS", "7")), 7)
 PASSWORD_RESET_TTL_MINUTES = int(os.getenv("PASSWORD_RESET_TTL_MINUTES", "30"))
 PASSWORD_RESET_EMAIL_SUBJECT = os.getenv("PASSWORD_RESET_EMAIL_SUBJECT", "Reset your DPR.ai password")
 EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("EMAIL_VERIFICATION_TTL_HOURS", "24"))
@@ -92,8 +90,6 @@ EMAIL_VERIFICATION_EMAIL_SUBJECT = os.getenv(
 PROFILE_PHOTO_MAX_BYTES = int(os.getenv("PROFILE_PHOTO_MAX_BYTES", str(5 * 1024 * 1024)))
 PROFILE_PHOTO_SIZE = max(256, int(os.getenv("PROFILE_PHOTO_SIZE", "512")))
 PROFILE_PHOTO_DIR = Path(__file__).resolve().parents[2] / "var" / "profile_photos"
-_rate_limit_lock = threading.Lock()
-_login_attempts: dict[str, deque[float]] = defaultdict(deque)
 
 
 def _to_bool(value: str | None, default: bool = False) -> bool:
@@ -231,23 +227,54 @@ def _send_auth_email(
         return False
 
 
-def _check_rate_limit(ip_address: str) -> bool:
-    with _rate_limit_lock:
-        now = time.time()
-        attempts = _login_attempts[ip_address]
-        while attempts and now - attempts[0] > LOGIN_ATTEMPT_WINDOW_SECONDS:
-            attempts.popleft()
-        return len(attempts) >= LOGIN_ATTEMPT_LIMIT
+def _enforce_login_rate_limit(*, ip_address: str, email: str) -> None:
+    try:
+        check_rate_limit(
+            key=f"legacy-login:ip:{ip_address}",
+            max_requests=LOGIN_ATTEMPT_LIMIT,
+            window_seconds=LOGIN_ATTEMPT_WINDOW_SECONDS,
+        )
+        check_rate_limit(
+            key=f"legacy-login:email:{email}",
+            max_requests=LOGIN_ATTEMPT_LIMIT,
+            window_seconds=LOGIN_ATTEMPT_WINDOW_SECONDS,
+        )
+    except RateLimitError as error:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=error.detail) from error
 
 
-def _register_failed_attempt(ip_address: str) -> None:
-    with _rate_limit_lock:
-        _login_attempts[ip_address].append(time.time())
+def _register_failed_attempt(*, ip_address: str, email: str) -> None:
+    try:
+        check_rate_limit(
+            key=f"legacy-login:fail-ip:{ip_address}",
+            max_requests=LOGIN_ATTEMPT_LIMIT,
+            window_seconds=LOGIN_ATTEMPT_WINDOW_SECONDS,
+        )
+        check_rate_limit(
+            key=f"legacy-login:fail-email:{email}",
+            max_requests=LOGIN_ATTEMPT_LIMIT,
+            window_seconds=LOGIN_ATTEMPT_WINDOW_SECONDS,
+        )
+    except RateLimitError:
+        pass
 
 
-def _clear_attempts(ip_address: str) -> None:
-    with _rate_limit_lock:
-        _login_attempts.pop(ip_address, None)
+def _clear_attempts(*, ip_address: str, email: str) -> None:
+    reset_rate_limit(key=f"legacy-login:ip:{ip_address}")
+    reset_rate_limit(key=f"legacy-login:email:{email}")
+    reset_rate_limit(key=f"legacy-login:fail-ip:{ip_address}")
+    reset_rate_limit(key=f"legacy-login:fail-email:{email}")
+
+
+def _set_auth_no_store_headers(response: Response) -> None:
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
+
+
+def _hash_user_agent(value: str | None) -> str | None:
+    if not value:
+        return None
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
 def _log_auth_event(
@@ -268,7 +295,7 @@ def _log_auth_event(
             action=action,
             details=details,
             ip_address=hash_ip_address(request.client.host if request.client else None),
-            user_agent=request.headers.get("user-agent"),
+            user_agent=_hash_user_agent(request.headers.get("user-agent")),
             timestamp=datetime.now(timezone.utc),
         )
     )
@@ -345,7 +372,7 @@ class AuthContextResponse(BaseModel):
 
 
 class AuthResponse(AuthContextResponse):
-    access_token: str
+    access_token: str | None = None
     refresh_token: str | None = None
     token_type: str = "bearer"
 
@@ -635,8 +662,9 @@ def _build_active_template_context(
 def _revoke_refresh_token(db: Session, *, token: str, user_id: int) -> None:
     token_hash = _hash_refresh_token(token)
     record = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
-    if record and record.user_id == user_id and record.revoked_at is None:
-        record.revoked_at = datetime.now(timezone.utc)
+    if not record or record.user_id != user_id or record.revoked_at is not None:
+        return
+    record.revoked_at = datetime.now(timezone.utc)
     db.add(record)
 
 
@@ -1005,63 +1033,43 @@ def login_user(
     db: Session = Depends(get_db),
 ) -> AuthResponse:
     ip_address = request.client.host if request.client else "unknown"
+    email = payload.email.lower().strip()
     generic_error = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
-    if _check_rate_limit(ip_address):
-        raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
+    _enforce_login_rate_limit(ip_address=ip_address, email=email)
     try:
-        user = db.query(User).filter(User.email == payload.email.lower(), User.is_active.is_(True)).first()
+        user = db.query(User).filter(User.email == email, User.is_active.is_(True)).first()
         if not user:
             pending = (
                 db.query(PendingRegistration)
                 .filter(
-                    PendingRegistration.email == payload.email.lower(),
+                    PendingRegistration.email == email,
                     PendingRegistration.used_at.is_(None),
                     PendingRegistration.expires_at > datetime.now(timezone.utc),
                 )
                 .first()
             )
             if pending and verify_password(payload.password, pending.password_hash):
-                _register_failed_attempt(ip_address)
-                _log_auth_event(
-                    db,
-                    "USER_LOGIN_BLOCKED_PENDING_VERIFICATION",
-                    "Login blocked because signup is still waiting for email verification.",
-                    None,
-                    request,
-                )
+                _register_failed_attempt(ip_address=ip_address, email=email)
+                _log_auth_event(db, "USER_LOGIN_FAILED", "Failed login attempt.", None, request)
                 db.commit()
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Verify your email before signing in.",
-                )
-            _register_failed_attempt(ip_address)
+                raise generic_error
+            _register_failed_attempt(ip_address=ip_address, email=email)
             _log_auth_event(db, "USER_LOGIN_FAILED", "Failed login attempt.", None, request)
             db.commit()
             raise generic_error
         if not verify_password(payload.password, user.password_hash):
-            _register_failed_attempt(ip_address)
+            _register_failed_attempt(ip_address=ip_address, email=email)
             _log_auth_event(db, "USER_LOGIN_FAILED", "Failed login attempt.", None, request)
             db.commit()
             raise generic_error
         if user.auth_provider == "local" and user.email_verified_at is None:
-            _register_failed_attempt(ip_address)
-            _log_auth_event(
-                db,
-                "USER_LOGIN_BLOCKED_UNVERIFIED",
-                "Login blocked because email is not verified.",
-                user.id,
-                request,
-                org_id=user.org_id,
-                factory_id=None,
-            )
+            _register_failed_attempt(ip_address=ip_address, email=email)
+            _log_auth_event(db, "USER_LOGIN_FAILED", "Failed login attempt.", None, request)
             db.commit()
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Verify your email before signing in.",
-            )
+            raise generic_error
 
         user.last_login = datetime.now(timezone.utc)
-        _clear_attempts(ip_address)
+        _clear_attempts(ip_address=ip_address, email=email)
         active_factory_id = _resolve_active_factory_id(
             db,
             user_id=user.id,
@@ -1114,6 +1122,7 @@ def login_user(
             refresh_token=refresh_token,
             **auth_context,
         )
+        _set_auth_no_store_headers(response)
         if wants_cookie_auth(request):
             csrf_token = set_auth_cookies(
                 response=response,
@@ -1122,6 +1131,8 @@ def login_user(
                 request=request,
             )
             response.headers["X-CSRF-Token"] = csrf_token
+            auth_response.access_token = None
+            auth_response.refresh_token = None
         return auth_response
     except HTTPException:
         raise
@@ -1139,6 +1150,7 @@ def logout_user(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
+    _set_auth_no_store_headers(response)
     credentials = request.headers.get("Authorization", "")
     token = credentials.replace("Bearer ", "").strip() if credentials else ""
     if not token:
@@ -1173,6 +1185,7 @@ def logout_all_devices(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
+    _set_auth_no_store_headers(response)
     if get_access_cookie(request) or get_refresh_cookie(request):
         require_csrf(request)
 
@@ -1278,6 +1291,7 @@ def refresh_access_token(
         refresh_token=refresh_token,
         **auth_context,
     )
+    _set_auth_no_store_headers(response)
     if wants_cookie_auth(request) or get_refresh_cookie(request) or get_access_cookie(request):
         csrf_token = set_auth_cookies(
             response=response,
@@ -1286,6 +1300,8 @@ def refresh_access_token(
             request=request,
         )
         response.headers["X-CSRF-Token"] = csrf_token
+        auth_response.access_token = None
+        auth_response.refresh_token = None
     return auth_response
 
 
@@ -1294,6 +1310,12 @@ def resend_email_verification(
     payload: EmailVerificationRequest, request: Request, db: Session = Depends(get_db)
 ) -> EmailVerificationResponse:
     email = payload.email.lower().strip()
+    ip_address = request.client.host if request.client else "unknown"
+    try:
+        check_rate_limit(key=f"verify-resend:ip:{ip_address}", max_requests=3, window_seconds=300)
+        check_rate_limit(key=f"verify-resend:email:{email}", max_requests=3, window_seconds=300)
+    except RateLimitError as error:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=error.detail) from error
     pending = db.query(PendingRegistration).filter(PendingRegistration.email == email).first()
     user = (
         db.query(User)
@@ -1537,6 +1559,12 @@ def password_forgot(
     payload: PasswordForgotRequest, request: Request, db: Session = Depends(get_db)
 ) -> PasswordForgotResponse:
     email = payload.email.lower().strip()
+    ip_address = request.client.host if request.client else "unknown"
+    try:
+        check_rate_limit(key=f"forgot:ip:{ip_address}", max_requests=3, window_seconds=300)
+        check_rate_limit(key=f"forgot:email:{email}", max_requests=3, window_seconds=300)
+    except RateLimitError as error:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=error.detail) from error
     user = db.query(User).filter(User.email == email, User.is_active.is_(True)).first()
     delivery_mode = "preview" if _should_expose_reset_link() else "email"
     reset_link: str | None = None
@@ -1623,6 +1651,8 @@ def password_reset(
 def list_factories(
     payload: RefreshRequest, db: Session = Depends(get_db)
 ) -> FactoryListResponse:
+    if not payload.refresh_token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token missing.")
     now = datetime.now(timezone.utc)
     token_hash = _hash_refresh_token(payload.refresh_token)
     record = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
@@ -1706,11 +1736,16 @@ def select_factory(
     )
     db.commit()
     auth_context = _build_auth_context(db, user=current_user, active_factory_id=payload.factory_id)
-    return AuthResponse(
+    auth_response = AuthResponse(
         access_token=access_token,
         refresh_token=refresh_token,
         **auth_context,
     )
+    _set_auth_no_store_headers(response)
+    if get_refresh_cookie(request) or get_access_cookie(request) or wants_cookie_auth(request):
+        auth_response.access_token = None
+        auth_response.refresh_token = None
+    return auth_response
 
 
 @router.get("/me", response_model=UserReadSchema)

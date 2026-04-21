@@ -17,7 +17,7 @@ SESSION_COOKIE = os.getenv("AUTH_SESSION_COOKIE", "auth_session")
 CSRF_COOKIE = os.getenv("AUTH_CSRF_COOKIE", "auth_csrf")
 CSRF_HEADER = os.getenv("AUTH_CSRF_HEADER", "X-CSRF-Token")
 SESSION_TTL_MINUTES = int(os.getenv("AUTH_SESSION_TTL_MINUTES", "1440"))
-SESSION_SAMESITE = os.getenv("AUTH_SESSION_SAMESITE", "Lax")
+SESSION_SAMESITE = os.getenv("AUTH_SESSION_SAMESITE", "Strict")
 SESSION_SECURE = str(os.getenv("AUTH_SESSION_SECURE", "1")).lower() in {"1", "true", "yes", "on"}
 
 

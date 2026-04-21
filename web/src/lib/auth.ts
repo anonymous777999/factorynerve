@@ -63,7 +63,7 @@ export type ActiveWorkflowTemplateContext = {
 };
 
 type AuthResponse = AuthContext & {
-  access_token: string;
+  access_token: string | null;
   refresh_token?: string | null;
   token_type: string;
 };

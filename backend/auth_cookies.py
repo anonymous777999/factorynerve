@@ -16,11 +16,11 @@ REFRESH_COOKIE = os.getenv("JWT_REFRESH_COOKIE", "dpr_refresh")
 CSRF_COOKIE = os.getenv("JWT_CSRF_COOKIE", "dpr_csrf")
 CSRF_HEADER = os.getenv("JWT_CSRF_HEADER", "X-CSRF-Token")
 
-COOKIE_SAMESITE = os.getenv("JWT_COOKIE_SAMESITE", "Lax")
+COOKIE_SAMESITE = os.getenv("JWT_COOKIE_SAMESITE", "Strict")
 COOKIE_DOMAIN = os.getenv("JWT_COOKIE_DOMAIN") or None
 COOKIE_PATH = os.getenv("JWT_COOKIE_PATH", "/")
 
-REFRESH_TOKEN_DAYS = int(os.getenv("REFRESH_TOKEN_DAYS", "30"))
+REFRESH_TOKEN_DAYS = min(int(os.getenv("REFRESH_TOKEN_DAYS", "7")), 7)
 
 
 def _env_cookie_secure() -> bool | None:
@@ -60,7 +60,7 @@ def _cookie_kwargs(
 
 def _access_max_age() -> int:
     config = get_config()
-    return int(config.jwt_expire_hours * 3600)
+    return int(config.jwt_access_token_minutes * 60)
 
 
 def _refresh_max_age() -> int:

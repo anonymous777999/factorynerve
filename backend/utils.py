@@ -42,7 +42,7 @@ class AppConfig:
     gemini_api_key: str
     ai_provider: str
     jwt_secret_key: str
-    jwt_expire_hours: int
+    jwt_access_token_minutes: int
     app_name: str
     app_env: str
     debug: bool
@@ -101,6 +101,18 @@ def _validate_required_values(raw_values: dict[str, str | None]) -> None:
         Fernet(str(raw_values.get("DATA_ENCRYPTION_KEY")).encode("utf-8"))
     except Exception as error:  # pylint: disable=broad-except
         raise ValueError("Invalid DATA_ENCRYPTION_KEY. Use a valid Fernet key.") from error
+    _validate_secret_strength("JWT_SECRET_KEY", raw_values.get("JWT_SECRET_KEY"))
+    auth_reset_secret = raw_values.get("AUTH_RESET_SECRET")
+    if auth_reset_secret is not None and str(auth_reset_secret).strip():
+        _validate_secret_strength("AUTH_RESET_SECRET", auth_reset_secret)
+
+
+def _validate_secret_strength(name: str, value: str | None) -> None:
+    cleaned = str(value or "").strip()
+    if len(cleaned) < 32:
+        raise ValueError(f"{name} must be at least 32 characters.")
+    if cleaned.lower().startswith(("change_this", "dev-secret", "replace_with")):
+        raise ValueError(f"{name} must not use a placeholder value.")
 
 
 def _normalize_database_url(database_url: str) -> str:
@@ -123,6 +135,8 @@ def get_config() -> AppConfig:
         "AI_PROVIDER": os.getenv("AI_PROVIDER"),
         "JWT_SECRET_KEY": os.getenv("JWT_SECRET_KEY"),
         "JWT_EXPIRE_HOURS": os.getenv("JWT_EXPIRE_HOURS"),
+        "JWT_ACCESS_TOKEN_MINUTES": os.getenv("JWT_ACCESS_TOKEN_MINUTES"),
+        "AUTH_RESET_SECRET": os.getenv("AUTH_RESET_SECRET"),
         "APP_NAME": os.getenv("APP_NAME"),
         "APP_ENV": os.getenv("APP_ENV", "development"),
         "DEBUG": os.getenv("DEBUG"),
@@ -142,7 +156,13 @@ def get_config() -> AppConfig:
         gemini_api_key=str(raw.get("GEMINI_API_KEY") or ""),
         ai_provider=str(raw["AI_PROVIDER"]),
         jwt_secret_key=str(raw["JWT_SECRET_KEY"]),
-        jwt_expire_hours=_to_int(raw["JWT_EXPIRE_HOURS"], 24),
+        jwt_access_token_minutes=max(
+            5,
+            min(
+                _to_int(raw.get("JWT_ACCESS_TOKEN_MINUTES"), 15),
+                15,
+            ),
+        ),
         app_name=str(raw["APP_NAME"]),
         app_env=str(raw.get("APP_ENV") or "development").strip().lower(),
         debug=_to_bool(raw["DEBUG"], False),

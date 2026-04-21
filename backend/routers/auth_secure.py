@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 from datetime import datetime, timezone
 
@@ -35,6 +36,12 @@ AUTH_RATE_LIMIT_WINDOW = int(os.getenv("AUTH_RATE_LIMIT_WINDOW_SECONDS", "60"))
 AUTH_RATE_LIMIT_MAX = int(os.getenv("AUTH_RATE_LIMIT_MAX_ATTEMPTS", "5"))
 RESET_TTL_MINUTES = int(os.getenv("AUTH_PASSWORD_RESET_TTL_MINUTES", "30"))
 RESET_BASE_URL = os.getenv("AUTH_RESET_BASE_URL", "http://127.0.0.1:8765/auth-secure/password/reset")
+ALLOW_SELF_REGISTER = os.getenv("AUTH_SECURE_ALLOW_SELF_REGISTER", "0").strip().lower() in {
+    "1",
+    "true",
+    "yes",
+    "on",
+}
 
 
 class RegisterRequest(BaseModel):
@@ -59,6 +66,10 @@ class PasswordResetRequest(BaseModel):
 
 class MfaVerifyRequest(BaseModel):
     code: str = Field(min_length=6, max_length=10)
+
+
+class MfaSetupRequest(BaseModel):
+    password: str = Field(min_length=12, max_length=128)
 
 
 class MfaDisableRequest(BaseModel):
@@ -92,8 +103,16 @@ def _generic_login_error() -> HTTPException:
     return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials.")
 
 
+def _set_no_store(response: Response) -> None:
+    response.headers["Cache-Control"] = "no-store"
+    response.headers["Pragma"] = "no-cache"
+
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(payload: RegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)) -> dict:
+    _set_no_store(response)
+    if not ALLOW_SELF_REGISTER:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Self-service registration is disabled.")
     ip = request.client.host if request.client else "unknown"
     email = payload.email.lower().strip()
     try:
@@ -116,6 +135,7 @@ def register(payload: RegisterRequest, request: Request, response: Response, db:
 
 @router.post("/login")
 def login(payload: LoginRequest, request: Request, response: Response, db: Session = Depends(get_db)) -> dict:
+    _set_no_store(response)
     ip = request.client.host if request.client else "unknown"
     email = payload.email.lower().strip()
     try:
@@ -126,7 +146,13 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
 
     user = db.query(AuthUser).filter(AuthUser.email == email, AuthUser.is_active.is_(True)).first()
     if not user or not verify_password(payload.password, user.password_hash):
-        _log_event(db, action="AUTH_LOGIN_FAILED", user_id=None, request=request, meta={"email": email})
+        _log_event(
+            db,
+            action="AUTH_LOGIN_FAILED",
+            user_id=None,
+            request=request,
+            meta={"email_sha256": hashlib.sha256(email.encode("utf-8")).hexdigest()},
+        )
         db.commit()
         raise _generic_login_error()
 
@@ -149,6 +175,7 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
 
 @router.post("/logout")
 def logout(request: Request, response: Response, db: Session = Depends(get_db)) -> dict:
+    _set_no_store(response)
     session = get_current_session(db, request)
     require_csrf(request, session)
     revoke_session(db, session=session, response=response)
@@ -168,9 +195,19 @@ def me(request: Request, db: Session = Depends(get_db)) -> dict:
 
 @router.post("/password/forgot")
 def password_forgot(payload: PasswordForgotRequest, request: Request, db: Session = Depends(get_db)) -> dict:
+    ip = request.client.host if request.client else "unknown"
     email = payload.email.lower().strip()
+    try:
+        check_rate_limit(key=f"forgot:ip:{ip}", max_requests=3, window_seconds=300)
+        check_rate_limit(key=f"forgot:email:{email}", max_requests=3, window_seconds=300)
+    except RateLimitError as error:
+        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=error.detail) from error
     user = db.query(AuthUser).filter(AuthUser.email == email, AuthUser.is_active.is_(True)).first()
     if user:
+        db.query(AuthPasswordReset).filter(
+            AuthPasswordReset.auth_user_id == user.id,
+            AuthPasswordReset.used_at.is_(None),
+        ).update({"used_at": datetime.now(timezone.utc)}, synchronize_session=False)
         raw = generate_token(32)
         token_hash = hash_token(raw)
         reset = AuthPasswordReset(
@@ -197,6 +234,7 @@ def password_forgot(payload: PasswordForgotRequest, request: Request, db: Sessio
 
 @router.post("/password/reset")
 def password_reset(payload: PasswordResetRequest, request: Request, response: Response, db: Session = Depends(get_db)) -> dict:
+    _set_no_store(response)
     validate_password_strength(payload.new_password)
     token_payload = verify_reset_token(payload.token, max_age_minutes=RESET_TTL_MINUTES)
     raw = str(token_payload.get("token") or "")
@@ -231,10 +269,12 @@ def password_reset(payload: PasswordResetRequest, request: Request, response: Re
 
 
 @router.post("/mfa/setup")
-def mfa_setup(request: Request, db: Session = Depends(get_db)) -> dict:
+def mfa_setup(payload: MfaSetupRequest, request: Request, db: Session = Depends(get_db)) -> dict:
     session = get_current_session(db, request)
     require_csrf(request, session)
     user = get_current_user(db, session)
+    if not verify_password(payload.password, user.password_hash):
+        raise _generic_login_error()
     if user.mfa_enabled:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="MFA already enabled.")
     secret = generate_secret()

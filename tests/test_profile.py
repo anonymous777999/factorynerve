@@ -84,6 +84,18 @@ def test_logout_all_invalidates_existing_access_token(http_client):
     assert me_after_logout_all.status_code == HTTPStatus.UNAUTHORIZED, me_after_logout_all.text
 
 
+def test_logout_ignores_unknown_refresh_token_without_server_error(http_client):
+    user = register_user(http_client, role="operator")
+    headers = _auth_headers(user["access_token"])
+
+    logout = http_client.post(
+        "/auth/logout",
+        headers=headers,
+        json={"refresh_token": "x" * 64},
+    )
+    assert logout.status_code == HTTPStatus.OK, logout.text
+
+
 def test_profile_photo_upload_and_remove(http_client):
     user = register_user(http_client, role="operator")
     headers = _auth_headers(user["access_token"])

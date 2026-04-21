@@ -73,15 +73,10 @@ def get_or_create_google_user(
 
     user = db.query(User).filter(User.email == email).first()
     if user:
-        user.google_id = google_id
-        user.auth_provider = "google"
-        if user.email_verified_at is None:
-            user.email_verified_at = datetime.now(timezone.utc)
-        if picture:
-            user.profile_picture = picture
-        db.add(user)
-        db.flush()
-        return user, user.org_id, _resolve_factory_id(db, user)
+        raise HTTPException(
+            status_code=409,
+            detail="An account with this email already exists. Sign in first and link Google from settings.",
+        )
 
     org_name = _org_name_from_email(email)
     org_id = str(uuid.uuid4())

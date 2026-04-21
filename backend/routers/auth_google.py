@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import os
 import secrets
 from datetime import datetime, timezone, timedelta
@@ -48,7 +50,7 @@ def _frontend_redirect_url() -> str:
 def _sanitize_next_path(raw: str | None) -> str:
     if not raw or not raw.startswith("/") or raw.startswith("//"):
         return "/"
-    if raw in {"/login", "/register"}:
+    if raw in {"/access", "/login", "/register"}:
         return "/"
     return raw
 
@@ -78,7 +80,7 @@ def _build_frontend_redirect(
 def _login_error_redirect(message: str) -> RedirectResponse:
     return RedirectResponse(
         _build_frontend_redirect(
-            "/login",
+            "/access",
             {"oauth_error": message},
             allow_auth_path=True,
         )
@@ -91,6 +93,7 @@ def _exchange_google_token(
     client_id: str,
     client_secret: str,
     redirect_uri: str,
+    code_verifier: str,
 ):
     return _google_http_client.post(
         "https://oauth2.googleapis.com/token",
@@ -100,6 +103,7 @@ def _exchange_google_token(
             "client_secret": client_secret,
             "redirect_uri": redirect_uri,
             "grant_type": "authorization_code",
+            "code_verifier": code_verifier,
         },
     )
 
@@ -108,11 +112,22 @@ def _verify_google_id_token(raw_id_token: str, client_id: str):
     return id_token.verify_oauth2_token(raw_id_token, _google_verify_request, client_id)
 
 
-def _encode_state(remember: bool, next_path: str) -> str:
+def _pkce_pair() -> tuple[str, str]:
+    verifier = secrets.token_urlsafe(64)
+    challenge = (
+        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode("utf-8")).digest())
+        .decode("utf-8")
+        .rstrip("=")
+    )
+    return verifier, challenge
+
+
+def _encode_state(remember: bool, next_path: str, verifier: str) -> str:
     payload = {
         "nonce": secrets.token_urlsafe(16),
         "remember": bool(remember),
         "next": _sanitize_next_path(next_path),
+        "pkce_verifier": verifier,
         "exp": int((datetime.now(timezone.utc) + timedelta(minutes=10)).timestamp()),
     }
     return jwt.encode(payload, config.jwt_secret_key, algorithm="HS256")
@@ -133,13 +148,16 @@ def google_login(request: Request) -> RedirectResponse:
         return _login_error_redirect("Google sign-in is not configured yet.")
     remember = request.query_params.get("remember") == "1"
     next_path = _sanitize_next_path(request.query_params.get("next"))
-    state = _encode_state(remember, next_path)
+    verifier, challenge = _pkce_pair()
+    state = _encode_state(remember, next_path, verifier)
     params = {
         "client_id": client_id,
         "redirect_uri": redirect_uri,
         "response_type": "code",
         "scope": "openid email profile",
         "state": state,
+        "code_challenge": challenge,
+        "code_challenge_method": "S256",
     }
     url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params)
     return RedirectResponse(url)
@@ -156,6 +174,9 @@ def google_callback(request: Request, db: Session = Depends(get_db)) -> Redirect
     except HTTPException:
         return _login_error_redirect("Google sign-in expired. Please try again.")
     next_path = _sanitize_next_path(str(state_payload.get("next") or "/"))
+    code_verifier = str(state_payload.get("pkce_verifier") or "").strip()
+    if not code_verifier:
+        return _login_error_redirect("Google sign-in expired. Please try again.")
 
     try:
         client_id, client_secret, redirect_uri = _google_config()
@@ -167,6 +188,7 @@ def google_callback(request: Request, db: Session = Depends(get_db)) -> Redirect
             client_id=client_id,
             client_secret=client_secret,
             redirect_uri=redirect_uri,
+            code_verifier=code_verifier,
         )
     except httpx.RequestError:
         return _login_error_redirect("Could not reach Google during sign-in.")
@@ -197,13 +219,16 @@ def google_callback(request: Request, db: Session = Depends(get_db)) -> Redirect
     if email_verified not in {True, "true", "True", 1, "1"}:
         return _login_error_redirect("Your Google account email is not verified.")
 
-    user, org_id, factory_id = get_or_create_google_user(
-        db,
-        email=email,
-        name=name,
-        google_id=google_id,
-        picture=picture,
-    )
+    try:
+        user, org_id, factory_id = get_or_create_google_user(
+            db,
+            email=email,
+            name=name,
+            google_id=google_id,
+            picture=picture,
+        )
+    except HTTPException as error:
+        return _login_error_redirect(str(error.detail))
     active_factory_id = _resolve_active_factory_id(
         db,
         user_id=user.id,
