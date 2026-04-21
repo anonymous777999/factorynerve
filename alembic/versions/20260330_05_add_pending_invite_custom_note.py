@@ -1,7 +1,7 @@
 """add pending invite custom note
 
 Revision ID: 20260330_05_add_pending_invite_custom_note
-Revises: 20260330_04_add_pending_invite_context
+Revises: 20260330_04
 Create Date: 2026-03-30 18:45:00.000000
 """
 
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 
 
 revision = "20260330_05_add_pending_invite_custom_note"
-down_revision = "20260330_04_add_pending_invite_context"
+down_revision = "20260330_04"
 branch_labels = None
 depends_on = None
 
