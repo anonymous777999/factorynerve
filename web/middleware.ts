@@ -23,6 +23,12 @@ const PROTECTED_PREFIXES = [
   "/ai",
 ];
 
+const ACCESS_COOKIE_NAMES = [
+  process.env.NEXT_PUBLIC_JWT_ACCESS_COOKIE,
+  process.env.JWT_ACCESS_COOKIE,
+  "dpr_access",
+].filter((value, index, items): value is string => Boolean(value) && items.indexOf(value) === index);
+
 function isProtectedPath(pathname: string) {
   return PROTECTED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
@@ -53,7 +59,7 @@ export function middleware(request: NextRequest) {
   }
 
   if (isProtectedPath(pathname)) {
-    const hasAccess = request.cookies.get("dpr_access");
+    const hasAccess = ACCESS_COOKIE_NAMES.some((cookieName) => request.cookies.get(cookieName));
     if (!hasAccess) {
       const url = request.nextUrl.clone();
       url.pathname = "/access";

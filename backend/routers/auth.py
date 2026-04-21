@@ -1171,7 +1171,7 @@ def logout_user(
         refresh_token = get_refresh_cookie(request)
     if refresh_token:
         _revoke_refresh_token(db, token=refresh_token, user_id=current_user.id)
-    clear_auth_cookies(response=response)
+    clear_auth_cookies(response=response, request=request)
 
     _log_auth_event(db, "USER_LOGOUT", "User logged out.", current_user.id, request)
     db.commit()
@@ -1202,7 +1202,7 @@ def logout_all_devices(
             db.add(TokenBlacklist(token_jti=jti, user_id=current_user.id, expires_at=exp))
 
     _invalidate_all_user_sessions(db, user=current_user)
-    clear_auth_cookies(response=response)
+    clear_auth_cookies(response=response, request=request)
 
     _log_auth_event(
         db,
@@ -1953,7 +1953,7 @@ def change_password(
         now = datetime.now(timezone.utc)
         current_user.password_hash = hash_password(payload.new_password)
         _invalidate_all_user_sessions(db, user=current_user, invalidated_at=now)
-        clear_auth_cookies(response=response)
+        clear_auth_cookies(response=response, request=request)
         _log_auth_event(db, "PASSWORD_CHANGED", "User changed password.", current_user.id, request)
         db.commit()
         return {"message": "Password changed. Sign in again."}
