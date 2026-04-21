@@ -46,6 +46,34 @@ export class ApiError extends Error {
   }
 }
 
+function isBrowserLocalhost() {
+  if (typeof window === "undefined") return false;
+  const hostname = window.location.hostname || "";
+  return hostname === "localhost" || hostname === "127.0.0.1";
+}
+
+export function backendUnavailableMessage() {
+  if (isBrowserLocalhost()) {
+    return "Backend not reachable. Check the API proxy origin and backend status.";
+  }
+  return "FactoryNerve backend is unavailable right now. Please try again in a moment.";
+}
+
+export function isBackendConnectivityFailure(error: unknown) {
+  if (error instanceof ApiError && error.status === 0) {
+    return true;
+  }
+  if (!(error instanceof Error)) {
+    return false;
+  }
+  const message = error.message || "";
+  return (
+    message.includes("Failed to fetch") ||
+    message.includes("Request timed out") ||
+    message.includes("NetworkError")
+  );
+}
+
 type ApiDetailObject = {
   message?: unknown;
   error?: unknown;
@@ -221,7 +249,7 @@ export async function apiFetch<T>(
       });
     } catch (err) {
       if (controller?.signal.aborted) {
-        throw new ApiError("Request timed out. Is the backend running?", 0);
+        throw new ApiError(backendUnavailableMessage(), 0);
       }
       throw err;
     } finally {

@@ -249,7 +249,7 @@ export async function startGoogleLogin(nextPath?: string | null): Promise<void> 
   const woke = await warmBackendConnection();
   if (!woke) {
     throw new ApiError(
-      "Waking backend... Retry Google sign-in.",
+      "FactoryNerve backend is unavailable right now. Please try Google sign-in again in a moment.",
       503,
     );
   }

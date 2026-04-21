@@ -8,7 +8,7 @@ import { KeyRound, LoaderCircle, LockKeyhole, ShieldCheck } from "lucide-react";
 import { GoogleAuthButton } from "@/components/google-auth-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ApiError } from "@/lib/api";
+import { ApiError, backendUnavailableMessage, isBackendConnectivityFailure } from "@/lib/api";
 import { login, resendEmailVerification, warmBackendConnection } from "@/lib/auth";
 import { getHomeDestination } from "@/lib/role-navigation";
 
@@ -121,9 +121,9 @@ export default function LoginPage() {
       router.replace(nextPath === "/" ? roleHome : nextPath);
     } catch (err) {
       if (err instanceof ApiError) {
-        setError(err.status === 503 ? "Waking backend... Try again in a moment." : err.message);
-      } else if (err instanceof Error && err.message.includes("Failed to fetch")) {
-        setError("Backend not reachable. Check FastAPI and your API base URL.");
+        setError(err.message);
+      } else if (isBackendConnectivityFailure(err)) {
+        setError(backendUnavailableMessage());
       } else if (err instanceof Error) {
         setError(err.message);
       } else {

@@ -1,4 +1,4 @@
-import { ApiError } from "@/lib/api";
+import { ApiError, backendUnavailableMessage } from "@/lib/api";
 import type { AuthContext, CurrentUser, FactoryAccess, OrganizationContext } from "@/lib/auth";
 import { trackProductEvent } from "@/lib/product-analytics";
 
@@ -101,7 +101,7 @@ function toSessionError(err: unknown) {
       return "";
     }
     if (err.status === 0) {
-      return "Backend not reachable. Check API base URL and backend status.";
+      return backendUnavailableMessage();
     }
     return err.message;
   }

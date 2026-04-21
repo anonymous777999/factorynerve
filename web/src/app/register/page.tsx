@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useMemo, useState } from "react";
 import { KeyRound, LoaderCircle, LockKeyhole, ShieldCheck } from "lucide-react";
 
-import { ApiError } from "@/lib/api";
+import { ApiError, backendUnavailableMessage, isBackendConnectivityFailure } from "@/lib/api";
 import { register, resendEmailVerification, type RegisterResponse } from "@/lib/auth";
 import { GoogleAuthButton } from "@/components/google-auth-button";
 import { Button } from "@/components/ui/button";
@@ -120,8 +120,8 @@ export default function RegisterPage() {
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
-      } else if (err instanceof Error && err.message.includes("Failed to fetch")) {
-        setError("Backend not reachable. Check FastAPI and your API base URL.");
+      } else if (isBackendConnectivityFailure(err)) {
+        setError(backendUnavailableMessage());
       } else if (err instanceof Error && err.message.includes("Request timed out")) {
         setError("Verification email delayed. Retry in a minute.");
       } else if (err instanceof Error) {
