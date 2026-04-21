@@ -1,8 +1,9 @@
-const CACHE_VERSION = "2026-04-09-v2";
+const CACHE_VERSION = "2026-04-21-v3";
 const SHELL_CACHE = `factorynerve-shell-${CACHE_VERSION}`;
 const STATIC_CACHE = `factorynerve-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `factorynerve-runtime-${CACHE_VERSION}`;
 const ALL_CACHES = [SHELL_CACHE, STATIC_CACHE, RUNTIME_CACHE];
+const AUTH_ROUTE_PREFIXES = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email"];
 
 const PRECACHE_ROUTES = [
   "/",
@@ -15,8 +16,6 @@ const PRECACHE_ROUTES = [
   "/work-queue",
   "/reports",
   "/offline",
-  "/login",
-  "/register",
   "/manifest.json",
   "/icons/icon-192.png",
   "/icons/icon-512.png",
@@ -33,12 +32,11 @@ const APP_SHELL_ROUTES = new Set([
   "/work-queue",
   "/reports",
   "/offline",
-  "/login",
-  "/register",
-  "/forgot-password",
-  "/reset-password",
-  "/verify-email",
 ]);
+
+function isAuthRoute(pathname) {
+  return AUTH_ROUTE_PREFIXES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
 
 function isCacheableResponse(response) {
   return Boolean(response && response.ok && (response.type === "basic" || response.type === "default"));
@@ -88,6 +86,27 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(keys.filter((key) => !ALL_CACHES.includes(key)).map((key) => caches.delete(key))),
       )
+      .then(async () => {
+        const cacheKeys = await caches.keys();
+        await Promise.all(
+          cacheKeys.map(async (cacheKey) => {
+            const cache = await caches.open(cacheKey);
+            const requests = await cache.keys();
+            await Promise.all(
+              requests
+                .filter((request) => {
+                  try {
+                    const url = new URL(request.url);
+                    return url.origin === self.location.origin && isAuthRoute(url.pathname);
+                  } catch {
+                    return false;
+                  }
+                })
+                .map((request) => cache.delete(request)),
+            );
+          }),
+        );
+      })
       .then(() => self.clients.claim()),
   );
 });
@@ -135,6 +154,18 @@ async function staleWhileRevalidate(request, cacheName = STATIC_CACHE) {
   return cached || networkPromise;
 }
 
+async function networkOnly(request, fallbackUrl = "/offline") {
+  try {
+    return await fetch(request, { cache: "no-store" });
+  } catch {
+    if (fallbackUrl) {
+      const fallback = await caches.match(fallbackUrl);
+      if (fallback) return fallback;
+    }
+    return Response.error();
+  }
+}
+
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") return;
 
@@ -143,6 +174,10 @@ self.addEventListener("fetch", (event) => {
   if (url.pathname.startsWith("/api/")) return;
 
   if (event.request.mode === "navigate") {
+    if (isAuthRoute(url.pathname)) {
+      event.respondWith(networkOnly(event.request, "/offline"));
+      return;
+    }
     event.respondWith(
       networkFirst(event.request, {
         cacheName: RUNTIME_CACHE,

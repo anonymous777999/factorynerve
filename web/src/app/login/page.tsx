@@ -9,6 +9,10 @@ import { GoogleAuthButton } from "@/components/google-auth-button";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ApiError, backendUnavailableMessage, isBackendConnectivityFailure } from "@/lib/api";
+import {
+  attemptAuthShellRecovery,
+  consumeRecoveredLoginEmail,
+} from "@/lib/auth-shell-recovery";
 import { login, resendEmailVerification, warmBackendConnection } from "@/lib/auth";
 import { getHomeDestination } from "@/lib/role-navigation";
 
@@ -105,6 +109,15 @@ export default function LoginPage() {
     void warmBackendConnection();
   }, []);
 
+  useEffect(() => {
+    const recoveredEmail = consumeRecoveredLoginEmail();
+    if (recoveredEmail && !email) {
+      setEmail(recoveredEmail);
+      setInfo("App shell refreshed. Try signing in again.");
+      setInfoTone("success");
+    }
+  }, [email]);
+
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setLoading(true);
@@ -123,6 +136,13 @@ export default function LoginPage() {
       if (err instanceof ApiError) {
         setError(err.message);
       } else if (isBackendConnectivityFailure(err)) {
+        const recovered = await attemptAuthShellRecovery(email);
+        if (recovered) {
+          setInfo("Refreshing the app shell to repair stale login data...");
+          setInfoTone("neutral");
+          setError("");
+          return;
+        }
         setError(backendUnavailableMessage());
       } else if (err instanceof Error) {
         setError(err.message);
