@@ -38,6 +38,9 @@ legacy_schema_markers = {
     "attendance_records",
     "auth_users",
 }
+MIGRATION_COMPAT_ALIASES = {
+    "20260330_04_add_pending_invite_context": "20260330_04",
+}
 
 
 def _format_db_target(url: str) -> str:
@@ -110,6 +113,35 @@ def _existing_tables(url: str) -> set[str]:
         engine.dispose()
 
 
+def _ensure_alembic_version_capacity(url: str, *, min_length: int = 64, target_length: int = 255) -> None:
+    normalized = _normalize_database_url(url)
+    engine = create_engine(normalized, future=True, pool_pre_ping=True)
+    try:
+        inspector = inspect(engine)
+        tables = set(inspector.get_table_names())
+        if "alembic_version" not in tables:
+            return
+        columns = {column["name"]: column for column in inspector.get_columns("alembic_version")}
+        version_column = columns.get("version_num")
+        if not version_column:
+            return
+        current_length = getattr(version_column.get("type"), "length", None)
+        if current_length is None or int(current_length) >= min_length:
+            return
+        with engine.begin() as connection:
+            connection.execute(
+                text(
+                    f"ALTER TABLE alembic_version ALTER COLUMN version_num TYPE VARCHAR({int(target_length)})"
+                )
+            )
+        print(
+            "[render-start] Expanded alembic_version.version_num capacity from "
+            f"{current_length} to {target_length}."
+        )
+    finally:
+        engine.dispose()
+
+
 def _run_alembic(*args: str) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, "-m", "alembic", *args],
@@ -119,6 +151,36 @@ def _run_alembic(*args: str) -> subprocess.CompletedProcess[str]:
         cwd=str(PROJECT_ROOT),
         env=env,
     )
+
+
+def _normalize_known_migration_aliases() -> None:
+    versions_dir = PROJECT_ROOT / "alembic" / "versions"
+    if not versions_dir.exists():
+        return
+
+    for migration_file in versions_dir.glob("*.py"):
+        try:
+            original = migration_file.read_text(encoding="utf-8")
+        except OSError:
+            continue
+
+        updated = original
+        for legacy_revision, canonical_revision in MIGRATION_COMPAT_ALIASES.items():
+            updated = updated.replace(
+                f'down_revision = "{legacy_revision}"',
+                f'down_revision = "{canonical_revision}"',
+            )
+            updated = updated.replace(
+                f"down_revision = '{legacy_revision}'",
+                f"down_revision = '{canonical_revision}'",
+            )
+
+        if updated != original:
+            migration_file.write_text(updated, encoding="utf-8")
+            print(
+                "[render-start] Normalized legacy Alembic down_revision alias in "
+                f"{migration_file.name}."
+            )
 
 
 def _looks_like_legacy_duplicate_failure(url: str, output: str) -> bool:
@@ -194,6 +256,10 @@ if database_url:
                 "[render-start] Using fallback database URL after primary failed with: "
                 f"{primary_error}"
             )
+
+_normalize_known_migration_aliases()
+if "DATABASE_URL" in env:
+    _ensure_alembic_version_capacity(env["DATABASE_URL"])
 
 if run_migrations:
     result = _run_alembic("upgrade", "head")
