@@ -56,6 +56,12 @@ PAID_ORDER_STATUSES = {"paid", "captured"}
 RETRYABLE_ORDER_STATUSES = {"failed", "cancelled", "expired"}
 
 
+def _billing_detail(message: str, *, reason: str, **extra) -> dict:
+    payload = {"message": message, "reason": reason}
+    payload.update(extra)
+    return payload
+
+
 def _org_level_role(current_user: User) -> UserRole:
     role = getattr(current_user, "org_role", None) or current_user.role
     if isinstance(role, UserRole):
@@ -65,7 +71,13 @@ def _org_level_role(current_user: User) -> UserRole:
 
 def _require_billing_owner(current_user: User) -> None:
     if _org_level_role(current_user) != UserRole.OWNER and current_user.role != UserRole.OWNER:
-        raise HTTPException(status_code=403, detail="Access denied.")
+        raise HTTPException(
+            status_code=403,
+            detail=_billing_detail(
+                "Only organization owners can manage downgrade scheduling or emergency billing controls.",
+                reason="billing_owner_required",
+            ),
+        )
 
 
 def _require_billing_checkout_access(current_user: User) -> None:
@@ -74,7 +86,13 @@ def _require_billing_checkout_access(current_user: User) -> None:
         UserRole.ADMIN,
         UserRole.OWNER,
     }:
-        raise HTTPException(status_code=403, detail="Access denied.")
+        raise HTTPException(
+            status_code=403,
+            detail=_billing_detail(
+                "Only admins and owners can start checkout for this organization.",
+                reason="billing_role_required",
+            ),
+        )
 
 
 class CreateOrderRequest(BaseModel):
@@ -363,11 +381,20 @@ def _resolve_checkout_quote(
 ) -> dict:
     plan_info = get_plan(plan)
     if is_sales_only_plan(plan):
-        raise HTTPException(status_code=400, detail=f"{plan_info.get('name', 'This plan')} is sales-assisted and cannot be self-checked out.")
+        raise HTTPException(
+            status_code=400,
+            detail=_billing_detail(
+                f"{plan_info.get('name', 'This plan')} is sales-assisted and cannot be self-checked out.",
+                reason="sales_only_plan",
+            ),
+        )
     monthly_price = int(plan_info.get("monthly_price", 0) or 0)
     cycle = (billing_cycle or "monthly").strip().lower()
     if cycle not in {"monthly", "yearly"}:
-        raise HTTPException(status_code=400, detail="Invalid billing cycle.")
+        raise HTTPException(
+            status_code=400,
+            detail=_billing_detail("Invalid billing cycle.", reason="invalid_billing_cycle"),
+        )
     multiplier = 1 if cycle == "monthly" else int(PRICING_META.get("yearly_multiplier", 12) or 12)
     included_users = int(plan_info.get("user_limit", 0) or 0)
     included_factories = int(plan_info.get("factory_limit", 0) or 0)
@@ -378,12 +405,24 @@ def _resolve_checkout_quote(
     if included_users > 0 and effective_users > included_users:
         raise HTTPException(
             status_code=400,
-            detail=f"{plan_info.get('name', 'This plan')} supports up to {included_users} users, but your organization currently has {effective_users} active users. Choose a higher plan.",
+            detail=_billing_detail(
+                f"{plan_info.get('name', 'This plan')} supports up to {included_users} users, but your organization currently has {effective_users} active users. Choose a higher plan.",
+                reason="plan_capacity_exceeded",
+                limit_type="users",
+                supported=included_users,
+                requested=effective_users,
+            ),
         )
     if included_factories > 0 and effective_factories > included_factories:
         raise HTTPException(
             status_code=400,
-            detail=f"{plan_info.get('name', 'This plan')} supports up to {included_factories} factories, but your organization currently has {effective_factories} active factories. Choose a higher plan.",
+            detail=_billing_detail(
+                f"{plan_info.get('name', 'This plan')} supports up to {included_factories} factories, but your organization currently has {effective_factories} active factories. Choose a higher plan.",
+                reason="plan_capacity_exceeded",
+                limit_type="factories",
+                supported=included_factories,
+                requested=effective_factories,
+            ),
         )
 
     extra_users = max(0, effective_users - included_users) if included_users > 0 else 0
@@ -425,7 +464,13 @@ def _resolve_checkout_quote(
         addon_monthly_total += addon_payload["price"] * incremental_quantity
     monthly_total = monthly_price + extra_user_monthly + extra_factory_monthly + addon_monthly_total
     if monthly_total <= 0:
-        raise HTTPException(status_code=400, detail="Selected configuration is not billable.")
+        raise HTTPException(
+            status_code=400,
+            detail=_billing_detail(
+                "Selected configuration is not billable.",
+                reason="non_billable_selection",
+            ),
+        )
     return {
         "billing_cycle": cycle,
         "amount_paise": monthly_total * multiplier * 100,
@@ -640,16 +685,31 @@ def create_order(
     _require_billing_checkout_access(current_user)
     normalized_plan = normalize_plan(payload.plan)
     if is_sales_only_plan(normalized_plan):
-        raise HTTPException(status_code=400, detail=f"{get_plan(normalized_plan).get('name', 'This plan')} requires a custom sales quote.")
+        raise HTTPException(
+            status_code=400,
+            detail=_billing_detail(
+                f"{get_plan(normalized_plan).get('name', 'This plan')} requires a custom sales quote.",
+                reason="sales_only_plan",
+            ),
+        )
     requested_currency = str(payload.currency or SUPPORTED_CURRENCY).strip().upper()
     if requested_currency != SUPPORTED_CURRENCY:
-        raise HTTPException(status_code=400, detail=f"Only {SUPPORTED_CURRENCY} billing is supported.")
+        raise HTTPException(
+            status_code=400,
+            detail=_billing_detail(
+                f"Only {SUPPORTED_CURRENCY} billing is supported.",
+                reason="unsupported_currency",
+            ),
+        )
     key_id = os.getenv("RAZORPAY_KEY_ID")
     key_secret = os.getenv("RAZORPAY_KEY_SECRET")
     if not key_id or not key_secret:
         raise HTTPException(
             status_code=400,
-            detail="Razorpay is not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.",
+            detail=_billing_detail(
+                "Razorpay is not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.",
+                reason="razorpay_not_configured",
+            ),
         )
     try:
         import razorpay  # type: ignore

@@ -4,7 +4,17 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { getBillingStatus } from "@/lib/billing";
-import { sortAddons, sortPlans } from "@/lib/pricing";
+import {
+  getBestValuePlan,
+  sortAddons,
+  sortPlans,
+  type BillingCycle,
+} from "@/lib/pricing";
+import {
+  billingRoleLabel,
+  canStartBillingCheckout,
+  canViewBillingWorkspace,
+} from "@/lib/billing-access";
 import {
   getLastPlanUpgrade,
   getPlans,
@@ -94,6 +104,32 @@ function compareRowLabel(value: boolean | string) {
   return value;
 }
 
+function formatPlanPrice(plan: PlanInfo) {
+  if (plan.sales_only) return "Custom quote";
+  if (Number(plan.monthly_price || 0) <= 0) return "Free";
+  return `${formatMoney(plan.monthly_price || 0)}/mo`;
+}
+
+function buildBillingHref(params: {
+  plan?: string;
+  cycle?: BillingCycle;
+  addonQuantities?: Record<string, number>;
+  intent?: string;
+}) {
+  const query = new URLSearchParams();
+  if (params.plan) query.set("plan", params.plan);
+  if (params.cycle) query.set("cycle", params.cycle);
+  if (params.intent) query.set("intent", params.intent);
+  const normalizedAddons = Object.entries(params.addonQuantities || {})
+    .filter(([, quantity]) => Number(quantity || 0) > 0)
+    .map(([addonId, quantity]) => `${addonId}:${Math.max(1, Math.floor(quantity || 0))}`);
+  if (normalizedAddons.length) {
+    query.set("addon_quantities", normalizedAddons.join(","));
+  }
+  const serialized = query.toString();
+  return serialized ? `/billing?${serialized}` : "/billing";
+}
+
 export default function PlansPage() {
   const { user, loading, error: sessionError } = useSession();
   const [plansPayload, setPlansPayload] = useState<PlansPayload | null>(null);
@@ -103,10 +139,9 @@ export default function PlansPage() {
   const [lastUpgrade, setLastUpgrade] = useState("");
   const [error, setError] = useState("");
 
-  const canViewBilling = useMemo(() => {
-    const role = user?.role || "";
-    return role === "admin" || role === "owner";
-  }, [user]);
+  const canViewBilling = useMemo(() => canViewBillingWorkspace(user), [user]);
+  const canStartCheckout = useMemo(() => canStartBillingCheckout(user), [user]);
+  const currentRoleLabel = useMemo(() => billingRoleLabel(user), [user]);
 
   useEffect(() => {
     let alive = true;
@@ -150,6 +185,47 @@ export default function PlansPage() {
 
   const plans = useMemo(() => sortPlans(plansPayload?.plans || []), [plansPayload?.plans]);
   const addons = useMemo(() => sortAddons(plansPayload?.addons || []), [plansPayload?.addons]);
+  const activeAddonIds = useMemo(
+    () => (billingSnapshot?.active_addons || []).map((addon) => addon.id),
+    [billingSnapshot?.active_addons],
+  );
+  const activeAddonQuantities = useMemo(() => {
+    const quantities: Record<string, number> = {};
+    (billingSnapshot?.active_addons || []).forEach((addon) => {
+      quantities[addon.id] = Math.max(1, Number(addon.quantity || 1));
+    });
+    return quantities;
+  }, [billingSnapshot?.active_addons]);
+  const recommendedPlanEstimate = useMemo(() => {
+    if (!canStartCheckout || !plansPayload?.pricing || !billingSnapshot?.footprint) return null;
+    return getBestValuePlan(
+      plans,
+      plansPayload.pricing,
+      addons,
+      {
+        users: Math.max(1, Number(billingSnapshot.footprint.active_users || 1)),
+        factories: Math.max(1, Number(billingSnapshot.footprint.active_factories || 1)),
+        activeAddonIds,
+        activeAddonQuantities,
+      },
+      "monthly",
+    );
+  }, [
+    activeAddonIds,
+    activeAddonQuantities,
+    addons,
+    billingSnapshot,
+    canStartCheckout,
+    plans,
+    plansPayload,
+  ]);
+  const recommendedPaidPlan = recommendedPlanEstimate?.plan || plans.find(
+    (plan) => Number(plan.monthly_price || 0) > 0 && !plan.sales_only,
+  ) || null;
+  const currentPlanInfo = useMemo(
+    () => plans.find((plan) => plan.id === currentPlan) || null,
+    [currentPlan, plans],
+  );
 
   const aiUsage = billingSnapshot?.usage;
   const summaryHealth = getQuotaHealth(aiUsage?.summary_used, aiUsage?.summary_limit);
@@ -188,35 +264,58 @@ export default function PlansPage() {
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Plans</div>
+            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Plans</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">
                 Simple, customer-safe pricing for every factory stage
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Compare plans, included limits, and OCR packs without exposing any internal pricing math or business-side margin logic.
+                Compare plans, included limits, and OCR packs, then hand off into a cleaner checkout flow only when your organization is ready to buy.
               </p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Link href="/billing" className="w-full sm:w-auto">
-                <Button className="w-full sm:w-auto">{canViewBilling ? "Open Billing" : "Billing Access"}</Button>
-              </Link>
+              {canViewBilling ? (
+                <Link href="/billing" className="w-full sm:w-auto">
+                  <Button className="w-full sm:w-auto">Open Billing</Button>
+                </Link>
+              ) : (
+                <div className="w-full rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] px-4 py-3 text-sm text-[var(--muted)] sm:w-auto">
+                  {currentRoleLabel}s can compare plans here. Admins and owners handle checkout.
+                </div>
+              )}
               <Link href="/dashboard" className="w-full sm:w-auto">
                 <Button className="w-full sm:w-auto" variant="outline">Dashboard</Button>
               </Link>
             </div>
           </div>
 
-          <div className="mt-5 grid gap-2 text-xs uppercase tracking-[0.18em] text-[var(--muted)] sm:flex sm:flex-wrap">
-            <span className={`rounded-full px-3 py-1 ${badgeClass("blue")}`}>
-              Current plan: {currentPlan || "free"}
-            </span>
-            <span className={`rounded-full px-3 py-1 ${badgeClass("slate")}`}>
-              OCR packs: {formatActiveAddons(billingSnapshot?.active_addons)}
-            </span>
-            <span className={`rounded-full px-3 py-1 ${badgeClass("slate")}`}>
-              Last upgrade: {lastUpgrade || "Not recorded"}
-            </span>
-          </div>
+          {canViewBilling && billingSnapshot ? (
+            <div className="mt-5 grid gap-2 text-xs uppercase tracking-[0.18em] text-[var(--muted)] sm:flex sm:flex-wrap">
+              <span className={`rounded-full px-3 py-1 ${badgeClass("blue")}`}>
+                Current plan: {currentPlan || "free"}
+              </span>
+              <span className={`rounded-full px-3 py-1 ${badgeClass("slate")}`}>
+                OCR packs: {formatActiveAddons(billingSnapshot.active_addons)}
+              </span>
+              <span className={`rounded-full px-3 py-1 ${badgeClass("slate")}`}>
+                Footprint: {billingSnapshot.footprint?.active_users || 0} users / {billingSnapshot.footprint?.active_factories || 0} factories
+              </span>
+              <span className={`rounded-full px-3 py-1 ${badgeClass("slate")}`}>
+                Last upgrade: {lastUpgrade || "Not recorded"}
+              </span>
+            </div>
+          ) : (
+            <div className="mt-5 grid gap-2 text-xs uppercase tracking-[0.18em] text-[var(--muted)] sm:flex sm:flex-wrap">
+              <span className={`rounded-full px-3 py-1 ${badgeClass("blue")}`}>
+                Compare every plan safely
+              </span>
+              <span className={`rounded-full px-3 py-1 ${badgeClass("slate")}`}>
+                Admin or owner required for checkout
+              </span>
+              <span className={`rounded-full px-3 py-1 ${badgeClass("slate")}`}>
+                OCR packs are billable add-ons on paid tiers
+              </span>
+            </div>
+          )}
         </section>
 
         {(error || sessionError) && !plansLoading ? (
@@ -225,65 +324,164 @@ export default function PlansPage() {
           </div>
         ) : null}
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm text-[var(--muted)]">AI Summary Quota</div>
-                  <CardTitle>{quotaLabel(aiUsage?.summary_used, aiUsage?.summary_limit)}</CardTitle>
+        {canStartCheckout && recommendedPlanEstimate ? (
+          <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <Card className="border-sky-400/35 bg-[linear-gradient(135deg,rgba(17,24,39,0.94),rgba(8,14,24,0.9))]">
+              <CardHeader>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-sm uppercase tracking-[0.22em] text-[var(--accent)]">Recommended Plan</div>
+                    <CardTitle className="mt-2 text-2xl">
+                      {recommendedPlanEstimate.plan.name} fits this organization best
+                    </CardTitle>
+                  </div>
+                  <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeClass("green")}`}>
+                    {formatPlanPrice(recommendedPlanEstimate.plan)}
+                  </span>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${summaryHealth.badgeClass}`}>
-                  {summaryHealth.badge}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-              <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
-                <div className={`h-2 rounded-full ${summaryHealth.barClass}`} style={{ width: `${summaryHealth.percent}%` }} />
-              </div>
-              <div>{summaryHealth.detail}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm text-[var(--muted)]">AI Email Quota</div>
-                  <CardTitle>{quotaLabel(aiUsage?.email_used, aiUsage?.email_limit)}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm text-[var(--muted)]">
+                <p>
+                  This recommendation uses your real active users, active factories, and OCR-pack state so the next step in billing starts from a valid checkout configuration.
+                </p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] p-4">
+                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Current footprint</div>
+                    <div className="mt-2 font-semibold text-white">
+                      {billingSnapshot?.footprint?.active_users || 0} users / {billingSnapshot?.footprint?.active_factories || 0} factories
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] p-4">
+                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Included capacity</div>
+                    <div className="mt-2 font-semibold text-white">
+                      {recommendedPlanEstimate.plan.user_limit || "Unlimited"} users / {recommendedPlanEstimate.plan.factory_limit || "Unlimited"} factories
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] p-4">
+                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">OCR pack deductions</div>
+                    <div className="mt-2 font-semibold text-white">
+                      {recommendedPlanEstimate.alreadyActiveAddons.length
+                        ? `${recommendedPlanEstimate.alreadyActiveAddons.length} active`
+                        : "None active"}
+                    </div>
+                  </div>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${emailHealth.badgeClass}`}>
-                  {emailHealth.badge}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-              <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
-                <div className={`h-2 rounded-full ${emailHealth.barClass}`} style={{ width: `${emailHealth.percent}%` }} />
-              </div>
-              <div>{emailHealth.detail}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm text-[var(--muted)]">AI Smart Quota</div>
-                  <CardTitle>{quotaLabel(aiUsage?.smart_used, aiUsage?.smart_limit)}</CardTitle>
+                <Link
+                  href={buildBillingHref({
+                    plan: recommendedPlanEstimate.plan.id,
+                    cycle: "monthly",
+                    intent: "upgrade_plan",
+                  })}
+                >
+                  <Button className="w-full sm:w-auto">Continue to Billing</Button>
+                </Link>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl">Checkout handoff</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-[var(--muted)]">
+                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] p-4">
+                  /plans stays focused on comparison and recommendations. /billing handles preflight, OCR packs, final estimate, and Razorpay checkout.
                 </div>
-                <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${smartHealth.badgeClass}`}>
-                  {smartHealth.badge}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-              <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
-                <div className={`h-2 rounded-full ${smartHealth.barClass}`} style={{ width: `${smartHealth.percent}%` }} />
-              </div>
-              <div>{smartHealth.detail}</div>
-            </CardContent>
-          </Card>
-        </section>
+                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] p-4">
+                  Enterprise stays sales-assisted. Free-plan OCR intent jumps straight into a valid paid-plan recommendation instead of blocking you with a dead-end button.
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        ) : null}
+
+        {canViewBilling && billingSnapshot ? (
+          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            <Card>
+              <CardHeader>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm text-[var(--muted)]">AI Summary Quota</div>
+                    <CardTitle>{quotaLabel(aiUsage?.summary_used, aiUsage?.summary_limit)}</CardTitle>
+                  </div>
+                  <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${summaryHealth.badgeClass}`}>
+                    {summaryHealth.badge}
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-[var(--muted)]">
+                <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
+                  <div className={`h-2 rounded-full ${summaryHealth.barClass}`} style={{ width: `${summaryHealth.percent}%` }} />
+                </div>
+                <div>{summaryHealth.detail}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm text-[var(--muted)]">AI Email Quota</div>
+                    <CardTitle>{quotaLabel(aiUsage?.email_used, aiUsage?.email_limit)}</CardTitle>
+                  </div>
+                  <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${emailHealth.badgeClass}`}>
+                    {emailHealth.badge}
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-[var(--muted)]">
+                <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
+                  <div className={`h-2 rounded-full ${emailHealth.barClass}`} style={{ width: `${emailHealth.percent}%` }} />
+                </div>
+                <div>{emailHealth.detail}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm text-[var(--muted)]">AI Smart Quota</div>
+                    <CardTitle>{quotaLabel(aiUsage?.smart_used, aiUsage?.smart_limit)}</CardTitle>
+                  </div>
+                  <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${smartHealth.badgeClass}`}>
+                    {smartHealth.badge}
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-[var(--muted)]">
+                <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
+                  <div className={`h-2 rounded-full ${smartHealth.barClass}`} style={{ width: `${smartHealth.percent}%` }} />
+                </div>
+                <div>{smartHealth.detail}</div>
+              </CardContent>
+            </Card>
+          </section>
+        ) : (
+          <section className="grid gap-4 lg:grid-cols-3">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl">How to use this page</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm leading-6 text-[var(--muted)]">
+                Compare plans first, then involve an admin or owner to move into billing checkout.
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl">What changes on paid plans</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm leading-6 text-[var(--muted)]">
+                Paid tiers unlock OCR add-ons, larger usage pools, and higher factory or user capacity.
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl">What stays sales-assisted</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm leading-6 text-[var(--muted)]">
+                Enterprise stays outside self-serve checkout so custom scale, support, and deployment terms can be reviewed properly.
+              </CardContent>
+            </Card>
+          </section>
+        )}
 
         <section className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
           {plans.map((plan) => {
@@ -310,7 +508,7 @@ export default function PlansPage() {
                   </div>
                   <div>
                     <div className="text-3xl font-semibold text-white">
-                      {plan.display_price || (plan.sales_only ? "Custom" : `${formatMoney(plan.monthly_price || 0)}/mo`)}
+                      {formatPlanPrice(plan)}
                     </div>
                     <div className="mt-2 text-sm text-[var(--muted)]">{plan.subtitle || "Factory operations plan"}</div>
                     {plan.custom_price_hint ? (
@@ -355,15 +553,23 @@ export default function PlansPage() {
                     ))}
                   </div>
 
-                  <Link href={`/billing?plan=${encodeURIComponent(plan.id)}`}>
-                    <Button className="w-full" variant={plan.sales_only ? "outline" : "primary"}>
-                      {plan.sales_only
-                        ? "Talk to Sales"
-                        : canViewBilling
-                          ? "Use This Plan"
-                          : "Review This Plan"}
+                  {plan.id === currentPlanInfo?.id && canViewBilling ? (
+                    <Link href={buildBillingHref({ plan: plan.id, intent: "review_current_plan" })}>
+                      <Button className="w-full" variant="outline">Review in Billing</Button>
+                    </Link>
+                  ) : plan.sales_only ? (
+                    <Link href={buildBillingHref({ plan: plan.id, intent: "contact_sales" })}>
+                      <Button className="w-full" variant="outline">Contact Sales</Button>
+                    </Link>
+                  ) : canStartCheckout ? (
+                    <Link href={buildBillingHref({ plan: plan.id, intent: "upgrade_plan" })}>
+                      <Button className="w-full">Continue to Billing</Button>
+                    </Link>
+                  ) : (
+                    <Button className="w-full" variant="outline" disabled>
+                      Ask an admin to upgrade
                     </Button>
-                  </Link>
+                  )}
                 </CardContent>
               </Card>
             );
@@ -381,7 +587,21 @@ export default function PlansPage() {
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {addons.map((addon) => {
               const isFreePlan = (currentPlan || "free").toLowerCase() === "free";
-              const canPurchasePack = !isFreePlan;
+              const activeQuantity =
+                Number(
+                  (billingSnapshot?.active_addons || []).find((item) => item.id === addon.id)?.quantity || 0,
+                ) || 0;
+              const addonBillingHref = isFreePlan
+                ? buildBillingHref({
+                    plan: recommendedPaidPlan?.id || "starter",
+                    addonQuantities: { [addon.id]: 1 },
+                    intent: "upgrade_and_add_pack",
+                  })
+                : buildBillingHref({
+                    plan: currentPlan || recommendedPaidPlan?.id || "starter",
+                    addonQuantities: { [addon.id]: Math.max(1, activeQuantity + 1) },
+                    intent: "add_ocr_pack",
+                  });
               return (
                 <Card key={addon.id}>
                   <CardHeader>
@@ -395,19 +615,20 @@ export default function PlansPage() {
                         : "Billable OCR pack"}
                     </div>
                     <div>{addon.description}</div>
-                    {canPurchasePack ? (
-                      <Link
-                        href={`/billing?plan=${encodeURIComponent(
-                          currentPlan,
-                        )}&addon_quantities=${encodeURIComponent(`${addon.id}:1`)}`}
-                      >
+                    {activeQuantity > 0 ? (
+                      <div className="rounded-full border border-emerald-400/30 bg-emerald-400/12 px-3 py-2 text-xs uppercase tracking-[0.18em] text-emerald-200">
+                        Active x{activeQuantity}
+                      </div>
+                    ) : null}
+                    {canStartCheckout ? (
+                      <Link href={addonBillingHref}>
                         <Button className="w-full" variant="outline">
-                          Add In Billing
+                          {isFreePlan ? "Upgrade + Add Pack" : "Add in Billing"}
                         </Button>
                       </Link>
                     ) : (
                       <Button className="w-full" variant="outline" disabled>
-                        OCR not available on Free
+                        Ask an admin to add this pack
                       </Button>
                     )}
                   </CardContent>

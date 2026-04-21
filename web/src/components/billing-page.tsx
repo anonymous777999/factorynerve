@@ -20,6 +20,12 @@ import {
   type BillingConfig,
   type InvoiceItem,
 } from "@/lib/billing";
+import {
+  billingRoleLabel,
+  canManageBillingControls,
+  canStartBillingCheckout,
+  canViewBillingWorkspace,
+} from "@/lib/billing-access";
 import { calculatePlanEstimate, sortAddons, type BillingCycle } from "@/lib/pricing";
 import {
   getLastPlanUpgrade,
@@ -81,6 +87,14 @@ function parseAddonQuantitiesParam(raw: string | null) {
   return quantities;
 }
 
+type CheckoutIntent =
+  | "upgrade_plan"
+  | "add_ocr_pack"
+  | "upgrade_and_add_pack"
+  | "review_current_plan"
+  | "contact_sales"
+  | "";
+
 function badgeClass(tone: "blue" | "green" | "amber" | "slate") {
   if (tone === "blue") {
     return "border border-sky-400/30 bg-sky-400/15 text-sky-200";
@@ -118,6 +132,37 @@ async function loadRazorpayScript() {
   });
 }
 
+function getIntentCopy(intent: CheckoutIntent, planName?: string) {
+  if (intent === "add_ocr_pack") {
+    return {
+      title: "Adding OCR packs",
+      detail: "This checkout started from an OCR-pack purchase flow. Review active packs and only pay for new incremental packs.",
+    };
+  }
+  if (intent === "upgrade_and_add_pack") {
+    return {
+      title: `Upgrading${planName ? ` to ${planName}` : ""} and adding OCR`,
+      detail: "Free plan OCR intent has been routed into a paid-plan checkout path so your pack purchase starts from a valid configuration.",
+    };
+  }
+  if (intent === "review_current_plan") {
+    return {
+      title: "Reviewing current billing setup",
+      detail: "Use the preflight summary below to confirm capacity, active OCR packs, and whether this organization needs a higher tier.",
+    };
+  }
+  if (intent === "contact_sales") {
+    return {
+      title: "Enterprise is sales-assisted",
+      detail: "Enterprise is not part of self-serve Razorpay checkout. Review the preflight below, then use the plans page to start the sales conversation.",
+    };
+  }
+  return {
+    title: `Upgrading${planName ? ` to ${planName}` : ""}`,
+    detail: "Review the preflight checks, adjust OCR packs if needed, and then open Razorpay only when the estimate is correct.",
+  };
+}
+
 function BillingPageInner() {
   const { user, loading, error: sessionError } = useSession();
   const searchParams = useSearchParams();
@@ -135,24 +180,32 @@ function BillingPageInner() {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
   const [selectedAddonQuantities, setSelectedAddonQuantities] = useState<Record<string, number>>({});
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
+  const [checkoutIntent, setCheckoutIntent] = useState<CheckoutIntent>("");
 
-  const canViewBilling = useMemo(() => {
-    const role = user?.org_role || user?.role || "";
-    return role === "admin" || role === "owner";
-  }, [user]);
-
-  const canWriteBilling = useMemo(() => {
-    const role = user?.org_role || user?.role || "";
-    return role === "admin" || role === "owner";
-  }, [user]);
+  const canViewBilling = useMemo(() => canViewBillingWorkspace(user), [user]);
+  const canWriteBilling = useMemo(() => canStartBillingCheckout(user), [user]);
+  const canManageControls = useMemo(() => canManageBillingControls(user), [user]);
+  const currentRoleLabel = useMemo(() => billingRoleLabel(user), [user]);
 
   useEffect(() => {
     const plan = searchParams.get("plan");
     const cycle = searchParams.get("cycle");
     const addons = searchParams.get("addons");
     const addonQuantities = searchParams.get("addon_quantities");
-    if (plan) setCheckoutPlan(plan);
+    const intent = searchParams.get("intent");
+    if (plan && plan !== "enterprise") setCheckoutPlan(plan);
     if (cycle === "monthly" || cycle === "yearly") setBillingCycle(cycle);
+    if (
+      intent === "upgrade_plan" ||
+      intent === "add_ocr_pack" ||
+      intent === "upgrade_and_add_pack" ||
+      intent === "review_current_plan" ||
+      intent === "contact_sales"
+    ) {
+      setCheckoutIntent(intent);
+    } else {
+      setCheckoutIntent("");
+    }
     if (addonQuantities) {
       setSelectedAddonQuantities(parseAddonQuantitiesParam(addonQuantities));
       return;
@@ -378,6 +431,96 @@ function BillingPageInner() {
   const smartHealth = getQuotaHealth(billing?.usage?.smart_used, billing?.usage?.smart_limit);
   const ocrRequestsLocked = Number(billing?.usage?.max_requests ?? 0) < 0;
   const ocrCreditsLocked = Number(billing?.usage?.max_credits ?? 0) < 0;
+  const intentCopy = getIntentCopy(checkoutIntent, checkoutPlanInfo?.name);
+  const checkoutBlocker = useMemo(() => {
+    if (!canWriteBilling) {
+      return {
+        title: "Checkout permission required",
+        detail: `${currentRoleLabel}s can review plans, but only admins and owners can start Razorpay checkout.`,
+      };
+    }
+    if (!billingConfig?.configured || !billingConfig.key_id) {
+      return {
+        title: "Razorpay is not configured",
+        detail: "Add the Razorpay key, secret, and webhook secret on the backend before opening live checkout.",
+      };
+    }
+    if (checkoutPlanInfo?.sales_only || checkoutIntent === "contact_sales") {
+      return {
+        title: "Enterprise is sales-assisted",
+        detail: "Enterprise quotes do not go through self-serve Razorpay. Use the plans page to route this request into the sales-assisted path.",
+      };
+    }
+    if (checkoutEstimate && !checkoutEstimate.isCompatible) {
+      return {
+        title: "Selected plan is too small",
+        detail: `${checkoutPlanInfo?.name || "This plan"} does not fit the current organization footprint. Choose a higher plan before checkout.`,
+      };
+    }
+    return null;
+  }, [
+    billingConfig?.configured,
+    billingConfig?.key_id,
+    canWriteBilling,
+    checkoutEstimate,
+    checkoutIntent,
+    checkoutPlanInfo?.name,
+    checkoutPlanInfo?.sales_only,
+    currentRoleLabel,
+  ]);
+  const preflightItems = useMemo(
+    () => [
+      {
+        label: "Billing role access",
+        pass: canWriteBilling,
+        detail: canWriteBilling
+          ? `${currentRoleLabel} checkout access is active.`
+          : "Only admin and owner roles can start checkout.",
+      },
+      {
+        label: "Razorpay configuration",
+        pass: Boolean(billingConfig?.configured && billingConfig?.key_id),
+        detail:
+          billingConfig?.configured && billingConfig?.key_id
+            ? "Ready for live checkout."
+            : "Backend Razorpay keys are missing.",
+      },
+      {
+        label: "Current organization footprint",
+        pass: true,
+        detail: `${organizationUsers} active users and ${organizationFactories} active factories will be used for plan validation.`,
+      },
+      {
+        label: "Selected plan compatibility",
+        pass: Boolean(checkoutEstimate?.isCompatible) && !Boolean(checkoutPlanInfo?.sales_only),
+        detail: checkoutPlanInfo?.sales_only
+          ? "Enterprise is sales-assisted."
+          : checkoutEstimate?.isCompatible
+            ? `${checkoutPlanInfo?.name || "Selected plan"} fits the current footprint.`
+            : `${checkoutPlanInfo?.name || "Selected plan"} is below the current organization size.`,
+      },
+      {
+        label: "Active OCR pack deductions",
+        pass: true,
+        detail: checkoutEstimate?.alreadyActiveAddons.length
+          ? `${checkoutEstimate.alreadyActiveAddons
+              .map((addon) => `${addon.name} x${addon.activeQuantity || addon.quantity || 0}`)
+              .join(", ")} will not be charged again.`
+          : "No active OCR packs are being deducted from this estimate.",
+      },
+    ],
+    [
+      billingConfig?.configured,
+      billingConfig?.key_id,
+      canWriteBilling,
+      checkoutEstimate,
+      checkoutPlanInfo?.name,
+      checkoutPlanInfo?.sales_only,
+      currentRoleLabel,
+      organizationFactories,
+      organizationUsers,
+    ],
+  );
 
   const updateAddonQuantity = (addonId: string, quantity: number) => {
     setSelectedAddonQuantities((current) => {
@@ -394,7 +537,7 @@ function BillingPageInner() {
 
   const launchCheckout = async () => {
     if (!canWriteBilling) {
-      setError("Only owners can start checkout or change the billing plan.");
+      setError("Only admins and owners can start checkout.");
       return;
     }
     if (!checkoutPlanInfo) {
@@ -402,7 +545,7 @@ function BillingPageInner() {
       return;
     }
     if (checkoutPlanInfo.sales_only) {
-      setError("Enterprise is handled through contact sales. Use the manual override only for internal QA.");
+      setError("Enterprise is handled through contact sales and is not part of self-serve Razorpay checkout.");
       return;
     }
     if (!billingConfig?.configured || !billingConfig.key_id) {
@@ -555,7 +698,7 @@ function BillingPageInner() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-[var(--muted)]">
-              Billing access is available to admins and owners. Owners handle plan changes and payments.
+              Billing checkout is available to admins and owners. Owners still control downgrade scheduling and emergency billing overrides.
             </div>
             <div className="flex flex-wrap gap-3">
               <Link href="/plans">
@@ -576,11 +719,9 @@ function BillingPageInner() {
         <section className="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur lg:flex-row lg:items-start lg:justify-between">
           <div>
             <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Billing</div>
-            <h1 className="mt-2 text-3xl font-semibold">Plan status and live checkout</h1>
+            <h1 className="mt-2 text-3xl font-semibold">Compare, validate, and pay</h1>
             <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
-              The billing page stays focused on the real money path: current subscription state,
-              invoice history, live Razorpay checkout, and explicit add-on pricing from the backend
-              catalog.
+              This page now acts as the transactional step after /plans. Start with the preflight checks, confirm the estimate, then open Razorpay only when the selection is valid.
             </p>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
@@ -595,6 +736,18 @@ function BillingPageInner() {
 
         {status ? <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
         {error || sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error || sessionError}</div> : null}
+        <section className="rounded-3xl border border-[var(--border)] bg-[rgba(8,14,24,0.72)] p-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--accent)]">Checkout intent</div>
+              <div className="mt-1 text-lg font-semibold text-white">{intentCopy.title}</div>
+              <div className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">{intentCopy.detail}</div>
+            </div>
+            <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeClass(canWriteBilling ? "blue" : "slate")}`}>
+              {canWriteBilling ? `${currentRoleLabel} checkout access` : `${currentRoleLabel} read-only`}
+            </span>
+          </div>
+        </section>
 
         <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <Card>
@@ -796,11 +949,42 @@ function BillingPageInner() {
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
               <div className="rounded-3xl border border-[var(--border)] bg-[rgba(8,14,24,0.72)] p-4">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Preflight</div>
+                    <div className="mt-1 text-sm font-semibold text-white">Confirm checkout readiness before payment</div>
+                  </div>
+                  <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeClass(checkoutBlocker ? "amber" : "green")}`}>
+                    {checkoutBlocker ? "Action needed" : "Ready to continue"}
+                  </span>
+                </div>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  {preflightItems.map((item) => (
+                    <div key={item.label} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{item.label}</div>
+                        <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeClass(item.pass ? "green" : "amber")}`}>
+                          {item.pass ? "Pass" : "Check"}
+                        </span>
+                      </div>
+                      <div className="mt-3 text-xs leading-5 text-[var(--muted)]">{item.detail}</div>
+                    </div>
+                  ))}
+                </div>
+                {checkoutBlocker ? (
+                  <div className="mt-4 rounded-2xl border border-amber-400/25 bg-amber-400/10 p-4 text-sm text-amber-100">
+                    <div className="font-semibold text-white">{checkoutBlocker.title}</div>
+                    <div className="mt-1 text-sm text-amber-100">{checkoutBlocker.detail}</div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div className="rounded-3xl border border-[var(--border)] bg-[rgba(8,14,24,0.72)] p-4">
                 <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Checkout path</div>
                 <div className="mt-3 grid gap-3 sm:grid-cols-3">
                   {[
-                    ["1", "Choose plan", "Pick the plan, billing cycle, and factory size."],
-                    ["2", "Add OCR packs", "Only add scan packs you actually need this cycle."],
+                    ["1", "Choose plan", "Pick a self-serve plan that matches the real organization footprint."],
+                    ["2", "Add OCR packs", "Add only the incremental OCR packs needed this cycle."],
                     ["3", "Review estimate", "Confirm what is billable before opening Razorpay."],
                   ].map(([step, title, detail]) => (
                     <div key={step} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
@@ -997,17 +1181,17 @@ function BillingPageInner() {
                     This selection exceeds the hard user or factory cap for {checkoutPlanInfo?.name}. Pick a higher tier before checkout.
                   </div>
                 ) : null}
-                {checkoutPlanInfo?.sales_only ? (
+                {checkoutPlanInfo?.sales_only || checkoutIntent === "contact_sales" ? (
                   <div className="rounded-2xl border border-amber-400/25 bg-amber-400/10 p-4 text-sm text-amber-100">
-                    Contact sales for Enterprise.
+                    Enterprise is sales-assisted. This page will not open self-serve Razorpay for that plan.
                   </div>
                 ) : null}
                 <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] p-4 text-sm text-[var(--muted)]">
-                  Need Enterprise? Use the plans page for the sales-assisted tier. Self-serve checkout only shows instantly billable plans.
+                  Need Enterprise? Use the plans page for the sales-assisted tier. Self-serve checkout only shows instantly billable plans and OCR add-ons.
                 </div>
                 {!canWriteBilling ? (
                   <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] p-4 text-sm text-[var(--muted)]">
-                    Read-only mode: only admins and owners can handle checkout and plan changes.
+                    Read-only mode: admins and owners can handle checkout. Your current role can only review estimates here.
                   </div>
                 ) : null}
 
@@ -1021,13 +1205,14 @@ function BillingPageInner() {
                       !checkoutPlanInfo ||
                       !billingConfig?.configured ||
                       Boolean(checkoutPlanInfo.sales_only) ||
+                      checkoutIntent === "contact_sales" ||
                       Boolean(checkoutEstimate && !checkoutEstimate.isCompatible) ||
                       Boolean(checkoutEstimate && checkoutEstimate.cycleTotal <= 0)
                     }
                   >
                     {busy
                       ? "Starting Checkout..."
-                      : checkoutPlanInfo?.sales_only
+                      : checkoutPlanInfo?.sales_only || checkoutIntent === "contact_sales"
                         ? "Sales-Assisted Plan"
                         : canWriteBilling
                           ? "Pay with Razorpay"
@@ -1042,7 +1227,16 @@ function BillingPageInner() {
           </Card>
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
+        <section className="space-y-4">
+          <div>
+            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Billing Operations</div>
+            <h2 className="mt-2 text-2xl font-semibold">Secondary controls and invoice history</h2>
+            <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
+              Checkout stays above. Use these owner-side controls after the current purchase path is settled.
+            </p>
+          </div>
+
+        <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
           <Card>
             <CardHeader>
               <CardTitle className="text-xl">Plan Controls</CardTitle>
@@ -1064,7 +1258,7 @@ function BillingPageInner() {
                           setStatus("Scheduled downgrade cancelled.");
                         })
                       }
-                      disabled={busy || !canWriteBilling}
+                      disabled={busy || !canManageControls}
                     >
                       Cancel Downgrade
                     </Button>
@@ -1087,7 +1281,7 @@ function BillingPageInner() {
                           setStatus("Downgrade scheduled at the end of the current billing cycle.");
                         })
                       }
-                      disabled={busy || !canWriteBilling}
+                      disabled={busy || !canManageControls}
                     >
                       Schedule Downgrade
                     </Button>
@@ -1117,15 +1311,15 @@ function BillingPageInner() {
                         setStatus(`Organization plan updated to ${overridePlan}.`);
                       })
                     }
-                    disabled={busy || !canWriteBilling}
+                    disabled={busy || !canManageControls}
                   >
                     Update Organization Plan
                   </Button>
                 </div>
               ) : null}
-              {!canWriteBilling ? (
+              {!canManageControls ? (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  Owners are the only role allowed to schedule downgrades, start checkout, or use the emergency plan override.
+                  Owner-only controls live here. Admins can still start checkout above, but downgrade scheduling and emergency plan override stay owner-only.
                 </div>
               ) : null}
             </CardContent>
@@ -1203,6 +1397,7 @@ function BillingPageInner() {
               )}
             </CardContent>
           </Card>
+        </div>
         </section>
       </div>
     </main>
