@@ -251,7 +251,7 @@ export default function RegisterPage() {
                   {resending ? "Sending..." : "Resend verification"}
                 </Button>
                 <Link
-                  href="/login"
+                  href="/access"
                   className="type-body-secondary inline-flex h-12 items-center justify-center rounded-[0.95rem] border border-[rgba(255,255,255,0.12)] bg-[rgba(255,255,255,0.03)] px-4 font-semibold text-[rgba(195,221,255,0.96)] transition hover:bg-[rgba(255,255,255,0.08)] hover:text-white"
                 >
                   Back to sign in
@@ -386,7 +386,7 @@ export default function RegisterPage() {
 
                 <div className="type-body-secondary text-center text-[rgba(214,224,238,0.76)]">
                   Already have an account?{" "}
-                  <Link href="/login" className="font-medium text-[rgba(195,221,255,0.96)] underline underline-offset-4 hover:text-white">
+                  <Link href="/access" className="font-medium text-[rgba(195,221,255,0.96)] underline underline-offset-4 hover:text-white">
                     Sign in
                   </Link>
                 </div>

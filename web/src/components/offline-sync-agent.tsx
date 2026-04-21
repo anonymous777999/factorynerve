@@ -17,6 +17,7 @@ export function OfflineSyncAgent() {
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (
+      pathname === "/access" ||
       pathname === "/login" ||
       pathname === "/register" ||
       pathname === "/forgot-password" ||

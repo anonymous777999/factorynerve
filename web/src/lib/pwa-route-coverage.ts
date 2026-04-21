@@ -23,8 +23,12 @@ export const PWA_PRIORITY_ROUTES: PwaTrackedRoute[] = [
   {
     key: "login",
     label: "Login",
-    href: "/login",
-    match: (pathname) => pathname === "/login" || pathname.startsWith("/login/"),
+    href: "/access",
+    match: (pathname) =>
+      pathname === "/access" ||
+      pathname.startsWith("/access/") ||
+      pathname === "/login" ||
+      pathname.startsWith("/login/"),
   },
   {
     key: "dashboard",

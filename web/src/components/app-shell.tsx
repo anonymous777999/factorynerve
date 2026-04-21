@@ -1650,7 +1650,7 @@ function AppShellFrame({
     try {
       await logout();
       if (typeof window !== "undefined") {
-        window.location.href = "/login";
+        window.location.href = "/access";
       }
     } catch (error) {
       setAccountActionError(error instanceof Error ? error.message : "Could not sign out right now.");
@@ -1664,7 +1664,7 @@ function AppShellFrame({
     try {
       await logout();
       if (typeof window !== "undefined") {
-        window.location.href = "/login?switch_account=1";
+        window.location.href = "/access?switch_account=1";
       }
     } catch (error) {
       setAccountActionError(error instanceof Error ? error.message : "Could not switch account right now.");

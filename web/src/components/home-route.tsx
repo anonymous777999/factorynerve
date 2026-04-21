@@ -319,7 +319,7 @@ export default function HomeRoute() {
               </div>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-              <Link href="/login" className="w-full sm:w-auto">
+              <Link href="/access" className="w-full sm:w-auto">
                 <Button variant="ghost" className="w-full sm:w-auto">Sign in</Button>
               </Link>
               <Link href="/register" className="w-full sm:w-auto">
@@ -466,7 +466,7 @@ export default function HomeRoute() {
                 <Link href="/register" className="w-full sm:w-auto">
                   <Button size="lg" className="w-full sm:w-auto">Create account</Button>
                 </Link>
-                <Link href="/login" className="w-full sm:w-auto">
+                <Link href="/access" className="w-full sm:w-auto">
                   <Button variant="outline" size="lg" className="w-full sm:w-auto">Open workspace</Button>
                 </Link>
               </div>

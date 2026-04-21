@@ -219,7 +219,7 @@ export default function ForgotPasswordPage() {
             >
               {resendingVerification ? "Sending..." : "Resend Verification Email"}
             </Button>
-            <Link href="/login" className="inline-flex w-full items-center justify-center text-sm text-color-primary hover:underline sm:w-auto">
+            <Link href="/access" className="inline-flex w-full items-center justify-center text-sm text-color-primary hover:underline sm:w-auto">
               Back to sign in
             </Link>
           </div>
@@ -233,7 +233,7 @@ export default function ForgotPasswordPage() {
 
       <div className="text-center text-sm text-text-muted">
         Remembered it?{" "}
-        <Link href="/login" className="text-color-primary hover:underline font-medium">
+        <Link href="/access" className="text-color-primary hover:underline font-medium">
           Back to sign in
         </Link>
       </div>

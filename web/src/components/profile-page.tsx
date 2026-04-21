@@ -464,7 +464,7 @@ export default function ProfilePage() {
       setShowPasswordForm(false);
       setSecurityMessage("Password changed. Sign in again.");
       if (typeof window !== "undefined") {
-        window.location.href = "/login?password_changed=1";
+        window.location.href = "/access?password_changed=1";
       }
     } catch (error) {
       if (error instanceof ApiError) {
@@ -485,7 +485,7 @@ export default function ProfilePage() {
       await logout();
     } finally {
       if (typeof window !== "undefined") {
-        window.location.href = "/login";
+        window.location.href = "/access";
       }
     }
   };
@@ -496,7 +496,7 @@ export default function ProfilePage() {
       await logout();
     } finally {
       if (typeof window !== "undefined") {
-        window.location.href = "/login?switch_account=1";
+        window.location.href = "/access?switch_account=1";
       }
     }
   };
@@ -520,7 +520,7 @@ export default function ProfilePage() {
     }
 
     if (typeof window !== "undefined") {
-      window.location.href = "/login?logged_out=all";
+      window.location.href = "/access?logged_out=all";
     }
   };
 
@@ -541,7 +541,7 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
-            <Link href="/login">
+            <Link href="/access">
               <Button>Open Login</Button>
             </Link>
           </CardContent>

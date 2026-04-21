@@ -132,7 +132,7 @@ export default function ResetPasswordPage() {
       setPassword("");
       setConfirmPassword("");
       window.setTimeout(() => {
-        router.push("/login?reset=1");
+        router.push("/access?reset=1");
       }, 2200);
     } catch (err) {
       if (err instanceof ApiError) {
@@ -260,7 +260,7 @@ export default function ResetPasswordPage() {
         <Link href="/forgot-password" className="flex-1">
           <Button variant="outline" className="w-full h-11">Request New Link</Button>
         </Link>
-        <Link href="/login" className="flex-1">
+        <Link href="/access" className="flex-1">
           <Button variant="primary" className="w-full h-11">Back to Login</Button>
         </Link>
       </div>

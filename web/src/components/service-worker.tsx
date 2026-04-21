@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 const ENABLE_SW_DEV = process.env.NEXT_PUBLIC_ENABLE_SW_DEV === "1";
 const UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000;
 const BANNER_HIDDEN_ROUTES = ["/ocr/scan", "/offline"];
-const SHELL_HIDDEN_ROUTES = new Set(["/", "/login", "/register", "/forgot-password", "/reset-password"]);
+const SHELL_HIDDEN_ROUTES = new Set(["/", "/access", "/login", "/register", "/forgot-password", "/reset-password"]);
 
 type RuntimeNavigator = Navigator & {
   deviceMemory?: number;

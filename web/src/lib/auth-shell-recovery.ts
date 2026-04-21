@@ -20,6 +20,22 @@ export function consumeRecoveredLoginEmail() {
   return email;
 }
 
+export async function clearAuthShellArtifacts() {
+  if (typeof window === "undefined" || !("serviceWorker" in navigator)) return;
+
+  const registrations = await navigator.serviceWorker.getRegistrations().catch(() => []);
+  await Promise.all(registrations.map((registration) => registration.unregister().catch(() => false)));
+
+  if ("caches" in window) {
+    const keys = await window.caches.keys().catch(() => []);
+    await Promise.all(
+      keys
+        .filter((key) => CACHE_PREFIXES.some((prefix) => key.startsWith(prefix)))
+        .map((key) => window.caches.delete(key).catch(() => false)),
+    );
+  }
+}
+
 export async function attemptAuthShellRecovery(email?: string) {
   if (typeof window === "undefined" || !("serviceWorker" in navigator)) return false;
   if (!navigator.onLine || shouldThrottleRecovery()) return false;
@@ -30,17 +46,7 @@ export async function attemptAuthShellRecovery(email?: string) {
   }
 
   try {
-    const registrations = await navigator.serviceWorker.getRegistrations().catch(() => []);
-    await Promise.all(registrations.map((registration) => registration.unregister().catch(() => false)));
-
-    if ("caches" in window) {
-      const keys = await window.caches.keys().catch(() => []);
-      await Promise.all(
-        keys
-          .filter((key) => CACHE_PREFIXES.some((prefix) => key.startsWith(prefix)))
-          .map((key) => window.caches.delete(key).catch(() => false)),
-      );
-    }
+    await clearAuthShellArtifacts();
   } finally {
     window.setTimeout(() => {
       window.location.reload();

@@ -95,7 +95,7 @@ export default function LoginPage() {
     if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
       return "/";
     }
-    if (raw === "/login" || raw === "/register") {
+    if (raw === "/access" || raw === "/login" || raw === "/register") {
       return "/";
     }
     return raw;

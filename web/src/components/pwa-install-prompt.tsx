@@ -9,7 +9,7 @@ import { cn } from "@/lib/utils";
 
 const DISMISS_KEY = "factorynerve:pwa-install-dismissed:v1";
 const HIDE_ROUTES = ["/ocr/scan", "/offline"];
-const SHELL_HIDDEN_ROUTES = new Set(["/", "/login", "/register", "/forgot-password", "/reset-password"]);
+const SHELL_HIDDEN_ROUTES = new Set(["/", "/access", "/login", "/register", "/forgot-password", "/reset-password"]);
 
 type InstallOutcome = "accepted" | "dismissed";
 

@@ -3,7 +3,7 @@ const SHELL_CACHE = `factorynerve-shell-${CACHE_VERSION}`;
 const STATIC_CACHE = `factorynerve-static-${CACHE_VERSION}`;
 const RUNTIME_CACHE = `factorynerve-runtime-${CACHE_VERSION}`;
 const ALL_CACHES = [SHELL_CACHE, STATIC_CACHE, RUNTIME_CACHE];
-const AUTH_ROUTE_PREFIXES = ["/login", "/register", "/forgot-password", "/reset-password", "/verify-email"];
+const AUTH_ROUTE_PREFIXES = ["/access", "/login", "/register", "/forgot-password", "/reset-password", "/verify-email"];
 
 const PRECACHE_ROUTES = [
   "/",
@@ -61,7 +61,14 @@ async function matchDocumentFallback(request) {
 }
 
 function getNavigationFallback(pathname) {
-  if (pathname === "/login" || pathname === "/register" || pathname === "/forgot-password" || pathname === "/reset-password" || pathname === "/verify-email") {
+  if (
+    pathname === "/access" ||
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password" ||
+    pathname === "/verify-email"
+  ) {
     return pathname;
   }
   if (APP_SHELL_ROUTES.has(pathname)) {

@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
 
+import { AuthShellFreshnessAgent } from "@/components/auth-shell-freshness-agent";
 import { DisplayModeAgent } from "@/components/display-mode-agent";
 import { RuntimeCapabilityAgent } from "@/components/runtime-capability-agent";
 
@@ -34,6 +35,7 @@ const ToastCenter = dynamic(() =>
 
 const PUBLIC_LIGHT_ROUTES = [
   "/",
+  "/access",
   "/login",
   "/register",
   "/forgot-password",
@@ -55,6 +57,7 @@ export function RootRuntimeShell({ children }: { children: ReactNode }) {
     <>
       <RuntimeCapabilityAgent />
       <DisplayModeAgent />
+      {publicLightRoute ? <AuthShellFreshnessAgent /> : null}
       {!publicLightRoute ? <PwaRouteCoverageAgent /> : null}
       {!publicLightRoute ? <BetaRolloutBanner /> : null}
       {publicLightRoute ? children : <AppShell>{children}</AppShell>}
