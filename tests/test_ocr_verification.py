@@ -4,6 +4,8 @@ from io import BytesIO
 
 from openpyxl import load_workbook
 
+from backend.database import SessionLocal
+from backend.models.report import AuditLog
 from tests.utils import register_user
 
 
@@ -186,6 +188,68 @@ def test_approved_ocr_verification_export_is_marked_trusted(http_client):
     assert exported.headers["x-ocr-trusted-export"] == "true"
     assert exported.headers["x-ocr-export-source"] == "approved_review"
     assert "approved" in exported.headers["content-disposition"].lower()
+
+
+def test_ocr_verification_update_persists_scan_quality_and_audit_log(http_client):
+    user = register_user(http_client, role="admin")
+    headers = {"Authorization": f"Bearer {user['access_token']}"}
+
+    created = http_client.post("/ocr/verifications", data=_verification_form(), headers=headers)
+    assert created.status_code == HTTPStatus.CREATED, created.text
+    verification_id = created.json()["id"]
+
+    updated = http_client.put(
+        f"/ocr/verifications/{verification_id}",
+        json={
+            "avg_confidence": 61.2,
+            "warnings": ["blurred edge", "manual fix applied"],
+            "scan_quality": {
+                "confidence_band": "medium",
+                "quality_signals": ["low light", "tilt corrected"],
+                "auto_processing": ["deskew", "contrast boost"],
+                "fallback_used": True,
+                "correction_count": 3,
+                "page_count": 2,
+                "adjustment_count": 1,
+                "retake_count": 1,
+                "manual_review_recommended": True,
+                "outcome": "partial",
+                "next_action": "manager_review",
+                "notes": "Second row required manual cleanup",
+            },
+        },
+        headers=headers,
+    )
+    assert updated.status_code == HTTPStatus.OK, updated.text
+    payload = updated.json()
+    assert payload["avg_confidence"] == 61.2
+    assert payload["warnings"] == ["blurred edge", "manual fix applied"]
+    assert payload["scan_quality"] == {
+        "confidence_band": "medium",
+        "quality_signals": ["low light", "tilt corrected"],
+        "auto_processing": ["deskew", "contrast boost"],
+        "fallback_used": True,
+        "correction_count": 3,
+        "page_count": 2,
+        "adjustment_count": 1,
+        "retake_count": 1,
+        "manual_review_recommended": True,
+        "outcome": "partial",
+        "next_action": "manager_review",
+        "notes": "Second row required manual cleanup",
+    }
+
+    with SessionLocal() as db:
+        audit_log = (
+            db.query(AuditLog)
+            .filter(AuditLog.action == "OCR_VERIFICATION_UPDATED")
+            .order_by(AuditLog.id.desc())
+            .first()
+        )
+        assert audit_log is not None
+        assert f"id={verification_id}" in (audit_log.details or "")
+        assert "band=medium" in (audit_log.details or "")
+        assert "corrections=3" in (audit_log.details or "")
 
 
 def test_ocr_verification_summary_uses_only_approved_documents_as_trusted(http_client):

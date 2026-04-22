@@ -71,6 +71,7 @@ class OcrVerificationUpdatePayload(BaseModel):
     language: str | None = Field(default=None, max_length=20)
     avg_confidence: float | None = Field(default=None, ge=0, le=100)
     warnings: list[str] | None = None
+    scan_quality: dict | None = None
     headers: list[str] | None = None
     original_rows: list[list[str]] | None = None
     reviewed_rows: list[list[str]] | None = None
@@ -134,6 +135,49 @@ def _normalize_rows(values: list | None, *, field_name: str) -> list[list[str]] 
         if len(row) < max_columns:
             row.extend([""] * (max_columns - len(row)))
     return normalized
+
+
+def _normalize_scan_quality(values: dict | None, *, field_name: str) -> dict | None:
+    if values is None:
+        return None
+    if not isinstance(values, dict):
+        raise HTTPException(status_code=400, detail=f"{field_name} must be an object.")
+
+    band = sanitize_text(str(values.get("confidence_band") or ""), max_length=20, preserve_newlines=False) or "unknown"
+    if band not in {"high", "medium", "low", "unknown"}:
+        band = "unknown"
+
+    quality_signals = _normalize_string_list(values.get("quality_signals"), field_name=f"{field_name}.quality_signals") or []
+    auto_processing = _normalize_string_list(values.get("auto_processing"), field_name=f"{field_name}.auto_processing") or []
+    notes = sanitize_text(str(values.get("notes") or ""), max_length=500, preserve_newlines=False) or None
+    outcome = sanitize_text(str(values.get("outcome") or ""), max_length=20, preserve_newlines=False) or "success"
+    if outcome not in {"success", "partial", "failed"}:
+        outcome = "success"
+    next_action = sanitize_text(str(values.get("next_action") or ""), max_length=40, preserve_newlines=False) or None
+    fallback_used = bool(values.get("fallback_used"))
+
+    def _safe_int(key: str, default: int = 0, minimum: int = 0, maximum: int = 999) -> int:
+        raw = values.get(key)
+        try:
+            parsed = int(raw)
+        except (TypeError, ValueError):
+            return default
+        return max(minimum, min(maximum, parsed))
+
+    return {
+        "confidence_band": band,
+        "quality_signals": quality_signals,
+        "auto_processing": auto_processing,
+        "fallback_used": fallback_used,
+        "correction_count": _safe_int("correction_count"),
+        "page_count": _safe_int("page_count", default=1, minimum=1, maximum=100),
+        "adjustment_count": _safe_int("adjustment_count"),
+        "retake_count": _safe_int("retake_count"),
+        "manual_review_recommended": bool(values.get("manual_review_recommended")),
+        "outcome": outcome,
+        "next_action": next_action,
+        "notes": notes,
+    }
 
 
 def _save_verification_source(filename: str | None, image_bytes: bytes) -> tuple[str, str]:
@@ -200,6 +244,7 @@ def _serialize_verification(db: Session, verification: OcrVerification) -> dict:
         "language": verification.language,
         "avg_confidence": float(verification.avg_confidence or 0),
         "warnings": verification.warnings or [],
+        "scan_quality": verification.scan_quality or None,
         "headers": verification.headers or [],
         "original_rows": verification.original_rows or [],
         "reviewed_rows": verification.reviewed_rows or [],
@@ -266,6 +311,7 @@ def _apply_verification_payload(
     language: str | None = None,
     avg_confidence: float | None = None,
     warnings: list[str] | None = None,
+    scan_quality: dict | None = None,
     headers: list[str] | None = None,
     original_rows: list[list[str]] | None = None,
     reviewed_rows: list[list[str]] | None = None,
@@ -284,6 +330,8 @@ def _apply_verification_payload(
         verification.avg_confidence = max(0.0, min(float(avg_confidence), 100.0))
     if warnings is not None:
         verification.warnings = warnings
+    if scan_quality is not None:
+        verification.scan_quality = scan_quality
     if headers is not None:
         verification.headers = headers
     if original_rows is not None:
@@ -586,11 +634,13 @@ def _log_ocr_event(
     *,
     action: str,
     details: str,
-    request: Request,
+    request: Request | None,
     user_id: int | None,
     org_id: str | None,
     factory_id: str | None,
 ) -> None:
+    client_host = request.client.host if request and request.client else None
+    user_agent = request.headers.get("user-agent") if request else None
     db.add(
         AuditLog(
             user_id=user_id,
@@ -598,8 +648,8 @@ def _log_ocr_event(
             factory_id=factory_id,
             action=action,
             details=details,
-            ip_address=hash_ip_address(request.client.host if request.client else None),
-            user_agent=request.headers.get("user-agent"),
+            ip_address=hash_ip_address(client_host),
+            user_agent=user_agent,
             timestamp=datetime.now(timezone.utc),
         )
     )
@@ -921,11 +971,13 @@ async def create_verification(
     language: str = Form(default="eng"),
     avg_confidence: float | None = Form(default=None),
     warnings: str | None = Form(default=None),
+    scan_quality: str | None = Form(default=None),
     headers: str | None = Form(default=None),
     original_rows: str | None = Form(default=None),
     reviewed_rows: str | None = Form(default=None),
     raw_column_added: bool = Form(default=False),
     reviewer_notes: str | None = Form(default=None),
+    request: Request = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
@@ -942,6 +994,10 @@ async def create_verification(
             raise HTTPException(status_code=404, detail="Template not found.")
 
     parsed_warnings = _normalize_string_list(_parse_json_value(warnings, field_name="warnings"), field_name="warnings") or []
+    parsed_scan_quality = _normalize_scan_quality(
+        _parse_json_value(scan_quality, field_name="scan_quality"),
+        field_name="scan_quality",
+    )
     parsed_headers = _normalize_string_list(_parse_json_value(headers, field_name="headers"), field_name="headers") or []
     parsed_original_rows = _normalize_rows(_parse_json_value(original_rows, field_name="original_rows"), field_name="original_rows") or []
     parsed_reviewed_rows = _normalize_rows(_parse_json_value(reviewed_rows, field_name="reviewed_rows"), field_name="reviewed_rows") or parsed_original_rows
@@ -971,6 +1027,7 @@ async def create_verification(
         language=sanitize_text(language, max_length=20, preserve_newlines=False) or (template.language if template else "eng"),
         avg_confidence=max(0.0, min(float(avg_confidence), 100.0)) if avg_confidence is not None else None,
         warnings=parsed_warnings,
+        scan_quality=parsed_scan_quality,
         headers=parsed_headers,
         original_rows=parsed_original_rows,
         reviewed_rows=parsed_reviewed_rows,
@@ -981,6 +1038,22 @@ async def create_verification(
     db.add(verification)
     db.commit()
     db.refresh(verification)
+    if request is not None:
+        _log_ocr_event(
+            db,
+            action="OCR_VERIFICATION_CREATED",
+            details=(
+                f"Verification created id={verification.id} status=draft "
+                f"confidence={verification.avg_confidence or 0:.1f} "
+                f"band={(verification.scan_quality or {}).get('confidence_band', 'unknown')} "
+                f"outcome={(verification.scan_quality or {}).get('outcome', 'success')}"
+            ),
+            request=request,
+            user_id=current_user.id,
+            org_id=verification.org_id,
+            factory_id=verification.factory_id,
+        )
+        db.commit()
     return _serialize_verification(db, verification)
 
 
@@ -1077,6 +1150,7 @@ def export_verification_excel(
 def update_verification(
     verification_id: int,
     payload: OcrVerificationUpdatePayload,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
@@ -1095,6 +1169,7 @@ def update_verification(
 
     headers = _normalize_string_list(payload.headers, field_name="headers")
     warnings = _normalize_string_list(payload.warnings, field_name="warnings")
+    scan_quality = _normalize_scan_quality(payload.scan_quality, field_name="scan_quality")
     original_rows = _normalize_rows(payload.original_rows, field_name="original_rows")
     reviewed_rows = _normalize_rows(payload.reviewed_rows, field_name="reviewed_rows")
 
@@ -1106,6 +1181,7 @@ def update_verification(
         language=payload.language,
         avg_confidence=payload.avg_confidence,
         warnings=warnings,
+        scan_quality=scan_quality,
         headers=headers,
         original_rows=original_rows,
         reviewed_rows=reviewed_rows,
@@ -1122,6 +1198,21 @@ def update_verification(
         verification.rejected_by = None
         verification.rejection_reason = None
 
+    db.commit()
+    _log_ocr_event(
+        db,
+        action="OCR_VERIFICATION_UPDATED",
+        details=(
+            f"Verification updated id={verification.id} status={verification.status} "
+            f"confidence={verification.avg_confidence or 0:.1f} "
+            f"band={(verification.scan_quality or {}).get('confidence_band', 'unknown')} "
+            f"corrections={(verification.scan_quality or {}).get('correction_count', 0)}"
+        ),
+        request=request,
+        user_id=current_user.id,
+        org_id=verification.org_id,
+        factory_id=verification.factory_id,
+    )
     db.commit()
     db.refresh(verification)
     return _serialize_verification(db, verification)

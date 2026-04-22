@@ -248,6 +248,7 @@ def init_db() -> None:
         _ensure_entry_idempotency_columns()
         _ensure_entry_performance_indexes()
         _ensure_subscription_addon_columns()
+        _ensure_ocr_verification_columns()
         _ensure_steel_columns()
         _ensure_attendance_columns()
         logger.info("Database initialization complete.")
@@ -440,6 +441,22 @@ def _ensure_subscription_addon_columns() -> None:
             conn.commit()
     except Exception:
         logger.exception("Failed to ensure org_subscription_addons.quantity column.")
+
+
+def _ensure_ocr_verification_columns() -> None:
+    """Ensure OCR verification records can store scan-quality metadata."""
+    try:
+        inspector = inspect(engine)
+        table_names = set(inspector.get_table_names())
+        if "ocr_verifications" not in table_names:
+            return
+        columns = {column["name"] for column in inspector.get_columns("ocr_verifications")}
+        with engine.connect() as conn:
+            if "scan_quality" not in columns:
+                conn.exec_driver_sql("ALTER TABLE ocr_verifications ADD COLUMN scan_quality JSON")
+            conn.commit()
+    except Exception:
+        logger.exception("Failed to ensure ocr_verifications.scan_quality column.")
 
 
 def _ensure_steel_columns() -> None:

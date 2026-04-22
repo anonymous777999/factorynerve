@@ -23,6 +23,7 @@ class OcrVerification(Base):
     language = Column(String(20), nullable=False, default="eng")
     avg_confidence = Column(Float, nullable=True)
     warnings = Column(JSON, nullable=True)
+    scan_quality = Column(JSON, nullable=True)
     headers = Column(JSON, nullable=True)
     original_rows = Column(JSON, nullable=True)
     reviewed_rows = Column(JSON, nullable=True)
