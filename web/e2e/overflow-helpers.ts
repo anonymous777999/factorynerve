@@ -108,12 +108,13 @@ export async function collectOverflowIssues(page: Page) {
       let current: Element | null = element;
       while (current && current.nodeType === Node.ELEMENT_NODE && parts.length < 6) {
         const tag = current.tagName.toLowerCase();
-        const parent = current.parentElement;
+        const currentTagName = current.tagName;
+        const parent: HTMLElement | null = current.parentElement;
         if (!parent) {
           parts.unshift(tag);
           break;
         }
-        const siblings = Array.from(parent.children).filter((node) => node.tagName === current?.tagName);
+        const siblings = Array.from(parent.children).filter((node) => node.tagName === currentTagName);
         const index = siblings.indexOf(current) + 1;
         parts.unshift(`${tag}:nth-of-type(${index})`);
         if ((current as HTMLElement).dataset.component) {
@@ -247,12 +248,13 @@ export async function verifyEdgeControlsAreClickable(page: Page) {
       let current: Element | null = element;
       while (current && current.nodeType === Node.ELEMENT_NODE && parts.length < 6) {
         const tag = current.tagName.toLowerCase();
-        const parent = current.parentElement;
+        const currentTagName = current.tagName;
+        const parent: HTMLElement | null = current.parentElement;
         if (!parent) {
           parts.unshift(tag);
           break;
         }
-        const siblings = Array.from(parent.children).filter((node) => node.tagName === current?.tagName);
+        const siblings = Array.from(parent.children).filter((node) => node.tagName === currentTagName);
         const index = siblings.indexOf(current) + 1;
         parts.unshift(`${tag}:nth-of-type(${index})`);
         current = parent;
