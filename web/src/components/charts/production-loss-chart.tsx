@@ -70,12 +70,16 @@ export function ProductionLossChart({
     }),
     [categories, onDrillDown],
   );
+  const isEmpty = !data.length || data.every((item) => item.production <= 0 && item.loss <= 0);
 
   return (
     <ChartCard
       title="Production vs Loss"
       description="Daily production output versus daily process loss. Darker red bars call out abnormal loss above 150 KG."
       loading={loading}
+      isEmpty={isEmpty}
+      emptyTitle="No production-loss pattern yet"
+      emptyDescription="Record steel batches first so the board can compare production weight against process loss."
     >
       <ApexChartClient type="bar" options={options} series={series} height={320} />
     </ChartCard>

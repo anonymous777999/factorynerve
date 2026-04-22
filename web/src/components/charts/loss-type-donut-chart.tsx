@@ -70,6 +70,7 @@ export function LossTypeDonutChart({
       },
       plotOptions: {
         pie: {
+          expandOnClick: true,
           donut: {
             size: "62%",
             labels: {
@@ -86,9 +87,17 @@ export function LossTypeDonutChart({
     }),
     [labels, onDrillDown, series, total],
   );
+  const isEmpty = !data.length || data.every((item) => item.value <= 0);
 
   return (
-    <ChartCard title={title} description={subtitle} loading={loading}>
+    <ChartCard
+      title={title}
+      description={subtitle}
+      loading={loading}
+      isEmpty={isEmpty}
+      emptyTitle="No severity mix yet"
+      emptyDescription="Once anomaly batches are ranked, this chart will show whether the current mix is mostly watch, high, or critical."
+    >
       <ApexChartClient type="donut" options={options} series={series} height={320} />
     </ChartCard>
   );

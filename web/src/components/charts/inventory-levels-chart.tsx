@@ -8,7 +8,7 @@ import { buildBarChartOptions } from "@/components/charts/chart-config";
 import { INDUSTRIAL_CHART_THEME } from "@/components/charts/industrial-chart-theme";
 import type { InventoryLevelDatum } from "@/lib/industrial-dashboard";
 
-const INVENTORY_COLORS = [INDUSTRIAL_CHART_THEME.blue, INDUSTRIAL_CHART_THEME.amber, INDUSTRIAL_CHART_THEME.teal];
+const INVENTORY_COLORS = [INDUSTRIAL_CHART_THEME.slate, INDUSTRIAL_CHART_THEME.amber, INDUSTRIAL_CHART_THEME.teal];
 
 export function InventoryLevelsChart({
   data,
@@ -46,12 +46,16 @@ export function InventoryLevelsChart({
       }),
     [categories, onDrillDown],
   );
+  const isEmpty = !data.length || data.every((item) => item.valueKg <= 0);
 
   return (
     <ChartCard
       title="Inventory Levels"
       description="Live stock posture by stage. Raw material, WIP, and finished goods stay expressed in kilograms for plant-floor trust."
       loading={loading}
+      isEmpty={isEmpty}
+      emptyTitle="No inventory posture yet"
+      emptyDescription="Add or sync steel stock records so the inventory confidence view can show live stage balances."
     >
       <ApexChartClient type="bar" options={options} series={series} height={300} />
     </ChartCard>

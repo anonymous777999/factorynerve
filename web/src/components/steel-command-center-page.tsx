@@ -5,6 +5,8 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { IndustrialFactoryDashboard } from "@/components/dashboard/industrial-factory-dashboard";
+import { KPIBox } from "@/components/dashboard/kpi-box";
+import { SteelQuickActionRow, SteelStatusStrip, SteelTopPriorityCard } from "@/components/steel-summary-primitives";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -13,6 +15,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import { buildSteelDashboardData, type IndustrialDashboardData } from "@/lib/industrial-dashboard";
+import { deriveDataConfidence, deriveOverallStatusSummary, deriveSteelTopPriority } from "@/lib/steel-decision";
 import {
   createSteelBatch,
   createSteelItem,
@@ -374,6 +377,27 @@ export function SteelCommandCenterPage() {
   const highestRiskOperator = anomalySummary?.highest_risk_operator;
   const highestLossDay = anomalySummary?.highest_loss_day;
   const canSeeFinancials = Boolean(overview?.financial_access && user?.role === "owner");
+  const chartRecordCoverage = batches.length + Number(profitSummary?.invoice_count || 0) + Number(profitSummary?.dispatch_count || 0);
+  const summaryRange = steelDashboardData?.today || steelDashboardData?.["7d"] || steelDashboardData?.["30d"];
+  const hasLiveDashboard = Boolean(overview && steelDashboardData);
+  const overallStatus = deriveOverallStatusSummary({ overview, chartRecordCoverage, hasLiveDashboard });
+  const confidenceSummary = deriveDataConfidence({ overview, chartRecordCoverage, hasLiveDashboard });
+  const topPriority = deriveSteelTopPriority(overview);
+  const criticalKpis = summaryRange
+    ? [
+        summaryRange.kpis.todayLoss,
+        summaryRange.kpis.totalStock,
+        summaryRange.kpis.todayProduction,
+        ...(canSeeFinancials ? [summaryRange.kpis.todayRevenue] : []),
+      ]
+    : [];
+  const quickActions = [
+    topPriority.primaryAction,
+    ...(topPriority.secondaryAction ? [topPriority.secondaryAction] : []),
+    { href: "/steel/invoices", label: "Invoices", variant: "secondary" as const },
+    { href: "/steel/dispatches", label: "Dispatches", variant: "secondary" as const },
+    { href: "/steel/customers", label: "Customers", variant: "secondary" as const },
+  ];
   const steelHubSections = useMemo(
     () => [
       {
@@ -509,24 +533,24 @@ export function SteelCommandCenterPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
+    <main className="min-h-screen bg-[linear-gradient(180deg,#fafaf9_0%,#f5f5f4_48%,#fafaf9_100%)] px-4 py-8 md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
+        <section className="rounded-[2rem] border border-[#e7e5e4] bg-[linear-gradient(135deg,#ffffff,#fafaf9)] p-6 shadow-[0_22px_55px_rgba(15,23,42,0.08)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Operations</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Run the steel desk from one trusted control lane</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
+              <div className="text-sm uppercase tracking-[0.28em] text-[#78716c]">Steel Operations</div>
+              <h1 className="mt-2 text-3xl font-semibold text-[#111111] md:text-4xl">Run the steel desk from one trusted control lane</h1>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#57534e]">
                 Start with live stock trust, then move into batch, sales, and risk lanes without losing the factory context.
               </p>
             </div>
-            <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] px-4 py-3 text-sm text-[var(--muted)]">
-              <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Active Steel Factory</div>
-              <div className="mt-2 font-semibold text-[var(--text)]">{overview?.factory.name || activeFactory?.name}</div>
+            <div className="rounded-3xl border border-[#e7e5e4] bg-[#f5f5f4] px-4 py-3 text-sm text-[#57534e]">
+              <div className="text-xs uppercase tracking-[0.2em] text-[#78716c]">Active Steel Factory</div>
+              <div className="mt-2 font-semibold text-[#111111]">{overview?.factory.name || activeFactory?.name}</div>
               <div className="mt-1">{overview?.factory.factory_code || activeFactory?.factory_code || "Code pending"}</div>
               {canSeeFinancials ? (
                 <div className="mt-3 space-y-2">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Owner Report Date</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Owner Report Date</div>
                   <Input type="date" value={ownerReportDate} onChange={(event) => setOwnerReportDate(event.target.value)} />
                 </div>
               ) : null}
@@ -534,79 +558,76 @@ export function SteelCommandCenterPage() {
           </div>
         </section>
 
-        {/* AUDIT: BUTTON_CLUTTER - keep cross-module launch actions in a secondary tray so the active steel lane stays primary. */}
-        <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
-          <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
-            Steel tools
-          </summary>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Link href="/steel/invoices">
-              <Button variant="outline">Invoices</Button>
-            </Link>
-            <Link href="/steel/customers">
-              <Button variant="outline">Customers</Button>
-            </Link>
-            <Link href="/steel/dispatches">
-              <Button variant="ghost">Dispatches</Button>
-            </Link>
-            <Link href="/steel/reconciliations">
-              <Button variant="ghost">Reconciliations</Button>
-            </Link>
-            {canSeeFinancials ? (
+        <SteelStatusStrip
+          overallStatus={overallStatus}
+          topPriority={topPriority}
+          confidence={confidenceSummary}
+          timeContext={summaryRange?.rangeComparisonLabel || "vs yesterday"}
+        />
+
+        <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
+          <SteelTopPriorityCard priority={topPriority} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            {criticalKpis.map((kpi) => (
+              <KPIBox key={kpi.label} {...kpi} />
+            ))}
+          </div>
+        </section>
+
+        <section className="rounded-[1.7rem] border border-[#e7e5e4] bg-white p-5 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <div className="text-xs uppercase tracking-[0.24em] text-[#78716c]">Quick Actions</div>
+              <h2 className="mt-2 text-2xl font-semibold text-[#111111]">Move from signal to steel action fast</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-[#57534e]">
+                What is happening: the summary strip and KPI cards show health, drift, and commercial movement. Is it good or bad: read the badge and comparison row. What should you do next: use one of the direct actions below.
+              </p>
+            </div>
+            <SteelQuickActionRow
+              actions={quickActions}
+            />
+          </div>
+          {canSeeFinancials ? (
+            <div className="mt-4">
               <Button
-                variant="secondary"
+                id="owner-pdf"
+                variant="outline"
+                className="border-[#111111] bg-[#111111] text-white hover:border-[#2f2f2f] hover:bg-[#2f2f2f]"
                 onClick={() => {
                   if (typeof window !== "undefined") {
                     window.open(getSteelOwnerDailyPdfUrl(ownerReportDate), "_blank", "noopener,noreferrer");
                   }
                 }}
               >
-                Owner PDF
+                Open Owner PDF
               </Button>
-            ) : null}
-          </div>
-        </details>
-
-        {/* AUDIT: FLOW_BROKEN - add a short steel control sequence so users know how to move through the command desk. */}
-        <section className="grid gap-3 md:grid-cols-3">
-          {[
-            { step: "1. Check trust", caption: "Start with stock confidence and the active factory signal." },
-            { step: "2. Pick lane", caption: "Move into inventory, production, sales, or risk next." },
-            { step: "3. Act fast", caption: "Open the exact steel workflow only when the signal needs it." },
-          ].map((item) => (
-            <div
-              key={item.step}
-              className="rounded-[24px] border border-[var(--border)] bg-[rgba(10,14,24,0.68)] px-5 py-4"
-            >
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
-              <div className="mt-2 text-sm text-[var(--muted)]">{item.caption}</div>
             </div>
-          ))}
+          ) : null}
         </section>
 
         {!isSteelFactory ? (
-          <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
+          <Card className="border border-[#e7e5e4] bg-white text-[#111111] shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
             <CardHeader>
               <CardTitle className="text-xl">Steel module is factory-aware</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm text-[var(--muted)]">
+            <CardContent className="space-y-3 text-sm text-[#57534e]">
               <div>
-                Your active factory is <span className="font-semibold text-[var(--text)]">{activeFactory?.name || "not selected"}</span>.
+                Your active factory is <span className="font-semibold text-[#111111]">{activeFactory?.name || "not selected"}</span>.
               </div>
               <div>Chart board is available below. Switch to a steel factory to unlock inventory, production, sales, and risk actions.</div>
               <div className="flex flex-wrap gap-3">
                 <Link href="/settings">
-                  <Button variant="outline">Open Settings</Button>
+                  <Button variant="outline" className="border-[#111111] bg-[#111111] text-white hover:border-[#2f2f2f] hover:bg-[#2f2f2f]">Open Settings</Button>
                 </Link>
                 <Link href="/control-tower">
-                  <Button variant="outline">Open Control Tower</Button>
+                  <Button variant="ghost" className="border-[#d6d3d1] bg-[#f5f5f4] text-[#111111] hover:border-[#a8a29e] hover:bg-[#e7e5e4]">Open Control Tower</Button>
                 </Link>
               </div>
             </CardContent>
           </Card>
         ) : null}
 
-        <section className="rounded-[1.4rem] border border-[var(--border)] bg-[rgba(18,24,36,0.86)] p-3">
+        <section className="rounded-[1.4rem] border border-[#e7e5e4] bg-white p-3 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
           <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
             {STEEL_CONTROL_TABS.map((tab) => {
               const active = activeTab === tab.id;
@@ -623,12 +644,12 @@ export function SteelCommandCenterPage() {
                   disabled={disabled}
                   className={
                     active
-                      ? "rounded-2xl border border-[var(--accent)] bg-[rgba(56,189,248,0.2)] px-4 py-3 text-left shadow-sm"
-                      : "rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] px-4 py-3 text-left hover:border-[var(--accent)]/60 disabled:cursor-not-allowed disabled:opacity-45"
+                      ? "rounded-2xl border border-[#111111] bg-[#111111] px-4 py-3 text-left text-white shadow-sm transition duration-150"
+                      : "rounded-2xl border border-[#e7e5e4] bg-[#f5f5f4] px-4 py-3 text-left text-[#111111] transition duration-150 hover:-translate-y-0.5 hover:border-[#a8a29e] hover:bg-[#fafaf9] disabled:cursor-not-allowed disabled:opacity-45"
                   }
                 >
-                  <div className="text-sm font-semibold text-[var(--text)]">{tab.label}</div>
-                  <div className="mt-1 text-xs text-[var(--muted)]">{tab.hint}</div>
+                  <div className="text-sm font-semibold">{tab.label}</div>
+                  <div className={`mt-1 text-xs ${active ? "text-[#d6d3d1]" : "text-[#57534e]"}`}>{tab.hint}</div>
                 </button>
               );
             })}
@@ -637,14 +658,14 @@ export function SteelCommandCenterPage() {
 
         <section className="grid gap-4 xl:grid-cols-4">
           {steelHubSections.map((section) => (
-            <Card key={section.id} className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
+            <Card key={section.id} className="border border-[#e7e5e4] bg-white text-[#111111] shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
               <CardHeader>
-                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">{section.eyebrow}</div>
+                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[#78716c]">{section.eyebrow}</div>
                 <CardTitle className="text-xl">{section.title}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="text-sm leading-6 text-[var(--muted)]">{section.detail}</div>
-                <Button variant="outline" onClick={() => navigateTab(section.tab)}>
+                <div className="text-sm leading-6 text-[#57534e]">{section.detail}</div>
+                <Button variant="outline" className="border-[#111111] bg-[#111111] text-white hover:border-[#2f2f2f] hover:bg-[#2f2f2f]" onClick={() => navigateTab(section.tab)}>
                   {section.actionLabel}
                 </Button>
               </CardContent>
@@ -659,27 +680,6 @@ export function SteelCommandCenterPage() {
             industryType="steel"
             dataByRange={steelDashboardData}
           />
-        </section>
-        ) : null}
-
-        {activeTab === "overview" ? (
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Raw Material</CardTitle></CardHeader>
-            <CardContent className="text-2xl font-semibold text-white">{formatKg(overview?.inventory_totals.raw_material_kg || 0)} KG</CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Finished Goods</CardTitle></CardHeader>
-            <CardContent className="text-2xl font-semibold text-white">{formatKg(overview?.inventory_totals.finished_goods_kg || 0)} KG</CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Avg Loss</CardTitle></CardHeader>
-            <CardContent className="text-2xl font-semibold text-white">{formatPercent(overview?.batch_metrics.average_loss_percent || 0)}</CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">High-Risk Batches</CardTitle></CardHeader>
-            <CardContent className="text-2xl font-semibold text-white">{overview?.batch_metrics.high_severity_batches || 0}</CardContent>
-          </Card>
         </section>
         ) : null}
 

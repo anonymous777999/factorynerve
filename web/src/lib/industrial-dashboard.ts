@@ -7,6 +7,14 @@ export type DashboardKpi = {
   value: string;
   trend?: number;
   trendLabel?: string;
+  severity?: "good" | "watch" | "critical" | "stable";
+  comparisonLabel?: string;
+  priority?: "primary" | "secondary";
+  action?: {
+    href: string;
+    label: string;
+  };
+  helperText?: string;
 };
 
 export type ProductionLossDatum = {
@@ -57,6 +65,7 @@ export type KpiTableRow = {
 export type IndustrialDashboardData = {
   title: string;
   subtitle: string;
+  rangeComparisonLabel: string;
   kpis: {
     totalStock: DashboardKpi;
     todayProduction: DashboardKpi;
@@ -87,11 +96,12 @@ export const INDUSTRIAL_DASHBOARD_DATA: Record<DashboardRangeKey, IndustrialDash
   today: {
     title: "Steel Shift Control View",
     subtitle: "Live steel-plant signals for stock trust, batch output, leakage pressure, and dispatch rhythm.",
+    rangeComparisonLabel: "vs yesterday",
     kpis: {
-      totalStock: { label: "Total Stock", value: "9,840 KG", trendLabel: "live steel balance" },
-      todayProduction: { label: "Today Production", value: "1,480 KG", trend: 6.2, trendLabel: "vs previous shift" },
-      todayLoss: { label: "Today Loss", value: "142 KG", trend: 9.7, trendLabel: "yield drift" },
-      todayRevenue: { label: "Today Revenue", value: "INR 78,400", trend: 4.9, trendLabel: "invoiced steel" },
+      totalStock: { label: "Total Stock", value: "9,840 KG", trendLabel: "live steel balance", comparisonLabel: "vs yesterday", severity: "stable", action: { href: "/steel?tab=inventory", label: "Inventory Lane" } },
+      todayProduction: { label: "Today Production", value: "1,480 KG", trend: 6.2, trendLabel: "output pace", comparisonLabel: "vs yesterday", severity: "good", action: { href: "/steel?tab=production", label: "Production Lane" } },
+      todayLoss: { label: "Today Loss", value: "142 KG", trend: 9.7, trendLabel: "yield drift", comparisonLabel: "vs yesterday", severity: "watch", priority: "primary", action: { href: "/steel?tab=risk", label: "Risk Lane" } },
+      todayRevenue: { label: "Today Revenue", value: "INR 78,400", trend: 4.9, trendLabel: "invoiced steel", comparisonLabel: "vs yesterday", severity: "stable", action: { href: "/steel/invoices", label: "Invoices" } },
     },
     productionLoss: [
       { label: "Mon", production: 1200, loss: 80 },
@@ -147,11 +157,12 @@ export const INDUSTRIAL_DASHBOARD_DATA: Record<DashboardRangeKey, IndustrialDash
   "7d": {
     title: "Seven-Day Steel Control",
     subtitle: "A manager-ready steel board for output, loss, dispatch movement, and invoice flow across the last week.",
+    rangeComparisonLabel: "vs previous 7 days",
     kpis: {
-      totalStock: { label: "Total Stock", value: "10,500 KG", trendLabel: "live steel balance" },
-      todayProduction: { label: "Today Production", value: "1,500 KG", trend: 7.8, trendLabel: "weekly output pace" },
-      todayLoss: { label: "Today Loss", value: "150 KG", trend: 12.0, trendLabel: "needs review" },
-      todayRevenue: { label: "Today Revenue", value: "INR 85,000", trend: 11.1, trendLabel: "weekly close" },
+      totalStock: { label: "Total Stock", value: "10,500 KG", trendLabel: "live steel balance", comparisonLabel: "vs previous 7 days", severity: "stable", action: { href: "/steel?tab=inventory", label: "Inventory Lane" } },
+      todayProduction: { label: "Today Production", value: "1,500 KG", trend: 7.8, trendLabel: "output pace", comparisonLabel: "vs previous 7 days", severity: "good", action: { href: "/steel?tab=production", label: "Production Lane" } },
+      todayLoss: { label: "Today Loss", value: "150 KG", trend: 12.0, trendLabel: "needs review", comparisonLabel: "vs previous 7 days", severity: "critical", priority: "primary", action: { href: "/steel?tab=risk", label: "Risk Lane" } },
+      todayRevenue: { label: "Today Revenue", value: "INR 85,000", trend: 11.1, trendLabel: "weekly close", comparisonLabel: "vs previous 7 days", severity: "good", action: { href: "/steel/invoices", label: "Invoices" } },
     },
     productionLoss: [
       { label: "Mon", production: 1200, loss: 80 },
@@ -207,11 +218,12 @@ export const INDUSTRIAL_DASHBOARD_DATA: Record<DashboardRangeKey, IndustrialDash
   "30d": {
     title: "Thirty-Day Steel Executive View",
     subtitle: "Thirty-day steel operations board for owner review across stock trust, batch loss, dispatch momentum, and gross commercial movement.",
+    rangeComparisonLabel: "vs previous 30 days",
     kpis: {
-      totalStock: { label: "Total Stock", value: "12,900 KG", trendLabel: "live steel balance" },
-      todayProduction: { label: "Today Production", value: "6,420 KG", trend: 13.4, trendLabel: "month pace" },
-      todayLoss: { label: "Today Loss", value: "610 KG", trend: -3.8, trendLabel: "loss improving" },
-      todayRevenue: { label: "Today Revenue", value: "INR 3,12,000", trend: 18.9, trendLabel: "monthly realized" },
+      totalStock: { label: "Total Stock", value: "12,900 KG", trendLabel: "live steel balance", comparisonLabel: "vs previous 30 days", severity: "stable", action: { href: "/steel?tab=inventory", label: "Inventory Lane" } },
+      todayProduction: { label: "Today Production", value: "6,420 KG", trend: 13.4, trendLabel: "month pace", comparisonLabel: "vs previous 30 days", severity: "good", action: { href: "/steel?tab=production", label: "Production Lane" } },
+      todayLoss: { label: "Today Loss", value: "610 KG", trend: -3.8, trendLabel: "loss improving", comparisonLabel: "vs previous 30 days", severity: "good", priority: "primary", action: { href: "/steel?tab=risk", label: "Risk Lane" } },
+      todayRevenue: { label: "Today Revenue", value: "INR 3,12,000", trend: 18.9, trendLabel: "monthly realized", comparisonLabel: "vs previous 30 days", severity: "good", action: { href: "/steel/invoices", label: "Invoices" } },
     },
     productionLoss: [
       { label: "Week 1", production: 5600, loss: 410 },
@@ -271,7 +283,53 @@ export type SmartInsight = {
   headline: string;
   supportingText: string;
   tone: "neutral" | "good" | "warning";
+  severity: "good" | "watch" | "critical" | "stable";
+  impactScore: number;
+  nextStep: string;
+  primaryAction?: {
+    href: string;
+    label: string;
+  };
 };
+
+export type SteelOverallStatusSummary = {
+  label: "Good" | "Watch" | "Critical";
+  tone: "good" | "watch" | "critical";
+  reason: string;
+  nextStep: string;
+};
+
+export type SteelTopPrioritySummary = {
+  title: string;
+  statusLabel: string;
+  reason: string;
+  nextStep: string;
+};
+
+export type SteelDataConfidenceSummary = {
+  label: "Low" | "Medium" | "High";
+  reason: string;
+  nextStep: string;
+};
+
+function comparisonLabelForRange(range: DashboardRangeKey) {
+  if (range === "today") return "vs yesterday";
+  if (range === "7d") return "vs previous 7 days";
+  return "vs previous 30 days";
+}
+
+function severityFromTrend(trend?: number, behavior: "higher_is_better" | "lower_is_better" = "higher_is_better"): DashboardKpi["severity"] {
+  if (trend == null) return "stable";
+  if (behavior === "higher_is_better") {
+    if (trend >= 5) return "good";
+    if (trend <= -5) return "watch";
+    return "stable";
+  }
+  if (trend >= 10) return "critical";
+  if (trend > 0) return "watch";
+  if (trend <= -5) return "good";
+  return "stable";
+}
 
 function toDateOnly(value: string | Date | null | undefined): Date | null {
   if (!value) return null;
@@ -376,7 +434,7 @@ export function buildSmartInsights(data: IndustrialDashboardData): SmartInsight[
 
   const highestLossBatch = [...data.topLossBatches].sort((left, right) => right.lossKg - left.lossKg)[0];
 
-  return [
+  const insights: SmartInsight[] = [
     {
       id: "loss",
       headline:
@@ -385,12 +443,20 @@ export function buildSmartInsights(data: IndustrialDashboardData): SmartInsight[
           : `Steel loss dropped by ${Math.abs(lossDelta).toFixed(1)}% in the latest window`,
       supportingText: `Yield loss closed at ${latestLoss} KG. The rolling and melt teams should review the last abnormal spike before the next batch closes.`,
       tone: lossDelta > 0 ? "warning" : "good",
+      severity: lossDelta > 8 ? "critical" : lossDelta > 0 ? "watch" : "good",
+      impactScore: lossDelta > 0 ? Math.round(Math.abs(lossDelta) + latestLoss) : Math.round(Math.abs(lossDelta)),
+      nextStep: lossDelta > 0 ? "Open the risk lane and trace the latest loss spike before the next batch closes." : "Keep monitoring the production lane and confirm the improvement holds on the next shift.",
+      primaryAction: { href: "/steel?tab=risk", label: "Open Risk Lane" },
     },
     {
       id: "stock",
       headline: `Low steel stock watch: ${lowStockCategory.category}`,
       supportingText: `${lowStockCategory.valueKg.toLocaleString("en-IN")} KG is the lowest live steel buffer. ${rawMaterial ? `Raw material now stands at ${rawMaterial.valueKg.toLocaleString("en-IN")} KG.` : ""}`,
       tone: lowStockCategory.valueKg <= 2500 ? "warning" : "neutral",
+      severity: lowStockCategory.valueKg <= 2500 ? "watch" : "stable",
+      impactScore: Math.round(10000 - lowStockCategory.valueKg),
+      nextStep: lowStockCategory.valueKg <= 2500 ? "Check inventory confidence and replenish or recount the lowest buffer before production is squeezed." : "Keep inventory checks current so stock trust stays ahead of the next batch cycle.",
+      primaryAction: { href: "/steel?tab=inventory", label: "Open Inventory Lane" },
     },
     {
       id: "revenue",
@@ -400,14 +466,24 @@ export function buildSmartInsights(data: IndustrialDashboardData): SmartInsight[
           : `Steel revenue softened by ${Math.abs(revenueDelta).toFixed(1)}% over the previous period`,
       supportingText: `Current invoiced steel value stands at INR ${latestRevenue.toLocaleString("en-IN")}. Dispatch discipline is directly supporting this movement.`,
       tone: revenueDelta >= 0 ? "good" : "warning",
+      severity: revenueDelta >= 0 ? "good" : "watch",
+      impactScore: Math.round(Math.abs(revenueDelta) + latestRevenue / 1000),
+      nextStep: revenueDelta >= 0 ? "Keep invoices and dispatch closure aligned to preserve the current commercial pace." : "Review invoices and dispatch closure so commercial leakage does not grow.",
+      primaryAction: { href: "/steel/invoices", label: "Open Invoices" },
     },
     {
       id: "batch",
       headline: `Top steel loss batch: ${highestLossBatch.batch}`,
       supportingText: `${highestLossBatch.lossKg.toLocaleString("en-IN")} KG loss makes it the highest review priority in the current steel window.`,
       tone: highestLossBatch.lossKg >= 150 ? "warning" : "neutral",
+      severity: highestLossBatch.lossKg >= 200 ? "critical" : highestLossBatch.lossKg >= 150 ? "watch" : "stable",
+      impactScore: highestLossBatch.lossKg,
+      nextStep: highestLossBatch.lossKg >= 150 ? "Open the production or risk lane and trace the batch before approving the next shift pattern." : "Keep the batch under review while monitoring whether another loss spike overtakes it.",
+      primaryAction: { href: "/steel?tab=production", label: "Open Production Lane" },
     },
   ];
+
+  return insights.sort((left, right) => right.impactScore - left.impactScore);
 }
 
 export function buildSteelDashboardData(params: {
@@ -431,6 +507,7 @@ export function buildSteelDashboardData(params: {
 
   const buildRangeData = (range: DashboardRangeKey): IndustrialDashboardData => {
     const days = windowDays[range];
+    const comparisonLabel = comparisonLabelForRange(range);
     const currentStart = addDays(today, -(days - 1));
     const previousStart = addDays(currentStart, -days);
     const previousEnd = addDays(currentStart, -1);
@@ -575,30 +652,56 @@ export function buildSteelDashboardData(params: {
           : range === "7d"
             ? "A manager-ready steel board for output, loss, dispatch movement, and invoice flow across the last week."
             : "Thirty-day steel operations board for owner review across stock trust, batch loss, dispatch momentum, and gross commercial movement.",
+      rangeComparisonLabel: comparisonLabel,
       kpis: {
         totalStock: {
           label: "Total Stock",
           value: `${Math.round(totalStockKg).toLocaleString("en-IN")} KG`,
           trend: greenConfidencePercent ? greenConfidencePercent - 50 : undefined,
           trendLabel: "stock confidence green mix",
+          comparisonLabel,
+          severity:
+            Number(overview?.confidence_counts.red || 0) > 0
+              ? "critical"
+              : Number(overview?.confidence_counts.yellow || 0) > 0
+                ? "watch"
+                : "good",
+          action: { href: "/steel/reconciliations", label: "Stock Review" },
+          helperText: `${Number(overview?.confidence_counts.green || 0)} green, ${Number(overview?.confidence_counts.yellow || 0)} watch, ${Number(overview?.confidence_counts.red || 0)} critical positions.`,
         },
         todayProduction: {
           label: "Today Production",
           value: `${Math.round(currentOutput).toLocaleString("en-IN")} KG`,
           trend: productionTrendPercent,
-          trendLabel: "vs previous window",
+          trendLabel: "output pace",
+          comparisonLabel,
+          severity: severityFromTrend(productionTrendPercent, "higher_is_better"),
+          action: { href: "/steel?tab=production", label: "Production Lane" },
+          helperText: `${currentBatches.length} batch${currentBatches.length === 1 ? "" : "es"} contribute to this production view.`,
         },
         todayLoss: {
           label: "Today Loss",
           value: `${Math.round(currentLoss).toLocaleString("en-IN")} KG`,
           trend: lossTrendPercent,
           trendLabel: lossPercent ? `${lossPercent.toFixed(1)}% yield loss` : "yield loss",
+          comparisonLabel,
+          severity: severityFromTrend(lossTrendPercent, "lower_is_better"),
+          priority:
+            Number(overview?.anomaly_summary.critical_batches || 0) > 0 || Number(overview?.confidence_counts.red || 0) > 0
+              ? "primary"
+              : "secondary",
+          action: { href: "/steel?tab=risk", label: "Risk Lane" },
+          helperText: `${Number(overview?.anomaly_summary.high_batches || 0) + Number(overview?.anomaly_summary.critical_batches || 0)} high-risk batch signals are currently open.`,
         },
         todayRevenue: {
           label: "Today Revenue",
           value: `INR ${Math.round(currentRevenue).toLocaleString("en-IN")}`,
           trend: revenueTrendPercent,
-          trendLabel: "vs previous window",
+          trendLabel: "commercial movement",
+          comparisonLabel,
+          severity: severityFromTrend(revenueTrendPercent, "higher_is_better"),
+          action: { href: "/steel/invoices", label: "Invoices" },
+          helperText: `${Math.round(currentDispatchWeight).toLocaleString("en-IN")} KG dispatch weight is tied to the current commercial window.`,
         },
       },
       productionLoss: productionLoss.some((item) => item.production || item.loss) ? productionLoss : INDUSTRIAL_DASHBOARD_DATA[range].productionLoss,

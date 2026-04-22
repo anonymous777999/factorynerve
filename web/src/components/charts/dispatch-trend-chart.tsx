@@ -38,21 +38,25 @@ export function DispatchTrendChart({
       }),
       colors: [INDUSTRIAL_CHART_THEME.aqua],
       markers: {
-        size: 5,
+        size: 7,
         colors: ["#ffffff"],
         strokeColors: INDUSTRIAL_CHART_THEME.aqua,
         strokeWidth: 3,
-        hover: { size: 7 },
+        hover: { size: 9 },
       },
     }),
     [categories, onDrillDown],
   );
+  const isEmpty = !data.length || data.every((item) => item.valueKg <= 0);
 
   return (
     <ChartCard
       title="Dispatch Trend"
       description="Outbound weight movement across the last seven dispatch windows. Smooth area shape helps managers spot transport slowdowns quickly."
       loading={loading}
+      isEmpty={isEmpty}
+      emptyTitle="No dispatch rhythm yet"
+      emptyDescription="Post dispatch records so transport movement and closure pace become visible on the chart board."
     >
       <ApexChartClient type="area" options={options} series={series} height={320} />
     </ChartCard>

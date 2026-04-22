@@ -52,12 +52,16 @@ export function TopLossBatchesChart({
       }),
     [categories, onDrillDown],
   );
+  const isEmpty = !sorted.length || sorted.every((item) => item.lossKg <= 0);
 
   return (
     <ChartCard
       title="Top Loss Batches"
       description="The worst-performing batches sorted by loss weight. The highest-loss batch is highlighted in red for immediate review."
       loading={loading}
+      isEmpty={isEmpty}
+      emptyTitle="No ranked loss batches yet"
+      emptyDescription="Record steel batches with variance so the board can rank loss-heavy batches for review."
     >
       <ApexChartClient type="bar" options={options} series={series} height={320} />
     </ChartCard>

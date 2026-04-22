@@ -349,3 +349,24 @@ input[type="checkbox"] {
     filter: none !important;
   }
 }
+
+.apexcharts-tooltip,
+.apexcharts-xaxistooltip {
+  border: 1px solid #d6d3d1 !important;
+  background: #ffffff !important;
+  color: #111111 !important;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.12) !important;
+}
+
+.apexcharts-tooltip-title {
+  border-bottom: 1px solid #f5f5f4 !important;
+  background: #fafaf9 !important;
+  color: #111111 !important;
+  font-weight: 600 !important;
+}
+
+.apexcharts-tooltip-text,
+.apexcharts-tooltip-series-group,
+.apexcharts-xaxistooltip-text {
+  color: #111111 !important;
+}

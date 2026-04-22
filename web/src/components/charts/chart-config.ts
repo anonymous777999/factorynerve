@@ -82,6 +82,10 @@ function baseOptions({
       show: true,
       labels: { colors: INDUSTRIAL_CHART_THEME.text },
       fontSize: "12px",
+      itemMargin: {
+        horizontal: 10,
+        vertical: 8,
+      },
     },
     stroke: {
       width: 2,
@@ -131,9 +135,18 @@ function baseOptions({
     },
     tooltip: {
       theme: "light",
+      style: {
+        fontSize: "12px",
+        fontFamily: "IBM Plex Sans, sans-serif",
+      },
+      fillSeriesColor: false,
+      marker: {
+        show: true,
+      },
       y: {
         formatter: tooltipFormatter,
       },
+      custom: undefined,
     },
     responsive: [
       {
@@ -147,6 +160,9 @@ function baseOptions({
         options: {
           dataLabels: {
             enabled: false,
+          },
+          markers: {
+            size: 6,
           },
           plotOptions: {
             bar: {

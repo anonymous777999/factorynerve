@@ -69,20 +69,24 @@ export function RevenueChart({
         },
       },
       markers: {
-        size: 4,
+        size: 6,
         colors: ["#ffffff"],
-        strokeColors: INDUSTRIAL_CHART_THEME.aqua,
+        strokeColors: INDUSTRIAL_CHART_THEME.teal,
         strokeWidth: 3,
       },
     }),
     [categories, onDrillDown],
   );
+  const isEmpty = !data.length || data.every((item) => item.valueInr <= 0);
 
   return (
     <ChartCard
       title="Revenue Chart"
       description="Monthly realized revenue in rupees with a business-style run-rate overlay inspired by executive OPEX reviews."
       loading={loading}
+      isEmpty={isEmpty}
+      emptyTitle="No revenue trend yet"
+      emptyDescription="Create steel invoices and dispatch-linked revenue records to unlock the commercial trend view."
     >
       <ApexChartClient type="line" options={options} series={series} height={320} />
     </ChartCard>
