@@ -208,7 +208,7 @@ export function IndustrialFactoryDashboard({
           onSelect={handleFilterSelect}
         />
       ))}
-      <Card className="rounded-[1.6rem] border border-[#e7e5e4] bg-white shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
+      <Card className="rounded-[1.6rem] !border-[#e7e5e4] !bg-white shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
         <CardHeader>
           <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Active Filters</div>
           <CardTitle className="mt-2 text-lg text-[#111111]">Control context</CardTitle>
@@ -225,7 +225,7 @@ export function IndustrialFactoryDashboard({
           ))}
         </CardContent>
       </Card>
-      <Card className="rounded-[1.6rem] border border-[#e7e5e4] bg-white shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
+      <Card className="rounded-[1.6rem] !border-[#e7e5e4] !bg-white shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
         <CardHeader>
           <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Action Center</div>
           <CardTitle className="mt-2 text-lg text-[#111111]">Next best step</CardTitle>
@@ -248,7 +248,7 @@ export function IndustrialFactoryDashboard({
                 {lastDrillDown?.seriesName}: {lastDrillDown?.label} ({Math.round(lastDrillDown?.value || 0)})
               </div>
               <Link href={drilldownAction.href} className="block">
-                <Button className="w-full border-[#111111] bg-[#111111] text-white hover:border-[#2f2f2f] hover:bg-[#2f2f2f] sm:w-auto">
+                <Button className="w-full !border-[#111111] !bg-[#111111] !text-white hover:!border-[#2f2f2f] hover:!bg-[#2f2f2f] sm:w-auto">
                   {drilldownAction.label}
                 </Button>
               </Link>
@@ -271,7 +271,7 @@ export function IndustrialFactoryDashboard({
   if (industryType !== "steel") {
     return (
       <section className="space-y-6">
-        <Card className="rounded-[2rem] border border-[#e7e5e4] bg-[linear-gradient(180deg,#ffffff,#fafaf9)] text-[#111111] shadow-[0_26px_60px_rgba(15,23,42,0.1)]">
+        <Card className="rounded-[2rem] !border-[#e7e5e4] !bg-[linear-gradient(180deg,#ffffff,#fafaf9)] !text-[#111111] shadow-[0_26px_60px_rgba(15,23,42,0.1)]">
           <CardHeader>
             <div className="text-xs uppercase tracking-[0.28em] text-[#78716c]">Steel Dashboard</div>
             <CardTitle className="mt-3 text-3xl text-[#111111]">Steel-first control board</CardTitle>
@@ -288,7 +288,7 @@ export function IndustrialFactoryDashboard({
 
   return (
     <section className="space-y-6">
-      <Card className="rounded-[2rem] border border-[#e7e5e4] bg-[linear-gradient(180deg,#ffffff,#fafaf9)] text-[#111111] shadow-[0_26px_60px_rgba(15,23,42,0.1)]">
+      <Card className="rounded-[2rem] !border-[#e7e5e4] !bg-[linear-gradient(180deg,#ffffff,#fafaf9)] !text-[#111111] shadow-[0_26px_60px_rgba(15,23,42,0.1)]">
         <CardHeader className="space-y-4">
           {!embedded ? (
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -314,15 +314,15 @@ export function IndustrialFactoryDashboard({
                 onClick={() => setSelectedRange(filter.key)}
                 className={
                   selectedRange === filter.key
-                    ? "shrink-0 rounded-full border border-[#111111] bg-[#111111] px-4 py-2 text-sm font-semibold text-white shadow-sm transition"
-                    : "shrink-0 rounded-full border border-[#d6d3d1] bg-[#f5f5f4] px-4 py-2 text-sm font-semibold text-[#57534e] transition hover:border-[#a8a29e] hover:bg-[#e7e5e4]"
+                    ? "shrink-0 rounded-full !border-[#111111] !bg-[#111111] px-4 py-2 text-sm font-semibold !text-white shadow-sm transition"
+                    : "shrink-0 rounded-full !border-[#d6d3d1] !bg-[#f5f5f4] px-4 py-2 text-sm font-semibold !text-[#57534e] transition hover:!border-[#a8a29e] hover:!bg-[#e7e5e4]"
                 }
               >
                 {filter.label}
               </button>
             ))}
           </ResponsiveScrollArea>
-          <div className="rounded-[1.4rem] border border-[#e7e5e4] bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
+          <div className="rounded-[1.4rem] border !border-[#e7e5e4] !bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
             <div className="text-sm uppercase tracking-[0.18em] text-[#78716c]">Active Time Window</div>
             <div className="mt-2 text-xl font-semibold text-[#111111] md:text-2xl">{activeData.title}</div>
             <div className="mt-2 text-sm leading-6 text-[#57534e]">{activeData.subtitle}</div>
@@ -344,7 +344,7 @@ export function IndustrialFactoryDashboard({
 
           <div className="grid gap-6 xl:grid-cols-[0.34fr_0.66fr]">
             <div className="order-2 xl:order-1">
-              <details className="rounded-[1.6rem] border border-[#e7e5e4] bg-white shadow-[0_14px_30px_rgba(15,23,42,0.06)] xl:hidden">
+              <details className="rounded-[1.6rem] border !border-[#e7e5e4] !bg-white shadow-[0_14px_30px_rgba(15,23,42,0.06)] xl:hidden">
                 <summary className="cursor-pointer list-none px-5 py-4">
                   <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Filters and actions</div>
                   <div className="mt-1 text-lg font-semibold text-[#111111]">Open chart controls</div>

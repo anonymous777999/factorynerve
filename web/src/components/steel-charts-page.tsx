@@ -235,7 +235,7 @@ export function SteelChartsPage() {
             <div className="flex flex-wrap gap-3">
               <Button
                 variant="outline"
-                className="border-[#111111] bg-[#111111] text-white hover:border-[#2f2f2f] hover:bg-[#2f2f2f]"
+                className="!border-[#111111] !bg-[#111111] !text-white hover:!border-[#2f2f2f] hover:!bg-[#2f2f2f]"
                 disabled={refreshing}
                 onClick={() => void handleRefresh()}
               >
@@ -249,13 +249,13 @@ export function SteelChartsPage() {
                 </summary>
                 <div className="flex flex-wrap gap-3 border-t border-[#f5f5f4] px-4 py-4">
                   <Link href="/steel">
-                    <Button variant="ghost" className="border-[#d6d3d1] bg-[#f5f5f4] text-[#111111] hover:border-[#a8a29e] hover:bg-[#e7e5e4]">Steel hub</Button>
+                    <Button variant="ghost" className="!border-[#d6d3d1] !bg-[#f5f5f4] !text-[#111111] hover:!border-[#a8a29e] hover:!bg-[#e7e5e4]">Steel hub</Button>
                   </Link>
                   <Link href="/reports">
-                    <Button variant="ghost" className="border-[#d6d3d1] bg-[#f5f5f4] text-[#111111] hover:border-[#a8a29e] hover:bg-[#e7e5e4]">Reports</Button>
+                    <Button variant="ghost" className="!border-[#d6d3d1] !bg-[#f5f5f4] !text-[#111111] hover:!border-[#a8a29e] hover:!bg-[#e7e5e4]">Reports</Button>
                   </Link>
                   <Link href="/steel/customers">
-                    <Button variant="ghost" className="border-[#d6d3d1] bg-[#f5f5f4] text-[#111111] hover:border-[#a8a29e] hover:bg-[#e7e5e4]">Customers</Button>
+                    <Button variant="ghost" className="!border-[#d6d3d1] !bg-[#f5f5f4] !text-[#111111] hover:!border-[#a8a29e] hover:!bg-[#e7e5e4]">Customers</Button>
                   </Link>
                 </div>
               </details>
@@ -293,7 +293,7 @@ export function SteelChartsPage() {
         </section>
 
         <section className="grid gap-4 xl:grid-cols-3">
-          <Card className="rounded-[1.6rem] border border-[#e7e5e4] bg-white shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
+          <Card className="rounded-[1.6rem] !border-[#e7e5e4] !bg-white shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
             <CardHeader>
               <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Action Lane</div>
               <CardTitle className="text-xl text-[#111111]">Resolve stock mismatch</CardTitle>
@@ -314,7 +314,7 @@ export function SteelChartsPage() {
                     What should you do next: use stock review first when physical and system quantities start drifting.
                   </div>
                   <Link href="/steel/reconciliations">
-                    <Button variant="outline" className="border-[#111111] bg-[#111111] text-white hover:border-[#2f2f2f] hover:bg-[#2f2f2f]">Review</Button>
+                    <Button variant="outline" className="!border-[#111111] !bg-[#111111] !text-white hover:!border-[#2f2f2f] hover:!bg-[#2f2f2f]">Review</Button>
                   </Link>
                 </>
               ) : (
@@ -323,7 +323,7 @@ export function SteelChartsPage() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-[1.6rem] border border-[#e7e5e4] bg-white shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
+          <Card className="rounded-[1.6rem] !border-[#e7e5e4] !bg-white shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
             <CardHeader>
               <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Action Lane</div>
               <CardTitle className="text-xl text-[#111111]">Trace batch loss</CardTitle>
@@ -343,10 +343,10 @@ export function SteelChartsPage() {
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Link href={`/steel/batches/${topLossBatch.id}`}>
-                      <Button variant="outline" className="border-[#111111] bg-[#111111] text-white hover:border-[#2f2f2f] hover:bg-[#2f2f2f]">Batch</Button>
+                      <Button variant="outline" className="!border-[#111111] !bg-[#111111] !text-white hover:!border-[#2f2f2f] hover:!bg-[#2f2f2f]">Batch</Button>
                     </Link>
                     <Link href="/steel?tab=risk">
-                      <Button variant="ghost" className="border-[#d6d3d1] bg-[#f5f5f4] text-[#111111] hover:border-[#a8a29e] hover:bg-[#e7e5e4]">Risk lane</Button>
+                      <Button variant="ghost" className="!border-[#d6d3d1] !bg-[#f5f5f4] !text-[#111111] hover:!border-[#a8a29e] hover:!bg-[#e7e5e4]">Risk lane</Button>
                     </Link>
                   </div>
                 </>
@@ -356,7 +356,7 @@ export function SteelChartsPage() {
             </CardContent>
           </Card>
 
-          <Card className="rounded-[1.6rem] border border-[#e7e5e4] bg-white shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
+          <Card className="rounded-[1.6rem] !border-[#e7e5e4] !bg-white shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
             <CardHeader>
               <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Action Lane</div>
               <CardTitle className="text-xl text-[#111111]">Close invoice-dispatch gap</CardTitle>
@@ -376,10 +376,10 @@ export function SteelChartsPage() {
               </div>
               <div className="flex flex-wrap gap-2">
                 <Link href="/steel/invoices">
-                  <Button variant="outline" className="border-[#111111] bg-[#111111] text-white hover:border-[#2f2f2f] hover:bg-[#2f2f2f]">Invoices</Button>
+                  <Button variant="outline" className="!border-[#111111] !bg-[#111111] !text-white hover:!border-[#2f2f2f] hover:!bg-[#2f2f2f]">Invoices</Button>
                 </Link>
                 <Link href="/steel/dispatches">
-                  <Button variant="ghost" className="border-[#d6d3d1] bg-[#f5f5f4] text-[#111111] hover:border-[#a8a29e] hover:bg-[#e7e5e4]">Dispatches</Button>
+                  <Button variant="ghost" className="!border-[#d6d3d1] !bg-[#f5f5f4] !text-[#111111] hover:!border-[#a8a29e] hover:!bg-[#e7e5e4]">Dispatches</Button>
                 </Link>
               </div>
             </CardContent>
@@ -413,7 +413,7 @@ export function SteelChartsPage() {
               embedded
             />
           ) : (
-            <Card className="rounded-[1.6rem] border border-[#e7e5e4] bg-white shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+            <Card className="rounded-[1.6rem] !border-[#e7e5e4] !bg-white shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
               <CardHeader>
                 <div className="text-sm text-[#78716c]">Chart board</div>
                 <CardTitle className="text-xl text-[#111111]">Chart data is not available yet</CardTitle>

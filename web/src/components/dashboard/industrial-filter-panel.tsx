@@ -13,7 +13,7 @@ export function IndustrialFilterPanel({
   onSelect: (panelId: string, option: string) => void;
 }) {
   return (
-    <Card className="rounded-[1.6rem] border border-[#e7e5e4] bg-white text-[#111111] shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
+    <Card className="rounded-[1.6rem] !border-[#e7e5e4] !bg-white !text-[#111111] shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
       <CardHeader className="pb-3">
         <CardTitle className="text-base text-[#111111]">{panel.title}</CardTitle>
       </CardHeader>

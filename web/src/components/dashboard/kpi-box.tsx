@@ -56,7 +56,7 @@ export function KPIBox({
   };
 }) {
   return (
-    <Card className={`rounded-[1.8rem] bg-white text-[#111111] ${severityClasses(severity)}`}>
+    <Card className={`rounded-[1.8rem] !border-[#e7e5e4] !bg-white !text-[#111111] ${severityClasses(severity)}`}>
       <CardContent className="space-y-4 p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="text-xs uppercase tracking-[0.22em] text-[#78716c]">{label}</div>
@@ -77,7 +77,7 @@ export function KPIBox({
         </div>
         {action ? (
           <Link href={action.href}>
-            <Button variant="outline" className="border-[#111111] bg-[#111111] text-white hover:border-[#2f2f2f] hover:bg-[#2f2f2f]">
+            <Button variant="outline" className="!border-[#111111] !bg-[#111111] !text-white hover:!border-[#2f2f2f] hover:!bg-[#2f2f2f]">
               {action.label}
             </Button>
           </Link>
