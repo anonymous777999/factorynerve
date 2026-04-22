@@ -32,7 +32,6 @@ from backend.routers.plans import router as plans_router
 from backend.routers.billing import router as billing_router
 from backend.routers.premium import router as premium_router
 from backend.routers.steel import router as steel_router
-from backend.routers.ui_autonomy import router as ui_autonomy_router
 from backend.utils import get_config, setup_logging
 from backend.metrics import (
     record_exception,
@@ -77,16 +76,9 @@ if sentry_sdk and os.getenv("SENTRY_DSN"):
     )
     if SentryAsgiMiddleware:
         app.add_middleware(SentryAsgiMiddleware)
-enable_auth_secure_router = os.getenv("ENABLE_AUTH_SECURE_ROUTER", "0").strip().lower() in {
-    "1",
-    "true",
-    "yes",
-    "on",
-}
 app.include_router(auth_router, prefix="/auth")
 app.include_router(auth_google_router, prefix="/auth")
-if enable_auth_secure_router:
-    app.include_router(auth_secure_router, prefix="/auth-secure")
+app.include_router(auth_secure_router, prefix="/auth-secure")
 app.include_router(jobs_router, prefix="/jobs")
 app.include_router(entries_router, prefix="/entries")
 app.include_router(reports_router, prefix="/reports")
@@ -103,7 +95,6 @@ app.include_router(plans_router, prefix="/plans")
 app.include_router(billing_router, prefix="/billing")
 app.include_router(premium_router, prefix="/premium")
 app.include_router(steel_router, prefix="/steel")
-app.include_router(ui_autonomy_router, prefix="/autonomy")
 
 apply_security(app)
 apply_response_envelope(app)

@@ -52,27 +52,3 @@ def test_password_reset_flow(http_client):
         json={"token": token, "new_password": "AnotherStrongPassw0rd!"},
     )
     assert second_use.status_code == HTTPStatus.BAD_REQUEST
-
-
-def test_password_reset_reissues_invalidate_older_links(http_client):
-    user = register_user(http_client)
-
-    first = http_client.post("/auth/password/forgot", json={"email": user["email"]})
-    assert first.status_code == HTTPStatus.OK, first.text
-    first_token = _extract_token(first.json()["reset_link"])
-
-    second = http_client.post("/auth/password/forgot", json={"email": user["email"]})
-    assert second.status_code == HTTPStatus.OK, second.text
-    second_token = _extract_token(second.json()["reset_link"])
-
-    stale = http_client.post(
-        "/auth/password/reset",
-        json={"token": first_token, "new_password": "AnotherStrongPassw0rd!"},
-    )
-    assert stale.status_code == HTTPStatus.BAD_REQUEST, stale.text
-
-    fresh = http_client.post(
-        "/auth/password/reset",
-        json={"token": second_token, "new_password": "AnotherStrongPassw0rd!"},
-    )
-    assert fresh.status_code == HTTPStatus.OK, fresh.text

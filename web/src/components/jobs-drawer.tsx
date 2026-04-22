@@ -94,7 +94,7 @@ function buildToastForTransition(job: JobRecord) {
   if (job.status === "failed") {
     return {
       title: `${jobTitle(job.kind)} failed`,
-      description: job.error || job.message || "Job failed.",
+      description: job.error || job.message || "The job did not finish successfully.",
       tone: "error" as const,
       actionHref: openLink || undefined,
       actionLabel: openLink ? "Review" : undefined,
@@ -208,7 +208,7 @@ export function JobsDrawer() {
         const queued = await retryJob(job.job_id);
         pushAppToast({
           title: `${jobTitle(job.kind)} retried`,
-          description: "Job queued.",
+          description: "A fresh background job has been queued and will appear at the top of the list shortly.",
           tone: "success",
           actionHref: getOpenLink(queued) || undefined,
           actionLabel: getOpenLink(queued) ? "Open" : undefined,

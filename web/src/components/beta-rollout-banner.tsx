@@ -1,16 +1,10 @@
-"use client";
-
-import { useDisplayMode } from "@/lib/use-display-mode";
-
 const betaStage = (process.env.NEXT_PUBLIC_BETA_STAGE || "").trim();
 const betaBannerText = (process.env.NEXT_PUBLIC_BETA_BANNER_TEXT || "").trim();
 const betaFeedbackUrl = (process.env.NEXT_PUBLIC_BETA_FEEDBACK_URL || "").trim();
 const releaseVersion = (process.env.NEXT_PUBLIC_RELEASE_VERSION || "").trim();
 
 export function BetaRolloutBanner() {
-  const { standalone } = useDisplayMode();
-
-  if (!betaStage || standalone) return null;
+  if (!betaStage) return null;
 
   return (
     <div className="border-b border-amber-400/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(249,115,22,0.08))] px-4 py-3 text-sm text-amber-100">
@@ -20,7 +14,7 @@ export function BetaRolloutBanner() {
             Beta {betaStage}
           </span>
           <span className="leading-6">
-            {betaBannerText || "Beta rollout active. Report issues."}
+            {betaBannerText || "This release is under monitored beta rollout. Please report anything that feels off before full cutover."}
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.16em]">

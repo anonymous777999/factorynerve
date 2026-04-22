@@ -164,6 +164,12 @@ export function warmRouteData(pathname: string) {
     return;
   }
 
+  if (normalized === "/ai") {
+    tryPreload("/ai/usage", 15_000);
+    tryPreload("/ai/anomalies?days=14", 15_000, "ai:anomalies:14");
+    return;
+  }
+
   if (normalized === "/analytics") {
     tryPreload("/analytics/weekly", 15_000, "analytics:weekly");
     tryPreload("/analytics/monthly", 15_000, "analytics:monthly");

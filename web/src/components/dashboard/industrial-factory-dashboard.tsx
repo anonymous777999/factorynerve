@@ -284,8 +284,8 @@ export function IndustrialFactoryDashboard({
   }
 
   return (
-    <section className={embedded ? "space-y-5" : "space-y-6"}>
-      <Card className={`border border-[#dce5ef] bg-[linear-gradient(180deg,#fbfcfe,#f3f7fb)] text-slate-900 shadow-[0_26px_60px_rgba(15,23,42,0.1)] ${embedded ? "rounded-[1.8rem]" : "rounded-[2rem]"}`}>
+    <section className="space-y-6">
+      <Card className="rounded-[2rem] border border-[#dce5ef] bg-[linear-gradient(180deg,#fbfcfe,#f3f7fb)] text-slate-900 shadow-[0_26px_60px_rgba(15,23,42,0.1)]">
         <CardHeader className="space-y-4">
           {!embedded ? (
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
@@ -315,15 +315,15 @@ export function IndustrialFactoryDashboard({
               </button>
             ))}
           </div>
-          <div className={`border border-[#dce5ef] bg-white shadow-[0_12px_28px_rgba(15,23,42,0.05)] ${embedded ? "rounded-[1.25rem] p-3.5" : "rounded-[1.4rem] p-4"}`}>
+          <div className="rounded-[1.4rem] border border-[#dce5ef] bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
             <div className="text-sm uppercase tracking-[0.18em] text-slate-500">Active Time Window</div>
-            <div className={`mt-2 font-semibold text-slate-900 ${embedded ? "text-lg md:text-xl" : "text-xl md:text-2xl"}`}>{activeData.title}</div>
+            <div className="mt-2 text-xl font-semibold text-slate-900 md:text-2xl">{activeData.title}</div>
             <div className="mt-2 text-sm leading-6 text-slate-600">{activeData.subtitle}</div>
           </div>
         </CardHeader>
-        <CardContent className={embedded ? "space-y-5" : "space-y-6"}>
+        <CardContent className="space-y-6">
 
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <KPIBox {...activeData.kpis.totalStock} />
             <KPIBox {...activeData.kpis.todayProduction} />
             <KPIBox {...activeData.kpis.todayLoss} />
@@ -332,7 +332,7 @@ export function IndustrialFactoryDashboard({
 
           <SmartInsightsPanel insights={smartInsights} loading={visualLoading} />
 
-          <div className="grid min-w-0 gap-5 xl:grid-cols-[0.34fr_0.66fr]">
+          <div className="grid gap-6 xl:grid-cols-[0.34fr_0.66fr]">
             <div className="order-2 xl:order-1">
               <details className="rounded-[1.6rem] border border-[#dce5ef] bg-white shadow-[0_14px_30px_rgba(15,23,42,0.06)] xl:hidden">
                 <summary className="cursor-pointer list-none px-5 py-4">
@@ -345,12 +345,10 @@ export function IndustrialFactoryDashboard({
               <div className="hidden xl:block">{leftRail}</div>
             </div>
 
-            <div className="order-1 grid min-w-0 gap-5 xl:order-2">
-              <div className="grid min-w-0 gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+            <div className="order-1 grid gap-6 xl:order-2">
+              <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
                 {viewConfig.showProduction ? (
-                  <div className="min-w-0">
                   <ProductionLossChart data={activeData.productionLoss} loading={visualLoading} onDrillDown={handleDrillDown} />
-                  </div>
                 ) : (
                   <Card className="rounded-[1.6rem] border border-dashed border-[#dce5ef] bg-white">
                     <CardContent className="py-10 text-center text-sm text-slate-500">
@@ -358,14 +356,11 @@ export function IndustrialFactoryDashboard({
                     </CardContent>
                   </Card>
                 )}
-                <div className="grid min-w-0 gap-5">
+                <div className="grid gap-6">
                   {viewConfig.showInventory ? (
-                    <div className="min-w-0">
                     <InventoryLevelsChart data={activeData.inventoryLevels} loading={visualLoading} onDrillDown={handleDrillDown} />
-                    </div>
                   ) : null}
                   {viewConfig.showLossDonut ? (
-                    <div className="min-w-0">
                     <LossTypeDonutChart
                       title={activeData.donutSummary.title}
                       subtitle={activeData.donutSummary.subtitle}
@@ -373,7 +368,6 @@ export function IndustrialFactoryDashboard({
                       loading={visualLoading}
                       onDrillDown={handleDrillDown}
                     />
-                    </div>
                   ) : null}
                   {!viewConfig.showInventory && !viewConfig.showLossDonut ? (
                     <Card className="rounded-[1.6rem] border border-dashed border-[#dce5ef] bg-white">
@@ -387,16 +381,12 @@ export function IndustrialFactoryDashboard({
             </div>
           </div>
 
-          <div className="grid min-w-0 gap-5 xl:grid-cols-2">
+          <div className="grid gap-6 xl:grid-cols-2">
             {viewConfig.showTopLoss ? (
-              <div className="min-w-0">
               <TopLossBatchesChart data={activeData.topLossBatches} loading={visualLoading} onDrillDown={handleDrillDown} />
-              </div>
             ) : null}
             {viewConfig.showDispatch ? (
-              <div className="min-w-0">
               <DispatchTrendChart data={activeData.dispatchTrend} loading={visualLoading} onDrillDown={handleDrillDown} />
-              </div>
             ) : null}
             {!viewConfig.showTopLoss && !viewConfig.showDispatch ? (
               <Card className="rounded-[1.6rem] border border-dashed border-[#dce5ef] bg-white xl:col-span-2">
@@ -407,17 +397,11 @@ export function IndustrialFactoryDashboard({
             ) : null}
           </div>
 
-          <div className="grid min-w-0 gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+          <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
             {viewConfig.showRevenue ? (
-              <div className="min-w-0">
               <RevenueChart data={activeData.revenueTrend} loading={visualLoading} onDrillDown={handleDrillDown} />
-              </div>
             ) : null}
-            {viewConfig.showKpiTable ? (
-              <div className="min-w-0">
-                <IndustrialKpiTable rows={activeData.kpiRows} />
-              </div>
-            ) : null}
+            {viewConfig.showKpiTable ? <IndustrialKpiTable rows={activeData.kpiRows} /> : null}
             {!viewConfig.showRevenue && !viewConfig.showKpiTable ? (
               <Card className="rounded-[1.6rem] border border-dashed border-[#dce5ef] bg-white xl:col-span-2">
                 <CardContent className="py-10 text-center text-sm text-slate-500">

@@ -196,7 +196,7 @@ export default function OcrPage() {
       setStatus("OCR job retried. We are watching the fresh run now.");
       pushAppToast({
         title: "OCR job retried",
-        description: "OCR queued.",
+        description: "A new OCR run has been queued in the shared jobs system.",
         tone: "success",
       });
     } catch (err) {
@@ -265,7 +265,7 @@ export default function OcrPage() {
       setTemplateColumnNames("");
       setTemplateKeywordJson("");
       setTemplateSamples([]);
-      setStatus("Template created.");
+      setStatus("Template created successfully.");
     } catch (err) {
       if (err instanceof SyntaxError) {
         setError("Column keyword JSON is invalid.");
@@ -308,9 +308,9 @@ export default function OcrPage() {
             <CardTitle>OCR Workspace</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
             <Link href="/access">
-              <Button>Open Login</Button>
+              <Button>Open Access</Button>
             </Link>
           </CardContent>
         </Card>
@@ -329,12 +329,12 @@ export default function OcrPage() {
             <div className="text-sm text-[var(--muted)]">
               OCR tools are available to supervisors, managers, admins, and owners.
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link href="/dashboard" className="w-full sm:w-auto">
-                <Button className="w-full sm:w-auto">Back to Dashboard</Button>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/dashboard">
+                <Button>Back to Dashboard</Button>
               </Link>
-              <Link href="/reports" className="w-full sm:w-auto">
-                <Button variant="outline" className="w-full sm:w-auto">Open Reports</Button>
+              <Link href="/reports">
+                <Button variant="outline">Open Reports</Button>
               </Link>
             </div>
           </CardContent>
@@ -346,46 +346,35 @@ export default function OcrPage() {
   const metadataRows = formatMetadata(job);
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8">
-      <div className="mx-auto max-w-7xl space-y-5 sm:space-y-6">
-        <section className="flex flex-col gap-5 rounded-[1.75rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-5 shadow-2xl backdrop-blur sm:p-6 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-4xl">
+    <main className="min-h-screen px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
+          <div>
             <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">
               OCR
             </div>
-            <h1 className="mt-2 text-2xl font-semibold sm:text-3xl">Logbook OCR and template manager</h1>
+            <h1 className="mt-2 text-3xl font-semibold">Logbook OCR and template manager</h1>
             <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
               Run the async OCR queue for ledger and table exports, monitor job state, and manage OCR templates for higher plans.
             </p>
           </div>
-          <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto lg:flex-wrap lg:justify-end">
-            <Link href="/ocr/scan" className="w-full sm:w-auto">
-              <Button className="w-full sm:w-auto">Scan a Document</Button>
+          <div className="flex flex-wrap gap-3">
+            <Link href="/ocr/scan">
+              <Button>Scan a Document</Button>
             </Link>
-            <Link href="/ocr/verify" className="w-full sm:w-auto">
-              <Button className="w-full sm:w-auto">Open Verification</Button>
+            <Link href="/ocr/verify">
+              <Button>Open Verification</Button>
             </Link>
-            <Link href="/dashboard" className="w-full sm:w-auto">
-              <Button variant="outline" className="w-full sm:w-auto">Dashboard</Button>
+            <Link href="/dashboard">
+              <Button variant="outline">Dashboard</Button>
             </Link>
-            <Link href="/email-summary" className="w-full sm:w-auto">
-              <Button variant="outline" className="w-full sm:w-auto">Email Summary</Button>
+            <Link href="/email-summary">
+              <Button variant="outline">Email Summary</Button>
             </Link>
           </div>
         </section>
 
-        {status ? (
-          <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-            {status}
-          </div>
-        ) : null}
-        {error || sessionError ? (
-          <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-            {error || sessionError}
-          </div>
-        ) : null}
-
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader>
               <div className="text-sm text-[var(--muted)]">OCR Runtime</div>
@@ -419,7 +408,7 @@ export default function OcrPage() {
           </Card>
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[1fr_1fr] xl:items-start">
+        <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
           <Card>
             <CardHeader>
               <CardTitle className="text-xl">Start OCR Job</CardTitle>
@@ -450,7 +439,7 @@ export default function OcrPage() {
                   Use mock data instead of live AI OCR
                 </label>
               ) : null}
-              <Button className="w-full sm:w-auto" onClick={handleStartJob} disabled={busy || !file}>
+              <Button onClick={handleStartJob} disabled={busy || !file}>
                 {busy ? "Queuing..." : "Run OCR Queue"}
               </Button>
             </CardContent>
@@ -463,7 +452,7 @@ export default function OcrPage() {
             <CardContent className="space-y-4 text-sm">
               {job ? (
                 <>
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-4 md:grid-cols-2">
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                       <div className="text-[var(--muted)]">Status</div>
                       <div className="mt-1 text-lg font-semibold">{job.status}</div>
@@ -480,7 +469,7 @@ export default function OcrPage() {
                     />
                   </div>
                   <div className="text-[var(--muted)]">{job.message}</div>
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-3 md:grid-cols-2">
                     <div>
                       <div className="text-[var(--muted)]">Created</div>
                       <div>{formatTimestamp(job.created_at)}</div>
@@ -491,7 +480,7 @@ export default function OcrPage() {
                     </div>
                   </div>
                   {metadataRows.length ? (
-                    <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="grid gap-3 md:grid-cols-2">
                       {metadataRows.map(([label, value]) => (
                         <div
                           key={label}
@@ -508,19 +497,19 @@ export default function OcrPage() {
                       {job.error}
                     </div>
                   ) : null}
-                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                  <div className="flex flex-wrap gap-3">
                     {job.status === "succeeded" ? (
-                      <Button className="w-full sm:w-auto" onClick={handleDownload} disabled={downloadBusy}>
+                      <Button onClick={handleDownload} disabled={downloadBusy}>
                         {downloadBusy ? "Preparing download..." : "Download Excel Result"}
                       </Button>
                     ) : null}
                     {["queued", "running", "canceling"].includes(job.status) ? (
-                      <Button className="w-full sm:w-auto" variant="outline" onClick={handleCancelCurrentJob} disabled={busy}>
+                      <Button variant="outline" onClick={handleCancelCurrentJob} disabled={busy}>
                         {busy || job.status === "canceling" ? "Stopping..." : "Cancel Job"}
                       </Button>
                     ) : null}
                     {["failed", "canceled"].includes(job.status) ? (
-                      <Button className="w-full sm:w-auto" variant="outline" onClick={handleRetryCurrentJob} disabled={busy}>
+                      <Button variant="outline" onClick={handleRetryCurrentJob} disabled={busy}>
                         {busy ? "Retrying..." : "Retry Job"}
                       </Button>
                     ) : null}
@@ -535,7 +524,7 @@ export default function OcrPage() {
           </Card>
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[1.05fr_0.95fr] xl:items-start">
+        <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
           <Card>
             <CardHeader>
               <CardTitle className="text-xl">Template Manager</CardTitle>
@@ -552,7 +541,7 @@ export default function OcrPage() {
                       key={template.id}
                       className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4"
                     >
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <div className="text-lg font-semibold">{template.name}</div>
                           <div className="mt-1 text-sm text-[var(--muted)]">
@@ -566,7 +555,6 @@ export default function OcrPage() {
                         </div>
                         <Button
                           variant="outline"
-                          className="w-full sm:w-auto"
                           onClick={() => handleArchiveTemplate(template.id)}
                           disabled={busy}
                         >
@@ -593,7 +581,7 @@ export default function OcrPage() {
                 <label className="text-sm text-[var(--muted)]">Template Name</label>
                 <Input value={templateName} onChange={(event) => setTemplateName(event.target.value)} />
               </div>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="text-sm text-[var(--muted)]">Columns</label>
                   <Input
@@ -651,12 +639,15 @@ export default function OcrPage() {
                   onChange={(event) => setTemplateSamples(Array.from(event.target.files || []))}
                 />
               </div>
-              <Button className="w-full sm:w-auto" onClick={handleCreateTemplate} disabled={busy || !!templateGate}>
+              <Button onClick={handleCreateTemplate} disabled={busy || !!templateGate}>
                 {busy ? "Saving..." : "Create OCR Template"}
               </Button>
             </CardContent>
           </Card>
         </section>
+
+        {status ? <div className="text-sm text-green-400">{status}</div> : null}
+        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
     </main>
   );

@@ -17,14 +17,7 @@ import {
   type SteelStockMismatchCause,
   type SteelStockItem,
 } from "@/lib/steel";
-import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/use-session";
-import {
-  RecordReviewStateNote,
-  recordReviewBadgeClass,
-  recordReviewSurfaceClass,
-  type RecordReviewTone,
-} from "@/components/ui/record-review-state";
 
 function formatKg(value: number | null | undefined) {
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value || 0);
@@ -34,37 +27,6 @@ function badgeTone(value: string) {
   if (value === "approved" || value === "green") return "border-emerald-400/35 bg-emerald-400/12 text-emerald-200";
   if (value === "pending" || value === "yellow") return "border-amber-400/35 bg-amber-400/12 text-amber-200";
   return "border-rose-400/35 bg-rose-400/12 text-rose-200";
-}
-
-function formatDateTime(value?: string | null) {
-  if (!value) return "-";
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function reconciliationTone(row: SteelReconciliation): RecordReviewTone {
-  if (row.status === "approved") return "approved";
-  if (row.status === "rejected") return "flagged";
-  return "pending";
-}
-
-function reconciliationDetail(row: SteelReconciliation) {
-  const tone = reconciliationTone(row);
-  if (tone === "approved") {
-    return `Approved by ${row.approved_by_name || "Unassigned"} on ${formatDateTime(row.approved_at)}`;
-  }
-  if (tone === "flagged") {
-    if (row.rejection_reason?.trim()) return row.rejection_reason.trim();
-    return `Rejected by ${row.rejected_by_name || "Unassigned"} on ${formatDateTime(row.rejected_at)}`;
-  }
-  return "Pending stock trust decision. Select the mismatch cause, then approve or reject this count.";
 }
 
 function formatMismatchCause(value: SteelStockMismatchCause | string | null | undefined) {
@@ -157,6 +119,10 @@ export function SteelReconciliationsPage() {
       { pending: 0, approved: 0, rejected: 0 },
     );
   }, [reconciliations]);
+  const nextPending = useMemo(
+    () => reconciliations.find((row) => row.status === "pending") || null,
+    [reconciliations],
+  );
 
   const handleApprove = async (reconciliationId: number) => {
     setBusyId(reconciliationId);
@@ -219,9 +185,9 @@ export function SteelReconciliationsPage() {
             <CardTitle>Steel Reconciliations</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
             <Link href="/access">
-              <Button>Open Login</Button>
+              <Button>Open Access</Button>
             </Link>
           </CardContent>
         </Card>
@@ -250,40 +216,101 @@ export function SteelReconciliationsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <main className="min-h-screen px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Reconciliations</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Approval history for stock confidence</h1>
+              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Review the next stock mismatch first</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Review submitted physical counts, approve trusted stock evidence, and reject mismatched counts with clear reasons.
+                Start with pending physical counts, tag the root cause, and keep the history trail available without crowding the review flow.
               </p>
             </div>
-            <div className="grid gap-3 sm:flex sm:flex-wrap">
-              <Link href="/steel">
-                <Button variant="outline" className="w-full sm:w-auto">Back to Steel</Button>
-              </Link>
-              <Link href="/steel/customers">
-                <Button variant="ghost" className="w-full sm:w-auto">Customer Ledger</Button>
-              </Link>
-            </div>
+            {/* AUDIT: BUTTON_CLUTTER - move route jumps into a secondary tray so reconciliation review stays primary. */}
+            <details className="group min-w-[220px] rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)]">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
+                Review tools
+                <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
+                <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
+              </summary>
+              <div className="flex flex-wrap gap-3 border-t border-[var(--border)] px-4 py-4">
+                <Link href="/steel">
+                  <Button variant="outline">Steel hub</Button>
+                </Link>
+                <Link href="/steel/customers">
+                  <Button variant="ghost">Customers</Button>
+                </Link>
+              </div>
+            </details>
           </div>
         </section>
 
-        {status ? (
-          <div className="rounded-3xl border border-emerald-400/30 bg-emerald-400/12 px-4 py-3 text-sm text-emerald-100">
-            {status}
-          </div>
-        ) : null}
-        {error || sessionError ? (
-          <div className="rounded-3xl border border-rose-400/30 bg-rose-400/12 px-4 py-3 text-sm text-rose-100">
-            {error || sessionError}
-          </div>
+        {/* AUDIT: FLOW_BROKEN - add a short sequence so the page leads clearly from pending review to history. */}
+        <section className="grid gap-4 lg:grid-cols-3">
+          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
+            <CardHeader className="space-y-2">
+              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">1. Open pending count</div>
+              <CardTitle className="text-lg">Start with the next mismatch</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-[var(--muted)]">
+              Pending reconciliations need the first review pass before approved and rejected history matters.
+            </CardContent>
+          </Card>
+          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
+            <CardHeader className="space-y-2">
+              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">2. Tag the cause</div>
+              <CardTitle className="text-lg">Record why stock drifted</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-[var(--muted)]">
+              Choose the mismatch cause before approving or rejecting so the next action lane stays traceable.
+            </CardContent>
+          </Card>
+          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
+            <CardHeader className="space-y-2">
+              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">3. Keep history</div>
+              <CardTitle className="text-lg">Use filters when needed</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-[var(--muted)]">
+              Status and item filters stay available once the active mismatch is handled.
+            </CardContent>
+          </Card>
+        </section>
+
+        {nextPending ? (
+          // AUDIT: FLOW_BROKEN - feature the next pending reconciliation first so reviewers see the immediate task before the full history list.
+          <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
+              <CardHeader>
+                <div className="text-sm text-[var(--muted)]">Next review</div>
+                <CardTitle className="text-xl">{nextPending.item_code} - {nextPending.item_name}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <div className="text-[var(--muted)]">
+                  Counted by {nextPending.counted_by_name || "Unknown"} on {nextPending.counted_at}
+                </div>
+                <div className="font-semibold text-white">
+                  {formatKg(nextPending.variance_kg)} KG variance | {nextPending.variance_percent.toFixed(2)}%
+                </div>
+                <div className="text-[var(--muted)]">
+                  Cause: {formatMismatchCause(mismatchCauses[nextPending.id] || nextPending.mismatch_cause)}
+                </div>
+              </CardContent>
+            </Card>
+            <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
+              <CardHeader>
+                <div className="text-sm text-[var(--muted)]">Queue pulse</div>
+                <CardTitle className="text-xl">Pending first</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm text-[var(--muted)]">
+                <div>{summary.pending} pending | {summary.approved} approved | {summary.rejected} rejected</div>
+                <div>Clear the pending queue first, then use the filters below for audits or post-mortems.</div>
+              </CardContent>
+            </Card>
+          </section>
         ) : null}
 
-        <section className="grid gap-4 sm:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader><CardTitle className="text-base">Pending</CardTitle></CardHeader>
             <CardContent className="text-2xl font-semibold text-white">{summary.pending}</CardContent>
@@ -298,48 +325,54 @@ export function SteelReconciliationsPage() {
           </Card>
         </section>
 
-        <Card className="overflow-hidden">
+        <Card>
           <CardHeader>
             <CardTitle className="text-xl">History</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="text-sm text-[var(--muted)]">Status</label>
-                <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                  <option value="">All statuses</option>
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                </Select>
+            {/* AUDIT: BUTTON_CLUTTER - keep filters available in a reveal so the review list itself stays easier to scan. */}
+            <details className="group rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
+                Filter history
+                <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
+                <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
+              </summary>
+              <div className="grid gap-4 border-t border-[var(--border)] px-4 py-4 md:grid-cols-2">
+                <div>
+                  <label className="text-sm text-[var(--muted)]">Status</label>
+                  <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+                    <option value="">All statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm text-[var(--muted)]">Item</label>
+                  <Select value={itemFilter} onChange={(event) => setItemFilter(event.target.value)}>
+                    <option value="">All items</option>
+                    {items.map((item) => (
+                      <option key={item.item_id} value={item.item_id}>
+                        {item.item_code} - {item.name}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
               </div>
-              <div>
-                <label className="text-sm text-[var(--muted)]">Item</label>
-                <Select value={itemFilter} onChange={(event) => setItemFilter(event.target.value)}>
-                  <option value="">All items</option>
-                  {items.map((item) => (
-                    <option key={item.item_id} value={item.item_id}>
-                      {item.item_code} - {item.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            </div>
+            </details>
 
             <div className="space-y-4">
-              {reconciliations.map((row) => {
-                const rowTone = reconciliationTone(row);
-                return (
-                <div key={row.id} className={cn("rounded-3xl p-4 sm:p-5", recordReviewSurfaceClass(rowTone))}>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
+              {reconciliations.map((row) => (
+                <div key={row.id} className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
                       <div className="text-lg font-semibold text-white">{row.item_code} - {row.item_name}</div>
                       <div className="mt-1 text-xs text-[var(--muted)]">
-                        Counted by {row.counted_by_name || "Unknown"} on {formatDateTime(row.counted_at)}
+                        Counted by {row.counted_by_name || "Unknown"} on {row.counted_at}
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <span className={cn("rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.18em]", recordReviewBadgeClass(rowTone))}>
+                      <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeTone(row.status)}`}>
                         {row.status}
                       </span>
                       <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeTone(row.confidence_status)}`}>
@@ -348,7 +381,7 @@ export function SteelReconciliationsPage() {
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="mt-4 grid gap-3 md:grid-cols-4">
                     <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
                       <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">System</div>
                       <div className="mt-1 text-sm font-semibold text-white">{formatKg(row.system_qty_kg)} KG</div>
@@ -368,7 +401,7 @@ export function SteelReconciliationsPage() {
                   </div>
 
                   {row.notes ? <div className="mt-3 text-sm text-[var(--muted)]">Count note: {row.notes}</div> : null}
-                  <div className="mt-2 flex flex-col items-start gap-3 text-sm sm:flex-row sm:flex-wrap sm:items-center">
+                  <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
                     <div className="rounded-full border border-[var(--border)] bg-[rgba(8,14,24,0.6)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
                       Cause: {formatMismatchCause(mismatchCauses[row.id] || row.mismatch_cause)}
                     </div>
@@ -376,7 +409,6 @@ export function SteelReconciliationsPage() {
                       {mismatchActionLink(mismatchCauses[row.id] || row.mismatch_cause).label}
                     </Link>
                   </div>
-                  <RecordReviewStateNote tone={rowTone} detail={reconciliationDetail(row)} className="mt-3" />
                   {row.approver_notes ? <div className="mt-2 text-sm text-[var(--muted)]">Approver note: {row.approver_notes}</div> : null}
                   {row.rejection_reason ? <div className="mt-2 text-sm text-red-300">Rejection: {row.rejection_reason}</div> : null}
 
@@ -406,9 +438,8 @@ export function SteelReconciliationsPage() {
                           Select the root cause before approving or rejecting this mismatch.
                         </div>
                       ) : null}
-                      <div className="grid gap-3 sm:flex sm:flex-wrap">
+                      <div className="flex flex-wrap gap-3">
                         <Button
-                          className="w-full sm:w-auto"
                           disabled={busyId === row.id || (Math.abs(Number(row.variance_kg || 0)) > 0.001 && !(mismatchCauses[row.id] || row.mismatch_cause))}
                           onClick={() => void handleApprove(row.id)}
                         >
@@ -416,7 +447,6 @@ export function SteelReconciliationsPage() {
                         </Button>
                         <Button
                           variant="outline"
-                          className="w-full sm:w-auto"
                           disabled={busyId === row.id || (Math.abs(Number(row.variance_kg || 0)) > 0.001 && !(mismatchCauses[row.id] || row.mismatch_cause))}
                           onClick={() => void handleReject(row.id)}
                         >
@@ -426,8 +456,7 @@ export function SteelReconciliationsPage() {
                     </div>
                   ) : null}
                 </div>
-                );
-              })}
+              ))}
               {!reconciliations.length ? (
                 <div className="rounded-3xl border border-dashed border-[var(--border)] px-4 py-10 text-center text-sm text-[var(--muted)]">
                   No reconciliation records match the current filters.
@@ -436,6 +465,9 @@ export function SteelReconciliationsPage() {
             </div>
           </CardContent>
         </Card>
+
+        {status ? <div className="text-sm text-green-400">{status}</div> : null}
+        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
     </main>
   );

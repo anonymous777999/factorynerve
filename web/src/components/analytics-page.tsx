@@ -3,27 +3,37 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { ApiError } from "@/lib/api";
-import { getManagerAnalytics, getMonthlyAnalytics, getTrendAnalytics, getWeeklyAnalytics, type ManagerAnalytics, type MonthlyAnalytics, type TrendsAnalytics, type WeeklyAnalyticsPoint } from "@/lib/analytics";
-import { getUsageSummary, type UsageSummary } from "@/lib/settings";
-import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ApiError } from "@/lib/api";
+import {
+  getManagerAnalytics,
+  getMonthlyAnalytics,
+  getTrendAnalytics,
+  getWeeklyAnalytics,
+  type ManagerAnalytics,
+  type MonthlyAnalytics,
+  type TrendsAnalytics,
+  type WeeklyAnalyticsPoint,
+} from "@/lib/analytics";
+import { useI18n, useI18nNamespaces } from "@/lib/i18n";
+import { getUsageSummary, type UsageSummary } from "@/lib/settings";
+import { useSession } from "@/lib/use-session";
 
 const AUTO_REFRESH_MS = 45_000;
 
-function formatDate(value: string) {
+function formatDate(value: string, locale = "en-IN") {
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("en-IN", { day: "2-digit", month: "short" });
+  return parsed.toLocaleDateString(locale, { day: "2-digit", month: "short" });
 }
 
-function formatDateTime(value?: string | null) {
+function formatDateTime(value?: string | null, locale = "en-IN") {
   if (!value) return "-";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString("en-IN", {
+  return parsed.toLocaleString(locale, {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
@@ -32,6 +42,9 @@ function formatDateTime(value?: string | null) {
 }
 
 export default function AnalyticsPage() {
+  const { locale, t } = useI18n();
+  useI18nNamespaces(["common", "analytics"]);
+
   const { user, loading, error: sessionError } = useSession();
   const [usage, setUsage] = useState<UsageSummary | null>(null);
   const [weekly, setWeekly] = useState<WeeklyAnalyticsPoint[]>([]);
@@ -191,12 +204,12 @@ export default function AnalyticsPage() {
       <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
-            <CardTitle>Analytics</CardTitle>
+            <CardTitle>{t("analytics.title", "Analytics")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
+            <div className="text-sm text-red-400">{sessionError || t("analytics.sign_in_required", "Please sign in to continue.")}</div>
             <Link href="/access">
-              <Button>Open Login</Button>
+              <Button>{t("dashboard.action.open_login", "Open Access")}</Button>
             </Link>
           </CardContent>
         </Card>
@@ -209,16 +222,16 @@ export default function AnalyticsPage() {
       <main className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
-            <CardTitle>Analytics</CardTitle>
+            <CardTitle>{t("analytics.title", "Analytics")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-[var(--muted)]">Analytics are available to supervisors, managers, admins, and owners.</div>
+            <div className="text-sm text-[var(--muted)]">{t("analytics.role_restricted", "Analytics are available to supervisors, managers, admins, and owners.")}</div>
             <div className="flex gap-3">
               <Link href="/reports">
-                <Button variant="outline">Open Reports</Button>
+                <Button variant="outline">{t("dashboard.action.open_reports", "Open Reports")}</Button>
               </Link>
               <Link href="/dashboard">
-                <Button>Back to Dashboard</Button>
+                <Button>{t("common.back", "Back")} {t("navigation.nav.today_board.label", "Dashboard")}</Button>
               </Link>
             </div>
           </CardContent>
@@ -228,128 +241,140 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <section className="flex flex-col gap-4 rounded-[1.9rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-5 shadow-2xl backdrop-blur sm:p-6 lg:flex-row lg:items-start lg:justify-between">
+    <main className="min-h-screen px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div>
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Analytics</div>
-            <h1 className="mt-2 text-3xl font-semibold">Performance insights</h1>
-            <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
-              Weekly production, monthly summary, trend diagnostics, and manager-level insights using the existing FastAPI analytics endpoints.
-            </p>
+            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("analytics.title", "Analytics")}</div>
+            <h1 className="mt-2 text-3xl font-semibold">{t("analytics.hero.title", "Performance insights")}</h1>
+            <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">{t("analytics.hero.subtitle", "Start with this week, then compare monthly and trend signals.")}</p>
           </div>
-          <div className="grid gap-3">
-            <div className="grid gap-3 sm:flex sm:flex-wrap">
-              <Link href="/dashboard" className="w-full sm:w-auto">
-                <Button variant="outline" className="w-full sm:w-auto">Dashboard</Button>
-              </Link>
-              <Link href="/reports" className="w-full sm:w-auto">
-                <Button className="w-full sm:w-auto">Open Reports</Button>
-              </Link>
+          <details className="min-w-[240px] rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+            <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("analytics.tools.title", "Analytics tools")}</summary>
+            <div className="mt-4 space-y-4">
+              <div className="flex flex-wrap gap-3">
+                <Link href="/reports">
+                  <Button>{t("ai.actions.reports", "Reports")}</Button>
+                </Link>
+                <Link href="/dashboard">
+                  <Button variant="outline">{t("navigation.nav.today_board.label", "Dashboard")}</Button>
+                </Link>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button
+                  variant="outline"
+                  className="px-4 py-2 text-xs"
+                  onClick={() => {
+                    void loadAnalytics({ background: true });
+                  }}
+                  disabled={refreshing}
+                >
+                  {refreshing ? t("analytics.tools.refreshing", "Refreshing...") : t("common.refresh", "Refresh")}
+                </Button>
+                <span className="text-xs text-[var(--muted)]">
+                  {refreshing
+                    ? t("analytics.tools.updating", "Updating analytics...")
+                    : lastUpdatedAt
+                      ? t("analytics.tools.updated", "Updated {{value}}", { value: formatDateTime(lastUpdatedAt, locale) })
+                      : t("analytics.tools.live_updates", "Live updates every 45 seconds")}
+                </span>
+              </div>
             </div>
-            <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
-              <Button
-                variant="outline"
-                className="w-full px-4 py-2 text-xs sm:w-auto"
-                onClick={() => {
-                  void loadAnalytics({ background: true });
-                }}
-                disabled={refreshing}
-              >
-                {refreshing ? "Refreshing..." : "Refresh Analytics"}
-              </Button>
-              <span className="text-xs text-[var(--muted)]">
-                {refreshing
-                  ? "Updating analytics cards..."
-                  : lastUpdatedAt
-                    ? `Updated ${formatDateTime(lastUpdatedAt)}`
-                    : "Live updates every 45 seconds"}
-              </span>
+          </details>
+        </section>
+
+        <section className="grid gap-3 xl:grid-cols-3">
+          {[
+            {
+              label: t("analytics.steps.review_week", "1. Review week"),
+              detail: weekly.length
+                ? t("analytics.steps.review_week_ready", "{{count}} recent production points are ready.", { count: weekly.length })
+                : t("analytics.steps.review_week_empty", "Weekly production will appear here first."),
+            },
+            {
+              label: t("analytics.steps.compare_month", "2. Compare month"),
+              detail: monthly
+                ? t("analytics.steps.compare_month_ready", "Monthly average is {{average}}%.", { average: monthly.average.toFixed(1) })
+                : t("analytics.steps.compare_month_empty", "Monthly summary follows the weekly read."),
+            },
+            {
+              label: t("analytics.steps.check_trends", "3. Check trends"),
+              detail: trends
+                ? t("analytics.steps.check_trends_ready", "Trend is {{value}}.", { value: trends.production_trend })
+                : t("analytics.steps.check_trends_empty", "Diagnostics appear after the core production story."),
+            },
+          ].map((step) => (
+            <div key={step.label} className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-5 py-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">{step.label}</div>
+              <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
             </div>
-          </div>
+          ))}
         </section>
 
         {refreshing ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3 text-sm text-[var(--muted)]">
-            Refreshing analytics in the background...
+            {t("analytics.refreshing_background", "Refreshing analytics in the background...")}
           </div>
         ) : null}
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Plan</div>
+              <div className="text-sm text-[var(--muted)]">{t("analytics.cards.plan", "Plan")}</div>
               <CardTitle>{usage?.plan || "-"}</CardTitle>
             </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">Current analytics access is controlled by your org plan.</CardContent>
+            <CardContent className="text-sm text-[var(--muted)]">{t("analytics.cards.plan_detail", "Current analytics access is controlled by your org plan.")}</CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Weekly Average</div>
+              <div className="text-sm text-[var(--muted)]">{t("analytics.cards.weekly_average", "Weekly Average")}</div>
               <CardTitle>{weeklyAverage.toFixed(1)}%</CardTitle>
             </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">Average production percentage across returned weekly points.</CardContent>
+            <CardContent className="text-sm text-[var(--muted)]">{t("analytics.cards.weekly_average_detail", "Average production percentage across returned weekly points.")}</CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Trend</div>
+              <div className="text-sm text-[var(--muted)]">{t("analytics.cards.trend", "Trend")}</div>
               <CardTitle>{trends?.production_trend || "stable"}</CardTitle>
             </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">Peak shift: {trends?.peak_performance_shift || "-"}</CardContent>
+            <CardContent className="text-sm text-[var(--muted)]">{t("analytics.cards.peak_shift", "Peak shift: {{value}}", { value: trends?.peak_performance_shift || "-" })}</CardContent>
           </Card>
         </section>
 
         {locked ? (
           <Card>
             <CardHeader>
-              <CardTitle className="text-xl">Plan Gate</CardTitle>
+              <CardTitle className="text-xl">{t("analytics.locked.title", "Plan Gate")}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-[var(--muted)]">{locked}</CardContent>
           </Card>
         ) : null}
 
-        <section className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+        <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
           <Card>
             <CardHeader>
-              <CardTitle className="text-xl">Weekly Production</CardTitle>
+              <CardTitle className="text-xl">{t("analytics.weekly.title", "Weekly Production")}</CardTitle>
             </CardHeader>
             <CardContent>
               {weekly.length ? (
-                <>
-                  <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 md:hidden">
-                    {weekly.map((point) => (
-                      <div key={`mobile:${point.date}`} className="min-w-[9rem] rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                        <div className="text-xs text-[var(--muted)]">{formatDate(point.date)}</div>
-                        <div className="mt-2 text-lg font-semibold">{point.production_percent.toFixed(0)}%</div>
-                        <div className="mt-1 text-xs text-[var(--muted)]">{point.units} units</div>
-                        <div className="mt-4 h-2 overflow-hidden rounded-full bg-[var(--border)]">
-                          <div
-                            className="h-full rounded-full bg-[linear-gradient(90deg,#3ea6ff,#2dd4bf)]"
-                            style={{ width: `${Math.max(8, Math.min(100, point.production_percent))}%` }}
-                          />
-                        </div>
+                <div className="grid grid-cols-7 gap-3">
+                  {weekly.map((point) => (
+                    <div key={point.date} className="space-y-2 text-center">
+                      <div className="flex h-40 items-end justify-center rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
+                        <div
+                          className="w-full rounded-full bg-[linear-gradient(180deg,#3ea6ff,#2dd4bf)]"
+                          style={{ height: `${Math.max(8, Math.min(100, point.production_percent))}%` }}
+                        />
                       </div>
-                    ))}
-                  </div>
-                  <div className="hidden grid-cols-7 gap-3 md:grid">
-                    {weekly.map((point) => (
-                      <div key={point.date} className="space-y-2 text-center">
-                        <div className="flex h-40 items-end justify-center rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
-                          <div
-                            className="w-full rounded-full bg-[linear-gradient(180deg,#3ea6ff,#2dd4bf)]"
-                            style={{ height: `${Math.max(8, Math.min(100, point.production_percent))}%` }}
-                          />
-                        </div>
-                        <div className="text-xs text-[var(--muted)]">{formatDate(point.date)}</div>
-                        <div className="text-sm font-semibold">{point.production_percent.toFixed(0)}%</div>
-                        <div className="text-xs text-[var(--muted)]">{point.units} units</div>
-                      </div>
-                    ))}
-                  </div>
-                </>
+                      <div className="text-xs text-[var(--muted)]">{formatDate(point.date, locale)}</div>
+                      <div className="text-sm font-semibold">{point.production_percent.toFixed(0)}%</div>
+                      <div className="text-xs text-[var(--muted)]">{t("analytics.weekly.units", "{{count}} units", { count: point.units })}</div>
+                    </div>
+                  ))}
+                </div>
               ) : (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  No weekly analytics data available.
+                  {t("analytics.weekly.empty", "No weekly analytics data available.")}
                 </div>
               )}
             </CardContent>
@@ -357,123 +382,111 @@ export default function AnalyticsPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-xl">Monthly Summary</CardTitle>
+              <CardTitle className="text-xl">{t("analytics.monthly.title", "Monthly Summary")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {monthly ? (
                 <>
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-4 md:grid-cols-2">
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                      <div className="text-sm text-[var(--muted)]">Best Day</div>
-                      <div className="mt-1 text-lg font-semibold">{monthly.best_day ? `${formatDate(monthly.best_day.date)} - ${monthly.best_day.performance.toFixed(1)}%` : "-"}</div>
+                      <div className="text-sm text-[var(--muted)]">{t("analytics.monthly.best_day", "Best Day")}</div>
+                      <div className="mt-1 text-lg font-semibold">{monthly.best_day ? `${formatDate(monthly.best_day.date, locale)} - ${monthly.best_day.performance.toFixed(1)}%` : "-"}</div>
                     </div>
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                      <div className="text-sm text-[var(--muted)]">Worst Day</div>
-                      <div className="mt-1 text-lg font-semibold">{monthly.worst_day ? `${formatDate(monthly.worst_day.date)} - ${monthly.worst_day.performance.toFixed(1)}%` : "-"}</div>
+                      <div className="text-sm text-[var(--muted)]">{t("analytics.monthly.worst_day", "Worst Day")}</div>
+                      <div className="mt-1 text-lg font-semibold">{monthly.worst_day ? `${formatDate(monthly.worst_day.date, locale)} - ${monthly.worst_day.performance.toFixed(1)}%` : "-"}</div>
                     </div>
                   </div>
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="text-sm text-[var(--muted)]">Average Performance</div>
+                    <div className="text-sm text-[var(--muted)]">{t("analytics.monthly.average", "Average Performance")}</div>
                     <div className="mt-1 text-2xl font-semibold">{monthly.average.toFixed(1)}%</div>
                   </div>
                 </>
               ) : (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  Monthly analytics data unavailable.
+                  {t("analytics.monthly.empty", "Monthly analytics data unavailable.")}
                 </div>
               )}
             </CardContent>
           </Card>
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl">Trend Diagnostics</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              {trends ? (
-                <>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="text-[var(--muted)]">Production Trend</div>
-                    <div className="mt-1 text-lg font-semibold">{trends.production_trend}</div>
-                  </div>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="text-[var(--muted)]">Common Issues</div>
-                    <div className="mt-1">Downtime: {trends.common_issues.downtime}</div>
-                    <div>Quality: {trends.common_issues.quality}</div>
-                  </div>
-                </>
-              ) : (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-[var(--muted)]">
-                  Trend diagnostics are unavailable for this account or plan.
-                </div>
-              )}
-            </CardContent>
-          </Card>
+        <section className="grid gap-4">
+          <details className="rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-5 py-5">
+            <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">{t("analytics.diagnostics.title", "Trend diagnostics")}</summary>
+            <div className="mt-4 grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-xl">{t("analytics.diagnostics.card_title", "Trend Diagnostics")}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  {trends ? (
+                    <>
+                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                        <div className="text-[var(--muted)]">{t("analytics.diagnostics.production_trend", "Production Trend")}</div>
+                        <div className="mt-1 text-lg font-semibold">{trends.production_trend}</div>
+                      </div>
+                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                        <div className="text-[var(--muted)]">{t("analytics.diagnostics.common_issues", "Common Issues")}</div>
+                        <div className="mt-1">{t("analytics.diagnostics.downtime", "Downtime: {{value}}", { value: trends.common_issues.downtime })}</div>
+                        <div>{t("analytics.diagnostics.quality", "Quality: {{value}}", { value: trends.common_issues.quality })}</div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-[var(--muted)]">
+                      {t("analytics.diagnostics.unavailable", "Trend diagnostics are unavailable for this account or plan.")}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl">Manager Insights</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
-              {manager ? (
-                <>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                      <div className="text-[var(--muted)]">Total Units</div>
-                      <div className="mt-1 text-xl font-semibold">{manager.totals.total_units}</div>
-                    </div>
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                      <div className="text-[var(--muted)]">Average Performance</div>
-                      <div className="mt-1 text-xl font-semibold">{manager.totals.average_performance.toFixed(1)}%</div>
-                    </div>
-                  </div>
-                  <div className="space-y-3 md:hidden">
-                    {manager.supervisor_summary.map((row) => (
-                      <div key={`mobile:${row.name}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                        <div className="text-sm font-semibold">{row.name}</div>
-                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                          <div>
-                            <div className="text-xs text-[var(--muted)]">Production</div>
-                            <div className="mt-1 text-sm font-semibold">{row.production_percent.toFixed(1)}%</div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-[var(--muted)]">Downtime</div>
-                            <div className="mt-1 text-sm font-semibold">{row.downtime_minutes} min</div>
-                          </div>
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-xl">{t("analytics.manager.title", "Manager Insights")}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm">
+                  {manager ? (
+                    <>
+                      <div className="grid gap-4 md:grid-cols-2">
+                        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                          <div className="text-[var(--muted)]">{t("analytics.manager.total_units", "Total Units")}</div>
+                          <div className="mt-1 text-xl font-semibold">{manager.totals.total_units}</div>
+                        </div>
+                        <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                          <div className="text-[var(--muted)]">{t("analytics.manager.average_performance", "Average Performance")}</div>
+                          <div className="mt-1 text-xl font-semibold">{manager.totals.average_performance.toFixed(1)}%</div>
                         </div>
                       </div>
-                    ))}
-                  </div>
-                  <div className="hidden overflow-x-auto md:block">
-                    <table className="min-w-full text-left text-sm">
-                      <thead className="text-[var(--muted)]">
-                        <tr className="border-b border-[var(--border)]">
-                          <th className="px-3 py-3 font-medium">Supervisor</th>
-                          <th className="px-3 py-3 font-medium">Production %</th>
-                          <th className="px-3 py-3 font-medium">Downtime</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {manager.supervisor_summary.map((row) => (
-                          <tr key={row.name} className="border-b border-[var(--border)]/60">
-                            <td className="px-3 py-3">{row.name}</td>
-                            <td className="px-3 py-3">{row.production_percent.toFixed(1)}%</td>
-                            <td className="px-3 py-3">{row.downtime_minutes} min</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
-              ) : (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-[var(--muted)]">
-                  Manager insights appear for manager accounts using the dedicated backend endpoint.
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                      <div className="overflow-x-auto">
+                        <table className="min-w-full text-left text-sm">
+                          <thead className="text-[var(--muted)]">
+                            <tr className="border-b border-[var(--border)]">
+                              <th className="px-3 py-3 font-medium">{t("analytics.manager.table.supervisor", "Supervisor")}</th>
+                              <th className="px-3 py-3 font-medium">{t("analytics.manager.table.production", "Production %")}</th>
+                              <th className="px-3 py-3 font-medium">{t("analytics.manager.table.downtime", "Downtime")}</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {manager.supervisor_summary.map((row) => (
+                              <tr key={row.name} className="border-b border-[var(--border)]/60">
+                                <td className="px-3 py-3">{row.name}</td>
+                                <td className="px-3 py-3">{row.production_percent.toFixed(1)}%</td>
+                                <td className="px-3 py-3">{t("analytics.manager.table.downtime_minutes", "{{count}} min", { count: row.downtime_minutes })}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-[var(--muted)]">
+                      {t("analytics.manager.empty", "Manager insights appear for manager accounts using the dedicated backend endpoint.")}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          </details>
         </section>
 
         {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}

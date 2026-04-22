@@ -2,49 +2,26 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "success" | "warning" | "danger";
-type ButtonSize = "xs" | "sm" | "md" | "lg" | "xl";
-
 type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: ButtonVariant;
-  size?: ButtonSize;
+  variant?: "primary" | "secondary" | "outline" | "ghost";
 };
 
 const base =
-  "inline-flex items-center justify-center rounded-xl border font-semibold tracking-[-0.01em] transition-all duration-fast focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:cursor-not-allowed disabled:opacity-60";
+  "inline-flex items-center justify-center rounded-full border px-5 py-2.5 text-sm font-semibold tracking-[-0.01em] transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0";
 
-const sizes: Record<ButtonSize, string> = {
-  xs: "h-11 px-3 text-xs leading-[1.2] gap-2",
-  sm: "h-11 px-4 text-[13px] leading-[1.2] gap-2",
-  md: "h-11 px-5 text-sm leading-[1.2] gap-2.5",
-  lg: "h-12 px-6 text-sm leading-[1.2] gap-2.5",
-  xl: "h-12 px-8 text-base leading-[1.2] gap-3",
-};
-
-const variants: Record<ButtonVariant, string> = {
+const variants: Record<NonNullable<ButtonProps["variant"]>, string> = {
   primary:
-    "border-primary/60 bg-[linear-gradient(135deg,#4da3ff,#2d8cf0)] text-white shadow-[0_18px_34px_rgba(29,143,255,0.3)] hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:brightness-95",
+    "border-sky-300/20 bg-[linear-gradient(135deg,var(--accent),var(--accent-strong))] text-[#06111c] shadow-[0_14px_30px_rgba(47,125,255,0.28)] hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_18px_38px_rgba(47,125,255,0.34)]",
   secondary:
-    "border-secondary/60 bg-[linear-gradient(135deg,#14b8a6,#10988a)] text-white shadow-[0_18px_34px_rgba(20,184,166,0.22)] hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:brightness-95",
+    "border-white/8 bg-[linear-gradient(180deg,rgba(32,45,67,0.92),rgba(23,33,49,0.96))] text-[var(--text)] shadow-[0_10px_24px_rgba(2,6,23,0.2)] hover:-translate-y-0.5 hover:border-white/14 hover:bg-[linear-gradient(180deg,rgba(39,54,78,0.96),rgba(26,37,56,0.98))]",
   outline:
-    "border-border-strong bg-[rgba(255,255,255,0.045)] text-text-primary shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] hover:-translate-y-0.5 hover:bg-[rgba(255,255,255,0.08)] active:translate-y-0",
+    "border-[var(--border-strong)] bg-white/[0.02] text-[var(--text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:-translate-y-0.5 hover:border-sky-300/30 hover:bg-[rgba(76,176,255,0.08)]",
   ghost:
-    "border-transparent bg-transparent text-text-primary hover:bg-[rgba(255,255,255,0.06)] hover:-translate-y-0.5 active:translate-y-0",
-  success:
-    "border-success/60 bg-[linear-gradient(135deg,#22c55e,#16a34a)] text-white shadow-[0_16px_30px_rgba(34,197,94,0.22)] hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:brightness-95",
-  warning:
-    "border-warning/60 bg-[linear-gradient(135deg,#f59e0b,#d97706)] text-white shadow-[0_16px_30px_rgba(245,158,11,0.24)] hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:brightness-95",
-  danger:
-    "border-danger/60 bg-[linear-gradient(135deg,#ef4444,#dc2626)] text-white shadow-[0_16px_30px_rgba(239,68,68,0.24)] hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 active:brightness-95",
+    "border-transparent bg-transparent text-[var(--text)] hover:-translate-y-0.5 hover:border-white/8 hover:bg-white/[0.05]",
 };
 
-export function Button({
-  className,
-  variant = "primary",
-  size = "md",
-  ...props
-}: ButtonProps) {
+export function Button({ className, variant = "primary", ...props }: ButtonProps) {
   return (
-    <button className={cn(base, sizes[size], variants[variant], className)} {...props} />
+    <button className={cn(base, variants[variant], className)} {...props} />
   );
 }

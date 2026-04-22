@@ -1,4 +1,4 @@
-import { API_BASE_URL, apiFetch, ApiError, invalidateApiCache } from "@/lib/api";
+import { API_BASE_URL, ApiError, apiFetch, invalidateApiCache } from "@/lib/api";
 import { clearSession, primeSession } from "@/lib/session-store";
 import type { WorkflowTemplateSummary } from "@/lib/settings";
 
@@ -7,7 +7,6 @@ export type CurrentUser = {
   user_code: number;
   email: string;
   role: string;
-  org_role?: string | null;
   name: string;
   profile_picture?: string | null;
   factory_name: string;
@@ -63,7 +62,7 @@ export type ActiveWorkflowTemplateContext = {
 };
 
 type AuthResponse = AuthContext & {
-  access_token: string | null;
+  access_token: string;
   refresh_token?: string | null;
   token_type: string;
 };
@@ -93,22 +92,6 @@ export type EmailVerificationValidateResponse = {
   valid: boolean;
   message: string;
   email?: string | null;
-  flow_type?: string;
-  invite?: {
-    recipient_name: string;
-    email: string;
-    role: string;
-    role_label: string;
-    role_summary: string;
-    organization_name: string;
-    factory_name: string;
-    factory_location?: string | null;
-    company_code?: string | null;
-    inviter_name: string;
-    custom_note?: string | null;
-    verification_link?: string | null;
-    expires_in_hours: number;
-  } | null;
 };
 
 export type PasswordResetValidateResponse = {
@@ -117,34 +100,24 @@ export type PasswordResetValidateResponse = {
 };
 
 export type SessionSummary = {
-  active_sessions: number;
   active_devices: number;
   last_activity?: string | null;
 };
 
 const AUTH_EMAIL_TIMEOUT_MS = 30_000;
-const BACKEND_WAKE_TIMEOUT_MS = 12_000;
-const BACKEND_WAKE_INTERVAL_MS = 1_000;
-const BACKEND_WAKE_REQUEST_TIMEOUT_MS = 2_500;
+const BACKEND_WAKE_TIMEOUT_MS = 25_000;
+const BACKEND_WAKE_INTERVAL_MS = 3_000;
 
 let backendWarmPromise: Promise<boolean> | null = null;
-
 type WakeRetryOptions = {
   retryMessage: string;
 };
-
-function refreshAccountSession(payload: CurrentUser) {
-  invalidateApiCache("session:me");
-  invalidateApiCache("session:context");
-  primeSession(payload);
-  return payload;
-}
 
 function sanitizeNextPath(raw?: string | null): string {
   if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
     return "/";
   }
-  if (raw === "/access" || raw === "/login" || raw === "/register") {
+  if (raw === "/login" || raw === "/access" || raw === "/register") {
     return "/";
   }
   return raw;
@@ -154,17 +127,6 @@ function delay(ms: number) {
   return new Promise<void>((resolve) => {
     window.setTimeout(resolve, ms);
   });
-}
-
-function createWakeTimeoutController(timeoutMs: number) {
-  const controller = new AbortController();
-  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
-  return {
-    controller,
-    clear() {
-      window.clearTimeout(timeoutId);
-    },
-  };
 }
 
 export async function warmBackendConnection(force = false): Promise<boolean> {
@@ -180,34 +142,23 @@ export async function warmBackendConnection(force = false): Promise<boolean> {
     const deadline = Date.now() + BACKEND_WAKE_TIMEOUT_MS;
 
     while (Date.now() < deadline) {
-      const wakeRequest = createWakeTimeoutController(BACKEND_WAKE_REQUEST_TIMEOUT_MS);
       try {
         const response = await fetch(`${API_BASE_URL}/observability/ready`, {
           method: "GET",
           cache: "no-store",
           credentials: "include",
-          signal: wakeRequest.controller.signal,
         });
-        wakeRequest.clear();
 
         if (response.ok) {
           return true;
         }
 
         const renderRouting = response.headers.get("x-render-routing") || "";
-        const shouldKeepWaiting =
-          (response.status === 503 && renderRouting.includes("hibernate-wake"))
-          || response.status === 502
-          || response.status === 503
-          || response.status === 504;
-        if (!shouldKeepWaiting) {
+        if (response.status !== 503 || !renderRouting.includes("hibernate-wake")) {
           return false;
         }
-      } catch (error) {
-        wakeRequest.clear();
-        if (!(error instanceof DOMException) || error.name !== "AbortError") {
-          // Retry while the service wakes up or the network settles.
-        }
+      } catch {
+        // Retry a few times while the service wakes up.
       }
 
       await delay(BACKEND_WAKE_INTERVAL_MS);
@@ -249,13 +200,20 @@ export async function startGoogleLogin(nextPath?: string | null): Promise<void> 
   const woke = await warmBackendConnection();
   if (!woke) {
     throw new ApiError(
-      "FactoryNerve backend is unavailable right now. Please try Google sign-in again in a moment.",
+      "DPR.ai is waking up. Please try Google sign-in again in a few seconds.",
       503,
     );
   }
 
   const safeNext = sanitizeNextPath(nextPath);
   window.location.assign(`/api/auth/google/login?next=${encodeURIComponent(safeNext)}`);
+}
+
+function refreshAccountSession(payload: CurrentUser) {
+  invalidateApiCache("session:me");
+  invalidateApiCache("session:context");
+  primeSession(payload);
+  return payload;
 }
 
 export async function login(email: string, password: string): Promise<AuthResponse> {
@@ -273,7 +231,7 @@ export async function login(email: string, password: string): Promise<AuthRespon
   };
 
   return withBackendWakeRetry(performLogin, {
-    retryMessage: "Waking backend... Retry sign in.",
+    retryMessage: "DPR.ai is waking up. Please try signing in again in a few seconds.",
   });
 }
 
@@ -297,12 +255,9 @@ export async function register(payload: {
 }
 
 export async function logout(): Promise<void> {
-  await withBackendWakeRetry(
-    () => apiFetch("/auth/logout", { method: "POST" }),
-    {
-      retryMessage: "Waking backend... Retry sign out.",
-    },
-  );
+  await withBackendWakeRetry(() => apiFetch("/auth/logout", { method: "POST" }), {
+    retryMessage: "DPR.ai is waking up. Please wait a few seconds before signing out again.",
+  });
   clearSession();
 }
 
@@ -316,7 +271,7 @@ export async function refresh(): Promise<AuthResponse> {
   const response = await withBackendWakeRetry(
     () => apiFetch<AuthResponse>("/auth/refresh", { method: "POST" }, { cookieAuth: true }),
     {
-      retryMessage: "Waking backend... Retry session refresh.",
+      retryMessage: "DPR.ai is waking up. Please wait a few seconds and refresh your session again.",
     },
   );
   primeSession(response);
@@ -417,12 +372,10 @@ export async function changePassword(payload: {
   old_password: string;
   new_password: string;
 }): Promise<{ message: string }> {
-  const response = await apiFetch<{ message: string }>("/auth/change-password", {
+  return apiFetch<{ message: string }>("/auth/change-password", {
     method: "POST",
     body: payload,
   });
-  clearSession();
-  return response;
 }
 
 export async function getMe(options?: {
@@ -437,19 +390,8 @@ export async function getMe(options?: {
         { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:me" },
       ),
     {
-      retryMessage: "Reloading session...",
+      retryMessage: "DPR.ai is waking up. Please wait a few seconds while your session reloads.",
     },
-  );
-}
-
-export async function acceptInvitation(token: string, password: string): Promise<EmailVerificationResponse> {
-  return apiFetch<EmailVerificationResponse>(
-    "/auth/email/verify/accept",
-    {
-      method: "POST",
-      body: { token, password },
-    },
-    { useCookies: false },
   );
 }
 
@@ -469,7 +411,7 @@ export async function getAuthContext(options?: {
         { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:context" },
       ),
     {
-      retryMessage: "Reloading workspace...",
+      retryMessage: "DPR.ai is waking up. Please wait a few seconds while your workspace reloads.",
     },
   );
 }
@@ -486,7 +428,7 @@ export async function selectFactory(factoryId: string): Promise<AuthResponse> {
         { cookieAuth: true },
       ),
     {
-      retryMessage: "Reloading factory context...",
+      retryMessage: "DPR.ai is waking up. Please wait a few seconds before switching factory context again.",
     },
   );
   primeSession(response);
@@ -502,7 +444,7 @@ export async function getActiveWorkflowTemplate(): Promise<ActiveWorkflowTemplat
         { cacheTtlMs: 30_000, cacheKey: "session:active-template" },
       ),
     {
-      retryMessage: "Reloading workflow context...",
+      retryMessage: "DPR.ai is waking up. Please wait a few seconds while the workflow context reloads.",
     },
   );
 }

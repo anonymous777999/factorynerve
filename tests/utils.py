@@ -1,13 +1,11 @@
 import uuid
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, timedelta
 from urllib.parse import parse_qs, urlparse
 
 import httpx
 
 from backend.database import SessionLocal, init_db
-from backend.models.entry import Entry
 from backend.models.organization import Organization
-from backend.models.report import AuditLog
 from backend.models.user import User
 from backend.models.user_factory_role import UserFactoryRole
 from backend.plans import normalize_plan
@@ -39,7 +37,7 @@ def register_user(
         "role": "attendance",
         "factory_name": factory_name or unique_factory(),
         "company_code": company_code,
-        "phone_number": "+919876543210",
+        "phone_number": "+910000000000",
     }
     resp = client.post("/auth/register", json=payload)
     assert resp.status_code in (200, 201), resp.text
@@ -86,57 +84,6 @@ def register_user(
     }
 
 
-def invite_and_accept_user(
-    client: httpx.Client,
-    *,
-    inviter_token: str,
-    name: str,
-    email: str,
-    role: str,
-    factory_name: str,
-    password: str = "StrongPassw0rd!",
-    custom_note: str | None = None,
-) -> dict:
-    invite = client.post(
-        "/settings/users/invite",
-        headers={"Authorization": f"Bearer {inviter_token}"},
-        json={
-            "name": name,
-            "email": email,
-            "role": role,
-            "factory_name": factory_name,
-            "custom_note": custom_note,
-        },
-    )
-    assert invite.status_code in (200, 201), invite.text
-    payload = invite.json()
-    verification_link = payload.get("verification_link")
-    assert verification_link, f"Expected verification link in test mode: {payload}"
-    parsed = urlparse(verification_link)
-    token_values = parse_qs(parsed.query).get("token") or parse_qs(parsed.query).get("verification_token")
-    assert token_values, f"Verification link did not contain token: {verification_link}"
-
-    accept = client.post(
-        "/auth/email/verify/accept",
-        headers={"X-CSRF-Token": client.cookies.get("dpr_csrf")} if client.cookies.get("dpr_csrf") else None,
-        json={"token": token_values[0], "password": password},
-    )
-    assert accept.status_code == 200, accept.text
-
-    login = client.post("/auth/login", json={"email": email, "password": password})
-    assert login.status_code == 200, login.text
-    auth_data = login.json()
-    return {
-        "email": email,
-        "password": password,
-        "access_token": auth_data.get("access_token"),
-        "user_id": auth_data.get("user", {}).get("id"),
-        "user_code": auth_data.get("user", {}).get("user_code"),
-        "company_code": auth_data.get("user", {}).get("factory_code"),
-        "factory_name": auth_data.get("user", {}).get("factory_name") or factory_name,
-    }
-
-
 def create_entry_payload(index: int = 0) -> dict:
     entry_date = date.today() - timedelta(days=index % 30)
     return {
@@ -167,29 +114,6 @@ def set_org_plan_for_user_email(email: str, plan: str) -> None:
         org.plan = normalize_plan(plan)
         org.plan_expires_at = None
         db.add(org)
-        db.commit()
-    finally:
-        db.close()
-
-
-def mark_entry_approved(entry_id: int, approver_user_id: int) -> None:
-    init_db()
-    db = SessionLocal()
-    try:
-        entry = db.query(Entry).filter(Entry.id == entry_id).first()
-        assert entry is not None
-        entry.status = "approved"
-        db.add(
-            AuditLog(
-                user_id=approver_user_id,
-                org_id=entry.org_id,
-                factory_id=entry.factory_id,
-                action="ENTRY_APPROVED",
-                details=f"entry_id={entry.id}",
-                ip_address=None,
-                timestamp=datetime.now(timezone.utc),
-            )
-        )
         db.commit()
     finally:
         db.close()

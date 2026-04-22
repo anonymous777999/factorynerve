@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -73,7 +73,9 @@ export function SteelDispatchDetailPage() {
   const [exitTime, setExitTime] = useState("");
 
   const dispatchId = Number(params?.id);
-  const canManage = Boolean(user && ["owner", "admin", "manager", "supervisor"].includes(user.role));
+  const canManage = Boolean(
+    user && ["owner", "admin", "manager", "supervisor"].includes(user.role),
+  );
 
   const loadDetail = useCallback(async () => {
     if (!Number.isFinite(dispatchId) || dispatchId <= 0) {
@@ -150,13 +152,13 @@ export function SteelDispatchDetailPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-red-400">{error || sessionError || "Dispatch not found."}</div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link href="/steel/dispatches" className="w-full sm:w-auto">
-                <Button variant="outline" className="w-full sm:w-auto">Back to Dispatches</Button>
+            <div className="flex gap-3">
+              <Link href="/steel/dispatches">
+                <Button variant="outline">Back to Dispatches</Button>
               </Link>
               {!user ? (
-                <Link href="/access" className="w-full sm:w-auto">
-                  <Button className="w-full sm:w-auto">Open Login</Button>
+                <Link href="/access">
+                  <Button>Open Access</Button>
                 </Link>
               ) : null}
             </div>
@@ -168,17 +170,31 @@ export function SteelDispatchDetailPage() {
 
   const dispatchStatus = detail.dispatch.status;
   const canMarkLoaded = canManage && !busy && dispatchStatus === "pending";
-  const canMarkDispatched = canManage && !busy && (dispatchStatus === "pending" || dispatchStatus === "loaded");
-  const canMarkDelivered = canManage && !busy && (dispatchStatus === "loaded" || dispatchStatus === "dispatched");
-  const canCancelDraft = canManage && !busy && !detail.dispatch.inventory_posted_at && (dispatchStatus === "pending" || dispatchStatus === "loaded");
-  const invoiceReferenceWeight = (detail.dispatch.lines || []).reduce((sum, line) => sum + Number(line.invoice_line_weight_kg || 0), 0);
-  const dispatchCoveragePercent = invoiceReferenceWeight > 0 ? (Number(detail.dispatch.total_weight_kg || 0) / invoiceReferenceWeight) * 100 : 0;
+  const canMarkDispatched =
+    canManage && !busy && (dispatchStatus === "pending" || dispatchStatus === "loaded");
+  const canMarkDelivered =
+    canManage && !busy && (dispatchStatus === "loaded" || dispatchStatus === "dispatched");
+  const canCancelDraft =
+    canManage &&
+    !busy &&
+    !detail.dispatch.inventory_posted_at &&
+    (dispatchStatus === "pending" || dispatchStatus === "loaded");
+  const invoiceReferenceWeight = (detail.dispatch.lines || []).reduce(
+    (sum, line) => sum + Number(line.invoice_line_weight_kg || 0),
+    0,
+  );
+  const dispatchCoveragePercent =
+    invoiceReferenceWeight > 0
+      ? (Number(detail.dispatch.total_weight_kg || 0) / invoiceReferenceWeight) * 100
+      : 0;
   const movementTimeline = [
     {
       id: "created",
       label: "Dispatch created",
       value: detail.dispatch.created_at,
-      detail: detail.dispatch.created_by_name ? `Created by ${detail.dispatch.created_by_name}` : "Created in dispatch desk",
+      detail: detail.dispatch.created_by_name
+        ? `Created by ${detail.dispatch.created_by_name}`
+        : "Created in dispatch desk",
     },
     {
       id: "yard-entry",
@@ -190,7 +206,9 @@ export function SteelDispatchDetailPage() {
       id: "inventory-posted",
       label: "Inventory posted",
       value: detail.dispatch.inventory_posted_at,
-      detail: detail.ledger_movements.length ? `${detail.ledger_movements.length} stock movement(s) recorded` : "Stock movement not posted yet",
+      detail: detail.ledger_movements.length
+        ? `${detail.ledger_movements.length} stock movement(s) recorded`
+        : "Stock movement not posted yet",
     },
     {
       id: "yard-exit",
@@ -202,61 +220,173 @@ export function SteelDispatchDetailPage() {
       id: "delivered",
       label: "Delivery confirmed",
       value: detail.dispatch.delivered_at,
-      detail: detail.dispatch.delivered_by_name ? `Closed by ${detail.dispatch.delivered_by_name}` : "Customer receipt pending",
+      detail: detail.dispatch.delivered_by_name
+        ? `Closed by ${detail.dispatch.delivered_by_name}`
+        : "Customer receipt pending",
     },
   ];
+  const nextAction = canMarkLoaded
+    ? {
+        label: "Mark loaded",
+        status: "loaded" as SteelDispatchStatus,
+        title: "Confirm loading",
+        description: "Use this when the truck has been loaded and the gate process can continue.",
+      }
+    : canMarkDispatched
+      ? {
+          label: "Mark dispatched",
+          status: "dispatched" as SteelDispatchStatus,
+          title: "Release the truck",
+          description: "Confirm the truck has left the plant and the dispatch is in transit.",
+        }
+      : canMarkDelivered
+        ? {
+            label: "Mark delivered",
+            status: "delivered" as SteelDispatchStatus,
+            title: "Close delivery",
+            description: "Capture the receiver details and close the dispatch once the customer accepts it.",
+          }
+        : null;
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8">
+    <main className="min-h-screen px-4 py-8 md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        {status ? (
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/12 px-4 py-3 text-sm text-emerald-100">
-            {status}
-          </div>
-        ) : null}
-        {error ? (
-          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/12 px-4 py-3 text-sm text-rose-100">
-            {error}
-          </div>
-        ) : null}
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Dispatch</div>
-              <h1 className="mt-2 text-2xl font-semibold sm:text-3xl md:text-4xl">{detail.dispatch.dispatch_number}</h1>
+              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{detail.dispatch.dispatch_number}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Gate pass, truck manifest, status progression, and the ledger movements tied to this dispatch.
+                Check the manifest, move the truck to its next valid status, and keep inventory posting aligned with delivery proof.
               </p>
             </div>
-            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap">
-              <div className={`inline-flex rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em] ${statusBadgeClass(detail.dispatch.status)}`}>
+            <div className="flex flex-wrap items-center gap-3">
+              <div
+                className={`inline-flex rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em] ${statusBadgeClass(detail.dispatch.status)}`}
+              >
                 {detail.dispatch.status}
               </div>
-              <Link href="/steel/dispatches" className="w-full sm:w-auto">
-                <Button variant="outline" className="w-full sm:w-auto">Back to Dispatches</Button>
-              </Link>
-              <Link href={`/steel/invoices/${detail.dispatch.invoice_id}`} className="w-full sm:w-auto">
-                <Button variant="ghost" className="w-full sm:w-auto">Open Invoice</Button>
-              </Link>
+              {/* AUDIT: BUTTON_CLUTTER - move cross-route links into a secondary tools tray so dispatch progression stays primary. */}
+              <details className="group min-w-[220px] rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)]">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
+                  Dispatch tools
+                  <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
+                  <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
+                </summary>
+                <div className="flex flex-wrap gap-3 border-t border-[var(--border)] px-4 py-4">
+                  <Link href="/steel/dispatches">
+                    <Button variant="outline">Dispatches</Button>
+                  </Link>
+                  <Link href={`/steel/invoices/${detail.dispatch.invoice_id}`}>
+                    <Button variant="ghost">Invoice</Button>
+                  </Link>
+                  <Link href="/steel">
+                    <Button variant="ghost">Steel hub</Button>
+                  </Link>
+                </div>
+              </details>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {/* AUDIT: FLOW_BROKEN - add a short progression strip so the dispatch screen clearly points from manifest to closure. */}
+        <section className="grid gap-4 lg:grid-cols-3">
+          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
+            <CardHeader className="space-y-2">
+              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">1. Check manifest</div>
+              <CardTitle className="text-lg">Confirm truck and load</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-[var(--muted)]">
+              Validate the truck, driver, and invoice-linked material before changing dispatch state.
+            </CardContent>
+          </Card>
+          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
+            <CardHeader className="space-y-2">
+              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">2. Move status</div>
+              <CardTitle className="text-lg">{nextAction ? nextAction.title : "Dispatch is up to date"}</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-[var(--muted)]">
+              {nextAction
+                ? nextAction.description
+                : "No further progression is available right now. Review notes, ledger movements, or the audit trail instead."}
+            </CardContent>
+          </Card>
+          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
+            <CardHeader className="space-y-2">
+              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">3. Review evidence</div>
+              <CardTitle className="text-lg">Check ledger and proof</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-[var(--muted)]">
+              Timeline, receiver notes, inventory movements, and audit events remain available once the next move is recorded.
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* AUDIT: FLOW_BROKEN - surface the next valid status change before lower-signal audit context so the page has one obvious action. */}
+        <section className="grid gap-4 lg:grid-cols-[1.12fr_0.88fr]">
+          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
+            <CardHeader>
+              <div className="text-sm text-[var(--muted)]">Next move</div>
+              <CardTitle className="text-xl">
+                {nextAction ? nextAction.title : "No new dispatch action required"}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="text-sm text-[var(--muted)]">
+                {nextAction
+                  ? nextAction.description
+                  : "This dispatch is already at its furthest valid state. Use the evidence panels below for review only."}
+              </div>
+              {nextAction ? (
+                <Button disabled={busy} onClick={() => void updateStatus(nextAction.status)}>
+                  {nextAction.label}
+                </Button>
+              ) : (
+                <Button disabled>Status complete</Button>
+              )}
+            </CardContent>
+          </Card>
+          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
+            <CardHeader>
+              <div className="text-sm text-[var(--muted)]">Weight check</div>
+              <CardTitle className="text-xl">Invoice coverage</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 text-sm">
+              <div className="text-[var(--muted)]">Truck vs invoice</div>
+              <div className="font-semibold text-white">
+                {formatKg(detail.dispatch.total_weight_kg)} KG on truck | {formatKg(invoiceReferenceWeight)} KG linked
+              </div>
+              <div className="text-[var(--muted)]">Dispatch coverage</div>
+              <div className="font-semibold text-white">
+                {dispatchCoveragePercent.toFixed(1)}% of the linked invoice-line quantity
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Card>
-            <CardHeader><CardTitle className="text-base">Gate Pass</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Gate Pass</CardTitle>
+            </CardHeader>
             <CardContent className="text-xl font-semibold text-white">{detail.dispatch.gate_pass_number}</CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">Dispatch Date</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Dispatch Date</CardTitle>
+            </CardHeader>
             <CardContent className="text-xl font-semibold text-white">{formatDate(detail.dispatch.dispatch_date)}</CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">Truck</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Truck</CardTitle>
+            </CardHeader>
             <CardContent className="text-xl font-semibold text-white">{detail.dispatch.truck_number}</CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">Total Weight</CardTitle></CardHeader>
+            <CardHeader>
+              <CardTitle className="text-base">Total Weight</CardTitle>
+            </CardHeader>
             <CardContent className="text-xl font-semibold text-white">{formatKg(detail.dispatch.total_weight_kg)} KG</CardContent>
           </Card>
         </section>
@@ -268,7 +398,7 @@ export function SteelDispatchDetailPage() {
               <CardTitle className="text-xl">Material list and logistics</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-4 md:grid-cols-2">
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm">
                   <div className="text-[var(--muted)]">Invoice</div>
                   <div className="mt-1 font-semibold text-white">{detail.dispatch.invoice_number}</div>
@@ -277,56 +407,36 @@ export function SteelDispatchDetailPage() {
                 </div>
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm">
                   <div className="text-[var(--muted)]">Transporter</div>
-                  <div className="mt-1 font-semibold text-white">{detail.dispatch.transporter_name || "Not recorded"}</div>
+                  <div className="mt-1 font-semibold text-white">
+                    {detail.dispatch.transporter_name || "Not recorded"}
+                  </div>
                   <div className="mt-2 text-[var(--muted)]">Vehicle</div>
-                  <div className="mt-1 font-semibold text-white">{detail.dispatch.vehicle_type || "Not recorded"}</div>
+                  <div className="mt-1 font-semibold text-white">
+                    {detail.dispatch.vehicle_type || "Not recorded"}
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm">
                   <div className="text-[var(--muted)]">Driver</div>
                   <div className="mt-1 font-semibold text-white">{detail.dispatch.driver_name}</div>
                   <div className="mt-2 text-[var(--muted)]">Phone / License</div>
-                  <div className="mt-1 font-semibold text-white">{detail.dispatch.driver_phone || "-"} / {detail.dispatch.driver_license_number || "-"}</div>
+                  <div className="mt-1 font-semibold text-white">
+                    {detail.dispatch.driver_phone || "-"} / {detail.dispatch.driver_license_number || "-"}
+                  </div>
                 </div>
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm">
                   <div className="text-[var(--muted)]">Entry / Exit</div>
-                  <div className="mt-1 font-semibold text-white">{formatDateTime(detail.dispatch.entry_time)} / {formatDateTime(detail.dispatch.exit_time)}</div>
+                  <div className="mt-1 font-semibold text-white">
+                    {formatDateTime(detail.dispatch.entry_time)} / {formatDateTime(detail.dispatch.exit_time)}
+                  </div>
                   <div className="mt-2 text-[var(--muted)]">Truck Capacity</div>
-                  <div className="mt-1 font-semibold text-white">{detail.dispatch.truck_capacity_kg ? `${formatKg(detail.dispatch.truck_capacity_kg)} KG` : "Not recorded"}</div>
+                  <div className="mt-1 font-semibold text-white">
+                    {detail.dispatch.truck_capacity_kg
+                      ? `${formatKg(detail.dispatch.truck_capacity_kg)} KG`
+                      : "Not recorded"}
+                  </div>
                 </div>
               </div>
-              <div className="space-y-3 md:hidden">
-                {(detail.dispatch.lines || []).map((line) => (
-                  <div key={line.id} className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4 text-sm">
-                    <div className="space-y-1">
-                      <div className="font-semibold text-white">{line.item_code}</div>
-                      <div className="text-xs text-[var(--muted)]">{line.item_name}</div>
-                    </div>
-                    <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      <div>
-                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Batch</div>
-                        <div className="mt-1 text-white">
-                          {line.batch_id ? (
-                            <Link href={`/steel/batches/${line.batch_id}`} className="text-[var(--accent)] hover:underline">
-                              {line.batch_code}
-                            </Link>
-                          ) : (
-                            "No batch link"
-                          )}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Dispatched</div>
-                        <div className="mt-1 text-white">{formatKg(line.weight_kg)} KG</div>
-                      </div>
-                      <div>
-                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Invoice Line</div>
-                        <div className="mt-1 text-white">{formatKg(line.invoice_line_weight_kg)} KG</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="hidden overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] md:block">
+              <div className="overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
                 <table className="min-w-full text-left text-sm">
                   <thead className="text-[var(--muted)]">
                     <tr className="border-b border-[var(--border)]">
@@ -345,7 +455,10 @@ export function SteelDispatchDetailPage() {
                         </td>
                         <td className="px-3 py-3">
                           {line.batch_id ? (
-                            <Link href={`/steel/batches/${line.batch_id}`} className="text-[var(--accent)] hover:underline">
+                            <Link
+                              href={`/steel/batches/${line.batch_id}`}
+                              className="text-[var(--accent)] hover:underline"
+                            >
                               {line.batch_code}
                             </Link>
                           ) : (
@@ -370,23 +483,132 @@ export function SteelDispatchDetailPage() {
             <CardContent className="space-y-4">
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm">
                 <div className="text-[var(--muted)]">Created By</div>
-                <div className="mt-1 font-semibold text-white">{detail.dispatch.created_by_name || "Unknown"}</div>
+                <div className="mt-1 font-semibold text-white">
+                  {detail.dispatch.created_by_name || "Unknown"}
+                </div>
                 <div className="mt-2 text-[var(--muted)]">Created At</div>
                 <div className="mt-1 font-semibold text-white">{formatDateTime(detail.dispatch.created_at)}</div>
                 <div className="mt-2 text-[var(--muted)]">Inventory Posted</div>
-                <div className="mt-1 font-semibold text-white">{formatDateTime(detail.dispatch.inventory_posted_at)}</div>
+                <div className="mt-1 font-semibold text-white">
+                  {formatDateTime(detail.dispatch.inventory_posted_at)}
+                </div>
                 <div className="mt-2 text-[var(--muted)]">Delivered</div>
-                <div className="mt-1 font-semibold text-white">{formatDateTime(detail.dispatch.delivered_at)} {detail.dispatch.delivered_by_name ? `by ${detail.dispatch.delivered_by_name}` : ""}</div>
+                <div className="mt-1 font-semibold text-white">
+                  {formatDateTime(detail.dispatch.delivered_at)}{" "}
+                  {detail.dispatch.delivered_by_name
+                    ? `by ${detail.dispatch.delivered_by_name}`
+                    : ""}
+                </div>
               </div>
 
-              <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                <div className="text-sm font-semibold text-white">Movement timeline</div>
-                <div className="mt-3 space-y-3">
+              {/* AUDIT: DENSITY_OVERLOAD - keep the editable status form as the primary lane and move lesser status actions behind a secondary reveal. */}
+              <div className="space-y-4 rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
+                <div>
+                  <div className="text-sm font-semibold text-white">Status update</div>
+                  <div className="mt-1 text-xs text-[var(--muted)]">
+                    Record the next valid state and capture the yard or delivery proof details that support it.
+                  </div>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  <div>
+                    <label className="text-sm text-[var(--muted)]">Entry Time</label>
+                    <Input
+                      type="datetime-local"
+                      value={entryTime}
+                      onChange={(event) => setEntryTime(event.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-sm text-[var(--muted)]">Exit Time</label>
+                    <Input
+                      type="datetime-local"
+                      value={exitTime}
+                      onChange={(event) => setExitTime(event.target.value)}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm text-[var(--muted)]">Receiver Name</label>
+                  <Input
+                    value={receiverName}
+                    onChange={(event) => setReceiverName(event.target.value)}
+                    placeholder="Person receiving the dispatch"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm text-[var(--muted)]">POD Notes</label>
+                  <Textarea
+                    value={podNotes}
+                    onChange={(event) => setPodNotes(event.target.value)}
+                    placeholder="Delivery note / proof details"
+                  />
+                </div>
+                {nextAction ? (
+                  <Button disabled={busy} onClick={() => void updateStatus(nextAction.status)}>
+                    {nextAction.label}
+                  </Button>
+                ) : (
+                  <Button disabled>Status complete</Button>
+                )}
+                <details className="group rounded-2xl border border-[var(--border)] bg-[var(--card-strong)]">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
+                    More actions
+                    <span className="text-xs text-[var(--muted)] transition group-open:hidden">
+                      Open
+                    </span>
+                    <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
+                  </summary>
+                  <div className="flex flex-wrap gap-3 border-t border-[var(--border)] px-4 py-4">
+                    <Button
+                      variant="outline"
+                      disabled={!canMarkLoaded}
+                      onClick={() => void updateStatus("loaded")}
+                    >
+                      Mark loaded
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={!canMarkDispatched}
+                      onClick={() => void updateStatus("dispatched")}
+                    >
+                      Mark dispatched
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={!canMarkDelivered}
+                      onClick={() => void updateStatus("delivered")}
+                    >
+                      Mark delivered
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      disabled={!canCancelDraft}
+                      onClick={() => void updateStatus("cancelled")}
+                    >
+                      Cancel draft
+                    </Button>
+                  </div>
+                </details>
+              </div>
+
+              {/* AUDIT: BUTTON_CLUTTER - keep evidence-heavy sections in reveals so the next status change stays easier to spot. */}
+              <details className="group rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
+                  Movement timeline
+                  <span className="text-xs text-[var(--muted)] transition group-open:hidden">
+                    Open
+                  </span>
+                  <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
+                </summary>
+                <div className="space-y-3 border-t border-[var(--border)] px-4 py-4">
                   {movementTimeline.map((entry, index) => {
                     const completed = Boolean(entry.value);
                     return (
-                      <div key={entry.id} className={`rounded-2xl border p-3 text-sm ${timelineTone(completed)}`}>
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div
+                        key={entry.id}
+                        className={`rounded-2xl border p-3 text-sm ${timelineTone(completed)}`}
+                      >
+                        <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
                             <div className="font-semibold text-white">
                               {index + 1}. {entry.label}
@@ -401,107 +623,99 @@ export function SteelDispatchDetailPage() {
                     );
                   })}
                 </div>
-              </div>
+              </details>
 
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm">
-                <div className="text-[var(--muted)]">Weight consistency</div>
-                <div className="mt-1 font-semibold text-white">
-                  {formatKg(detail.dispatch.total_weight_kg)} KG on this truck - {formatKg(invoiceReferenceWeight)} KG linked to invoice lines
-                </div>
-                <div className="mt-2 text-[var(--muted)]">Dispatch coverage</div>
-                <div className="mt-1 font-semibold text-white">
-                  {dispatchCoveragePercent.toFixed(1)}% of the linked invoice-line quantity
-                </div>
-                <div className="mt-2 text-xs text-[var(--muted)]">
-                  Use this check to confirm the truck load, invoice allocation, and posted inventory are telling the same story.
-                </div>
-              </div>
-
-              <div className="space-y-3 rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                <div className="text-sm font-semibold text-white">Progress dispatch</div>
-                <div className="text-xs text-[var(--muted)]">
-                  Drafts can move to loaded, then dispatched, then delivered. Cancel is available only before inventory is posted.
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+              <details className="group rounded-2xl border border-[var(--border)] bg-[var(--card-strong)]">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
+                  Dispatch notes
+                  <span className="text-xs text-[var(--muted)] transition group-open:hidden">
+                    Open
+                  </span>
+                  <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
+                </summary>
+                <div className="space-y-3 border-t border-[var(--border)] px-4 py-4 text-sm">
                   <div>
-                    <label className="text-sm text-[var(--muted)]">Entry Time</label>
-                    <Input type="datetime-local" value={entryTime} onChange={(event) => setEntryTime(event.target.value)} />
+                    <div className="text-[var(--muted)]">Notes</div>
+                    <div className="mt-1 text-[var(--text)]">
+                      {detail.dispatch.notes || "No notes were captured for this dispatch."}
+                    </div>
                   </div>
                   <div>
-                    <label className="text-sm text-[var(--muted)]">Exit Time</label>
-                    <Input type="datetime-local" value={exitTime} onChange={(event) => setExitTime(event.target.value)} />
+                    <div className="text-[var(--muted)]">Receiver / POD</div>
+                    <div className="mt-1 text-[var(--text)]">
+                      {detail.dispatch.receiver_name || "Receiver not recorded"} |{" "}
+                      {detail.dispatch.pod_notes || "No POD notes yet."}
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <label className="text-sm text-[var(--muted)]">Receiver Name</label>
-                  <Input value={receiverName} onChange={(event) => setReceiverName(event.target.value)} placeholder="Person receiving the dispatch" />
-                </div>
-                <div>
-                  <label className="text-sm text-[var(--muted)]">POD Notes</label>
-                  <Textarea value={podNotes} onChange={(event) => setPodNotes(event.target.value)} placeholder="Delivery note / proof details" />
-                </div>
-                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                  <Button variant="outline" className="w-full sm:w-auto" disabled={!canMarkLoaded} onClick={() => void updateStatus("loaded")}>
-                    Mark Loaded
-                  </Button>
-                  <Button variant="outline" className="w-full sm:w-auto" disabled={!canMarkDispatched} onClick={() => void updateStatus("dispatched")}>
-                    Mark Dispatched
-                  </Button>
-                  <Button className="w-full sm:w-auto" disabled={!canMarkDelivered} onClick={() => void updateStatus("delivered")}>
-                    Mark Delivered
-                  </Button>
-                  <Button variant="ghost" className="w-full sm:w-auto" disabled={!canCancelDraft} onClick={() => void updateStatus("cancelled")}>
-                    Cancel Draft
-                  </Button>
-                </div>
-              </div>
+              </details>
 
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm">
-                <div className="text-[var(--muted)]">Dispatch Notes</div>
-                <div className="mt-1 text-[var(--text)]">{detail.dispatch.notes || "No notes were captured for this dispatch."}</div>
-                <div className="mt-3 text-[var(--muted)]">Receiver / POD</div>
-                <div className="mt-1 text-[var(--text)]">{detail.dispatch.receiver_name || "Receiver not recorded"} - {detail.dispatch.pod_notes || "No POD notes yet."}</div>
-              </div>
-
-              <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                <div className="text-sm font-semibold text-white">Ledger movements</div>
-                <div className="mt-3 space-y-3">
+              <details className="group rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
+                  Ledger movements
+                  <span className="text-xs text-[var(--muted)] transition group-open:hidden">
+                    {detail.ledger_movements.length || 0} items
+                  </span>
+                  <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
+                </summary>
+                <div className="space-y-3 border-t border-[var(--border)] px-4 py-4">
                   {detail.ledger_movements.map((movement) => (
                     <div key={movement.id} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3 text-sm">
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <div className="font-semibold text-white">{movement.transaction_type}</div>
-                        <div className="text-xs text-[var(--muted)]">{formatDateTime(movement.created_at)}</div>
+                        <div className="text-xs text-[var(--muted)]">
+                          {formatDateTime(movement.created_at)}
+                        </div>
                       </div>
-                      <div className="mt-2 text-[var(--muted)]">{movement.item_code} - {formatKg(movement.quantity_kg)} KG</div>
+                      <div className="mt-2 text-[var(--muted)]">
+                        {movement.item_code} | {formatKg(movement.quantity_kg)} KG
+                      </div>
                     </div>
                   ))}
                   {!detail.ledger_movements.length ? (
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3 text-sm text-[var(--muted)]">
-                      No inventory movement yet.
+                      No inventory movement has been posted yet. This usually means the dispatch is still a draft.
                     </div>
                   ) : null}
                 </div>
-              </div>
+              </details>
 
-              <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                <div className="text-sm font-semibold text-white">Audit events</div>
-                <div className="mt-3 space-y-3">
+              <details className="group rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
+                  Audit events
+                  <span className="text-xs text-[var(--muted)] transition group-open:hidden">
+                    {detail.audit_events.length || 0} items
+                  </span>
+                  <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
+                </summary>
+                <div className="space-y-3 border-t border-[var(--border)] px-4 py-4">
                   {detail.audit_events.map((event) => (
                     <div key={event.id} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3 text-sm">
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center justify-between gap-2">
                         <div className="font-semibold text-white">{event.action}</div>
                         <div className="text-xs text-[var(--muted)]">{formatDateTime(event.timestamp)}</div>
                       </div>
-                      <div className="mt-2 text-[var(--muted)]">{event.user_name || "System / background action"}</div>
-                      <div className="mt-2 text-[var(--text)]">{event.details || "No extra audit detail."}</div>
+                      <div className="mt-2 text-[var(--muted)]">
+                        {event.user_name || "System / background action"}
+                      </div>
+                      <div className="mt-2 text-[var(--text)]">
+                        {event.details || "No extra audit detail."}
+                      </div>
                     </div>
                   ))}
+                  {!detail.audit_events.length ? (
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3 text-sm text-[var(--muted)]">
+                      No audit events were linked to this dispatch yet.
+                    </div>
+                  ) : null}
                 </div>
-              </div>
+              </details>
             </CardContent>
           </Card>
         </section>
 
+        {status ? <div className="text-sm text-green-400">{status}</div> : null}
+        {error ? <div className="text-sm text-red-400">{error}</div> : null}
       </div>
     </main>
   );

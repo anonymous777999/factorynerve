@@ -19,7 +19,6 @@ import {
   rejectOcrVerification,
   type OcrVerificationRecord,
 } from "@/lib/ocr";
-import { useMobileRouteFunnel } from "@/lib/mobile-route-funnel";
 import {
   approveSteelReconciliation,
   getSteelOverview,
@@ -74,8 +73,6 @@ type QueueLink = {
   href: string;
   label: string;
 };
-
-const REVIEW_DETAIL_PANEL_STORAGE_KEY = "dpr.reviewQueue.detailPanel";
 
 type BaseQueueItem = {
   key: string;
@@ -766,7 +763,7 @@ function detailSummary(item: ReviewQueueItem) {
         checks: [
           "Confirm punch times or final status match the employee request.",
           "Check the regularization reason before closing the exception.",
-          "Check shift impact.",
+          "Make sure shift and worked-minute impact look realistic.",
         ],
       };
     case "entry":
@@ -885,219 +882,6 @@ function presetLabel(preset: QueuePreset) {
   }
 }
 
-function QueueFilterControls({
-  activePreset,
-  applyPreset,
-  taskFilter,
-  setTaskFilter,
-  severityFilter,
-  setSeverityFilter,
-  ageFilter,
-  setAgeFilter,
-  search,
-  setSearch,
-  mobile = false,
-  onDone,
-}: {
-  activePreset: QueuePreset;
-  applyPreset: (preset: QueuePreset) => void;
-  taskFilter: TaskFilter;
-  setTaskFilter: (value: TaskFilter) => void;
-  severityFilter: SeverityFilter;
-  setSeverityFilter: (value: SeverityFilter) => void;
-  ageFilter: AgeFilter;
-  setAgeFilter: (value: AgeFilter) => void;
-  search: string;
-  setSearch: (value: string) => void;
-  mobile?: boolean;
-  onDone?: () => void;
-}) {
-  return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Quick presets</div>
-            <div className="mt-1 text-sm text-[var(--text)]">
-              Active preset: <span className="font-semibold">{presetLabel(activePreset)}</span>
-            </div>
-            <div className="mt-1 text-xs text-[var(--muted)]">
-              Jump between fresh work, SLA backlog, and source-specific lanes without rebuilding filters by hand.
-            </div>
-          </div>
-          <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
-            {(["all", "today", "sla8", "stale", "stock", "ocr"] as QueuePreset[]).map((preset) => (
-              <Button
-                key={`preset:${preset}`}
-                variant={activePreset === preset ? "primary" : "outline"}
-                className="shrink-0 px-3 py-2 text-xs"
-                onClick={() => applyPreset(preset)}
-              >
-                {presetLabel(preset)}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className={cn("grid gap-4", mobile ? "" : "sm:grid-cols-2 xl:grid-cols-4")}>
-        <div>
-          <label className="text-sm text-[var(--muted)]">Task type</label>
-          <Select value={taskFilter} onChange={(event) => setTaskFilter(event.target.value as TaskFilter)}>
-            <option value="all">All review work</option>
-            <option value="attendance">Attendance review</option>
-            <option value="entry">DPR entries</option>
-            <option value="ocr">OCR review</option>
-            <option value="reconciliation">Stock review</option>
-          </Select>
-        </div>
-        <div>
-          <label className="text-sm text-[var(--muted)]">Severity</label>
-          <Select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value as SeverityFilter)}>
-            <option value="all">All severities</option>
-            <option value="critical">Critical</option>
-            <option value="high">High</option>
-            <option value="warning">Warning</option>
-            <option value="info">Info</option>
-          </Select>
-        </div>
-        <div>
-          <label className="text-sm text-[var(--muted)]">Queue age</label>
-          <Select value={ageFilter} onChange={(event) => setAgeFilter(event.target.value as AgeFilter)}>
-            <option value="all">All ages</option>
-            <option value="sla8">8h+ waiting (SLA)</option>
-            <option value="stale">24h+ waiting</option>
-            <option value="aging">8h to 24h waiting</option>
-            <option value="fresh">Fresh</option>
-          </Select>
-        </div>
-        <div>
-          <label className="text-sm text-[var(--muted)]">Search</label>
-          <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search review work or signals" />
-        </div>
-      </div>
-
-      {mobile && onDone ? (
-        <div className="flex justify-end">
-          <Button className="px-4 py-2 text-xs" onClick={onDone}>
-            Done
-          </Button>
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function BulkDecisionPanel({
-  selectedTaskCount,
-  selectedApproveCount,
-  selectedRejectCount,
-  selectedNoDecisionCount,
-  visibleActionableTaskKeys,
-  allVisibleActionableSelected,
-  toggleVisibleActionableSelection,
-  clearSelection,
-  bulkNote,
-  setBulkNote,
-  bulkBusy,
-  bulkApproveBusy,
-  bulkRejectBusy,
-  openBulkDecisionConfirm,
-  bulkApproveReasonMissing,
-  bulkRejectReasonMissing,
-}: {
-  selectedTaskCount: number;
-  selectedApproveCount: number;
-  selectedRejectCount: number;
-  selectedNoDecisionCount: number;
-  visibleActionableTaskKeys: string[];
-  allVisibleActionableSelected: boolean;
-  toggleVisibleActionableSelection: () => void;
-  clearSelection: () => void;
-  bulkNote: string;
-  setBulkNote: (value: string) => void;
-  bulkBusy: boolean;
-  bulkApproveBusy: boolean;
-  bulkRejectBusy: boolean;
-  openBulkDecisionConfirm: (decision: BulkDecision) => void;
-  bulkApproveReasonMissing: boolean;
-  bulkRejectReasonMissing: boolean;
-}) {
-  if (selectedTaskCount) {
-    return (
-      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Bulk decisions</div>
-            <div className="mt-1 text-sm text-[var(--text)]">
-              Selected: {selectedTaskCount} | Approve-ready: {selectedApproveCount} | Reject-ready: {selectedRejectCount}
-            </div>
-            {selectedNoDecisionCount > 0 ? (
-              <div className="mt-1 text-xs text-amber-200">
-                {selectedNoDecisionCount} selected item(s) are role-restricted and cannot be actioned.
-              </div>
-            ) : null}
-          </div>
-          <div className="grid gap-2 sm:flex sm:flex-wrap">
-            <Button
-              variant="outline"
-              className="px-3 py-2 text-xs"
-              onClick={toggleVisibleActionableSelection}
-              disabled={!visibleActionableTaskKeys.length}
-            >
-              {allVisibleActionableSelected ? "Unselect visible" : "Select visible actionable"}
-            </Button>
-            <Button
-              variant="ghost"
-              className="px-3 py-2 text-xs"
-              onClick={clearSelection}
-              disabled={!selectedTaskCount}
-            >
-              Clear selection
-            </Button>
-          </div>
-        </div>
-        <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_auto]">
-          <Textarea
-            rows={2}
-            value={bulkNote}
-            onChange={(event) => setBulkNote(event.target.value)}
-            placeholder="Shared decision note. Required for bulk reject and for high-risk approvals."
-          />
-          <Button
-            className="px-4 py-2 text-xs"
-            disabled={bulkBusy || !selectedApproveCount}
-            onClick={() => openBulkDecisionConfirm("approve")}
-          >
-            {bulkApproveBusy ? "Approving..." : "Approve selected"}
-          </Button>
-          <Button
-            variant="ghost"
-            className="px-4 py-2 text-xs"
-            disabled={bulkBusy || !selectedRejectCount}
-            onClick={() => openBulkDecisionConfirm("reject")}
-          >
-            {bulkRejectBusy ? "Rejecting..." : "Reject selected"}
-          </Button>
-        </div>
-        <div className={cn("text-xs", bulkApproveReasonMissing || bulkRejectReasonMissing ? "text-amber-200" : "text-[var(--muted)]")}>
-          {bulkRejectReasonMissing
-            ? "Bulk rejection is blocked until a reason note is added."
-            : bulkApproveReasonMissing
-              ? "High-risk approvals are selected, so add one shared review note before confirming."
-              : "Use one shared note when the same decision context applies across multiple selected items."}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4 text-sm text-[var(--muted)]">
-      Select one or more actionable tasks to unlock bulk decisions. The queue stays lighter until you actually need bulk actions.
-    </div>
-  );
-}
-
 function SummaryMetric({
   label,
   value,
@@ -1124,17 +908,41 @@ function SummaryMetric({
   );
 }
 
+function QueueStatPill({
+  label,
+  value,
+  tone = "border-[var(--border)] bg-[rgba(255,255,255,0.03)] text-[var(--text)]",
+}: {
+  label: string;
+  value: string | number;
+  tone?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em]",
+        tone,
+      )}
+    >
+      <span className="opacity-75">{label}</span>
+      <span>{value}</span>
+    </div>
+  );
+}
+
 function EmptyState({
   title,
   body,
+  eyebrow = "Review Queue",
 }: {
   title: string;
   body: string;
+  eyebrow?: string;
 }) {
   return (
     <Card className="border-dashed border-[var(--border)] bg-[var(--card-strong)]">
       <CardContent className="flex min-h-[12rem] flex-col items-center justify-center gap-3 px-6 py-10 text-center">
-        <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Review Queue</div>
+        <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{eyebrow}</div>
         <div className="text-2xl font-semibold text-[var(--text)]">{title}</div>
         <div className="max-w-xl text-sm leading-6 text-[var(--muted)]">{body}</div>
       </CardContent>
@@ -1170,7 +978,7 @@ function QueueDetailPanel({
           <div className="text-sm uppercase tracking-[0.26em] text-[var(--accent)]">Review Detail</div>
           <div className="text-2xl font-semibold text-[var(--text)]">Select a review item</div>
           <div className="max-w-sm text-sm leading-6 text-[var(--muted)]">
-            The queue is now decision-first. Pick any task from the left to inspect context, capture a note, and close the review with confidence.
+            Pick any task or signal from the left to inspect context, capture a note, and close the decision without losing your place in the queue.
           </div>
         </CardContent>
       </Card>
@@ -1326,7 +1134,6 @@ function QueueDetailPanel({
 
 export default function ApprovalsPage() {
   const { user, loading, activeFactory } = useSession();
-  const trackPrimaryAction = useMobileRouteFunnel("/approvals", user?.role, Boolean(user));
   const [state, setState] = useState<InboxState>(() => emptyInboxState());
   const [busy, setBusy] = useState(false);
   const [actionKey, setActionKey] = useState("");
@@ -1336,10 +1143,8 @@ export default function ApprovalsPage() {
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
   const [ageFilter, setAgeFilter] = useState<AgeFilter>("all");
   const [search, setSearch] = useState("");
-  const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
   const [selectedKey, setSelectedKey] = useState("");
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
-  const [showDetailPanel, setShowDetailPanel] = useState(true);
   const [notesByKey, setNotesByKey] = useState<Record<string, string>>({});
   const [selectedTaskKeys, setSelectedTaskKeys] = useState<string[]>([]);
   const [bulkNote, setBulkNote] = useState("");
@@ -1480,19 +1285,6 @@ export default function ApprovalsPage() {
     });
   }, [canReview, loadInbox, user]);
 
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = window.localStorage.getItem(REVIEW_DETAIL_PANEL_STORAGE_KEY);
-    if (saved === "hidden") {
-      setShowDetailPanel(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(REVIEW_DETAIL_PANEL_STORAGE_KEY, showDetailPanel ? "shown" : "hidden");
-  }, [showDetailPanel]);
-
   const taskItems = useMemo<ReviewTaskItem[]>(() => {
     const items: ReviewTaskItem[] = [
       ...state.pendingAttendanceReviews.map((item) => normalizeAttendance(item)),
@@ -1539,6 +1331,10 @@ export default function ApprovalsPage() {
         .includes(searchTerm);
     });
   }, [ageFilter, searchTerm, severityFilter, taskFilter, taskItems]);
+  // AUDIT: FLOW_BROKEN - keep the next review item explicit so the page leads with one clear decision.
+  const nextReviewItem = filteredTasks[0] ?? null;
+  // AUDIT: DENSITY_OVERLOAD - separate the featured next item from the rest of the backlog.
+  const remainingFilteredTasks = filteredTasks.slice(1);
 
   const activePreset = useMemo<QueuePreset>(() => {
     if (searchTerm) return "custom";
@@ -1605,9 +1401,16 @@ export default function ApprovalsPage() {
     () => filteredTasks.filter((item) => item.canApprove || item.canReject).map((item) => item.key),
     [filteredTasks],
   );
+  const remainingVisibleActionableTaskKeys = useMemo(
+    () => remainingFilteredTasks.filter((item) => item.canApprove || item.canReject).map((item) => item.key),
+    [remainingFilteredTasks],
+  );
   const allVisibleActionableSelected =
     visibleActionableTaskKeys.length > 0 &&
     visibleActionableTaskKeys.every((key) => selectedTaskKeySet.has(key));
+  const allRemainingActionableSelected =
+    remainingVisibleActionableTaskKeys.length > 0 &&
+    remainingVisibleActionableTaskKeys.every((key) => selectedTaskKeySet.has(key));
   const bulkConfirmEligibleItems = useMemo(
     () =>
       bulkConfirmDecision
@@ -1666,27 +1469,13 @@ export default function ApprovalsPage() {
 
   const openItem = useCallback((key: string, mobile = false) => {
     setSelectedKey(key);
-    if (mobile || !showDetailPanel) {
+    if (mobile) {
       setMobileDetailOpen(true);
     }
-  }, [showDetailPanel]);
-
-  const toggleDetailPanel = useCallback(() => {
-    setShowDetailPanel((current) => {
-      const next = !current;
-      if (next) {
-        setMobileDetailOpen(false);
-      }
-      return next;
-    });
   }, []);
 
   const toggleTaskSelection = useCallback((key: string) => {
     setSelectedTaskKeys((current) => (current.includes(key) ? current.filter((item) => item !== key) : [...current, key]));
-  }, []);
-
-  const clearSelection = useCallback(() => {
-    setSelectedTaskKeys([]);
   }, []);
 
   const toggleVisibleActionableSelection = useCallback(() => {
@@ -1700,6 +1489,17 @@ export default function ApprovalsPage() {
       return Array.from(merged);
     });
   }, [visibleActionableTaskKeys]);
+  const toggleRemainingActionableSelection = useCallback(() => {
+    setSelectedTaskKeys((current) => {
+      if (!remainingVisibleActionableTaskKeys.length) return current;
+      if (remainingVisibleActionableTaskKeys.every((key) => current.includes(key))) {
+        return current.filter((key) => !remainingVisibleActionableTaskKeys.includes(key));
+      }
+      const merged = new Set(current);
+      remainingVisibleActionableTaskKeys.forEach((key) => merged.add(key));
+      return Array.from(merged);
+    });
+  }, [remainingVisibleActionableTaskKeys]);
 
   const runTaskDecision = useCallback(
     async (item: ReviewTaskItem, decision: "approve" | "reject", noteValue: string) => {
@@ -1772,11 +1572,10 @@ export default function ApprovalsPage() {
       selectedItem.key,
       async () => {
         await runTaskDecision(selectedItem, "approve", selectedNote);
-        trackPrimaryAction("approve_record");
       },
       `${selectedItem.typeLabel} approved.`,
     );
-  }, [runInboxAction, runTaskDecision, selectedItem, selectedNote, trackPrimaryAction]);
+  }, [runInboxAction, runTaskDecision, selectedItem, selectedNote]);
 
   const handleRejectSelected = useCallback(() => {
     if (!selectedItem || selectedItem.bucket !== "task" || !selectedNote.trim()) return;
@@ -1851,9 +1650,6 @@ export default function ApprovalsPage() {
             ? `${successCount}/${candidates.length} selected task(s) approved.`
             : `${successCount}/${candidates.length} selected task(s) rejected.`,
         );
-        if (decision === "approve" && successCount > 0) {
-          trackPrimaryAction("approve_record");
-        }
         setSelectedTaskKeys([]);
         if (decision === "reject") {
           setBulkNote("");
@@ -1868,7 +1664,7 @@ export default function ApprovalsPage() {
         setActionKey("");
       }
     })();
-  }, [bulkConfirmDecision, bulkNote, loadInbox, runTaskDecision, selectedTaskItems, trackPrimaryAction]);
+  }, [bulkConfirmDecision, bulkNote, loadInbox, runTaskDecision, selectedTaskItems]);
 
   const handleSignalAction = useCallback(() => {
     if (!selectedItem || selectedItem.bucket !== "signal") return;
@@ -1899,15 +1695,19 @@ export default function ApprovalsPage() {
   const selectedApproveCount = selectedTaskItems.filter((item) => item.canApprove).length;
   const selectedRejectCount = selectedTaskItems.filter((item) => item.canReject).length;
   const selectedNoDecisionCount = selectedTaskItems.filter((item) => !item.canApprove && !item.canReject).length;
+  const hasActiveFilters =
+    Boolean(searchTerm) ||
+    taskFilter !== "all" ||
+    severityFilter !== "all" ||
+    ageFilter !== "all";
+  const activeFilterCount =
+    (searchTerm ? 1 : 0) +
+    (taskFilter !== "all" ? 1 : 0) +
+    (severityFilter !== "all" ? 1 : 0) +
+    (ageFilter !== "all" ? 1 : 0);
   const bulkApproveBusy = actionKey === "bulk:approve";
   const bulkRejectBusy = actionKey === "bulk:reject";
   const bulkBusy = bulkApproveBusy || bulkRejectBusy;
-  const activeFilterCount = [
-    taskFilter !== "all",
-    severityFilter !== "all",
-    ageFilter !== "all",
-    Boolean(searchTerm),
-  ].filter(Boolean).length;
   const sla8TaskCount = taskItems.filter((item) => item.ageBand !== "fresh").length;
   const sla8UrgentCount = taskItems.filter(
     (item) => item.ageBand !== "fresh" && (item.severity === "critical" || item.severity === "high"),
@@ -1927,7 +1727,7 @@ export default function ApprovalsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen px-4 py-8 shell-bottom-clearance md:px-8">
+      <main className="min-h-screen px-4 py-8 md:px-8">
         <div className="mx-auto max-w-7xl space-y-6">
           <Skeleton className="h-36 rounded-[2rem]" />
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -1946,7 +1746,7 @@ export default function ApprovalsPage() {
 
   if (!user) {
     return (
-      <main className="min-h-screen px-4 py-8 shell-bottom-clearance md:px-8">
+      <main className="min-h-screen px-4 py-8 md:px-8">
         <div className="mx-auto max-w-4xl">
           <Card>
             <CardHeader>
@@ -1954,8 +1754,9 @@ export default function ApprovalsPage() {
               <CardTitle>You need an active session first</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
+              {/* AUDIT: FLOW_BROKEN - send reviewers back through the live auth entry instead of the stale login route. */}
               <Link href="/access">
-                <Button>Open Login</Button>
+                <Button>Open Access</Button>
               </Link>
               <Link href="/dashboard">
                 <Button variant="outline">Back to Dashboard</Button>
@@ -1969,7 +1770,7 @@ export default function ApprovalsPage() {
 
   if (!canReview) {
     return (
-      <main className="min-h-screen px-4 py-8 shell-bottom-clearance md:px-8">
+      <main className="min-h-screen px-4 py-8 md:px-8">
         <div className="mx-auto max-w-4xl">
           <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
             <CardHeader>
@@ -1977,7 +1778,9 @@ export default function ApprovalsPage() {
               <CardTitle>Review work is assigned to supervisors and above</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-[var(--muted)]">
-              <p>Supervisors and above only.</p>
+              <p>
+                Your current role is <span className="font-semibold text-[var(--text)]">{user.role}</span>. We kept this queue focused on review decisions so daily operators do not land in approval-heavy screens by mistake.
+              </p>
               <div className="flex flex-wrap gap-3">
                 <Link href="/dashboard">
                   <Button>Open Operations Board</Button>
@@ -1994,410 +1797,97 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 shell-bottom-clearance md:px-8 md:pb-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <main className="min-h-screen px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        {/* AUDIT: FLOW_BROKEN - lead the screen with the next review action instead of a passive inbox summary. */}
+        <section className="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur md:flex-row md:items-end md:justify-between">
+          <div className="space-y-3">
+            <div className="text-sm uppercase tracking-[0.32em] text-[var(--accent)]">Review</div>
+            <h1 className="text-3xl font-semibold md:text-4xl">Review Queue</h1>
+            <p className="max-w-3xl text-sm text-[var(--muted)]">Close the next review first, then work down the backlog with context still in view.</p>
+            <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
+              <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
+                Factory: <span className="font-semibold text-[var(--text)]">{activeFactory?.name || user.factory_name}</span>
+              </span>
+              <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
+                Refreshed: <span className="font-semibold text-[var(--text)]">{refreshedLabel}</span>
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            {nextReviewItem ? (
+              <Button
+                className="px-4 py-2 text-xs"
+                onClick={() => openItem(nextReviewItem.key, typeof window !== "undefined" && window.innerWidth < 1024)}
+              >
+                Review next
+              </Button>
+            ) : null}
+            <Button variant="outline" className="px-4 py-2 text-xs" onClick={() => void loadInbox()}>
+              {busy ? "Refreshing..." : "Refresh"}
+            </Button>
+          </div>
+        </section>
+
+        {/* AUDIT: FLOW_BROKEN - make the review journey scan as a short sequence before the dense queue surfaces begin. */}
+        <section className="grid gap-4 md:grid-cols-3">
+          {[
+            {
+              step: "Step 1",
+              title: "Pick lane",
+              body: hasActiveFilters
+                ? `Filters are active across ${activeFilterCount} lane${activeFilterCount === 1 ? "" : "s"}.`
+                : "Start with the full queue or jump into a preset lane when the backlog shifts.",
+            },
+            {
+              step: "Step 2",
+              title: "Review next",
+              body: nextReviewItem
+                ? `${nextReviewItem.typeLabel} stays featured until you close or reroute it.`
+                : "No decision item is waiting right now.",
+            },
+            {
+              step: "Step 3",
+              title: "Close it",
+              body: "Approve, reject, or escalate from the detail panel without losing your place in the queue.",
+            },
+          ].map((item) => (
+            <Card key={item.title} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+              <CardContent className="space-y-3 px-5 py-5">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
+                <div className="text-xl font-semibold text-[var(--text)]">{item.title}</div>
+                <div className="text-sm leading-6 text-[var(--muted)]">{item.body}</div>
+              </CardContent>
+            </Card>
+          ))}
+        </section>
+
         {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
         {status ? <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
 
-        <section
-          className={cn(
-            "grid gap-5",
-            showDetailPanel ? "lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.95fr)]" : "lg:grid-cols-1",
-          )}
-        >
-          <div className="flex flex-col gap-6">
-            <Card className="order-3 hidden border-[var(--border)] bg-[rgba(18,22,34,0.92)] lg:block">
-              <CardHeader>
-                <div className="text-sm text-[var(--muted)]">Queue filters</div>
-                <CardTitle className="text-xl">Preset and filter controls</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <QueueFilterControls
-                  activePreset={activePreset}
-                  applyPreset={applyPreset}
-                  taskFilter={taskFilter}
-                  setTaskFilter={setTaskFilter}
-                  severityFilter={severityFilter}
-                  setSeverityFilter={setSeverityFilter}
-                  ageFilter={ageFilter}
-                  setAgeFilter={setAgeFilter}
-                  search={search}
-                  setSearch={setSearch}
-                />
-              </CardContent>
-            </Card>
-
-            {!showDetailPanel ? (
-              <div className="order-2 hidden rounded-2xl border border-[rgba(77,163,255,0.18)] bg-[rgba(77,163,255,0.08)] px-4 py-4 lg:block">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div className="space-y-1">
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[rgba(77,163,255,0.92)]">
-                      Detail panel hidden
-                    </div>
-                    <div className="text-sm text-text-secondary">
-                      {selectedItem
-                        ? `Selected item: ${selectedItem.title}. Use preview when you want the full context.`
-                        : "The task list is using full width. Pick any item to preview it in an overlay or show the side panel again."}
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedItem ? (
-                      <Button variant="outline" className="px-3 py-2 text-xs" onClick={() => setMobileDetailOpen(true)}>
-                        Preview selected
-                      </Button>
-                    ) : null}
-                    <Button className="px-3 py-2 text-xs" onClick={toggleDetailPanel}>
-                      Show detail panel
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-
-            <Card className="order-1 overflow-hidden border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
-              <CardHeader className="space-y-4 border-b border-[var(--border)]/60 pb-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <div className="text-sm text-[var(--muted)]">Decision queue</div>
-                    <CardTitle className="text-xl">Review next item</CardTitle>
-                    <div className="mt-1 text-xs text-[var(--muted)]">
-                      {filteredTasks.length} live task(s). Highest risk and oldest items stay at the top.
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-2 sm:justify-end">
-                    <Button
-                      variant="outline"
-                      className="px-3 py-2 text-xs lg:hidden"
-                      onClick={() => setMobileFiltersOpen(true)}
-                    >
-                      Filter queue{activeFilterCount ? ` (${activeFilterCount})` : ""}
-                    </Button>
-                    <Button variant="outline" className="hidden px-3 py-2 text-xs lg:inline-flex" onClick={toggleDetailPanel}>
-                      {showDetailPanel ? "Hide detail panel" : "Show detail panel"}
-                    </Button>
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2 text-xs">
-                  <span className="rounded-full border border-[var(--border)] bg-[var(--card-strong)] px-3 py-1 text-[var(--muted)]">
-                    Preset: <span className="font-semibold text-[var(--text)]">{presetLabel(activePreset)}</span>
-                  </span>
-                  {taskFilter !== "all" ? (
-                    <span className="rounded-full border border-[var(--border)] bg-[var(--card-strong)] px-3 py-1 text-[var(--muted)]">
-                      Type: <span className="font-semibold text-[var(--text)]">{taskFilter}</span>
-                    </span>
-                  ) : null}
-                  {severityFilter !== "all" ? (
-                    <span className="rounded-full border border-[var(--border)] bg-[var(--card-strong)] px-3 py-1 text-[var(--muted)]">
-                      Severity: <span className="font-semibold text-[var(--text)]">{severityFilter}</span>
-                    </span>
-                  ) : null}
-                  {ageFilter !== "all" ? (
-                    <span className="rounded-full border border-[var(--border)] bg-[var(--card-strong)] px-3 py-1 text-[var(--muted)]">
-                      Age: <span className="font-semibold text-[var(--text)]">{ageFilter === "sla8" ? "8h+" : ageFilter}</span>
-                    </span>
-                  ) : null}
-                  {searchTerm ? (
-                    <span className="rounded-full border border-[var(--border)] bg-[var(--card-strong)] px-3 py-1 text-[var(--muted)]">
-                      Search: <span className="font-semibold text-[var(--text)]">{search.trim()}</span>
-                    </span>
-                  ) : null}
-                  {!activeFilterCount ? (
-                    <span className="rounded-full border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-3 py-1 text-emerald-100">
-                      All review work is visible
-                    </span>
-                  ) : null}
-                  {restrictedTaskCount ? (
-                    <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-amber-100">
-                      {restrictedTaskCount} item(s) require escalation
-                    </span>
-                  ) : null}
-                </div>
-                <div className="text-xs text-[var(--muted)]">
-                  Mix: Attendance {attendanceTaskCount} | DPR {dprTaskCount} | OCR {ocrTaskCount} | Stock {stockTaskCount}
-                </div>
-              </CardHeader>
-              <CardContent className="px-0 pb-0">
-                {selectedTaskCount ? (
-                  <div className="border-b border-[var(--border)]/60 px-6 py-4">
-                    <BulkDecisionPanel
-                      selectedTaskCount={selectedTaskCount}
-                      selectedApproveCount={selectedApproveCount}
-                      selectedRejectCount={selectedRejectCount}
-                      selectedNoDecisionCount={selectedNoDecisionCount}
-                      visibleActionableTaskKeys={visibleActionableTaskKeys}
-                      allVisibleActionableSelected={allVisibleActionableSelected}
-                      toggleVisibleActionableSelection={toggleVisibleActionableSelection}
-                      clearSelection={clearSelection}
-                      bulkNote={bulkNote}
-                      setBulkNote={setBulkNote}
-                      bulkBusy={bulkBusy}
-                      bulkApproveBusy={bulkApproveBusy}
-                      bulkRejectBusy={bulkRejectBusy}
-                      openBulkDecisionConfirm={openBulkDecisionConfirm}
-                      bulkApproveReasonMissing={bulkApproveReasonMissing}
-                      bulkRejectReasonMissing={bulkRejectReasonMissing}
-                    />
-                  </div>
-                ) : null}
-                {filteredTasks.length ? (
-                  <>
-                    <div className="hidden lg:block">
-                      <div className="overflow-x-auto">
-                        <table className="min-w-full border-separate border-spacing-0">
-                          <thead>
-                            <tr className="text-left text-xs uppercase tracking-[0.14em] text-[var(--muted)]">
-                              <th className="px-6 py-3">
-                                <input
-                                  type="checkbox"
-                                  className="h-4 w-4 rounded border-[var(--border)] bg-transparent"
-                                  checked={allVisibleActionableSelected}
-                                  disabled={!visibleActionableTaskKeys.length}
-                                  onChange={toggleVisibleActionableSelection}
-                                  aria-label="Select visible actionable tasks"
-                                />
-                              </th>
-                              <th className="px-6 py-3">Priority</th>
-                              <th className="px-4 py-3">Task</th>
-                              <th className="px-4 py-3">Context</th>
-                              <th className="px-4 py-3">Age</th>
-                              <th className="px-6 py-3 text-right">Action</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filteredTasks.map((item) => {
-                              const isActive = item.key === selectedKey;
-                              const isSelected = selectedTaskKeySet.has(item.key);
-                              const canBulkSelect = item.canApprove || item.canReject;
-                              return (
-                                <tr
-                                  key={item.key}
-                                  className={cn(
-                                    "cursor-pointer border-t border-[var(--border)]/60 text-sm transition hover:bg-[rgba(255,255,255,0.02)]",
-                                    isActive ? "bg-[rgba(34,211,238,0.08)]" : "bg-transparent",
-                                  )}
-                                  onClick={() => openItem(item.key)}
-                                >
-                                  <td className="px-6 py-4 align-top">
-                                    <input
-                                      type="checkbox"
-                                      className="h-4 w-4 rounded border-[var(--border)] bg-transparent"
-                                      checked={isSelected}
-                                      disabled={!canBulkSelect}
-                                      onChange={() => toggleTaskSelection(item.key)}
-                                      onClick={(event) => event.stopPropagation()}
-                                      aria-label={`Select ${item.title}`}
-                                    />
-                                  </td>
-                                  <td className="px-6 py-4 align-top">
-                                    <div className="flex flex-col gap-2">
-                                      <span className={cn("inline-flex w-fit rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityClasses(item.severity))}>{item.severity}</span>
-                                      <span className={cn("inline-flex w-fit rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", typeClasses(item.kind))}>{item.typeLabel}</span>
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-4 align-top">
-                                    <div className="font-semibold text-[var(--text)]">{item.title}</div>
-                                    <div className="mt-1 text-xs text-[var(--muted)]">{item.headline}</div>
-                                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                                      <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[var(--muted)]">
-                                        {latestActivityLabel(item)}
-                                      </span>
-                                      {!item.canApprove && !item.canReject ? (
-                                        <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-amber-100">
-                                          Escalation needed
-                                        </span>
-                                      ) : null}
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-4 align-top">
-                                    <div className="max-w-[21rem] text-sm leading-6 text-[var(--text)]">{item.description}</div>
-                                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--muted)]">
-                                      <span>{item.statusLabel}</span>
-                                      <span>{item.canApprove || item.canReject ? "Decision ready" : "Needs higher role"}</span>
-                                    </div>
-                                  </td>
-                                  <td className="px-4 py-4 align-top">
-                                    <div className={cn("text-sm font-semibold", ageClasses(item.ageBand))}>{item.ageLabel}</div>
-                                    <div className="mt-1 text-xs text-[var(--muted)]">{formatDateTime(item.timestamp)}</div>
-                                  </td>
-                                  <td className="px-6 py-4 text-right align-top">
-                                    <Button
-                                      className="px-4 py-2 text-xs"
-                                      onClick={(event) => {
-                                        event.stopPropagation();
-                                        openItem(item.key);
-                                      }}
-                                    >
-                                      Review
-                                    </Button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-
-                    <div className="space-y-4 px-4 pb-4 lg:hidden">
-                      {filteredTasks.map((item) => (
-                        <Card key={item.key} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
-                          <CardContent className="space-y-4 px-5 py-5">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <span className={cn("inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", typeClasses(item.kind))}>{item.typeLabel}</span>
-                                  <span className={cn("inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityClasses(item.severity))}>{item.severity}</span>
-                                </div>
-                                <div className="mt-3 text-lg font-semibold text-[var(--text)]">{item.title}</div>
-                                <div className="mt-1 text-sm text-[var(--muted)]">{item.headline}</div>
-                              </div>
-                              <div className="flex flex-col items-end gap-2">
-                                <input
-                                  type="checkbox"
-                                  className="h-4 w-4 rounded border-[var(--border)] bg-transparent"
-                                  checked={selectedTaskKeySet.has(item.key)}
-                                  disabled={!item.canApprove && !item.canReject}
-                                  onChange={() => toggleTaskSelection(item.key)}
-                                  aria-label={`Select ${item.title}`}
-                                />
-                                <div className={cn("text-xs font-semibold uppercase tracking-[0.14em]", ageClasses(item.ageBand))}>{item.ageLabel}</div>
-                              </div>
-                            </div>
-                            <div className="text-sm leading-6 text-[var(--text)]">{item.description}</div>
-                            <div className="flex flex-wrap gap-2 text-xs">
-                              <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[var(--muted)]">
-                                {latestActivityLabel(item)}
-                              </span>
-                              {!item.canApprove && !item.canReject ? (
-                                <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-amber-100">
-                                  Escalation needed
-                                </span>
-                              ) : null}
-                            </div>
-                            <div className="grid gap-3 sm:flex sm:flex-wrap">
-                              <Button className="w-full px-4 py-2 text-xs sm:w-auto" onClick={() => openItem(item.key, true)}>
-                                Review
-                              </Button>
-                              <Link href={item.openHref} className="w-full sm:w-auto">
-                                <Button variant="outline" className="w-full px-4 py-2 text-xs sm:w-auto">
-                                  {item.openLabel}
-                                </Button>
-                              </Link>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </>
-                ) : (
-                  <div className="px-6 pb-6">
-                    <EmptyState
-                      title={searchTerm || taskFilter !== "all" || severityFilter !== "all" || ageFilter !== "all" ? "No tasks match these filters" : "No review tasks are waiting"}
-                      body={
-                        searchTerm || taskFilter !== "all" || severityFilter !== "all" || ageFilter !== "all"
-                          ? "Try changing the type, severity, age, or search filters to find another review item."
-                          : "The decision queue is clear right now. Attendance review, OCR review, and stock review work will appear here as soon as they need someone."
-                      }
-                    />
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card className="order-4 border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
-              <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <div className="text-sm text-[var(--muted)]">Signals</div>
-                  <CardTitle className="text-xl">Investigations and acknowledgements</CardTitle>
-                </div>
-                <div className="text-sm text-[var(--muted)] sm:max-w-sm sm:text-right">Signals stay separate from approval work so the queue remains trustworthy.</div>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {filteredSignals.length ? (
-                  filteredSignals.map((item) => (
-                    <button
-                      key={item.key}
-                      type="button"
-                      className={cn(
-                        "w-full rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-left transition hover:border-[var(--accent)]/30 hover:bg-[rgba(255,255,255,0.03)]",
-                        selectedKey === item.key ? "border-[var(--accent)]/50 bg-[rgba(34,211,238,0.08)]" : "",
-                      )}
-                      onClick={() => openItem(item.key, typeof window !== "undefined" && window.innerWidth < 1024)}
-                    >
-                      <div className="flex flex-wrap items-start justify-between gap-3">
-                        <div className="space-y-2">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", typeClasses(item.kind))}>{item.typeLabel}</span>
-                            <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityClasses(item.severity))}>{item.severity}</span>
-                          </div>
-                          <div className="text-sm font-semibold text-[var(--text)]">{item.title}</div>
-                          <div className="text-xs text-[var(--muted)]">{item.headline}</div>
-                          <div className="text-xs text-[var(--muted)]">{latestActivityLabel(item)}</div>
-                        </div>
-                        <div className={cn("text-xs font-semibold uppercase tracking-[0.14em]", ageClasses(item.ageBand))}>{item.ageLabel}</div>
-                      </div>
-                    </button>
-                  ))
-                ) : (
-                  <EmptyState title="No active signals" body="Unread alerts and steel anomaly signals will appear here when someone needs to route or acknowledge them." />
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          {showDetailPanel ? (
-            <div className="hidden lg:block">
-              <div className="sticky top-24 space-y-3">
-                <div className="flex justify-end">
-                  <Button variant="ghost" className="px-3 py-2 text-xs" onClick={toggleDetailPanel}>
-                    Hide detail panel
-                  </Button>
-                </div>
-                <QueueDetailPanel
-                  item={selectedItem}
-                  note={selectedNote}
-                  onNoteChange={updateSelectedNote}
-                  onApprove={handleApproveSelected}
-                  onReject={handleRejectSelected}
-                  onSignalAction={handleSignalAction}
-                  busyKey={actionKey}
-                />
-              </div>
+        {/* AUDIT: DENSITY_OVERLOAD - collapse backlog analytics and SLA diagnostics until the reviewer asks for them. */}
+        <details className="group rounded-[2rem] border border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl">
+          <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
+            <div>
+              <div className="text-sm text-[var(--muted)]">Queue pulse</div>
+              <div className="mt-1 text-xl font-semibold text-[var(--text)]">Backlog mix and SLA health</div>
             </div>
-          ) : null}
-        </section>
+            <div className="flex flex-wrap gap-2">
+              <QueueStatPill label="Urgent" value={urgentTaskCount} tone="border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100" />
+              <QueueStatPill label="Open" value={filteredTasks.length} tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
+              <QueueStatPill label="24h+" value={staleTaskCount} tone="border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100" />
+              <QueueStatPill label="Signals" value={signalCount} tone="border-fuchsia-400/30 bg-[rgba(217,70,239,0.12)] text-fuchsia-100" />
+            </div>
+          </summary>
+          <div className="space-y-6 border-t border-[var(--border)] px-6 py-6">
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <SummaryMetric label="Urgent reviews" value={urgentTaskCount} helper="Critical first" tone="border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100" />
+              <SummaryMetric label="Open tasks" value={filteredTasks.length} helper="Decision queue" tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
+              <SummaryMetric label="24h breaches" value={staleTaskCount} helper="Oldest first" tone="border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100" />
+              <SummaryMetric label="Signals" value={signalCount} helper="Needs routing" tone="border-fuchsia-400/30 bg-[rgba(217,70,239,0.12)] text-fuchsia-100" />
+            </section>
 
-        <section className="grid gap-3 rounded-[1.4rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-4 text-sm text-[var(--muted)] shadow-2xl backdrop-blur md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-          <div className="flex flex-wrap gap-x-5 gap-y-2">
-            <span>
-              Active factory: <span className="font-semibold text-[var(--text)]">{activeFactory?.name || user.factory_name}</span>
-            </span>
-            <span>
-              Live queue: <span className="font-semibold text-[var(--text)]">{filteredTasks.length}</span> tasks
-            </span>
-            <span>
-              Last refresh: <span className="font-semibold text-[var(--text)]">{refreshedLabel}</span>
-            </span>
-          </div>
-          <Button variant="outline" className="w-full md:w-auto" onClick={() => void loadInbox()}>
-            {busy ? "Refreshing..." : "Refresh Queue"}
-          </Button>
-        </section>
-
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <SummaryMetric label="Urgent reviews" value={urgentTaskCount} helper="Critical first" tone="border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100" />
-          <SummaryMetric label="Open review tasks" value={filteredTasks.length} helper="Decision queue" tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
-          <SummaryMetric label="24h breaches" value={staleTaskCount} helper="Oldest first" tone="border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100" />
-          <SummaryMetric label="Signals" value={signalCount} helper="Needs routing" tone="border-fuchsia-400/30 bg-[rgba(217,70,239,0.12)] text-fuchsia-100" />
-        </section>
-
-        <section className="grid gap-5 xl:grid-cols-2">
-          <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
-            <CardHeader className="space-y-2">
-              <div className="text-sm text-[var(--muted)]">Backlog mix</div>
-              <CardTitle className="text-xl">By type and urgency</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-2">
+            <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               {([
                 {
                   label: "Attendance",
@@ -2428,24 +1918,14 @@ export default function ApprovalsPage() {
                   <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">{metric.label}</div>
                   <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{metric.total}</div>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs">
-                    <span className="rounded-full border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-3 py-1 text-red-100">
-                      Urgent {metric.urgent}
-                    </span>
-                    <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-amber-100">
-                      8h+ {metric.aging}
-                    </span>
+                    <span className="rounded-full border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-3 py-1 text-red-100">Urgent {metric.urgent}</span>
+                    <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-amber-100">8h+ {metric.aging}</span>
                   </div>
                 </div>
               ))}
-            </CardContent>
-          </Card>
+            </section>
 
-          <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
-            <CardHeader className="space-y-2">
-              <div className="text-sm text-[var(--muted)]">Queue SLA board</div>
-              <CardTitle className="text-xl">8h / 24h breach lanes</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4">
+            <section className="grid gap-4 lg:grid-cols-2">
               <div className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.08)] p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -2456,12 +1936,10 @@ export default function ApprovalsPage() {
                     Urgent: {sla8UrgentCount}
                   </div>
                 </div>
-                <div className="mt-3 text-xs text-[var(--muted)]">
-                  Mix A:{sla8AttendanceCount} | D:{sla8DprCount} | O:{sla8OcrCount} | S:{sla8StockCount}
-                </div>
+                <div className="mt-3 text-xs text-[var(--muted)]">Mix A:{sla8AttendanceCount} | D:{sla8DprCount} | O:{sla8OcrCount} | S:{sla8StockCount}</div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button className="px-3 py-2 text-xs" onClick={() => applyPreset("sla8")}>
-                    Focus 8h+ queue
+                    Focus 8h+
                   </Button>
                 </div>
               </div>
@@ -2476,68 +1954,510 @@ export default function ApprovalsPage() {
                     Urgent: {sla24UrgentCount}
                   </div>
                 </div>
-                <div className="mt-3 text-xs text-[var(--muted)]">
-                  Mix A:{sla24AttendanceCount} | D:{sla24DprCount} | O:{sla24OcrCount} | S:{sla24StockCount}
-                </div>
+                <div className="mt-3 text-xs text-[var(--muted)]">Mix A:{sla24AttendanceCount} | D:{sla24DprCount} | O:{sla24OcrCount} | S:{sla24StockCount}</div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Button className="px-3 py-2 text-xs" onClick={() => applyPreset("stale")}>
-                    Focus 24h+ queue
+                    Focus 24h+
                   </Button>
                   <Button variant="outline" className="px-3 py-2 text-xs" onClick={() => applyPreset("all")}>
-                    Clear SLA filter
+                    Clear SLA
                   </Button>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </section>
-      </div>
+            </section>
+          </div>
+        </details>
 
-      {mobileFiltersOpen ? (
-        <>
-          <button
-            type="button"
-            className="fixed inset-0 z-[51] bg-[rgba(4,8,16,0.78)] lg:hidden"
-            aria-label="Close queue filters"
-            onClick={() => setMobileFiltersOpen(false)}
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Queue filters"
-            className="fixed inset-x-0 bottom-0 z-[52] max-h-[85vh] overflow-y-auto rounded-t-[2rem] border border-[var(--border)] bg-[rgba(17,21,33,0.98)] px-5 pb-[calc(env(safe-area-inset-bottom)+1.5rem)] pt-5 shadow-2xl lg:hidden"
-          >
-            <div className="flex items-start justify-between gap-4 border-b border-[var(--border)]/60 pb-4">
-              <div className="space-y-1">
-                <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Queue filters</div>
-                <div className="text-lg font-semibold text-[var(--text)]">Refine the review list</div>
-                <div className="text-sm text-[var(--muted)]">
-                  Pick a preset or narrow by type, severity, age, and search without pushing the queue below the fold.
+        <section className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.95fr)]">
+          <div className="space-y-6">
+            {/* AUDIT: BUTTON_CLUTTER - move presets, filters, and bulk actions into one tools tray so they stop crowding the review lane. */}
+            <details className="group rounded-[2rem] border border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl">
+              <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
+                <div>
+                  <div className="text-sm text-[var(--muted)]">Review tools</div>
+                  <div className="mt-1 text-xl font-semibold text-[var(--text)]">Presets, filters, and bulk actions</div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <QueueStatPill label="Preset" value={presetLabel(activePreset)} tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
+                  <QueueStatPill label="Filters" value={hasActiveFilters ? activeFilterCount : "none"} />
+                  <QueueStatPill label="Selected" value={selectedTaskCount} />
+                </div>
+              </summary>
+              <div className="space-y-4 border-t border-[var(--border)] px-6 py-6">
+                <div className="grid gap-4 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)]">
+                  <div className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Quick presets</div>
+                        <div className="mt-1 text-sm text-[var(--text)]">Jump into the lane that needs attention without rebuilding filters.</div>
+                      </div>
+                      <QueueStatPill label="Active" value={presetLabel(activePreset)} />
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {(["all", "today", "sla8", "stale", "stock", "ocr"] as QueuePreset[]).map((preset) => (
+                        <Button
+                          key={`preset:${preset}`}
+                          variant={activePreset === preset ? "primary" : "outline"}
+                          className="px-3 py-2 text-xs"
+                          onClick={() => applyPreset(preset)}
+                        >
+                          {presetLabel(preset)}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Bulk actions</div>
+                      <div className="mt-1 text-sm text-[var(--text)]">Use one shared note when the same decision fits multiple selected items.</div>
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <QueueStatPill label="Selected" value={selectedTaskCount} />
+                      <QueueStatPill label="Approve" value={selectedApproveCount} tone="border-emerald-400/30 bg-[rgba(34,197,94,0.12)] text-emerald-100" />
+                      <QueueStatPill label="Reject" value={selectedRejectCount} tone="border-rose-400/30 bg-[rgba(244,63,94,0.12)] text-rose-100" />
+                      {selectedNoDecisionCount > 0 ? (
+                        <QueueStatPill label="Restricted" value={selectedNoDecisionCount} tone="border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100" />
+                      ) : null}
+                    </div>
+                    {selectedNoDecisionCount > 0 ? (
+                      <div className="mt-3 text-xs text-amber-200">{selectedNoDecisionCount} selected item(s) are role-restricted and cannot be actioned.</div>
+                    ) : null}
+                    <div className="mt-4">
+                      <label className="text-sm text-[var(--muted)]">Shared note</label>
+                      <Textarea
+                        rows={2}
+                        value={bulkNote}
+                        onChange={(event) => setBulkNote(event.target.value)}
+                        placeholder="Required for bulk reject and high-risk approvals."
+                      />
+                    </div>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <Button
+                        variant="outline"
+                        className="px-3 py-2 text-xs"
+                        onClick={toggleVisibleActionableSelection}
+                        disabled={!visibleActionableTaskKeys.length}
+                      >
+                        {allVisibleActionableSelected ? "Unselect visible" : "Select visible"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="px-3 py-2 text-xs"
+                        onClick={() => setSelectedTaskKeys([])}
+                        disabled={!selectedTaskCount}
+                      >
+                        Clear set
+                      </Button>
+                      <Button
+                        className="px-4 py-2 text-xs"
+                        disabled={bulkBusy || !selectedApproveCount}
+                        onClick={() => openBulkDecisionConfirm("approve")}
+                      >
+                        {bulkApproveBusy ? "Approving..." : "Approve selected"}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="px-4 py-2 text-xs"
+                        disabled={bulkBusy || !selectedRejectCount}
+                        onClick={() => openBulkDecisionConfirm("reject")}
+                      >
+                        {bulkRejectBusy ? "Rejecting..." : "Reject selected"}
+                      </Button>
+                    </div>
+                    <div className={cn("mt-3 text-xs", bulkApproveReasonMissing || bulkRejectReasonMissing ? "text-amber-200" : "text-[var(--muted)]")}>
+                      {bulkRejectReasonMissing
+                        ? "Bulk rejection is blocked until a reason note is added."
+                        : bulkApproveReasonMissing
+                          ? "High-risk approvals are selected, so add one shared review note before confirming."
+                          : "Bulk actions are ready when the selected items share the same decision context."}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Filters</div>
+                      <div className="mt-1 text-sm text-[var(--text)]">Refine the review lane by type, severity, age, or search.</div>
+                    </div>
+                    {hasActiveFilters ? (
+                      <Button variant="ghost" className="px-3 py-2 text-xs" onClick={() => applyPreset("all")}>
+                        Reset
+                      </Button>
+                    ) : null}
+                  </div>
+                  <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                    <div>
+                      <label className="text-sm text-[var(--muted)]">Task type</label>
+                      <Select value={taskFilter} onChange={(event) => setTaskFilter(event.target.value as TaskFilter)}>
+                        <option value="all">All review work</option>
+                        <option value="attendance">Attendance review</option>
+                        <option value="entry">DPR entries</option>
+                        <option value="ocr">OCR review</option>
+                        <option value="reconciliation">Stock review</option>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm text-[var(--muted)]">Severity</label>
+                      <Select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value as SeverityFilter)}>
+                        <option value="all">All severities</option>
+                        <option value="critical">Critical</option>
+                        <option value="high">High</option>
+                        <option value="warning">Warning</option>
+                        <option value="info">Info</option>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm text-[var(--muted)]">Queue age</label>
+                      <Select value={ageFilter} onChange={(event) => setAgeFilter(event.target.value as AgeFilter)}>
+                        <option value="all">All ages</option>
+                        <option value="sla8">8h+ waiting (SLA)</option>
+                        <option value="stale">24h+ waiting</option>
+                        <option value="aging">8h to 24h waiting</option>
+                        <option value="fresh">Fresh</option>
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm text-[var(--muted)]">Search</label>
+                      <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search review work or signals" />
+                    </div>
+                  </div>
                 </div>
               </div>
-              <Button variant="ghost" className="px-3 py-2 text-xs" onClick={() => setMobileFiltersOpen(false)}>
-                Close
-              </Button>
-            </div>
-            <div className="pt-4">
-              <QueueFilterControls
-                activePreset={activePreset}
-                applyPreset={applyPreset}
-                taskFilter={taskFilter}
-                setTaskFilter={setTaskFilter}
-                severityFilter={severityFilter}
-                setSeverityFilter={setSeverityFilter}
-                ageFilter={ageFilter}
-                setAgeFilter={setAgeFilter}
-                search={search}
-                setSearch={setSearch}
-                mobile
-                onDone={() => setMobileFiltersOpen(false)}
+            </details>
+
+            {/* AUDIT: FLOW_BROKEN - feature the next review item before the wider backlog so the first move is obvious. */}
+            <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+              <CardHeader className="space-y-4">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm text-[var(--muted)]">Review next</div>
+                    <CardTitle className="text-xl">Start with the top decision</CardTitle>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <QueueStatPill label="Open" value={filteredTasks.length} tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
+                    <QueueStatPill
+                      label={restrictedTaskCount ? "Escalation" : "Priority"}
+                      value={restrictedTaskCount || "risk-ranked"}
+                      tone={
+                        restrictedTaskCount
+                          ? "border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100"
+                          : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] text-[var(--text)]"
+                      }
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <QueueStatPill label="Attendance" value={attendanceTaskCount} tone="border-violet-400/30 bg-[rgba(167,139,250,0.12)] text-violet-100" />
+                  <QueueStatPill label="DPR" value={dprTaskCount} tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
+                  <QueueStatPill label="OCR" value={ocrTaskCount} tone="border-cyan-400/30 bg-[rgba(34,211,238,0.12)] text-cyan-100" />
+                  <QueueStatPill label="Stock" value={stockTaskCount} tone="border-orange-400/30 bg-[rgba(249,115,22,0.12)] text-orange-100" />
+                </div>
+                <div className="text-sm text-[var(--muted)]">
+                  {restrictedTaskCount
+                    ? `${restrictedTaskCount} item(s) require escalation by role.`
+                    : "Highest risk and oldest items stay at the top."}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4 px-6 pb-6">
+                {nextReviewItem ? (
+                  <div className="rounded-3xl border border-[var(--accent)]/30 bg-[rgba(17,35,37,0.9)] px-5 py-5">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", typeClasses(nextReviewItem.kind))}>
+                            {nextReviewItem.typeLabel}
+                          </span>
+                          <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityClasses(nextReviewItem.severity))}>
+                            {nextReviewItem.severity}
+                          </span>
+                          <span className={cn("text-xs font-semibold uppercase tracking-[0.16em]", ageClasses(nextReviewItem.ageBand))}>
+                            {nextReviewItem.ageLabel}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="text-2xl font-semibold text-[var(--text)]">{nextReviewItem.title}</div>
+                          <div className="mt-2 text-sm text-[var(--muted)]">{nextReviewItem.headline}</div>
+                        </div>
+                        <div className="max-w-3xl text-sm leading-6 text-[var(--text)]">{nextReviewItem.description}</div>
+                        <div className="flex flex-wrap gap-2 text-xs">
+                          <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[var(--muted)]">{latestActivityLabel(nextReviewItem)}</span>
+                          <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[var(--muted)]">{nextReviewItem.statusLabel}</span>
+                          {!nextReviewItem.canApprove && !nextReviewItem.canReject ? (
+                            <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-amber-100">Escalation needed</span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-start gap-3 sm:items-end">
+                        <label className="flex items-center gap-2 text-xs text-[var(--muted)]">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-[var(--border)] bg-transparent"
+                            checked={selectedTaskKeySet.has(nextReviewItem.key)}
+                            disabled={!nextReviewItem.canApprove && !nextReviewItem.canReject}
+                            onChange={() => toggleTaskSelection(nextReviewItem.key)}
+                            aria-label={`Select ${nextReviewItem.title}`}
+                          />
+                          Select
+                        </label>
+                        <Button
+                          className="px-4 py-2 text-xs"
+                          onClick={() => openItem(nextReviewItem.key, typeof window !== "undefined" && window.innerWidth < 1024)}
+                        >
+                          Review next
+                        </Button>
+                        <Link href={nextReviewItem.openHref}>
+                          <Button variant="outline" className="px-4 py-2 text-xs">
+                            {nextReviewItem.openLabel}
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <EmptyState
+                    eyebrow="Decision queue"
+                    title={hasActiveFilters ? "No tasks match these filters" : "No review tasks are waiting"}
+                    body={
+                      hasActiveFilters
+                        ? "Try changing the type, severity, age, or search filters to find another review item."
+                        : "The decision queue is clear right now. Attendance review, OCR review, and stock review work will appear here as soon as they need someone."
+                    }
+                  />
+                )}
+
+                {nextReviewItem ? (
+                  <details className="group rounded-3xl border border-[var(--border)] bg-[var(--card-strong)]">
+                    <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-5 py-4">
+                      <div>
+                        <div className="text-sm text-[var(--muted)]">Backlog</div>
+                        <div className="mt-1 text-lg font-semibold text-[var(--text)]">More review tasks</div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <QueueStatPill label="More" value={remainingFilteredTasks.length} />
+                        {remainingFilteredTasks.length ? (
+                          <QueueStatPill
+                            label="Escalation"
+                            value={remainingFilteredTasks.filter((item) => !item.canApprove && !item.canReject).length}
+                            tone="border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100"
+                          />
+                        ) : null}
+                      </div>
+                    </summary>
+                    <div className="border-t border-[var(--border)]">
+                      {remainingFilteredTasks.length ? (
+                        <>
+                          <div className="hidden lg:block">
+                            <div className="overflow-x-auto">
+                              <table className="min-w-full border-separate border-spacing-0">
+                                <thead>
+                                  <tr className="text-left text-xs uppercase tracking-[0.14em] text-[var(--muted)]">
+                                    <th className="px-6 py-3">
+                                      <input
+                                        type="checkbox"
+                                        className="h-4 w-4 rounded border-[var(--border)] bg-transparent"
+                                        checked={allRemainingActionableSelected}
+                                        disabled={!remainingVisibleActionableTaskKeys.length}
+                                        onChange={toggleRemainingActionableSelection}
+                                        aria-label="Select visible backlog tasks"
+                                      />
+                                    </th>
+                                    <th className="px-6 py-3">Priority</th>
+                                    <th className="px-4 py-3">Task</th>
+                                    <th className="px-4 py-3">Context</th>
+                                    <th className="px-4 py-3">Age</th>
+                                    <th className="px-6 py-3 text-right">Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {remainingFilteredTasks.map((item) => {
+                                    const isActive = item.key === selectedKey;
+                                    const isSelected = selectedTaskKeySet.has(item.key);
+                                    const canBulkSelect = item.canApprove || item.canReject;
+                                    return (
+                                      <tr
+                                        key={item.key}
+                                        className={cn(
+                                          "cursor-pointer border-t border-[var(--border)]/60 text-sm transition hover:bg-[rgba(255,255,255,0.02)]",
+                                          isActive ? "bg-[rgba(34,211,238,0.08)]" : "bg-transparent",
+                                        )}
+                                        onClick={() => openItem(item.key)}
+                                      >
+                                        <td className="px-6 py-4 align-top">
+                                          <input
+                                            type="checkbox"
+                                            className="h-4 w-4 rounded border-[var(--border)] bg-transparent"
+                                            checked={isSelected}
+                                            disabled={!canBulkSelect}
+                                            onChange={() => toggleTaskSelection(item.key)}
+                                            onClick={(event) => event.stopPropagation()}
+                                            aria-label={`Select ${item.title}`}
+                                          />
+                                        </td>
+                                        <td className="px-6 py-4 align-top">
+                                          <div className="flex flex-col gap-2">
+                                            <span className={cn("inline-flex w-fit rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityClasses(item.severity))}>{item.severity}</span>
+                                            <span className={cn("inline-flex w-fit rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", typeClasses(item.kind))}>{item.typeLabel}</span>
+                                          </div>
+                                        </td>
+                                        <td className="px-4 py-4 align-top">
+                                          <div className="font-semibold text-[var(--text)]">{item.title}</div>
+                                          <div className="mt-1 text-xs text-[var(--muted)]">{item.headline}</div>
+                                          <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                                            <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[var(--muted)]">{latestActivityLabel(item)}</span>
+                                            {!item.canApprove && !item.canReject ? (
+                                              <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-amber-100">Escalation needed</span>
+                                            ) : null}
+                                          </div>
+                                        </td>
+                                        <td className="px-4 py-4 align-top">
+                                          <div className="max-w-[21rem] text-sm leading-6 text-[var(--text)]">{item.description}</div>
+                                          <div className="mt-2 flex flex-wrap gap-2 text-xs text-[var(--muted)]">
+                                            <span>{item.statusLabel}</span>
+                                            <span>{item.canApprove || item.canReject ? "Decision ready" : "Needs higher role"}</span>
+                                          </div>
+                                        </td>
+                                        <td className="px-4 py-4 align-top">
+                                          <div className={cn("text-sm font-semibold", ageClasses(item.ageBand))}>{item.ageLabel}</div>
+                                          <div className="mt-1 text-xs text-[var(--muted)]">{formatDateTime(item.timestamp)}</div>
+                                        </td>
+                                        <td className="px-6 py-4 text-right align-top">
+                                          <Button
+                                            className="px-4 py-2 text-xs"
+                                            onClick={(event) => {
+                                              event.stopPropagation();
+                                              openItem(item.key);
+                                            }}
+                                          >
+                                            Review
+                                          </Button>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+
+                          <div className="space-y-4 p-5 lg:hidden">
+                            {remainingFilteredTasks.map((item) => (
+                              <Card key={item.key} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+                                <CardContent className="space-y-4 px-5 py-5">
+                                  <div className="flex items-start justify-between gap-3">
+                                    <div>
+                                      <div className="flex flex-wrap items-center gap-2">
+                                        <span className={cn("inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", typeClasses(item.kind))}>{item.typeLabel}</span>
+                                        <span className={cn("inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityClasses(item.severity))}>{item.severity}</span>
+                                      </div>
+                                      <div className="mt-3 text-lg font-semibold text-[var(--text)]">{item.title}</div>
+                                      <div className="mt-1 text-sm text-[var(--muted)]">{item.headline}</div>
+                                    </div>
+                                    <div className="flex flex-col items-end gap-2">
+                                      <input
+                                        type="checkbox"
+                                        className="h-4 w-4 rounded border-[var(--border)] bg-transparent"
+                                        checked={selectedTaskKeySet.has(item.key)}
+                                        disabled={!item.canApprove && !item.canReject}
+                                        onChange={() => toggleTaskSelection(item.key)}
+                                        aria-label={`Select ${item.title}`}
+                                      />
+                                      <div className={cn("text-xs font-semibold uppercase tracking-[0.14em]", ageClasses(item.ageBand))}>{item.ageLabel}</div>
+                                    </div>
+                                  </div>
+                                  <div className="text-sm leading-6 text-[var(--text)]">{item.description}</div>
+                                  <div className="flex flex-wrap gap-2 text-xs">
+                                    <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[var(--muted)]">{latestActivityLabel(item)}</span>
+                                    {!item.canApprove && !item.canReject ? (
+                                      <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-amber-100">Escalation needed</span>
+                                    ) : null}
+                                  </div>
+                                  <div className="flex flex-wrap gap-3">
+                                    <Button className="px-4 py-2 text-xs" onClick={() => openItem(item.key, true)}>
+                                      Review
+                                    </Button>
+                                    <Link href={item.openHref}>
+                                      <Button variant="outline" className="px-4 py-2 text-xs">
+                                        {item.openLabel}
+                                      </Button>
+                                    </Link>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="px-5 py-5 text-sm text-[var(--muted)]">Only the featured task is waiting right now.</div>
+                      )}
+                    </div>
+                  </details>
+                ) : null}
+              </CardContent>
+            </Card>
+
+            {/* AUDIT: BUTTON_CLUTTER - move signal routing behind a secondary reveal so review decisions stay primary. */}
+            <details className="group rounded-[2rem] border border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl">
+              <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
+                <div>
+                  <div className="text-sm text-[var(--muted)]">Signals</div>
+                  <div className="mt-1 text-xl font-semibold text-[var(--text)]">Routing and acknowledgements</div>
+                </div>
+                <QueueStatPill label="Open" value={signalCount} tone="border-fuchsia-400/30 bg-[rgba(217,70,239,0.12)] text-fuchsia-100" />
+              </summary>
+              <div className="space-y-3 border-t border-[var(--border)] px-6 py-6">
+                {filteredSignals.length ? (
+                  filteredSignals.map((item) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      className={cn(
+                        "w-full rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-left transition hover:border-[var(--accent)]/30 hover:bg-[rgba(255,255,255,0.03)]",
+                        selectedKey === item.key ? "border-[var(--accent)]/50 bg-[rgba(34,211,238,0.08)]" : "",
+                      )}
+                      onClick={() => openItem(item.key, typeof window !== "undefined" && window.innerWidth < 1024)}
+                    >
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", typeClasses(item.kind))}>{item.typeLabel}</span>
+                            <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityClasses(item.severity))}>{item.severity}</span>
+                          </div>
+                          <div className="text-sm font-semibold text-[var(--text)]">{item.title}</div>
+                          <div className="text-xs text-[var(--muted)]">{item.headline}</div>
+                          <div className="text-xs text-[var(--muted)]">{latestActivityLabel(item)}</div>
+                        </div>
+                        <div className={cn("text-xs font-semibold uppercase tracking-[0.14em]", ageClasses(item.ageBand))}>{item.ageLabel}</div>
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <EmptyState
+                    eyebrow="Signals"
+                    title="No active signals"
+                    body="Unread alerts and steel anomaly signals will appear here when someone needs to route or acknowledge them."
+                  />
+                )}
+              </div>
+            </details>
+          </div>
+
+          <div className="hidden lg:block">
+            <div className="sticky top-24">
+              <QueueDetailPanel
+                item={selectedItem}
+                note={selectedNote}
+                onNoteChange={updateSelectedNote}
+                onApprove={handleApproveSelected}
+                onReject={handleRejectSelected}
+                onSignalAction={handleSignalAction}
+                busyKey={actionKey}
               />
             </div>
           </div>
-        </>
-      ) : null}
+        </section>
+      </div>
 
       {bulkConfirmDecision ? (
         <div className="fixed inset-0 z-[55] flex items-center justify-center bg-[rgba(5,10,18,0.84)] px-4 py-4">
@@ -2625,12 +2545,7 @@ export default function ApprovalsPage() {
       ) : null}
 
       {mobileDetailOpen ? (
-        <div
-          className={cn(
-            "fixed inset-0 z-50 overflow-y-auto bg-[rgba(4,8,16,0.96)] px-4 py-4",
-            showDetailPanel ? "lg:hidden" : "",
-          )}
-        >
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(4,8,16,0.96)] px-4 py-4 lg:hidden">
           <QueueDetailPanel
             item={selectedItem}
             note={selectedNote}

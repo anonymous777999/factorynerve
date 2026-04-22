@@ -601,16 +601,16 @@ export function buildSteelDashboardData(params: {
           trendLabel: "vs previous window",
         },
       },
-      productionLoss,
-      inventoryLevels,
-      topLossBatches: topLossBatches.filter((item) => item.lossKg > 0),
-      dispatchTrend,
-      revenueTrend,
+      productionLoss: productionLoss.some((item) => item.production || item.loss) ? productionLoss : INDUSTRIAL_DASHBOARD_DATA[range].productionLoss,
+      inventoryLevels: inventoryLevels.some((item) => item.valueKg > 0) ? inventoryLevels : INDUSTRIAL_DASHBOARD_DATA[range].inventoryLevels,
+      topLossBatches: topLossBatches.length ? topLossBatches : INDUSTRIAL_DASHBOARD_DATA[range].topLossBatches,
+      dispatchTrend: dispatchTrend.some((item) => item.valueKg > 0) ? dispatchTrend : INDUSTRIAL_DASHBOARD_DATA[range].dispatchTrend,
+      revenueTrend: revenueTrend.some((item) => item.valueInr > 0) ? revenueTrend : INDUSTRIAL_DASHBOARD_DATA[range].revenueTrend,
       filterPanels: STEEL_FILTERS,
       donutSummary: {
         title: "Loss Severity Mix",
         subtitle: "Ranked steel anomaly split across the active control window.",
-        series: severityMix,
+        series: severityMix.some((item) => item.value > 0) ? severityMix : INDUSTRIAL_DASHBOARD_DATA[range].donutSummary.series,
       },
       kpiRows:
         currentOutput || currentLoss || currentRevenue || currentDispatchWeight
@@ -658,7 +658,7 @@ export function buildSteelDashboardData(params: {
                   status: Number(overview?.batch_metrics.average_loss_percent || 0) <= 5 ? "up" : "down",
                 },
               ]
-            : [],
+            : INDUSTRIAL_DASHBOARD_DATA[range].kpiRows,
     };
   };
 

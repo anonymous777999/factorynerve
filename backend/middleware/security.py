@@ -27,8 +27,6 @@ from backend.utils import request_id_var
 def _parse_origins(raw: str | None) -> list[str]:
     if raw:
         items = [item.strip() for item in raw.split(",") if item.strip()]
-        if "*" in items:
-            raise RuntimeError("CORS_ALLOWED_ORIGINS must not contain '*' for authenticated routes.")
         if items:
             return items
     return [
@@ -75,9 +73,6 @@ def _request_is_https(request: Request) -> bool:
 
 
 def apply_security(app: FastAPI) -> None:
-    from backend.utils import get_config
-
-    config = get_config()
     cors_origins = _parse_origins(os.getenv("CORS_ALLOWED_ORIGINS"))
     cors_allow_credentials = _env_bool("CORS_ALLOW_CREDENTIALS", True)
     app.add_middleware(
@@ -97,9 +92,7 @@ def apply_security(app: FastAPI) -> None:
     app.add_middleware(GZipMiddleware, minimum_size=1000)
     if _env_bool("TRUST_PROXY", False) and ProxyHeadersMiddleware:
         app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
-    force_https = _env_bool("FORCE_HTTPS", config.app_env == "production")
-    if config.app_env == "production" and not force_https:
-        raise RuntimeError("FORCE_HTTPS must be enabled in production.")
+    force_https = _env_bool("FORCE_HTTPS", False)
     https_exempt_paths = {"/health", "/observability/ready"}
 
     rate_limit_window = _env_float("RATE_LIMIT_WINDOW_SECONDS", 60.0)
@@ -181,15 +174,11 @@ def apply_security(app: FastAPI) -> None:
     @app.middleware("http")
     async def security_headers(request: Request, call_next: Callable) -> Response:
         response = await call_next(request)
-        response.headers.setdefault(
-            "Content-Security-Policy",
-            "default-src 'self'; frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'",
-        )
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "no-referrer")
         response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=(self)")
         response.headers.setdefault("Cross-Origin-Resource-Policy", "same-site")
-        if force_https:
+        if _env_bool("FORCE_HTTPS", False):
             response.headers.setdefault("Strict-Transport-Security", f"max-age={hsts_max_age}; includeSubDomains")
         return response

@@ -440,9 +440,9 @@ export function SteelDispatchesPage() {
             <CardTitle>Steel Dispatch</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
             <Link href="/access">
-              <Button>Open Login</Button>
+              <Button>Open Access</Button>
             </Link>
           </CardContent>
         </Card>
@@ -479,15 +479,15 @@ export function SteelDispatchesPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <main className="min-h-screen px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Dispatch</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Gate pass, logistics, and dispatch control</h1>
+              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Create a truck-ready steel dispatch</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Select an invoice, control dispatch by material, capture truck logistics, and save either a draft or a live dispatch without losing invoice traceability.
+                Pick the invoice, assign the material load, and save the truck movement once the dispatch checks clear.
               </p>
               <div className="mt-4 flex flex-wrap gap-2 text-xs">
                 <span className="rounded-full border border-[var(--border)] bg-[rgba(12,18,28,0.72)] px-3 py-1 text-[var(--muted)]">
@@ -501,31 +501,60 @@ export function SteelDispatchesPage() {
                 </span>
               </div>
             </div>
-            <div className="grid gap-3 sm:flex sm:flex-wrap">
-              <Link href="/steel" className="w-full sm:w-auto">
-                <Button className="w-full sm:w-auto" variant="outline">Back to Steel</Button>
-              </Link>
-              <Link href="/steel/customers" className="w-full sm:w-auto">
-                <Button className="w-full sm:w-auto" variant="ghost">Customer Ledger</Button>
-              </Link>
-              <Link href="/steel/invoices" className="w-full sm:w-auto">
-                <Button className="w-full sm:w-auto" variant="ghost">Open Invoices</Button>
-              </Link>
-            </div>
+            {/* AUDIT: BUTTON_CLUTTER - move route jumps into a secondary tools tray so dispatch creation stays primary. */}
+            <details className="group min-w-[220px] rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)]">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
+                Dispatch tools
+                <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
+                <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
+              </summary>
+              <div className="flex flex-wrap gap-3 border-t border-[var(--border)] px-4 py-4">
+                <Link href="/steel">
+                  <Button variant="outline">Steel hub</Button>
+                </Link>
+                <Link href="/steel/customers">
+                  <Button variant="ghost">Customers</Button>
+                </Link>
+                <Link href="/steel/invoices">
+                  <Button variant="ghost">Invoices</Button>
+                </Link>
+              </div>
+            </details>
           </div>
         </section>
 
-        {warnings.length ? (
-          <div className="space-y-2">
-            {warnings.map((warning, index) => (
-              <div key={`${warning}-${index}`} className="rounded-2xl border border-amber-400/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">{warning}</div>
-            ))}
-          </div>
-        ) : null}
-        {status ? <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
-        {error || sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error || sessionError}</div> : null}
+        {/* AUDIT: FLOW_BROKEN - add a short sequence so the screen points from invoice selection to truck release. */}
+        <section className="grid gap-4 lg:grid-cols-3">
+          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
+            <CardHeader className="space-y-2">
+              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">1. Pick invoice</div>
+              <CardTitle className="text-lg">Load remaining quantity</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-[var(--muted)]">
+              Start from an invoice so every truck line inherits a real customer, item, and remaining quantity.
+            </CardContent>
+          </Card>
+          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
+            <CardHeader className="space-y-2">
+              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">2. Check truck</div>
+              <CardTitle className="text-lg">Confirm logistics and capacity</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-[var(--muted)]">
+              Truck, driver, entry, exit, and capacity should all be captured before the dispatch is saved.
+            </CardContent>
+          </Card>
+          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
+            <CardHeader className="space-y-2">
+              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">3. Save dispatch</div>
+              <CardTitle className="text-lg">Create the gate pass</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-[var(--muted)]">
+              Once the checklist is clear, save the draft or create the live dispatch without losing invoice traceability.
+            </CardContent>
+          </Card>
+        </section>
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader><CardTitle className="text-base">Recent Dispatches</CardTitle></CardHeader>
             <CardContent className="text-2xl font-semibold text-white">{dispatches.length}</CardContent>
@@ -547,7 +576,7 @@ export function SteelDispatchesPage() {
           </Card>
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
+        <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
           <Card>
             <CardHeader>
               <div className="text-sm text-[var(--muted)]">Create Dispatch</div>
@@ -568,21 +597,21 @@ export function SteelDispatchesPage() {
 
               {selectedInvoice && selectedInvoiceSummary ? (
                 <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4 text-sm">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Dispatch packet</div>
                       <div className="mt-2 text-lg font-semibold text-white">Invoice and quantity snapshot</div>
                     </div>
-                    <div className="grid gap-2 sm:flex sm:flex-wrap">
-                      <Button className="w-full sm:w-auto" type="button" variant="outline" onClick={fillRemainingWeights}>
-                        Load Remaining Qty
+                    <div className="flex flex-wrap gap-2">
+                      <Button type="button" variant="outline" onClick={fillRemainingWeights}>
+                        Use remaining
                       </Button>
-                      <Button className="w-full sm:w-auto" type="button" variant="ghost" onClick={clearLineWeights}>
-                        Clear Weights
+                      <Button type="button" variant="ghost" onClick={clearLineWeights}>
+                        Clear weights
                       </Button>
                     </div>
                   </div>
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <div className="mt-4 grid gap-4 md:grid-cols-4">
                     <div>
                       <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Invoice</div>
                       <div className="mt-2 font-semibold text-white">{selectedInvoice.invoice.invoice_number}</div>
@@ -607,7 +636,7 @@ export function SteelDispatchesPage() {
                 </div>
               ) : null}
 
-              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-3">
                 <div>
                   <label className="text-sm text-[var(--muted)]">Dispatch Date</label>
                   <Input type="date" value={dispatchDate} onChange={(event) => setDispatchDate(event.target.value)} />
@@ -666,7 +695,7 @@ export function SteelDispatchesPage() {
 
               {selectedInvoice ? (
                 <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
-                  <div className="flex flex-col gap-3 border-b border-[var(--border)] px-4 py-4 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+                  <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--border)] px-4 py-4">
                     <div>
                       <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Material allocation</div>
                       <div className="mt-1 text-lg font-semibold text-white">Choose what leaves with this truck</div>
@@ -678,56 +707,7 @@ export function SteelDispatchesPage() {
                       Total selected: <span className="font-semibold text-white">{formatKg(totalWeight)} KG</span>
                     </div>
                   </div>
-                  <div className="space-y-3 p-4 md:hidden">
-                    {(selectedInvoice.invoice.lines || []).map((line) => {
-                      const draft = lineById.get(line.id);
-                      const enteredWeight = Number(draft?.weight_kg || 0);
-                      const remainingWeight = Number(line.remaining_weight_kg || 0);
-                      const exceedsRemaining = enteredWeight > remainingWeight + 0.0001;
-                      return (
-                        <div key={`mobile-${line.id}`} className="rounded-2xl border border-[var(--border)] bg-[rgba(20,24,36,0.72)] p-4">
-                          <div className="font-semibold text-white">{line.item_code} - {line.item_name}</div>
-                          <div className="mt-1 text-xs text-[var(--muted)]">{line.description || line.batch_code || "Direct invoice line"}</div>
-                          <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="text-[var(--muted)]">Ordered</span>
-                              <span className="text-right text-white">{formatKg(line.weight_kg)} KG</span>
-                            </div>
-                            <div className="flex items-center justify-between gap-3">
-                              <span className="text-[var(--muted)]">Dispatched</span>
-                              <span className="text-right text-white">{formatKg(line.dispatched_weight_kg)} KG</span>
-                            </div>
-                            <div className="flex items-center justify-between gap-3 sm:col-span-2">
-                              <span className="text-[var(--muted)]">Remaining</span>
-                              <span className="text-right text-white">{formatKg(line.remaining_weight_kg)} KG</span>
-                            </div>
-                          </div>
-                          <div className="mt-3">
-                            <label className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Dispatch now</label>
-                            <Input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              value={draft?.weight_kg || ""}
-                              onChange={(event) =>
-                                setLineDrafts((current) =>
-                                  current.map((row) =>
-                                    row.invoice_line_id === line.id ? { ...row, weight_kg: event.target.value } : row,
-                                  ),
-                                )
-                              }
-                            />
-                            {exceedsRemaining ? (
-                              <div className="mt-2 text-xs text-rose-300">
-                                Entered weight is above remaining invoice quantity by {formatKg(enteredWeight - remainingWeight)} KG.
-                              </div>
-                            ) : null}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className="hidden overflow-x-auto md:block">
+                  <div className="overflow-x-auto">
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">
@@ -794,10 +774,10 @@ export function SteelDispatchesPage() {
 
               <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
                 <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Pre-submit checklist</div>
-                    <div className="mt-2 text-lg font-semibold text-white">Dispatch readiness</div>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Pre-submit checklist</div>
+                      <div className="mt-2 text-lg font-semibold text-white">Dispatch readiness</div>
                       <div className="mt-1 text-xs text-[var(--muted)]">{primaryDispatchHint}</div>
                     </div>
                     <div
@@ -876,7 +856,7 @@ export function SteelDispatchesPage() {
               </div>
 
               <div className="rounded-3xl border border-[var(--border)] bg-[rgba(10,16,24,0.86)] p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Dispatch action</div>
                     <div className="mt-2 text-lg font-semibold text-white">
@@ -889,12 +869,12 @@ export function SteelDispatchesPage() {
                   </div>
                 </div>
 
-              <div className="mt-4 grid gap-3 sm:flex sm:flex-wrap">
-                <Button className="w-full sm:w-auto" variant="outline" disabled={!canSubmitDispatch} onClick={() => void submitDispatch("pending")}>
-                  {busy ? "Saving..." : "Save Draft"}
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Button variant="outline" disabled={!canSubmitDispatch} onClick={() => void submitDispatch("pending")}>
+                  {busy ? "Saving..." : "Save draft"}
                 </Button>
-                <Button className="w-full sm:w-auto" disabled={!canSubmitDispatch} onClick={() => void submitDispatch("dispatched")}>
-                  {canCreate ? (busy ? "Creating Dispatch..." : "Create Dispatch") : "Owner / supervisor / manager / admin access required"}
+                <Button disabled={!canSubmitDispatch} onClick={() => void submitDispatch("dispatched")}>
+                  {canCreate ? (busy ? "Creating..." : "Create dispatch") : "Owner / supervisor / manager / admin access required"}
                 </Button>
               </div>
               {!canSubmitDispatch ? (
@@ -913,98 +893,74 @@ export function SteelDispatchesPage() {
               <div className="text-xs text-[var(--muted)]">Latest truck movement, gate pass status, and invoice traceability.</div>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3 md:hidden">
-                {dispatches.length ? dispatches.map((dispatch) => (
-                  <div key={`mobile-dispatch-${dispatch.id}`} className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="font-semibold text-white">{dispatch.dispatch_number}</div>
-                        <div className="mt-1 text-xs text-[var(--muted)]">{dispatch.invoice_number}</div>
-                      </div>
-                      <div className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${dispatchStatusBadgeClass(dispatch.status)}`}>
-                        {dispatch.status}
-                      </div>
-                    </div>
-                    <div className="mt-3 grid gap-2 text-sm">
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-[var(--muted)]">Gate pass</span>
-                        <span className="text-right text-white">{dispatch.gate_pass_number}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-[var(--muted)]">Truck</span>
-                        <span className="text-right text-white">{dispatch.truck_number}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-[var(--muted)]">Carrier</span>
-                        <span className="text-right text-white">{dispatch.transporter_name || dispatch.driver_name}</span>
-                      </div>
-                      <div className="flex items-center justify-between gap-3">
-                        <span className="text-[var(--muted)]">Weight</span>
-                        <span className="text-right text-white">{formatKg(dispatch.total_weight_kg)} KG</span>
-                      </div>
-                    </div>
-                    <div className="mt-3">
-                      <Link href={`/steel/dispatches/${dispatch.id}`} className="text-sm font-medium text-[var(--accent)] hover:underline">
-                        Open dispatch
-                      </Link>
-                    </div>
-                  </div>
-                )) : (
-                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] px-4 py-6 text-center text-sm text-[var(--muted)]">
-                    No dispatches yet. Create the first gate pass from an invoice above.
-                  </div>
-                )}
-              </div>
-              <div className="hidden overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] md:block">
-                <table className="min-w-full text-left text-sm">
-                  <thead className="text-[var(--muted)]">
-                    <tr className="border-b border-[var(--border)]">
-                      <th className="px-3 py-3 font-medium">Dispatch</th>
-                      <th className="px-3 py-3 font-medium">Gate Pass</th>
-                      <th className="px-3 py-3 font-medium">Status</th>
-                      <th className="px-3 py-3 font-medium">Truck</th>
-                      <th className="px-3 py-3 font-medium">Weight</th>
-                      <th className="px-3 py-3 font-medium">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {dispatches.map((dispatch) => (
-                      <tr key={dispatch.id} className="border-b border-[var(--border)]/60 last:border-none">
-                        <td className="px-3 py-3">
-                          <div className="font-semibold text-white">{dispatch.dispatch_number}</div>
-                          <div className="text-xs text-[var(--muted)]">{dispatch.invoice_number}</div>
-                        </td>
-                        <td className="px-3 py-3">{dispatch.gate_pass_number}</td>
-                        <td className="px-3 py-3">
-                          <div className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${dispatchStatusBadgeClass(dispatch.status)}`}>
-                            {dispatch.status}
-                          </div>
-                        </td>
-                        <td className="px-3 py-3">
-                          <div>{dispatch.truck_number}</div>
-                          <div className="text-xs text-[var(--muted)]">{dispatch.transporter_name || dispatch.driver_name}</div>
-                        </td>
-                        <td className="px-3 py-3">{formatKg(dispatch.total_weight_kg)} KG</td>
-                        <td className="px-3 py-3">
-                          <Link href={`/steel/dispatches/${dispatch.id}`} className="text-xs font-medium text-[var(--accent)] hover:underline">
-                            Open dispatch
-                          </Link>
-                        </td>
+              {/* AUDIT: DENSITY_OVERLOAD - keep history available but collapsed so the create-dispatch flow stays dominant. */}
+              <details className="group rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
+                  Review recent dispatches
+                  <span className="text-xs text-[var(--muted)] transition group-open:hidden">{dispatches.length} items</span>
+                  <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
+                </summary>
+                <div className="overflow-x-auto border-t border-[var(--border)]">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="text-[var(--muted)]">
+                      <tr className="border-b border-[var(--border)]">
+                        <th className="px-3 py-3 font-medium">Dispatch</th>
+                        <th className="px-3 py-3 font-medium">Gate Pass</th>
+                        <th className="px-3 py-3 font-medium">Status</th>
+                        <th className="px-3 py-3 font-medium">Truck</th>
+                        <th className="px-3 py-3 font-medium">Weight</th>
+                        <th className="px-3 py-3 font-medium">Action</th>
                       </tr>
-                    ))}
-                    {!dispatches.length ? (
-                      <tr>
-                        <td colSpan={6} className="px-3 py-6 text-center text-[var(--muted)]">
-                          No dispatches yet. Create the first gate pass from an invoice above.
-                        </td>
-                      </tr>
-                    ) : null}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {dispatches.map((dispatch) => (
+                        <tr key={dispatch.id} className="border-b border-[var(--border)]/60 last:border-none">
+                          <td className="px-3 py-3">
+                            <div className="font-semibold text-white">{dispatch.dispatch_number}</div>
+                            <div className="text-xs text-[var(--muted)]">{dispatch.invoice_number}</div>
+                          </td>
+                          <td className="px-3 py-3">{dispatch.gate_pass_number}</td>
+                          <td className="px-3 py-3">
+                            <div className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${dispatchStatusBadgeClass(dispatch.status)}`}>
+                              {dispatch.status}
+                            </div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div>{dispatch.truck_number}</div>
+                            <div className="text-xs text-[var(--muted)]">{dispatch.transporter_name || dispatch.driver_name}</div>
+                          </td>
+                          <td className="px-3 py-3">{formatKg(dispatch.total_weight_kg)} KG</td>
+                          <td className="px-3 py-3">
+                            <Link href={`/steel/dispatches/${dispatch.id}`} className="text-xs font-medium text-[var(--accent)] hover:underline">
+                              View
+                            </Link>
+                          </td>
+                        </tr>
+                      ))}
+                      {!dispatches.length ? (
+                        <tr>
+                          <td colSpan={6} className="px-3 py-6 text-center text-[var(--muted)]">
+                            No dispatches yet. Create the first gate pass from an invoice above.
+                          </td>
+                        </tr>
+                      ) : null}
+                    </tbody>
+                  </table>
+                </div>
+              </details>
             </CardContent>
           </Card>
         </section>
+
+        {warnings.length ? (
+          <div className="space-y-2">
+            {warnings.map((warning, index) => (
+              <div key={`${warning}-${index}`} className="text-sm text-amber-300">{warning}</div>
+            ))}
+          </div>
+        ) : null}
+        {status ? <div className="text-sm text-green-400">{status}</div> : null}
+        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
     </main>
   );

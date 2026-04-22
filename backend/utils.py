@@ -42,7 +42,7 @@ class AppConfig:
     gemini_api_key: str
     ai_provider: str
     jwt_secret_key: str
-    jwt_access_token_minutes: int
+    jwt_expire_hours: int
     app_name: str
     app_env: str
     debug: bool
@@ -87,13 +87,12 @@ def _validate_required_values(raw_values: dict[str, str | None]) -> None:
     if provider not in allowed_providers:
         raise ValueError("AI_PROVIDER must be one of: groq, anthropic, gemini.")
 
-    external_ai_disabled = _to_bool(raw_values.get("DISABLE_EXTERNAL_AI"), default=False)
     provider_keys = {
         "groq": str(raw_values.get("GROQ_API_KEY") or "").strip(),
         "anthropic": str(raw_values.get("ANTHROPIC_API_KEY") or "").strip(),
         "gemini": str(raw_values.get("GEMINI_API_KEY") or "").strip(),
     }
-    if not external_ai_disabled and not any(provider_keys.values()):
+    if not any(provider_keys.values()):
         raise ValueError(
             "At least one AI provider key is required: GROQ_API_KEY, ANTHROPIC_API_KEY, or GEMINI_API_KEY."
         )
@@ -101,18 +100,6 @@ def _validate_required_values(raw_values: dict[str, str | None]) -> None:
         Fernet(str(raw_values.get("DATA_ENCRYPTION_KEY")).encode("utf-8"))
     except Exception as error:  # pylint: disable=broad-except
         raise ValueError("Invalid DATA_ENCRYPTION_KEY. Use a valid Fernet key.") from error
-    _validate_secret_strength("JWT_SECRET_KEY", raw_values.get("JWT_SECRET_KEY"))
-    auth_reset_secret = raw_values.get("AUTH_RESET_SECRET")
-    if auth_reset_secret is not None and str(auth_reset_secret).strip():
-        _validate_secret_strength("AUTH_RESET_SECRET", auth_reset_secret)
-
-
-def _validate_secret_strength(name: str, value: str | None) -> None:
-    cleaned = str(value or "").strip()
-    if len(cleaned) < 32:
-        raise ValueError(f"{name} must be at least 32 characters.")
-    if cleaned.lower().startswith(("change_this", "dev-secret", "replace_with")):
-        raise ValueError(f"{name} must not use a placeholder value.")
 
 
 def _normalize_database_url(database_url: str) -> str:
@@ -131,12 +118,9 @@ def get_config() -> AppConfig:
         "GROQ_API_KEY": os.getenv("GROQ_API_KEY"),
         "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY"),
         "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY"),
-        "DISABLE_EXTERNAL_AI": os.getenv("DISABLE_EXTERNAL_AI"),
         "AI_PROVIDER": os.getenv("AI_PROVIDER"),
         "JWT_SECRET_KEY": os.getenv("JWT_SECRET_KEY"),
         "JWT_EXPIRE_HOURS": os.getenv("JWT_EXPIRE_HOURS"),
-        "JWT_ACCESS_TOKEN_MINUTES": os.getenv("JWT_ACCESS_TOKEN_MINUTES"),
-        "AUTH_RESET_SECRET": os.getenv("AUTH_RESET_SECRET"),
         "APP_NAME": os.getenv("APP_NAME"),
         "APP_ENV": os.getenv("APP_ENV", "development"),
         "DEBUG": os.getenv("DEBUG"),
@@ -156,13 +140,7 @@ def get_config() -> AppConfig:
         gemini_api_key=str(raw.get("GEMINI_API_KEY") or ""),
         ai_provider=str(raw["AI_PROVIDER"]),
         jwt_secret_key=str(raw["JWT_SECRET_KEY"]),
-        jwt_access_token_minutes=max(
-            5,
-            min(
-                _to_int(raw.get("JWT_ACCESS_TOKEN_MINUTES"), 15),
-                15,
-            ),
-        ),
+        jwt_expire_hours=_to_int(raw["JWT_EXPIRE_HOURS"], 24),
         app_name=str(raw["APP_NAME"]),
         app_env=str(raw.get("APP_ENV") or "development").strip().lower(),
         debug=_to_bool(raw["DEBUG"], False),
@@ -301,17 +279,8 @@ def normalize_phone_number(value: str | None, *, max_length: int = 32) -> str | 
     if not _PHONE_ALLOWED_RE.fullmatch(cleaned):
         raise ValueError("Phone number can only contain digits, spaces, parentheses, periods, and hyphens.")
     digits = re.sub(r"\D", "", cleaned)
-    if len(digits) < 10 or len(digits) > 15:
-        raise ValueError("Phone number must contain 10 to 15 digits.")
-    if len(set(digits)) == 1:
-        raise ValueError("Phone number cannot use the same digit repeatedly.")
-    if digits in {
-        "0123456789",
-        "1234567890",
-        "0987654321",
-        "9876543210",
-    }:
-        raise ValueError("Phone number looks invalid. Enter a real mobile number.")
+    if len(digits) < 7 or len(digits) > 15:
+        raise ValueError("Phone number must contain 7 to 15 digits.")
     return cleaned
 
 

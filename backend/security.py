@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import os
 from datetime import datetime, timedelta, timezone
 import secrets
 from typing import Any
@@ -13,7 +12,6 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
-from sqlalchemy.orm.attributes import set_committed_value
 
 from backend.database import get_db
 from backend.models.report import TokenBlacklist
@@ -26,22 +24,10 @@ from backend.auth_cookies import get_access_cookie
 logger = logging.getLogger(__name__)
 config = get_config()
 _auth_scheme = HTTPBearer(auto_error=False)
-JWT_ISSUER = os.getenv("JWT_ISSUER", "dpr.ai")
-JWT_AUDIENCE = os.getenv("JWT_AUDIENCE", "dpr-web")
-
-
-def _coerce_utc(value: datetime) -> datetime:
-    if value.tzinfo is None or value.tzinfo.utcoffset(value) is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
 
 
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-
-
-def make_unusable_password_hash(label: str = "oauth") -> str:
-    return f"!{label}!{secrets.token_urlsafe(24)}"
 
 
 def verify_password(password: str, hashed: str) -> bool:
@@ -59,19 +45,13 @@ def create_access_token(
     org_id: str | None = None,
     factory_id: str | None = None,
 ) -> str:
-    issued_at = datetime.now(timezone.utc)
-    expire = issued_at + timedelta(minutes=config.jwt_access_token_minutes)
+    expire = datetime.now(timezone.utc) + timedelta(hours=config.jwt_expire_hours)
     payload = {
         "sub": str(user_id),
         "org_id": org_id,
         "factory_id": factory_id,
         "role": role,
         "email": email,
-        "iss": JWT_ISSUER,
-        "aud": JWT_AUDIENCE,
-        "nbf": int(issued_at.timestamp()),
-        "iat": int(issued_at.timestamp()),
-        "iat_ms": int(issued_at.timestamp() * 1000),
         "exp": int(expire.timestamp()),
         "jti": secrets.token_urlsafe(16),
     }
@@ -80,20 +60,7 @@ def create_access_token(
 
 def decode_access_token(token: str) -> dict[str, Any]:
     try:
-        return jwt.decode(
-            token,
-            config.jwt_secret_key,
-            algorithms=["HS256"],
-            issuer=JWT_ISSUER,
-            audience=JWT_AUDIENCE,
-            options={
-                "require_sub": True,
-                "require_iat": True,
-                "require_exp": True,
-                "require_iss": True,
-                "require_aud": True,
-            },
-        )
+        return jwt.decode(token, config.jwt_secret_key, algorithms=["HS256"])
     except JWTError as error:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token.") from error
 
@@ -130,45 +97,18 @@ def get_current_user(
     user = db.query(User).filter(User.id == user_id, User.is_active.is_(True)).first()
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found.")
-    org_role = user.role
-    issued_at_ms = payload.get("iat_ms")
-    if not isinstance(issued_at_ms, (int, float)):
-        issued_at = payload.get("iat")
-        if isinstance(issued_at, (int, float)):
-            issued_at_ms = int(issued_at) * 1000
-    if not isinstance(issued_at_ms, (int, float)):
-        exp = payload.get("exp")
-        if isinstance(exp, (int, float)):
-            issued_at_seconds = int(exp) - int(timedelta(minutes=config.jwt_access_token_minutes).total_seconds())
-            issued_at_ms = issued_at_seconds * 1000
-    if user.session_invalidated_at and isinstance(issued_at_ms, (int, float)):
-        invalidated_at = _coerce_utc(user.session_invalidated_at)
-        if int(issued_at_ms) <= int(invalidated_at.timestamp() * 1000):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session invalidated. Please log in again.")
     if org_id and user.org_id and org_id != user.org_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session invalidated. Please log in again.")
     active_factory_id = None
-    active_org_id = user.org_id
-    effective_role = user.role
     if factory_id:
         membership = (
             db.query(UserFactoryRole)
-            .filter(
-                UserFactoryRole.user_id == user.id,
-                UserFactoryRole.factory_id == factory_id,
-            )
+            .filter(UserFactoryRole.user_id == user.id, UserFactoryRole.factory_id == factory_id)
             .first()
         )
-        if not membership:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session invalidated. Please log in again.")
-        if org_id and membership.org_id and membership.org_id != org_id:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session invalidated. Please log in again.")
-        active_factory_id = factory_id
-        active_org_id = membership.org_id or user.org_id
-        effective_role = membership.role
-    setattr(user, "org_role", org_role)
-    set_committed_value(user, "role", effective_role)
-    setattr(user, "active_org_id", active_org_id)
+        if membership:
+            active_factory_id = factory_id
+    setattr(user, "active_org_id", user.org_id)
     setattr(user, "active_factory_id", active_factory_id)
     return user
 

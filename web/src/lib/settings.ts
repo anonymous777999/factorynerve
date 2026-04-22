@@ -168,49 +168,7 @@ export type BillingStatus = {
     provider?: string | null;
     current_period_end_at?: string | null;
   }>;
-  footprint?: {
-    active_users: number;
-    active_factories: number;
-  };
   usage?: UsageSummary | null;
-};
-
-export type InvitePreviewPayload = {
-  action: string;
-  can_send: boolean;
-  message: string;
-  delivery_mode?: string;
-  email?: string;
-  existing_user?: {
-    user_id: number;
-    user_code: number;
-    email: string;
-    role: string;
-  };
-  invite_summary?: {
-    recipient_name: string;
-    email: string;
-    role: string;
-    role_label: string;
-    role_summary: string;
-    organization_name: string;
-    factory_name: string;
-    factory_location?: string | null;
-    company_code?: string | null;
-    inviter_name: string;
-    custom_note?: string | null;
-    expires_in_hours: number;
-  };
-  preview?: {
-    subject: string;
-    text_body: string;
-    summary: InvitePreviewPayload["invite_summary"];
-    sections: {
-      details: Array<{ label: string; value: string }>;
-      next_steps: string[];
-      custom_note?: string | null;
-    };
-  };
 };
 
 export async function getFactorySettings() {
@@ -264,22 +222,8 @@ export async function inviteUser(payload: {
   email: string;
   role: string;
   factory_name: string;
-  custom_note?: string | null;
 }) {
-  return apiFetch<{ message: string; delivery_mode?: string; verification_link?: string | null; preview?: InvitePreviewPayload["preview"] }>("/settings/users/invite", {
-    method: "POST",
-    body: payload,
-  });
-}
-
-export async function previewInviteUser(payload: {
-  name: string;
-  email: string;
-  role: string;
-  factory_name: string;
-  custom_note?: string | null;
-}) {
-  return apiFetch<InvitePreviewPayload>("/settings/users/invite/preview", {
+  return apiFetch<{ message: string; temp_password?: string; user_code?: number }>("/settings/users/invite", {
     method: "POST",
     body: payload,
   });

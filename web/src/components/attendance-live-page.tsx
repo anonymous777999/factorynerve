@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { ApiError } from "@/lib/api";
-import { getLiveAttendance, type AttendanceLive, type AttendanceLiveRow } from "@/lib/attendance";
-import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ApiError } from "@/lib/api";
+import { getLiveAttendance, type AttendanceLive, type AttendanceLiveRow } from "@/lib/attendance";
+import { useI18n, useI18nNamespaces } from "@/lib/i18n";
+import { useSession } from "@/lib/use-session";
 
 type AttendanceFilter = "all" | "working" | "not_punched" | "completed" | "missed_punch";
 const AUTO_REFRESH_MS = 25_000;
@@ -20,16 +21,11 @@ function todayValue() {
   return new Date(now.getTime() - offset).toISOString().slice(0, 10);
 }
 
-function formatShift(value?: string | null) {
-  if (!value) return "-";
-  return value.charAt(0).toUpperCase() + value.slice(1);
-}
-
-function formatDateTime(value?: string | null) {
+function formatDateTime(value?: string | null, locale = "en-IN") {
   if (!value) return "-";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString("en-IN", {
+  return parsed.toLocaleString(locale, {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
@@ -62,6 +58,9 @@ function canReviewAttendance(role?: string | null) {
 }
 
 export default function AttendanceLivePage() {
+  const { locale, t } = useI18n();
+  useI18nNamespaces(["common", "attendance"]);
+
   const { user, activeFactory, loading, error: sessionError } = useSession();
   const [attendanceDate, setAttendanceDate] = useState(todayValue());
   const [filter, setFilter] = useState<AttendanceFilter>("all");
@@ -73,6 +72,14 @@ export default function AttendanceLivePage() {
   const [error, setError] = useState("");
 
   const canReview = canReviewAttendance(user?.role);
+
+  const shiftLabel = useCallback(
+    (value?: string | null) => {
+      if (!value) return "-";
+      return t(`attendance.shift.${value}`, value.charAt(0).toUpperCase() + value.slice(1));
+    },
+    [t],
+  );
 
   const loadBoard = useCallback(
     async (options?: { background?: boolean }) => {
@@ -95,7 +102,7 @@ export default function AttendanceLivePage() {
         } else if (err instanceof Error) {
           setError(err.message);
         } else {
-          setError("Could not load the attendance board.");
+          setError(t("attendance.errors.load", "Could not load attendance."));
         }
         if (!shouldBackground) {
           setPayload(null);
@@ -107,7 +114,7 @@ export default function AttendanceLivePage() {
         setRefreshing(false);
       }
     },
-    [attendanceDate, canReview, user],
+    [attendanceDate, canReview, t, user],
   );
 
   useEffect(() => {
@@ -156,12 +163,27 @@ export default function AttendanceLivePage() {
     return payload.rows.filter((row) => row.status === filter);
   }, [filter, payload]);
 
+  const nextAttentionRow = useMemo(
+    () =>
+      filteredRows.find((row) => row.status === "missed_punch") ||
+      filteredRows.find((row) => row.status === "not_punched") ||
+      filteredRows.find((row) => row.status === "working") ||
+      filteredRows[0] ||
+      null,
+    [filteredRows],
+  );
+
+  const remainingRows = useMemo(
+    () => filteredRows.filter((row) => row.user_id !== nextAttentionRow?.user_id),
+    [filteredRows, nextAttentionRow],
+  );
+
   if (loading || (pageLoading && user && canReview && !hasLoadedOnce)) {
     return (
-      <main className="min-h-screen px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8">
-        <div className="mx-auto max-w-7xl space-y-5 sm:space-y-6">
+      <main className="min-h-screen px-4 py-8 md:px-8">
+        <div className="mx-auto max-w-7xl space-y-6">
           <Skeleton className="h-36 rounded-[2rem]" />
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
               <Skeleton key={index} className="h-32 rounded-2xl" />
             ))}
@@ -177,12 +199,12 @@ export default function AttendanceLivePage() {
       <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
-            <CardTitle>Attendance Board</CardTitle>
+            <CardTitle>{t("attendance.live.title", "Attendance Board")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
+            <div className="text-sm text-red-400">{sessionError || t("attendance.live.sign_in_required", "Please sign in to continue.")}</div>
             <Link href="/access">
-              <Button>Open Login</Button>
+              <Button>{t("dashboard.action.open_login", "Open Access")}</Button>
             </Link>
           </CardContent>
         </Card>
@@ -195,18 +217,18 @@ export default function AttendanceLivePage() {
       <main className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
-            <CardTitle>Attendance Board</CardTitle>
+            <CardTitle>{t("attendance.live.title", "Attendance Board")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-[var(--muted)]">
-              Live attendance is available to supervisor, manager, admin, and owner roles.
+              {t("attendance.live.restricted", "Live attendance is available to supervisor, manager, admin, and owner roles.")}
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Link href="/attendance" className="w-full sm:w-auto">
-                <Button className="w-full sm:w-auto">Open My Attendance</Button>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/attendance">
+                <Button>{t("attendance.live.open_my_attendance", "Open My Attendance")}</Button>
               </Link>
-              <Link href="/work-queue" className="w-full sm:w-auto">
-                <Button variant="outline" className="w-full sm:w-auto">Work Queue</Button>
+              <Link href="/work-queue">
+                <Button variant="outline">{t("attendance.live.work_queue", "Work Queue")}</Button>
               </Link>
             </div>
           </CardContent>
@@ -216,249 +238,249 @@ export default function AttendanceLivePage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8">
-      <div className="mx-auto max-w-7xl space-y-5 sm:space-y-6">
-        <section className="rounded-[1.75rem] border border-[var(--border)] bg-[rgba(20,24,36,0.9)] p-5 shadow-2xl backdrop-blur sm:p-6">
+    <main className="min-h-screen px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.9)] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">Attendance Board</div>
-              <h1 className="mt-2 text-2xl font-semibold sm:text-3xl md:text-4xl">Live attendance across the active factory</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Watch who is working, who has already closed attendance, and who still needs a punch update before the shift moves on.
-              </p>
+              <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">{t("attendance.live.title", "Attendance Board")}</div>
+              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{t("attendance.live.hero.title", "Live attendance across the active factory")}</h1>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">{t("attendance.live.hero.subtitle", "Start with the next attendance signal, then scan the full board.")}</p>
             </div>
-            <div className="w-full space-y-3 lg:w-auto">
-              <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
-                <Link href="/attendance" className="w-full sm:w-auto">
-                  <Button variant="outline" className="w-full sm:w-auto">My Attendance</Button>
-                </Link>
-                <Link href="/attendance/review" className="w-full sm:w-auto">
-                  <Button variant="outline" className="w-full sm:w-auto">Attendance Review</Button>
-                </Link>
+            <details className="min-w-[240px] rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+              <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("attendance.live.tools.title", "Board tools")}</summary>
+              <div className="mt-4 space-y-4">
+                <div className="flex flex-wrap gap-3">
+                  <Link href="/attendance">
+                    <Button variant="outline">{t("attendance.live.open_my_attendance", "Open My Attendance")}</Button>
+                  </Link>
+                  <Link href="/attendance/review">
+                    <Button variant="outline">{t("attendance.live.tools.review_queue", "Review Queue")}</Button>
+                  </Link>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    className="px-4 py-2 text-xs"
+                    onClick={() => {
+                      void loadBoard({ background: true });
+                    }}
+                    disabled={refreshing}
+                  >
+                    {refreshing ? t("attendance.live.tools.refreshing", "Refreshing...") : t("common.refresh", "Refresh")}
+                  </Button>
+                  <span className="text-xs text-[var(--muted)]">
+                    {refreshing
+                      ? t("attendance.live.tools.updating", "Updating attendance...")
+                      : lastUpdatedAt
+                        ? t("attendance.live.tools.updated", "Updated {{value}}", { value: formatDateTime(lastUpdatedAt, locale) })
+                        : t("attendance.live.tools.live_updates", "Live updates every 25 seconds")}
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Button
-                  variant="outline"
-                  className="w-full px-4 py-2 text-xs sm:w-auto"
-                  onClick={() => {
-                    void loadBoard({ background: true });
-                  }}
-                  disabled={refreshing}
-                >
-                  {refreshing ? "Refreshing..." : "Refresh Board"}
-                </Button>
-                <span className="text-xs text-[var(--muted)]">
-                  {refreshing
-                    ? "Updating attendance..."
-                    : lastUpdatedAt
-                      ? `Updated ${formatDateTime(lastUpdatedAt)}`
-                      : "Live updates every 25 seconds"}
-                </span>
-              </div>
-            </div>
+            </details>
           </div>
+        </section>
+
+        <section className="grid gap-3 xl:grid-cols-3">
+          {[
+            {
+              label: t("attendance.live.steps.signal", "1. Review next signal"),
+              detail: nextAttentionRow
+                ? t("attendance.live.steps.signal_ready", "{{name}} is the first row in focus.", { name: nextAttentionRow.name })
+                : t("attendance.live.steps.signal_empty", "No urgent attendance signal is open right now."),
+            },
+            {
+              label: t("attendance.live.steps.totals", "2. Scan totals"),
+              detail: t("attendance.live.steps.totals_detail", "Working {{working}}, closed {{closed}}, not punched {{notPunched}}.", {
+                working: payload?.totals.working || 0,
+                closed: payload?.totals.completed || 0,
+                notPunched: payload?.totals.not_punched || 0,
+              }),
+            },
+            {
+              label: t("attendance.live.steps.filter", "3. Filter the board"),
+              detail: t("attendance.live.steps.filter_detail", "Use board tools only when you need a date or status slice."),
+            },
+          ].map((step) => (
+            <div key={step.label} className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-5 py-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">{step.label}</div>
+              <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
+            </div>
+          ))}
         </section>
 
         {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
         {refreshing ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3 text-sm text-[var(--muted)]">
-            Refreshing live attendance in the background...
+            {t("attendance.live.refreshing_background", "Refreshing live attendance in the background...")}
           </div>
         ) : null}
         {sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{sessionError}</div> : null}
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Card>
             <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Factory</div>
+              <div className="text-sm text-[var(--muted)]">{t("attendance.live.cards.factory", "Factory")}</div>
               <CardTitle>{payload?.factory_name || activeFactory?.name || user.factory_name}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-[var(--muted)]">
-              Date {payload?.attendance_date || attendanceDate}
+              {t("attendance.live.cards.date", "Date {{value}}", { value: payload?.attendance_date || attendanceDate })}
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Working</div>
+              <div className="text-sm text-[var(--muted)]">{t("attendance.live.cards.working", "Working")}</div>
               <CardTitle>{payload?.totals.working || 0}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-[var(--muted)]">
-              Team members with an open punch.
+              {t("attendance.live.cards.working_detail", "Team members with an open punch.")}
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Closed</div>
+              <div className="text-sm text-[var(--muted)]">{t("attendance.live.cards.closed", "Closed")}</div>
               <CardTitle>{payload?.totals.completed || 0}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-[var(--muted)]">
-              Attendance already closed for the selected date.
+              {t("attendance.live.cards.closed_detail", "Attendance already closed for the selected date.")}
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Not Punched</div>
+              <div className="text-sm text-[var(--muted)]">{t("attendance.live.cards.not_punched", "Not Punched")}</div>
               <CardTitle>{payload?.totals.not_punched || 0}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-[var(--muted)]">
-              People still missing a punch update.
+              {t("attendance.live.cards.not_punched_detail", "People still missing a punch update.")}
             </CardContent>
           </Card>
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr] xl:items-start">
-          <div className="space-y-5">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">Board Filters</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+        <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+          <div className="space-y-6">
+            <details className="rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.9)] px-5 py-5">
+              <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">{t("attendance.live.filters.title", "Board filters")}</summary>
+              <div className="mt-4 space-y-4">
                 <div>
-                  <label className="text-sm text-[var(--muted)]">Attendance Date</label>
+                  <label className="text-sm text-[var(--muted)]">{t("attendance.live.filters.date", "Attendance Date")}</label>
                   <Input type="date" value={attendanceDate} onChange={(event) => setAttendanceDate(event.target.value)} />
                 </div>
-                <div className="-mx-1 overflow-x-auto pb-1">
-                  <div className="flex min-w-max gap-2 px-1">
-                    {([
-                      ["all", "All"],
-                      ["working", "Working"],
-                      ["missed_punch", "Missed Punch"],
-                      ["not_punched", "Not Punched"],
-                      ["completed", "Closed"],
-                    ] as const).map(([key, label]) => (
-                      <Button
-                        key={key}
-                        variant={filter === key ? "primary" : "outline"}
-                        className="shrink-0 px-4 py-2 text-xs"
-                        onClick={() => setFilter(key)}
-                      >
-                        {label}
-                      </Button>
-                    ))}
-                  </div>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    ["all", t("attendance.live.filters.all", "All")],
+                    ["working", t("attendance.live.filters.working", "Working")],
+                    ["missed_punch", t("attendance.live.filters.missed_punch", "Missed Punch")],
+                    ["not_punched", t("attendance.live.filters.not_punched", "Not Punched")],
+                    ["completed", t("attendance.live.filters.completed", "Closed")],
+                  ] as const).map(([key, label]) => (
+                    <Button
+                      key={key}
+                      variant={filter === key ? "primary" : "outline"}
+                      className="px-4 py-2 text-xs"
+                      onClick={() => setFilter(key)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
                 </div>
-                <Button variant="ghost" className="w-full sm:w-auto" onClick={() => void loadBoard({ background: true })} disabled={refreshing}>
-                  {refreshing ? "Refreshing..." : "Refresh Board"}
+                <Button variant="ghost" onClick={() => void loadBoard({ background: true })} disabled={refreshing}>
+                  {refreshing ? t("attendance.live.tools.refreshing", "Refreshing...") : t("common.refresh", "Refresh")}
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </details>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">Shift Summary</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
+            <details className="rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.9)] px-5 py-5">
+              <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">{t("attendance.live.shift_summary", "Shift summary")}</summary>
+              <div className="mt-4 space-y-3">
                 {(payload?.shift_summary || []).map((shift) => (
                   <div key={shift.shift} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                     <div className="flex items-center justify-between gap-3">
-                      <div className="text-sm font-semibold text-[var(--text)]">{formatShift(shift.shift)}</div>
-                      <div className="text-xs text-[var(--muted)]">{shift.punched_count} punched</div>
+                      <div className="text-sm font-semibold text-[var(--text)]">{shiftLabel(shift.shift)}</div>
+                      <div className="text-xs text-[var(--muted)]">{t("attendance.live.shift_punched", "{{count}} punched", { count: shift.punched_count })}</div>
                     </div>
                     <div className="mt-3 grid gap-3 sm:grid-cols-2">
                       <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
-                        Working <span className="font-semibold text-[var(--text)]">{shift.working_count}</span>
+                        {t("attendance.live.shift_working", "Working")} <span className="font-semibold text-[var(--text)]">{shift.working_count}</span>
                       </div>
                       <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
-                        Closed <span className="font-semibold text-[var(--text)]">{shift.completed_count}</span>
+                        {t("attendance.live.shift_closed", "Closed")} <span className="font-semibold text-[var(--text)]">{shift.completed_count}</span>
                       </div>
                     </div>
                   </div>
                 ))}
-              </CardContent>
-            </Card>
+              </div>
+            </details>
           </div>
 
           <Card>
             <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
-                <div className="text-sm text-[var(--muted)]">Live Rows</div>
-                <CardTitle className="text-xl">{filteredRows.length} people in this view</CardTitle>
+                <div className="text-sm text-[var(--muted)]">{t("attendance.live.rows.title", "Live Rows")}</div>
+                <CardTitle className="text-xl">{t("attendance.live.rows.people_in_view", "{{count}} people in this view", { count: filteredRows.length })}</CardTitle>
               </div>
               <div className="text-sm text-[var(--muted)]">
-                Total people {payload?.totals.total_people || 0}
+                {t("attendance.live.rows.total_people", "Total people {{count}}", { count: payload?.totals.total_people || 0 })}
               </div>
             </CardHeader>
-            <CardContent>
-              {filteredRows.length ? (
-                <>
-                  <div className="space-y-3 md:hidden">
-                    {filteredRows.map((row) => (
-                      <div key={row.user_id} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="min-w-0">
-                            <div className="font-semibold text-[var(--text)]">{row.name}</div>
-                            <div className="text-xs text-[var(--muted)]">ID {row.user_code} - {row.role}</div>
-                          </div>
-                          <span className={`shrink-0 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${statusTone(row.status)}`}>
-                            {row.status.replace("_", " ")}
-                          </span>
-                        </div>
-                        <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                          <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
-                            <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Department</div>
-                            <div className="mt-1 font-medium text-[var(--text)]">{row.department || "-"}</div>
-                          </div>
-                          <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
-                            <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Shift</div>
-                            <div className="mt-1 font-medium text-[var(--text)]">{formatShift(row.shift)}</div>
-                          </div>
-                          <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
-                            <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Punch In</div>
-                            <div className="mt-1 font-medium text-[var(--text)]">{formatDateTime(row.punch_in_at)}</div>
-                          </div>
-                          <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
-                            <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Punch Out</div>
-                            <div className="mt-1 font-medium text-[var(--text)]">{formatDateTime(row.punch_out_at)}</div>
-                          </div>
-                        </div>
-                        <div className="mt-3 rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
-                          <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Worked</div>
-                          <div className="mt-1 font-medium text-[var(--text)]">{formatMinutes(row.worked_minutes)}</div>
-                        </div>
+            <CardContent className="space-y-4">
+              {nextAttentionRow ? (
+                <div className={`rounded-2xl border p-4 ${statusTone(nextAttentionRow.status)}`}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{t("attendance.live.rows.next_signal", "Next signal")}</div>
+                      <div className="mt-2 text-sm font-semibold text-[var(--text)]">{nextAttentionRow.name}</div>
+                      <div className="mt-1 text-xs text-[var(--muted)]">
+                        {nextAttentionRow.role} • {nextAttentionRow.department || t("attendance.live.rows.no_department", "No department")} • {shiftLabel(nextAttentionRow.shift)}
                       </div>
-                    ))}
+                    </div>
+                    <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${statusTone(nextAttentionRow.status)}`}>
+                      {nextAttentionRow.status.replace("_", " ")}
+                    </span>
                   </div>
-                  <div className="hidden overflow-x-auto md:block">
-                    <table className="min-w-full text-left text-sm">
-                      <thead className="text-[var(--muted)]">
-                        <tr className="border-b border-[var(--border)]">
-                          <th className="px-3 py-3 font-medium">User</th>
-                          <th className="px-3 py-3 font-medium">Role</th>
-                          <th className="px-3 py-3 font-medium">Department</th>
-                          <th className="px-3 py-3 font-medium">Shift</th>
-                          <th className="px-3 py-3 font-medium">Status</th>
-                          <th className="px-3 py-3 font-medium">Punch In</th>
-                          <th className="px-3 py-3 font-medium">Punch Out</th>
-                          <th className="px-3 py-3 font-medium">Worked</th>
+                </div>
+              ) : null}
+              {filteredRows.length ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full text-left text-sm">
+                    <thead className="text-[var(--muted)]">
+                      <tr className="border-b border-[var(--border)]">
+                        <th className="px-3 py-3 font-medium">{t("attendance.live.table.user", "User")}</th>
+                        <th className="px-3 py-3 font-medium">{t("attendance.live.table.role", "Role")}</th>
+                        <th className="px-3 py-3 font-medium">{t("attendance.live.table.department", "Department")}</th>
+                        <th className="px-3 py-3 font-medium">{t("attendance.live.table.shift", "Shift")}</th>
+                        <th className="px-3 py-3 font-medium">{t("attendance.live.table.status", "Status")}</th>
+                        <th className="px-3 py-3 font-medium">{t("attendance.live.table.punch_in", "Punch In")}</th>
+                        <th className="px-3 py-3 font-medium">{t("attendance.live.table.punch_out", "Punch Out")}</th>
+                        <th className="px-3 py-3 font-medium">{t("attendance.live.table.worked", "Worked")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(nextAttentionRow ? [nextAttentionRow, ...remainingRows] : filteredRows).map((row) => (
+                        <tr key={row.user_id} className="border-b border-[var(--border)]/60">
+                          <td className="px-3 py-3">
+                            <div className="font-semibold text-[var(--text)]">{row.name}</div>
+                            <div className="text-xs text-[var(--muted)]">{t("attendance.live.table.id", "ID {{value}}", { value: row.user_code })}</div>
+                          </td>
+                          <td className="px-3 py-3">{row.role}</td>
+                          <td className="px-3 py-3">{row.department || "-"}</td>
+                          <td className="px-3 py-3">{shiftLabel(row.shift)}</td>
+                          <td className="px-3 py-3">
+                            <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${statusTone(row.status)}`}>
+                              {row.status.replace("_", " ")}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 text-[var(--muted)]">{formatDateTime(row.punch_in_at, locale)}</td>
+                          <td className="px-3 py-3 text-[var(--muted)]">{formatDateTime(row.punch_out_at, locale)}</td>
+                          <td className="px-3 py-3">{formatMinutes(row.worked_minutes)}</td>
                         </tr>
-                      </thead>
-                      <tbody>
-                        {filteredRows.map((row) => (
-                          <tr key={row.user_id} className="border-b border-[var(--border)]/60">
-                            <td className="px-3 py-3">
-                              <div className="font-semibold text-[var(--text)]">{row.name}</div>
-                              <div className="text-xs text-[var(--muted)]">ID {row.user_code}</div>
-                            </td>
-                            <td className="px-3 py-3">{row.role}</td>
-                            <td className="px-3 py-3">{row.department || "-"}</td>
-                            <td className="px-3 py-3">{formatShift(row.shift)}</td>
-                            <td className="px-3 py-3">
-                              <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${statusTone(row.status)}`}>
-                                {row.status.replace("_", " ")}
-                              </span>
-                            </td>
-                            <td className="px-3 py-3 text-[var(--muted)]">{formatDateTime(row.punch_in_at)}</td>
-                            <td className="px-3 py-3 text-[var(--muted)]">{formatDateTime(row.punch_out_at)}</td>
-                            <td className="px-3 py-3">{formatMinutes(row.worked_minutes)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               ) : (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  No attendance rows match this filter yet.
+                  {t("attendance.live.table.no_rows", "No attendance rows match this filter yet.")}
                 </div>
               )}
             </CardContent>

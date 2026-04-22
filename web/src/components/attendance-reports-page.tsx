@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
-import { ApiError } from "@/lib/api";
-import { getAttendanceReportSummary, type AttendanceReportSummary } from "@/lib/attendance";
-import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ApiError } from "@/lib/api";
+import { getAttendanceReportSummary, type AttendanceReportSummary } from "@/lib/attendance";
+import { useI18n, useI18nNamespaces } from "@/lib/i18n";
+import { useSession } from "@/lib/use-session";
+
 const AUTO_REFRESH_MS = 30_000;
 
 function todayValue() {
@@ -29,22 +31,22 @@ function canSeeReports(role?: string | null) {
   return ["supervisor", "manager", "admin", "owner", "accountant"].includes(role || "");
 }
 
-function formatDate(value?: string | null) {
+function formatDate(value?: string | null, locale = "en-IN") {
   if (!value) return "-";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("en-IN", {
+  return parsed.toLocaleDateString(locale, {
     day: "2-digit",
     month: "short",
     year: "numeric",
   });
 }
 
-function formatDateTime(value?: string | null) {
+function formatDateTime(value?: string | null, locale = "en-IN") {
   if (!value) return "-";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString("en-IN", {
+  return parsed.toLocaleString(locale, {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
@@ -53,6 +55,9 @@ function formatDateTime(value?: string | null) {
 }
 
 export default function AttendanceReportsPage() {
+  const { locale, t } = useI18n();
+  useI18nNamespaces(["common", "attendance"]);
+
   const { user, activeFactory, loading, error: sessionError } = useSession();
   const [dateFrom, setDateFrom] = useState(dateDaysAgo(6));
   const [dateTo, setDateTo] = useState(todayValue());
@@ -84,7 +89,7 @@ export default function AttendanceReportsPage() {
         } else if (err instanceof Error) {
           setError(err.message);
         } else {
-          setError("Could not load attendance reports.");
+          setError(t("attendance.reports.errors.load", "Could not load attendance reports."));
         }
         if (!shouldBackground) {
           setPayload(null);
@@ -96,7 +101,7 @@ export default function AttendanceReportsPage() {
         setRefreshing(false);
       }
     },
-    [canView, dateFrom, dateTo, user],
+    [canView, dateFrom, dateTo, t, user],
   );
 
   useEffect(() => {
@@ -137,10 +142,10 @@ export default function AttendanceReportsPage() {
 
   if (loading || (pageLoading && user && canView && !hasLoadedOnce)) {
     return (
-      <main className="min-h-screen px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8">
-        <div className="mx-auto max-w-7xl space-y-5 sm:space-y-6">
+      <main className="min-h-screen px-4 py-8 md:px-8">
+        <div className="mx-auto max-w-7xl space-y-6">
           <Skeleton className="h-36 rounded-[2rem]" />
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
               <Skeleton key={index} className="h-32 rounded-2xl" />
             ))}
@@ -155,10 +160,10 @@ export default function AttendanceReportsPage() {
     return (
       <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
         <Card className="w-full">
-          <CardHeader><CardTitle>Attendance Reports</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("attendance.reports.title", "Attendance Reports")}</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
-            <Link href="/access"><Button>Open Login</Button></Link>
+            <div className="text-sm text-red-400">{sessionError || t("attendance.reports.sign_in_required", "Please sign in to continue.")}</div>
+            <Link href="/access"><Button>{t("dashboard.action.open_login", "Open Access")}</Button></Link>
           </CardContent>
         </Card>
       </main>
@@ -169,10 +174,10 @@ export default function AttendanceReportsPage() {
     return (
       <main className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-4">
         <Card className="w-full">
-          <CardHeader><CardTitle>Attendance Reports</CardTitle></CardHeader>
+          <CardHeader><CardTitle>{t("attendance.reports.title", "Attendance Reports")}</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-[var(--muted)]">Attendance reports are available to reporting and management roles.</div>
-            <Link href="/attendance" className="w-full sm:w-auto"><Button className="w-full sm:w-auto">Open Attendance</Button></Link>
+            <div className="text-sm text-[var(--muted)]">{t("attendance.reports.restricted", "Attendance reports are available to reporting and management roles.")}</div>
+            <Link href="/attendance"><Button>{t("attendance.reports.open_attendance", "Open Attendance")}</Button></Link>
           </CardContent>
         </Card>
       </main>
@@ -180,152 +185,155 @@ export default function AttendanceReportsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8">
-      <div className="mx-auto max-w-7xl space-y-5 sm:space-y-6">
-        <section className="rounded-[1.75rem] border border-[var(--border)] bg-[rgba(20,24,36,0.9)] p-5 shadow-2xl backdrop-blur sm:p-6">
+    <main className="min-h-screen px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.9)] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">Attendance Reports</div>
-              <h1 className="mt-2 text-2xl font-semibold sm:text-3xl md:text-4xl">Daily attendance signal across the selected range</h1>
+              <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">{t("attendance.reports.title", "Attendance Reports")}</div>
+              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{t("attendance.reports.hero.title", "Daily attendance signal across the selected range")}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Watch attendance completion, pending review load, late arrivals, and overtime from one reporting surface for {payload?.factory_name || activeFactory?.name || user.factory_name}.
+                {t("attendance.reports.hero.subtitle", "Review the range first, then scan daily attendance, review load, and exceptions for {{factory}}.", {
+                  factory: payload?.factory_name || activeFactory?.name || user.factory_name,
+                })}
               </p>
             </div>
-            <div className="w-full space-y-3 lg:w-auto">
-              <div className="flex flex-col gap-3 sm:flex-row lg:justify-end">
-                <Link href="/attendance/live" className="w-full sm:w-auto"><Button variant="outline" className="w-full sm:w-auto">Live Board</Button></Link>
-                <Link href="/attendance/review" className="w-full sm:w-auto"><Button variant="outline" className="w-full sm:w-auto">Review Queue</Button></Link>
+            <details className="min-w-[240px] rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+              <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("attendance.reports.tools.title", "Report tools")}</summary>
+              <div className="mt-4 space-y-4">
+                <div className="flex flex-wrap gap-3">
+                  <Link href="/attendance/live"><Button variant="outline">{t("attendance.reports.tools.live_board", "Live Board")}</Button></Link>
+                  <Link href="/attendance/review"><Button variant="outline">{t("attendance.reports.tools.review_queue", "Review Queue")}</Button></Link>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    variant="outline"
+                    className="px-4 py-2 text-xs"
+                    onClick={() => {
+                      void loadReports({ background: true });
+                    }}
+                    disabled={refreshing}
+                  >
+                    {refreshing ? t("attendance.reports.tools.refreshing", "Refreshing...") : t("common.refresh", "Refresh")}
+                  </Button>
+                  <span className="text-xs text-[var(--muted)]">
+                    {refreshing
+                      ? t("attendance.reports.tools.updating", "Updating report data...")
+                      : lastUpdatedAt
+                        ? t("attendance.reports.tools.updated", "Updated {{value}}", { value: formatDateTime(lastUpdatedAt, locale) })
+                        : t("attendance.reports.tools.live_updates", "Live updates every 30 seconds")}
+                  </span>
+                </div>
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Button
-                  variant="outline"
-                  className="w-full px-4 py-2 text-xs sm:w-auto"
-                  onClick={() => {
-                    void loadReports({ background: true });
-                  }}
-                  disabled={refreshing}
-                >
-                  {refreshing ? "Refreshing..." : "Refresh Reports"}
-                </Button>
-                <span className="text-xs text-[var(--muted)]">
-                  {refreshing
-                    ? "Updating report data..."
-                    : lastUpdatedAt
-                      ? `Updated ${formatDateTime(lastUpdatedAt)}`
-                      : "Live updates every 30 seconds"}
-                </span>
-              </div>
-            </div>
+            </details>
           </div>
+        </section>
+
+        <section className="grid gap-3 xl:grid-cols-3">
+          {[
+            {
+              label: t("attendance.reports.steps.range", "1. Set range"),
+              detail: t("attendance.reports.steps.range_detail", "{{from}} to {{to}} is the current report window.", {
+                from: formatDate(dateFrom, locale),
+                to: formatDate(dateTo, locale),
+              }),
+            },
+            {
+              label: t("attendance.reports.steps.totals", "2. Check totals"),
+              detail: t("attendance.reports.steps.totals_detail", "Pending review {{pending}}, late {{late}}, overtime {{overtime}}.", {
+                pending: payload?.totals.pending_review || 0,
+                late: payload?.totals.late_records || 0,
+                overtime: payload?.totals.overtime_records || 0,
+              }),
+            },
+            {
+              label: t("attendance.reports.steps.scan", "3. Scan days"),
+              detail: t("attendance.reports.steps.scan_detail", "Use the daily breakdown after the range and totals look right."),
+            },
+          ].map((step) => (
+            <div key={step.label} className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-5 py-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">{step.label}</div>
+              <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
+            </div>
+          ))}
         </section>
 
         {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
         {refreshing ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3 text-sm text-[var(--muted)]">
-            Refreshing attendance reports in the background...
+            {t("attendance.reports.refreshing_background", "Refreshing attendance reports in the background...")}
           </div>
         ) : null}
         {sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{sessionError}</div> : null}
 
         <Card>
           <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div><CardTitle className="text-xl">Report Range</CardTitle></div>
-            <div className="grid w-full gap-4 sm:grid-cols-2 lg:w-auto">
+            <div><CardTitle className="text-xl">{t("attendance.reports.range.title", "Report Range")}</CardTitle></div>
+            <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="text-sm text-[var(--muted)]">Date From</label>
+                <label className="text-sm text-[var(--muted)]">{t("attendance.reports.range.from", "Date From")}</label>
                 <Input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
               </div>
               <div>
-                <label className="text-sm text-[var(--muted)]">Date To</label>
+                <label className="text-sm text-[var(--muted)]">{t("attendance.reports.range.to", "Date To")}</label>
                 <Input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
               </div>
             </div>
           </CardHeader>
-          <CardContent><Button variant="ghost" className="w-full sm:w-auto" onClick={() => void loadReports({ background: true })} disabled={refreshing}>{refreshing ? "Refreshing..." : "Refresh Report"}</Button></CardContent>
+          <CardContent>
+            <Button variant="ghost" onClick={() => void loadReports({ background: true })} disabled={refreshing}>
+              {refreshing ? t("attendance.reports.tools.refreshing", "Refreshing...") : t("attendance.reports.range.update", "Update report")}
+            </Button>
+          </CardContent>
         </Card>
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Card><CardHeader><div className="text-sm text-[var(--muted)]">Present Records</div><CardTitle>{payload?.totals.present_records || 0}</CardTitle></CardHeader><CardContent className="text-sm text-[var(--muted)]">Punch-ins recorded across the selected range.</CardContent></Card>
-          <Card><CardHeader><div className="text-sm text-[var(--muted)]">Completed</div><CardTitle>{payload?.totals.completed_records || 0}</CardTitle></CardHeader><CardContent className="text-sm text-[var(--muted)]">Rows with a closed attendance record.</CardContent></Card>
-          <Card><CardHeader><div className="text-sm text-[var(--muted)]">Pending Review</div><CardTitle>{payload?.totals.pending_review || 0}</CardTitle></CardHeader><CardContent className="text-sm text-[var(--muted)]">Open review load still sitting with supervisors.</CardContent></Card>
-          <Card><CardHeader><div className="text-sm text-[var(--muted)]">Late / Overtime</div><CardTitle>{(payload?.totals.late_records || 0) + (payload?.totals.overtime_records || 0)}</CardTitle></CardHeader><CardContent className="text-sm text-[var(--muted)]">{payload?.totals.late_records || 0} late and {payload?.totals.overtime_records || 0} overtime rows.</CardContent></Card>
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <Card><CardHeader><div className="text-sm text-[var(--muted)]">{t("attendance.reports.cards.present", "Present Records")}</div><CardTitle>{payload?.totals.present_records || 0}</CardTitle></CardHeader><CardContent className="text-sm text-[var(--muted)]">{t("attendance.reports.cards.present_detail", "Punch-ins recorded across the selected range.")}</CardContent></Card>
+          <Card><CardHeader><div className="text-sm text-[var(--muted)]">{t("attendance.reports.cards.completed", "Completed")}</div><CardTitle>{payload?.totals.completed_records || 0}</CardTitle></CardHeader><CardContent className="text-sm text-[var(--muted)]">{t("attendance.reports.cards.completed_detail", "Rows with a closed attendance record.")}</CardContent></Card>
+          <Card><CardHeader><div className="text-sm text-[var(--muted)]">{t("attendance.reports.cards.pending_review", "Pending Review")}</div><CardTitle>{payload?.totals.pending_review || 0}</CardTitle></CardHeader><CardContent className="text-sm text-[var(--muted)]">{t("attendance.reports.cards.pending_review_detail", "Open review load still sitting with supervisors.")}</CardContent></Card>
+          <Card><CardHeader><div className="text-sm text-[var(--muted)]">{t("attendance.reports.cards.late_overtime", "Late / Overtime")}</div><CardTitle>{(payload?.totals.late_records || 0) + (payload?.totals.overtime_records || 0)}</CardTitle></CardHeader><CardContent className="text-sm text-[var(--muted)]">{t("attendance.reports.cards.late_overtime_detail", "{{late}} late and {{overtime}} overtime rows.", { late: payload?.totals.late_records || 0, overtime: payload?.totals.overtime_records || 0 })}</CardContent></Card>
         </section>
 
         <Card>
           <CardHeader>
-            <div className="text-sm text-[var(--muted)]">Daily Breakdown</div>
-            <CardTitle className="text-xl">{formatDate(payload?.date_from)} to {formatDate(payload?.date_to)}</CardTitle>
+            <div className="text-sm text-[var(--muted)]">{t("attendance.reports.breakdown.title", "Daily Breakdown")}</div>
+            <CardTitle className="text-xl">{t("attendance.reports.breakdown.window", "{{from}} to {{to}}", { from: formatDate(payload?.date_from, locale), to: formatDate(payload?.date_to, locale) })}</CardTitle>
           </CardHeader>
           <CardContent>
             {payload?.days.length ? (
-              <>
-                <div className="space-y-3 md:hidden">
-                  {payload.days.map((day) => (
-                    <div key={day.attendance_date} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                      <div className="font-semibold text-[var(--text)]">{formatDate(day.attendance_date)}</div>
-                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
-                          <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Assigned</div>
-                          <div className="mt-1 font-medium text-[var(--text)]">{day.total_people}</div>
-                        </div>
-                        <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
-                          <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Punched In</div>
-                          <div className="mt-1 font-medium text-[var(--text)]">{day.punched_in}</div>
-                        </div>
-                        <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
-                          <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Completed</div>
-                          <div className="mt-1 font-medium text-[var(--text)]">{day.completed}</div>
-                        </div>
-                        <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
-                          <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Not Punched</div>
-                          <div className="mt-1 font-medium text-[var(--text)]">{day.not_punched}</div>
-                        </div>
-                        <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
-                          <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Pending Review</div>
-                          <div className="mt-1 font-medium text-[var(--text)]">{day.pending_review}</div>
-                        </div>
-                        <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(12,16,26,0.72)] p-3 text-sm">
-                          <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Late / Overtime</div>
-                          <div className="mt-1 font-medium text-[var(--text)]">{day.late} / {day.overtime}</div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                <div className="hidden overflow-x-auto md:block">
-                  <table className="min-w-full text-left text-sm">
-                    <thead className="text-[var(--muted)]">
-                      <tr className="border-b border-[var(--border)]">
-                        <th className="px-3 py-3 font-medium">Date</th>
-                        <th className="px-3 py-3 font-medium">Assigned</th>
-                        <th className="px-3 py-3 font-medium">Punched In</th>
-                        <th className="px-3 py-3 font-medium">Completed</th>
-                        <th className="px-3 py-3 font-medium">Not Punched</th>
-                        <th className="px-3 py-3 font-medium">Pending Review</th>
-                        <th className="px-3 py-3 font-medium">Late</th>
-                        <th className="px-3 py-3 font-medium">Overtime</th>
+              <div className="overflow-x-auto">
+                <table className="min-w-full text-left text-sm">
+                  <thead className="text-[var(--muted)]">
+                    <tr className="border-b border-[var(--border)]">
+                      <th className="px-3 py-3 font-medium">{t("attendance.reports.breakdown.table.date", "Date")}</th>
+                      <th className="px-3 py-3 font-medium">{t("attendance.reports.breakdown.table.assigned", "Assigned")}</th>
+                      <th className="px-3 py-3 font-medium">{t("attendance.reports.breakdown.table.punched_in", "Punched In")}</th>
+                      <th className="px-3 py-3 font-medium">{t("attendance.reports.breakdown.table.completed", "Completed")}</th>
+                      <th className="px-3 py-3 font-medium">{t("attendance.reports.breakdown.table.not_punched", "Not Punched")}</th>
+                      <th className="px-3 py-3 font-medium">{t("attendance.reports.breakdown.table.pending_review", "Pending Review")}</th>
+                      <th className="px-3 py-3 font-medium">{t("attendance.reports.breakdown.table.late", "Late")}</th>
+                      <th className="px-3 py-3 font-medium">{t("attendance.reports.breakdown.table.overtime", "Overtime")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payload.days.map((day) => (
+                      <tr key={day.attendance_date} className="border-b border-[var(--border)]/60">
+                        <td className="px-3 py-3 font-semibold text-[var(--text)]">{formatDate(day.attendance_date, locale)}</td>
+                        <td className="px-3 py-3">{day.total_people}</td>
+                        <td className="px-3 py-3">{day.punched_in}</td>
+                        <td className="px-3 py-3">{day.completed}</td>
+                        <td className="px-3 py-3">{day.not_punched}</td>
+                        <td className="px-3 py-3">{day.pending_review}</td>
+                        <td className="px-3 py-3">{day.late}</td>
+                        <td className="px-3 py-3">{day.overtime}</td>
                       </tr>
-                    </thead>
-                    <tbody>
-                      {payload.days.map((day) => (
-                        <tr key={day.attendance_date} className="border-b border-[var(--border)]/60">
-                          <td className="px-3 py-3 font-semibold text-[var(--text)]">{formatDate(day.attendance_date)}</td>
-                          <td className="px-3 py-3">{day.total_people}</td>
-                          <td className="px-3 py-3">{day.punched_in}</td>
-                          <td className="px-3 py-3">{day.completed}</td>
-                          <td className="px-3 py-3">{day.not_punched}</td>
-                          <td className="px-3 py-3">{day.pending_review}</td>
-                          <td className="px-3 py-3">{day.late}</td>
-                          <td className="px-3 py-3">{day.overtime}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             ) : (
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                No attendance data is available for the selected range yet.
+                {t("attendance.reports.breakdown.empty", "No attendance data is available for the selected range yet.")}
               </div>
             )}
           </CardContent>

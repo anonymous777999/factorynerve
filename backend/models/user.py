@@ -51,9 +51,6 @@ class User(Base):
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    session_invalidated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
-    )
 
     entries = relationship("Entry", back_populates="user")
     audit_logs = relationship("AuditLog", back_populates="user")
@@ -89,7 +86,6 @@ class UserReadSchema(UserBaseSchema):
     id: int
     user_code: int
     is_active: bool
-    org_role: UserRole | None = None
     email_verified_at: datetime | None = None
     verification_sent_at: datetime | None = None
     created_at: datetime
@@ -97,13 +93,3 @@ class UserReadSchema(UserBaseSchema):
     profile_picture: str | None = None
 
     model_config = ConfigDict(from_attributes=True)
-
-
-# Import related models so SQLAlchemy relationship targets are registered even
-# when tests or routers import `User` directly before full database init runs.
-import backend.models.email_queue  # noqa: E402,F401
-import backend.models.entry  # noqa: E402,F401
-import backend.models.organization  # noqa: E402,F401
-import backend.models.refresh_token  # noqa: E402,F401
-import backend.models.report  # noqa: E402,F401
-import backend.models.user_factory_role  # noqa: E402,F401

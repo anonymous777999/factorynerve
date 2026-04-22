@@ -1,12 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { getActiveWorkflowTemplate, type ActiveWorkflowTemplateContext } from "@/lib/auth";
 import { listUnreadAlerts, type AlertItem } from "@/lib/dashboard";
 import { getTodayEntries, type Entry } from "@/lib/entries";
+import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import {
   countQueuedEntries,
   loadDraft,
@@ -14,9 +18,6 @@ import {
   type EntryDraft,
 } from "@/lib/offline-entries";
 import { useSession } from "@/lib/use-session";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 
 const ALL_SHIFTS = ["morning", "evening", "night"] as const;
 const AUTO_REFRESH_MS = 25_000;
@@ -27,22 +28,22 @@ function localDateValue() {
   return new Date(now.getTime() - offset).toISOString().slice(0, 10);
 }
 
-function formatDate(value?: string | null) {
+function formatDate(value?: string | null, locale = "en-IN") {
   if (!value) return "-";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleDateString("en-IN", {
+  return parsed.toLocaleDateString(locale, {
     day: "2-digit",
     month: "short",
     year: "numeric",
   });
 }
 
-function formatDateTime(value?: string | null) {
+function formatDateTime(value?: string | null, locale = "en-IN") {
   if (!value) return "-";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString("en-IN", {
+  return parsed.toLocaleString(locale, {
     day: "2-digit",
     month: "short",
     hour: "2-digit",
@@ -67,6 +68,9 @@ function taskTone(type: "good" | "watch" | "action") {
 }
 
 export default function MyTasksPage() {
+  const { locale, t } = useI18n();
+  useI18nNamespaces(["common", "tasks", "attendance"]);
+
   const { user, loading, activeFactory, error: sessionError } = useSession();
   const searchParams = useSearchParams();
   const [todayEntries, setTodayEntries] = useState<Entry[]>([]);
@@ -83,6 +87,14 @@ export default function MyTasksPage() {
   const focus = searchParams.get("focus") || "";
   const canUseTasks = roleEligible(user?.role);
   const isSteelFactory = (activeFactory?.industry_type || "").toLowerCase() === "steel";
+
+  const shiftLabel = useCallback(
+    (value?: string | null) => {
+      if (!value) return "-";
+      return t(`attendance.shift.${value}`, value.charAt(0).toUpperCase() + value.slice(1));
+    },
+    [t],
+  );
 
   const loadTasks = useCallback(
     async (options?: { background?: boolean }) => {
@@ -116,7 +128,7 @@ export default function MyTasksPage() {
           (result) => result.status === "rejected",
         );
         if (firstFailure && firstFailure.status === "rejected") {
-          setError(firstFailure.reason instanceof Error ? firstFailure.reason.message : "Could not load your task board.");
+          setError(firstFailure.reason instanceof Error ? firstFailure.reason.message : t("tasks.errors.load", "Could not load your task board."));
         }
       } finally {
         setLastUpdatedAt(new Date().toISOString());
@@ -125,7 +137,7 @@ export default function MyTasksPage() {
         setRefreshing(false);
       }
     },
-    [canUseTasks, user],
+    [canUseTasks, t, user],
   );
 
   useEffect(() => {
@@ -189,50 +201,65 @@ export default function MyTasksPage() {
     const items = [] as Array<{ title: string; detail: string; href: string; tone: "good" | "watch" | "action" }>;
     if (pendingShifts > 0) {
       items.push({
-        title: `Complete the ${nextShift} shift entry`,
-        detail: `${pendingShifts} shift slot${pendingShifts === 1 ? "" : "s"} still open today.`,
+        title: t("tasks.task.complete_shift", "Complete the {{shift}} shift entry", { shift: shiftLabel(nextShift) }),
+        detail: t("tasks.task.complete_shift_detail", "{{count}} shift slot{{suffix}} still open today.", {
+          count: pendingShifts,
+          suffix: pendingShifts === 1 ? "" : "s",
+        }),
         href: `/entry?date=${draft?.date || localDateValue()}&shift=${nextShift}`,
         tone: "action",
       });
     }
     if (draft) {
       items.push({
-        title: "Continue your saved draft",
-        detail: `${draft.shift} shift draft saved for ${formatDate(draft.date)}.`,
+        title: t("tasks.task.continue_draft", "Continue your saved draft"),
+        detail: t("tasks.task.continue_draft_detail", "{{shift}} shift draft saved for {{date}}.", {
+          shift: shiftLabel(draft.shift),
+          date: formatDate(draft.date, locale),
+        }),
         href: `/entry?date=${draft.date}&shift=${draft.shift}&focus=draft`,
         tone: "watch",
       });
     }
     if (queueCount > 0) {
       items.push({
-        title: "Sync the offline queue",
-        detail: `${queueCount} offline item${queueCount === 1 ? "" : "s"} still waiting on this device.`,
+        title: t("tasks.task.sync_queue", "Sync the offline queue"),
+        detail: t("tasks.task.sync_queue_detail", "{{count}} offline item{{suffix}} still waiting on this device.", {
+          count: queueCount,
+          suffix: queueCount === 1 ? "" : "s",
+        }),
         href: "/tasks?focus=offline",
         tone: "watch",
       });
     }
     if (alerts.length > 0) {
       items.push({
-        title: "Review factory alerts",
-        detail: `${alerts.length} unread alert${alerts.length === 1 ? "" : "s"} still need attention.`,
+        title: t("tasks.task.review_alerts", "Review factory alerts"),
+        detail: t("tasks.task.review_alerts_detail", "{{count}} unread alert{{suffix}} still need attention.", {
+          count: alerts.length,
+          suffix: alerts.length === 1 ? "" : "s",
+        }),
         href: "/dashboard",
         tone: "action",
       });
     }
     if (!items.length) {
       items.push({
-        title: "You are clear for now",
-        detail: "All shift slots, drafts, and queue items are in a healthy state.",
+        title: t("tasks.task.clear", "You are clear for now"),
+        detail: t("tasks.task.clear_detail", "All shift slots, drafts, and queue items are in a healthy state."),
         href: "/dashboard",
         tone: "good",
       });
     }
     return items;
-  }, [alerts.length, draft, nextShift, pendingShifts, queueCount]);
+  }, [alerts.length, draft, locale, nextShift, pendingShifts, queueCount, shiftLabel, t]);
+  const primaryTask = quickTasks[0] ?? null;
+  const supportingTasks = quickTasks.slice(1);
+  const topAlert = alerts[0] ?? null;
 
   if (loading || (pageLoading && !hasLoadedOnce)) {
     return (
-      <main className="min-h-screen px-4 py-8 shell-bottom-clearance md:px-8">
+      <main className="min-h-screen px-4 py-8 md:px-8">
         <div className="mx-auto max-w-7xl space-y-6">
           <Skeleton className="h-32 rounded-[2rem]" />
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -252,16 +279,16 @@ export default function MyTasksPage() {
 
   if (!user) {
     return (
-      <main className="min-h-screen px-4 py-8 shell-bottom-clearance md:px-8">
+      <main className="min-h-screen px-4 py-8 md:px-8">
         <div className="mx-auto max-w-4xl">
           <Card>
             <CardHeader>
-              <div className="text-sm uppercase tracking-[0.26em] text-[var(--accent)]">My Tasks</div>
-              <CardTitle>Login required.</CardTitle>
+              <div className="text-sm uppercase tracking-[0.26em] text-[var(--accent)]">{t("tasks.title", "My Tasks")}</div>
+              <CardTitle>{t("tasks.sign_in_title", "Sign in to open your task board")}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
-              <Link href="/access"><Button>Open Login</Button></Link>
-              <Link href="/dashboard"><Button variant="outline">Back to Dashboard</Button></Link>
+              <Link href="/access"><Button>{t("dashboard.action.open_login", "Open Access")}</Button></Link>
+              <Link href="/dashboard"><Button variant="outline">{t("common.back", "Back")} {t("navigation.nav.today_board.label", "Dashboard")}</Button></Link>
             </CardContent>
           </Card>
         </div>
@@ -271,18 +298,20 @@ export default function MyTasksPage() {
 
   if (!canUseTasks) {
     return (
-      <main className="min-h-screen px-4 py-8 shell-bottom-clearance md:px-8">
+      <main className="min-h-screen px-4 py-8 md:px-8">
         <div className="mx-auto max-w-4xl">
           <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
             <CardHeader>
-              <div className="text-sm uppercase tracking-[0.26em] text-[var(--accent)]">My Tasks</div>
-              <CardTitle>This worker board is kept simple on purpose</CardTitle>
+              <div className="text-sm uppercase tracking-[0.26em] text-[var(--accent)]">{t("tasks.title", "My Tasks")}</div>
+              <CardTitle>{t("tasks.worker_only_title", "This worker board is kept simple on purpose")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-[var(--muted)]">
-              <p>Operators only.</p>
+              <p>
+                {t("tasks.worker_only_body", "Your current role is {{role}}. We keep this page for worker-first daily use so managers and owners stay on the main operations and reporting boards.", { role: user.role })}
+              </p>
               <div className="flex flex-wrap gap-3">
-                <Link href="/dashboard"><Button>Open Operations Board</Button></Link>
-                <Link href="/approvals"><Button variant="outline">Open Approval Inbox</Button></Link>
+                <Link href="/dashboard"><Button>{t("tasks.actions.open_operations", "Open Operations Board")}</Button></Link>
+                <Link href="/approvals"><Button variant="outline">{t("tasks.actions.open_approvals", "Open Approval Inbox")}</Button></Link>
               </div>
             </CardContent>
           </Card>
@@ -292,93 +321,169 @@ export default function MyTasksPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 shell-bottom-clearance md:px-8 md:pb-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <main className="min-h-screen px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
         <section className="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">
-            <div className="text-sm uppercase tracking-[0.32em] text-[var(--accent)]">Daily Work</div>
-            <h1 className="text-3xl font-semibold md:text-4xl">My Tasks</h1>
+            <div className="text-sm uppercase tracking-[0.32em] text-[var(--accent)]">{t("tasks.hero.eyebrow", "Daily Work")}</div>
+            <h1 className="text-3xl font-semibold md:text-4xl">{t("tasks.title", "My Tasks")}</h1>
+            <p className="max-w-3xl text-sm text-[var(--muted)]">{t("tasks.hero.subtitle", "Start with the next task, then check saved work and factory signals.")}</p>
           </div>
           <div className="space-y-2 text-sm text-[var(--muted)]">
-            <div>Active factory: <span className="font-semibold text-[var(--text)]">{activeFactory?.name || user.factory_name}</span></div>
-            <div>Workflow: <span className="font-semibold text-[var(--text)]">{templateContext?.workflow_template_label || activeFactory?.workflow_template_label || "Standard"}</span></div>
-            <div className="grid gap-2 sm:flex sm:flex-wrap sm:items-center">
+            <div>{t("tasks.hero.active_factory", "Active factory: {{value}}", { value: activeFactory?.name || user.factory_name })}</div>
+            <div>{t("tasks.hero.workflow", "Workflow: {{value}}", { value: templateContext?.workflow_template_label || activeFactory?.workflow_template_label || "Standard" })}</div>
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
-                className="w-full px-4 py-2 text-xs sm:w-auto"
+                className="px-4 py-2 text-xs"
                 onClick={() => {
                   void loadTasks({ background: true });
                 }}
                 disabled={refreshing}
               >
-                {refreshing ? "Refreshing..." : "Refresh Tasks"}
+                {refreshing ? t("tasks.hero.refreshing", "Refreshing...") : t("tasks.hero.refresh", "Refresh Tasks")}
               </Button>
               <span className="text-xs text-[var(--muted)]">
                 {refreshing
-                  ? "Updating tasks..."
+                  ? t("tasks.hero.updating", "Updating tasks...")
                   : lastUpdatedAt
-                    ? `Updated ${formatDateTime(lastUpdatedAt)}`
-                    : "Live updates every 25 seconds"}
+                    ? t("tasks.hero.updated", "Updated {{value}}", { value: formatDateTime(lastUpdatedAt, locale) })
+                    : t("tasks.hero.live_updates", "Live updates every 25 seconds")}
               </span>
             </div>
           </div>
         </section>
 
+        <section className="grid gap-3 xl:grid-cols-3">
+          {[
+            { label: t("tasks.steps.start", "1. Start next"), detail: t("tasks.steps.start_detail", "{{value}}", { value: primaryTask?.title || t("tasks.task.clear", "You are clear for now") }) },
+            { label: t("tasks.steps.saved", "2. Check saved work"), detail: draft ? t("tasks.steps.saved_with_draft", "Continue the saved draft or sync offline work.") : t("tasks.steps.saved_empty", "Nothing is waiting in local draft storage.") },
+            {
+              label: t("tasks.steps.clear", "3. Clear signals"),
+              detail: alerts.length
+                ? t("tasks.steps.clear_with_alerts", "{{count}} unread alert{{suffix}} still need attention.", { count: alerts.length, suffix: alerts.length === 1 ? "" : "s" })
+                : t("tasks.steps.clear_empty", "No unread alerts are blocking you right now."),
+            },
+          ].map((step) => (
+            <div key={step.label} className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-5 py-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--accent)]">{step.label}</div>
+              <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
+            </div>
+          ))}
+        </section>
+
         {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
         {refreshing ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3 text-sm text-[var(--muted)]">
-            Refreshing task board in the background...
+            {t("tasks.refreshing_background", "Refreshing task board in the background...")}
           </div>
         ) : null}
         {sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{sessionError}</div> : null}
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Card className={highlightCard(focus === "today") || undefined}>
+        <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+          <Card className={highlightCard(Boolean(primaryTask) && primaryTask.tone !== "good") || undefined}>
             <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Pending Shifts</div>
-              <CardTitle>{pendingShifts}</CardTitle>
+              <div className="text-sm text-[var(--muted)]">{t("tasks.next_task", "Next Task")}</div>
+              <CardTitle className="text-xl">{primaryTask?.title || t("tasks.clear_state", "You are clear for now")}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-              <div>{pendingShifts > 0 ? `${nextShift} shift is next in line.` : "All shift slots have already been entered today."}</div>
-              <Link href={`/entry?date=${draft?.date || localDateValue()}&shift=${nextShift}`}>
-                <Button variant="outline" className="w-full px-4 py-2 text-xs sm:w-auto">Open Shift Entry</Button>
-              </Link>
+            <CardContent className="space-y-3">
+              {primaryTask ? (
+                <div className={`rounded-3xl border px-5 py-5 ${taskTone(primaryTask.tone)}`}>
+                  <div className="flex flex-wrap items-start justify-between gap-4">
+                    <div className="max-w-xl">
+                      <div className="text-sm font-semibold text-[var(--text)]">{primaryTask.title}</div>
+                      <div className="mt-2 text-sm leading-6 text-[var(--muted)]">{primaryTask.detail}</div>
+                    </div>
+                    <Link href={primaryTask.href}>
+                      <Button className="px-5 py-2 text-sm">{t("tasks.start_now", "Start now")}</Button>
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
+              {supportingTasks.length ? (
+                <details className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+                  <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">
+                    {t("tasks.more_tasks", "More tasks")}
+                  </summary>
+                  <div className="mt-4 space-y-3">
+                    {supportingTasks.map((task) => (
+                      <div key={`${task.title}-${task.href}`} className={`rounded-2xl border px-4 py-4 ${taskTone(task.tone)}`}>
+                        <div className="flex flex-wrap items-start justify-between gap-3">
+                          <div>
+                            <div className="text-sm font-semibold text-[var(--text)]">{task.title}</div>
+                            <div className="mt-1 text-xs leading-5 text-[var(--muted)]">{task.detail}</div>
+                          </div>
+                          <Link href={task.href}>
+                            <Button variant="outline" className="px-4 py-2 text-xs">{t("common.open", "Open")}</Button>
+                          </Link>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
             </CardContent>
           </Card>
-          <Card className={highlightCard(Boolean(draft) || focus === "draft") || undefined}>
+
+          <Card>
             <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Saved Draft</div>
-              <CardTitle>{draft ? `${draft.shift}` : "No draft"}</CardTitle>
+              <div className="text-sm text-[var(--muted)]">{t("tasks.today_status", "Today Status")}</div>
+              <CardTitle className="text-xl">{t("tasks.keep_shift_moving", "Keep the shift moving")}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-              <div>{draft ? `Saved for ${formatDate(draft.date)}.` : "Nothing is waiting in local draft storage right now."}</div>
-              <Link href={draft ? `/entry?date=${draft.date}&shift=${draft.shift}&focus=draft` : "/entry"}>
-                <Button variant="outline" className="w-full px-4 py-2 text-xs sm:w-auto">{draft ? "Continue Draft" : "Open Entry"}</Button>
-              </Link>
-            </CardContent>
-          </Card>
-          <Card className={highlightCard(focus === "offline") || undefined} id="offline">
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Offline Queue</div>
-              <CardTitle>{queueCount}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-              <div>{queueCount > 0 ? `${queueCount} item${queueCount === 1 ? " is" : "s are"} still waiting to sync.` : "This device has no waiting offline work."}</div>
-              <Link href="/entry?focus=offline">
-                <Button variant="outline" className="w-full px-4 py-2 text-xs sm:w-auto">Open Entry & Sync</Button>
-              </Link>
-            </CardContent>
-          </Card>
-          <Card className={highlightCard(focus === "alerts") || undefined}>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Unread Alerts</div>
-              <CardTitle>{alerts.length}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-              <div>{alerts.length ? "Factory alerts are waiting for attention on the board." : "No unread alerts right now."}</div>
-              <Link href="/dashboard">
-                <Button variant="outline" className="w-full px-4 py-2 text-xs sm:w-auto">Open Operations Board</Button>
-              </Link>
+            <CardContent className="space-y-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  {
+                    label: t("tasks.tile.pending_shifts", "Pending shifts"),
+                    value: pendingShifts.toString(),
+                    detail: pendingShifts > 0 ? t("tasks.tile.pending_shifts_detail", "{{shift}} shift is next.", { shift: shiftLabel(nextShift) }) : t("tasks.tile.pending_shifts_clear", "All shifts are covered."),
+                    active: focus === "today",
+                  },
+                  {
+                    label: t("tasks.tile.saved_draft", "Saved draft"),
+                    value: draft ? shiftLabel(draft.shift) : t("tasks.tile.saved_draft_empty", "No draft"),
+                    detail: draft ? t("tasks.tile.saved_draft_detail", "Saved for {{date}}.", { date: formatDate(draft.date, locale) }) : t("tasks.tile.saved_draft_empty", "Nothing saved locally."),
+                    active: Boolean(draft) || focus === "draft",
+                  },
+                  {
+                    label: t("tasks.tile.offline_queue", "Offline queue"),
+                    value: queueCount.toString(),
+                    detail: queueCount > 0 ? t("tasks.tile.offline_queue_detail", "Sync is still waiting.") : t("tasks.tile.offline_queue_empty", "No queued offline work."),
+                    active: focus === "offline",
+                  },
+                  {
+                    label: t("tasks.tile.unread_alerts", "Unread alerts"),
+                    value: alerts.length.toString(),
+                    detail: alerts.length ? t("tasks.tile.unread_alerts_detail", "Signals are waiting.") : t("tasks.tile.unread_alerts_empty", "No unread alerts."),
+                    active: focus === "alerts",
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className={`rounded-2xl border px-4 py-4 ${highlightCard(item.active)}`}
+                  >
+                    <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">{item.label}</div>
+                    <div className="mt-2 text-xl font-semibold text-[var(--text)]">{item.value}</div>
+                    <div className="mt-2 text-xs leading-5 text-[var(--muted)]">{item.detail}</div>
+                  </div>
+                ))}
+              </div>
+              <details className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+                <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">
+                  {t("tasks.tools.title", "Task tools")}
+                </summary>
+                <div className="mt-4 space-y-4">
+                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(20,24,36,0.7)] p-4 text-sm text-[var(--muted)]">
+                    {t("tasks.tools.subtitle", "Use this tray for direct jumps after you finish the next task.")}
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <Link href="/entry"><Button variant="outline">{t("tasks.tools.shift_entry", "Shift Entry")}</Button></Link>
+                    <Link href="/ocr/scan"><Button variant="outline">{t("tasks.tools.capture", "Capture")}</Button></Link>
+                    {isSteelFactory ? <Link href="/steel"><Button variant="outline">{t("tasks.tools.steel_ops", "Steel Ops")}</Button></Link> : null}
+                    <Link href="/dashboard"><Button variant="ghost">{t("tasks.tools.operations", "Operations")}</Button></Link>
+                  </div>
+                </div>
+              </details>
             </CardContent>
           </Card>
         </section>
@@ -386,85 +491,68 @@ export default function MyTasksPage() {
         <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
           <Card>
             <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Next Actions</div>
-              <CardTitle className="text-xl">What to do next</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {quickTasks.map((task) => (
-                <div key={`${task.title}-${task.href}`} className={`rounded-2xl border px-4 py-4 ${taskTone(task.tone)}`}>
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-[var(--text)]">{task.title}</div>
-                      <div className="mt-1 text-xs leading-5 text-[var(--muted)]">{task.detail}</div>
-                    </div>
-                    <Link href={task.href}>
-                      <Button variant="outline" className="w-full px-4 py-2 text-xs sm:w-auto">Open</Button>
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Today&apos;s Submitted Entries</div>
-              <CardTitle className="text-xl">Shift progress</CardTitle>
+              <div className="text-sm text-[var(--muted)]">{t("tasks.submitted.title", "Submitted Today")}</div>
+              <CardTitle className="text-xl">{t("tasks.submitted.subtitle", "Shift progress")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {todayEntries.length ? todayEntries.map((entry) => (
                 <div key={entry.id} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                      <div className="text-sm font-semibold text-[var(--text)]">{entry.shift} shift</div>
-                      <div className="mt-1 text-xs text-[var(--muted)]">{entry.units_produced} units produced - {entry.status}</div>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-[var(--text)]">{t("tasks.submitted.shift", "{{shift}} shift", { shift: shiftLabel(entry.shift) })}</div>
+                      <div className="mt-1 text-xs text-[var(--muted)]">{t("tasks.submitted.detail", "{{units}} units produced - {{status}}", { units: entry.units_produced, status: entry.status })}</div>
                     </div>
                     <Link href={`/entry/${entry.id}`}>
-                      <Button variant="outline" className="w-full px-4 py-2 text-xs sm:w-auto">Open</Button>
+                      <Button variant="outline" className="px-4 py-2 text-xs">{t("common.open", "Open")}</Button>
                     </Link>
                   </div>
                 </div>
               )) : (
                 <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-6 text-sm text-[var(--muted)]">
-                  No shift entry today.
+                  {t("tasks.submitted.empty", "No shift entry has been submitted today yet.")}
                 </div>
               )}
             </CardContent>
           </Card>
-        </section>
 
-        <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
           <Card>
             <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Attention Signals</div>
-              <CardTitle className="text-xl">Current alerts</CardTitle>
+              <div className="text-sm text-[var(--muted)]">{t("tasks.alerts.title", "Attention Signals")}</div>
+              <CardTitle className="text-xl">{t("tasks.alerts.subtitle", "Current alerts")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {alerts.length ? alerts.slice(0, 6).map((alert) => (
-                <div key={alert.id} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                  <div className="text-sm font-semibold text-[var(--text)]">{alert.message}</div>
-                  <div className="mt-1 text-xs text-[var(--muted)]">{alert.severity} - {alert.alert_type} - {formatDate(alert.created_at)}</div>
+              {topAlert ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="max-w-xl">
+                      <div className="text-sm font-semibold text-[var(--text)]">{topAlert.message}</div>
+                      <div className="mt-1 text-xs text-[var(--muted)]">{topAlert.severity} - {topAlert.alert_type} - {formatDate(topAlert.created_at, locale)}</div>
+                    </div>
+                    <Link href="/dashboard">
+                      <Button variant="outline" className="px-4 py-2 text-xs">{t("tasks.alerts.board", "Open board")}</Button>
+                    </Link>
+                  </div>
                 </div>
-              )) : (
+              ) : (
                 <div className="rounded-2xl border border-dashed border-[var(--border)] px-4 py-6 text-sm text-[var(--muted)]">
-                  No unread alerts right now.
+                  {t("tasks.alerts.empty", "No unread alerts right now.")}
                 </div>
               )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Quick Jump</div>
-              <CardTitle className="text-xl">Factory shortcuts</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-              <div className="grid gap-3 sm:flex sm:flex-wrap">
-                <Link href="/entry"><Button variant="outline" className="w-full sm:w-auto">Shift Entry</Button></Link>
-                <Link href="/ocr/scan"><Button variant="outline" className="w-full sm:w-auto">Document Capture</Button></Link>
-                {isSteelFactory ? <Link href="/steel"><Button variant="outline" className="w-full sm:w-auto">Steel Operations</Button></Link> : null}
-                <Link href="/dashboard"><Button variant="ghost" className="w-full sm:w-auto">Operations Board</Button></Link>
-              </div>
+              {alerts.length > 1 ? (
+                <details className="rounded-2xl border border-[var(--border)] bg-[rgba(20,24,36,0.7)] px-4 py-4">
+                  <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">
+                    {t("tasks.alerts.more", "More alerts")}
+                  </summary>
+                  <div className="mt-4 space-y-3">
+                    {alerts.slice(1, 6).map((alert) => (
+                      <div key={alert.id} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                        <div className="text-sm font-semibold text-[var(--text)]">{alert.message}</div>
+                        <div className="mt-1 text-xs text-[var(--muted)]">{alert.severity} - {alert.alert_type} - {formatDate(alert.created_at, locale)}</div>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
             </CardContent>
           </Card>
         </section>

@@ -4,17 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { getBillingStatus } from "@/lib/billing";
-import {
-  getBestValuePlan,
-  sortAddons,
-  sortPlans,
-  type BillingCycle,
-} from "@/lib/pricing";
-import {
-  billingRoleLabel,
-  canStartBillingCheckout,
-  canViewBillingWorkspace,
-} from "@/lib/billing-access";
+import { useI18n, useI18nNamespaces } from "@/lib/i18n";
+import { sortAddons, sortPlans } from "@/lib/pricing";
 import {
   getLastPlanUpgrade,
   getPlans,
@@ -97,40 +88,9 @@ function planBadge(plan: PlanInfo, activePlanId: string) {
   return null;
 }
 
-function compareRowLabel(value: boolean | string) {
-  if (typeof value === "boolean") {
-    return value ? "Yes" : "-";
-  }
-  return value;
-}
-
-function formatPlanPrice(plan: PlanInfo) {
-  if (plan.sales_only) return "Custom quote";
-  if (Number(plan.monthly_price || 0) <= 0) return "Free";
-  return `${formatMoney(plan.monthly_price || 0)}/mo`;
-}
-
-function buildBillingHref(params: {
-  plan?: string;
-  cycle?: BillingCycle;
-  addonQuantities?: Record<string, number>;
-  intent?: string;
-}) {
-  const query = new URLSearchParams();
-  if (params.plan) query.set("plan", params.plan);
-  if (params.cycle) query.set("cycle", params.cycle);
-  if (params.intent) query.set("intent", params.intent);
-  const normalizedAddons = Object.entries(params.addonQuantities || {})
-    .filter(([, quantity]) => Number(quantity || 0) > 0)
-    .map(([addonId, quantity]) => `${addonId}:${Math.max(1, Math.floor(quantity || 0))}`);
-  if (normalizedAddons.length) {
-    query.set("addon_quantities", normalizedAddons.join(","));
-  }
-  const serialized = query.toString();
-  return serialized ? `/billing?${serialized}` : "/billing";
-}
-
 export default function PlansPage() {
+  const { t } = useI18n();
+  useI18nNamespaces(["billing", "common", "forms", "errors"]);
   const { user, loading, error: sessionError } = useSession();
   const [plansPayload, setPlansPayload] = useState<PlansPayload | null>(null);
   const [billingSnapshot, setBillingSnapshot] = useState<BillingStatus | null>(null);
@@ -139,9 +99,10 @@ export default function PlansPage() {
   const [lastUpgrade, setLastUpgrade] = useState("");
   const [error, setError] = useState("");
 
-  const canViewBilling = useMemo(() => canViewBillingWorkspace(user), [user]);
-  const canStartCheckout = useMemo(() => canStartBillingCheckout(user), [user]);
-  const currentRoleLabel = useMemo(() => billingRoleLabel(user), [user]);
+  const canViewBilling = useMemo(() => {
+    const role = user?.role || "";
+    return role === "admin" || role === "owner";
+  }, [user]);
 
   useEffect(() => {
     let alive = true;
@@ -185,46 +146,9 @@ export default function PlansPage() {
 
   const plans = useMemo(() => sortPlans(plansPayload?.plans || []), [plansPayload?.plans]);
   const addons = useMemo(() => sortAddons(plansPayload?.addons || []), [plansPayload?.addons]);
-  const activeAddonIds = useMemo(
-    () => (billingSnapshot?.active_addons || []).map((addon) => addon.id),
-    [billingSnapshot?.active_addons],
-  );
-  const activeAddonQuantities = useMemo(() => {
-    const quantities: Record<string, number> = {};
-    (billingSnapshot?.active_addons || []).forEach((addon) => {
-      quantities[addon.id] = Math.max(1, Number(addon.quantity || 1));
-    });
-    return quantities;
-  }, [billingSnapshot?.active_addons]);
-  const recommendedPlanEstimate = useMemo(() => {
-    if (!canStartCheckout || !plansPayload?.pricing || !billingSnapshot?.footprint) return null;
-    return getBestValuePlan(
-      plans,
-      plansPayload.pricing,
-      addons,
-      {
-        users: Math.max(1, Number(billingSnapshot.footprint.active_users || 1)),
-        factories: Math.max(1, Number(billingSnapshot.footprint.active_factories || 1)),
-        activeAddonIds,
-        activeAddonQuantities,
-      },
-      "monthly",
-    );
-  }, [
-    activeAddonIds,
-    activeAddonQuantities,
-    addons,
-    billingSnapshot,
-    canStartCheckout,
-    plans,
-    plansPayload,
-  ]);
-  const recommendedPaidPlan = recommendedPlanEstimate?.plan || plans.find(
-    (plan) => Number(plan.monthly_price || 0) > 0 && !plan.sales_only,
-  ) || null;
-  const currentPlanInfo = useMemo(
-    () => plans.find((plan) => plan.id === currentPlan) || null,
-    [currentPlan, plans],
+  const defaultPaidPlan = useMemo(
+    () => plans.find((plan) => !plan.sales_only && plan.id !== "free") || plans.find((plan) => !plan.sales_only) || null,
+    [plans],
   );
 
   const aiUsage = billingSnapshot?.usage;
@@ -245,12 +169,13 @@ export default function PlansPage() {
       <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
-            <CardTitle>Plans</CardTitle>
+            <CardTitle>{t("billing.plans.title", "Plans")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
+            {/* AUDIT: FLOW_BROKEN - send signed-out users to the live auth entry instead of the stale login route */}
             <Link href="/access">
-              <Button>Open Login</Button>
+              <Button>Open Access</Button>
             </Link>
           </CardContent>
         </Card>
@@ -259,143 +184,67 @@ export default function PlansPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <main className="min-h-screen px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Plans</div>
+              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("billing.plans.title", "Plans")}</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">
                 Simple, customer-safe pricing for every factory stage
               </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Compare plans, included limits, and OCR packs, then hand off into a cleaner checkout flow only when your organization is ready to buy.
-              </p>
+              {/* AUDIT: TEXT_NOISE - shorten the hero copy so plan choice stays more prominent than pricing narration */}
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">{t("billing.plans.description", "Pick a plan first, then add OCR packs only if you need more scans.")}</p>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              {canViewBilling ? (
-                <Link href="/billing" className="w-full sm:w-auto">
-                  <Button className="w-full sm:w-auto">Open Billing</Button>
-                </Link>
-              ) : (
-                <div className="w-full rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] px-4 py-3 text-sm text-[var(--muted)] sm:w-auto">
-                  {currentRoleLabel}s can compare plans here. Admins and owners handle checkout.
-                </div>
-              )}
-              <Link href="/dashboard" className="w-full sm:w-auto">
-                <Button className="w-full sm:w-auto" variant="outline">Dashboard</Button>
+            {/* AUDIT: BUTTON_CLUTTER - move billing and dashboard jumps into a secondary tools tray so plan cards own the decision flow */}
+            <details className="min-w-[240px] rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+            <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("billing.plans.tools", "Plan tools")}</summary>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link href="/billing">
+                  <Button>{canViewBilling ? t("billing.billing.title", "Billing") : t("billing.plans.access_help", "Access help")}</Button>
+              </Link>
+              <Link href="/dashboard">
+                  <Button variant="outline">{t("billing.billing.dashboard", "Dashboard")}</Button>
               </Link>
             </div>
+          </details>
           </div>
 
-          {canViewBilling && billingSnapshot ? (
-            <div className="mt-5 grid gap-2 text-xs uppercase tracking-[0.18em] text-[var(--muted)] sm:flex sm:flex-wrap">
+          {/* AUDIT: DENSITY_OVERLOAD - tuck billing context into a secondary summary so the hero stays focused on choosing a plan */}
+          <details className="mt-5 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+            <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">Current billing context</summary>
+            <div className="mt-4 flex flex-wrap gap-3 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
               <span className={`rounded-full px-3 py-1 ${badgeClass("blue")}`}>
                 Current plan: {currentPlan || "free"}
               </span>
               <span className={`rounded-full px-3 py-1 ${badgeClass("slate")}`}>
-                OCR packs: {formatActiveAddons(billingSnapshot.active_addons)}
-              </span>
-              <span className={`rounded-full px-3 py-1 ${badgeClass("slate")}`}>
-                Footprint: {billingSnapshot.footprint?.active_users || 0} users / {billingSnapshot.footprint?.active_factories || 0} factories
+                OCR packs: {formatActiveAddons(billingSnapshot?.active_addons)}
               </span>
               <span className={`rounded-full px-3 py-1 ${badgeClass("slate")}`}>
                 Last upgrade: {lastUpgrade || "Not recorded"}
               </span>
             </div>
-          ) : (
-            <div className="mt-5 grid gap-2 text-xs uppercase tracking-[0.18em] text-[var(--muted)] sm:flex sm:flex-wrap">
-              <span className={`rounded-full px-3 py-1 ${badgeClass("blue")}`}>
-                Compare every plan safely
-              </span>
-              <span className={`rounded-full px-3 py-1 ${badgeClass("slate")}`}>
-                Admin or owner required for checkout
-              </span>
-              <span className={`rounded-full px-3 py-1 ${badgeClass("slate")}`}>
-                OCR packs are billable add-ons on paid tiers
-              </span>
-            </div>
-          )}
+          </details>
         </section>
 
-        {(error || sessionError) && !plansLoading ? (
-          <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">
-            {error || sessionError}
-          </div>
-        ) : null}
+        {/* AUDIT: FLOW_BROKEN - add a clear pricing sequence so the page leads users from plan choice into add-ons and billing */}
+        <section className="grid gap-3 xl:grid-cols-3">
+          {[
+            { label: "1. Choose a plan", detail: plans.length ? `${plans.length} plans are available in this catalog.` : "Pricing catalog is loading." },
+            { label: "2. Add OCR only if needed", detail: addons.length ? `${addons.length} OCR packs are available after plan choice.` : "No OCR packs are available right now." },
+            { label: "3. Continue to billing", detail: canViewBilling ? "Admins and owners can continue straight into checkout." : "Ask your admin or owner to complete billing." },
+          ].map((step) => (
+            <div key={step.label} className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-5 py-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">{step.label}</div>
+              <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
+            </div>
+          ))}
+        </section>
 
-        {canStartCheckout && recommendedPlanEstimate ? (
-          <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-            <Card className="border-sky-400/35 bg-[linear-gradient(135deg,rgba(17,24,39,0.94),rgba(8,14,24,0.9))]">
-              <CardHeader>
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm uppercase tracking-[0.22em] text-[var(--accent)]">Recommended Plan</div>
-                    <CardTitle className="mt-2 text-2xl">
-                      {recommendedPlanEstimate.plan.name} fits this organization best
-                    </CardTitle>
-                  </div>
-                  <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeClass("green")}`}>
-                    {formatPlanPrice(recommendedPlanEstimate.plan)}
-                  </span>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-4 text-sm text-[var(--muted)]">
-                <p>
-                  This recommendation uses your real active users, active factories, and OCR-pack state so the next step in billing starts from a valid checkout configuration.
-                </p>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Current footprint</div>
-                    <div className="mt-2 font-semibold text-white">
-                      {billingSnapshot?.footprint?.active_users || 0} users / {billingSnapshot?.footprint?.active_factories || 0} factories
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Included capacity</div>
-                    <div className="mt-2 font-semibold text-white">
-                      {recommendedPlanEstimate.plan.user_limit || "Unlimited"} users / {recommendedPlanEstimate.plan.factory_limit || "Unlimited"} factories
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">OCR pack deductions</div>
-                    <div className="mt-2 font-semibold text-white">
-                      {recommendedPlanEstimate.alreadyActiveAddons.length
-                        ? `${recommendedPlanEstimate.alreadyActiveAddons.length} active`
-                        : "None active"}
-                    </div>
-                  </div>
-                </div>
-                <Link
-                  href={buildBillingHref({
-                    plan: recommendedPlanEstimate.plan.id,
-                    cycle: "monthly",
-                    intent: "upgrade_plan",
-                  })}
-                >
-                  <Button className="w-full sm:w-auto">Continue to Billing</Button>
-                </Link>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">Checkout handoff</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] p-4">
-                  /plans stays focused on comparison and recommendations. /billing handles preflight, OCR packs, final estimate, and Razorpay checkout.
-                </div>
-                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] p-4">
-                  Enterprise stays sales-assisted. Free-plan OCR intent jumps straight into a valid paid-plan recommendation instead of blocking you with a dead-end button.
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-        ) : null}
-
-        {canViewBilling && billingSnapshot ? (
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {/* AUDIT: DENSITY_OVERLOAD - keep usage health visible but secondary so it does not compete with plan cards */}
+        <details className="rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-5 py-5">
+          <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">Current AI usage</summary>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
             <Card>
               <CardHeader>
                 <div className="flex items-start justify-between gap-3">
@@ -453,39 +302,17 @@ export default function PlansPage() {
                 <div>{smartHealth.detail}</div>
               </CardContent>
             </Card>
-          </section>
-        ) : (
-          <section className="grid gap-4 lg:grid-cols-3">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">How to use this page</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm leading-6 text-[var(--muted)]">
-                Compare plans first, then involve an admin or owner to move into billing checkout.
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">What changes on paid plans</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm leading-6 text-[var(--muted)]">
-                Paid tiers unlock OCR add-ons, larger usage pools, and higher factory or user capacity.
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">What stays sales-assisted</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm leading-6 text-[var(--muted)]">
-                Enterprise stays outside self-serve checkout so custom scale, support, and deployment terms can be reviewed properly.
-              </CardContent>
-            </Card>
-          </section>
-        )}
+          </div>
+        </details>
 
-        <section className="grid gap-5 lg:grid-cols-2 xl:grid-cols-3">
+        <section className="grid gap-6 xl:grid-cols-3">
           {plans.map((plan) => {
             const badge = planBadge(plan, currentPlan);
+            const planHref = plan.sales_only
+              ? "#sales-assisted"
+              : canViewBilling
+                ? `/billing?plan=${encodeURIComponent(plan.id)}`
+                : "#billing-role";
             return (
               <Card
                 key={plan.id}
@@ -508,7 +335,7 @@ export default function PlansPage() {
                   </div>
                   <div>
                     <div className="text-3xl font-semibold text-white">
-                      {formatPlanPrice(plan)}
+                      {plan.display_price || (plan.sales_only ? "Custom" : `${formatMoney(plan.monthly_price || 0)}/mo`)}
                     </div>
                     <div className="mt-2 text-sm text-[var(--muted)]">{plan.subtitle || "Factory operations plan"}</div>
                     {plan.custom_price_hint ? (
@@ -553,23 +380,16 @@ export default function PlansPage() {
                     ))}
                   </div>
 
-                  {plan.id === currentPlanInfo?.id && canViewBilling ? (
-                    <Link href={buildBillingHref({ plan: plan.id, intent: "review_current_plan" })}>
-                      <Button className="w-full" variant="outline">Review in Billing</Button>
-                    </Link>
-                  ) : plan.sales_only ? (
-                    <Link href={buildBillingHref({ plan: plan.id, intent: "contact_sales" })}>
-                      <Button className="w-full" variant="outline">Contact Sales</Button>
-                    </Link>
-                  ) : canStartCheckout ? (
-                    <Link href={buildBillingHref({ plan: plan.id, intent: "upgrade_plan" })}>
-                      <Button className="w-full">Continue to Billing</Button>
-                    </Link>
-                  ) : (
-                    <Button className="w-full" variant="outline" disabled>
-                      Ask an admin to upgrade
+                  {/* AUDIT: FLOW_BROKEN - keep each plan CTA valid by sending self-serve users to billing and everyone else to the right helper section */}
+                  <Link href={planHref}>
+                    <Button className="w-full" variant={plan.sales_only ? "outline" : "primary"}>
+                      {plan.sales_only
+                        ? "Contact Sales"
+                        : canViewBilling
+                          ? "Billing"
+                          : "Ask admin"}
                     </Button>
-                  )}
+                  </Link>
                 </CardContent>
               </Card>
             );
@@ -580,28 +400,22 @@ export default function PlansPage() {
           <div>
             <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">OCR Packs</div>
             <h2 className="mt-2 text-2xl font-semibold">Add extra OCR only when you need it</h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-              OCR packs stay customer-visible because they are purchasable product features, but the internal cost model behind them is no longer exposed anywhere in the web UI.
-            </p>
+            {/* AUDIT: TEXT_NOISE - keep the add-on explanation compact so the pack actions stay easier to scan */}
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">Choose a pack only after the core plan covers your team and factory count.</p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-3">
             {addons.map((addon) => {
               const isFreePlan = (currentPlan || "free").toLowerCase() === "free";
-              const activeQuantity =
-                Number(
-                  (billingSnapshot?.active_addons || []).find((item) => item.id === addon.id)?.quantity || 0,
-                ) || 0;
-              const addonBillingHref = isFreePlan
-                ? buildBillingHref({
-                    plan: recommendedPaidPlan?.id || "starter",
-                    addonQuantities: { [addon.id]: 1 },
-                    intent: "upgrade_and_add_pack",
-                  })
-                : buildBillingHref({
-                    plan: currentPlan || recommendedPaidPlan?.id || "starter",
-                    addonQuantities: { [addon.id]: Math.max(1, activeQuantity + 1) },
-                    intent: "add_ocr_pack",
-                  });
+              const canPurchasePack = !isFreePlan;
+              const addonHref = canPurchasePack
+                ? `/billing?plan=${encodeURIComponent(
+                    currentPlan,
+                  )}&addon_quantities=${encodeURIComponent(`${addon.id}:1`)}`
+                : canViewBilling && defaultPaidPlan
+                  ? `/billing?plan=${encodeURIComponent(
+                      defaultPaidPlan.id,
+                    )}&addon_quantities=${encodeURIComponent(`${addon.id}:1`)}`
+                  : "#billing-role";
               return (
                 <Card key={addon.id}>
                   <CardHeader>
@@ -615,22 +429,12 @@ export default function PlansPage() {
                         : "Billable OCR pack"}
                     </div>
                     <div>{addon.description}</div>
-                    {activeQuantity > 0 ? (
-                      <div className="rounded-full border border-emerald-400/30 bg-emerald-400/12 px-3 py-2 text-xs uppercase tracking-[0.18em] text-emerald-200">
-                        Active x{activeQuantity}
-                      </div>
-                    ) : null}
-                    {canStartCheckout ? (
-                      <Link href={addonBillingHref}>
-                        <Button className="w-full" variant="outline">
-                          {isFreePlan ? "Upgrade + Add Pack" : "Add in Billing"}
-                        </Button>
-                      </Link>
-                    ) : (
-                      <Button className="w-full" variant="outline" disabled>
-                        Ask an admin to add this pack
+                    {/* AUDIT: DEAD_FEATURE - replace the disabled free-plan OCR button with a valid upgrade path into billing or admin handoff */}
+                    <Link href={addonHref}>
+                      <Button className="w-full" variant="outline">
+                        {canPurchasePack ? "Add pack" : canViewBilling && defaultPaidPlan ? "Upgrade + pack" : "Ask admin"}
                       </Button>
-                    )}
+                    </Link>
                   </CardContent>
                 </Card>
               );
@@ -639,123 +443,98 @@ export default function PlansPage() {
         </section>
 
         {plans.length ? (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl">Compare all plans</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3 md:hidden">
-                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4 text-sm text-[var(--muted)]">
-                  Scroll the plan cards above for the main offer. This compact compare view keeps the biggest differences visible on phones.
-                </div>
-                {[
-                  {
-                    label: "Users included",
-                    values: plans.map((plan) => compareRowLabel(plan.user_limit > 0 ? formatInteger(plan.user_limit) : "Unlimited")),
-                  },
-                  {
-                    label: "Factories included",
-                    values: plans.map((plan) => compareRowLabel(plan.factory_limit > 0 ? formatInteger(plan.factory_limit) : "Unlimited")),
-                  },
-                  {
-                    label: "OCR",
-                    values: plans.map((plan) => compareRowLabel(describeLimit(plan, "ocr"))),
-                  },
-                  {
-                    label: "Smart inputs",
-                    values: plans.map((plan) => compareRowLabel(describeLimit(plan, "smart"))),
-                  },
-                  {
-                    label: "AI summaries",
-                    values: plans.map((plan) => compareRowLabel(describeLimit(plan, "summary"))),
-                  },
-                  ...CUSTOMER_FEATURES.map((feature) => ({
-                    label: feature.label,
-                    values: plans.map((plan) => compareRowLabel(Boolean(plan.features?.[feature.key]))),
-                  })),
-                ].map((row) => (
-                  <div key={row.label} className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                    <div className="text-sm font-semibold text-white">{row.label}</div>
-                    <div className="mt-3 grid gap-2">
-                      {plans.map((plan, index) => (
-                        <div key={`${row.label}-${plan.id}`} className="flex items-center justify-between gap-3 text-sm">
-                          <span className="text-[var(--muted)]">{plan.name}</span>
-                          <span className="text-right font-medium text-white">{row.values[index]}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="hidden overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] md:block">
-                <table className="min-w-full text-left text-sm">
-                  <thead className="text-[var(--muted)]">
-                    <tr className="border-b border-[var(--border)]">
-                      <th className="px-3 py-3 font-medium">Feature</th>
-                      {plans.map((plan) => (
-                        <th key={plan.id} className="px-3 py-3 font-medium">
-                          {plan.name}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="border-b border-[var(--border)]/60">
-                      <td className="px-3 py-3">Users included</td>
-                      {plans.map((plan) => (
-                        <td key={`${plan.id}-users`} className="px-3 py-3">
-                          {plan.user_limit > 0 ? formatInteger(plan.user_limit) : "Unlimited"}
-                        </td>
-                      ))}
-                    </tr>
-                    <tr className="border-b border-[var(--border)]/60">
-                      <td className="px-3 py-3">Factories included</td>
-                      {plans.map((plan) => (
-                        <td key={`${plan.id}-factories`} className="px-3 py-3">
-                          {plan.factory_limit > 0 ? formatInteger(plan.factory_limit) : "Unlimited"}
-                        </td>
-                      ))}
-                    </tr>
-                    <tr className="border-b border-[var(--border)]/60">
-                      <td className="px-3 py-3">OCR</td>
-                      {plans.map((plan) => (
-                        <td key={`${plan.id}-ocr`} className="px-3 py-3">
-                          {describeLimit(plan, "ocr")}
-                        </td>
-                      ))}
-                    </tr>
-                    <tr className="border-b border-[var(--border)]/60">
-                      <td className="px-3 py-3">Smart inputs</td>
-                      {plans.map((plan) => (
-                        <td key={`${plan.id}-smart`} className="px-3 py-3">
-                          {describeLimit(plan, "smart")}
-                        </td>
-                      ))}
-                    </tr>
-                    <tr className="border-b border-[var(--border)]/60">
-                      <td className="px-3 py-3">AI summaries</td>
-                      {plans.map((plan) => (
-                        <td key={`${plan.id}-summary`} className="px-3 py-3">
-                          {describeLimit(plan, "summary")}
-                        </td>
-                      ))}
-                    </tr>
-                    {CUSTOMER_FEATURES.map((feature) => (
-                      <tr key={feature.key} className="border-b border-[var(--border)]/60 last:border-none">
-                        <td className="px-3 py-3">{feature.label}</td>
-                        {plans.map((plan) => (
-                          <td key={`${plan.id}-${feature.key}`} className="px-3 py-3">
-                            {plan.features?.[feature.key] ? "Yes" : "-"}
-                          </td>
-                        ))}
-                      </tr>
+          <details className="rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-5 py-5">
+            <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">Compare all plans</summary>
+            <div className="mt-4 overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+              <table className="min-w-full text-left text-sm">
+                <thead className="text-[var(--muted)]">
+                  <tr className="border-b border-[var(--border)]">
+                    <th className="px-3 py-3 font-medium">Feature</th>
+                    {plans.map((plan) => (
+                      <th key={plan.id} className="px-3 py-3 font-medium">
+                        {plan.name}
+                      </th>
                     ))}
-                  </tbody>
-                </table>
-              </div>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="border-b border-[var(--border)]/60">
+                    <td className="px-3 py-3">Users included</td>
+                    {plans.map((plan) => (
+                      <td key={`${plan.id}-users`} className="px-3 py-3">
+                        {plan.user_limit > 0 ? formatInteger(plan.user_limit) : "Unlimited"}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-[var(--border)]/60">
+                    <td className="px-3 py-3">Factories included</td>
+                    {plans.map((plan) => (
+                      <td key={`${plan.id}-factories`} className="px-3 py-3">
+                        {plan.factory_limit > 0 ? formatInteger(plan.factory_limit) : "Unlimited"}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-[var(--border)]/60">
+                    <td className="px-3 py-3">OCR</td>
+                    {plans.map((plan) => (
+                      <td key={`${plan.id}-ocr`} className="px-3 py-3">
+                        {describeLimit(plan, "ocr")}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-[var(--border)]/60">
+                    <td className="px-3 py-3">Smart inputs</td>
+                    {plans.map((plan) => (
+                      <td key={`${plan.id}-smart`} className="px-3 py-3">
+                        {describeLimit(plan, "smart")}
+                      </td>
+                    ))}
+                  </tr>
+                  <tr className="border-b border-[var(--border)]/60">
+                    <td className="px-3 py-3">AI summaries</td>
+                    {plans.map((plan) => (
+                      <td key={`${plan.id}-summary`} className="px-3 py-3">
+                        {describeLimit(plan, "summary")}
+                      </td>
+                    ))}
+                  </tr>
+                  {CUSTOMER_FEATURES.map((feature) => (
+                    <tr key={feature.key} className="border-b border-[var(--border)]/60 last:border-none">
+                      <td className="px-3 py-3">{feature.label}</td>
+                      {plans.map((plan) => (
+                        <td key={`${plan.id}-${feature.key}`} className="px-3 py-3">
+                          {plan.features?.[feature.key] ? "Yes" : "-"}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        ) : null}
+
+        {!canViewBilling ? (
+          <Card id="billing-role">
+            <CardHeader>
+              <CardTitle className="text-xl">Billing access</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-[var(--muted)]">
+              Ask an admin or owner to continue to billing and complete plan or OCR pack changes for this factory.
             </CardContent>
           </Card>
         ) : null}
+
+        <Card id="sales-assisted">
+          <CardHeader>
+            <CardTitle className="text-xl">Enterprise</CardTitle>
+          </CardHeader>
+          <CardContent className="text-sm text-[var(--muted)]">
+            Enterprise is handled through a sales-assisted rollout. Use the current plan cards to compare fit, then have your billing owner continue the conversation outside self-serve checkout.
+          </CardContent>
+        </Card>
+
+        {(error || sessionError) && !plansLoading ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
     </main>
   );

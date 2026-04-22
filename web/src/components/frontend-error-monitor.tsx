@@ -38,14 +38,36 @@ function attemptChunkRecovery() {
   }
 }
 
-export function FrontendErrorMonitor() {
-  useEffect(() => {
+function clearChunkRecoveryAfterSuccessfulLoad() {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+
+  const activeRouteKey = `${window.location.pathname}${window.location.search}`;
+  const clearRecoveryKey = () => {
     try {
-      window.sessionStorage.removeItem(CHUNK_RECOVERY_KEY);
+      if (window.sessionStorage.getItem(CHUNK_RECOVERY_KEY) === activeRouteKey) {
+        window.sessionStorage.removeItem(CHUNK_RECOVERY_KEY);
+      }
     } catch {
       // Ignore storage failures.
     }
+  };
 
+  if (document.readyState === "complete") {
+    clearRecoveryKey();
+    return () => undefined;
+  }
+
+  window.addEventListener("load", clearRecoveryKey, { once: true });
+  return () => {
+    window.removeEventListener("load", clearRecoveryKey);
+  };
+}
+
+export function FrontendErrorMonitor() {
+  useEffect(() => {
+    const cleanupChunkRecovery = clearChunkRecoveryAfterSuccessfulLoad();
     const onError = (event: ErrorEvent) => {
       if (isChunkLoadFailure(event.message, event.error instanceof Error ? event.error.stack : undefined)) {
         attemptChunkRecovery();
@@ -101,6 +123,7 @@ export function FrontendErrorMonitor() {
     window.addEventListener("error", onError);
     window.addEventListener("unhandledrejection", onUnhandledRejection);
     return () => {
+      cleanupChunkRecovery();
       window.removeEventListener("error", onError);
       window.removeEventListener("unhandledrejection", onUnhandledRejection);
     };

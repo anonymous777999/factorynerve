@@ -25,11 +25,11 @@ services:
       - key: LOG_FORMAT
         value: json
       - key: WEB_APP_URL
-        value: https://factorynerve.online
+        value: https://www.factorynerve.online
       - key: EMAIL_VERIFICATION_BASE_URL
-        value: https://factorynerve.online/verify-email?token=
+        value: https://www.factorynerve.online/verify-email?token=
       - key: PASSWORD_RESET_BASE_URL
-        value: https://factorynerve.online/reset-password?token=
+        value: https://www.factorynerve.online/reset-password?token=
       - key: EMAIL_VERIFICATION_EXPOSE_LINK
         value: "false"
       - key: PASSWORD_RESET_EXPOSE_LINK
@@ -100,16 +100,18 @@ services:
         value: "false"
       - key: SMTP_DRY_RUN
         value: "false"
-      - key: RAZORPAY_KEY_ID
-        sync: false
-      - key: RAZORPAY_KEY_SECRET
-        sync: false
-      - key: RAZORPAY_WEBHOOK_SECRET
-        sync: false
       - key: EMAIL_VERIFICATION_EMAIL_SUBJECT
         value: Verify your FactoryNerve email
       - key: PASSWORD_RESET_EMAIL_SUBJECT
         value: Reset your FactoryNerve password
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: https://www.factorynerve.online/api/auth/google/callback
+      - key: FRONTEND_OAUTH_REDIRECT
+        value: https://www.factorynerve.online
       - key: AI_PROVIDER
         value: groq
       - key: GROQ_API_KEY
@@ -130,43 +132,3 @@ services:
         value: production
       - key: SENTRY_TRACES_SAMPLE_RATE
         value: "0.1"
-
-  - type: cron
-    name: dpr-monitor-mobile-dropoff-weekly
-    runtime: docker
-    plan: starter
-    dockerfilePath: ./deploy/render/backend.Dockerfile
-    dockerContext: .
-    autoDeploy: true
-    schedule: "20 1 * * MON"
-    # Manual verification after deploy: open this cron service in Render and click Trigger Run.
-    dockerCommand: python scripts/run_monitoring_alerts.py --rule mobile_dropoff_threshold_breach
-    envVars:
-      # Shared backend bootstrap/config envs come from the existing env group instead of being duplicated here.
-      - fromGroup: factorynerve-backend-shared
-      # AI bootstrap dependency: backend.database loads the global backend config on startup,
-      # so AI_PROVIDER and one provider key must exist even though this job itself is not using AI logic.
-      - key: MONITORING_OPS_WEBHOOK_URL
-        sync: false
-      # Render cron jobs have no persistent disk. This /tmp file is intentionally ephemeral;
-      # the webhook notification is the durable alert signal.
-      - key: MONITORING_BACKLOG_PATH
-        value: /tmp/monitoring_backlog.jsonl
-
-  - type: cron
-    name: dpr-monitor-manager-session-daily
-    runtime: docker
-    plan: starter
-    dockerfilePath: ./deploy/render/backend.Dockerfile
-    dockerContext: .
-    autoDeploy: true
-    schedule: "5 1 * * *"
-    # Manual verification after deploy: open this cron service in Render and click Trigger Run.
-    dockerCommand: python scripts/run_monitoring_alerts.py --rule manager_session_health_degraded
-    envVars:
-      # Shared backend bootstrap/config envs come from the existing env group instead of being duplicated here.
-      - fromGroup: factorynerve-backend-shared
-      # AI bootstrap dependency: backend.database loads the global backend config on startup,
-      # so AI_PROVIDER and one provider key must exist even though this job itself is not using AI logic.
-      - key: MONITORING_ENGINEERING_WEBHOOK_URL
-        sync: false

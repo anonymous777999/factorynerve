@@ -1,5 +1,7 @@
 "use client";
 
+import { getCookie } from "@/lib/cookies";
+
 export type FrontendErrorReport = {
   message: string;
   source: string;
@@ -24,28 +26,29 @@ function toBody(payload: FrontendErrorReport) {
   });
 }
 
+const CSRF_COOKIE = process.env.NEXT_PUBLIC_CSRF_COOKIE || "dpr_csrf";
+const CSRF_HEADER = process.env.NEXT_PUBLIC_CSRF_HEADER || "X-CSRF-Token";
+
+function buildHeaders() {
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    "X-Response-Envelope": "v1",
+  };
+  const csrf = getCookie(CSRF_COOKIE);
+  if (csrf) {
+    headers[CSRF_HEADER] = csrf;
+  }
+  return headers;
+}
+
 export function reportFrontendError(payload: FrontendErrorReport) {
   if (typeof window === "undefined") return;
   const body = toBody(payload);
   const url = "/api/observability/frontend-error";
 
-  try {
-    if (typeof navigator !== "undefined" && typeof navigator.sendBeacon === "function") {
-      const blob = new Blob([body], { type: "application/json" });
-      if (navigator.sendBeacon(url, blob)) {
-        return;
-      }
-    }
-  } catch {
-    // Fall back to fetch below.
-  }
-
   void fetch(url, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Response-Envelope": "v1",
-    },
+    headers: buildHeaders(),
     body,
     credentials: "include",
     keepalive: true,

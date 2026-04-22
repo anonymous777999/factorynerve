@@ -34,12 +34,6 @@ import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  RecordReviewStateNote,
-  recordReviewBadgeClass,
-  recordReviewSurfaceClass,
-  type RecordReviewTone,
-} from "@/components/ui/record-review-state";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -132,28 +126,6 @@ function statusBadgeClass(status: string) {
     default:
       return "border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100";
   }
-}
-
-function verificationRecordTone(record: OcrVerificationRecord): RecordReviewTone {
-  if (record.status === "approved") return "approved";
-  if (record.status === "rejected") return "flagged";
-  if (record.status === "pending") return "pending";
-  return "unreviewed";
-}
-
-function verificationRecordDetail(record: OcrVerificationRecord) {
-  const tone = verificationRecordTone(record);
-  if (tone === "approved") {
-    return `Approved by ${actorDisplayName(record.approved_by_name, record.approved_by)} on ${formatTimestamp(record.approved_at)}`;
-  }
-  if (tone === "flagged") {
-    if (record.rejection_reason?.trim()) return record.rejection_reason.trim();
-    return `${record.warnings.length || 0} flagged field(s) still need correction before this sheet can be trusted again.`;
-  }
-  if (tone === "pending") {
-    return "Reviewed rows are waiting for approver sign-off before they become the trusted export source.";
-  }
-  return "This working draft still needs review before it can move into trusted export.";
 }
 
 function metricTone(type: "primary" | "warning" | "success" | "danger") {
@@ -262,10 +234,6 @@ function sortWeight(status: OcrVerificationRecord["status"]) {
     default:
       return 1;
   }
-}
-
-function isCompactReviewWorkspace() {
-  return typeof window !== "undefined" && window.innerWidth < 1024;
 }
 
 function SurfaceBadge({
@@ -1366,7 +1334,7 @@ export default function OcrVerificationPage() {
     setMobileTab("issues");
     setSelectedIssueKey("");
     setResolvedIssueKeys([]);
-    setMobileWorkspaceOpen(isCompactReviewWorkspace());
+    setMobileWorkspaceOpen(typeof window !== "undefined" && window.innerWidth < 1280);
   }, []);
 
   const loadVerifications = useCallback(async (focusId?: number) => {
@@ -1458,8 +1426,8 @@ export default function OcrVerificationPage() {
       setMobileTab("issues");
       setSelectedIssueKey("");
       setResolvedIssueKeys([]);
-      setMobileWorkspaceOpen(isCompactReviewWorkspace());
-      setStatus("Document ready.");
+      setMobileWorkspaceOpen(typeof window !== "undefined" && window.innerWidth < 1280);
+      setStatus("Document read successfully. Check the highlighted values, then save or send it forward.");
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -1688,6 +1656,11 @@ export default function OcrVerificationPage() {
         .includes(term);
     });
   }, [search, statusFilter, verifications]);
+  // AUDIT: FLOW_BROKEN - keep the next queue document explicit so the page leads with one clear review target.
+  const nextQueueVerification = filteredVerifications[0] ?? null;
+  // AUDIT: DENSITY_OVERLOAD - surface the active document state once at the page level instead of repeating it across hero copy.
+  const activeDocumentLabel = activeVerification?.source_filename || file?.name || (preview ? "New document review" : "No document open");
+  const activeDocumentStatus = activeVerification?.status || (preview ? "draft" : "idle");
 
   const pendingCount = verifications.filter((item) => item.status === "pending").length;
 
@@ -1870,9 +1843,10 @@ export default function OcrVerificationPage() {
             <CardTitle>Review Documents</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
+            {/* AUDIT: FLOW_BROKEN - send reviewers through the live auth entry instead of the stale login route. */}
             <Link href="/access">
-              <Button>Open Login</Button>
+              <Button>Open Access</Button>
             </Link>
           </CardContent>
         </Card>
@@ -1906,23 +1880,22 @@ export default function OcrVerificationPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.09),transparent_24%),radial-gradient(circle_at_top_right,rgba(34,197,94,0.06),transparent_20%)] px-4 py-4 pb-24 md:px-6 md:pb-8">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.09),transparent_24%),radial-gradient(circle_at_top_right,rgba(34,197,94,0.06),transparent_20%)] px-4 py-4 md:px-6">
       <div className="w-full space-y-4">
-        <section className="z-20 overflow-hidden rounded-[1.9rem] border border-[var(--border-strong)] bg-[linear-gradient(135deg,rgba(18,27,42,0.97),rgba(11,18,30,0.98))] p-4 shadow-2xl backdrop-blur sm:p-5 md:p-6 lg:sticky lg:top-3">
+        <section className="sticky top-3 z-20 overflow-hidden rounded-[2rem] border border-[var(--border-strong)] bg-[linear-gradient(135deg,rgba(18,27,42,0.97),rgba(11,18,30,0.98))] p-5 shadow-2xl backdrop-blur md:p-6">
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.18),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.1),transparent_28%)]" />
           <div className="relative grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_24rem]">
             <div>
               <SectionHeading
                 eyebrow="Review"
                 title="Review Documents"
-                detail="Open a document, confirm the flagged values, fix fast, and move only trusted data into business exports."
+                detail="Open the next document, confirm the risky values, and move only trusted OCR rows into export."
               />
               <div className="mt-4 flex flex-wrap gap-3">
                 {([
-                  ["Select", "done"],
-                  ["Scan", "done"],
-                  ["Review", "current"],
-                  ["Approve", "pending"],
+                  ["Select", activeVerification || preview ? "done" : "current"],
+                  ["Review", totalIssues ? "current" : "pending"],
+                  ["Approve", activeVerification?.status === "pending" ? "current" : activeVerification?.status === "approved" ? "done" : "pending"],
                 ] as Array<[string, "done" | "current" | "pending"]>).map(([step, phase]) => (
                   <SurfaceBadge
                     key={step}
@@ -1939,6 +1912,12 @@ export default function OcrVerificationPage() {
                 ))}
               </div>
               <div className="mt-4 flex flex-wrap gap-2">
+                <SurfaceBadge className="border-white/10 bg-white/[0.03] text-[var(--muted)]">
+                  {activeDocumentLabel}
+                </SurfaceBadge>
+                <SurfaceBadge className={cn("", activeDocumentStatus === "idle" ? "border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)]" : statusBadgeClass(activeDocumentStatus))}>
+                  {activeDocumentStatus === "idle" ? "idle" : activeDocumentStatus.replace("_", " ")}
+                </SurfaceBadge>
                 <SurfaceBadge className="border-cyan-400/30 bg-[rgba(34,211,238,0.12)] text-cyan-100">
                   {totalIssues ? `${Math.round((checkedIssueCount / totalIssues) * 100)}% reviewed` : "Clean review"}
                 </SurfaceBadge>
@@ -1952,93 +1931,122 @@ export default function OcrVerificationPage() {
                   {pendingCount} waiting in queue
                 </SurfaceBadge>
               </div>
-              <div className="mt-5 grid gap-3 sm:flex sm:flex-wrap">
-                <Link href="/ocr/scan" className="w-full sm:w-auto">
-                  <Button className="w-full sm:w-auto">Open scan desk</Button>
-                </Link>
-                <Button variant="outline" className="w-full sm:w-auto" onClick={() => setShowQuickIntake((current) => !current)}>
-                  {showQuickIntake ? "Hide upload" : "Upload document"}
-                </Button>
+              <div className="mt-5 flex flex-wrap gap-3">
+                {nextQueueVerification ? (
+                  <Button className="px-4 py-2 text-xs" onClick={() => hydrateFromRecord(nextQueueVerification)}>
+                    Open next doc
+                  </Button>
+                ) : (
+                  <Link href="/ocr/scan">
+                    <Button className="px-4 py-2 text-xs">Open scan</Button>
+                  </Link>
+                )}
+                <details className="group">
+                  <summary className="list-none">
+                    <Button variant="outline" className="px-4 py-2 text-xs">
+                      More tools
+                    </Button>
+                  </summary>
+                  <div className="mt-3 flex flex-wrap gap-3 rounded-[1.35rem] border border-[var(--border)] bg-[rgba(10,14,24,0.82)] p-3">
+                    <Link href="/ocr/scan">
+                      <Button variant="outline" className="px-4 py-2 text-xs">Scan desk</Button>
+                    </Link>
+                    <Button variant="outline" className="px-4 py-2 text-xs" onClick={() => setShowQuickIntake((current) => !current)}>
+                      {showQuickIntake ? "Hide intake" : "Quick intake"}
+                    </Button>
+                  </div>
+                </details>
               </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
               <MetricCard
-                label="Review focus"
-                value="Check risky values, not every cell"
-                detail="The verify screen keeps attention on low-confidence, blank, or sent-back fields so supervisors move faster."
+                label="Current document"
+                value={activeDocumentLabel}
+                detail={
+                  activeVerification
+                    ? `Status ${activeVerification.status}. Last updated ${formatTimestamp(activeVerification.updated_at)}.`
+                    : preview
+                      ? "New preview is open and ready for review."
+                      : "Pick a queue document or scan a new one to start."
+                }
                 className="border-cyan-400/20 bg-[rgba(8,12,20,0.64)]"
               />
               <MetricCard
-                label="Approval rule"
-                value="Only trusted sheets move forward"
-                detail="Draft and pending exports stay visible for checking, but approved reviews become the trusted business source."
+                label="Review focus"
+                value={totalIssues ? `${unresolvedIssueCount} issues left` : "Clean review"}
+                detail="Keep the first pass on flagged fields, then use the full table only when a deeper cleanup is needed."
                 className="border-emerald-400/20 bg-[rgba(8,12,20,0.64)]"
               />
             </div>
           </div>
         </section>
 
+        {/* AUDIT: FLOW_BROKEN - make the document-review journey scan as a short sequence before the denser queue surfaces appear. */}
+        <section className="grid gap-4 md:grid-cols-3">
+          {[
+            {
+              step: "Step 1",
+              title: "Pick document",
+              body: nextQueueVerification
+                ? `${nextQueueVerification.source_filename || `Document #${nextQueueVerification.id}`} is ready at the top of the queue.`
+                : "Open a scanned file or pull a document from the queue.",
+            },
+            {
+              step: "Step 2",
+              title: "Fix risky fields",
+              body: totalIssues
+                ? `${unresolvedIssueCount} flagged issue${unresolvedIssueCount === 1 ? "" : "s"} still need review.`
+                : "No flagged issues are blocking this review right now.",
+            },
+            {
+              step: "Step 3",
+              title: "Send forward",
+              body: canApprove ? "Approve only when the risky values are clear and the export is ready to trust." : "Save or submit once the review note and flagged values are complete.",
+            },
+          ].map((item) => (
+            <Card key={item.title} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+              <CardContent className="space-y-3 px-5 py-5">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
+                <div className="text-xl font-semibold text-[var(--text)]">{item.title}</div>
+                <div className="text-sm leading-6 text-[var(--muted)]">{item.body}</div>
+              </CardContent>
+            </Card>
+          ))}
+        </section>
+
         {status ? <div className="rounded-[1.35rem] border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
         {error || sessionError ? <div className="rounded-[1.35rem] border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error || sessionError}</div> : null}
 
-        {(activeVerification || preview) && !mobileWorkspaceOpen ? (
-          <section className="rounded-[1.35rem] border border-cyan-400/20 bg-[rgba(10,16,28,0.88)] p-4 lg:hidden">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0">
-                {activeVerification ? (
-                  <RecordReviewStateNote
-                    tone={verificationRecordTone(activeVerification)}
-                    detail={verificationRecordDetail(activeVerification)}
-                    compact
-                    className="mb-3"
-                  />
-                ) : null}
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-100">Current document</div>
-                <div className="mt-2 truncate text-base font-semibold text-[var(--text)]">
-                  {activeVerification?.source_filename || file?.name || "Unsaved review draft"}
-                </div>
-                <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.14em]">
-                  {activeVerification?.status ? (
-                    <span className={cn("rounded-full border px-3 py-1", recordReviewBadgeClass(verificationRecordTone(activeVerification)))}>
-                      {activeVerification.status}
-                    </span>
-                  ) : null}
-                  <span className={cn("rounded-full border px-3 py-1", unresolvedCriticalCount ? metricTone("danger") : metricTone("primary"))}>
-                    {unresolvedCriticalCount ? `${unresolvedCriticalCount} critical left` : "Ready to review"}
-                  </span>
-                </div>
-              </div>
-              <div className="grid gap-3 sm:w-auto">
-                <Button className="w-full sm:w-auto" onClick={() => setMobileWorkspaceOpen(true)}>
-                  Open review workspace
-                </Button>
-              </div>
-            </div>
-          </section>
-        ) : null}
-
-        <section className="grid gap-4 lg:grid-cols-[19rem_minmax(0,1fr)]">
-          <aside className="space-y-4 lg:sticky lg:top-24 lg:self-start">
+        <section className="grid gap-4 xl:grid-cols-[19rem_minmax(0,1fr)]">
+          <aside className="space-y-4 xl:sticky xl:top-28 xl:self-start">
             <Card className="overflow-hidden border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(15,22,35,0.97),rgba(11,17,29,0.98))]">
               <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                 <SectionHeading
                   eyebrow="Document queue"
-                  title="Pick the next document to review"
-                  detail="Drafts, pending approvals, sent-back sheets, and approved records all stay in one queue so the team can recover context quickly."
+                  title="Pick the next document"
+                  detail="Keep the queue visible, but tuck search and status controls away until they are needed."
                 />
-                <div className="grid w-full gap-3">
-                  <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by file, warning, or template" />
-                  <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}>
-                    <option value="all">All documents</option>
-                    <option value="pending">Pending approval</option>
-                    <option value="draft">Drafts</option>
-                    <option value="rejected">Sent back</option>
-                    <option value="approved">Approved</option>
-                  </Select>
-                </div>
+                {/* AUDIT: BUTTON_CLUTTER - move queue filters into a secondary reveal so document picking stays primary. */}
+                <details className="w-full">
+                  <summary className="list-none">
+                    <Button variant="outline" className="w-full px-4 py-2 text-xs">
+                      Queue filters
+                    </Button>
+                  </summary>
+                  <div className="mt-3 grid gap-3">
+                    <Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search by file, warning, or template" />
+                    <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as StatusFilter)}>
+                      <option value="all">All documents</option>
+                      <option value="pending">Pending approval</option>
+                      <option value="draft">Drafts</option>
+                      <option value="rejected">Sent back</option>
+                      <option value="approved">Approved</option>
+                    </Select>
+                  </div>
+                </details>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
                   <MetricCard label="Queue size" value={filteredVerifications.length} detail="Documents matching the current search and status filters." />
                   <MetricCard label="Pending approvals" value={pendingCount} detail="Sheets waiting for an approver to unlock trusted export." />
                 </div>
@@ -2046,18 +2054,16 @@ export default function OcrVerificationPage() {
                   filteredVerifications.map((verification) => {
                     const warningCount = verification.warnings.length;
                     const isActive = activeVerificationId === verification.id;
-                    const queueTone = verificationRecordTone(verification);
                     return (
                       <button
                         key={verification.id}
                         type="button"
                         onClick={() => hydrateFromRecord(verification)}
                         className={cn(
-                          "w-full rounded-[1.35rem] p-4 text-left transition",
-                          recordReviewSurfaceClass(queueTone, !isActive),
+                          "w-full rounded-[1.35rem] border p-4 text-left transition",
                           isActive
-                            ? "ring-1 ring-[var(--accent)]"
-                            : "",
+                            ? "border-[var(--accent)] bg-[linear-gradient(180deg,rgba(62,166,255,0.12),rgba(62,166,255,0.05))]"
+                            : "border-[var(--border)] bg-[var(--card-strong)] hover:-translate-y-0.5 hover:border-[var(--accent)]/40",
                         )}
                       >
                         <div className="flex items-start justify-between gap-3">
@@ -2069,7 +2075,7 @@ export default function OcrVerificationPage() {
                               {verification.template_name || "No template"} | {formatTimestamp(verification.updated_at)}
                             </div>
                             <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.14em]">
-                              <span className={cn("rounded-full border px-3 py-1", recordReviewBadgeClass(queueTone))}>
+                              <span className={cn("rounded-full border px-3 py-1", statusBadgeClass(verification.status))}>
                                 {verification.status}
                               </span>
                               <span className={cn("rounded-full border px-3 py-1", verification.trusted_export ? metricTone("success") : metricTone("primary"))}>
@@ -2084,12 +2090,6 @@ export default function OcrVerificationPage() {
                             {warningCount ? `${warningCount} warning${warningCount === 1 ? "" : "s"}` : "Clean read"}
                           </div>
                         </div>
-                        <RecordReviewStateNote
-                          tone={queueTone}
-                          detail={verificationRecordDetail(verification)}
-                          compact
-                          className="mt-3"
-                        />
                       </button>
                     );
                   })
@@ -2101,16 +2101,16 @@ export default function OcrVerificationPage() {
               </CardContent>
             </Card>
 
+            {/* AUDIT: BUTTON_CLUTTER - keep quick intake available but secondary to the review queue and active workspace. */}
             {showQuickIntake ? (
-              <Card className="overflow-hidden border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(15,22,35,0.97),rgba(11,17,29,0.98))]">
-                <CardHeader>
-                  <SectionHeading
-                    eyebrow="Upload for review"
-                    title="Bring a new document into this workbench"
-                    detail="Use this quick intake when the scan is already available and you want to jump straight into review."
-                  />
-                </CardHeader>
-                <CardContent className="space-y-4">
+              <details className="group overflow-hidden rounded-[1.6rem] border border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(15,22,35,0.97),rgba(11,17,29,0.98))]" open>
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4">
+                  <div>
+                    <div className="text-sm uppercase tracking-[0.22em] text-[var(--accent)]">Quick intake</div>
+                    <div className="mt-1 text-xl font-semibold text-[var(--text)]">Bring a new document into review</div>
+                  </div>
+                </summary>
+                <div className="space-y-4 border-t border-[var(--border)] px-5 py-5">
                   <div>
                     <label className="text-sm text-[var(--muted)]">Document image</label>
                     <Input type="file" accept="image/*" onChange={(event) => setFile(event.target.files?.[0] || null)} />
@@ -2126,7 +2126,7 @@ export default function OcrVerificationPage() {
                       ))}
                     </Select>
                   </div>
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+                  <div className="grid gap-4 md:grid-cols-2">
                     <div>
                       <label className="text-sm text-[var(--muted)]">Expected columns</label>
                       <Input type="number" min={1} max={8} value={columns} onChange={(event) => setColumns(Math.max(1, Number(event.target.value) || 1))} />
@@ -2143,20 +2143,20 @@ export default function OcrVerificationPage() {
                     </div>
                   </div>
                   {templateGate ? <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">{templateGate}</div> : null}
-                  <div className="grid gap-3 sm:flex sm:flex-wrap">
-                    <Button className="w-full sm:w-auto" onClick={handleRunPreview} disabled={busy || !file}>
-                      {busy ? "Reading document..." : "Read document"}
+                  <div className="flex flex-wrap gap-3">
+                    <Button className="px-4 py-2 text-xs" onClick={handleRunPreview} disabled={busy || !file}>
+                      {busy ? "Reading..." : "Read doc"}
                     </Button>
-                    <Button variant="ghost" className="w-full sm:w-auto" onClick={resetWorkspace} disabled={busy}>
-                      Clear workspace
+                    <Button variant="ghost" className="px-4 py-2 text-xs" onClick={resetWorkspace} disabled={busy}>
+                      Clear
                     </Button>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </details>
             ) : null}
           </aside>
 
-          <div className="hidden lg:block min-w-0">
+          <div className="hidden xl:block min-w-0">
             <ReviewWorkspace
               key={`workspace-desktop-${activeVerificationId ?? "draft"}-${activeVerification?.updated_at || localImageUrl || "new"}`}
               activeVerification={activeVerification}
@@ -2199,15 +2199,9 @@ export default function OcrVerificationPage() {
       </div>
 
       {mobileWorkspaceOpen ? (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(4,8,16,0.96)] px-4 py-4 lg:hidden">
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(4,8,16,0.96)] px-4 py-4 xl:hidden">
           <div className="mx-auto max-w-4xl space-y-4">
-            <div className="sticky top-0 z-10 flex items-center justify-between rounded-[1.25rem] border border-[var(--border)] bg-[rgba(10,14,24,0.94)] px-4 py-3 backdrop-blur">
-              <div className="min-w-0">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Review workspace</div>
-                <div className="truncate text-sm font-semibold text-[var(--text)]">
-                  {activeVerification?.source_filename || file?.name || "Unsaved review draft"}
-                </div>
-              </div>
+            <div className="flex justify-end">
               <Button variant="ghost" onClick={() => setMobileWorkspaceOpen(false)}>
                 Close
               </Button>

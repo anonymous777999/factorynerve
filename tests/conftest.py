@@ -27,13 +27,12 @@ else:
     _TEST_DATABASE_URL = f"sqlite:///{_TEST_DB_PATH.as_posix()}"
 
 os.environ["DATABASE_URL"] = _TEST_DATABASE_URL
-for key in ("GROQ_API_KEY", "ANTHROPIC_API_KEY", "GEMINI_API_KEY", "OPENAI_API_KEY"):
-    os.environ.pop(key, None)
+os.environ.setdefault("GROQ_API_KEY", "test")
+os.environ.setdefault("ANTHROPIC_API_KEY", "test")
+os.environ.setdefault("GEMINI_API_KEY", "test")
 os.environ.setdefault("AI_PROVIDER", "groq")
-os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-for-auth-suite-1234567890")
-os.environ.setdefault("JWT_ACCESS_TOKEN_MINUTES", "15")
-os.environ.setdefault("JWT_EXPIRE_HOURS", "1")
-os.environ.setdefault("AUTH_RESET_SECRET", "test-reset-secret-for-auth-suite-1234567890")
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret")
+os.environ.setdefault("JWT_EXPIRE_HOURS", "24")
 os.environ.setdefault("APP_NAME", "DPR.ai")
 os.environ.setdefault("LOG_LEVEL", "INFO")
 os.environ.setdefault("DATA_ENCRYPTION_KEY", Fernet.generate_key().decode("utf-8"))
@@ -45,9 +44,6 @@ os.environ.setdefault("AUTH_RATE_LIMIT_MAX_ATTEMPTS", "5000")
 os.environ.setdefault("EMAIL_VERIFICATION_EXPOSE_LINK", "1")
 os.environ.setdefault("PASSWORD_RESET_EXPOSE_LINK", "1")
 os.environ.setdefault("SMTP_DRY_RUN", "1")
-os.environ.setdefault("DISABLE_EXTERNAL_AI", "1")
-os.environ.setdefault("JWT_COOKIE_SAMESITE", "Strict")
-os.environ.setdefault("AUTH_SESSION_SAMESITE", "Strict")
 
 
 def _server_available(url: str) -> bool:

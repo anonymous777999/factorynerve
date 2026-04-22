@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
@@ -234,7 +234,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
         reference_number: paymentForm.reference_number || undefined,
         notes: paymentForm.notes || undefined,
       });
-      setStatus("Payment recorded.");
+      setStatus("Customer payment recorded successfully.");
       setPaymentForm({
         invoice_id: "",
         payment_date: todayValue(),
@@ -407,9 +407,9 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
             <CardTitle>Steel Customer Ledger</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
-            <Link href="/access" className="w-full sm:w-auto">
-              <Button className="w-full sm:w-auto">Open Login</Button>
+            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
+            <Link href="/access">
+              <Button>Open Access</Button>
             </Link>
           </CardContent>
         </Card>
@@ -419,7 +419,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
 
   if (!isSteelFactory) {
     return (
-      <main className="min-h-screen px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8">
+      <main className="min-h-screen px-4 py-8 md:px-8">
         <div className="mx-auto max-w-4xl">
           <Card>
             <CardHeader>
@@ -446,8 +446,8 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-red-400">{error || "Customer ledger not found."}</div>
-            <Link href="/steel/customers" className="w-full sm:w-auto">
-              <Button className="w-full sm:w-auto">Back to Customers</Button>
+            <Link href="/steel/customers">
+              <Button>Back to Customers</Button>
             </Link>
           </CardContent>
         </Card>
@@ -456,39 +456,53 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8">
+    <main className="min-h-screen px-4 py-8 md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        {status ? (
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/12 px-4 py-3 text-sm text-emerald-100">
-            {status}
-          </div>
-        ) : null}
-        {error || sessionError ? (
-          <div className="rounded-2xl border border-rose-500/30 bg-rose-500/12 px-4 py-3 text-sm text-rose-100">
-            {error || sessionError}
-          </div>
-        ) : null}
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Customer Ledger</div>
-              <h1 className="mt-2 text-2xl font-semibold sm:text-3xl md:text-4xl">{ledger.customer.name}</h1>
+              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{ledger.customer.name}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Keep invoice value, payment receipts, and outstanding exposure tied to one steel customer record.
+                Start with recovery risk, then move into payments, verification, and follow-up without leaving the buyer record.
               </p>
-            </div>
-            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-              <Link href="/steel/customers" className="w-full sm:w-auto">
-                <Button variant="outline" className="w-full sm:w-auto">Back to Customers</Button>
-              </Link>
-              <Link href="/steel/invoices" className="w-full sm:w-auto">
-                <Button variant="ghost" className="w-full sm:w-auto">Open Invoices</Button>
-              </Link>
             </div>
           </div>
         </section>
 
-        <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {/* AUDIT: BUTTON_CLUTTER - keep route jumps available in a secondary tray so recovery review stays primary. */}
+        <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
+          <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
+            Ledger tools
+          </summary>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link href="/steel/customers">
+              <Button variant="outline">Customers</Button>
+            </Link>
+            <Link href="/steel/invoices">
+              <Button variant="ghost">Invoices</Button>
+            </Link>
+          </div>
+        </details>
+
+        {/* AUDIT: FLOW_BROKEN - add a short collections sequence so the ledger leads with the next recovery move. */}
+        <section className="grid gap-3 md:grid-cols-3">
+          {[
+            { step: "1. Read exposure", caption: "Check the highest-risk invoice and overdue signal first." },
+            { step: "2. Capture proof", caption: "Use payments and verification to stabilize the customer record." },
+            { step: "3. Assign follow-up", caption: "Create or update recovery tasks once the ledger is clear." },
+          ].map((item) => (
+            <div
+              key={item.step}
+              className="rounded-[24px] border border-[var(--border)] bg-[rgba(10,14,24,0.68)] px-5 py-4"
+            >
+              <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
+              <div className="mt-2 text-sm text-[var(--muted)]">{item.caption}</div>
+            </div>
+          ))}
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader><CardTitle className="text-base">Invoice Total</CardTitle></CardHeader>
             <CardContent className="text-2xl font-semibold text-white">{formatCurrency(ledger.ledger_summary.invoice_total_inr)}</CardContent>
@@ -508,24 +522,30 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                 {ledger.ledger_summary.risk_level}
               </div>
               <div className="text-sm text-[var(--muted)]">
-                Score {ledger.ledger_summary.risk_score.toFixed(0)} {" - "} {ledger.ledger_summary.overdue_days} overdue days
+                Score {ledger.ledger_summary.risk_score.toFixed(0)} {" · "} {ledger.ledger_summary.overdue_days} overdue days
               </div>
             </CardContent>
           </Card>
         </section>
 
         {ledger.alerts.length ? (
-          <section className="grid gap-3">
-            {ledger.alerts.map((alert, index) => (
-              <div
-                key={`${alert.title}-${index}`}
-                className={`rounded-2xl border px-4 py-3 text-sm ${alertToneClass(alert.level)}`}
-              >
-                <div className="font-semibold">{alert.title}</div>
-                <div className="mt-1 opacity-90">{alert.detail}</div>
-              </div>
-            ))}
-          </section>
+          // AUDIT: DENSITY_OVERLOAD - keep the full alert list available in a secondary reveal so the recovery cards stay first.
+          <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5" open={ledger.alerts.length <= 2}>
+            <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
+              Risk alerts
+            </summary>
+            <section className="mt-4 grid gap-3">
+              {ledger.alerts.map((alert, index) => (
+                <div
+                  key={`${alert.title}-${index}`}
+                  className={`rounded-2xl border px-4 py-3 text-sm ${alertToneClass(alert.level)}`}
+                >
+                  <div className="font-semibold">{alert.title}</div>
+                  <div className="mt-1 opacity-90">{alert.detail}</div>
+                </div>
+              ))}
+            </section>
+          </details>
         ) : null}
 
         <section className="grid gap-4 xl:grid-cols-3">
@@ -625,14 +645,14 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                   <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">GST / PAN</div>
                   <div className="mt-2 text-sm font-semibold text-white">{ledger.customer.gst_number || ledger.customer.tax_id || "Not set"}</div>
                   <div className="text-xs text-[var(--muted)]">
-                    {ledger.customer.pan_number || "PAN not set"} {" - "} {formatVerificationLabel(ledger.customer.verification_status)}
+                    {ledger.customer.pan_number || "PAN not set"} {" · "} {formatVerificationLabel(ledger.customer.verification_status)}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
                   <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Credit Policy</div>
                   <div className="mt-2 text-sm font-semibold text-white">{formatCurrency(ledger.customer.credit_limit)} limit</div>
                   <div className="text-xs text-[var(--muted)]">
-                    {ledger.customer.payment_terms_days} day terms {" - "} {formatCurrency(ledger.customer.available_credit_inr)} available
+                    {ledger.customer.payment_terms_days} day terms {" · "} {formatCurrency(ledger.customer.available_credit_inr)} available
                   </div>
                 </div>
                 <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
@@ -653,7 +673,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
               </div>
 
               <div className="space-y-4 rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold text-white">Verification</div>
                     <div className="text-xs text-[var(--muted)]">
@@ -665,7 +685,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                   </div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   <div className="rounded-2xl border border-[var(--border)] bg-[rgba(7,12,20,0.72)] p-4">
                     <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">PAN</div>
                     <div className="mt-2 text-sm font-semibold text-white">{ledger.customer.pan_number || "Not set"}</div>
@@ -716,11 +736,11 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                   </div>
                 ) : null}
 
-                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                  <Button className="w-full sm:w-auto" disabled={verificationBusy || !canManageVerification} onClick={() => void runVerificationCheck()}>
+                <div className="flex flex-wrap gap-3">
+                  <Button disabled={verificationBusy || !canManageVerification} onClick={() => void runVerificationCheck()}>
                     {verificationBusy ? "Checking..." : "Run Check"}
                   </Button>
-                  <label className="inline-flex w-full cursor-pointer items-center justify-center rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-white transition hover:border-[var(--accent)] hover:text-[var(--accent)] sm:w-auto">
+                  <label className="inline-flex cursor-pointer items-center justify-center rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-white transition hover:border-[var(--accent)] hover:text-[var(--accent)]">
                     Upload PAN
                     <input
                       type="file"
@@ -730,7 +750,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                       onChange={(event) => void uploadVerificationDocument("pan", event)}
                     />
                   </label>
-                  <label className="inline-flex w-full cursor-pointer items-center justify-center rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-white transition hover:border-[var(--accent)] hover:text-[var(--accent)] sm:w-auto">
+                  <label className="inline-flex cursor-pointer items-center justify-center rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-white transition hover:border-[var(--accent)] hover:text-[var(--accent)]">
                     Upload GST
                     <input
                       type="file"
@@ -745,7 +765,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                       href={getSteelCustomerVerificationDocumentUrl(ledger.customer.id, "pan")}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex w-full items-center justify-center rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-white transition hover:border-[var(--accent)] hover:text-[var(--accent)] sm:w-auto"
+                      className="inline-flex items-center justify-center rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-white transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
                     >
                       View PAN
                     </a>
@@ -755,7 +775,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                       href={getSteelCustomerVerificationDocumentUrl(ledger.customer.id, "gst")}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex w-full items-center justify-center rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-white transition hover:border-[var(--accent)] hover:text-[var(--accent)] sm:w-auto"
+                      className="inline-flex items-center justify-center rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-white transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
                     >
                       View GST
                     </a>
@@ -771,7 +791,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                 {canManageVerification ? (
                   <div className="space-y-4 rounded-2xl border border-[var(--border)] bg-[rgba(7,12,20,0.72)] p-4">
                     <div className="text-sm font-semibold text-white">Manual review</div>
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-4 md:grid-cols-2">
                       <div>
                         <label className="text-sm text-[var(--muted)]">Official Legal Name</label>
                         <Input
@@ -789,7 +809,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                         />
                       </div>
                     </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-4 md:grid-cols-2">
                       <div>
                         <label className="text-sm text-[var(--muted)]">Official State</label>
                         <Input
@@ -815,11 +835,11 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                         placeholder="Use this when rejecting or documenting a mismatch"
                       />
                     </div>
-                    <div className="flex flex-col gap-3 sm:flex-row">
-                      <Button className="w-full sm:w-auto" disabled={verificationBusy} onClick={() => void submitVerificationReview("approve")}>
+                    <div className="flex flex-wrap gap-3">
+                      <Button disabled={verificationBusy} onClick={() => void submitVerificationReview("approve")}>
                         {verificationBusy ? "Saving..." : "Approve Verification"}
                       </Button>
-                      <Button variant="outline" className="w-full sm:w-auto" disabled={verificationBusy} onClick={() => void submitVerificationReview("reject")}>
+                      <Button variant="outline" disabled={verificationBusy} onClick={() => void submitVerificationReview("reject")}>
                         Reject Verification
                       </Button>
                     </div>
@@ -829,7 +849,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
 
               <div className="space-y-4 rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
                 <div className="text-sm font-semibold text-white">Record payment</div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <label className="text-sm text-[var(--muted)]">Payment Date</label>
                     <Input type="date" value={paymentForm.payment_date} onChange={(event) => setPaymentForm((current) => ({ ...current, payment_date: event.target.value }))} />
@@ -846,7 +866,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                     </Select>
                   </div>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <label className="text-sm text-[var(--muted)]">Amount</label>
                     <Input type="number" min="0.01" step="0.01" value={paymentForm.amount} onChange={(event) => setPaymentForm((current) => ({ ...current, amount: event.target.value }))} />
@@ -876,13 +896,13 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                   <label className="text-sm text-[var(--muted)]">Notes</label>
                   <Textarea value={paymentForm.notes} onChange={(event) => setPaymentForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Optional payment note" />
                 </div>
-                <Button className="w-full sm:w-auto" disabled={paymentBusy || !canRecordPayment} onClick={() => void submitPayment()}>
+                <Button disabled={paymentBusy || !canRecordPayment} onClick={() => void submitPayment()}>
                   {canRecordPayment ? (paymentBusy ? "Recording Payment..." : "Record Customer Payment") : "Owner / manager / admin / accountant access required"}
                 </Button>
               </div>
 
               <div className="space-y-4 rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold text-white">Create follow-up</div>
                     <div className="text-xs text-[var(--muted)]">
@@ -901,7 +921,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                     placeholder="Call customer for overdue payment"
                   />
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-3">
                   <div>
                     <label className="text-sm text-[var(--muted)]">Priority</label>
                     <Select
@@ -948,7 +968,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                     placeholder="What should the team check or collect?"
                   />
                 </div>
-                <Button className="w-full sm:w-auto" disabled={taskBusy || !canManageTasks} onClick={() => void submitFollowUpTask()}>
+                <Button disabled={taskBusy || !canManageTasks} onClick={() => void submitFollowUpTask()}>
                   {canManageTasks ? (taskBusy ? "Saving Task..." : "Add Follow-up Task") : "Owner / manager / admin / accountant access required"}
                 </Button>
               </div>
@@ -963,13 +983,13 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
               <CardContent className="space-y-3">
                 {ledger.follow_up_tasks.map((task) => (
                   <div key={task.id} className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="space-y-1">
                         <div className="font-semibold text-white">{task.title}</div>
                         <div className="text-xs text-[var(--muted)]">
-                          {task.invoice_number ? `${task.invoice_number} - ` : ""}
+                          {task.invoice_number ? `${task.invoice_number} · ` : ""}
                           {task.due_date ? `Due ${formatDate(task.due_date)}` : "No due date"}
-                          {task.assigned_to_name ? ` - ${task.assigned_to_name}` : ""}
+                          {task.assigned_to_name ? ` · ${task.assigned_to_name}` : ""}
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
@@ -982,16 +1002,15 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                       </div>
                     </div>
                     {task.note ? <div className="mt-3 text-sm text-[var(--text)]">{task.note}</div> : null}
-                    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
                       <div className="text-xs text-[var(--muted)]">
                         Created {formatDate(task.created_at)}
                         {task.created_by_name ? ` by ${task.created_by_name}` : ""}
-                        {task.completed_at ? ` - closed ${formatDate(task.completed_at)}` : ""}
+                        {task.completed_at ? ` · closed ${formatDate(task.completed_at)}` : ""}
                       </div>
-                      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+                      <div className="flex flex-wrap gap-2">
                         <Button
                           variant="outline"
-                          className="w-full sm:w-auto"
                           disabled={taskBusy || !canManageTasks || task.status !== "open"}
                           onClick={() => void setTaskStatus(task.id, "in_progress")}
                         >
@@ -999,7 +1018,6 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                         </Button>
                         <Button
                           variant="outline"
-                          className="w-full sm:w-auto"
                           disabled={taskBusy || !canManageTasks || task.status === "done" || task.status === "cancelled"}
                           onClick={() => void setTaskStatus(task.id, "done")}
                         >
@@ -1007,7 +1025,6 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                         </Button>
                         <Button
                           variant="ghost"
-                          className="w-full sm:w-auto"
                           disabled={taskBusy || !canManageTasks || task.status === "cancelled" || task.status === "done"}
                           onClick={() => void setTaskStatus(task.id, "cancelled")}
                         >
@@ -1029,45 +1046,8 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
               <CardHeader>
                 <CardTitle className="text-xl">Invoice Ledger</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3 md:hidden">
-                  {ledger.invoices.map((invoice) => (
-                    <div key={invoice.id} className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4 text-sm">
-                      <div className="space-y-1">
-                        <Link href={`/steel/invoices/${invoice.id}`} className="font-semibold text-white hover:text-[var(--accent)]">
-                          {invoice.invoice_number}
-                        </Link>
-                        <div className="text-xs text-[var(--muted)]">
-                          {formatDate(invoice.invoice_date)} - due {formatDate(invoice.due_date)}
-                        </div>
-                      </div>
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        <div>
-                          <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Total</div>
-                          <div className="mt-1 text-white">{formatCurrency(invoice.total_amount)}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Paid</div>
-                          <div className="mt-1 text-white">{formatCurrency(invoice.paid_amount_inr)}</div>
-                        </div>
-                        <div className="sm:col-span-2">
-                          <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Outstanding</div>
-                          <div className="mt-1 text-white">{formatCurrency(invoice.outstanding_amount_inr)}</div>
-                          <div className="mt-1 text-xs text-[var(--muted)]">
-                            {invoice.status}
-                            {invoice.is_overdue ? ` - ${invoice.overdue_days} days overdue` : ""}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {!ledger.invoices.length ? (
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                      No invoices linked to this customer yet.
-                    </div>
-                  ) : null}
-                </div>
-                <div className="hidden overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] md:block">
+              <CardContent>
+                <div className="overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">
@@ -1085,7 +1065,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                               {invoice.invoice_number}
                             </Link>
                             <div className="text-xs text-[var(--muted)]">
-                              {formatDate(invoice.invoice_date)} {" - "} due {formatDate(invoice.due_date)}
+                              {formatDate(invoice.invoice_date)} {" · "} due {formatDate(invoice.due_date)}
                             </div>
                           </td>
                           <td className="px-3 py-3">{formatCurrency(invoice.total_amount)}</td>
@@ -1094,7 +1074,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                             <div>{formatCurrency(invoice.outstanding_amount_inr)}</div>
                             <div className="text-xs text-[var(--muted)]">
                               {invoice.status}
-                              {invoice.is_overdue ? ` - ${invoice.overdue_days} days overdue` : ""}
+                              {invoice.is_overdue ? ` · ${invoice.overdue_days} days overdue` : ""}
                             </div>
                           </td>
                         </tr>
@@ -1116,41 +1096,8 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
               <CardHeader>
                 <CardTitle className="text-xl">Payment History</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-3 md:hidden">
-                  {ledger.payments.map((payment) => (
-                    <div key={payment.id} className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4 text-sm">
-                      <div className="space-y-1">
-                        <div className="font-semibold text-white">{formatDate(payment.payment_date)}</div>
-                        <div className="text-xs text-[var(--muted)]">{payment.reference_number || "No reference"}</div>
-                      </div>
-                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                        <div>
-                          <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Amount</div>
-                          <div className="mt-1 text-white">{formatCurrency(payment.amount)}</div>
-                        </div>
-                        <div>
-                          <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Mode</div>
-                          <div className="mt-1 text-white">{payment.payment_mode}</div>
-                        </div>
-                        <div className="sm:col-span-2">
-                          <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Invoice</div>
-                          <div className="mt-1 text-white">
-                            {payment.allocations?.length
-                              ? payment.allocations.map((allocation) => `${allocation.invoice_number || `#${allocation.invoice_id}`} ${formatCurrency(allocation.amount)}`).join(", ")
-                              : payment.invoice_number || "Unallocated"}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                  {!ledger.payments.length ? (
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                      No customer payments recorded yet.
-                    </div>
-                  ) : null}
-                </div>
-                <div className="hidden overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] md:block">
+              <CardContent>
+                <div className="overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">
@@ -1191,6 +1138,8 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
           </div>
         </section>
 
+        {status ? <div className="text-sm text-green-400">{status}</div> : null}
+        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
     </main>
   );

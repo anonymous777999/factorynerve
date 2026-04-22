@@ -2,10 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { JobsDrawer } from "@/components/jobs-drawer";
-import { OfflineWorkStrip } from "@/components/offline-work-strip";
 import { WorkflowReminderStrip } from "@/components/workflow-reminder-strip";
 import { Select } from "@/components/ui/select";
 import { logout, selectFactory } from "@/lib/auth";
@@ -23,9 +22,8 @@ import {
 } from "@/lib/role-navigation";
 import { warmRouteData } from "@/lib/route-warmup";
 import { listSteelReconciliations } from "@/lib/steel";
-import { useDisplayMode } from "@/lib/use-display-mode";
 import { subscribeToWorkflowRefresh } from "@/lib/workflow-sync";
-import { useI18n } from "@/lib/i18n";
+import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import { useSession } from "@/lib/use-session";
 import { cn } from "@/lib/utils";
 
@@ -49,6 +47,7 @@ const ATTENDANCE_REPORT_NAV_ROLES = ["accountant"] as const;
 const OWNER_DESK_NAV_ROLES = ["owner"] as const;
 const FACTORY_NETWORK_NAV_ROLES = ["owner"] as const;
 const EMAIL_SUMMARY_NAV_ROLES = ["accountant", "manager", "owner"] as const;
+const AI_INSIGHTS_NAV_ROLES = ["owner"] as const;
 const ATTENDANCE_ADMIN_NAV_ROLES = ["admin"] as const;
 const FACTORY_ADMIN_NAV_ROLES = ["admin"] as const;
 const TASK_ROLES = ["operator", "supervisor"] as const;
@@ -56,7 +55,7 @@ const RAIL_COUNT_REFRESH_EVENT = "dpr:rail-counts-refresh";
 const SIDEBAR_OPEN_STORAGE_KEY = "dpr:web:shell-sidebar-open";
 const NAV_FAVORITES_STORAGE_KEY = "dpr:web:shell-favorites";
 const NAV_SECTION_STATE_STORAGE_KEY = "dpr:web:shell-section-state";
-const CONTEXT_RAIL_OPEN_STORAGE_KEY = "dpr:web:shell-context-rail-open";
+const DESKTOP_CONTEXT_RAIL_HIDDEN_STORAGE_KEY = "dpr:web:shell-desktop-context-rail-hidden";
 
 type NavBadgeKey = "approvals" | "alerts";
 type NavIconName =
@@ -293,6 +292,13 @@ const navSections: NavSection[] = [
         roles: EMAIL_SUMMARY_NAV_ROLES,
         match: (pathname) => pathname === "/email-summary" || pathname.startsWith("/email-summary/"),
       },
+      {
+        label: "AI Insights",
+        href: "/ai",
+        description: "Advanced anomaly scans, suggestions, and KPI questions",
+        roles: AI_INSIGHTS_NAV_ROLES,
+        match: (pathname) => pathname === "/ai" || pathname.startsWith("/ai/"),
+      },
     ],
   },
   {
@@ -518,24 +524,18 @@ const LANGUAGE_CHOICES: Array<{ value: AppLanguage; key: string; fallback: strin
   { value: "en", key: "language.english", fallback: "English" },
   { value: "hi", key: "language.hindi", fallback: "Hindi" },
   { value: "mr", key: "language.marathi", fallback: "Marathi" },
+  { value: "ta", key: "language.tamil", fallback: "Tamil" },
+  { value: "gu", key: "language.gujarati", fallback: "Gujarati" },
 ];
 
-const shellHiddenRoutes = new Set(["/", "/access", "/login", "/register", "/forgot-password", "/reset-password"]);
-const MOBILE_FIXED_STACK_CLEARANCE = {
-  browser: "9.75rem",
-  standalone: "9.25rem",
-} as const;
-const MOBILE_JOBS_FLOAT_OFFSET = {
-  browser: "6.15rem",
-  standalone: "5.7rem",
-} as const;
+const shellHiddenRoutes = new Set(["/", "/login", "/access", "/register", "/forgot-password", "/reset-password"]);
 
 function navLinkClasses(active: boolean) {
   return cn(
-    "group block rounded-[1.15rem] px-3.5 py-3 transition",
+    "group block rounded-xl border px-3.5 py-2.5 transition",
     active
-      ? "border border-[rgba(77,163,255,0.42)] bg-[rgba(77,163,255,0.14)] shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_18px_36px_rgba(5,12,24,0.16)]"
-      : "surface-panel-soft hover:border-[rgba(77,163,255,0.24)] hover:bg-[rgba(255,255,255,0.055)]",
+      ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)] shadow-[0_0_0_1px_rgba(62,166,255,0.15)]"
+      : "border-[var(--border)] bg-[rgba(20,24,36,0.7)] hover:border-[rgba(62,166,255,0.28)] hover:bg-[rgba(28,34,51,0.82)]",
   );
 }
 
@@ -945,7 +945,7 @@ function NavContent({
                 const favorited = favoriteHrefs.includes(item.href);
                 const translatedItem = localizedItemText(item, translate);
                 return (
-                  <div key={item.href} className="group/navitem flex items-start gap-2">
+                  <div key={item.href} className="group/navitem flex items-center gap-2">
                   <Link
                     href={item.href}
                     prefetch
@@ -982,11 +982,7 @@ function NavContent({
                             </div>
                           ) : null}
                         </div>
-                        {active ? (
-                          <div className="mt-1 text-xs leading-5 text-[var(--muted)]">
-                            {translatedItem.description}
-                          </div>
-                        ) : null}
+                        {/* AUDIT: TEXT_NOISE — The sidebar now stays label-first and leaves route explanation to the workspace rail instead of repeating it under each active item. */}
                       </div>
                     </div>
                   </Link>
@@ -1026,7 +1022,7 @@ function DesktopContextRail({
   workflowHint,
   quickLinks,
   onWarm,
-  onToggle,
+  onHide,
   translate,
 }: {
   currentItem: { label: string; description: string };
@@ -1037,26 +1033,30 @@ function DesktopContextRail({
   workflowHint: { title: string; detail: string };
   quickLinks: NavItem[];
   onWarm: (href: string) => void;
-  onToggle: () => void;
+  onHide: () => void;
   translate?: TranslateFn;
 }) {
   return (
     <aside className="hidden w-[19rem] shrink-0 xl:block">
       <div className="sticky top-6 space-y-4 px-6 py-6">
-        <div className="flex justify-end">
-          <button
-            type="button"
-            className="inline-flex items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(12,16,24,0.78)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)] transition hover:border-[rgba(62,166,255,0.32)] hover:text-[var(--text)]"
-            onClick={onToggle}
-          >
-            Hide panel
-          </button>
-        </div>
         <div className="rounded-[1.5rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-5 shadow-[0_16px_44px_rgba(3,8,20,0.28)]">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(62,166,255,0.82)]">
-            Workspace
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(62,166,255,0.82)]">
+                Workspace
+              </div>
+              <div className="mt-3 text-lg font-semibold text-[var(--text)]">{currentItem.label}</div>
+            </div>
+              <button
+                type="button"
+                aria-label={translate ? translate("shell.hide_workspace", "Hide workspace") : "Hide workspace"}
+                title={translate ? translate("shell.hide_workspace", "Hide workspace") : "Hide workspace"}
+                className="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(8,12,20,0.62)] px-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)] hover:bg-[rgba(20,24,36,0.85)]"
+                onClick={onHide}
+              >
+                Hide
+              </button>
           </div>
-          <div className="mt-3 text-lg font-semibold text-[var(--text)]">{currentItem.label}</div>
           <div className="mt-2 text-sm leading-6 text-[var(--muted)]">{currentItem.description}</div>
         </div>
 
@@ -1138,7 +1138,6 @@ function MobileBottomNav({
   badgeCounts,
   onWarm,
   onNavigate,
-  standaloneMode,
   translate,
 }: {
   pathname: string;
@@ -1146,24 +1145,11 @@ function MobileBottomNav({
   badgeCounts: Record<NavBadgeKey, number>;
   onWarm: (href: string) => void;
   onNavigate?: () => void;
-  standaloneMode: boolean;
   translate?: TranslateFn;
 }) {
   return (
-    <nav
-      className={cn(
-        "safe-inline-pad fixed inset-x-0 bottom-0 z-40 lg:hidden",
-        standaloneMode
-          ? "pb-[calc(0.55rem+env(safe-area-inset-bottom))] pt-2"
-          : "pb-[calc(0.95rem+env(safe-area-inset-bottom))] pt-3",
-      )}
-    >
-      <div
-        className={cn(
-          "surface-panel-strong mx-auto flex max-w-xl items-end justify-between gap-1 shadow-[0_24px_50px_rgba(3,8,20,0.34)]",
-          standaloneMode ? "rounded-[1.75rem] px-2 pb-1.5 pt-1.5" : "rounded-[2rem] px-2 pb-2 pt-2",
-        )}
-      >
+    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border)] bg-[rgba(11,14,20,0.95)] px-3 pb-[calc(0.8rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:hidden">
+      <div className="mx-auto flex max-w-xl items-end justify-between gap-1">
         {items.map((item) => {
           const active = item.match(pathname);
           const badgeCount = getMobileNavBadgeCount(item, badgeCounts);
@@ -1175,7 +1161,7 @@ function MobileBottomNav({
               href={item.href}
               prefetch
               className={cn(
-                "group relative flex min-w-0 flex-1 flex-col items-center justify-end rounded-[1.5rem] px-2 py-1 text-[11px] font-medium transition",
+                "group relative flex min-w-0 flex-1 flex-col items-center justify-end px-2 text-[11px] font-medium transition",
                 active ? "text-[var(--text)]" : "text-[var(--muted)]",
               )}
               onMouseEnter={() => onWarm(item.href)}
@@ -1186,12 +1172,12 @@ function MobileBottomNav({
                 className={cn(
                   "relative flex items-center justify-center transition",
                   scanAction
-                    ? "mb-1 h-14 w-14 -translate-y-4 rounded-[1.45rem] bg-[linear-gradient(135deg,#34d399,#4da3ff)] text-[#08101D] shadow-[0_20px_40px_rgba(77,163,255,0.28)]"
+                    ? "mb-1 h-14 w-14 -translate-y-4 rounded-[1.35rem] bg-[linear-gradient(135deg,#22d3ee,#60a5fa)] text-[#08101D] shadow-[0_18px_36px_rgba(34,211,238,0.28)]"
                     : cn(
-                        "h-10 w-10 rounded-[1.15rem] border",
+                        "h-10 w-10 rounded-2xl border",
                         active
-                          ? "border-[rgba(77,163,255,0.34)] bg-[rgba(77,163,255,0.14)] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
-                          : "border-[var(--border)] bg-[rgba(255,255,255,0.04)]",
+                          ? "border-[rgba(62,166,255,0.34)] bg-[rgba(62,166,255,0.14)]"
+                          : "border-[var(--border)] bg-[rgba(20,24,36,0.86)]",
                       ),
                 )}
               >
@@ -1202,7 +1188,7 @@ function MobileBottomNav({
                   </span>
                 ) : null}
               </span>
-              <span className={cn("max-w-full truncate", scanAction ? "-mt-2" : "mt-1.5")}>{getMobileNavLabel(item, translate)}</span>
+              <span className={cn("truncate", scanAction ? "-mt-2" : "mt-1")}>{getMobileNavLabel(item, translate)}</span>
             </Link>
           );
         })}
@@ -1228,42 +1214,27 @@ function AppShellFrame({
   pathname: string;
 }) {
   const shellLayout = useMemo(() => getShellLayout(pathname), [pathname]);
-  const { standalone } = useDisplayMode();
   const immersiveScannerRoute = shellLayout.mode === "camera";
   const router = useRouter();
   const { language, setLanguage, t } = useI18n();
+  useI18nNamespaces(["common", "navigation"]);
   const { activeFactory, activeFactoryId, factories, organization, user } = useSession();
   const [hydrated, setHydrated] = useState(false);
   const [switchingFactory, setSwitchingFactory] = useState(false);
   const [switchError, setSwitchError] = useState("");
   const [accountActionBusy, setAccountActionBusy] = useState<"logout" | "switch" | null>(null);
-  const [accountActionError, setAccountActionError] = useState("");
   const [badgeCounts, setBadgeCounts] = useState<Record<"approvals" | "alerts", number>>({
     approvals: 0,
     alerts: 0,
   });
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [contextRailOpen, setContextRailOpen] = useState(true);
   const [favoriteHrefs, setFavoriteHrefs] = useState<string[]>([]);
   const [sectionExpanded, setSectionExpanded] = useState<Record<string, boolean>>({});
+  const [desktopContextRailHidden, setDesktopContextRailHidden] = useState(false);
   const factoryChoices = useMemo(
     () => factories.filter((factory) => Boolean(factory.factory_id)),
     [factories],
   );
-  const showMobileJobsDock = shellLayout.mobileBottomNav && !immersiveScannerRoute;
-  const showDesktopJobsDock = !immersiveScannerRoute;
-  const showDesktopJobsTray = showDesktopJobsDock && !sidebarOpen;
-  const mobileFixedStackClearance = showMobileJobsDock
-    ? standalone
-      ? MOBILE_FIXED_STACK_CLEARANCE.standalone
-      : MOBILE_FIXED_STACK_CLEARANCE.browser
-    : "0px";
-  const mobileJobsBottomOffset = standalone
-    ? MOBILE_JOBS_FLOAT_OFFSET.standalone
-    : MOBILE_JOBS_FLOAT_OFFSET.browser;
-  const shellFrameStyle = {
-    "--shell-mobile-fixed-stack-clearance": mobileFixedStackClearance,
-  } as CSSProperties;
   const resolvedRole = hydrated ? user?.role : null;
   const activeIndustryType = hydrated ? activeFactory?.industry_type || null : null;
   const visibleNavSections = useMemo(
@@ -1363,32 +1334,9 @@ function AppShellFrame({
     [router],
   );
 
-  const toggleContextRail = useCallback(() => {
-    setContextRailOpen((current) => !current);
-  }, []);
-
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      setHydrated(true);
-    }, 0);
-    return () => window.clearTimeout(timer);
+    setHydrated(true);
   }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const timer = window.setTimeout(() => {
-      const saved = window.localStorage.getItem(CONTEXT_RAIL_OPEN_STORAGE_KEY);
-      if (saved === "false") {
-        setContextRailOpen(false);
-      }
-    }, 0);
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    window.localStorage.setItem(CONTEXT_RAIL_OPEN_STORAGE_KEY, contextRailOpen ? "true" : "false");
-  }, [contextRailOpen]);
 
   useEffect(() => {
     const primaryRoutes = [
@@ -1523,12 +1471,9 @@ function AppShellFrame({
     if (!immersiveScannerRoute) {
       return;
     }
-    const timer = window.setTimeout(() => {
-      if (typeof window !== "undefined" && window.innerWidth >= 1024) {
-        setSidebarState(true);
-      }
-    }, 0);
-    return () => window.clearTimeout(timer);
+    if (typeof window !== "undefined" && window.innerWidth >= 1024) {
+      setSidebarState(true);
+    }
   }, [immersiveScannerRoute, setSidebarState]);
 
   useEffect(() => {
@@ -1579,6 +1524,14 @@ function AppShellFrame({
     return () => window.clearTimeout(timer);
   }, []);
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const stored = window.localStorage.getItem(DESKTOP_CONTEXT_RAIL_HIDDEN_STORAGE_KEY);
+      setDesktopContextRailHidden(stored === "true");
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   const persistFavoriteHrefs = useCallback((next: string[]) => {
     const deduped = next.filter((href, index, all) => all.indexOf(href) === index);
     setFavoriteHrefs(deduped);
@@ -1609,6 +1562,17 @@ function AppShellFrame({
     }
   }, []);
 
+  const setDesktopContextRailHiddenState = useCallback((next: boolean) => {
+    setDesktopContextRailHidden(next);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(DESKTOP_CONTEXT_RAIL_HIDDEN_STORAGE_KEY, next ? "true" : "false");
+    }
+  }, []);
+
+  const toggleDesktopContextRail = useCallback(() => {
+    setDesktopContextRailHiddenState(!desktopContextRailHidden);
+  }, [desktopContextRailHidden, setDesktopContextRailHiddenState]);
+
   const toggleSectionGroup = useCallback(
     (sectionKey: string) => {
       const nextValue = !(resolvedExpandedSections[sectionKey] ?? true);
@@ -1637,7 +1601,7 @@ function AppShellFrame({
 
   const handleLanguageChange = useCallback(
     (next: string) => {
-      if (next === "en" || next === "hi" || next === "mr") {
+      if (next === "en" || next === "hi" || next === "mr" || next === "ta" || next === "gu") {
         setLanguage(next);
       }
     },
@@ -1646,29 +1610,23 @@ function AppShellFrame({
 
   const handleLogout = useCallback(async () => {
     setAccountActionBusy("logout");
-    setAccountActionError("");
     try {
       await logout();
+    } finally {
       if (typeof window !== "undefined") {
         window.location.href = "/access";
       }
-    } catch (error) {
-      setAccountActionError(error instanceof Error ? error.message : "Could not sign out right now.");
-      setAccountActionBusy(null);
     }
   }, []);
 
   const handleSwitchAccount = useCallback(async () => {
     setAccountActionBusy("switch");
-    setAccountActionError("");
     try {
       await logout();
+    } finally {
       if (typeof window !== "undefined") {
         window.location.href = "/access?switch_account=1";
       }
-    } catch (error) {
-      setAccountActionError(error instanceof Error ? error.message : "Could not switch account right now.");
-      setAccountActionBusy(null);
     }
   }, []);
 
@@ -1681,8 +1639,11 @@ function AppShellFrame({
     router.push(shellLayout.fallbackHref === "/dashboard" ? roleHomeHref : shellLayout.fallbackHref);
   }, [organization?.accessible_factories, resolvedRole, router, shellLayout.fallbackHref]);
 
+  const showDesktopContextRail =
+    shellLayout.desktopRail === "context" && !desktopContextRailHidden;
+
   return (
-    <div className="relative flex min-h-screen overflow-hidden" style={shellFrameStyle}>
+    <div className="relative flex min-h-screen overflow-hidden">
       {sidebarOpen ? (
         <button
           type="button"
@@ -1780,9 +1741,10 @@ function AppShellFrame({
                   ))}
                 </Select>
                 <div className="mt-1 text-[11px] text-[var(--muted)]">
+                  {/* AUDIT: TEXT_NOISE — The factory helper now shows only the scope needed to confirm how many contexts are available. */}
                   {switchingFactory
                     ? t("shell.switching_factory_context", "Switching factory context...")
-                    : `${organization?.accessible_factories || factoryChoices.length} ${t("shell.accessible_factories", "accessible factories")}`}
+                    : `${organization?.accessible_factories || factoryChoices.length} factories`}
                 </div>
                 {switchError ? <div className="mt-1 text-[11px] text-red-300">{switchError}</div> : null}
               </div>
@@ -1859,117 +1821,100 @@ function AppShellFrame({
             </div>
           </div>
 
-          {showDesktopJobsDock ? (
-            <div className="mt-3 hidden border-t border-[var(--border)] pt-3 lg:block">
-              <div className="rounded-[1.25rem] border border-[rgba(62,166,255,0.16)] bg-[rgba(8,12,20,0.58)] p-2.5">
-                <div className="px-2 pb-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-                  Jobs
-                </div>
-                <JobsDrawer />
-              </div>
-            </div>
-          ) : null}
-
           <div className="mt-3 border-t border-[var(--border)] pt-3">
-            <div className="flex items-center gap-2">
-              <label className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-                {t("language.label", "Language")}
-              </label>
-              <Select
-                className="h-8 min-w-0 flex-1 bg-[rgba(20,24,36,0.86)] text-xs"
-                value={language}
-                onChange={(event) => handleLanguageChange(event.target.value)}
-                aria-label={t("language.label", "Language")}
-              >
-                {LANGUAGE_CHOICES.map((choice) => (
-                  <option key={choice.value} value={choice.value}>
-                    {t(choice.key, choice.fallback)}
-                  </option>
-                ))}
-              </Select>
-            </div>
+            {/* AUDIT: BUTTON_CLUTTER — Moved language and account utilities into a collapsible tray so the shell stays focused on navigation first. */}
+            <details className="group rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.45)] px-3 py-3">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-left">
+                <div>
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                    {t("shell.account_title", "Account")}
+                  </div>
+                  <div className="mt-1 text-sm font-semibold text-[var(--text)]">
+                    {t("shell.account_subtitle", "Profile, language, and sign-out tools")}
+                  </div>
+                </div>
+                <span className="text-[var(--muted)] transition group-open:rotate-180">
+                  <ChevronIcon expanded={false} />
+                </span>
+              </summary>
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <label className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                    {t("language.label", "Language")}
+                  </label>
+                  <Select
+                    className="h-8 min-w-0 flex-1 bg-[rgba(20,24,36,0.86)] text-xs"
+                    value={language}
+                    onChange={(event) => handleLanguageChange(event.target.value)}
+                    aria-label={t("language.label", "Language")}
+                  >
+                    {LANGUAGE_CHOICES.map((choice) => (
+                      <option key={choice.value} value={choice.value}>
+                        {t(choice.key, choice.fallback)}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
 
-            <div className="mt-2 grid grid-cols-3 gap-1.5">
-              <Link
-                href="/profile"
-                className="inline-flex h-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-2 text-[11px] font-medium text-[var(--text)] transition hover:border-[rgba(62,166,255,0.34)] hover:bg-[rgba(20,24,36,0.86)]"
-              >
-                {t("nav.profile.label", "Profile")}
-              </Link>
-              <button
-                type="button"
-                onClick={() => void handleLogout()}
-                disabled={accountActionBusy !== null}
-                className="inline-flex h-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-2 text-[11px] font-medium text-[var(--text)] transition hover:border-[rgba(62,166,255,0.34)] hover:bg-[rgba(20,24,36,0.86)] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {accountActionBusy === "logout"
-                  ? t("shell.logging_out", "Logging out...")
-                  : t("shell.logout", "Logout")}
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleSwitchAccount()}
-                disabled={accountActionBusy !== null}
-                className="inline-flex h-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-2 text-[11px] font-medium text-[var(--text)] transition hover:border-[rgba(62,166,255,0.34)] hover:bg-[rgba(20,24,36,0.86)] disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {accountActionBusy === "switch"
-                  ? t("shell.switching", "Switching...")
-                  : t("shell.switch_account", "Switch Account")}
-              </button>
-            </div>
-            {accountActionError ? (
-              <div className="mt-2 rounded-lg border border-[rgba(248,113,113,0.22)] bg-[rgba(127,29,29,0.18)] px-3 py-2 text-[11px] leading-5 text-red-100">
-                {accountActionError}
+                <div className="grid grid-cols-3 gap-1.5">
+                  <Link
+                    href="/profile"
+                    className="inline-flex h-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-2 text-[11px] font-medium text-[var(--text)] transition hover:border-[rgba(62,166,255,0.34)] hover:bg-[rgba(20,24,36,0.86)]"
+                  >
+                    {t("nav.profile.label", "Profile")}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => void handleLogout()}
+                    disabled={accountActionBusy !== null}
+                    className="inline-flex h-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-2 text-[11px] font-medium text-[var(--text)] transition hover:border-[rgba(62,166,255,0.34)] hover:bg-[rgba(20,24,36,0.86)] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {accountActionBusy === "logout"
+                      ? t("shell.logging_out", "Logging out...")
+                      : t("shell.logout", "Logout")}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleSwitchAccount()}
+                    disabled={accountActionBusy !== null}
+                    className="inline-flex h-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-2 text-[11px] font-medium text-[var(--text)] transition hover:border-[rgba(62,166,255,0.34)] hover:bg-[rgba(20,24,36,0.86)] disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {accountActionBusy === "switch"
+                      ? t("shell.switching", "Switching...")
+                      : t("shell.switch_account", "Switch")}
+                  </button>
+                </div>
               </div>
-            ) : null}
+            </details>
           </div>
         </div>
       </aside>
 
       <div
         className={cn(
-          "app-shell-content flex min-h-screen min-w-0 flex-1 flex-col transition-[padding-left] duration-300 ease-out",
+          "flex min-h-screen min-w-0 flex-1 flex-col transition-[padding-left] duration-300 ease-out",
           immersiveScannerRoute ? "lg:pl-[18rem]" : sidebarOpen ? "lg:pl-[18rem]" : "lg:pl-0",
         )}
       >
         {shellLayout.mobileTopBar ? (
-          <div
-            className={cn(
-              "safe-inline-pad sticky top-0 z-30 lg:hidden",
-              standalone ? "pb-2 pt-[max(0.4rem,env(safe-area-inset-top))]" : "pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]",
-            )}
-          >
-            <div
-              className={cn(
-                "surface-panel flex items-center gap-3 px-3",
-                standalone ? "rounded-[1.45rem] py-2" : "rounded-[1.65rem] py-2.5",
-              )}
-            >
+          <div className="sticky top-0 z-30 border-b border-[var(--border)] bg-[rgba(11,14,20,0.92)] px-4 py-3 backdrop-blur lg:hidden">
+            <div className="flex items-center gap-3">
               {mobileTabActive ? (
                 <div className="h-10 w-10 shrink-0" />
               ) : (
                 <button
                   type="button"
                   aria-label={t("shell.go_back", "Go back")}
-                  className="surface-pill inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--text)] transition hover:border-[rgba(77,163,255,0.35)]"
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(20,24,36,0.86)] text-base font-semibold text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)]"
                   onClick={handleMobileBack}
                 >
-                  <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
-                    <path d="m11.8 4.8-5 5 5 5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
+                  {"<"}
                 </button>
               )}
 
               <div className="min-w-0 flex-1 text-center">
-                <div className="flex items-center justify-center gap-2">
-                  <div className="truncate text-[10px] font-semibold uppercase tracking-[0.22em] text-[rgba(77,163,255,0.92)]">
-                    {activeFactory?.name || user?.factory_name || "DPR.ai"}
-                  </div>
-                  {standalone ? (
-                    <span className="hidden rounded-full border border-[rgba(77,163,255,0.24)] bg-[rgba(77,163,255,0.12)] px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.16em] text-[rgba(186,229,255,0.96)] min-[390px]:inline-flex">
-                      App
-                    </span>
-                  ) : null}
+                <div className="truncate text-[10px] font-semibold uppercase tracking-[0.22em] text-[rgba(62,166,255,0.88)]">
+                  {activeFactory?.name || user?.factory_name || "DPR.ai"}
                 </div>
                 <div className="truncate text-sm font-semibold text-[var(--text)]">{currentItem.label}</div>
               </div>
@@ -1981,7 +1926,7 @@ function AppShellFrame({
                     ? t("shell.hide_sidebar", "Hide sidebar")
                     : t("shell.show_sidebar", "Show sidebar")
                 }
-                className="surface-pill inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-[var(--text)] transition hover:border-[rgba(77,163,255,0.35)]"
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(20,24,36,0.86)] text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)]"
                 onClick={toggleSidebar}
               >
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
@@ -1992,41 +1937,12 @@ function AppShellFrame({
           </div>
         ) : null}
 
-        {showDesktopJobsTray ? (
-          <div className="hidden px-6 pt-6 lg:flex lg:justify-end">
-            <div className="w-[17.5rem]">
-              <JobsDrawer />
-            </div>
-          </div>
-        ) : null}
-
-        <div
-          className={cn(
-            "app-shell-content min-w-0 flex-1",
-          )}
-        >
+        <div className={cn("min-w-0 flex-1", shellLayout.mobileBottomNav ? "pb-24 lg:pb-0" : "")}>
           {!immersiveScannerRoute ? <WorkflowReminderStrip /> : null}
-          {!immersiveScannerRoute ? <OfflineWorkStrip /> : null}
           {shellLayout.desktopRail === "context" ? (
-            <div
-              className={cn(
-                "min-h-full",
-                contextRailOpen ? "xl:grid xl:grid-cols-[minmax(0,1fr)_19rem]" : "xl:block",
-              )}
-            >
-              {!contextRailOpen ? (
-                <div className="hidden justify-end px-6 pt-6 xl:flex">
-                  <button
-                    type="button"
-                    className="inline-flex items-center justify-center rounded-full border border-[rgba(62,166,255,0.24)] bg-[rgba(12,16,24,0.82)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[rgba(62,166,255,0.88)] shadow-[0_12px_28px_rgba(3,8,20,0.24)] transition hover:border-[rgba(62,166,255,0.38)] hover:bg-[rgba(20,24,36,0.92)] hover:text-[var(--text)]"
-                    onClick={toggleContextRail}
-                  >
-                    Show workspace panel
-                  </button>
-                </div>
-              ) : null}
+            <div className={cn("min-h-full", showDesktopContextRail ? "xl:grid xl:grid-cols-[minmax(0,1fr)_19rem]" : "")}>
               <div className="min-w-0">{children}</div>
-              {contextRailOpen ? (
+              {showDesktopContextRail ? (
                 <DesktopContextRail
                   currentItem={currentItem}
                   badgeCounts={badgeCounts}
@@ -2036,9 +1952,20 @@ function AppShellFrame({
                   workflowHint={workflowHint}
                   quickLinks={desktopRailQuickLinks}
                   onWarm={warmRoute}
-                  onToggle={toggleContextRail}
+                  onHide={toggleDesktopContextRail}
                   translate={t}
                 />
+              ) : null}
+              {desktopContextRailHidden ? (
+                <button
+                  type="button"
+                  aria-label={t("shell.show_workspace", "Show workspace")}
+                  title={t("shell.show_workspace", "Show workspace")}
+                  className="fixed right-6 top-6 z-30 hidden items-center justify-center rounded-full border border-[rgba(62,166,255,0.28)] bg-[rgba(12,16,26,0.96)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text)] shadow-[0_12px_30px_rgba(3,8,20,0.35)] transition hover:border-[rgba(62,166,255,0.48)] hover:bg-[rgba(20,24,36,0.98)] xl:inline-flex"
+                  onClick={toggleDesktopContextRail}
+                >
+                  Workspace
+                </button>
               ) : null}
             </div>
           ) : (
@@ -2053,20 +1980,17 @@ function AppShellFrame({
           badgeCounts={badgeCounts}
           onWarm={warmRoute}
           onNavigate={handleNavNavigate}
-          standaloneMode={standalone}
           translate={t}
         />
       ) : null}
-      {showMobileJobsDock ? (
-        <div
-          className="safe-inline-pad fixed inset-x-0 z-[41] lg:hidden"
-          style={{ bottom: `calc(${mobileJobsBottomOffset} + env(safe-area-inset-bottom))` }}
-        >
-          <div className="mx-auto w-full max-w-xl">
-            <JobsDrawer />
-          </div>
-        </div>
-      ) : null}
+      <div
+        className={cn(
+          "fixed bottom-[5.5rem] right-4 z-40 w-[min(22rem,calc(100vw-2rem))] lg:bottom-4 lg:right-6",
+          immersiveScannerRoute ? "hidden" : "",
+        )}
+      >
+        <JobsDrawer />
+      </div>
     </div>
   );
 }

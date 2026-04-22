@@ -14,12 +14,9 @@ import {
   type PremiumSeriesPoint,
   type PremiumSummary,
 } from "@/lib/premium";
-import { useMobileRouteFunnel } from "@/lib/mobile-route-funnel";
-import { getReportTrustSummary, type ReportTrustSummary } from "@/lib/report-trust";
 import { triggerBlobDownload } from "@/lib/reports";
 import { getSteelOverview, type SteelOverview } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
-import { TrustChecklist } from "@/components/trust-checklist";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
@@ -66,19 +63,6 @@ function formatDateTime(value: string) {
     hour: "2-digit",
     minute: "2-digit",
   });
-}
-
-function todayValue() {
-  const now = new Date();
-  const offset = now.getTimezoneOffset() * 60000;
-  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
-}
-
-function daysAgoValue(days: number) {
-  const now = new Date();
-  now.setDate(now.getDate() - days);
-  const offset = now.getTimezoneOffset() * 60000;
-  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
 }
 
 function shiftLabel(value: string) {
@@ -311,13 +295,10 @@ function ShiftChart({
 
 export default function PremiumDashboardPage() {
   const { user, loading, error: sessionError, activeFactory } = useSession();
-  const trackPrimaryAction = useMobileRouteFunnel("/premium/dashboard", user?.role, Boolean(user));
   const [dashboard, setDashboard] = useState<PremiumDashboardResponse | null>(null);
   const [auditTrail, setAuditTrail] = useState<PremiumAuditItem[]>([]);
   const [ocrSummary, setOcrSummary] = useState<OcrVerificationSummary | null>(null);
   const [steelOverview, setSteelOverview] = useState<SteelOverview | null>(null);
-  const [trustSummary, setTrustSummary] = useState<ReportTrustSummary | null>(null);
-  const [loadingTrust, setLoadingTrust] = useState(false);
   const [days, setDays] = useState(14);
   const [selectedFactoryId, setSelectedFactoryId] = useState<string | null>(null);
   const [selectedShift, setSelectedShift] = useState<string | null>(null);
@@ -328,9 +309,7 @@ export default function PremiumDashboardPage() {
   const [auditWarning, setAuditWarning] = useState("");
   const [ocrWarning, setOcrWarning] = useState("");
   const [steelWarning, setSteelWarning] = useState("");
-  const [trustError, setTrustError] = useState("");
   const [status, setStatus] = useState("");
-  const [mobileOwnerTab, setMobileOwnerTab] = useState<"risk" | "operations" | "trust" | "audit">("operations");
 
   useEffect(() => {
     if (!user) return;
@@ -428,46 +407,6 @@ export default function PremiumDashboardPage() {
     };
   }, [activeFactory?.factory_id, activeFactory?.industry_type, dashboard, locked, user]);
 
-  useEffect(() => {
-    if (!user || locked) {
-      return;
-    }
-    let alive = true;
-    queueMicrotask(() => {
-      if (!alive) return;
-      setLoadingTrust(true);
-      setTrustError("");
-    });
-    getReportTrustSummary({
-      startDate: daysAgoValue(days - 1),
-      endDate: todayValue(),
-      shift: selectedShift,
-      factoryId: selectedFactoryId,
-    })
-      .then((nextSummary) => {
-        if (!alive) return;
-        setTrustSummary(nextSummary);
-      })
-      .catch((reason) => {
-        if (!alive) return;
-        setTrustSummary(null);
-        setTrustError(
-          reason instanceof Error
-            ? `Trust checklist is temporarily unavailable: ${reason.message}`
-            : "Trust checklist is temporarily unavailable.",
-        );
-      })
-      .finally(() => {
-        if (alive) {
-          setLoadingTrust(false);
-        }
-      });
-
-    return () => {
-      alive = false;
-    };
-  }, [days, locked, selectedFactoryId, selectedShift, user]);
-
   const filteredSeries = useMemo(() => {
     if (!dashboard) return [];
     return dashboard.series.filter((point) => {
@@ -510,24 +449,6 @@ export default function PremiumDashboardPage() {
       }))
       .sort((left, right) => right.units - left.units);
   }, [dashboard]);
-  const factoryComparisonSummary = useMemo(() => {
-    if (factoryStats.length < 2) return null;
-    const rankedByPerformance = [...factoryStats].sort((left, right) => right.performance - left.performance);
-    const rankedByDowntime = [...factoryStats].sort((left, right) => right.downtime - left.downtime);
-    const topFactory = rankedByPerformance[0];
-    const trailingFactory = rankedByPerformance[rankedByPerformance.length - 1];
-    const downtimeHotspot = rankedByDowntime[0];
-    const averagePerformance =
-      factoryStats.reduce((sum, item) => sum + item.performance, 0) / Math.max(1, factoryStats.length);
-    return {
-      topFactory,
-      trailingFactory,
-      downtimeHotspot,
-      averagePerformance,
-      spread: topFactory.performance - trailingFactory.performance,
-      ranked: rankedByPerformance,
-    };
-  }, [factoryStats]);
 
   const shiftStats = useMemo<DerivedShiftStat[]>(() => {
     const map = new Map<string, DerivedShiftStat>();
@@ -599,16 +520,6 @@ export default function PremiumDashboardPage() {
   }, [auditTrail]);
 
   const handleExportPdf = async () => {
-    if (!trustSummary) {
-      setError(trustError || "Trust checklist is still loading. Refresh and try again.");
-      setStatus("");
-      return;
-    }
-    if (!trustSummary.can_send) {
-      setError(trustSummary.blocking_reason || "Trust review is still in progress.");
-      setStatus("");
-      return;
-    }
     setStatus("");
     setError("");
     try {
@@ -636,9 +547,9 @@ export default function PremiumDashboardPage() {
             <CardTitle>Premium Analytics</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
             <Link href="/access">
-              <Button>Open Login</Button>
+              <Button>Open Access</Button>
             </Link>
           </CardContent>
         </Card>
@@ -733,124 +644,25 @@ export default function PremiumDashboardPage() {
         },
       ]
     : [];
-  const realizedRevenue = steelOverview?.financial_access && steelOverview?.profit_summary
-    ? steelOverview.profit_summary.realized_dispatched_revenue_inr
-    : null;
-  const revenueWeight = steelOverview?.profit_summary?.realized_dispatch_weight_kg ?? 0;
-  const estimatedLoss = steelOverview?.financial_access
-    ? steelOverview.anomaly_summary.total_estimated_leakage_value_inr
-    : null;
-  const trustScore = trustSummary?.overall_trust_score ?? null;
-  const ownerMobileKpis = [
-    {
-      label: "Production",
-      value: `${activeSummary?.total_units ?? 0}`,
-      helper: `${Number(activeSummary?.average_performance || 0).toFixed(1)}% vs ${activeSummary?.total_target ?? 0} target`,
-      tone: "border-sky-400/30 bg-[rgba(56,189,248,0.12)]",
-    },
-    {
-      label: "Revenue",
-      value: realizedRevenue != null ? formatCurrency(realizedRevenue) : (steelMode ? "Restricted" : "Pending"),
-      helper:
-        realizedRevenue != null
-          ? `${formatKg(revenueWeight)} dispatched revenue realized`
-          : steelMode
-            ? "Finance access is limited for this factory."
-            : "Revenue activates when financial signals are available.",
-      tone: "border-emerald-400/30 bg-[rgba(34,197,94,0.12)]",
-    },
-    {
-      label: "Loss",
-      value: estimatedLoss != null ? formatCurrency(estimatedLoss) : (steelMode ? "Restricted" : "Pending"),
-      helper:
-        estimatedLoss != null
-          ? `${Number(steelOverview?.anomaly_summary.critical_batches || 0)} critical anomaly batch${Number(steelOverview?.anomaly_summary.critical_batches || 0) === 1 ? "" : "es"} live`
-          : steelMode
-            ? "Leakage value is locked until finance access is enabled."
-            : `${activeSummary?.issues_count ?? 0} issue(s) still need follow-up.`,
-      tone: "border-red-400/30 bg-[rgba(239,68,68,0.12)]",
-    },
-    {
-      label: "Trust score",
-      value: trustScore != null ? `${trustScore}%` : (loadingTrust ? "..." : "Pending"),
-      helper:
-        trustSummary
-          ? trustSummary.can_send
-            ? "Owner export gate is green."
-            : trustSummary.blocking_reason || "Trust review is still in progress."
-          : trustError || "Refreshing trust checklist.",
-      tone: "border-cyan-400/30 bg-[rgba(34,211,238,0.12)]",
-    },
-  ] as const;
-  const mobileRiskSignal = selectedFactoryMismatch
-    ? {
-        eyebrow: "Scope mismatch",
-        title: "Owner risk desk is following a different factory",
-        detail:
-          "The steel risk layer follows the active factory in the sidebar. Clear the factory filter or switch the active factory to align the owner desk with the risk desk.",
-        action: "Open Risk Review",
-        href: "/steel?tab=risk",
-        tone: "border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-50",
-      }
-    : steelLayerVisible && ownerRiskCards.length
-      ? {
-          eyebrow: "Highest risk signal",
-          title: ownerRiskCards[0].label,
-          detail: `${ownerRiskCards[0].value} under watch. ${ownerRiskCards[0].helper}`,
-          action: ownerRiskCards[0].action,
-          href: ownerRiskCards[0].href,
-          tone: "border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-50",
-        }
-      : trustSummary && !trustSummary.can_send
-        ? {
-            eyebrow: "Trust blocked",
-            title: "Owner brief is not ready to send",
-            detail: trustSummary.blocking_reason || "Trust review is still in progress for this premium window.",
-            action: trustSummary.next_action?.label || "Open Trusted Reports",
-            href: trustSummary.next_action?.href || "/reports",
-            tone: "border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-50",
-          }
-        : Number(activeSummary?.issues_count || 0) > 0 || Number(activeSummary?.total_downtime || 0) > 0
-          ? {
-              eyebrow: "Operations watch",
-              title: `${activeSummary?.issues_count ?? 0} issue(s) and ${activeSummary?.total_downtime ?? 0} min downtime need attention`,
-              detail: `${activeSummary?.total_units ?? 0} units are currently tracking at ${Number(activeSummary?.average_performance || 0).toFixed(1)}% performance.`,
-              action: "Open Operations Dashboard",
-              href: "/dashboard",
-              tone: "border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-50",
-            }
-          : {
-              eyebrow: "All clear",
-              title: "Operational health is stable",
-              detail: trustSummary?.can_send
-                ? "The trust gate is green and the owner export can leave this factory safely."
-                : "Production signals are stable while the trust checklist finishes refreshing.",
-              action: "Open Trusted Reports",
-              href: "/reports",
-              tone: "border-emerald-400/30 bg-[rgba(34,197,94,0.12)] text-emerald-50",
-            };
 
   return (
-    <main className="min-h-screen px-4 py-6 shell-bottom-clearance md:px-8 md:pb-8">
-      <div className="mx-auto flex max-w-[1500px] flex-col gap-6">
-        <section className="rounded-[2rem] border border-[rgba(62,166,255,0.18)] bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.18),rgba(11,14,20,0.92)_50%)] p-5 shadow-[0_40px_120px_rgba(3,8,20,0.45)] sm:p-6">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <main className="min-h-screen px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-[1500px] space-y-6">
+        <section className="rounded-[2rem] border border-[rgba(62,166,255,0.18)] bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.18),rgba(11,14,20,0.92)_50%)] p-6 shadow-[0_40px_120px_rgba(3,8,20,0.45)]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
               <div className="text-xs font-semibold uppercase tracking-[0.32em] text-[rgba(62,166,255,0.88)]">
                 Owner Intelligence
               </div>
-              <h1 className="text-2xl font-semibold text-[var(--text)] sm:text-3xl">Industrial Command Center</h1>
-              <p className="hidden max-w-4xl text-sm leading-6 text-[var(--muted)] sm:block">
-                Move from raw activity to owner decisions quickly: where money is at risk, where stock trust is slipping, which dispatch exposure is still open, and which signals deserve inspection first.
+              <h1 className="text-3xl font-semibold text-[var(--text)]">Read the owner signals before you jump into a desk</h1>
+              <p className="max-w-4xl text-sm leading-6 text-[var(--muted)]">
+                Start with money at risk, trust gaps, and responsibility signals, then open the exact workflow that needs attention.
               </p>
             </div>
-            <div className="grid gap-3 sm:flex sm:flex-wrap">
-              <Link href="/analytics" className="hidden sm:block">
-                <Button variant="outline" className="w-full sm:w-auto">Basic Analytics</Button>
-              </Link>
-              <Link href="/dashboard">
-                <Button className="w-full sm:w-auto">Operations Dashboard</Button>
-              </Link>
+            <div className="flex flex-wrap gap-3">
+              <Button variant="outline" onClick={() => void handleExportPdf()}>
+                Executive PDF
+              </Button>
             </div>
           </div>
 
@@ -867,7 +679,7 @@ export default function PremiumDashboardPage() {
                 Factory premium surface
               </span>
             )}
-            <span className="hidden rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-4 py-2 text-[var(--muted)] sm:inline-flex">
+            <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-4 py-2 text-[var(--muted)]">
               Generated: {dashboard ? formatDateTime(dashboard.generated_at) : "-"}
             </span>
             {steelMode ? (
@@ -883,535 +695,39 @@ export default function PremiumDashboardPage() {
           </div>
         </section>
 
-        {busy ? (
-          <div className="rounded-3xl border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-4 py-3 text-sm text-[var(--muted)]">
-            Refreshing premium analytics...
+        {/* AUDIT: BUTTON_CLUTTER - keep route jumps in a secondary tray so the owner signal board stays primary. */}
+        <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
+          <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
+            Owner tools
+          </summary>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link href="/analytics">
+              <Button variant="outline">Analytics</Button>
+            </Link>
+            <Link href="/dashboard">
+              <Button>Board</Button>
+            </Link>
           </div>
-        ) : null}
-        {status ? (
-          <div className="rounded-3xl border border-emerald-400/30 bg-emerald-400/12 px-4 py-3 text-sm text-emerald-100">
-            {status}
-          </div>
-        ) : null}
-        {auditWarning ? (
-          <div className="rounded-3xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-sm text-amber-100">
-            {auditWarning}
-          </div>
-        ) : null}
-        {ocrWarning ? (
-          <div className="rounded-3xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-sm text-amber-100">
-            {ocrWarning}
-          </div>
-        ) : null}
-        {steelWarning ? (
-          <div className="rounded-3xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-sm text-amber-100">
-            {steelWarning}
-          </div>
-        ) : null}
-        {!locked && trustError ? (
-          <div className="rounded-3xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-sm text-amber-100">
-            {trustError}
-          </div>
-        ) : null}
-        {error || sessionError ? (
-          <div className="rounded-3xl border border-rose-400/30 bg-rose-400/12 px-4 py-3 text-sm text-rose-100">
-            {error || sessionError}
-          </div>
-        ) : null}
+        </details>
 
-        {!locked && dashboard && activeSummary ? (
-          <section className="space-y-4 lg:hidden">
-            <section className="grid grid-cols-2 gap-3">
-              {ownerMobileKpis.map((metric) => (
-                <Card key={metric.label} className={`border ${metric.tone}`}>
-                  <CardHeader className="space-y-2 px-4 py-4">
-                    <div className="text-[11px] uppercase tracking-[0.22em] text-[var(--muted)]">{metric.label}</div>
-                    <CardTitle className="text-xl text-[var(--text)]">{metric.value}</CardTitle>
-                    <div className="text-xs leading-5 text-[var(--muted)]">{metric.helper}</div>
-                  </CardHeader>
-                </Card>
-              ))}
-            </section>
-
-            <Card className={`border ${mobileRiskSignal.tone}`}>
-              <CardHeader className="space-y-2 px-4 py-4">
-                <div className="text-[11px] uppercase tracking-[0.24em]">{mobileRiskSignal.eyebrow}</div>
-                <CardTitle className="text-xl text-inherit">{mobileRiskSignal.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4 px-4 pb-4">
-                <div className="text-sm leading-6 text-inherit/90">{mobileRiskSignal.detail}</div>
-                <Link href={mobileRiskSignal.href}>
-                  <Button className="w-full">{mobileRiskSignal.action}</Button>
-                </Link>
-              </CardContent>
-            </Card>
-
-            <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
-              {([
-                { id: "risk", label: "Risk" },
-                { id: "operations", label: "Operations" },
-                { id: "trust", label: "Trust" },
-                { id: "audit", label: "Audit" },
-              ] as const).map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => {
-                    setMobileOwnerTab(tab.id);
-                    if (tab.id === "risk") {
-                      trackPrimaryAction("open_risk_detail");
-                    }
-                    if (tab.id === "trust") {
-                      trackPrimaryAction("view_trust_gate");
-                    }
-                  }}
-                  className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${
-                    mobileOwnerTab === tab.id
-                      ? "border-[rgba(62,166,255,0.4)] bg-[rgba(62,166,255,0.14)] text-[var(--text)]"
-                      : "border-[var(--border)] bg-[rgba(255,255,255,0.04)] text-[var(--muted)]"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+        {/* AUDIT: FLOW_BROKEN - add a short owner sequence so the page frames the next decision clearly. */}
+        <section className="grid gap-3 md:grid-cols-3">
+          {[
+            { step: "1. Read risk", caption: "Start with premium signals, not raw route switching." },
+            { step: "2. Focus scope", caption: "Use linked filters to narrow the factory and shift context." },
+            { step: "3. Open desk", caption: "Jump into steel, reports, or OCR only after the pattern is clear." },
+          ].map((item) => (
+            <div
+              key={item.step}
+              className="rounded-[24px] border border-[var(--border)] bg-[rgba(10,14,24,0.68)] px-5 py-4"
+            >
+              <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
+              <div className="mt-2 text-sm text-[var(--muted)]">{item.caption}</div>
             </div>
+          ))}
+        </section>
 
-            {mobileOwnerTab === "risk" ? (
-              <section className="space-y-4">
-                {selectedFactoryMismatch ? (
-                  <Card className="border-amber-400/30 bg-[rgba(245,158,11,0.08)]">
-                    <CardContent className="px-4 py-4 text-sm leading-6 text-amber-100">
-                      Owner steel risk cards follow the active factory in the sidebar. Clear the factory filter or switch the active factory if you want the risk desk and premium analytics scope to match exactly.
-                    </CardContent>
-                  </Card>
-                ) : null}
-
-                {steelLayerVisible && ownerRiskCards.length ? (
-                  <>
-                    <Card className="border-[rgba(239,68,68,0.18)] bg-[linear-gradient(135deg,rgba(42,16,16,0.96),rgba(14,20,30,0.92))]">
-                      <CardHeader>
-                        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-red-200">Owner risk desk</div>
-                        <CardTitle className="text-xl text-[var(--text)]">Top money and trust signals</CardTitle>
-                      </CardHeader>
-                      <CardContent className="grid gap-3 sm:grid-cols-2">
-                        {ownerRiskCards.map((card) => (
-                          <div key={card.label} className={`rounded-2xl border p-4 ${card.tone}`}>
-                            <div className="text-[11px] uppercase tracking-[0.18em] text-white/75">{card.label}</div>
-                            <div className="mt-2 text-xl font-semibold text-white">{card.value}</div>
-                            <div className="mt-2 text-sm leading-6 text-white/80">{card.helper}</div>
-                            <Link href={card.href}>
-                              <Button variant="outline" className="mt-4 w-full">{card.action}</Button>
-                            </Link>
-                          </div>
-                        ))}
-                      </CardContent>
-                    </Card>
-
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-xl">Why the system flagged this</CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-3">
-                        {topRankedAnomalies.length ? (
-                          topRankedAnomalies.map((entry) => (
-                            <div key={entry.batch.id} className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4">
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="text-sm font-semibold text-[var(--text)]">{entry.batch.batch_code}</div>
-                                <div className="text-xs text-[var(--muted)]">Score {entry.anomaly_score.toFixed(1)}</div>
-                              </div>
-                              <div className="mt-2 text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
-                                {formatDate(entry.batch.production_date)} | {formatPercent(entry.batch.loss_percent)} loss
-                              </div>
-                              <div className="mt-2 text-sm leading-6 text-[var(--text)]/90">{entry.reason}</div>
-                              <div className="mt-3 text-sm text-[var(--text)]">
-                                {steelOverview?.financial_access ? formatCurrency(entry.estimated_leakage_value_inr) : formatKg(entry.batch.variance_kg)}
-                              </div>
-                            </div>
-                          ))
-                        ) : (
-                          <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4 text-sm text-[var(--muted)]">
-                            No anomaly evidence is ranked yet for the active steel factory.
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-xl">Responsibility signal</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          {topOperatorSignals[0] ? (
-                            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                              <div className="text-sm font-semibold text-[var(--text)]">{topOperatorSignals[0].name}</div>
-                              <div className="mt-2 text-xs leading-5 text-[var(--muted)]">
-                                {topOperatorSignals[0].high_risk_batches} high-risk / {topOperatorSignals[0].critical_batches} critical batches
-                              </div>
-                              <div className="mt-2 text-sm text-[var(--text)]">
-                                {steelOverview?.financial_access ? formatCurrency(topOperatorSignals[0].total_variance_value_inr) : formatKg(topOperatorSignals[0].total_variance_kg)}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                              No repeated operator responsibility signal yet.
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-xl">Stock trust hotspot</CardTitle>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                          {stockTrustHotspots[0] ? (
-                            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                              <div className="flex items-center justify-between gap-3">
-                                <div className="text-sm font-semibold text-[var(--text)]">{stockTrustHotspots[0].name}</div>
-                                <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">{stockTrustHotspots[0].confidence_status}</div>
-                              </div>
-                              <div className="mt-2 text-xs leading-5 text-[var(--muted)]">{stockTrustHotspots[0].confidence_reason}</div>
-                              <div className="mt-2 text-sm text-[var(--text)]">
-                                Last variance {stockTrustHotspots[0].last_variance_kg == null ? "-" : formatKg(stockTrustHotspots[0].last_variance_kg)}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                              Stock confidence is green across the current tracked items.
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    </div>
-                  </>
-                ) : (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-xl">Risk desk standby</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4 text-sm leading-6 text-[var(--muted)]">
-                        This factory does not have a live steel risk desk in the current scope. Trust, production, and audit signals are still available below.
-                      </div>
-                      <div className="grid gap-3">
-                        <Link href="/reports">
-                          <Button className="w-full">Open Trusted Reports</Button>
-                        </Link>
-                        <Link href="/dashboard">
-                          <Button variant="outline" className="w-full">Open Operations Dashboard</Button>
-                        </Link>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-              </section>
-            ) : null}
-
-            {mobileOwnerTab === "operations" ? (
-              <section className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Production Timeline</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <TimelineChart points={timeline} />
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Executive Signals</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {(dashboard.insights || []).map((insight) => (
-                      <div
-                        key={insight}
-                        className="rounded-2xl border border-[rgba(62,166,255,0.16)] bg-[rgba(62,166,255,0.08)] p-4 text-sm leading-6 text-[var(--text)]/90"
-                      >
-                        {insight}
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-
-                {factoryComparisonSummary ? (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-xl">Multi-factory comparison</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] p-4">
-                          <div className="text-[11px] uppercase tracking-[0.18em] text-emerald-100/80">Lead factory</div>
-                          <div className="mt-2 text-lg font-semibold text-emerald-50">{factoryComparisonSummary.topFactory.factoryName}</div>
-                          <div className="mt-2 text-sm text-emerald-100/85">
-                            {factoryComparisonSummary.topFactory.performance.toFixed(1)}% performance | {factoryComparisonSummary.topFactory.units} units
-                          </div>
-                        </div>
-                        <div className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.12)] p-4">
-                          <div className="text-[11px] uppercase tracking-[0.18em] text-amber-100/80">Watch factory</div>
-                          <div className="mt-2 text-lg font-semibold text-amber-50">{factoryComparisonSummary.trailingFactory.factoryName}</div>
-                          <div className="mt-2 text-sm text-amber-100/85">
-                            Spread {factoryComparisonSummary.spread.toFixed(1)} pts | avg {factoryComparisonSummary.averagePerformance.toFixed(1)}%
-                          </div>
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4 text-sm leading-6 text-[var(--text)]/90">
-                        Downtime hotspot: {factoryComparisonSummary.downtimeHotspot.factoryName} with {factoryComparisonSummary.downtimeHotspot.downtime} min downtime in the current scope.
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : null}
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Factory Output Rail</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <FactoryChart
-                      items={factoryStats}
-                      selectedFactoryId={selectedFactoryId}
-                      onSelect={setSelectedFactoryId}
-                    />
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Interlinked Shift Matrix</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <ShiftChart items={shiftStats} selectedShift={selectedShift} onSelect={setSelectedShift} />
-                  </CardContent>
-                </Card>
-              </section>
-            ) : null}
-
-            {mobileOwnerTab === "trust" ? (
-              <section className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Linked Filters</CardTitle>
-                  </CardHeader>
-                  <CardContent className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <div className="mb-2 text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Window</div>
-                      <Select value={String(days)} onChange={(event) => setDays(Number(event.target.value))}>
-                        <option value="7">Last 7 days</option>
-                        <option value="14">Last 14 days</option>
-                        <option value="30">Last 30 days</option>
-                      </Select>
-                    </div>
-                    <div>
-                      <div className="mb-2 text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Factory</div>
-                      <Select value={selectedFactoryId || ""} onChange={(event) => setSelectedFactoryId(event.target.value || null)}>
-                        <option value="">All factories</option>
-                        {(dashboard?.filters.factories || []).map((factory) => (
-                          <option key={factory.id} value={factory.id}>
-                            {factory.label}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-                    <div>
-                      <div className="mb-2 text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Shift</div>
-                      <Select value={selectedShift || ""} onChange={(event) => setSelectedShift(event.target.value || null)}>
-                        <option value="">All shifts</option>
-                        {(dashboard?.filters.shifts || []).map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.label}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-                    <div>
-                      <div className="mb-2 text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Audit Action</div>
-                      <Select value={auditAction} onChange={(event) => setAuditAction(event.target.value)}>
-                        <option value="">All actions</option>
-                        {auditActions.map((action) => (
-                          <option key={action} value={action}>
-                            {action}
-                          </option>
-                        ))}
-                      </Select>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Executive export gate</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <TrustChecklist
-                      summary={trustSummary}
-                      loading={loadingTrust}
-                      error={trustError}
-                      title="Executive export gate"
-                      description="Owner exports stay locked until OCR, shift entry, and attendance review are complete for the selected premium window."
-                    />
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => void handleExportPdf()}
-                      disabled={busy || loadingTrust || !trustSummary?.can_send}
-                    >
-                      Executive PDF
-                    </Button>
-                  </CardContent>
-                </Card>
-
-                {ocrSummary ? (
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-xl">Trusted OCR Intake</CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] p-4">
-                          <div className="text-xs uppercase tracking-[0.22em] text-emerald-100/80">Trusted docs</div>
-                          <div className="mt-2 text-2xl font-semibold text-emerald-50">{ocrSummary.trusted_documents}</div>
-                          <div className="mt-1 text-sm text-emerald-100/85">{ocrSummary.trusted_rows} trusted rows</div>
-                        </div>
-                        <div className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.12)] p-4">
-                          <div className="text-xs uppercase tracking-[0.22em] text-amber-100/80">Pending review</div>
-                          <div className="mt-2 text-2xl font-semibold text-amber-50">{ocrSummary.pending_documents}</div>
-                          <div className="mt-1 text-sm text-amber-100/85">{ocrSummary.pending_rows} rows waiting</div>
-                        </div>
-                        <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] p-4">
-                          <div className="text-xs uppercase tracking-[0.22em] text-red-100/80">Untrusted docs</div>
-                          <div className="mt-2 text-2xl font-semibold text-red-50">{ocrSummary.untrusted_documents}</div>
-                          <div className="mt-1 text-sm text-red-100/85">{ocrSummary.untrusted_rows} rows outside trusted reporting</div>
-                        </div>
-                        <div className="rounded-2xl border border-cyan-400/30 bg-[rgba(34,211,238,0.12)] p-4">
-                          <div className="text-xs uppercase tracking-[0.22em] text-cyan-100/80">Approval rate</div>
-                          <div className="mt-2 text-2xl font-semibold text-cyan-50">{(ocrSummary.approval_rate ?? 0).toFixed(0)}%</div>
-                          <div className="mt-1 text-sm text-cyan-100/85">
-                            Last trusted: {ocrSummary.last_trusted_at ? formatDateTime(ocrSummary.last_trusted_at) : "-"}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border border-[rgba(62,166,255,0.2)] bg-[rgba(62,166,255,0.08)] p-4 text-sm leading-6 text-[var(--text)]/90">
-                        {ocrSummary.trust_note}
-                      </div>
-                      <div className="grid gap-3">
-                        <Link href="/ocr/verify">
-                          <Button className="w-full">Open Review Documents</Button>
-                        </Link>
-                        <Link href="/reports">
-                          <Button variant="outline" className="w-full">Open Reports & Exports</Button>
-                        </Link>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : null}
-              </section>
-            ) : null}
-
-            {mobileOwnerTab === "audit" ? (
-              <section className="space-y-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Status Matrix Heatmap</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="overflow-x-auto">
-                      <div className="grid min-w-[980px] grid-cols-[100px_repeat(24,minmax(0,1fr))] gap-2">
-                        <div />
-                        {Array.from({ length: 24 }).map((_, hour) => (
-                          <div key={hour} className="text-center text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
-                            {hour.toString().padStart(2, "0")}
-                          </div>
-                        ))}
-                        {["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((dayLabel, rowIndex) => {
-                          const dayCells = (dashboard.heatmap || []).slice(rowIndex * 24, rowIndex * 24 + 24);
-                          return (
-                            <Fragment key={dayCells[0]?.day || dayLabel}>
-                              <div className="flex items-center text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
-                                {dayCells[0]?.label || dayLabel}
-                              </div>
-                              {dayCells.map((cell) => (
-                                <div
-                                  key={`${cell.day}-${cell.hour}`}
-                                  title={`${cell.label} ${cell.hour}:00 - ${cell.count} events`}
-                                  className={`h-7 rounded-lg border border-[rgba(255,255,255,0.04)] ${levelClasses(cell.level)}`}
-                                />
-                              ))}
-                            </Fragment>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Audit Trail View</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {filteredAudit.length ? (
-                      filteredAudit.slice(0, 12).map((item) => (
-                        <div key={item.id} className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4">
-                          <div className="flex flex-wrap items-center justify-between gap-2">
-                            <div className="text-sm font-semibold text-[var(--text)]">{item.action}</div>
-                            <div className="text-xs text-[var(--muted)]">{formatDateTime(item.timestamp)}</div>
-                          </div>
-                          <div className="mt-2 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                            {item.user_name || item.user_email || "System"}
-                          </div>
-                          <div className="mt-2 text-sm leading-6 text-[var(--text)]/85">{item.details || "-"}</div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4 text-sm text-[var(--muted)]">
-                        No audit events match the current premium filter scope.
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </section>
-            ) : null}
-          </section>
-        ) : null}
-
-        {!locked ? (
-          <section className="hidden gap-4 lg:grid xl:grid-cols-[1fr_320px]">
-          <TrustChecklist
-            summary={trustSummary}
-            loading={loadingTrust}
-            error={trustError}
-            title="Executive export gate"
-            description="Owner exports stay locked until OCR, shift entry, and attendance review are complete for the selected premium window."
-          />
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl">Executive Export</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4 text-sm text-[var(--muted)]">
-                Export the owner brief only after the trust gate is green. The PDF now carries the review appendix with approver names and timestamps.
-              </div>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => void handleExportPdf()}
-                disabled={busy || loadingTrust || !trustSummary?.can_send}
-              >
-                Executive PDF
-              </Button>
-              {!trustSummary?.can_send && trustSummary?.blocking_reason ? (
-                <div className="rounded-2xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-sm text-amber-100">
-                  {trustSummary.blocking_reason}
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
-          </section>
-        ) : null}
-
-        <Card className="hidden lg:block">
+        <Card>
           <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <CardTitle className="text-xl">Linked Filters</CardTitle>
@@ -1484,7 +800,7 @@ export default function PremiumDashboardPage() {
                 ))}
               </div>
               <Link href="/plans">
-                <Button className="w-full sm:w-auto">Upgrade Plan</Button>
+                <Button>Upgrade Plan</Button>
               </Link>
             </CardContent>
           </Card>
@@ -1492,7 +808,7 @@ export default function PremiumDashboardPage() {
 
         {dashboard && activeSummary ? (
           <>
-            <section className="hidden gap-4 lg:grid sm:grid-cols-2 xl:grid-cols-6">
+            <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
               {[
                 ["Output", `${activeSummary.total_units}`],
                 ["Target", `${activeSummary.total_target}`],
@@ -1511,7 +827,7 @@ export default function PremiumDashboardPage() {
             </section>
 
             {selectedFactoryMismatch ? (
-              <Card className="hidden border-amber-400/30 bg-[rgba(245,158,11,0.08)] lg:block">
+              <Card className="border-amber-400/30 bg-[rgba(245,158,11,0.08)]">
                 <CardContent className="px-5 py-4 text-sm text-amber-100">
                   Owner steel risk cards follow the active factory in the sidebar. Clear the factory filter or switch the active factory if you want the risk desk and premium analytics scope to match exactly.
                 </CardContent>
@@ -1519,7 +835,7 @@ export default function PremiumDashboardPage() {
             ) : null}
 
             {steelLayerVisible ? (
-              <section className="hidden space-y-6 lg:block">
+              <section className="space-y-6">
                 <Card className="border-[rgba(239,68,68,0.18)] bg-[linear-gradient(135deg,rgba(42,16,16,0.96),rgba(14,20,30,0.92))]">
                   <CardHeader className="space-y-3">
                     <div className="text-xs font-semibold uppercase tracking-[0.28em] text-red-200">Owner Risk Desk</div>
@@ -1553,7 +869,7 @@ export default function PremiumDashboardPage() {
                       {topRankedAnomalies.length ? (
                         topRankedAnomalies.map((entry) => (
                           <div key={entry.batch.id} className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4">
-                            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="flex flex-wrap items-start justify-between gap-3">
                               <div className="space-y-2">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span className={severityClasses(entry.batch.severity)}>
@@ -1570,7 +886,7 @@ export default function PremiumDashboardPage() {
                               </div>
                               <div className="text-xs text-[var(--muted)]">{formatDate(entry.batch.production_date)}</div>
                             </div>
-                            <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                            <div className="mt-4 grid gap-3 md:grid-cols-4">
                               <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
                                 <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Operator</div>
                                 <div className="mt-1 text-sm text-[var(--text)]">{entry.batch.operator_name || "Unassigned"}</div>
@@ -1590,15 +906,15 @@ export default function PremiumDashboardPage() {
                                 </div>
                               </div>
                             </div>
-                            <div className="mt-4 grid gap-3 sm:flex sm:flex-wrap">
+                            <div className="mt-4 flex flex-wrap gap-3">
                               <Link href={`/steel/batches/${entry.batch.id}`}>
-                                <Button variant="outline" className="w-full sm:w-auto">Open Batch Evidence</Button>
+                                <Button variant="outline">Open Batch Evidence</Button>
                               </Link>
                               <Link href="/steel/reconciliations">
-                                <Button variant="ghost" className="w-full sm:w-auto">Check Stock Trust</Button>
+                                <Button variant="ghost">Check Stock Trust</Button>
                               </Link>
                               <Link href="/reports">
-                                <Button variant="ghost" className="w-full sm:w-auto">Open Reports</Button>
+                                <Button variant="ghost">Open Reports</Button>
                               </Link>
                             </div>
                           </div>
@@ -1760,7 +1076,7 @@ export default function PremiumDashboardPage() {
             ) : null}
 
             {ocrSummary ? (
-              <section className="hidden gap-6 lg:grid xl:grid-cols-[1.15fr_0.85fr]">
+              <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-xl">Trusted OCR Intake</CardTitle>
@@ -1819,7 +1135,7 @@ export default function PremiumDashboardPage() {
               </section>
             ) : null}
 
-            <section className="hidden gap-6 lg:grid xl:grid-cols-[1.25fr_0.75fr]">
+            <section className="grid gap-6 xl:grid-cols-[1.25fr_0.75fr]">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-xl">Production Timeline</CardTitle>
@@ -1846,95 +1162,7 @@ export default function PremiumDashboardPage() {
               </Card>
             </section>
 
-            {factoryComparisonSummary ? (
-              <section className="hidden gap-6 lg:grid xl:grid-cols-[0.9fr_1.1fr]">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Cross-factory benchmark</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] p-4">
-                        <div className="text-[11px] uppercase tracking-[0.18em] text-emerald-100/80">Lead factory</div>
-                        <div className="mt-2 text-lg font-semibold text-emerald-50">{factoryComparisonSummary.topFactory.factoryName}</div>
-                        <div className="mt-2 text-sm text-emerald-100/85">
-                          {factoryComparisonSummary.topFactory.performance.toFixed(1)}% performance | {factoryComparisonSummary.topFactory.units} units
-                        </div>
-                      </div>
-                      <div className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.12)] p-4">
-                        <div className="text-[11px] uppercase tracking-[0.18em] text-amber-100/80">Watch factory</div>
-                        <div className="mt-2 text-lg font-semibold text-amber-50">{factoryComparisonSummary.trailingFactory.factoryName}</div>
-                        <div className="mt-2 text-sm text-amber-100/85">
-                          {factoryComparisonSummary.trailingFactory.performance.toFixed(1)}% performance | {factoryComparisonSummary.trailingFactory.downtime} min downtime
-                        </div>
-                      </div>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4">
-                        <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Performance spread</div>
-                        <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{factoryComparisonSummary.spread.toFixed(1)} pts</div>
-                        <div className="mt-2 text-sm text-[var(--muted)]">Average network performance is {factoryComparisonSummary.averagePerformance.toFixed(1)}% in this scope.</div>
-                      </div>
-                      <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4">
-                        <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Downtime hotspot</div>
-                        <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{factoryComparisonSummary.downtimeHotspot.downtime} min</div>
-                        <div className="mt-2 text-sm text-[var(--muted)]">{factoryComparisonSummary.downtimeHotspot.factoryName} is carrying the heaviest stop time right now.</div>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Factory comparison board</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    {factoryComparisonSummary.ranked.map((item, index) => {
-                      const active = selectedFactoryId === item.factoryId;
-                      return (
-                        <button
-                          key={`comparison:${item.factoryId}`}
-                          type="button"
-                          onClick={() => setSelectedFactoryId(active ? null : item.factoryId)}
-                          className={`w-full rounded-2xl border p-4 text-left transition ${
-                            active
-                              ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.12)]"
-                              : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[rgba(62,166,255,0.28)]"
-                          }`}
-                        >
-                          <div className="flex flex-wrap items-start justify-between gap-3">
-                            <div>
-                              <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Rank {index + 1}</div>
-                              <div className="mt-1 text-lg font-semibold text-[var(--text)]">{item.factoryName}</div>
-                            </div>
-                            <div className="text-right text-sm text-[var(--muted)]">
-                              <div>{item.units} units</div>
-                              <div>{item.downtime} min downtime</div>
-                            </div>
-                          </div>
-                          <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                            <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.45)] px-3 py-2">
-                              <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">Performance</div>
-                              <div className="mt-1 text-sm font-semibold text-[var(--text)]">{item.performance.toFixed(1)}%</div>
-                            </div>
-                            <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.45)] px-3 py-2">
-                              <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">Target</div>
-                              <div className="mt-1 text-sm font-semibold text-[var(--text)]">{item.target}</div>
-                            </div>
-                            <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.45)] px-3 py-2">
-                              <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">Focus</div>
-                              <div className="mt-1 text-sm font-semibold text-[var(--text)]">{active ? "Selected" : "Tap to filter"}</div>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </CardContent>
-                </Card>
-              </section>
-            ) : null}
-
-            <section className="hidden gap-6 lg:grid xl:grid-cols-[0.92fr_1.08fr]">
+            <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-xl">Factory Output Rail</CardTitle>
@@ -1958,7 +1186,7 @@ export default function PremiumDashboardPage() {
               </Card>
             </section>
 
-            <section className="hidden gap-6 lg:grid xl:grid-cols-[1.05fr_0.95fr]">
+            <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
               <Card>
                 <CardHeader>
                   <CardTitle className="text-xl">Status Matrix Heatmap</CardTitle>
@@ -2030,6 +1258,12 @@ export default function PremiumDashboardPage() {
           </>
         ) : null}
 
+        {busy ? <div className="text-sm text-[var(--muted)]">Refreshing premium analytics...</div> : null}
+        {status ? <div className="text-sm text-green-400">{status}</div> : null}
+        {auditWarning ? <div className="text-sm text-amber-300">{auditWarning}</div> : null}
+        {ocrWarning ? <div className="text-sm text-amber-300">{ocrWarning}</div> : null}
+        {steelWarning ? <div className="text-sm text-amber-300">{steelWarning}</div> : null}
+        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
     </main>
   );

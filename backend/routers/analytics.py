@@ -6,8 +6,7 @@ from datetime import date, timedelta
 import os
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
@@ -18,45 +17,12 @@ from backend.models.user import User, UserRole
 from backend.security import get_current_user
 from backend.rbac import require_any_role, require_role
 from backend.plans import has_plan_feature, min_plan_for_feature, get_org_plan, normalize_plan, plan_rank
-from backend.services.monitoring_alerts import list_monitoring_alert_rules, run_monitoring_alert_rule
-from backend.services.monitoring_dashboards import get_monitoring_dashboard, list_monitoring_dashboards
-from backend.services.product_analytics import persist_product_event_batch
 from backend.tenancy import resolve_factory_id, resolve_org_id
 from backend.query_helpers import apply_org_scope, apply_role_scope, factory_user_ids_query
 
 
 router = APIRouter(tags=["Analytics"])
 ANALYTICS_CACHE_TTL = int(os.getenv("ANALYTICS_CACHE_TTL_SECONDS", "30"))
-
-
-class ProductAnalyticsEventRequest(BaseModel):
-    event_name: str = Field(min_length=1, max_length=120)
-    properties: dict[str, Any] = Field(default_factory=dict)
-
-
-class ProductAnalyticsBatchRequest(BaseModel):
-    events: list[ProductAnalyticsEventRequest] = Field(min_length=1, max_length=50)
-
-
-class ProductAnalyticsAcceptedResponse(BaseModel):
-    status: str
-    accepted: int
-
-
-class MonitoringDashboardResponse(BaseModel):
-    slug: str
-    name: str
-    sql: str
-    views: list[dict[str, Any]]
-    rows: list[dict[str, Any]]
-
-
-class MonitoringAlertResultResponse(BaseModel):
-    name: str
-    triggered: bool
-    window: str
-    items: list[dict[str, Any]] | None = None
-    summary: dict[str, Any] | None = None
 
 
 def _apply_org_filter(query: Any, current_user: User) -> Any:
@@ -104,63 +70,6 @@ def _cache_key(db: Session, current_user: User, *parts: Any) -> str:
         current_user.id,
         *parts,
     )
-
-
-@router.post("/events/batch", response_model=ProductAnalyticsAcceptedResponse, status_code=status.HTTP_202_ACCEPTED)
-def capture_product_events(
-    payload: ProductAnalyticsBatchRequest,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> ProductAnalyticsAcceptedResponse:
-    accepted = persist_product_event_batch(
-        db,
-        current_user=current_user,
-        events=[event.model_dump() for event in payload.events],
-        source="client",
-    )
-    return ProductAnalyticsAcceptedResponse(status="accepted", accepted=accepted)
-
-
-@router.get("/monitoring/dashboards")
-def list_dashboards(
-    current_user: User = Depends(get_current_user),
-) -> list[dict[str, Any]]:
-    require_any_role(current_user, {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
-    return list_monitoring_dashboards()
-
-
-@router.get("/monitoring/dashboards/{dashboard_slug}", response_model=MonitoringDashboardResponse)
-def get_dashboard(
-    dashboard_slug: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> MonitoringDashboardResponse:
-    require_any_role(current_user, {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
-    try:
-        return MonitoringDashboardResponse(**get_monitoring_dashboard(db, dashboard_slug))
-    except KeyError as error:
-        raise HTTPException(status_code=404, detail="Monitoring dashboard not found.") from error
-
-
-@router.get("/monitoring/alerts")
-def list_alerts(
-    current_user: User = Depends(get_current_user),
-) -> list[dict[str, Any]]:
-    require_any_role(current_user, {UserRole.ADMIN, UserRole.OWNER})
-    return list_monitoring_alert_rules()
-
-
-@router.post("/monitoring/alerts/{rule_name}/run", response_model=MonitoringAlertResultResponse)
-def run_alert(
-    rule_name: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> MonitoringAlertResultResponse:
-    require_any_role(current_user, {UserRole.ADMIN, UserRole.OWNER})
-    try:
-        return MonitoringAlertResultResponse(**run_monitoring_alert_rule(db, rule_name))
-    except KeyError as error:
-        raise HTTPException(status_code=404, detail="Monitoring alert rule not found.") from error
 
 
 @router.get("/weekly")

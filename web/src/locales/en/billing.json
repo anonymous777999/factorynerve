@@ -1,0 +1,11 @@
+{
+  "billing.plans.title": "Plans",
+  "billing.plans.description": "Pick a plan first, then add OCR packs only if you need more scans.",
+  "billing.plans.tools": "Plan tools",
+  "billing.plans.access_help": "Access help",
+  "billing.billing.title": "Billing",
+  "billing.billing.heading": "Plan status and live checkout",
+  "billing.billing.description": "Review plan status, confirm the checkout fit, then pay through Razorpay.",
+  "billing.billing.tools": "Billing tools",
+  "billing.billing.dashboard": "Dashboard"
+}

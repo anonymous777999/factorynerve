@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ApiError } from "@/lib/api";
 import { getAuthContext, selectFactory } from "@/lib/auth";
-import { useMobileRouteFunnel } from "@/lib/mobile-route-funnel";
 import { primeSession } from "@/lib/session-store";
 import { coerceIntegerInput, digitsOnly } from "@/lib/validation";
 import {
@@ -21,7 +20,6 @@ import {
   listFactories,
   listFactoryProfiles,
   listManagedUsers,
-  previewInviteUser,
   updateFactorySettings,
   updateManagedUserFactoryAccess,
   updateUserRole,
@@ -31,17 +29,16 @@ import {
   type FactoryProfileOption,
   type FactorySettings,
   type FactoryTemplatesPayload,
-  type InvitePreviewPayload,
   type ManagedUser,
   type ManagedUserFactoryAccessPayload,
   type UsageSummary,
 } from "@/lib/settings";
+import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 
 type TabKey = "factory" | "users" | "usage";
 
@@ -69,8 +66,9 @@ function findTemplate(payload: FactoryTemplatesPayload | null, templateKey: stri
 }
 
 export default function SettingsPage() {
+  const { t } = useI18n();
+  useI18nNamespaces(["common", "settings"]);
   const { user, loading, error: sessionError, activeFactoryId } = useSession();
-  const trackPrimaryAction = useMobileRouteFunnel("/settings", user?.role, Boolean(user));
   const [tab, setTab] = useState<TabKey>("factory");
   const [factory, setFactory] = useState<FactorySettings>(() => emptyFactorySettings());
   const [users, setUsers] = useState<ManagedUser[]>([]);
@@ -84,8 +82,6 @@ export default function SettingsPage() {
   const [inviteName, setInviteName] = useState("");
   const [inviteEmail, setInviteEmail] = useState("");
   const [inviteRole, setInviteRole] = useState("attendance");
-  const [inviteCustomNote, setInviteCustomNote] = useState("");
-  const [invitePreview, setInvitePreview] = useState<InvitePreviewPayload | null>(null);
   const [accessUserId, setAccessUserId] = useState("");
   const [accessSnapshot, setAccessSnapshot] = useState<ManagedUserFactoryAccessPayload | null>(null);
   const [accessFactoryIds, setAccessFactoryIds] = useState<string[]>([]);
@@ -128,24 +124,6 @@ export default function SettingsPage() {
     () => findTemplate(newFactoryTemplates, newFactoryForm.workflow_template_key),
     [newFactoryForm.workflow_template_key, newFactoryTemplates],
   );
-  const mobileTabSummary = useMemo(() => {
-    if (tab === "factory") {
-      return {
-        title: "Factory setup workbench",
-        detail: "Keep the active factory profile clean first, then create new factories only when the starter workflow is clear.",
-      };
-    }
-    if (tab === "users") {
-      return {
-        title: "Team access workbench",
-        detail: "Invite users, adjust multi-factory access, and change roles from one mobile-friendly admin lane.",
-      };
-    }
-    return {
-      title: "Usage and billing workbench",
-      detail: "Check plan limits, request volume, and billing state here before dropping into the full billing desk.",
-    };
-  }, [tab]);
 
   const loadAll = useCallback(async () => {
     if (!canManage) return;
@@ -271,10 +249,6 @@ export default function SettingsPage() {
       });
   }, [newFactoryForm.industry_type]);
 
-  useEffect(() => {
-    setInvitePreview(null);
-  }, [inviteName, inviteEmail, inviteRole, inviteCustomNote]);
-
   const activeCount = useMemo(() => users.filter((item) => item.is_active).length, [users]);
   const resolveManagedUserId = (rawValue: string) => {
     const trimmed = rawValue.trim();
@@ -324,7 +298,7 @@ export default function SettingsPage() {
   };
 
   if (loading) {
-    return <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">Loading settings...</main>;
+    return <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">{t("common.loading", "Loading...")} {t("settings.title", "Settings").toLowerCase()}...</main>;
   }
 
   if (!user) {
@@ -332,12 +306,12 @@ export default function SettingsPage() {
       <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
-            <CardTitle>Settings</CardTitle>
+            <CardTitle>{t("settings.title", "Settings")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
+            <div className="text-sm text-red-400">{sessionError || t("settings.sign_in_required", "Please sign in to continue.")}</div>
             <Link href="/access">
-              <Button>Open Login</Button>
+              <Button>{t("dashboard.action.open_login", "Open Access")}</Button>
             </Link>
           </CardContent>
         </Card>
@@ -350,16 +324,16 @@ export default function SettingsPage() {
       <main className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
-            <CardTitle>Settings</CardTitle>
+            <CardTitle>{t("settings.title", "Settings")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-[var(--muted)]">Factory settings and user management are available to managers, admins, and owners.</div>
+            <div className="text-sm text-[var(--muted)]">{t("settings.restricted", "Factory settings and user management are available to managers, admins, and owners.")}</div>
             <div className="flex gap-3">
               <Link href="/dashboard">
-                <Button>Back to Dashboard</Button>
+                <Button>{t("common.back", "Back")} {t("navigation.nav.today_board.label", "Dashboard")}</Button>
               </Link>
               <Link href="/reports">
-                <Button variant="outline">Open Reports</Button>
+                <Button variant="outline">{t("dashboard.action.open_reports", "Open Reports")}</Button>
               </Link>
             </div>
           </CardContent>
@@ -369,114 +343,107 @@ export default function SettingsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <section className="flex flex-col gap-4 rounded-[1.9rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-5 shadow-2xl backdrop-blur sm:p-6 lg:flex-row lg:items-start lg:justify-between">
+    <main className="min-h-screen px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div>
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Settings</div>
-            <h1 className="mt-2 text-3xl font-semibold">Factory profile and team management</h1>
+            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("settings.title", "Settings")}</div>
+            <h1 className="mt-2 text-3xl font-semibold">{t("settings.hero.title", "Keep factory setup and team control in one admin lane")}</h1>
             <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
-              Update factory targets, invite users, manage roles, and monitor plan usage from the Next.js app.
+              {t("settings.hero.subtitle", "Update factory setup, manage people, and check plan posture without leaving the admin workspace.")}
             </p>
-          </div>
-          <div className="grid gap-3 sm:flex sm:flex-wrap">
-            <Link href="/dashboard" className="w-full sm:w-auto">
-              <Button variant="outline" className="w-full sm:w-auto">Dashboard</Button>
-            </Link>
-            <Link href="/reports" className="w-full sm:w-auto">
-              <Button className="w-full sm:w-auto">Open Reports</Button>
-            </Link>
-            <Link href="/plans" className="w-full sm:w-auto">
-              <Button variant="outline" className="w-full sm:w-auto">Plans</Button>
-            </Link>
-            {canViewBilling ? (
-              <Link href="/billing" className="w-full sm:w-auto">
-                <Button variant="outline" className="w-full sm:w-auto">Billing</Button>
-              </Link>
-            ) : null}
           </div>
         </section>
 
-        {status ? (
-          <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">
-            {status}
+        {/* AUDIT: BUTTON_CLUTTER - keep route jumps available in a secondary tray so the active admin task stays primary. */}
+        <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
+          <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
+            {t("settings.tools.title", "Admin tools")}
+          </summary>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link href="/dashboard">
+              <Button variant="outline">{t("settings.tools.board", "Board")}</Button>
+            </Link>
+            <Link href="/reports">
+              <Button>{t("settings.tools.reports", "Reports")}</Button>
+            </Link>
+            <Link href="/plans">
+              <Button variant="outline">{t("settings.tools.plans", "Plans")}</Button>
+            </Link>
+            {canViewBilling ? (
+              <Link href="/billing">
+                <Button variant="outline">{t("settings.tools.billing", "Billing")}</Button>
+              </Link>
+            ) : null}
           </div>
-        ) : null}
-        {error || sessionError ? (
-          <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">
-            {error || sessionError}
-          </div>
-        ) : null}
+        </details>
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {/* AUDIT: FLOW_BROKEN - add a short admin sequence so the page reads like one control workflow instead of a toolbox. */}
+        <section className="grid gap-3 md:grid-cols-3">
+          {[
+            { step: t("settings.steps.scope", "1. Pick scope"), caption: t("settings.steps.scope_detail", "Choose factory, people, or plan work first.") },
+            { step: t("settings.steps.rules", "2. Update rules"), caption: t("settings.steps.rules_detail", "Save the active admin change before switching lanes.") },
+            { step: t("settings.steps.verify", "3. Verify impact"), caption: t("settings.steps.verify_detail", "Check usage and billing once the setup is stable.") },
+          ].map((item) => (
+            <div
+              key={item.step}
+              className="rounded-[24px] border border-[var(--border)] bg-[rgba(10,14,24,0.68)] px-5 py-4"
+            >
+              <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
+              <div className="mt-2 text-sm text-[var(--muted)]">{item.caption}</div>
+            </div>
+          ))}
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Current Factory</div>
+              <div className="text-sm text-[var(--muted)]">{t("settings.cards.current_factory", "Current Factory")}</div>
               <CardTitle>{factory.factory_name || user.factory_name || "-"}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-[var(--muted)]">
-              {(factory.industry_label || factory.factory_type || "Factory type not set yet.")} - {factory.workflow_template_label || "No template"}
+              {(factory.industry_label || factory.factory_type || t("settings.cards.factory_type_empty", "Factory type not set yet."))} · {factory.workflow_template_label || t("settings.cards.no_template", "No template")}
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Factory Network</div>
+              <div className="text-sm text-[var(--muted)]">{t("settings.cards.factory_network", "Factory Network")}</div>
               <CardTitle>{controlTower?.organization.total_factories || factoryDirectory.length || 1}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-[var(--muted)]">
               {controlTower?.organization.industry_breakdown.length
-                ? controlTower.organization.industry_breakdown.map((item) => `${item.industry_label}: ${item.count}`).join(" | ")
-                : "Visible factories in your current organization."}
+                ? controlTower.organization.industry_breakdown.map((item) => `${item.industry_label}: ${item.count}`).join(" · ")
+                : t("settings.cards.factory_network_empty", "Visible factories in your current organization.")}
             </CardContent>
           </Card>
           <Card>
             <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Active Users</div>
+              <div className="text-sm text-[var(--muted)]">{t("settings.cards.active_users", "Active Users")}</div>
               <CardTitle>{activeCount}</CardTitle>
             </CardHeader>
             <CardContent className="text-sm text-[var(--muted)]">
-              Plan {billing?.plan || usage?.plan || "-"} | Billing status: {billing?.status || "-"}
+              {t("settings.cards.plan_status", "Plan {{plan}} · Billing status: {{status}}", { plan: billing?.plan || usage?.plan || "-", status: billing?.status || "-" })}
             </CardContent>
           </Card>
         </section>
 
         <Card>
           <CardHeader>
-            <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
-              <Button className="shrink-0" variant={tab === "factory" ? "primary" : "outline"} onClick={() => setTab("factory")}>Factory Profile</Button>
-              <Button className="shrink-0" variant={tab === "users" ? "primary" : "outline"} onClick={() => setTab("users")}>Users</Button>
-              <Button className="shrink-0" variant={tab === "usage" ? "primary" : "outline"} onClick={() => setTab("usage")}>Usage & Billing</Button>
+            <div className="flex flex-wrap gap-3">
+              <Button variant={tab === "factory" ? "primary" : "outline"} onClick={() => setTab("factory")}>{t("settings.tabs.factory", "Factory")}</Button>
+              <Button variant={tab === "users" ? "primary" : "outline"} onClick={() => setTab("users")}>{t("settings.tabs.users", "Users")}</Button>
+              <Button variant={tab === "usage" ? "primary" : "outline"} onClick={() => setTab("usage")}>{t("settings.tabs.usage", "Usage")}</Button>
             </div>
           </CardHeader>
-        </Card>
-
-        <Card className="md:hidden">
-          <CardHeader>
-            <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">{mobileTabSummary.title}</div>
-            <CardTitle className="text-lg">Current admin focus</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-            <div>{mobileTabSummary.detail}</div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Active factory</div>
-                <div className="mt-1 text-sm font-semibold text-[var(--text)]">{factory.factory_name || user.factory_name || "-"}</div>
-              </div>
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Organization scope</div>
-                <div className="mt-1 text-sm font-semibold text-[var(--text)]">{controlTower?.organization.total_factories || factoryDirectory.length || 1} factories</div>
-              </div>
-            </div>
-          </CardContent>
         </Card>
 
         {tab === "factory" ? (
-          <div className="grid gap-5 xl:grid-cols-[1.15fr_0.85fr]">
+          <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
             <Card>
               <CardHeader>
                 <CardTitle className="text-xl">Factory Profile</CardTitle>
               </CardHeader>
-              <CardContent className="grid gap-4 sm:grid-cols-2">
+              <CardContent className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="text-sm text-[var(--muted)]">Factory Name</label>
                 <Input value={factory.factory_name} onChange={(e) => setFactory((prev) => ({ ...prev, factory_name: e.target.value }))} />
@@ -530,11 +497,11 @@ export default function SettingsPage() {
                     "Choose the operating template that becomes the default starter pack for this factory."}
                 </p>
               </div>
-              <div className="sm:col-span-2">
+              <div className="md:col-span-2">
                 <label className="text-sm text-[var(--muted)]">Address</label>
                 <Input value={factory.address} onChange={(e) => setFactory((prev) => ({ ...prev, address: e.target.value }))} />
               </div>
-              <div className="sm:col-span-2 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+              <div className="md:col-span-2 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                 <div className="text-sm font-semibold">Starter Modules</div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {(selectedFactoryTemplate?.modules || factory.starter_modules || []).map((module) => (
@@ -547,7 +514,7 @@ export default function SettingsPage() {
                   ))}
                 </div>
                 {selectedFactoryTemplate?.sections?.length ? (
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
                     {selectedFactoryTemplate.sections.map((section) => (
                       <div key={section.key} className="rounded-2xl border border-[var(--border)]/70 bg-[rgba(8,12,20,0.55)] p-4">
                         <div className="text-sm font-semibold">{section.label}</div>
@@ -579,9 +546,8 @@ export default function SettingsPage() {
                 <label className="text-sm text-[var(--muted)]">Night Target</label>
                 <Input type="number" min={0} step={1} inputMode="numeric" value={factory.target_night} onChange={(e) => setFactory((prev) => ({ ...prev, target_night: coerceIntegerInput(e.target.value, 0) }))} />
               </div>
-              <div className="sm:col-span-2">
+              <div className="md:col-span-2">
                 <Button
-                  className="w-full sm:w-auto"
                   onClick={() =>
                     handleAction(async () => {
                       await updateFactorySettings(factory);
@@ -593,7 +559,6 @@ export default function SettingsPage() {
                       }
                       await loadAll();
                       setStatus("Factory settings saved.");
-                      trackPrimaryAction("save_setting");
                     })
                   }
                   disabled={busy}
@@ -671,7 +636,6 @@ export default function SettingsPage() {
                     </div>
                   </div>
                   <Button
-                    className="w-full sm:w-auto"
                     onClick={() =>
                       handleAction(async () => {
                         const created = await createFactory(newFactoryForm);
@@ -686,7 +650,6 @@ export default function SettingsPage() {
                         });
                         setNewFactoryTemplates(null);
                         await loadAll();
-                        trackPrimaryAction("save_setting");
                       })
                     }
                     disabled={busy || !newFactoryForm.name.trim()}
@@ -702,17 +665,17 @@ export default function SettingsPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="text-sm text-[var(--muted)]">
-                    Org: {controlTower?.organization.name || factory.factory_name || "Current organization"} | Plan {controlTower?.organization.plan || billing?.plan || "-"}
+                    Org: {controlTower?.organization.name || factory.factory_name || "Current organization"} · Plan {controlTower?.organization.plan || billing?.plan || "-"}
                   </div>
                   {factoryDirectory.length ? (
                     <div className="space-y-3">
                       {factoryDirectory.map((item) => (
                         <div key={item.factory_id} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="min-w-0">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
                               <div className="text-sm font-semibold">{item.name}</div>
                               <div className="mt-1 text-xs text-[var(--muted)]">
-                                {item.industry_label} - {item.workflow_template_label}
+                                {item.industry_label} · {item.workflow_template_label}
                               </div>
                             </div>
                             {item.is_active_context ? (
@@ -722,7 +685,7 @@ export default function SettingsPage() {
                             ) : null}
                           </div>
                           <div className="mt-3 text-xs text-[var(--muted)]">
-                            Code {item.factory_code || "-"} | Members {item.member_count} | Role {item.my_role || "-"}
+                            Code {item.factory_code || "-"} · Members {item.member_count} · Role {item.my_role || "-"}
                           </div>
                         </div>
                       ))}
@@ -739,41 +702,14 @@ export default function SettingsPage() {
         ) : null}
 
         {tab === "users" ? (
-          <div className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+          <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
             <Card>
               <CardHeader>
                 <CardTitle className="text-xl">Users</CardTitle>
               </CardHeader>
               <CardContent>
                 {users.length ? (
-                  <>
-                    <div className="space-y-3 md:hidden">
-                      {users.map((row) => (
-                        <div key={`mobile:${row.id}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="min-w-0">
-                              <div className="text-sm font-semibold">{row.name}</div>
-                              <div className="mt-1 text-xs text-[var(--muted)]">#{row.user_code} - {row.role}</div>
-                            </div>
-                            <div className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">
-                              {row.is_active ? "Active" : "Inactive"}
-                            </div>
-                          </div>
-                          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                            <div>
-                              <div className="text-xs text-[var(--muted)]">Email</div>
-                              <div className="mt-1 text-sm">{row.email}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-[var(--muted)]">Factory Access</div>
-                              <div className="mt-1 text-sm">{row.factory_count === 1 ? "1 factory" : `${row.factory_count} factories`}</div>
-                              <div className="text-xs text-[var(--muted)]">{row.factory_name}</div>
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="hidden overflow-x-auto md:block">
+                  <div className="overflow-x-auto">
                     <table className="min-w-full text-left text-sm">
                       <thead className="text-[var(--muted)]">
                         <tr className="border-b border-[var(--border)]">
@@ -803,8 +739,7 @@ export default function SettingsPage() {
                         ))}
                       </tbody>
                     </table>
-                    </div>
-                  </>
+                  </div>
                 ) : (
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                     No managed users found.
@@ -837,118 +772,29 @@ export default function SettingsPage() {
                       ))}
                     </Select>
                   </div>
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Admin Note</label>
-                    <Textarea
-                      value={inviteCustomNote}
-                      onChange={(e) => setInviteCustomNote(e.target.value)}
-                      placeholder="Optional note the invited user should see before accepting."
-                      className="min-h-28"
-                    />
-                  </div>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                    No account will be created until the recipient opens the invite, sets a password, and accepts from their side.
-                  </div>
-                  <div className="grid gap-3 sm:flex sm:flex-wrap">
-                    <Button
-                      className="w-full sm:w-auto"
-                      variant="outline"
-                      onClick={() =>
-                        handleAction(async () => {
-                          const preview = await previewInviteUser({
-                            name: inviteName,
-                            email: inviteEmail,
-                            role: inviteRole,
-                            factory_name: factory.factory_name || user.factory_name || "",
-                            custom_note: inviteCustomNote || null,
-                          });
-                          setInvitePreview(preview);
-                          setStatus(preview.message);
-                        })
-                      }
-                      disabled={busy}
-                    >
-                      Preview Invite
-                    </Button>
-                    <Button
-                      className="w-full sm:w-auto"
-                      onClick={() =>
-                        handleAction(async () => {
-                          const result = await inviteUser({
-                            name: inviteName,
-                            email: inviteEmail,
-                            role: inviteRole,
-                            factory_name: factory.factory_name || user.factory_name || "",
-                            custom_note: inviteCustomNote || null,
-                          });
-                          setStatus(
-                            result.verification_link
-                              ? `${result.message} Verification link: ${result.verification_link}`
-                              : result.message,
-                          );
-                          setInviteName("");
-                          setInviteEmail("");
-                          setInviteRole("attendance");
-                          setInviteCustomNote("");
-                          setInvitePreview(null);
-                          await loadAll();
-                        })
-                      }
-                      disabled={busy || !invitePreview?.can_send}
-                    >
-                      Send Invite
-                    </Button>
-                  </div>
-                  {invitePreview ? (
-                    <div className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                      <div>
-                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Invite Preview</div>
-                        <div className="mt-1 text-sm text-[var(--muted)]">{invitePreview.message}</div>
-                      </div>
-                      {invitePreview.preview ? (
-                        <>
-                          <div>
-                            <div className="text-xs text-[var(--muted)]">Subject</div>
-                            <div className="mt-1 text-sm font-semibold text-[var(--text)]">{invitePreview.preview.subject}</div>
-                          </div>
-                          <div className="grid gap-3 sm:grid-cols-2">
-                            {invitePreview.preview.sections.details.map((detail) => (
-                              <div key={`${detail.label}:${detail.value}`} className="rounded-2xl border border-[var(--border)]/70 bg-[rgba(255,255,255,0.03)] p-3">
-                                <div className="text-xs uppercase tracking-[0.12em] text-[var(--muted)]">{detail.label}</div>
-                                <div className="mt-1 text-sm font-medium text-[var(--text)]">{detail.value}</div>
-                              </div>
-                            ))}
-                          </div>
-                          <div>
-                            <div className="text-xs uppercase tracking-[0.12em] text-[var(--muted)]">Role Summary</div>
-                            <div className="mt-1 text-sm text-[var(--text)]">{invitePreview.preview.summary?.role_summary}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs uppercase tracking-[0.12em] text-[var(--muted)]">Next Steps</div>
-                            <div className="mt-2 grid gap-2">
-                              {invitePreview.preview.sections.next_steps.map((step) => (
-                                <div key={step} className="rounded-xl border border-[var(--border)]/60 px-3 py-2 text-sm text-[var(--text)]">
-                                  {step}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          {invitePreview.preview.sections.custom_note ? (
-                            <div>
-                              <div className="text-xs uppercase tracking-[0.12em] text-[var(--muted)]">Admin Note</div>
-                              <div className="mt-1 rounded-xl border border-[var(--border)]/60 px-3 py-3 text-sm text-[var(--text)]">
-                                {invitePreview.preview.sections.custom_note}
-                              </div>
-                            </div>
-                          ) : null}
-                        </>
-                      ) : invitePreview.existing_user ? (
-                        <div className="rounded-2xl border border-[var(--border)]/70 bg-[rgba(255,255,255,0.03)] p-4 text-sm text-[var(--text)]">
-                          Existing same-organization user: #{invitePreview.existing_user.user_code} · {invitePreview.existing_user.email}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
+                  <Button
+                    onClick={() =>
+                      handleAction(async () => {
+                        const result = await inviteUser({
+                          name: inviteName,
+                          email: inviteEmail,
+                          role: inviteRole,
+                          factory_name: factory.factory_name || user.factory_name || "",
+                        });
+                        setStatus(
+                          result.temp_password
+                            ? `User ${result.user_code ? `#${result.user_code} ` : ""}invited. Temporary password: ${result.temp_password}`
+                            : result.message,
+                        );
+                        setInviteName("");
+                        setInviteEmail("");
+                        await loadAll();
+                      })
+                    }
+                    disabled={busy}
+                  >
+                    Invite User
+                  </Button>
                 </CardContent>
               </Card>
 
@@ -988,13 +834,13 @@ export default function SettingsPage() {
                               return (
                                 <label
                                   key={factoryOption.factory_id}
-                                  className="flex flex-col gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 sm:flex-row sm:items-start sm:justify-between"
+                                  className="flex items-start justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4"
                                 >
                                   <div>
                                     <div className="text-sm font-semibold">{factoryOption.name}</div>
                                     <div className="mt-1 text-xs text-[var(--muted)]">
-                                      {factoryOption.industry_label} - Members {factoryOption.member_count}
-                                      {factoryOption.is_primary ? " - Primary context" : ""}
+                                      {factoryOption.industry_label} · Members {factoryOption.member_count}
+                                      {factoryOption.is_primary ? " · Primary context" : ""}
                                     </div>
                                     {factoryOption.location ? (
                                       <div className="mt-1 text-xs text-[var(--muted)]">{factoryOption.location}</div>
@@ -1014,7 +860,6 @@ export default function SettingsPage() {
                             Owners and admins can place one user across multiple factories. At least one factory must stay selected.
                           </div>
                           <Button
-                            className="w-full sm:w-auto"
                             onClick={() =>
                               handleAction(async () => {
                                 if (!accessSnapshot) {
@@ -1047,7 +892,6 @@ export default function SettingsPage() {
                                 }
                                 await loadAll();
                                 setStatus(result.message);
-                                trackPrimaryAction("save_setting");
                               })
                             }
                             disabled={busy || !accessSnapshot || !accessFactoryIds.length}
@@ -1092,15 +936,13 @@ export default function SettingsPage() {
                     <label className="text-sm text-[var(--muted)]">Type DOWNGRADE to confirm lower roles</label>
                     <Input value={downgradeConfirm} onChange={(e) => setDowngradeConfirm(e.target.value)} />
                   </div>
-                  <div className="grid gap-3 sm:flex sm:flex-wrap">
+                  <div className="flex flex-wrap gap-3">
                     <Button
-                      className="w-full sm:w-auto"
                       onClick={() =>
                         handleAction(async () => {
                           const result = await updateUserRole(resolveManagedUserId(roleUserId), newRole, downgradeConfirm);
                           setStatus(result.message);
                           await loadAll();
-                          trackPrimaryAction("save_setting");
                         })
                       }
                       disabled={busy || !roleUserId}
@@ -1114,13 +956,11 @@ export default function SettingsPage() {
                     <div className="mt-3">
                       <Button
                         variant="outline"
-                        className="w-full sm:w-auto"
                         onClick={() =>
                           handleAction(async () => {
                             await deactivateUser(resolveManagedUserId(deactivateUserId));
                             setStatus("User deactivated.");
                             await loadAll();
-                            trackPrimaryAction("save_setting");
                           })
                         }
                         disabled={busy || !deactivateUserId}
@@ -1136,13 +976,13 @@ export default function SettingsPage() {
         ) : null}
 
         {tab === "usage" ? (
-          <div className="grid gap-5 xl:grid-cols-[1fr_1fr]">
+          <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
             <Card>
               <CardHeader>
                 <CardTitle className="text-xl">Usage Summary</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                  <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2">
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                     <div className="text-sm text-[var(--muted)]">Requests Used</div>
                     <div className="mt-1 text-xl font-semibold">{usage?.requests_used ?? 0}</div>
@@ -1176,7 +1016,7 @@ export default function SettingsPage() {
                   <div className="text-[var(--muted)]">Status</div>
                   <div className="mt-1 text-lg font-semibold">{billing?.status || "-"}</div>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2">
                   <div>
                     <div className="text-[var(--muted)]">Trial Ends</div>
                     <div>{billing?.trial_end_at || "-"}</div>
@@ -1195,8 +1035,10 @@ export default function SettingsPage() {
             </Card>
           </div>
         ) : null}
+
+        {status ? <div className="text-sm text-green-400">{status}</div> : null}
+        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
     </main>
   );
 }
-

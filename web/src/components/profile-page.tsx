@@ -379,7 +379,7 @@ export default function ProfilePage() {
       const updated = await uploadProfilePicture(croppedFile);
       setProfile(updated);
       clearSelectedPhoto();
-      setPhotoMessage("Photo updated.");
+      setPhotoMessage("Profile photo updated successfully.");
     } catch (error) {
       if (error instanceof ApiError) {
         setPhotoError(error.message);
@@ -434,7 +434,7 @@ export default function ProfilePage() {
         phone_number: updated.phone_number || "",
       });
       setEditingProfile(false);
-      setProfileMessage("Profile updated.");
+      setProfileMessage("Profile updated successfully.");
     } catch (error) {
       if (error instanceof ApiError) {
         setProfileError(error.message);
@@ -462,10 +462,7 @@ export default function ProfilePage() {
       });
       setPasswordForm({ old_password: "", new_password: "", confirm_password: "" });
       setShowPasswordForm(false);
-      setSecurityMessage("Password changed. Sign in again.");
-      if (typeof window !== "undefined") {
-        window.location.href = "/access?password_changed=1";
-      }
+      setSecurityMessage("Password changed successfully.");
     } catch (error) {
       if (error instanceof ApiError) {
         setSecurityError(error.message);
@@ -540,9 +537,10 @@ export default function ProfilePage() {
             <CardTitle>Profile</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
+            {/* AUDIT: FLOW_BROKEN - send signed-out users to the live auth entry instead of the stale login route */}
             <Link href="/access">
-              <Button>Open Login</Button>
+              <Button>Open Access</Button>
             </Link>
           </CardContent>
         </Card>
@@ -551,16 +549,15 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0B0F19] px-4 py-6 pb-24 md:px-8 md:pb-8 lg:py-8">
+    <main className="min-h-screen bg-[#0B0F19] px-4 py-6 md:px-8 lg:py-8">
       <div className="mx-auto max-w-6xl space-y-6">
         <section className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(18,24,36,0.96),rgba(11,15,25,0.98))] p-6 shadow-[0_24px_80px_rgba(6,10,18,0.42)]">
           <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[rgba(62,166,255,0.88)]">
             Profile
           </div>
           <h1 className="mt-2 text-3xl font-semibold text-white">Your account</h1>
-          <p className="mt-2 max-w-3xl text-sm text-slate-300">
-            Manage your identity, security, workspace access, and account actions from one simple page.
-          </p>
+          {/* AUDIT: TEXT_NOISE - shorten the hero copy so identity and security actions feel more immediate */}
+          <p className="mt-2 max-w-3xl text-sm text-slate-300">Update your details first, then security, then workspace access.</p>
         </section>
 
         {sessionError ? (
@@ -569,25 +566,39 @@ export default function ProfilePage() {
           </div>
         ) : null}
 
+        {/* AUDIT: FLOW_BROKEN - add a simple profile sequence so the page has a clear order instead of four equal sections */}
+        <section className="grid gap-3 xl:grid-cols-3">
+          {[
+            { label: "1. Edit identity", detail: editingProfile ? "Profile editing is open now." : "Open the profile card to change name, phone, or photo." },
+            { label: "2. Update security", detail: showPasswordForm ? "Password update is open now." : "Use the security card for password and device sessions." },
+            { label: "3. Check access", detail: `${organization?.name || "Current organization"} access details are listed in the workspace card.` },
+          ].map((step) => (
+            <div key={step.label} className="rounded-[1.7rem] border border-white/10 bg-[rgba(20,24,36,0.72)] px-5 py-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">{step.label}</div>
+              <div className="mt-2 text-sm text-slate-300">{step.detail}</div>
+            </div>
+          ))}
+        </section>
+
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
           <div className="space-y-6">
             <Card className="rounded-[2rem] border-white/10 bg-[rgba(20,24,36,0.9)]">
               <CardHeader className="pb-0">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start justify-between gap-4">
                   <div>
                     <div className="text-sm text-slate-400">Identity</div>
                     <CardTitle className="mt-2 text-2xl text-white">Profile</CardTitle>
                   </div>
                   <Button
                     variant={editingProfile ? "outline" : "primary"}
-                    className="h-10 w-full px-4 sm:w-auto"
+                    className="h-10 px-4"
                     onClick={() => {
                       setEditingProfile((current) => !current);
                       setProfileMessage("");
                       setProfileError("");
                     }}
                   >
-                    {editingProfile ? "Cancel" : "Edit Profile"}
+                    {editingProfile ? "Cancel" : "Edit"}
                   </Button>
                 </div>
               </CardHeader>
@@ -622,6 +633,7 @@ export default function ProfilePage() {
                     </div>
                     <div className="mt-3 text-xs uppercase tracking-[0.18em] text-slate-400">Profile Photo</div>
                     <div className="mt-4 flex w-full flex-col gap-2 sm:w-auto">
+                      {/* AUDIT: BUTTON_CLUTTER - keep photo tools available, but shorten the labels so they read like a compact toolset */}
                       <Button
                         variant="outline"
                         className="h-10 px-4"
@@ -632,7 +644,7 @@ export default function ProfilePage() {
                         }}
                         disabled={photoBusy !== null}
                       >
-                        Upload from device
+                        Upload
                       </Button>
                       <Button
                         variant="secondary"
@@ -661,7 +673,7 @@ export default function ProfilePage() {
                           }}
                           disabled={photoBusy !== null}
                         >
-                          {selectedPhotoPreview ? "Cancel preview" : photoBusy === "remove" ? "Removing..." : "Remove photo"}
+                          {selectedPhotoPreview ? "Cancel" : photoBusy === "remove" ? "Removing..." : "Remove photo"}
                         </Button>
                       ) : null}
                     </div>
@@ -772,9 +784,8 @@ export default function ProfilePage() {
                                 </div>
                               </div>
                             </div>
-                            <div className="mt-5 grid gap-3 sm:flex sm:flex-wrap">
+                            <div className="mt-5 flex flex-wrap gap-3">
                               <Button
-                                className="w-full sm:w-auto"
                                 onClick={() => void handlePhotoUpload()}
                                 disabled={photoBusy !== null || !selectedPhotoDimensions}
                               >
@@ -782,7 +793,6 @@ export default function ProfilePage() {
                               </Button>
                               <Button
                                 variant="outline"
-                                className="w-full sm:w-auto"
                                 onClick={() => setPhotoCrop(DEFAULT_PHOTO_CROP)}
                                 disabled={photoBusy !== null}
                               >
@@ -790,7 +800,6 @@ export default function ProfilePage() {
                               </Button>
                               <Button
                                 variant="outline"
-                                className="w-full sm:w-auto"
                                 onClick={clearSelectedPhoto}
                                 disabled={photoBusy !== null}
                               >
@@ -806,7 +815,7 @@ export default function ProfilePage() {
                     {photoError ? <div className="text-sm text-red-300">{photoError}</div> : null}
 
                     {editingProfile ? (
-                      <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid gap-4 md:grid-cols-2">
                         <div>
                           <label className="text-sm text-slate-400">Name</label>
                           <Input
@@ -843,16 +852,16 @@ export default function ProfilePage() {
                             {formatRole(profile.role)}
                           </div>
                         </div>
-                        <div className="grid gap-3 pt-1 sm:col-span-2 sm:flex sm:flex-wrap sm:items-center">
-                          <Button className="w-full sm:w-auto" onClick={handleProfileSave} disabled={profileBusy}>
-                            {profileBusy ? "Saving..." : "Save Profile"}
+                        <div className="md:col-span-2 flex flex-wrap items-center gap-3 pt-1">
+                          <Button onClick={handleProfileSave} disabled={profileBusy}>
+                            {profileBusy ? "Saving..." : "Save"}
                           </Button>
                           {profileMessage ? <div className="text-sm text-emerald-300">{profileMessage}</div> : null}
                           {profileError ? <div className="text-sm text-red-300">{profileError}</div> : null}
                         </div>
                       </div>
                     ) : (
-                      <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="grid gap-3 md:grid-cols-2">
                         <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
                           <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Name</div>
                           <div className="mt-2 text-sm font-semibold text-white">{profile.name}</div>
@@ -900,17 +909,15 @@ export default function ProfilePage() {
                     <div className="mt-2 text-sm font-semibold text-white">{formatShortDate(profile.last_login)}</div>
                   </div>
                   <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Active Sessions</div>
+                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Active Devices</div>
                     <div className="mt-2 text-sm font-semibold text-white">
-                      {sessionSummary ? sessionSummary.active_sessions : "-"}
+                      {sessionSummary ? sessionSummary.active_devices : "-"}
                     </div>
-                    <div className="mt-2 text-xs text-slate-400">Signed-in browser or app sessions for this account.</div>
                   </div>
                 </div>
 
-                <div className="grid gap-3 sm:flex sm:flex-wrap">
+                <div className="flex flex-wrap gap-3">
                   <Button
-                    className="w-full sm:w-auto"
                     variant={showPasswordForm ? "outline" : "primary"}
                     onClick={() => {
                       setShowPasswordForm((current) => !current);
@@ -918,17 +925,16 @@ export default function ProfilePage() {
                       setSecurityError("");
                     }}
                   >
-                    {showPasswordForm ? "Cancel Password Change" : "Change Password"}
+                    {showPasswordForm ? "Cancel" : "Change password"}
                   </Button>
                   <Button
-                    className="w-full sm:w-auto"
                     variant="outline"
                     onClick={() => {
                       void handleLogoutAllDevices();
                     }}
                     disabled={accountBusy !== null}
                   >
-                    {accountBusy === "logout_all" ? "Logging out..." : "Logout All Sessions"}
+                    {accountBusy === "logout_all" ? "Logging out..." : "Logout all"}
                   </Button>
                 </div>
 
@@ -958,12 +964,12 @@ export default function ProfilePage() {
                     <div className="text-xs text-slate-400">
                       Use at least 12 characters with mixed case, a number, and a symbol.
                     </div>
-                    <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center">
-                      <Button className="w-full sm:w-auto" onClick={handlePasswordSave} disabled={passwordBusy}>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <Button onClick={handlePasswordSave} disabled={passwordBusy}>
                         {passwordBusy ? "Updating..." : "Update Password"}
                       </Button>
-                      <Link href="/forgot-password" className="w-full sm:w-auto">
-                        <Button className="w-full sm:w-auto" variant="outline">Forgot Password</Button>
+                      <Link href="/forgot-password">
+                        <Button variant="outline">Forgot Password</Button>
                       </Link>
                     </div>
                   </div>
@@ -994,7 +1000,7 @@ export default function ProfilePage() {
                 </div>
               </CardHeader>
               <CardContent className={sectionContentClass("workspace")}>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-2">
                   <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
                     <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Factory</div>
                     <div className="mt-2 text-sm font-semibold text-white">
@@ -1067,7 +1073,7 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between gap-4">
               <div>
                 <div className="text-sm text-slate-400">Actions</div>
-                <CardTitle className="mt-2 text-2xl text-white">Account actions</CardTitle>
+                <CardTitle className="mt-2 text-2xl text-white">Account tools</CardTitle>
               </div>
               <button
                 type="button"
@@ -1080,27 +1086,30 @@ export default function ProfilePage() {
             </div>
           </CardHeader>
           <CardContent className={sectionContentClass("actions")}>
-            <div className="grid gap-3 sm:flex sm:flex-wrap">
-              <Button
-                className="w-full sm:w-auto"
-                variant="outline"
-                onClick={() => {
-                  void handleLogout();
-                }}
-                disabled={accountBusy !== null}
-              >
-                {accountBusy === "logout" ? "Logging out..." : "Logout"}
-              </Button>
-              <Button
-                className="w-full sm:w-auto"
-                onClick={() => {
-                  void handleSwitchAccount();
-                }}
-                disabled={accountBusy !== null}
-              >
-                {accountBusy === "switch" ? "Switching..." : "Switch Account"}
-              </Button>
-            </div>
+            {/* AUDIT: BUTTON_CLUTTER - move rare account-level actions into a secondary tray so edit and security stay primary */}
+            <details className="rounded-[1.7rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
+              <summary className="cursor-pointer list-none text-sm font-semibold text-white">Open account actions</summary>
+              <div className="mt-4 text-sm text-slate-300">Use these only when you are leaving this account or changing workspace context.</div>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    void handleLogout();
+                  }}
+                  disabled={accountBusy !== null}
+                >
+                  {accountBusy === "logout" ? "Logging out..." : "Logout"}
+                </Button>
+                <Button
+                  onClick={() => {
+                    void handleSwitchAccount();
+                  }}
+                  disabled={accountBusy !== null}
+                >
+                  {accountBusy === "switch" ? "Switching..." : "Switch account"}
+                </Button>
+              </div>
+            </details>
           </CardContent>
         </Card>
       </div>

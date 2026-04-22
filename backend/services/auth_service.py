@@ -15,12 +15,13 @@ from backend.models.factory import Factory
 from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
 from backend.plans import DEFAULT_PLAN
-from backend.security import make_unusable_password_hash
+from backend.security import hash_password
 from backend.services.user_code_service import (
     MAX_USER_CODE_ATTEMPTS,
     is_user_code_collision,
     next_user_code,
 )
+import secrets
 
 
 logger = logging.getLogger(__name__)
@@ -73,10 +74,15 @@ def get_or_create_google_user(
 
     user = db.query(User).filter(User.email == email).first()
     if user:
-        raise HTTPException(
-            status_code=409,
-            detail="An account with this email already exists. Sign in first and link Google from settings.",
-        )
+        user.google_id = google_id
+        user.auth_provider = "google"
+        if user.email_verified_at is None:
+            user.email_verified_at = datetime.now(timezone.utc)
+        if picture:
+            user.profile_picture = picture
+        db.add(user)
+        db.flush()
+        return user, user.org_id, _resolve_factory_id(db, user)
 
     org_name = _org_name_from_email(email)
     org_id = str(uuid.uuid4())
@@ -89,7 +95,7 @@ def get_or_create_google_user(
         org_id=org_id,
         name=name or org_name,
         email=email,
-        password_hash=make_unusable_password_hash("google"),
+        password_hash=hash_password(secrets.token_urlsafe(32)),
         role=UserRole.ADMIN,
         factory_name=factory.name,
         is_active=True,

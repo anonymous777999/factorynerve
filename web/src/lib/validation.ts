@@ -13,14 +13,8 @@ export function validatePhoneNumber(value?: string | null, fieldLabel = "Phone n
     return `${fieldLabel} can only contain digits, spaces, parentheses, periods, and hyphens.`;
   }
   const digits = trimmed.replace(/\D/g, "");
-  if (digits.length < 10 || digits.length > 15) {
-    return `${fieldLabel} must contain 10 to 15 digits.`;
-  }
-  if (new Set(digits).size === 1) {
-    return `${fieldLabel} cannot use the same digit repeatedly.`;
-  }
-  if (["0123456789", "1234567890", "0987654321", "9876543210"].includes(digits)) {
-    return `${fieldLabel} looks invalid. Enter a real mobile number.`;
+  if (digits.length < 7 || digits.length > 15) {
+    return `${fieldLabel} must contain 7 to 15 digits.`;
   }
   return null;
 }

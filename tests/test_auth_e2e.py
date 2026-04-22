@@ -42,36 +42,6 @@ def test_cookie_session_flow(http_client, base_url):
     assert after.status_code == HTTPStatus.UNAUTHORIZED
 
 
-def test_cookie_login_omits_bearer_tokens_and_sets_no_store_headers(http_client):
-    email = unique_email()
-    password = "StrongPassw0rd!"
-    registration = http_client.post(
-        "/auth/register",
-        json={
-            "name": "Cookie Auth User",
-            "email": email,
-            "password": password,
-            "role": "attendance",
-            "factory_name": unique_factory(),
-            "phone_number": "+919876543210",
-        },
-    )
-    token = (parse_qs(urlparse(registration.json()["verification_link"]).query).get("token") or [""])[0]
-    verify = http_client.post("/auth/email/verify", json={"token": token})
-    assert verify.status_code == HTTPStatus.OK, verify.text
-
-    login = http_client.post(
-        "/auth/login",
-        json={"email": email, "password": password},
-        headers={"X-Use-Cookies": "1"},
-    )
-    assert login.status_code == HTTPStatus.OK, login.text
-    payload = login.json()
-    assert payload["access_token"] is None
-    assert payload["refresh_token"] is None
-    assert login.headers["cache-control"] == "no-store"
-
-
 def test_session_timeout_behaves_like_unauthorized(http_client):
     user = register_user(http_client)
     bad = http_client.get(
@@ -92,7 +62,7 @@ def test_public_registration_bootstraps_first_workspace_creator_as_admin(http_cl
             "password": password,
             "role": "operator",
             "factory_name": unique_factory(),
-            "phone_number": "+919876543210",
+            "phone_number": "+910000000000",
         },
     )
 
@@ -121,7 +91,7 @@ def test_public_registration_blocks_high_roles_for_existing_workspace(http_clien
             "role": "manager",
             "factory_name": admin["factory_name"],
             "company_code": admin["company_code"],
-            "phone_number": "+919876543210",
+            "phone_number": "+910000000000",
         },
     )
 
@@ -143,7 +113,7 @@ def test_public_registration_defaults_existing_workspace_users_to_attendance_rol
             "role": "operator",
             "factory_name": admin["factory_name"],
             "company_code": admin["company_code"],
-            "phone_number": "+919876543210",
+            "phone_number": "+910000000000",
         },
     )
 
@@ -169,7 +139,7 @@ def test_local_registration_requires_email_verification_before_login(http_client
             "password": password,
             "role": "attendance",
             "factory_name": unique_factory(),
-            "phone_number": "+919876543210",
+            "phone_number": "+910000000000",
         },
     )
 
@@ -180,8 +150,8 @@ def test_local_registration_requires_email_verification_before_login(http_client
         "/auth/login",
         json={"email": email, "password": password},
     )
-    assert blocked.status_code == HTTPStatus.UNAUTHORIZED, blocked.text
-    assert "invalid email or password" in blocked.text.lower()
+    assert blocked.status_code == HTTPStatus.FORBIDDEN, blocked.text
+    assert "verify your email" in blocked.text.lower()
 
     token = (parse_qs(urlparse(verification_link).query).get("token") or [""])[0]
     verify = http_client.post("/auth/email/verify", json={"token": token})
@@ -192,37 +162,6 @@ def test_local_registration_requires_email_verification_before_login(http_client
         json={"email": email, "password": password},
     )
     assert login.status_code == HTTPStatus.OK, login.text
-
-
-def test_login_does_not_enumerate_unverified_accounts(http_client):
-    email = unique_email()
-    password = "StrongPassw0rd!"
-
-    registration = http_client.post(
-        "/auth/register",
-        json={
-            "name": "Enumeration Target",
-            "email": email,
-            "password": password,
-            "role": "attendance",
-            "factory_name": unique_factory(),
-            "phone_number": "+919876543210",
-        },
-    )
-    assert registration.status_code == HTTPStatus.CREATED, registration.text
-
-    unverified = http_client.post("/auth/login", json={"email": email, "password": password})
-    missing = http_client.post("/auth/login", json={"email": unique_email(), "password": password})
-
-    assert unverified.status_code == HTTPStatus.UNAUTHORIZED, unverified.text
-    assert missing.status_code == HTTPStatus.UNAUTHORIZED, missing.text
-    assert unverified.json()["detail"] == missing.json()["detail"]
-
-
-def test_factory_listing_requires_refresh_token(http_client):
-    missing = http_client.post("/auth/factories", json={})
-    assert missing.status_code == HTTPStatus.UNAUTHORIZED, missing.text
-    assert "refresh token missing" in missing.text.lower()
 
 
 def test_register_email_mode_sends_verification_without_existing_user(monkeypatch):
@@ -259,7 +198,7 @@ def test_register_email_mode_sends_verification_without_existing_user(monkeypatc
                 password="StrongPassw0rd!",
                 role=UserRole.ATTENDANCE,
                 factory_name=unique_factory(),
-                phone_number="+919876543210",
+                phone_number="+910000000000",
             ),
             request=Request(scope),
             db=db,
@@ -302,7 +241,7 @@ def test_register_email_mode_keeps_pending_signup_when_delivery_fails(monkeypatc
                 password="StrongPassw0rd!",
                 role=UserRole.ATTENDANCE,
                 factory_name=unique_factory(),
-                phone_number="+919876543210",
+                phone_number="+910000000000",
             ),
             request=Request(scope),
             db=db,

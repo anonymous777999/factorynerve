@@ -24,6 +24,7 @@ import {
   listSteelReconciliations,
   type SteelReconciliation,
 } from "@/lib/steel";
+import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import { useSession } from "@/lib/use-session";
 import { subscribeToWorkflowRefresh } from "@/lib/workflow-sync";
 import { Button } from "@/components/ui/button";
@@ -198,6 +199,8 @@ function workerSectionAccent(tone: WorkerTaskSectionTone) {
 }
 
 export default function WorkQueuePage() {
+  const { t } = useI18n();
+  useI18nNamespaces(["common", "queue"]);
   const { user, loading, error: sessionError, activeFactory, organization } = useSession();
   const [state, setState] = useState<WorkQueueState>(() => emptyState());
   const [pageLoading, setPageLoading] = useState(true);
@@ -613,7 +616,7 @@ export default function WorkQueuePage() {
           id: `missing-shift-${shift}`,
           section: "today",
           title: `${formatShift(shift)} shift entry is still open`,
-          detail: `No ${shift} shift entry for ${formatDate(today)}.`,
+          detail: `No ${shift} shift entry has been recorded for ${formatDate(today)} in the active factory.`,
           href: `/entry?date=${today}&shift=${shift}`,
           action: "Open Entry",
           tone: index === 0 ? "action" : "watch",
@@ -785,6 +788,8 @@ export default function WorkQueuePage() {
     if (filter === "all") return queueItems;
     return queueItems.filter((item) => item.section === filter);
   }, [filter, queueItems]);
+  const nextUpItem = filteredItems[0] ?? null;
+  const remainingFilteredItems = filteredItems.slice(1);
 
   const sectionErrorEntries = useMemo(
     () => Object.entries(sectionErrors) as Array<[QueueSection, string]>,
@@ -852,7 +857,7 @@ export default function WorkQueuePage() {
         id: `worker-open-shift-${shift}`,
         section: "today",
         title: `${formatShift(shift)} shift entry is pending`,
-        detail: `No ${shift} entry for ${formatDate(localDateValue())}.`,
+        detail: `No ${shift} entry has been submitted for ${formatDate(localDateValue())}.`,
         href: `/entry?date=${localDateValue()}&shift=${shift}`,
         action: "Start Entry",
         tone: "danger",
@@ -1003,15 +1008,16 @@ export default function WorkQueuePage() {
         <div className="mx-auto max-w-4xl">
           <Card>
             <CardHeader>
-              <div className="text-sm uppercase tracking-[0.26em] text-[var(--accent)]">Work Queue</div>
-              <CardTitle>Login required.</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-wrap gap-3">
+              <div className="text-sm uppercase tracking-[0.26em] text-[var(--accent)]">{t("queue.title", "Work Queue")}</div>
+            <CardTitle>{t("queue.sign_in_title", "Sign in to open the shared work queue")}</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-3">
+              {/* AUDIT: FLOW_BROKEN - Signed-out recovery should use the current auth entry route instead of a legacy login path. */}
               <Link href="/access">
-                <Button>Open Login</Button>
+                <Button>{t("dashboard.action.open_login", "Open Access")}</Button>
               </Link>
               <Link href="/dashboard">
-                <Button variant="outline">Back to Dashboard</Button>
+                <Button variant="outline">{t("common.back", "Back")} {t("navigation.nav.today_board.label", "Dashboard")}</Button>
               </Link>
             </CardContent>
           </Card>
@@ -1022,8 +1028,8 @@ export default function WorkQueuePage() {
 
   if (isWorkerQueue) {
     return (
-      <main className="min-h-screen bg-bg px-4 py-5 pb-24 md:px-6 md:pb-8 lg:py-8">
-        <div className="mx-auto max-w-6xl space-y-5">
+      <main className="min-h-screen bg-[#0B0F19] px-4 py-6 md:px-6 lg:py-8">
+        <div className="mx-auto max-w-6xl space-y-4">
           {error ? (
             <div className="rounded-[20px] border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">
               {error}
@@ -1048,20 +1054,20 @@ export default function WorkQueuePage() {
             </section>
           ) : null}
 
-          <section className="rounded-[28px] border border-border bg-card p-5 shadow-[0_24px_80px_rgba(6,10,18,0.42)] sm:p-6">
+          <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(18,24,36,0.96),rgba(11,15,25,0.98))] p-6 shadow-[0_24px_80px_rgba(6,10,18,0.42)]">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-color-primary">
+                <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[rgba(62,166,255,0.88)]">
                   {activeFactory?.name || user.factory_name || "Factory"}
                 </div>
-                <h1 className="mt-2 text-2xl font-semibold text-text-primary sm:text-3xl">Work Queue</h1>
-                <div className="mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-text-primary">
+                <h1 className="mt-2 text-3xl font-semibold text-white">{t("queue.title", "Work Queue")}</h1>
+                <div className="mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/90">
                   <span className={`rounded-full border px-3 py-1 ${workerQueueStatus.tone}`}>
                     {workerQueueStatus.label}
                   </span>
                 </div>
               </div>
-              <div className="space-y-2 text-sm text-text-secondary sm:text-right">
+              <div className="space-y-2 text-sm text-slate-300 sm:text-right">
                 <Button
                   variant="outline"
                   className="h-11 px-5"
@@ -1070,20 +1076,20 @@ export default function WorkQueuePage() {
                   }}
                   disabled={refreshing}
                 >
-                  {refreshing ? "Refreshing..." : "Refresh"}
+                  {refreshing ? t("queue.actions.refreshing", "Refreshing...") : t("common.refresh", "Refresh")}
                 </Button>
-                <div className="text-xs text-text-muted">
+                <div className="text-xs text-slate-400">
                   {refreshing
-                    ? "Updating queue..."
+                    ? t("queue.actions.updating", "Updating queue...")
                     : lastUpdatedAt
-                      ? `Updated ${formatDateTime(lastUpdatedAt)}`
-                      : "Live updates every 25 seconds"}
+                      ? t("queue.actions.updated", "Updated {{value}}", { value: formatDateTime(lastUpdatedAt) })
+                      : t("queue.actions.live_updates", "Live updates every 25 seconds")}
                 </div>
               </div>
             </div>
           </section>
 
-          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+          <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
             <section className="space-y-4">
               {workerTaskSections.length ? (
                 workerTaskSections.map((section) => {
@@ -1091,7 +1097,7 @@ export default function WorkQueuePage() {
                   return (
                     <div
                       key={section.key}
-                      className={`rounded-[28px] border p-4 shadow-[0_18px_50px_rgba(3,8,20,0.24)] sm:p-5 ${accent.panel}`}
+                      className={`rounded-[30px] border p-5 shadow-[0_18px_50px_rgba(3,8,20,0.24)] ${accent.panel}`}
                     >
                       <div className="flex items-center justify-between gap-3">
                         <span
@@ -1099,7 +1105,7 @@ export default function WorkQueuePage() {
                         >
                           {workerSectionLabel(section.tone)}
                         </span>
-                        <span className="text-xs text-text-muted">
+                        <span className="text-xs text-slate-400">
                           {section.items.length} task{section.items.length === 1 ? "" : "s"}
                         </span>
                       </div>
@@ -1108,10 +1114,10 @@ export default function WorkQueuePage() {
                         {section.items.map((item) => (
                           <div
                             key={item.id}
-                            className="rounded-[24px] border border-border bg-bg px-4 py-4"
+                            className="rounded-[24px] border border-white/10 bg-[rgba(8,12,20,0.45)] px-4 py-4"
                           >
-                            <div className="text-lg font-semibold text-text-primary">{item.title}</div>
-                            <div className="mt-2 text-sm leading-6 text-text-secondary">{item.detail}</div>
+                            <div className="text-lg font-semibold text-white">{item.title}</div>
+                            <div className="mt-2 text-sm leading-6 text-slate-300">{item.detail}</div>
                             <div className="mt-4">
                               <Link href={item.href}>
                                 <Button
@@ -1129,12 +1135,12 @@ export default function WorkQueuePage() {
                   );
                 })
               ) : (
-                <div className="rounded-[30px] border border-border bg-card-elevated p-6 shadow-[0_18px_50px_rgba(3,8,20,0.24)]">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-color-success">
+                <div className="rounded-[30px] border border-emerald-400/18 bg-[linear-gradient(180deg,rgba(16,32,24,0.92),rgba(11,15,25,0.98))] p-6 shadow-[0_18px_50px_rgba(3,8,20,0.24)]">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-emerald-100">
                     All Clear
                   </div>
-                  <div className="mt-3 text-2xl font-semibold text-text-primary">No tasks are waiting right now</div>
-                  <div className="mt-2 text-sm text-text-secondary">
+                  <div className="mt-3 text-2xl font-semibold text-white">No tasks are waiting right now</div>
+                  <div className="mt-2 text-sm text-slate-300">
                     Today&apos;s shift work looks covered in this queue.
                   </div>
                   <div className="mt-5 flex flex-wrap gap-3">
@@ -1149,36 +1155,36 @@ export default function WorkQueuePage() {
               )}
             </section>
 
-            <aside className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
-              <div className="rounded-[28px] border border-border bg-card p-5 shadow-[0_20px_60px_rgba(6,10,18,0.32)]">
-                <div className="text-xs uppercase tracking-[0.18em] text-text-muted">Today</div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-3 md:grid-cols-1 xl:grid-cols-1">
-                  <div className="rounded-[20px] border border-border bg-card-elevated px-4 py-3">
-                    <div className="text-xs text-text-muted">Pending</div>
-                    <div className="mt-2 text-2xl font-semibold text-text-primary">{workerPendingCount}</div>
+            <aside className="space-y-4">
+              <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(16,22,36,0.96),rgba(11,15,25,0.98))] p-5 shadow-[0_20px_60px_rgba(6,10,18,0.32)]">
+                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Today</div>
+                <div className="mt-4 grid gap-3">
+                  <div className="rounded-[20px] border border-white/10 bg-[rgba(8,12,20,0.48)] px-4 py-3">
+                    <div className="text-xs text-slate-400">Pending</div>
+                    <div className="mt-2 text-2xl font-semibold text-white">{workerPendingCount}</div>
                   </div>
-                  <div className="rounded-[20px] border border-border bg-card-elevated px-4 py-3">
-                    <div className="text-xs text-text-muted">Completed</div>
-                    <div className="mt-2 text-2xl font-semibold text-text-primary">{state.todayEntries.length}</div>
+                  <div className="rounded-[20px] border border-white/10 bg-[rgba(8,12,20,0.48)] px-4 py-3">
+                    <div className="text-xs text-slate-400">Completed</div>
+                    <div className="mt-2 text-2xl font-semibold text-white">{state.todayEntries.length}</div>
                   </div>
-                  <div className="rounded-[20px] border border-border bg-card-elevated px-4 py-3">
-                    <div className="text-xs text-text-muted">Critical Alerts</div>
-                    <div className="mt-2 text-2xl font-semibold text-text-primary">{workerCriticalAlerts.length}</div>
+                  <div className="rounded-[20px] border border-white/10 bg-[rgba(8,12,20,0.48)] px-4 py-3">
+                    <div className="text-xs text-slate-400">Critical Alerts</div>
+                    <div className="mt-2 text-2xl font-semibold text-white">{workerCriticalAlerts.length}</div>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-[28px] border border-border bg-card p-5">
-                <div className="text-xs uppercase tracking-[0.18em] text-text-muted">Alerts</div>
+              <div className="rounded-[28px] border border-white/10 bg-[rgba(255,255,255,0.04)] p-5">
+                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Alerts</div>
                 {workerCriticalAlerts.length ? (
                   <div className="mt-4 space-y-3">
                     {workerCriticalAlerts.map((alert) => (
                       <div
                         key={alert.id}
-                        className="rounded-[20px] border border-color-danger/30 bg-color-danger/12 px-4 py-3"
+                        className="rounded-[20px] border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3"
                       >
-                        <div className="text-sm font-semibold text-color-danger">{alert.message}</div>
-                        <div className="mt-2 text-xs text-color-danger/80">
+                        <div className="text-sm font-semibold text-red-100">{alert.message}</div>
+                        <div className="mt-2 text-xs text-red-100/80">
                           {alert.created_at ? formatDateTime(alert.created_at) : "Critical alert"}
                         </div>
                       </div>
@@ -1190,7 +1196,7 @@ export default function WorkQueuePage() {
                     </Link>
                   </div>
                 ) : (
-                  <div className="mt-4 rounded-[20px] border border-color-success/20 bg-color-success/10 px-4 py-3 text-sm text-color-success">
+                  <div className="mt-4 rounded-[20px] border border-emerald-400/20 bg-[rgba(34,197,94,0.1)] px-4 py-3 text-sm text-emerald-100">
                     No critical alerts are waiting right now.
                   </div>
                 )}
@@ -1203,15 +1209,34 @@ export default function WorkQueuePage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <section className="rounded-[1.9rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-5 shadow-2xl backdrop-blur sm:p-6">
+    <main className="min-h-screen px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        {/* AUDIT: FLOW_BROKEN - Added a short operating sequence so the queue reads as process-next work, not a wall of diagnostics. */}
+        <section className="grid gap-4 md:grid-cols-3">
+            {[
+            { step: "1", title: t("queue.steps.one_title", "Pick focus"), detail: t("queue.steps.one_detail", "Switch between today, review, and alert lanes.") },
+            { step: "2", title: t("queue.steps.two_title", "Process next"), detail: t("queue.steps.two_detail", "Take the top priority item before scanning the rest of the queue.") },
+            { step: "3", title: t("queue.steps.three_title", "Check load"), detail: t("queue.steps.three_detail", "Open queue signals only when you need broader context.") },
+          ].map((item) => (
+            <div
+              key={item.step}
+              className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-soft)]"
+            >
+              <div className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--accent)]">Step {item.step}</div>
+              <div className="mt-2 font-semibold text-[var(--text)]">{item.title}</div>
+              <div className="mt-1 text-sm text-[var(--muted)]">{item.detail}</div>
+            </div>
+          ))}
+        </section>
+
+        <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">Daily Coordination</div>
-              <h1 className="mt-2 text-3xl font-semibold sm:text-4xl">Work Queue</h1>
+              <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">{t("queue.daily_coordination", "Daily Coordination")}</div>
+              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{t("queue.title", "Work Queue")}</h1>
+              {/* AUDIT: TEXT_NOISE - The hero now states the operating outcome once and leaves the detailed coordination logic to the queue itself. */}
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                One place for open work, review load, unread alerts, and the next actions your team should take in the current factory context.
+                {t("queue.hero.subtitle", "See the next task, act on it, and only open queue diagnostics when you need broader context.")}
               </p>
             </div>
             <div className="space-y-3 text-sm text-[var(--muted)]">
@@ -1230,26 +1255,41 @@ export default function WorkQueuePage() {
                   }}
                   disabled={refreshing}
                 >
-                  {refreshing ? "Refreshing..." : "Refresh Queue"}
+                  {refreshing ? t("queue.actions.refreshing", "Refreshing...") : t("queue.actions.refresh", "Refresh Queue")}
                 </Button>
                 <span className="text-xs text-[var(--muted)]">
                   {refreshing
-                    ? "Updating queue..."
+                    ? t("queue.actions.updating", "Updating queue...")
                     : lastUpdatedAt
-                      ? `Updated ${formatDateTime(lastUpdatedAt)}`
-                      : "Live updates every 25 seconds"}
+                      ? t("queue.actions.updated", "Updated {{value}}", { value: formatDateTime(lastUpdatedAt) })
+                      : t("queue.actions.live_updates", "Live updates every 25 seconds")}
                 </span>
               </div>
             </div>
           </div>
 
-          {quickActions.length ? (
-            <div className="mt-5 grid gap-3 sm:flex sm:flex-wrap">
+          {nextUpItem ? (
+            <div className="mt-5 flex flex-wrap gap-3">
+              {/* AUDIT: BUTTON_CLUTTER - The hero now exposes the next queue action first and moves route shortcuts behind a compact tools tray. */}
+              <Link href={nextUpItem.href}>
+                <Button>{nextUpItem.action}</Button>
+              </Link>
+              <details className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-3 py-2 text-sm text-[var(--muted)]">
+                <summary className="cursor-pointer list-none">{t("queue.actions.tools", "Tools")}</summary>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {quickActions.map((action) => (
+                    <Link key={action.href} href={action.href}>
+                      <Button variant={action.variant || "outline"}>{action.label}</Button>
+                    </Link>
+                  ))}
+                </div>
+              </details>
+            </div>
+          ) : quickActions.length ? (
+            <div className="mt-5 flex flex-wrap gap-3">
               {quickActions.map((action) => (
-                <Link key={action.href} href={action.href} className="w-full sm:w-auto">
-                  <Button variant={action.variant || "primary"} className="w-full justify-center sm:w-auto">
-                    {action.label}
-                  </Button>
+                <Link key={action.href} href={action.href}>
+                  <Button variant={action.variant || "primary"}>{action.label}</Button>
                 </Link>
               ))}
             </div>
@@ -1260,7 +1300,7 @@ export default function WorkQueuePage() {
         {sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{sessionError}</div> : null}
         {refreshing ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3 text-sm text-[var(--muted)]">
-            Refreshing queue data in the background...
+            {t("queue.refreshing_background", "Refreshing queue data in the background...")}
           </div>
         ) : null}
         {sectionErrorEntries.length ? (
@@ -1277,15 +1317,58 @@ export default function WorkQueuePage() {
           </section>
         ) : null}
 
-        <section className="grid gap-5 xl:grid-cols-[1.08fr_0.92fr]">
+        {/* AUDIT: DENSITY_OVERLOAD - Queue totals stay available, but they now sit behind one pulse drawer instead of taking equal weight with the next action lane. */}
+        <details className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-soft)]">
+          <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("queue.pulse", "Queue pulse")}</summary>
+          <section className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <Card>
+              <CardHeader>
+                <div className="text-sm text-[var(--muted)]">Open Items</div>
+                <CardTitle>{filterCounts.all}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-[var(--muted)]">
+                Combined queue items across daily work, review, and alerts.
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="text-sm text-[var(--muted)]">Today</div>
+                <CardTitle>{filterCounts.today}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-[var(--muted)]">
+                Missing shifts, saved draft work, and offline queue follow-up.
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="text-sm text-[var(--muted)]">Review</div>
+                <CardTitle>{filterCounts.review}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-[var(--muted)]">
+                Pending entry approvals, OCR checks, and stock trust decisions.
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="text-sm text-[var(--muted)]">Unread Alerts</div>
+                <CardTitle>{state.alerts.length}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-[var(--muted)]">
+                Factory alerts waiting for attention on the operations board.
+              </CardContent>
+            </Card>
+          </section>
+        </details>
+
+        <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
           <Card>
             <CardHeader>
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm text-[var(--muted)]">Queue View</div>
-                  <CardTitle className="text-xl">Open work in priority order</CardTitle>
+                  <div className="text-sm text-[var(--muted)]">{t("queue.view", "Queue View")}</div>
+                  <CardTitle className="text-xl">{t("queue.process_next", "Process next")}</CardTitle>
                 </div>
-                <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
+                <div className="flex flex-wrap gap-2">
                   {([
                     ["all", "All"],
                     ["today", "Today"],
@@ -1295,7 +1378,7 @@ export default function WorkQueuePage() {
                     <Button
                       key={key}
                       variant={filter === key ? "primary" : "outline"}
-                      className="shrink-0 px-4 py-2 text-xs"
+                      className="px-4 py-2 text-xs"
                       onClick={() => setFilter(key)}
                     >
                       {label}
@@ -1305,44 +1388,88 @@ export default function WorkQueuePage() {
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
-              {filteredItems.length ? filteredItems.map((item) => (
-                <div key={item.id} className={`rounded-2xl border p-4 ${toneClass(item.tone)}`}>
-                  <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${toneBadgeClass(item.tone)}`}>
-                          {sectionLabel(item.section)}
-                        </span>
-                        {item.meta ? <span className="text-xs text-[var(--muted)]">{item.meta}</span> : null}
+              {nextUpItem ? (
+                <>
+                  {/* AUDIT: FLOW_BROKEN - The top-priority task now has its own dedicated “next up” treatment instead of blending into the rest of the list. */}
+                  <div className={`rounded-[1.6rem] border p-5 shadow-[var(--shadow-soft)] ${toneClass(nextUpItem.tone)}`}>
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="space-y-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${toneBadgeClass(nextUpItem.tone)}`}>
+                            Next Up
+                          </span>
+                          <span className="text-xs text-[var(--muted)]">{sectionLabel(nextUpItem.section)}</span>
+                          {nextUpItem.meta ? <span className="text-xs text-[var(--muted)]">{nextUpItem.meta}</span> : null}
+                        </div>
+                        <div className="text-lg font-semibold text-[var(--text)]">{nextUpItem.title}</div>
+                        <div className="text-sm leading-6 text-[var(--muted)]">{nextUpItem.detail}</div>
                       </div>
-                      <div className="text-sm font-semibold text-[var(--text)]">{item.title}</div>
-                      <div className="text-xs leading-5 text-[var(--muted)]">{item.detail}</div>
-                    </div>
-                    <div className="grid gap-2 sm:flex sm:flex-wrap">
-                      <Link href={item.href}>
-                        <Button
-                          variant={item.isOverflow ? "primary" : "outline"}
-                          className="w-full px-4 py-2 text-xs sm:w-auto"
-                        >
-                          {item.action}
-                        </Button>
-                      </Link>
-                      {typeof item.alertId === "number" ? (
-                        <Button
-                          variant="ghost"
-                          className="w-full px-4 py-2 text-xs sm:w-auto"
-                          onClick={() => {
-                            void markAlertAsRead(item.alertId!);
-                          }}
-                          disabled={Boolean(markingAlertIds[item.alertId!])}
-                        >
-                          {markingAlertIds[item.alertId!] ? "Marking..." : "Mark Read"}
-                        </Button>
-                      ) : null}
+                      <div className="flex flex-wrap gap-2">
+                        <Link href={nextUpItem.href}>
+                          <Button className="px-5 py-2 text-sm">{nextUpItem.action}</Button>
+                        </Link>
+                        {typeof nextUpItem.alertId === "number" ? (
+                          <Button
+                            variant="ghost"
+                            className="px-4 py-2 text-xs"
+                            onClick={() => {
+                              void markAlertAsRead(nextUpItem.alertId!);
+                            }}
+                            disabled={Boolean(markingAlertIds[nextUpItem.alertId!])}
+                          >
+                            {markingAlertIds[nextUpItem.alertId!] ? "Marking..." : "Mark Read"}
+                          </Button>
+                        ) : null}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )) : (
+                  {remainingFilteredItems.length ? (
+                    // AUDIT: DENSITY_OVERLOAD - Remaining queue items are still accessible, but they now sit behind a secondary reveal so the page can emphasize the immediate next task.
+                    <details className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                      <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">
+                        More items ({remainingFilteredItems.length})
+                      </summary>
+                      <div className="mt-4 space-y-3">
+                        {remainingFilteredItems.map((item) => (
+                          <div key={item.id} className={`rounded-2xl border p-4 ${toneClass(item.tone)}`}>
+                            <div className="flex flex-wrap items-start justify-between gap-3">
+                              <div className="space-y-2">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${toneBadgeClass(item.tone)}`}>
+                                    {sectionLabel(item.section)}
+                                  </span>
+                                  {item.meta ? <span className="text-xs text-[var(--muted)]">{item.meta}</span> : null}
+                                </div>
+                                <div className="text-sm font-semibold text-[var(--text)]">{item.title}</div>
+                                <div className="text-xs leading-5 text-[var(--muted)]">{item.detail}</div>
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                <Link href={item.href}>
+                                  <Button variant={item.isOverflow ? "primary" : "outline"} className="px-4 py-2 text-xs">
+                                    {item.action}
+                                  </Button>
+                                </Link>
+                                {typeof item.alertId === "number" ? (
+                                  <Button
+                                    variant="ghost"
+                                    className="px-4 py-2 text-xs"
+                                    onClick={() => {
+                                      void markAlertAsRead(item.alertId!);
+                                    }}
+                                    disabled={Boolean(markingAlertIds[item.alertId!])}
+                                  >
+                                    {markingAlertIds[item.alertId!] ? "Marking..." : "Mark Read"}
+                                  </Button>
+                                ) : null}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  ) : null}
+                </>
+              ) : (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-5 text-sm text-[var(--muted)]">
                   No items are waiting in this queue view right now.
                 </div>
@@ -1350,106 +1477,70 @@ export default function WorkQueuePage() {
             </CardContent>
           </Card>
 
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <div className="text-sm text-[var(--muted)]">Queue Snapshot</div>
-                <CardTitle className="text-xl">Where the work is stacking up</CardTitle>
-              </CardHeader>
-              <CardContent className="grid gap-3 text-sm text-[var(--muted)] sm:grid-cols-2 xl:grid-cols-1">
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                  <div className="text-xs uppercase tracking-[0.16em]">Pending DPR Review</div>
-                  <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{state.pendingEntryTotal}</div>
-                </div>
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                  <div className="text-xs uppercase tracking-[0.16em]">OCR Waiting</div>
-                  <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{state.pendingVerifications.length}</div>
-                </div>
-                {isSteelFactory ? (
+          <details className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-soft)]">
+            <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("queue.signals", "Queue signals")}</summary>
+            <div className="mt-4 space-y-6">
+              <Card>
+                <CardHeader>
+                  <div className="text-sm text-[var(--muted)]">Queue Snapshot</div>
+                  <CardTitle className="text-xl">Where the work is stacking up</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 text-sm text-[var(--muted)]">
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="text-xs uppercase tracking-[0.16em]">Stock Reviews</div>
-                    <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{state.pendingReconciliations.length}</div>
+                    <div className="text-xs uppercase tracking-[0.16em]">Pending DPR Review</div>
+                    <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{state.pendingEntryTotal}</div>
                   </div>
-                ) : null}
-                {canSubmit ? (
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="text-xs uppercase tracking-[0.16em]">Open Shifts Today</div>
-                    <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{missingShifts.length}</div>
+                    <div className="text-xs uppercase tracking-[0.16em]">OCR Waiting</div>
+                    <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{state.pendingVerifications.length}</div>
                   </div>
-                ) : null}
-              </CardContent>
-            </Card>
+                  {isSteelFactory ? (
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                      <div className="text-xs uppercase tracking-[0.16em]">Stock Reviews</div>
+                      <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{state.pendingReconciliations.length}</div>
+                    </div>
+                  ) : null}
+                  {canSubmit ? (
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                      <div className="text-xs uppercase tracking-[0.16em]">Open Shifts Today</div>
+                      <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{missingShifts.length}</div>
+                    </div>
+                  ) : null}
+                </CardContent>
+              </Card>
 
-            <Card>
-              <CardHeader>
-                <div className="text-sm text-[var(--muted)]">Recent Signals</div>
-                <CardTitle className="text-xl">Immediate context</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                  <div className="font-semibold text-[var(--text)]">Submitted today</div>
-                  <div className="mt-1">
-                    {state.todayEntries.length
-                      ? `${state.todayEntries.length} shift entr${state.todayEntries.length === 1 ? "y has" : "ies have"} already been recorded.`
-                      : "No shift entries have been recorded in this factory today."}
+              <Card>
+                <CardHeader>
+                  <div className="text-sm text-[var(--muted)]">Recent Signals</div>
+                  <CardTitle className="text-xl">Immediate context</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm text-[var(--muted)]">
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                    <div className="font-semibold text-[var(--text)]">Submitted today</div>
+                    <div className="mt-1">
+                      {state.todayEntries.length
+                        ? `${state.todayEntries.length} shift entr${state.todayEntries.length === 1 ? "y has" : "ies have"} already been recorded.`
+                        : "No shift entries have been recorded in this factory today."}
+                    </div>
                   </div>
-                </div>
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                  <div className="font-semibold text-[var(--text)]">Latest alert time</div>
-                  <div className="mt-1">
-                    {state.alerts[0]?.created_at ? formatDateTime(state.alerts[0].created_at) : "No recent unread alerts."}
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                    <div className="font-semibold text-[var(--text)]">Latest alert time</div>
+                    <div className="mt-1">
+                      {state.alerts[0]?.created_at ? formatDateTime(state.alerts[0].created_at) : "No recent unread alerts."}
+                    </div>
                   </div>
-                </div>
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                  <div className="font-semibold text-[var(--text)]">Offline status</div>
-                  <div className="mt-1">
-                    {state.queueCount > 0
-                      ? `${state.queueCount} item${state.queueCount === 1 ? "" : "s"} still need sync on this device.`
-                      : "This device has no waiting offline work."}
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                    <div className="font-semibold text-[var(--text)]">Offline status</div>
+                    <div className="mt-1">
+                      {state.queueCount > 0
+                        ? `${state.queueCount} item${state.queueCount === 1 ? "" : "s"} still need sync on this device.`
+                        : "This device has no waiting offline work."}
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </section>
-
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Open Items</div>
-              <CardTitle>{filterCounts.all}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Combined queue items across daily work, review, and alerts.
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Today</div>
-              <CardTitle>{filterCounts.today}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Missing shifts, saved draft work, and offline queue follow-up.
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Review</div>
-              <CardTitle>{filterCounts.review}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Pending entry approvals, OCR checks, and stock trust decisions.
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Unread Alerts</div>
-              <CardTitle>{state.alerts.length}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Factory alerts waiting for attention on the operations board.
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
+            </div>
+          </details>
         </section>
       </div>
     </main>

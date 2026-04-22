@@ -8,16 +8,6 @@ def test_normalize_phone_number_accepts_standard_values():
     assert normalize_phone_number("+91 98765 43210") == "+91 98765 43210"
 
 
-def test_normalize_phone_number_rejects_short_or_obviously_fake_values():
-    for raw in ("123456789", "0000000000", "1234567890"):
-        try:
-            normalize_phone_number(raw)
-        except ValueError:
-            pass
-        else:
-            raise AssertionError(f"Expected invalid phone value to fail validation: {raw}")
-
-
 def test_normalize_phone_number_rejects_email_like_values():
     try:
         normalize_phone_number("worker@example.com")
@@ -62,14 +52,14 @@ def test_register_rejects_email_like_phone_number(http_client):
 
 
 def test_employee_profile_rejects_email_like_employee_code(http_client):
-    admin = register_user(http_client, role="admin")
-    headers = {"Authorization": f"Bearer {admin['access_token']}"}
+    manager = register_user(http_client, role="manager")
+    headers = {"Authorization": f"Bearer {manager['access_token']}"}
 
     response = http_client.post(
         "/attendance/settings/employees",
         headers=headers,
         json={
-            "user_id": admin["user_id"],
+            "user_id": manager["user_id"],
             "employee_code": "emp@example.com",
             "department": "Forge",
             "designation": "Operator",

@@ -25,7 +25,6 @@ from backend.security import get_current_user
 from backend.rbac import require_any_role
 from backend.tenancy import resolve_factory_id, resolve_org_id
 from backend.query_helpers import apply_org_scope, apply_role_scope, factory_user_ids_query
-from backend.services.report_trust import evaluate_report_trust_gate
 
 
 router = APIRouter(tags=["Email"])
@@ -183,25 +182,6 @@ def _build_summary(
     }
 
 
-def _require_email_trust_ready(
-    db: Session,
-    current_user: User,
-    *,
-    start: date,
-    end: date,
-) -> dict[str, Any]:
-    trust_summary = evaluate_report_trust_gate(
-        db,
-        current_user,
-        route="/email-summary",
-        start=start,
-        end=end,
-    )
-    if not trust_summary["can_send"]:
-        raise HTTPException(status_code=409, detail=trust_summary["blocking_reason"])
-    return trust_summary
-
-
 
 
 @router.get("/summary", response_model=EmailSummaryResponse)
@@ -244,15 +224,12 @@ def generate_summary_email(
     current_user: User = Depends(get_current_user),
 ) -> EmailGenerateResponse:
     require_any_role(current_user, {UserRole.ACCOUNTANT, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
-    start = start_date or (date.today() - timedelta(days=7))
-    end = end_date or date.today()
-    _require_email_trust_ready(db, current_user, start=start, end=end)
     if not has_any_ai_key():
         raise HTTPException(
             status_code=400,
             detail="AI provider not configured. Add ANTHROPIC_API_KEY or OPENAI_API_KEY in DPR.ai/.env and restart.",
         )
-    summary = _build_summary(db, current_user, start, end)
+    summary = _build_summary(db, current_user, start_date, end_date)
     org_id = resolve_org_id(current_user)
     plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
     if not _can_send_email(plan):

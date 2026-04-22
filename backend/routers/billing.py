@@ -17,7 +17,6 @@ from backend.database import get_db
 from backend.models.subscription import Subscription
 from backend.models.payment_order import PaymentOrder
 from backend.models.webhook_event import WebhookEvent
-from backend.models.factory import Factory
 from backend.models.user import User, UserRole
 from backend.security import get_current_user
 from backend.rbac import require_role
@@ -33,6 +32,7 @@ from backend.plans import (
     is_sales_only_plan,
     normalize_addon_quantities,
     normalize_plan,
+    plan_has_hard_caps,
 )
 from backend.tenancy import resolve_org_id
 from backend.services.billing_manager import (
@@ -54,45 +54,6 @@ SUPPORTED_CURRENCY = "INR"
 REUSABLE_ORDER_STATUSES = {"created", "attempted", "authorized"}
 PAID_ORDER_STATUSES = {"paid", "captured"}
 RETRYABLE_ORDER_STATUSES = {"failed", "cancelled", "expired"}
-
-
-def _billing_detail(message: str, *, reason: str, **extra) -> dict:
-    payload = {"message": message, "reason": reason}
-    payload.update(extra)
-    return payload
-
-
-def _org_level_role(current_user: User) -> UserRole:
-    role = getattr(current_user, "org_role", None) or current_user.role
-    if isinstance(role, UserRole):
-        return role
-    return UserRole(str(role))
-
-
-def _require_billing_owner(current_user: User) -> None:
-    if _org_level_role(current_user) != UserRole.OWNER and current_user.role != UserRole.OWNER:
-        raise HTTPException(
-            status_code=403,
-            detail=_billing_detail(
-                "Only organization owners can manage downgrade scheduling or emergency billing controls.",
-                reason="billing_owner_required",
-            ),
-        )
-
-
-def _require_billing_checkout_access(current_user: User) -> None:
-    role = _org_level_role(current_user)
-    if role not in {UserRole.ADMIN, UserRole.OWNER} and current_user.role not in {
-        UserRole.ADMIN,
-        UserRole.OWNER,
-    }:
-        raise HTTPException(
-            status_code=403,
-            detail=_billing_detail(
-                "Only admins and owners can start checkout for this organization.",
-                reason="billing_role_required",
-            ),
-        )
 
 
 class CreateOrderRequest(BaseModel):
@@ -238,36 +199,6 @@ def _mark_payment_order_status(db: Session, *, order_id: str | None, status: str
     db.add(row)
 
 
-def _get_payment_order(db: Session, *, order_id: str | None) -> PaymentOrder | None:
-    if not order_id:
-        return None
-    return (
-        db.query(PaymentOrder)
-        .filter(PaymentOrder.provider == "razorpay", PaymentOrder.provider_order_id == order_id)
-        .first()
-    )
-
-
-def _current_org_footprint(db: Session, *, current_user: User) -> dict[str, int]:
-    org_id = resolve_org_id(current_user)
-    if not org_id:
-        return {"active_users": 1, "active_factories": 1}
-    active_users = (
-        db.query(User.id)
-        .filter(User.org_id == org_id, User.is_active.is_(True))
-        .count()
-    )
-    active_factories = (
-        db.query(Factory.factory_id)
-        .filter(Factory.org_id == org_id, Factory.is_active.is_(True))
-        .count()
-    )
-    return {
-        "active_users": max(1, int(active_users or 0)),
-        "active_factories": max(1, int(active_factories or 0)),
-    }
-
-
 def _resolve_event_id(data: dict, payload: bytes) -> str:
     event_type = str(data.get("event", ""))
     payment_entity = _extract_payment_entity(data)
@@ -381,52 +312,29 @@ def _resolve_checkout_quote(
 ) -> dict:
     plan_info = get_plan(plan)
     if is_sales_only_plan(plan):
-        raise HTTPException(
-            status_code=400,
-            detail=_billing_detail(
-                f"{plan_info.get('name', 'This plan')} is sales-assisted and cannot be self-checked out.",
-                reason="sales_only_plan",
-            ),
-        )
+        raise HTTPException(status_code=400, detail=f"{plan_info.get('name', 'This plan')} is sales-assisted and cannot be self-checked out.")
     monthly_price = int(plan_info.get("monthly_price", 0) or 0)
     cycle = (billing_cycle or "monthly").strip().lower()
     if cycle not in {"monthly", "yearly"}:
-        raise HTTPException(
-            status_code=400,
-            detail=_billing_detail("Invalid billing cycle.", reason="invalid_billing_cycle"),
-        )
+        raise HTTPException(status_code=400, detail="Invalid billing cycle.")
     multiplier = 1 if cycle == "monthly" else int(PRICING_META.get("yearly_multiplier", 12) or 12)
     included_users = int(plan_info.get("user_limit", 0) or 0)
     included_factories = int(plan_info.get("factory_limit", 0) or 0)
-    footprint = _current_org_footprint(db, current_user=current_user)
-    effective_users = max(int(requested_users or 0), int(footprint["active_users"]))
-    effective_factories = max(int(requested_factories or 0), int(footprint["active_factories"]))
 
-    if included_users > 0 and effective_users > included_users:
-        raise HTTPException(
-            status_code=400,
-            detail=_billing_detail(
-                f"{plan_info.get('name', 'This plan')} supports up to {included_users} users, but your organization currently has {effective_users} active users. Choose a higher plan.",
-                reason="plan_capacity_exceeded",
-                limit_type="users",
-                supported=included_users,
-                requested=effective_users,
-            ),
-        )
-    if included_factories > 0 and effective_factories > included_factories:
-        raise HTTPException(
-            status_code=400,
-            detail=_billing_detail(
-                f"{plan_info.get('name', 'This plan')} supports up to {included_factories} factories, but your organization currently has {effective_factories} active factories. Choose a higher plan.",
-                reason="plan_capacity_exceeded",
-                limit_type="factories",
-                supported=included_factories,
-                requested=effective_factories,
-            ),
-        )
+    if plan_has_hard_caps():
+        if included_users > 0 and requested_users and requested_users > included_users:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{plan_info.get('name', 'This plan')} supports up to {included_users} users. Choose a higher plan.",
+            )
+        if included_factories > 0 and requested_factories and requested_factories > included_factories:
+            raise HTTPException(
+                status_code=400,
+                detail=f"{plan_info.get('name', 'This plan')} supports up to {included_factories} factories. Choose a higher plan.",
+            )
 
-    extra_users = max(0, effective_users - included_users) if included_users > 0 else 0
-    extra_factories = max(0, effective_factories - included_factories) if included_factories > 0 else 0
+    extra_users = 0
+    extra_factories = 0
     extra_user_monthly = 0
     extra_factory_monthly = 0
     org_id = resolve_org_id(current_user)
@@ -464,23 +372,15 @@ def _resolve_checkout_quote(
         addon_monthly_total += addon_payload["price"] * incremental_quantity
     monthly_total = monthly_price + extra_user_monthly + extra_factory_monthly + addon_monthly_total
     if monthly_total <= 0:
-        raise HTTPException(
-            status_code=400,
-            detail=_billing_detail(
-                "Selected configuration is not billable.",
-                reason="non_billable_selection",
-            ),
-        )
+        raise HTTPException(status_code=400, detail="Selected configuration is not billable.")
     return {
         "billing_cycle": cycle,
         "amount_paise": monthly_total * multiplier * 100,
         "base_monthly_price": monthly_price,
         "included_users": included_users,
         "included_factories": included_factories,
-        "requested_users": effective_users,
-        "requested_factories": effective_factories,
-        "organization_active_users": footprint["active_users"],
-        "organization_active_factories": footprint["active_factories"],
+        "requested_users": requested_users,
+        "requested_factories": requested_factories,
         "extra_users": extra_users,
         "extra_factories": extra_factories,
         "extra_user_monthly": extra_user_monthly,
@@ -576,7 +476,6 @@ def get_billing_status(
         }
         for row in get_org_active_addons(db, org_id=org_id)
     ]
-    footprint = _current_org_footprint(db, current_user=current_user)
     return {
         "plan": sub.plan,
         "status": sub.status,
@@ -586,37 +485,7 @@ def get_billing_status(
         "pending_plan": sub.pending_plan,
         "pending_plan_effective_at": sub.pending_plan_effective_at,
         "active_addons": active_addons,
-        "footprint": footprint,
         "usage": usage,
-    }
-
-
-@router.get("/orders/{provider_order_id}")
-def get_order_status(
-    provider_order_id: str,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> dict:
-    require_role(current_user, UserRole.ADMIN)
-    row = _get_payment_order(db, order_id=provider_order_id)
-    if not row:
-        raise HTTPException(status_code=404, detail="Billing order not found.")
-    order_user = db.query(User).filter(User.id == row.user_id).first()
-    if not order_user or resolve_org_id(order_user) != resolve_org_id(current_user):
-        raise HTTPException(status_code=404, detail="Billing order not found.")
-    current_plan = get_org_plan(db, org_id=resolve_org_id(order_user), fallback_user_id=order_user.id)
-    status = str(row.status or "created").strip().lower()
-    return {
-        "order_id": row.provider_order_id,
-        "status": status,
-        "plan": row.plan,
-        "amount": row.amount,
-        "currency": row.currency,
-        "created_at": row.created_at,
-        "is_paid": status in PAID_ORDER_STATUSES,
-        "is_terminal": status in (PAID_ORDER_STATUSES | RETRYABLE_ORDER_STATUSES | {"mismatch"}),
-        "is_plan_active": status in PAID_ORDER_STATUSES and current_plan == normalize_plan(row.plan),
-        "current_plan": current_plan,
     }
 
 
@@ -653,7 +522,7 @@ def schedule_plan_downgrade(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    _require_billing_owner(current_user)
+    require_role(current_user, UserRole.OWNER)
     normalized = normalize_plan(payload.plan)
     if not normalized:
         raise HTTPException(status_code=400, detail="Invalid plan.")
@@ -670,7 +539,7 @@ def cancel_plan_downgrade(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    _require_billing_owner(current_user)
+    require_role(current_user, UserRole.OWNER)
     cancel_scheduled_downgrade(db, user_id=current_user.id)
     db.commit()
     return {"message": "Scheduled downgrade cancelled."}
@@ -682,34 +551,19 @@ def create_order(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    _require_billing_checkout_access(current_user)
+    require_role(current_user, UserRole.OWNER)
     normalized_plan = normalize_plan(payload.plan)
     if is_sales_only_plan(normalized_plan):
-        raise HTTPException(
-            status_code=400,
-            detail=_billing_detail(
-                f"{get_plan(normalized_plan).get('name', 'This plan')} requires a custom sales quote.",
-                reason="sales_only_plan",
-            ),
-        )
+        raise HTTPException(status_code=400, detail=f"{get_plan(normalized_plan).get('name', 'This plan')} requires a custom sales quote.")
     requested_currency = str(payload.currency or SUPPORTED_CURRENCY).strip().upper()
     if requested_currency != SUPPORTED_CURRENCY:
-        raise HTTPException(
-            status_code=400,
-            detail=_billing_detail(
-                f"Only {SUPPORTED_CURRENCY} billing is supported.",
-                reason="unsupported_currency",
-            ),
-        )
+        raise HTTPException(status_code=400, detail=f"Only {SUPPORTED_CURRENCY} billing is supported.")
     key_id = os.getenv("RAZORPAY_KEY_ID")
     key_secret = os.getenv("RAZORPAY_KEY_SECRET")
     if not key_id or not key_secret:
         raise HTTPException(
             status_code=400,
-            detail=_billing_detail(
-                "Razorpay is not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.",
-                reason="razorpay_not_configured",
-            ),
+            detail="Razorpay is not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.",
         )
     try:
         import razorpay  # type: ignore
@@ -843,41 +697,19 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
     if existing:
         return {"status": "ok", "idempotent": True}
     if _should_activate(event_type):
-        order_id = _extract_order_id(data)
-        payment_order = _get_payment_order(db, order_id=order_id)
+        _mark_payment_order_status(db, order_id=_extract_order_id(data), status="paid")
         plan = _extract_plan(data)
         user_id = _extract_user_id(data)
         amount = _extract_amount(data)
         cycle = _extract_billing_cycle(data) or _resolve_billing_cycle(plan, amount)
         addon_quantities = _extract_addon_quantities(data)
-        currency = str(
-            _extract_order_entity(data).get("currency")
-            or _extract_payment_entity(data).get("currency")
-            or SUPPORTED_CURRENCY
-        ).upper()
         period_end = None
         if cycle == "yearly":
             period_end = datetime.now(timezone.utc) + timedelta(days=365)
         elif cycle == "monthly":
             period_end = datetime.now(timezone.utc) + timedelta(days=30)
-        if payment_order:
-            mismatch = False
-            if amount is not None and int(amount) != int(payment_order.amount):
-                mismatch = True
-            if currency and currency != str(payment_order.currency or SUPPORTED_CURRENCY).upper():
-                mismatch = True
-            if mismatch:
-                payment_order.status = "mismatch"
-                db.add(payment_order)
-                plan = None
-                user_id = None
-            else:
-                payment_order.status = "paid"
-                db.add(payment_order)
-                plan = normalize_plan(payment_order.plan)
-                user_id = int(payment_order.user_id)
         if not plan or not user_id:
-            order_entity = _fetch_order_entity(order_id)
+            order_entity = _fetch_order_entity(_extract_order_id(data))
             if order_entity:
                 if not plan:
                     plan_note = (order_entity.get("notes", {}) or {}).get("plan")
@@ -953,6 +785,7 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
                 )
             try:
                 amount_value = float(amount or 0) / 100.0
+                currency = str((_extract_order_entity(data).get("currency") or "INR"))
                 record_invoice(
                     db,
                     user_id=user_id,

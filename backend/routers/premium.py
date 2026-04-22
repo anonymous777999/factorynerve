@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import date, datetime, time, timedelta, timezone
 from io import BytesIO
-from textwrap import wrap
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
@@ -25,7 +24,6 @@ from backend.premium_access import premium_required, require_premium_plan
 from backend.query_helpers import apply_org_scope, apply_role_scope, factory_user_ids_query
 from backend.rbac import require_any_role
 from backend.security import get_current_user
-from backend.services.report_trust import evaluate_report_trust_gate
 from backend.tenancy import resolve_factory_id, resolve_org_id
 
 
@@ -388,24 +386,7 @@ def _build_dashboard_payload(
     )
 
 
-def _format_signoff_time(value: str | None) -> str:
-    if not value:
-        return "-"
-    try:
-        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    except ValueError:
-        return value
-    return parsed.astimezone(timezone.utc).strftime("%d %b %Y %H:%M UTC")
-
-
-def _render_executive_pdf(
-    payload: PremiumDashboardResponse,
-    *,
-    days: int,
-    factory_label: str,
-    shift_label: str,
-    trust_summary: dict[str, Any],
-) -> bytes:
+def _render_executive_pdf(payload: PremiumDashboardResponse, *, days: int, factory_label: str, shift_label: str) -> bytes:
     buffer = BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
@@ -481,112 +462,7 @@ def _render_executive_pdf(
         if line_y < 60:
             break
 
-    if line_y > 116:
-        pdf.setFillColor(colors.white)
-        pdf.setFont("Helvetica-Bold", 13)
-        pdf.drawString(40, line_y - 2, "Trust Gate")
-        line_y -= 22
-        pdf.setFont("Helvetica", 10)
-        pdf.setFillColor(colors.HexColor("#D0D7E2"))
-        trust_lines = [
-            f"OCR reviewed: {trust_summary['ocr']['approved_count']} of {trust_summary['ocr']['total_count']} approved",
-            (
-                f"Shift entries: {trust_summary['shift_entries']['approved_count']} of "
-                f"{trust_summary['shift_entries']['total_count']} approved"
-            ),
-            (
-                "Attendance: "
-                f"{'reviewed' if trust_summary['attendance']['status'] == 'reviewed' else 'not reviewed'}"
-            ),
-            f"Overall trust score: {trust_summary['overall_trust_score']}%",
-            trust_summary["confirmation"],
-        ]
-        for trust_line in trust_lines:
-            pdf.drawString(48, line_y, trust_line[:112])
-            line_y -= 14
-
     pdf.showPage()
-
-    def start_dark_page(title: str, subtitle: str) -> float:
-        pdf.setFillColor(colors.HexColor("#0B0E14"))
-        pdf.rect(0, 0, width, height, stroke=0, fill=1)
-        pdf.setFillColor(colors.HexColor("#3EA6FF"))
-        pdf.setFont("Helvetica-Bold", 10)
-        pdf.drawString(40, height - 38, "DPR.ai TRUST APPENDIX")
-        pdf.setFillColor(colors.white)
-        pdf.setFont("Helvetica-Bold", 20)
-        pdf.drawString(40, height - 62, title)
-        pdf.setFont("Helvetica", 10)
-        pdf.setFillColor(colors.HexColor("#D0D7E2"))
-        pdf.drawString(40, height - 80, subtitle[:120])
-        return height - 112
-
-    def ensure_space(current_y: float, needed_height: float, section_title: str) -> float:
-        if current_y >= needed_height:
-            return current_y
-        pdf.showPage()
-        return start_dark_page("Trust Sign-offs", section_title)
-
-    y = start_dark_page(
-        "Trust Sign-offs",
-        f"Window {trust_summary['range']['start_date']} to {trust_summary['range']['end_date']} | Score {trust_summary['overall_trust_score']}%",
-    )
-
-    summary_lines = [
-        f"OCR reviewed: {trust_summary['ocr']['reviewed_count']} of {trust_summary['ocr']['total_count']} | approved {trust_summary['ocr']['approved_count']}",
-        (
-            f"Shift entries reviewed: {trust_summary['shift_entries']['reviewed_count']} of "
-            f"{trust_summary['shift_entries']['total_count']} | approved {trust_summary['shift_entries']['approved_count']}"
-        ),
-        (
-            f"Attendance reviewed: {trust_summary['attendance']['reviewed_count']} of "
-            f"{trust_summary['attendance']['total_count']} | status {trust_summary['attendance']['status'].replace('_', ' ')}"
-        ),
-        trust_summary["confirmation"],
-    ]
-    pdf.setFont("Helvetica", 10)
-    pdf.setFillColor(colors.HexColor("#D0D7E2"))
-    for line in summary_lines:
-        y = ensure_space(y, 72, "Trust summary")
-        pdf.drawString(40, y, line[:112])
-        y -= 15
-
-    sections = [
-        ("Approved OCR records", trust_summary["approval_register"]["ocr"]),
-        ("Approved shift entries", trust_summary["approval_register"]["shift_entries"]),
-        ("Approved attendance records", trust_summary["approval_register"]["attendance"]),
-    ]
-    for title, records in sections:
-        y = ensure_space(y, 110, title)
-        pdf.setFillColor(colors.white)
-        pdf.setFont("Helvetica-Bold", 13)
-        pdf.drawString(40, y, title)
-        y -= 18
-        pdf.setFont("Helvetica", 9)
-        if not records:
-            pdf.setFillColor(colors.HexColor("#71859B"))
-            pdf.drawString(48, y, "No approved records in this section for the selected window.")
-            y -= 18
-            continue
-        for record in records:
-            wrapped_label = wrap(str(record.get("label") or "-"), width=70) or ["-"]
-            needed_height = 32 + (len(wrapped_label) * 12)
-            y = ensure_space(y, max(needed_height, 90), title)
-            pdf.setFillColor(colors.HexColor("#AFC1D6"))
-            for label_line in wrapped_label:
-                pdf.drawString(48, y, label_line)
-                y -= 12
-            pdf.setFillColor(colors.HexColor("#71859B"))
-            pdf.drawString(
-                60,
-                y,
-                (
-                    f"Approved by {record.get('approved_by_name') or '-'} "
-                    f"on {_format_signoff_time(record.get('approved_at'))}"
-                )[:112],
-            )
-            y -= 18
-
     pdf.save()
     return buffer.getvalue()
 
@@ -661,19 +537,6 @@ def premium_executive_pdf(
     current_user: User = Depends(get_current_user),
 ) -> Response:
     require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
-    start = _start_day(days)
-    end = date.today()
-    trust_summary = evaluate_report_trust_gate(
-        db,
-        current_user,
-        route="/premium/dashboard",
-        start=start,
-        end=end,
-        shift=shift.value if shift else None,
-        factory_id=factory_id,
-    )
-    if not trust_summary["can_send"]:
-        raise HTTPException(status_code=409, detail=trust_summary["blocking_reason"])
     payload = _build_dashboard_payload(
         db,
         current_user,
@@ -686,11 +549,5 @@ def premium_executive_pdf(
         matched = next((item for item in payload.filters["factories"] if item.id == factory_id), None)
         factory_label = matched.label if matched else factory_id
     shift_label = shift.value.title() if shift else "All shifts"
-    pdf_bytes = _render_executive_pdf(
-        payload,
-        days=days,
-        factory_label=factory_label,
-        shift_label=shift_label,
-        trust_summary=trust_summary,
-    )
+    pdf_bytes = _render_executive_pdf(payload, days=days, factory_label=factory_label, shift_label=shift_label)
     return Response(content=pdf_bytes, media_type="application/pdf")

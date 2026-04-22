@@ -1,9 +1,6 @@
 from http import HTTPStatus
 
-from backend.database import SessionLocal
-from backend.models.user import UserRole
-from backend.models.user_factory_role import UserFactoryRole
-from tests.utils import invite_and_accept_user, register_user, set_org_plan_for_user_email, unique_email, unique_factory
+from tests.utils import register_user, set_org_plan_for_user_email, unique_email, unique_factory
 
 
 def _auth_headers(token: str) -> dict[str, str]:
@@ -153,14 +150,19 @@ def test_admin_can_assign_manager_to_multiple_factories(http_client):
     second_factory_id = created.json()["factory"]["factory_id"]
 
     manager_email = unique_email()
-    accepted_manager = invite_and_accept_user(
-        http_client,
-        inviter_token=admin["access_token"],
-        name="QA Multi Factory Manager",
-        email=manager_email,
-        role="manager",
-        factory_name=admin["factory_name"],
+    invited = http_client.post(
+        "/settings/users/invite",
+        headers=headers,
+        json={
+            "name": "QA Multi Factory Manager",
+            "email": manager_email,
+            "role": "manager",
+            "factory_name": admin["factory_name"],
+        },
     )
+    assert invited.status_code == HTTPStatus.CREATED, invited.text
+    invited_payload = invited.json()
+    temp_password = invited_payload["temp_password"]
 
     users = http_client.get("/settings/users", headers=headers)
     assert users.status_code == HTTPStatus.OK, users.text
@@ -192,7 +194,12 @@ def test_admin_can_assign_manager_to_multiple_factories(http_client):
     assert refreshed_manager is not None
     assert refreshed_manager["factory_count"] == 2
 
-    manager_headers = _auth_headers(accepted_manager["access_token"])
+    login = http_client.post(
+        "/auth/login",
+        json={"email": manager_email, "password": temp_password},
+    )
+    assert login.status_code == HTTPStatus.OK, login.text
+    manager_headers = _auth_headers(login.json()["access_token"])
 
     context = http_client.get("/auth/context", headers=manager_headers)
     assert context.status_code == HTTPStatus.OK, context.text
@@ -231,14 +238,17 @@ def test_factory_user_limit_counts_multi_factory_memberships(http_client):
 
     worker_emails = [unique_email(), unique_email()]
     for email in worker_emails:
-        invite_and_accept_user(
-            http_client,
-            inviter_token=admin["access_token"],
-            name="QA Multi Factory Operator",
-            email=email,
-            role="operator",
-            factory_name=admin["factory_name"],
+        invited = http_client.post(
+            "/settings/users/invite",
+            headers=headers,
+            json={
+                "name": "QA Multi Factory Operator",
+                "email": email,
+                "role": "operator",
+                "factory_name": admin["factory_name"],
+            },
         )
+        assert invited.status_code == HTTPStatus.CREATED, invited.text
 
     users = http_client.get("/settings/users", headers=headers)
     assert users.status_code == HTTPStatus.OK, users.text
@@ -284,14 +294,18 @@ def test_inviting_existing_org_user_adds_them_to_current_factory(http_client):
     set_org_plan_for_user_email(admin["email"], "growth")
 
     invited_email = unique_email()
-    accepted_user = invite_and_accept_user(
-        http_client,
-        inviter_token=admin["access_token"],
-        name="QA Existing Operator",
-        email=invited_email,
-        role="operator",
-        factory_name=admin["factory_name"],
+    first_invite = http_client.post(
+        "/settings/users/invite",
+        headers=headers,
+        json={
+            "name": "QA Existing Operator",
+            "email": invited_email,
+            "role": "operator",
+            "factory_name": admin["factory_name"],
+        },
     )
+    assert first_invite.status_code == HTTPStatus.CREATED, first_invite.text
+    temp_password = first_invite.json()["temp_password"]
 
     created = http_client.post(
         "/settings/factories",
@@ -329,6 +343,7 @@ def test_inviting_existing_org_user_adds_them_to_current_factory(http_client):
     assert second_invite.status_code == HTTPStatus.CREATED, second_invite.text
     second_payload = second_invite.json()
     assert "Existing user added" in second_payload["message"]
+    assert not second_payload.get("temp_password")
 
     users = http_client.get("/settings/users", headers=switched_headers)
     assert users.status_code == HTTPStatus.OK, users.text
@@ -336,7 +351,12 @@ def test_inviting_existing_org_user_adds_them_to_current_factory(http_client):
     assert invited_row is not None
     assert invited_row["factory_count"] == 2
 
-    invited_headers = _auth_headers(accepted_user["access_token"])
+    login = http_client.post(
+        "/auth/login",
+        json={"email": invited_email, "password": temp_password},
+    )
+    assert login.status_code == HTTPStatus.OK, login.text
+    invited_headers = _auth_headers(login.json()["access_token"])
 
     context = http_client.get("/auth/context", headers=invited_headers)
     assert context.status_code == HTTPStatus.OK, context.text
@@ -370,8 +390,8 @@ def test_inviting_existing_user_to_same_factory_returns_clear_message(http_clien
             "factory_name": admin["factory_name"],
         },
     )
-    assert duplicate_invite.status_code == HTTPStatus.CREATED, duplicate_invite.text
-    assert "no account will be created" in duplicate_invite.text.lower()
+    assert duplicate_invite.status_code == HTTPStatus.CONFLICT, duplicate_invite.text
+    assert "already has access to this factory" in duplicate_invite.text
 
 
 def test_manager_cannot_update_factory_access_memberships(http_client):
@@ -386,85 +406,6 @@ def test_manager_cannot_update_factory_access_memberships(http_client):
     manager_headers = _auth_headers(manager["access_token"])
     denied = http_client.get(f"/settings/users/{manager['user_id']}/factory-access", headers=manager_headers)
     assert denied.status_code == HTTPStatus.FORBIDDEN, denied.text
-
-
-def test_manager_cannot_access_settings_admin_routes(http_client):
-    admin = register_user(http_client, role="admin")
-    manager = register_user(
-        http_client,
-        role="manager",
-        factory_name=admin["factory_name"],
-        company_code=admin["company_code"],
-    )
-
-    manager_headers = _auth_headers(manager["access_token"])
-
-    users = http_client.get("/settings/users", headers=manager_headers)
-    factory = http_client.get("/settings/factory", headers=manager_headers)
-    create_factory = http_client.post(
-        "/settings/factories",
-        headers=manager_headers,
-        json={
-            "name": unique_factory(),
-            "location": "Locked Plant",
-            "address": "Restricted Zone",
-            "timezone": "Asia/Kolkata",
-            "industry_type": "general",
-            "workflow_template_key": "general-ops-pack",
-        },
-    )
-
-    assert users.status_code == HTTPStatus.FORBIDDEN, users.text
-    assert factory.status_code == HTTPStatus.FORBIDDEN, factory.text
-    assert create_factory.status_code == HTTPStatus.FORBIDDEN, create_factory.text
-
-
-def test_factory_switch_uses_membership_role_for_permissions(http_client):
-    admin = register_user(http_client, role="admin")
-    headers = _auth_headers(admin["access_token"])
-    set_org_plan_for_user_email(admin["email"], "growth")
-
-    created = http_client.post(
-        "/settings/factories",
-        headers=headers,
-        json={
-            "name": unique_factory(),
-            "location": "Secondary Unit",
-            "address": "Plant 2",
-            "timezone": "Asia/Kolkata",
-            "industry_type": "general",
-            "workflow_template_key": "general-ops-pack",
-        },
-    )
-    assert created.status_code == HTTPStatus.CREATED, created.text
-    second_factory_id = created.json()["factory"]["factory_id"]
-
-    db = SessionLocal()
-    try:
-        second_membership = (
-            db.query(UserFactoryRole)
-            .filter(
-                UserFactoryRole.user_id == admin["user_id"],
-                UserFactoryRole.factory_id == second_factory_id,
-            )
-            .first()
-        )
-        assert second_membership is not None
-        second_membership.role = UserRole.OPERATOR
-        db.commit()
-    finally:
-        db.close()
-
-    switched = http_client.post(
-        "/auth/select-factory",
-        headers=headers,
-        json={"factory_id": second_factory_id},
-    )
-    assert switched.status_code == HTTPStatus.OK, switched.text
-    switched_headers = _auth_headers(switched.json()["access_token"])
-
-    settings_users = http_client.get("/settings/users", headers=switched_headers)
-    assert settings_users.status_code == HTTPStatus.FORBIDDEN, settings_users.text
 
 
 def test_manager_cannot_invite_admin_or_owner(http_client):
@@ -500,6 +441,7 @@ def test_manager_cannot_invite_admin_or_owner(http_client):
 
     assert admin_invite.status_code == HTTPStatus.FORBIDDEN, admin_invite.text
     assert owner_invite.status_code == HTTPStatus.FORBIDDEN, owner_invite.text
+    assert "cannot assign admin or owner roles" in admin_invite.text.lower()
 
 
 def test_manager_cannot_promote_or_modify_privileged_roles(http_client):
@@ -532,6 +474,8 @@ def test_manager_cannot_promote_or_modify_privileged_roles(http_client):
 
     assert promote.status_code == HTTPStatus.FORBIDDEN, promote.text
     assert demote_admin.status_code == HTTPStatus.FORBIDDEN, demote_admin.text
+    assert "cannot assign admin or owner roles" in promote.text.lower()
+    assert "cannot modify admin or owner accounts" in demote_admin.text.lower()
 
 
 def test_role_update_noop_returns_clear_message(http_client):

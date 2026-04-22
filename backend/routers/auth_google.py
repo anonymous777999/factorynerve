@@ -2,24 +2,23 @@
 
 from __future__ import annotations
 
-import base64
-import hashlib
 import os
 import secrets
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 import httpx
-import requests
-from fastapi import APIRouter, HTTPException, Request, Depends
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
-from jose import jwt
-from google.oauth2 import id_token  # type: ignore
 from google.auth.transport import requests as grequests  # type: ignore
+from google.oauth2 import id_token  # type: ignore
+from jose import jwt
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.auth_cookies import set_auth_cookies
 from backend.database import get_db
+from backend.models.refresh_token import RefreshToken
 from backend.models.user_factory_role import UserFactoryRole
 from backend.routers.auth import _issue_refresh_token, _log_auth_event, _resolve_active_factory_id
 from backend.security import create_access_token
@@ -29,9 +28,6 @@ from backend.utils import get_config
 
 router = APIRouter(tags=["Authentication"])
 config = get_config()
-_google_http_client = httpx.Client(timeout=httpx.Timeout(8.0, connect=3.0))
-_google_verify_session = requests.Session()
-_google_verify_request = grequests.Request(session=_google_verify_session)
 
 
 def _google_config() -> tuple[str, str, str]:
@@ -50,7 +46,7 @@ def _frontend_redirect_url() -> str:
 def _sanitize_next_path(raw: str | None) -> str:
     if not raw or not raw.startswith("/") or raw.startswith("//"):
         return "/"
-    if raw in {"/access", "/login", "/register"}:
+    if raw in {"/login", "/register"}:
         return "/"
     return raw
 
@@ -65,10 +61,12 @@ def _build_frontend_redirect(
     parsed = urlparse(base)
     if not parsed.scheme or not parsed.netloc:
         raise HTTPException(status_code=500, detail="Frontend OAuth redirect is invalid.")
+
     next_path = path if allow_auth_path else _sanitize_next_path(path)
     next_parsed = urlparse(next_path)
     base_path = parsed.path.rstrip("/")
     final_path = f"{base_path}{next_parsed.path}" if base_path else next_parsed.path
+
     query_items = parse_qsl(parsed.query, keep_blank_values=True)
     query_items.extend(parse_qsl(next_parsed.query, keep_blank_values=True))
     if params:
@@ -80,54 +78,53 @@ def _build_frontend_redirect(
 def _login_error_redirect(message: str) -> RedirectResponse:
     return RedirectResponse(
         _build_frontend_redirect(
-            "/access",
+            "/login",
             {"oauth_error": message},
             allow_auth_path=True,
         )
     )
 
 
-def _exchange_google_token(
-    *,
-    code: str,
-    client_id: str,
-    client_secret: str,
-    redirect_uri: str,
-    code_verifier: str,
-):
-    return _google_http_client.post(
-        "https://oauth2.googleapis.com/token",
-        data={
-            "code": code,
-            "client_id": client_id,
-            "client_secret": client_secret,
-            "redirect_uri": redirect_uri,
-            "grant_type": "authorization_code",
-            "code_verifier": code_verifier,
-        },
+def _resolve_recent_factory_id(db: Session, *, user_id: int) -> str | None:
+    now = datetime.now(timezone.utc)
+    candidate_rows = (
+        db.query(RefreshToken.factory_id)
+        .filter(
+            RefreshToken.user_id == user_id,
+            RefreshToken.factory_id.is_not(None),
+            RefreshToken.revoked_at.is_(None),
+            RefreshToken.expires_at > now,
+        )
+        .order_by(
+            func.coalesce(RefreshToken.last_used_at, RefreshToken.created_at).desc(),
+            RefreshToken.created_at.desc(),
+            RefreshToken.id.desc(),
+        )
+        .all()
     )
 
+    for (factory_id,) in candidate_rows:
+        if not factory_id:
+            continue
+        membership = (
+            db.query(UserFactoryRole.id)
+            .filter(
+                UserFactoryRole.user_id == user_id,
+                UserFactoryRole.factory_id == factory_id,
+            )
+            .first()
+        )
+        if membership:
+            return factory_id
 
-def _verify_google_id_token(raw_id_token: str, client_id: str):
-    return id_token.verify_oauth2_token(raw_id_token, _google_verify_request, client_id)
+    return None
 
 
-def _pkce_pair() -> tuple[str, str]:
-    verifier = secrets.token_urlsafe(64)
-    challenge = (
-        base64.urlsafe_b64encode(hashlib.sha256(verifier.encode("utf-8")).digest())
-        .decode("utf-8")
-        .rstrip("=")
-    )
-    return verifier, challenge
-
-
-def _encode_state(remember: bool, next_path: str, verifier: str) -> str:
+def _encode_state(remember: bool, next_path: str) -> str:
     payload = {
         "nonce": secrets.token_urlsafe(16),
         "remember": bool(remember),
         "next": _sanitize_next_path(next_path),
-        "pkce_verifier": verifier,
         "exp": int((datetime.now(timezone.utc) + timedelta(minutes=10)).timestamp()),
     }
     return jwt.encode(payload, config.jwt_secret_key, algorithm="HS256")
@@ -136,8 +133,8 @@ def _encode_state(remember: bool, next_path: str, verifier: str) -> str:
 def _decode_state(state: str) -> dict:
     try:
         return jwt.decode(state, config.jwt_secret_key, algorithms=["HS256"])
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid OAuth state.")
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid OAuth state.") from exc
 
 
 @router.get("/google/login")
@@ -146,18 +143,16 @@ def google_login(request: Request) -> RedirectResponse:
         client_id, _secret, redirect_uri = _google_config()
     except HTTPException:
         return _login_error_redirect("Google sign-in is not configured yet.")
+
     remember = request.query_params.get("remember") == "1"
     next_path = _sanitize_next_path(request.query_params.get("next"))
-    verifier, challenge = _pkce_pair()
-    state = _encode_state(remember, next_path, verifier)
+    state = _encode_state(remember, next_path)
     params = {
         "client_id": client_id,
         "redirect_uri": redirect_uri,
         "response_type": "code",
         "scope": "openid email profile",
         "state": state,
-        "code_challenge": challenge,
-        "code_challenge_method": "S256",
     }
     url = "https://accounts.google.com/o/oauth2/v2/auth?" + urlencode(params)
     return RedirectResponse(url)
@@ -169,29 +164,35 @@ def google_callback(request: Request, db: Session = Depends(get_db)) -> Redirect
     state = request.query_params.get("state") or ""
     if not code:
         return _login_error_redirect("Google sign-in did not return an authorization code.")
+
     try:
         state_payload = _decode_state(state)
     except HTTPException:
         return _login_error_redirect("Google sign-in expired. Please try again.")
+
     next_path = _sanitize_next_path(str(state_payload.get("next") or "/"))
-    code_verifier = str(state_payload.get("pkce_verifier") or "").strip()
-    if not code_verifier:
-        return _login_error_redirect("Google sign-in expired. Please try again.")
 
     try:
         client_id, client_secret, redirect_uri = _google_config()
     except HTTPException:
         return _login_error_redirect("Google sign-in is not configured yet.")
+
+    token_url = "https://oauth2.googleapis.com/token"
     try:
-        token_resp = _exchange_google_token(
-            code=code,
-            client_id=client_id,
-            client_secret=client_secret,
-            redirect_uri=redirect_uri,
-            code_verifier=code_verifier,
+        token_resp = httpx.post(
+            token_url,
+            data={
+                "code": code,
+                "client_id": client_id,
+                "client_secret": client_secret,
+                "redirect_uri": redirect_uri,
+                "grant_type": "authorization_code",
+            },
+            timeout=10,
         )
     except httpx.RequestError:
         return _login_error_redirect("Could not reach Google during sign-in.")
+
     if token_resp.status_code != 200:
         return _login_error_redirect("Google rejected the sign-in request.")
 
@@ -201,7 +202,7 @@ def google_callback(request: Request, db: Session = Depends(get_db)) -> Redirect
         return _login_error_redirect("Google did not return an ID token.")
 
     try:
-        id_info = _verify_google_id_token(raw_id_token, client_id)
+        id_info = id_token.verify_oauth2_token(raw_id_token, grequests.Request(), client_id)
     except Exception:
         return _login_error_redirect("Could not verify the Google account response.")
 
@@ -219,21 +220,21 @@ def google_callback(request: Request, db: Session = Depends(get_db)) -> Redirect
     if email_verified not in {True, "true", "True", 1, "1"}:
         return _login_error_redirect("Your Google account email is not verified.")
 
-    try:
-        user, org_id, factory_id = get_or_create_google_user(
-            db,
-            email=email,
-            name=name,
-            google_id=google_id,
-            picture=picture,
-        )
-    except HTTPException as error:
-        return _login_error_redirect(str(error.detail))
-    active_factory_id = _resolve_active_factory_id(
+    user, org_id, factory_id = get_or_create_google_user(
         db,
-        user_id=user.id,
-        preferred_factory_id=None,
+        email=email,
+        name=name,
+        google_id=google_id,
+        picture=picture,
     )
+
+    active_factory_id = _resolve_recent_factory_id(db, user_id=user.id)
+    if not active_factory_id:
+        active_factory_id = _resolve_active_factory_id(
+            db,
+            user_id=user.id,
+            preferred_factory_id=None,
+        )
     role_row = None
     if active_factory_id:
         role_row = (
@@ -253,6 +254,7 @@ def google_callback(request: Request, db: Session = Depends(get_db)) -> Redirect
         )
         active_factory_id = role_row.factory_id if role_row else factory_id
     active_role = role_row.role.value if role_row else user.role.value
+
     user.last_login = datetime.now(timezone.utc)
     _log_auth_event(
         db,

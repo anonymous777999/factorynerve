@@ -33,14 +33,11 @@ def create_or_update_pending_registration(
     *,
     name: str,
     email: str,
-    org_id: str | None,
-    invited_by_user_id: int | None,
     password_hash: str,
     requested_role: UserRole,
     factory_name: str,
     company_code: str | None,
     phone_number: str | None,
-    custom_note: str | None,
     ttl_hours: int,
 ) -> str:
     now = datetime.now(timezone.utc)
@@ -50,14 +47,11 @@ def create_or_update_pending_registration(
         record = PendingRegistration(
             name=name,
             email=email,
-            org_id=org_id,
-            invited_by_user_id=invited_by_user_id,
             password_hash=password_hash,
             requested_role=requested_role,
             factory_name=factory_name,
             company_code=company_code,
             phone_number=phone_number,
-            custom_note=custom_note,
             token_hash=_hash_token(raw),
             created_at=now,
             updated_at=now,
@@ -70,14 +64,11 @@ def create_or_update_pending_registration(
         return raw
 
     record.name = name
-    record.org_id = org_id
-    record.invited_by_user_id = invited_by_user_id
     record.password_hash = password_hash
     record.requested_role = requested_role
     record.factory_name = factory_name
     record.company_code = company_code
     record.phone_number = phone_number
-    record.custom_note = custom_note
     record.token_hash = _hash_token(raw)
     record.updated_at = now
     record.verification_sent_at = now

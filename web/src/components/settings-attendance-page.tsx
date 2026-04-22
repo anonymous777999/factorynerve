@@ -74,7 +74,7 @@ function parseIntegerField(
 }
 
 export default function SettingsAttendancePage() {
-  const { user, activeFactory, loading, error: sessionError } = useSession();
+  const { user, loading, error: sessionError } = useSession();
   const [tab, setTab] = useState<SettingsTab>("employees");
   const [profiles, setProfiles] = useState<EmployeeProfileItem[]>([]);
   const [shiftTemplates, setShiftTemplates] = useState<ShiftTemplateItem[]>([]);
@@ -272,7 +272,7 @@ export default function SettingsAttendancePage() {
 
   if (loading || (pageLoading && user && canManage)) {
     return (
-      <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
+      <main className="min-h-screen px-4 py-8 md:px-8">
         <div className="mx-auto max-w-7xl space-y-6">
           <Skeleton className="h-36 rounded-[2rem]" />
           <Skeleton className="h-[40rem] rounded-2xl" />
@@ -287,8 +287,8 @@ export default function SettingsAttendancePage() {
         <Card className="w-full">
           <CardHeader><CardTitle>Attendance Admin</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
-            <Link href="/access"><Button>Open Login</Button></Link>
+            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
+            <Link href="/access"><Button>Open Access</Button></Link>
           </CardContent>
         </Card>
       </main>
@@ -310,43 +310,82 @@ export default function SettingsAttendancePage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <main className="min-h-screen px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
         <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.9)] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">Attendance Admin</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Roster, shift, and review rules for {activeFactory?.name || user.factory_name}</h1>
+              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Keep roster and shifts ready for review</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Map people to departments and default shifts, then define the shift windows that power punch, live board, and review logic.
+                Update the team profile first, then shape the shift windows that power punch, live board, and review logic.
               </p>
             </div>
-            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-              <Link href="/attendance/review" className="w-full sm:w-auto"><Button className="w-full sm:w-auto" variant="outline">Attendance Review</Button></Link>
-              <Link href="/attendance/reports" className="w-full sm:w-auto"><Button className="w-full sm:w-auto" variant="outline">Attendance Reports</Button></Link>
-            </div>
+            {/* AUDIT: BUTTON_CLUTTER - move companion attendance routes into a secondary tray so the active admin editor stays primary. */}
+            <details className="group min-w-[220px] rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)]">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
+                Attendance tools
+                <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
+                <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
+              </summary>
+              <div className="flex flex-wrap gap-3 border-t border-[var(--border)] px-4 py-4">
+                <Link href="/attendance/review"><Button variant="outline">Review</Button></Link>
+                <Link href="/attendance/reports"><Button variant="outline">Reports</Button></Link>
+              </div>
+            </details>
           </div>
+        </section>
+
+        {/* AUDIT: FLOW_BROKEN - add a short setup path so the page clearly points from team setup to shift rules. */}
+        <section className="grid gap-4 lg:grid-cols-3">
+          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
+            <CardHeader className="space-y-2">
+              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">1. Pick a lane</div>
+              <CardTitle className="text-lg">{tab === "employees" ? "Edit team profiles" : "Edit shift templates"}</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-[var(--muted)]">
+              Use the tabs to keep one admin task open at a time instead of working across both forms together.
+            </CardContent>
+          </Card>
+          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
+            <CardHeader className="space-y-2">
+              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">2. Update details</div>
+              <CardTitle className="text-lg">Save the active editor</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-[var(--muted)]">
+              Keep the selected profile or shift template focused until the form is saved successfully.
+            </CardContent>
+          </Card>
+          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
+            <CardHeader className="space-y-2">
+              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">3. Review output</div>
+              <CardTitle className="text-lg">Use review and reports later</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-[var(--muted)]">
+              Review and reports stay available in the tools tray once the active admin update is done.
+            </CardContent>
+          </Card>
         </section>
 
         {status ? <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
         {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
         {sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{sessionError}</div> : null}
 
-        <div className="-mx-1 flex gap-3 overflow-x-auto px-1 pb-1 sm:flex-wrap sm:overflow-visible">
-          <Button className="shrink-0" variant={tab === "employees" ? "primary" : "outline"} onClick={() => setTab("employees")}>Employee Profiles</Button>
-          <Button className="shrink-0" variant={tab === "shifts" ? "primary" : "outline"} onClick={() => setTab("shifts")}>Shift Templates</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant={tab === "employees" ? "primary" : "outline"} onClick={() => setTab("employees")}>Team</Button>
+          <Button variant={tab === "shifts" ? "primary" : "outline"} onClick={() => setTab("shifts")}>Shifts</Button>
         </div>
 
         {tab === "employees" ? (
-          <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-            <Card className="order-2 xl:order-1">
+          <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+            <Card>
               <CardHeader><CardTitle className="text-xl">Factory Team</CardTitle></CardHeader>
               <CardContent className="space-y-3">
                 {profiles.map((profile) => (
                   <button
                     key={profile.user_id}
                     type="button"
-                    className={`w-full rounded-2xl border p-3.5 text-left transition sm:p-4 ${selectedUserId === String(profile.user_id) ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.12)]" : "border-[var(--border)] bg-[var(--card-strong)]"}`}
+                    className={`w-full rounded-2xl border p-4 text-left transition ${selectedUserId === String(profile.user_id) ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.12)]" : "border-[var(--border)] bg-[var(--card-strong)]"}`}
                     onClick={() => applySelectedUser(String(profile.user_id))}
                   >
                     <div className="font-semibold text-[var(--text)]">{profile.name}</div>
@@ -356,7 +395,7 @@ export default function SettingsAttendancePage() {
               </CardContent>
             </Card>
 
-            <Card className="order-1 xl:order-2">
+            <Card>
               <CardHeader><CardTitle className="text-xl">Profile Editor</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div>
@@ -366,7 +405,7 @@ export default function SettingsAttendancePage() {
                     {profiles.map((profile) => <option key={profile.user_id} value={profile.user_id}>{profile.name} ({profile.user_code})</option>)}
                   </Select>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2">
                   <div><label className="text-sm text-[var(--muted)]">Employee Code</label><Input value={employeeForm.employee_code} onChange={(event) => setEmployeeForm((current) => ({ ...current, employee_code: event.target.value }))} placeholder="EMP-102" /></div>
                   <div><label className="text-sm text-[var(--muted)]">Department</label><Input value={employeeForm.department} onChange={(event) => setEmployeeForm((current) => ({ ...current, department: event.target.value }))} /></div>
                   <div><label className="text-sm text-[var(--muted)]">Designation</label><Input value={employeeForm.designation} onChange={(event) => setEmployeeForm((current) => ({ ...current, designation: event.target.value }))} /></div>
@@ -376,13 +415,13 @@ export default function SettingsAttendancePage() {
                   <div><label className="text-sm text-[var(--muted)]">Reporting Manager</label><Select value={employeeForm.reporting_manager_id} onChange={(event) => setEmployeeForm((current) => ({ ...current, reporting_manager_id: event.target.value }))}><option value="">No reporting manager</option>{managerOptions.map((item) => <option key={item.user_id} value={item.user_id}>{item.name}</option>)}</Select></div>
                   <div><label className="text-sm text-[var(--muted)]">Active Status</label><Select value={employeeForm.is_active ? "active" : "inactive"} onChange={(event) => setEmployeeForm((current) => ({ ...current, is_active: event.target.value === "active" }))}><option value="active">Active</option><option value="inactive">Inactive</option></Select></div>
                 </div>
-                <Button className="w-full sm:w-auto" onClick={() => void handleEmployeeSave()} disabled={busy || !employeeForm.user_id}>{busy ? "Saving..." : "Save Employee Profile"}</Button>
+                <Button onClick={() => void handleEmployeeSave()} disabled={busy || !employeeForm.user_id}>{busy ? "Saving..." : "Save profile"}</Button>
               </CardContent>
             </Card>
           </section>
         ) : (
-          <section className="grid gap-5 xl:grid-cols-[0.9fr_1.1fr]">
-            <Card className="order-2 xl:order-1">
+          <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+            <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-xl">Shift Templates</CardTitle>
                 <Button variant="ghost" onClick={() => { setSelectedShiftId(""); setShiftForm(emptyShiftForm()); }}>New</Button>
@@ -392,7 +431,7 @@ export default function SettingsAttendancePage() {
                   <button
                     key={item.id}
                     type="button"
-                    className={`w-full rounded-2xl border p-3.5 text-left transition sm:p-4 ${selectedShiftId === String(item.id) ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.12)]" : "border-[var(--border)] bg-[var(--card-strong)]"}`}
+                    className={`w-full rounded-2xl border p-4 text-left transition ${selectedShiftId === String(item.id) ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.12)]" : "border-[var(--border)] bg-[var(--card-strong)]"}`}
                     onClick={() => applySelectedShift(String(item.id))}
                   >
                     <div className="font-semibold text-[var(--text)]">{item.shift_name}</div>
@@ -402,26 +441,23 @@ export default function SettingsAttendancePage() {
               </CardContent>
             </Card>
 
-            <Card className="order-1 xl:order-2">
+            <Card>
               <CardHeader><CardTitle className="text-xl">Shift Editor</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div><label className="text-sm text-[var(--muted)]">Template</label><Select value={selectedShiftId} onChange={(event) => applySelectedShift(event.target.value)}><option value="">Create new shift</option>{shiftTemplates.map((item) => <option key={item.id} value={item.id}>{item.shift_name}</option>)}</Select></div>
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 md:grid-cols-2">
                   <div><label className="text-sm text-[var(--muted)]">Shift Name</label><Input value={shiftForm.shift_name} onChange={(event) => setShiftForm((current) => ({ ...current, shift_name: event.target.value }))} /></div>
                   <div><label className="text-sm text-[var(--muted)]">Grace Minutes</label><Input type="number" min="0" max="180" step="1" value={shiftForm.grace_minutes} onChange={(event) => setShiftForm((current) => ({ ...current, grace_minutes: event.target.value }))} /></div>
                   <div><label className="text-sm text-[var(--muted)]">Start Time</label><Input type="time" value={shiftForm.start_time} onChange={(event) => setShiftForm((current) => ({ ...current, start_time: event.target.value }))} /></div>
                   <div><label className="text-sm text-[var(--muted)]">End Time</label><Input type="time" value={shiftForm.end_time} onChange={(event) => setShiftForm((current) => ({ ...current, end_time: event.target.value }))} /></div>
                   <div><label className="text-sm text-[var(--muted)]">OT After Minutes</label><Input type="number" min="0" max="1440" step="1" value={shiftForm.overtime_after_minutes} onChange={(event) => setShiftForm((current) => ({ ...current, overtime_after_minutes: event.target.value }))} /></div>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(15,19,30,0.56)] p-4 sm:col-span-2">
-                    <div className="text-sm font-medium text-[var(--text)]">Shift status</div>
-                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                      <label className="flex items-center gap-2 text-sm text-[var(--muted)]"><input type="checkbox" checked={shiftForm.cross_midnight} onChange={(event) => setShiftForm((current) => ({ ...current, cross_midnight: event.target.checked }))} />Cross midnight</label>
-                      <label className="flex items-center gap-2 text-sm text-[var(--muted)]"><input type="checkbox" checked={shiftForm.is_default} onChange={(event) => setShiftForm((current) => ({ ...current, is_default: event.target.checked }))} />Default shift</label>
-                      <label className="flex items-center gap-2 text-sm text-[var(--muted)] sm:col-span-2"><input type="checkbox" checked={shiftForm.is_active} onChange={(event) => setShiftForm((current) => ({ ...current, is_active: event.target.checked }))} />Active</label>
-                    </div>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <label className="mt-6 flex items-center gap-2 text-sm text-[var(--muted)]"><input type="checkbox" checked={shiftForm.cross_midnight} onChange={(event) => setShiftForm((current) => ({ ...current, cross_midnight: event.target.checked }))} />Cross midnight</label>
+                    <label className="mt-6 flex items-center gap-2 text-sm text-[var(--muted)]"><input type="checkbox" checked={shiftForm.is_default} onChange={(event) => setShiftForm((current) => ({ ...current, is_default: event.target.checked }))} />Default shift</label>
+                    <label className="flex items-center gap-2 text-sm text-[var(--muted)]"><input type="checkbox" checked={shiftForm.is_active} onChange={(event) => setShiftForm((current) => ({ ...current, is_active: event.target.checked }))} />Active</label>
                   </div>
                 </div>
-                <Button className="w-full sm:w-auto" onClick={() => void handleShiftSave()} disabled={busy || !shiftForm.shift_name}>{busy ? "Saving..." : "Save Shift Template"}</Button>
+                <Button onClick={() => void handleShiftSave()} disabled={busy || !shiftForm.shift_name}>{busy ? "Saving..." : "Save shift"}</Button>
               </CardContent>
             </Card>
           </section>

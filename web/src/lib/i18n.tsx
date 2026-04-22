@@ -1,32 +1,50 @@
 ﻿"use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
-export type AppLanguage = "en" | "hi" | "mr";
+import {
+  detectBrowserLanguage,
+  ensureNamespacesLoaded,
+  getNamespaceTranslation,
+  preloadNamespaces,
+  subscribeTranslationRevision,
+  type NamespaceName,
+} from "@/lib/i18n-runtime";
+
+export type AppLanguage = "en" | "hi" | "mr" | "ta" | "gu";
+type LegacyBridgeLanguage = "hi" | "mr";
+
+type TranslationParams = Record<string, string | number | boolean | null | undefined>;
+type TranslationArg = string | TranslationParams | undefined;
 
 type I18nContextValue = {
   language: AppLanguage;
   locale: string;
+  revision: number;
   setLanguage: (next: AppLanguage) => void;
-  t: (key: string, fallback?: string) => string;
+  t: (key: string, fallbackOrParams?: TranslationArg, maybeParams?: TranslationParams) => string;
   tp: (text: string) => string;
 };
 
 const LANGUAGE_STORAGE_KEY = "dpr:web:language";
 const DEFAULT_LANGUAGE: AppLanguage = "en";
-const VALID_LANGUAGES: AppLanguage[] = ["en", "hi", "mr"];
+const VALID_LANGUAGES: AppLanguage[] = ["en", "hi", "mr", "ta", "gu"];
 const LANGUAGE_SERVER_SNAPSHOT: AppLanguage = DEFAULT_LANGUAGE;
 const MOJIBAKE_PATTERN = /(à¤|à¥|Ã|Â|â€|ðŸ)/;
 const LANGUAGE_LOCALE_MAP: Record<AppLanguage, string> = {
   en: "en-IN",
   hi: "hi-IN",
   mr: "mr-IN",
+  ta: "ta-IN",
+  gu: "gu-IN",
 };
 const TRANSLATABLE_ATTRIBUTES = ["aria-label", "placeholder", "title"] as const;
 const NORMALIZED_SPACE_PATTERN = /\s+/g;
 const WORD_PATTERN = /([A-Za-z][A-Za-z'&/-]*)/g;
+const EAGER_NAMESPACES: NamespaceName[] = ["common", "navigation"];
+const missingTranslationWarnings = new Set<string>();
 
-const TRANSLATIONS: Record<Exclude<AppLanguage, "en">, Record<string, string>> = {
+const TRANSLATIONS: Record<LegacyBridgeLanguage, Record<string, string>> = {
   hi: {
     "language.label": "भाषा",
     "language.english": "English",
@@ -144,7 +162,7 @@ const TRANSLATIONS: Record<Exclude<AppLanguage, "en">, Record<string, string>> =
     "dashboard.action.view_plans": "प्लान देखें",
     "dashboard.action.open_billing": "बिलिंग खोलें",
     "dashboard.action.open_ai": "AI इनसाइट्स खोलें",
-    "dashboard.action.open_login": "लॉगिन खोलें",
+    "dashboard.action.open_login": "एक्सेस खोलें",
     "dashboard.action.register": "रजिस्टर",
     "dashboard.action.open_control_tower": "कंट्रोल टॉवर खोलें",
     "dashboard.action.open_analysis": "विश्लेषण खोलें",
@@ -396,7 +414,7 @@ const TRANSLATIONS: Record<Exclude<AppLanguage, "en">, Record<string, string>> =
     "dashboard.action.view_plans": "प्लॅन्स पहा",
     "dashboard.action.open_billing": "बिलिंग उघडा",
     "dashboard.action.open_ai": "AI इनसाइट्स उघडा",
-    "dashboard.action.open_login": "लॉगिन उघडा",
+    "dashboard.action.open_login": "अॅक्सेस उघडा",
     "dashboard.action.register": "नोंदणी",
     "dashboard.action.open_control_tower": "कंट्रोल टॉवर उघडा",
     "dashboard.action.open_analysis": "विश्लेषण उघडा",
@@ -533,7 +551,7 @@ const TRANSLATIONS: Record<Exclude<AppLanguage, "en">, Record<string, string>> =
   },
 };
 
-const PHRASE_TRANSLATIONS: Record<Exclude<AppLanguage, "en">, Record<string, string>> = {
+const PHRASE_TRANSLATIONS: Record<LegacyBridgeLanguage, Record<string, string>> = {
   hi: {
     "Factory not selected": "फैक्टरी चयनित नहीं है",
     "Account Access": "अकाउंट एक्सेस",
@@ -566,7 +584,7 @@ const PHRASE_TRANSLATIONS: Record<Exclude<AppLanguage, "en">, Record<string, str
     "Profile": "प्रोफाइल",
     "Punch In": "पंच इन",
     "Punch Out": "पंच आउट",
-    "Open Login": "लॉगिन खोलें",
+    "Open Login": "एक्सेस खोलें",
     "Open Settings": "सेटिंग्स खोलें",
     "Open Reports": "रिपोर्ट खोलें",
     "Open Review Queue": "रिव्यू क्यू खोलें",
@@ -629,7 +647,7 @@ const PHRASE_TRANSLATIONS: Record<Exclude<AppLanguage, "en">, Record<string, str
     "Profile": "प्रोफाइल",
     "Punch In": "पंच इन",
     "Punch Out": "पंच आउट",
-    "Open Login": "लॉगिन उघडा",
+    "Open Login": "अॅक्सेस उघडा",
     "Open Settings": "सेटिंग्स उघडा",
     "Open Reports": "रिपोर्ट उघडा",
     "Open Review Queue": "रिव्ह्यू क्यू उघडा",
@@ -662,7 +680,7 @@ const PHRASE_TRANSLATIONS: Record<Exclude<AppLanguage, "en">, Record<string, str
   },
 };
 
-const WORD_TRANSLATIONS: Record<Exclude<AppLanguage, "en">, Record<string, string>> = {
+const WORD_TRANSLATIONS: Record<LegacyBridgeLanguage, Record<string, string>> = {
   hi: {
     account: "अकाउंट",
     access: "एक्सेस",
@@ -857,6 +875,67 @@ function parseLanguage(value: string | null | undefined): AppLanguage {
     : DEFAULT_LANGUAGE;
 }
 
+function parseTranslationArgs(fallbackOrParams?: TranslationArg, maybeParams?: TranslationParams) {
+  if (typeof fallbackOrParams === "string") {
+    return {
+      fallback: fallbackOrParams,
+      params: maybeParams,
+    };
+  }
+
+  return {
+    fallback: undefined,
+    params: fallbackOrParams,
+  };
+}
+
+function interpolateTranslation(template: string, params?: TranslationParams) {
+  if (!params) {
+    return template;
+  }
+
+  return template.replace(/\{\{\s*([^}]+?)\s*\}\}/g, (_, token: string) => {
+    const value = params[token.trim()];
+    return value === undefined || value === null ? "" : String(value);
+  });
+}
+
+function resolvePluralKey(key: string, params?: TranslationParams) {
+  const count = typeof params?.count === "number" ? params.count : undefined;
+  if (count === undefined) {
+    return key;
+  }
+  return count === 1 ? `${key}.one` : `${key}.other`;
+}
+
+function recordMissingTranslation(language: AppLanguage, key: string) {
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+
+  const warningKey = `${language}:${key}`;
+  if (missingTranslationWarnings.has(warningKey)) {
+    return;
+  }
+
+  missingTranslationWarnings.add(warningKey);
+  console.warn(`[i18n] Missing translation for ${warningKey}`);
+}
+
+function recordBridgeHit(kind: "legacy-key" | "legacy-dom", language: AppLanguage, key: string) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const target = window as typeof window & {
+    __DPR_I18N_STATS__?: Record<string, number>;
+  };
+
+  const statKey = `bridge:${kind}:${language}:${key}`;
+  target.__DPR_I18N_STATS__ = target.__DPR_I18N_STATS__ || {};
+  target.__DPR_I18N_STATS__[statKey] = (target.__DPR_I18N_STATS__[statKey] || 0) + 1;
+}
+
 function normalizeTranslationValue(value: string): string {
   if (!value || !MOJIBAKE_PATTERN.test(value)) {
     return value;
@@ -885,13 +964,13 @@ function normalizePhraseKey(value: string): string {
   return normalizeTranslationValue(value).replace(NORMALIZED_SPACE_PATTERN, " ").trim();
 }
 
-function translateExactPhrase(value: string, language: Exclude<AppLanguage, "en">): string | null {
+function translateExactPhrase(value: string, language: LegacyBridgeLanguage): string | null {
   const normalized = normalizePhraseKey(value);
   if (!normalized) return null;
   return PHRASE_TRANSLATIONS[language][normalized] || null;
 }
 
-function translateWords(value: string, language: Exclude<AppLanguage, "en">): string {
+function translateWords(value: string, language: LegacyBridgeLanguage): string {
   let translatedCount = 0;
   let totalWords = 0;
 
@@ -920,6 +999,12 @@ function translateWords(value: string, language: Exclude<AppLanguage, "en">): st
 function translatePhraseText(value: string, language: AppLanguage): string {
   const normalized = normalizeTranslationValue(value);
   if (!normalized || language === "en") {
+    return normalized;
+  }
+
+  recordBridgeHit("legacy-dom", language, normalized);
+
+  if (language !== "hi" && language !== "mr") {
     return normalized;
   }
 
@@ -1055,7 +1140,11 @@ function getLanguageSnapshot() {
   if (typeof window === "undefined") {
     return LANGUAGE_SERVER_SNAPSHOT;
   }
-  return parseLanguage(window.localStorage.getItem(LANGUAGE_STORAGE_KEY));
+  const stored = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+  if (stored) {
+    return parseLanguage(stored);
+  }
+  return parseLanguage(detectBrowserLanguage(VALID_LANGUAGES, DEFAULT_LANGUAGE));
 }
 
 function getLanguageServerSnapshot() {
@@ -1078,11 +1167,28 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     getLanguageSnapshot,
     getLanguageServerSnapshot,
   );
+  const [translationRevision, setTranslationRevision] = useState(0);
+
+  useEffect(() => subscribeTranslationRevision(() => setTranslationRevision((current) => current + 1)), []);
 
   useEffect(() => {
     if (typeof document !== "undefined") {
       document.documentElement.lang = language;
+      document.documentElement.dir = "ltr";
     }
+  }, [language]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+    if (!window.localStorage.getItem(LANGUAGE_STORAGE_KEY)) {
+      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language);
+    }
+  }, [language]);
+
+  useEffect(() => {
+    preloadNamespaces(language, EAGER_NAMESPACES);
   }, [language]);
 
   const locale = LANGUAGE_LOCALE_MAP[language] || LANGUAGE_LOCALE_MAP.en;
@@ -1092,12 +1198,27 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const t = useCallback(
-    (key: string, fallback?: string) => {
+    (key: string, fallbackOrParams?: TranslationArg, maybeParams?: TranslationParams) => {
+      const { fallback, params } = parseTranslationArgs(fallbackOrParams, maybeParams);
       if (!key) return fallback || "";
-      if (language === "en") return fallback || key;
-      const value = TRANSLATIONS[language][key];
-      const normalized = value ? normalizeTranslationValue(value) : undefined;
-      return normalized || fallback || key;
+
+      const pluralKey = resolvePluralKey(key, params);
+      const namespacedValue = getNamespaceTranslation(language, pluralKey) || getNamespaceTranslation(language, key);
+      if (namespacedValue) {
+        return interpolateTranslation(namespacedValue, params);
+      }
+
+      if (language === "hi" || language === "mr") {
+        const legacyValue = TRANSLATIONS[language][pluralKey] || TRANSLATIONS[language][key];
+        const normalized = legacyValue ? normalizeTranslationValue(legacyValue) : undefined;
+        if (normalized) {
+          recordBridgeHit("legacy-key", language, key);
+          return interpolateTranslation(normalized, params);
+        }
+      }
+
+      recordMissingTranslation(language, key);
+      return interpolateTranslation(fallback || key, params);
     },
     [language],
   );
@@ -1163,11 +1284,12 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
     () => ({
       language,
       locale,
+      revision: translationRevision,
       setLanguage,
       t,
       tp,
     }),
-    [language, locale, setLanguage, t, tp],
+    [language, locale, setLanguage, t, tp, translationRevision],
   );
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
@@ -1179,6 +1301,14 @@ export function useI18n() {
     throw new Error("useI18n must be used inside I18nProvider.");
   }
   return ctx;
+}
+
+export function useI18nNamespaces(namespaces: NamespaceName[]) {
+  const { language } = useI18n();
+
+  useEffect(() => {
+    void ensureNamespacesLoaded(language, namespaces);
+  }, [language, namespaces]);
 }
 
 export function localeForLanguage(language: AppLanguage): string {

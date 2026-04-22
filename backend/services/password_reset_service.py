@@ -29,16 +29,10 @@ def _to_utc(value: datetime) -> datetime:
 
 
 def create_reset_token(db: Session, *, user: User, ttl_minutes: int) -> str:
-    now = datetime.now(timezone.utc)
-    db.query(PasswordResetToken).filter(
-        PasswordResetToken.user_id == user.id,
-        PasswordResetToken.used_at.is_(None),
-    ).update({"used_at": now}, synchronize_session=False)
     raw = secrets.token_urlsafe(32)
     record = PasswordResetToken(
         user_id=user.id,
         token_hash=_hash_token(raw),
-        created_at=now,
         expires_at=_expires_at(ttl_minutes),
     )
     db.add(record)

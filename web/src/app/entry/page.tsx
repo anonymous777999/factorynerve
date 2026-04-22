@@ -20,7 +20,6 @@ import {
   type EntryPayload,
   type TemplateFieldMap,
 } from "@/lib/offline-entries";
-import { useOnlineStatus } from "@/lib/use-online-status";
 import { coerceIntegerInput } from "@/lib/validation";
 import { signalWorkflowRefresh } from "@/lib/workflow-sync";
 import { EntryPageSkeleton } from "@/components/page-skeletons";
@@ -288,15 +287,14 @@ export default function EntryPage() {
   const [form, setForm] = useState<EntryDraft>(() => blankDraft());
   const [shiftMap, setShiftMap] = useState<Record<string, number>>({});
   const [queueCount, setQueueCount] = useState(0);
+  const [online, setOnline] = useState(true);
   const [busy, setBusy] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [draftReady, setDraftReady] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [activeStep, setActiveStep] = useState<StepIndex>(0);
-  const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
   const queryAppliedRef = useRef(false);
-  const online = useOnlineStatus();
 
   const loadShiftMap = useCallback(async (date: string) => {
     const response = await listEntries({ date, page: 1, page_size: 50 });
@@ -365,6 +363,19 @@ export default function EntryPage() {
       template_fields: normalizeTemplateFields(templateContext, prev.template_fields),
     }));
   }, [templateContext]);
+
+  useEffect(() => {
+    if (typeof navigator === "undefined") return;
+    setOnline(navigator.onLine);
+    const onOnline = () => setOnline(true);
+    const onOffline = () => setOnline(false);
+    window.addEventListener("online", onOnline);
+    window.addEventListener("offline", onOffline);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      window.removeEventListener("offline", onOffline);
+    };
+  }, []);
 
   useEffect(() => {
     if (!user) return;
@@ -618,8 +629,8 @@ export default function EntryPage() {
 
         const baseMessage =
           created.client_request_id === payload.client_request_id
-            ? "Entry submitted."
-            : "Entry synced.";
+            ? `Entry submitted successfully. Entry ID ${created.id}.`
+            : `Entry synced successfully. Entry ID ${created.id}.`;
 
         setStatus(
           created.summary_job_id
@@ -790,34 +801,18 @@ export default function EntryPage() {
         ? "Submitting..."
         : "Submit Entry"
       : "Next";
-  const connectivityNote = !online
-    ? {
-        tone: "offline" as const,
-        title: "Offline entry mode is active",
-        detail:
-          queueCount > 0
-            ? `${queueCount} queued entr${queueCount === 1 ? "y is" : "ies are"} already saved on this device. New submissions will also queue locally and sync automatically when the network returns.`
-            : "Drafts keep saving on this device, and new shift submissions will queue locally until the network returns.",
-      }
-    : queueCount > 0
-      ? {
-          tone: "queue" as const,
-          title: "Queued entry sync is still in progress",
-          detail: `Syncing ${queueCount} queued entr${queueCount === 1 ? "y" : "ies"}...`,
-        }
-      : null;
 
   return (
-    <main className="min-h-screen bg-[#0B0F19] px-4 pb-[calc(7.75rem+env(safe-area-inset-bottom))] pt-6 text-white md:px-6 lg:pb-10 lg:pt-8">
+    <main className="min-h-screen bg-[#0B0F19] px-4 pb-28 pt-6 text-white md:px-6 lg:pb-10 lg:pt-8">
       <div className="mx-auto max-w-7xl">
         <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
             <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-1 text-xs uppercase tracking-[0.22em] text-cyan-200">
-              Entry Tab
+              Shift entry
             </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight md:text-4xl">Daily Production Entry</h1>
+            <h1 className="mt-4 text-3xl font-semibold tracking-tight md:text-4xl">Finish one shift before the next one starts piling up</h1>
             <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-              Fill one step at a time. Drafts save automatically, offline entries queue safely, and the live summary keeps the shift visible while you type.
+              Move step by step, keep the live shift visible, and let drafts or offline sync protect the entry in the background.
             </p>
           </div>
 
@@ -834,32 +829,25 @@ export default function EntryPage() {
             >
               {online ? "Online" : "Offline"}
             </span>
-            <span className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-slate-200">
+          </div>
+        </header>
+
+        {/* AUDIT: BUTTON_CLUTTER - move route and queue utilities into a secondary tray so the active step stays primary. */}
+        <details className="mt-5 rounded-[24px] border border-white/10 bg-white/5 p-4">
+          <summary className="cursor-pointer list-none text-sm font-semibold text-white marker:hidden">
+            Entry tools
+          </summary>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <span className="rounded-full border border-white/10 bg-[#0E1524]/80 px-4 py-2 text-xs text-slate-200">
               Queue {queueCount}
             </span>
             <Link href="/dashboard">
               <Button variant="outline" className="h-10 px-4 text-xs">
-                Back to Dashboard
+                Dashboard
               </Button>
             </Link>
           </div>
-        </header>
-
-        {connectivityNote ? (
-          <div
-            className={`mt-5 rounded-[28px] border px-4 py-4 text-sm sm:px-5 ${
-              connectivityNote.tone === "offline"
-                ? "border-amber-400/24 bg-amber-400/10 text-amber-50"
-                : "border-cyan-300/24 bg-cyan-300/10 text-cyan-50"
-            }`}
-          >
-            <div className="text-[11px] font-semibold uppercase tracking-[0.2em]">
-              {connectivityNote.tone === "offline" ? "Offline-safe flow" : "Queue status"}
-            </div>
-            <div className="mt-2 text-base font-semibold">{connectivityNote.title}</div>
-            <div className="mt-2 leading-6 opacity-90">{connectivityNote.detail}</div>
-          </div>
-        ) : null}
+        </details>
 
         <div className="mt-8 grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_400px]">
           <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(21,28,44,0.92),rgba(11,15,25,0.98))] p-5 shadow-[0_24px_80px_rgba(6,10,18,0.48)] backdrop-blur md:p-7">
@@ -915,162 +903,6 @@ export default function EntryPage() {
                   </button>
                 );
               })}
-            </div>
-
-            <div className="mt-6 lg:hidden">
-              <div className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(17,25,40,0.94),rgba(11,15,25,0.98))] p-4 shadow-[0_20px_50px_rgba(6,10,18,0.28)]">
-                <div className="flex items-start justify-between gap-4">
-                  <div>
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Live Summary</div>
-                    <div className="mt-2 text-3xl font-semibold">{performance.toFixed(0)}%</div>
-                    <div className="mt-1 text-sm text-slate-300">{performanceLabel}</div>
-                  </div>
-                  <span
-                    className={`rounded-full border px-3 py-1 text-xs ${
-                      online
-                        ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
-                        : "border-amber-400/20 bg-amber-400/10 text-amber-200"
-                    }`}
-                  >
-                    {online ? "Live" : "Offline"}
-                  </span>
-                </div>
-
-                <div className="mt-4 h-2 rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-[linear-gradient(90deg,#22d3ee,#8b5cf6)] transition-all duration-300"
-                    style={{ width: `${clampProgress(performance)}%` }}
-                  />
-                </div>
-
-                <div className="mt-4 grid grid-cols-2 gap-3">
-                  <div className="rounded-[20px] border border-white/10 bg-white/5 px-4 py-3">
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Alerts</div>
-                    <div className="mt-2 text-lg font-semibold text-white">{alerts.length}</div>
-                  </div>
-                  <div className="rounded-[20px] border border-white/10 bg-white/5 px-4 py-3">
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Queue</div>
-                    <div className="mt-2 text-lg font-semibold text-white">{queueCount}</div>
-                  </div>
-                  <div className="rounded-[20px] border border-white/10 bg-white/5 px-4 py-3">
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Workforce</div>
-                    <div className="mt-2 text-lg font-semibold text-white">{workforceTotal}</div>
-                  </div>
-                  <div className="rounded-[20px] border border-white/10 bg-white/5 px-4 py-3">
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Draft Save</div>
-                    <div className="mt-2 text-lg font-semibold text-white">{draftReady ? "Active" : "Starting"}</div>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex flex-col gap-2 sm:flex-row">
-                  {queueCount ? (
-                    <Button variant="outline" className="h-11 w-full sm:w-auto" onClick={handleSync} disabled={syncing}>
-                      {syncing ? "Syncing..." : "Sync Queue"}
-                    </Button>
-                  ) : null}
-                  <Button
-                    variant="ghost"
-                    className="h-11 w-full sm:w-auto"
-                    onClick={() => setMobileSummaryOpen((current) => !current)}
-                  >
-                    {mobileSummaryOpen ? "Hide Full Summary" : "Show Full Summary"}
-                  </Button>
-                </div>
-
-                {mobileSummaryOpen ? (
-                  <div className="mt-4 space-y-4 border-t border-white/10 pt-4">
-                    <div className="rounded-[20px] border border-white/10 bg-white/5 px-4 py-4">
-                      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Production Snapshot</div>
-                      <div className="mt-3 grid gap-3 text-sm text-slate-300 sm:grid-cols-2">
-                        <div className="flex items-center justify-between gap-3">
-                          <span>Date</span>
-                          <span className="font-semibold text-white">{form.date}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span>Shift</span>
-                          <span className="font-semibold text-white">{formatShiftLabel(form.shift)}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span>Department</span>
-                          <span className="font-semibold text-white">{form.department || "-"}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span>Target</span>
-                          <span className="font-semibold text-white">{form.units_target}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span>Produced</span>
-                          <span className="font-semibold text-white">{form.units_produced}</span>
-                        </div>
-                        <div className="flex items-center justify-between gap-3">
-                          <span>Downtime</span>
-                          <span className="font-semibold text-white">{form.downtime_minutes} min</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="rounded-[20px] border border-white/10 bg-white/5 px-4 py-4">
-                      <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Alerts</div>
-                      {alerts.length ? (
-                        <div className="mt-3 space-y-3">
-                          {alerts.map((alert) => (
-                            <div
-                              key={alert}
-                              className="rounded-[16px] border border-amber-400/15 bg-amber-400/10 px-4 py-3 text-sm text-amber-100"
-                            >
-                              {alert}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="mt-3 rounded-[16px] border border-emerald-400/15 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-100">
-                          No alerts right now.
-                        </div>
-                      )}
-                      {conflictId ? (
-                        <div className="mt-4 text-sm text-slate-300">
-                          Existing shift entry:{" "}
-                          <Link href={`/entry/${conflictId}`} className="text-cyan-200 underline underline-offset-4">
-                            Open #{conflictId}
-                          </Link>
-                        </div>
-                      ) : null}
-                    </div>
-
-                    {traceabilitySummary.length ? (
-                      <div className="rounded-[20px] border border-white/10 bg-white/5 px-4 py-4">
-                        <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Traceability</div>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {traceabilitySummary.map((item) => (
-                            <span
-                              key={item.label}
-                              className="rounded-full border border-white/10 bg-[#0E1524]/80 px-3 py-1 text-xs text-slate-200"
-                            >
-                              {item.label}: {item.value}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-
-                    {submittedShifts.length ? (
-                      <div className="rounded-[20px] border border-white/10 bg-white/5 px-4 py-4">
-                        <div className="text-[11px] uppercase tracking-[0.18em] text-slate-400">Already Submitted</div>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          {submittedShifts.map(([shift, entryId]) => (
-                            <span
-                              key={shift}
-                              className="rounded-full border border-white/10 bg-[#0E1524]/80 px-3 py-1 text-xs text-slate-200"
-                            >
-                              {formatShiftLabel(shift as ShiftValue)} #{entryId}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
             </div>
 
             <div className="mt-6 space-y-4">
@@ -1487,8 +1319,11 @@ export default function EntryPage() {
                 </div>
               </div>
 
-              <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Alerts</div>
+              {/* AUDIT: DENSITY_OVERLOAD - keep shift diagnostics available in secondary reveals so the form and live summary stay dominant. */}
+              <details className="rounded-[28px] border border-white/10 bg-white/5 p-5" open={alerts.length > 0 || Boolean(conflictId)}>
+                <summary className="cursor-pointer list-none text-xs font-medium uppercase tracking-[0.18em] text-slate-400 marker:hidden">
+                  Alerts
+                </summary>
                 {alerts.length ? (
                   <div className="mt-4 space-y-3">
                     {alerts.map((alert) => (
@@ -1513,10 +1348,12 @@ export default function EntryPage() {
                     </Link>
                   </div>
                 ) : null}
-              </div>
+              </details>
 
-              <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Production Snapshot</div>
+              <details className="rounded-[28px] border border-white/10 bg-white/5 p-5" open={activeStep === STEP_DEFINITIONS.length - 1}>
+                <summary className="cursor-pointer list-none text-xs font-medium uppercase tracking-[0.18em] text-slate-400 marker:hidden">
+                  Production snapshot
+                </summary>
                 <div className="mt-4 space-y-3 text-sm text-slate-300">
                   <div className="flex items-center justify-between">
                     <span>Date</span>
@@ -1575,10 +1412,12 @@ export default function EntryPage() {
                     </div>
                   </div>
                 ) : null}
-              </div>
+              </details>
 
-              <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Entry Health</div>
+              <details className="rounded-[28px] border border-white/10 bg-white/5 p-5" open={queueCount > 0}>
+                <summary className="cursor-pointer list-none text-xs font-medium uppercase tracking-[0.18em] text-slate-400 marker:hidden">
+                  Entry health
+                </summary>
                 <div className="mt-4 space-y-3 text-sm text-slate-300">
                   <div className="flex items-center justify-between">
                     <span>Queue Waiting</span>
@@ -1591,16 +1430,16 @@ export default function EntryPage() {
                 </div>
                 {queueCount ? (
                   <Button variant="outline" className="mt-4 h-11 w-full" onClick={handleSync} disabled={syncing}>
-                    {syncing ? "Syncing..." : "Sync Queue Now"}
+                    {syncing ? "Syncing..." : "Sync queue"}
                   </Button>
                 ) : null}
-              </div>
+              </details>
             </div>
           </aside>
         </div>
       </div>
 
-      <div className="safe-inline-pad fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#08101D]/95 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#08101D]/95 px-4 py-4 backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-xl items-center gap-3">
           <button
             type="button"

@@ -10,13 +10,9 @@ import {
   getEmailSummary,
   type EmailSummarySnapshot,
 } from "@/lib/email-summary";
-import { buildTrustAppendix, getReportTrustSummary, type ReportTrustSummary } from "@/lib/report-trust";
 import { getOcrVerificationSummary, type OcrVerificationSummary } from "@/lib/ocr";
 import { getSteelOverview, type SteelOverview } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
-import { humanizeAiProvider, humanizeAiStatus, humanizePlanLabel } from "@/lib/ai-labels";
-import { AiActivationNotice } from "@/components/ai-activation-notice";
-import { TrustChecklist } from "@/components/trust-checklist";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -56,7 +52,6 @@ export default function EmailSummaryPage() {
   const [startDate, setStartDate] = useState(daysAgo(7));
   const [endDate, setEndDate] = useState(todayValue());
   const [summary, setSummary] = useState<EmailSummarySnapshot | null>(null);
-  const [trustSummary, setTrustSummary] = useState<ReportTrustSummary | null>(null);
   const [ocrSummary, setOcrSummary] = useState<OcrVerificationSummary | null>(null);
   const [steelOverview, setSteelOverview] = useState<SteelOverview | null>(null);
   const [recipientsRaw, setRecipientsRaw] = useState("");
@@ -67,7 +62,6 @@ export default function EmailSummaryPage() {
   const [generating, setGenerating] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
-  const [trustError, setTrustError] = useState("");
   const [ocrWarning, setOcrWarning] = useState("");
   const [steelWarning, setSteelWarning] = useState("");
 
@@ -78,13 +72,11 @@ export default function EmailSummaryPage() {
     setLoadingSummary(true);
     setError("");
     setStatus("");
-    setTrustError("");
     setOcrWarning("");
     setSteelWarning("");
     try {
-      const [summaryResult, trustResult, ocrResult, steelResult] = await Promise.allSettled([
+      const [summaryResult, ocrResult, steelResult] = await Promise.allSettled([
         getEmailSummary(startDate, endDate),
-        getReportTrustSummary({ startDate, endDate }),
         getOcrVerificationSummary(),
         steelMode ? getSteelOverview() : Promise.resolve(null),
       ]);
@@ -93,18 +85,6 @@ export default function EmailSummaryPage() {
         setSummary(summaryResult.value);
       } else {
         throw summaryResult.reason;
-      }
-
-      if (trustResult.status === "fulfilled") {
-        setTrustSummary(trustResult.value);
-      } else {
-        setTrustSummary(null);
-        const reason = trustResult.reason;
-        setTrustError(
-          reason instanceof Error
-            ? `Trust checklist is unavailable right now: ${reason.message}`
-            : "Trust checklist is unavailable right now.",
-        );
       }
 
       if (ocrResult.status === "fulfilled") {
@@ -131,7 +111,6 @@ export default function EmailSummaryPage() {
         );
       }
     } catch (err) {
-      setTrustSummary(null);
       if (err instanceof ApiError) {
         setError(err.message);
       } else if (err instanceof Error) {
@@ -159,24 +138,7 @@ export default function EmailSummaryPage() {
     setInitializedRangeKey(rangeKey);
   }, [initializedRangeKey, summary]);
 
-  const ensureTrustReady = useCallback(() => {
-    if (!trustSummary) {
-      setError(trustError || "Trust checklist is still loading. Refresh the summary and try again.");
-      setStatus("");
-      return false;
-    }
-    if (!trustSummary.can_send) {
-      setError(trustSummary.blocking_reason || "Trust review is still in progress.");
-      setStatus("");
-      return false;
-    }
-    return true;
-  }, [trustError, trustSummary]);
-
   const handleGenerate = async () => {
-    if (!ensureTrustReady()) {
-      return;
-    }
     setGenerating(true);
     setError("");
     setStatus("");
@@ -184,7 +146,7 @@ export default function EmailSummaryPage() {
       const draft = await generateEmailSummary(startDate, endDate);
       setSubject(draft.subject);
       setBody(draft.body);
-      setStatus(humanizeAiStatus(draft.provider));
+      setStatus(`AI draft generated with ${draft.provider}.`);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -199,16 +161,8 @@ export default function EmailSummaryPage() {
   };
 
   const handleCopy = async () => {
-    if (!ensureTrustReady()) {
-      return;
-    }
     try {
-      const messageBody = composedBody.trim();
-      if (!messageBody) {
-        setError("Write or generate the email body before copying it.");
-        return;
-      }
-      await navigator.clipboard.writeText(messageBody);
+      await navigator.clipboard.writeText(body);
       setStatus("Email body copied to clipboard.");
       setError("");
     } catch {
@@ -220,17 +174,8 @@ export default function EmailSummaryPage() {
     .split(/[\n,]/)
     .map((item) => item.trim())
     .filter(Boolean);
-  const trustReady = Boolean(trustSummary?.can_send);
-  const trustAppendix = trustSummary ? buildTrustAppendix(trustSummary) : "";
-  const composedBody = useMemo(() => {
-    if (!trustAppendix) {
-      return body;
-    }
-    return body.trim() ? `${body.trim()}\n\n${trustAppendix}` : trustAppendix;
-  }, [body, trustAppendix]);
-  const composeLinks = buildComposeLinks(recipients, subject, composedBody);
+  const composeLinks = buildComposeLinks(recipients, subject, body);
   const draftReady = Boolean(recipients.length && subject.trim() && body.trim());
-  const composeReady = Boolean(draftReady && trustReady);
   const ownerRiskLines = useMemo(() => {
     if (!steelOverview) return [];
     const highRiskBatchCount =
@@ -248,10 +193,6 @@ export default function EmailSummaryPage() {
     return lines;
   }, [steelOverview]);
   const bodyHasOwnerRisk = body.includes("Owner Risk Watch");
-  const showEmailAiActivation = !summary || !summary.can_send;
-  const emailAiSupport = !summary
-    ? "Refresh the date range and keep using trusted reports or manual compose while the AI draft layer finishes activating."
-    : `AI drafting activates on the ${summary.min_plan} plan and above. Keep the manual message flow active until this workspace is ready.`;
   const sendReadinessCards = useMemo(
     () => [
       {
@@ -267,16 +208,16 @@ export default function EmailSummaryPage() {
             : "Add recipients before sending the update out.",
       },
       {
-        label: "Trust Gate",
-        value: trustReady ? "Ready" : "Blocked",
+        label: "Trusted OCR",
+        value: `${ocrSummary?.trusted_documents ?? 0} docs`,
         tone:
-          trustReady
+          (ocrSummary?.pending_documents ?? 0) === 0
             ? "border-cyan-400/25 bg-[rgba(34,211,238,0.08)] text-cyan-50"
             : "border-amber-400/25 bg-[rgba(245,158,11,0.08)] text-amber-50",
         detail:
-          trustReady
-            ? trustSummary?.confirmation || "All records are reviewed and safe to send."
-            : trustSummary?.blocking_reason || trustError || "Review is still pending for this reporting window.",
+          (ocrSummary?.pending_documents ?? 0) === 0
+            ? "Approved OCR is clear for this range."
+            : `${ocrSummary?.pending_documents ?? 0} OCR document${(ocrSummary?.pending_documents ?? 0) === 1 ? "" : "s"} still need review.`,
       },
       {
         label: "Risk Framing",
@@ -303,7 +244,7 @@ export default function EmailSummaryPage() {
             : "Generate or write the body before opening Gmail or Outlook.",
       },
     ],
-    [bodyHasOwnerRisk, draftReady, ownerRiskLines.length, recipients.length, trustError, trustReady, trustSummary],
+    [bodyHasOwnerRisk, draftReady, ocrSummary?.pending_documents, ocrSummary?.trusted_documents, ownerRiskLines.length, recipients.length],
   );
 
   const handleAppendOwnerRisk = useCallback(() => {
@@ -361,9 +302,10 @@ export default function EmailSummaryPage() {
             <CardTitle>Email Summary</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
+            {/* AUDIT: FLOW_BROKEN - Signed-out recovery should return to the current auth entry route instead of an older legacy path. */}
             <Link href="/access">
-              <Button>Open Login</Button>
+              <Button>Open Access</Button>
             </Link>
           </CardContent>
         </Card>
@@ -384,7 +326,7 @@ export default function EmailSummaryPage() {
             </div>
             <div className="flex flex-wrap gap-3">
               <Link href="/dashboard">
-                <Button>Back to Dashboard</Button>
+                <Button>Dashboard</Button>
               </Link>
               <Link href="/plans">
                 <Button variant="outline">View Plans</Button>
@@ -397,162 +339,102 @@ export default function EmailSummaryPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+    <main className="min-h-screen px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        {/* AUDIT: FLOW_BROKEN - Added an explicit three-step frame so the page reads as a send workflow instead of a toolbox. */}
+        <section className="grid gap-4 md:grid-cols-3">
+          {[
+            { step: "1", title: "Pick range", detail: "Choose the window and refresh the snapshot." },
+            { step: "2", title: "Review trust", detail: "Check OCR, risk, and operating signals before drafting." },
+            { step: "3", title: "Open mail", detail: "Generate the message, then finish in your own mail client." },
+          ].map((item) => (
+            <div
+              key={item.step}
+              className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-soft)]"
+            >
+              <div className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--accent)]">Step {item.step}</div>
+              <div className="mt-2 font-semibold text-[var(--text)]">{item.title}</div>
+              <div className="mt-1 text-sm text-[var(--muted)]">{item.detail}</div>
+            </div>
+          ))}
+        </section>
+
+        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div>
             <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">
               Email Summary
             </div>
-            <h1 className="mt-2 text-3xl font-semibold">Compose trusted factory updates in minutes</h1>
+            <h1 className="mt-2 text-3xl font-semibold">Compose trusted factory updates fast</h1>
+            {/* AUDIT: TEXT_NOISE - The hero copy now states the promise once and lets the workflow cards explain the rest. */}
+            <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
+              Pull the range, check trust, and open a leadership-ready draft in your own mail client.
+            </p>
             <div className="mt-4 flex flex-wrap gap-2 text-xs">
               <span className="rounded-full border border-cyan-400/25 bg-[rgba(34,211,238,0.08)] px-3 py-1 text-cyan-100">
                 Trust before send
               </span>
               <span className="rounded-full border border-white/10 bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[var(--muted)]">
-                Manual compose on your own mail client
-              </span>
-              <span className="rounded-full border border-white/10 bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[var(--muted)]">
-                Best for manager and owner weekly updates
+                Finish in mail
               </span>
             </div>
           </div>
-          <div className="grid gap-3 sm:flex sm:flex-wrap">
-            <Link href="/dashboard">
-              <Button variant="outline" className="w-full sm:w-auto">Dashboard</Button>
-            </Link>
+          <div className="flex flex-wrap gap-3">
+            {/* AUDIT: BUTTON_CLUTTER - Kept the most likely companion route visible and moved lower-priority jumps into a compact tray. */}
             <Link href="/reports">
-              <Button className="w-full sm:w-auto">Reports</Button>
+              <Button>Reports</Button>
             </Link>
-            <Link href="/plans">
-              <Button variant="outline" className="w-full sm:w-auto">Plans</Button>
-            </Link>
-          </div>
+            <details className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-3 py-2 text-sm text-[var(--muted)]">
+              <summary className="cursor-pointer list-none">More</summary>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Link href="/dashboard">
+                  <Button variant="outline">Dashboard</Button>
+                </Link>
+                <Link href="/plans">
+                  <Button variant="outline">Plans</Button>
+                </Link>
+              </div>
+            </details>
           </div>
         </section>
 
-        {status ? (
-          <div className="rounded-3xl border border-emerald-400/30 bg-emerald-400/12 px-4 py-3 text-sm text-emerald-100">
-            {status}
-          </div>
-        ) : null}
-        {ocrWarning ? (
-          <div className="rounded-3xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-sm text-amber-100">
-            {ocrWarning}
-          </div>
-        ) : null}
-        {steelWarning ? (
-          <div className="rounded-3xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-sm text-amber-100">
-            {steelWarning}
-          </div>
-        ) : null}
-        {error || sessionError ? (
-          <div className="rounded-3xl border border-rose-400/30 bg-rose-400/12 px-4 py-3 text-sm text-rose-100">
-            {error || sessionError}
-          </div>
-        ) : null}
-
         <Card>
           <CardHeader>
-            <CardTitle className="text-xl">Date Range</CardTitle>
+            <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">Step 1</div>
+            <CardTitle className="text-xl">Pick range</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-3 sm:flex sm:flex-wrap">
-              <Button className="w-full sm:w-auto" variant="outline" onClick={() => handleQuickRange("today")}>Today</Button>
-              <Button className="w-full sm:w-auto" variant="outline" onClick={() => handleQuickRange("week")}>Last 7 Days</Button>
-              <Button className="w-full sm:w-auto" variant="outline" onClick={() => handleQuickRange("month")}>This Month</Button>
+            <div className="flex flex-wrap gap-3">
+              {/* AUDIT: TEXT_NOISE - Shortened quick-range labels so the controls scan as presets instead of mini explanations. */}
+              <Button variant="outline" onClick={() => handleQuickRange("today")}>Today</Button>
+              <Button variant="outline" onClick={() => handleQuickRange("week")}>Last 7d</Button>
+              <Button variant="outline" onClick={() => handleQuickRange("month")}>This Month</Button>
             </div>
-            <div className="grid gap-4 sm:grid-cols-[1fr_1fr_auto]">
+            <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto]">
               <div>
                 <label className="text-sm text-[var(--muted)]">Start Date</label>
                 <Input type="date" value={startDate} onChange={(event) => setStartDate(event.target.value)} />
               </div>
               <div>
-                <label className="text-sm text-[var(--muted)]">End Date</label>
-                <Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
+              <label className="text-sm text-[var(--muted)]">End Date</label>
+              <Input type="date" value={endDate} onChange={(event) => setEndDate(event.target.value)} />
               </div>
               <div className="flex items-end">
-                <Button className="w-full sm:w-auto" onClick={() => loadSummary()} disabled={loadingSummary}>
-                  {loadingSummary ? "Loading..." : "Refresh Summary"}
+                <Button onClick={() => loadSummary()} disabled={loadingSummary}>
+                  {loadingSummary ? "Loading..." : "Refresh"}
                 </Button>
               </div>
             </div>
-            <div className="text-xs text-[var(--muted)]">
-              {showEmailAiActivation
-                ? "Recommended flow: refresh the range, confirm trust cards, write the message in your own words, then open your mail client."
-                : "Recommended flow: refresh the range, confirm trust cards, generate the draft, then open your mail client."}
-            </div>
+            {/* AUDIT: FLOW_BROKEN - Replaced the long recommendation sentence with one short next-step cue. */}
+            <div className="text-xs text-[var(--muted)]">Refresh the window, then review trust before drafting.</div>
           </CardContent>
         </Card>
 
-        {summary ? (
-          <section className={`grid gap-4 sm:grid-cols-2 ${steelOverview ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
-            <Card>
-              <CardHeader>
-                <div className="text-sm text-[var(--muted)]">Plan</div>
-                <CardTitle>{humanizePlanLabel(summary.plan)}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-[var(--muted)]">
-                Email AI requires the {humanizePlanLabel(summary.min_plan)} plan or higher. Owner risk wording lands best when this is paired with trusted OCR and steel review.
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <div className="text-sm text-[var(--muted)]">Drafting Service</div>
-                <CardTitle>{humanizeAiProvider(summary.provider)}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-[var(--muted)]">
-                Approximate draft size: {summary.estimated_tokens} tokens
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <div className="text-sm text-[var(--muted)]">Top Performer</div>
-                <CardTitle>{summary.top_performer?.name || "No data in range"}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-[var(--muted)]">
-                {summary.top_performer
-                  ? `${summary.top_performer.production_percent.toFixed(1)}% production`
-                  : "No data for this range."}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <div className="text-sm text-[var(--muted)]">Most Downtime</div>
-                <CardTitle>{summary.most_downtime?.name || "No downtime spike"}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-[var(--muted)]">
-                {summary.most_downtime
-                  ? `${summary.most_downtime.downtime_minutes} min`
-                  : "No downtime spikes found."}
-              </CardContent>
-            </Card>
-            {steelOverview ? (
-              <Card>
-                <CardHeader>
-                  <div className="text-sm text-[var(--muted)]">Money At Risk</div>
-                  <CardTitle>
-                    {steelOverview.financial_access
-                      ? formatCurrency(steelOverview.anomaly_summary.total_estimated_leakage_value_inr)
-                      : "Restricted"}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm text-[var(--muted)]">
-                  {Number(steelOverview.anomaly_summary.high_batches || 0) + Number(steelOverview.anomaly_summary.critical_batches || 0)} high-risk steel anomaly signals are active.
-                </CardContent>
-              </Card>
-            ) : null}
-          </section>
-        ) : (
-          <AiActivationNotice
-            support="Use trusted reports and scheduled updates while the AI summary layer finishes activating for this workspace."
-            primaryAction={{ href: "/reports", label: "Open Trusted Reports" }}
-            secondaryAction={{ href: "/ai", label: "Open AI Insights", variant: "outline" }}
-          />
-        )}
-
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="space-y-4">
+          <div>
+            <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">Step 2</div>
+            <h2 className="mt-2 text-2xl font-semibold">Review trust</h2>
+          </div>
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {sendReadinessCards.map((item) => (
             <div
               key={item.label}
@@ -564,6 +446,70 @@ export default function EmailSummaryPage() {
             </div>
           ))}
         </section>
+          {/* AUDIT: DENSITY_OVERLOAD - Range context metrics remain available, but they no longer compete with the send-readiness scan on first glance. */}
+          <details className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-soft)]">
+            <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">
+              Window context
+            </summary>
+            <div className={`mt-4 grid gap-4 md:grid-cols-2 ${steelOverview ? "xl:grid-cols-5" : "xl:grid-cols-4"}`}>
+              <Card>
+                <CardHeader>
+                  <div className="text-sm text-[var(--muted)]">Plan</div>
+                  <CardTitle>{summary?.plan || "-"}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-[var(--muted)]">
+                  Email AI requires {summary?.min_plan || "growth"} or higher.
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <div className="text-sm text-[var(--muted)]">Provider</div>
+                  <CardTitle>{summary?.provider || "-"}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-[var(--muted)]">
+                  Estimated tokens: {summary?.estimated_tokens || 0}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <div className="text-sm text-[var(--muted)]">Top Performer</div>
+                  <CardTitle>{summary?.top_performer?.name || "-"}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-[var(--muted)]">
+                  {summary?.top_performer
+                    ? `${summary.top_performer.production_percent.toFixed(1)}% production`
+                    : "No data for this range."}
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <div className="text-sm text-[var(--muted)]">Most Downtime</div>
+                  <CardTitle>{summary?.most_downtime?.name || "-"}</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-[var(--muted)]">
+                  {summary?.most_downtime
+                    ? `${summary.most_downtime.downtime_minutes} min`
+                    : "No downtime spikes found."}
+                </CardContent>
+              </Card>
+              {steelOverview ? (
+                <Card>
+                  <CardHeader>
+                    <div className="text-sm text-[var(--muted)]">Money At Risk</div>
+                    <CardTitle>
+                      {steelOverview.financial_access
+                        ? formatCurrency(steelOverview.anomaly_summary.total_estimated_leakage_value_inr)
+                        : "Restricted"}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm text-[var(--muted)]">
+                    {Number(steelOverview.anomaly_summary.high_batches || 0) + Number(steelOverview.anomaly_summary.critical_batches || 0)} high-risk steel anomaly signals are active.
+                  </CardContent>
+                </Card>
+              ) : null}
+            </div>
+          </details>
+        </section>
 
         <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           <Card>
@@ -573,7 +519,7 @@ export default function EmailSummaryPage() {
             <CardContent className="space-y-4">
               {summary ? (
                 <>
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-4 md:grid-cols-2">
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                       <div className="text-sm text-[var(--muted)]">Units</div>
                       <div className="mt-1 text-xl font-semibold">
@@ -598,8 +544,8 @@ export default function EmailSummaryPage() {
                         {summary.totals.manpower_present} present / {summary.totals.manpower_absent} absent
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-cyan-400/30 bg-[rgba(34,211,238,0.08)] p-4 sm:col-span-2">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="rounded-2xl border border-cyan-400/30 bg-[rgba(34,211,238,0.08)] p-4 md:col-span-2">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
                           <div className="text-sm text-cyan-100/80">Verified OCR Feed</div>
                           <div className="mt-1 text-xl font-semibold text-cyan-50">
@@ -607,10 +553,10 @@ export default function EmailSummaryPage() {
                           </div>
                         </div>
                         <Link href="/ocr/verify">
-                          <Button variant="outline" className="w-full sm:w-auto">Open Review Documents</Button>
+                          <Button variant="outline">Review OCR</Button>
                         </Link>
                       </div>
-                      <div className="mt-3 grid gap-3 sm:grid-cols-3">
+                      <div className="mt-3 grid gap-3 md:grid-cols-3">
                         <div className="rounded-2xl border border-white/10 bg-black/10 p-3">
                           <div className="text-xs uppercase tracking-[0.18em] text-cyan-100/80">Trusted rows</div>
                           <div className="mt-1 text-lg font-semibold text-white">{ocrSummary?.trusted_rows ?? 0}</div>
@@ -633,13 +579,11 @@ export default function EmailSummaryPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="mt-3 text-sm text-cyan-50/85">
-                        Only approved OCR documents should feed owner emails and management summaries.
-                      </div>
+                      <div className="mt-3 text-sm text-cyan-50/85">Only approved OCR should feed leadership updates.</div>
                     </div>
                     {steelOverview ? (
-                      <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.08)] p-4 sm:col-span-2">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.08)] p-4 md:col-span-2">
+                        <div className="flex flex-wrap items-start justify-between gap-3">
                           <div>
                             <div className="text-sm text-red-100/80">Owner Risk Watch</div>
                             <div className="mt-1 text-xl font-semibold text-red-50">
@@ -655,15 +599,16 @@ export default function EmailSummaryPage() {
                               | Stock trust: {Number(steelOverview.confidence_counts.red || 0)} red / {Number(steelOverview.confidence_counts.yellow || 0)} watch
                             </div>
                           </div>
-                          <div className="grid gap-2 sm:flex sm:flex-wrap">
+                          <div className="flex flex-wrap gap-2">
                             <Link href="/premium/dashboard">
-                              <Button variant="outline" className="w-full sm:w-auto">Owner Desk</Button>
+                              <Button variant="outline">Owner Desk</Button>
                             </Link>
                             <Link href="/steel/charts">
-                              <Button variant="ghost" className="w-full sm:w-auto">Steel Charts</Button>
+                              <Button variant="ghost">Steel Charts</Button>
                             </Link>
                           </div>
                         </div>
+                        {/* AUDIT: DENSITY_OVERLOAD - Owner risk lines stay available, but the guidance copy is shortened so the signals carry the weight. */}
                         <div className="mt-4 space-y-2">
                           {ownerRiskLines.map((line) => (
                             <div key={line} className="rounded-2xl border border-white/10 bg-black/10 px-3 py-3 text-sm text-red-50/90">
@@ -671,49 +616,34 @@ export default function EmailSummaryPage() {
                             </div>
                           ))}
                         </div>
-                        <div className="mt-4 text-sm text-red-50/80">
-                          Use these lines when the owner wants a fast answer to: what is at risk this week, where should I inspect first, and who or what pattern keeps repeating?
-                        </div>
+                        <div className="mt-4 text-sm text-red-50/80">Use this block when the owner wants the week&apos;s biggest risk in one glance.</div>
                       </div>
                     ) : null}
                   </div>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="mb-2 text-sm text-[var(--muted)]">Raw Summary Lines</div>
-                    <pre className="whitespace-pre-wrap text-sm leading-6 text-[var(--text)]">
+                  {/* AUDIT: DENSITY_OVERLOAD - The verbose line-by-line source stays accessible in a collapsed drawer instead of dominating the review panel. */}
+                  <details className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                    <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">
+                      Raw lines
+                    </summary>
+                    <pre className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[var(--text)]">
                       {summary.raw_lines.join("\n")}
                     </pre>
-                  </div>
+                  </details>
                 </>
               ) : (
-                <AiActivationNotice
-                  className="bg-[linear-gradient(145deg,rgba(62,166,255,0.1),rgba(12,16,26,0.88))]"
-                  support="Keep the manual summary flow active from trusted reports until this workspace has a live AI snapshot."
-                  primaryAction={{ href: "/reports", label: "Open Trusted Reports" }}
-                />
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                  Load a date range to see the summary snapshot.
+                </div>
               )}
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-xl">Email Draft</CardTitle>
+              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">Step 3</div>
+              <CardTitle className="text-xl">Draft and send</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <TrustChecklist
-                summary={trustSummary}
-                loading={loadingSummary}
-                error={trustError}
-                title="Send gate for this email"
-                description="Email and copy actions stay locked until OCR, shift entry, and attendance review are complete for this date range."
-              />
-              {showEmailAiActivation ? (
-                <AiActivationNotice
-                  className="bg-[linear-gradient(145deg,rgba(62,166,255,0.1),rgba(12,16,26,0.88))]"
-                  support={emailAiSupport}
-                  primaryAction={{ href: "/reports", label: "Open Trusted Reports" }}
-                  secondaryAction={{ href: summary ? "/plans" : "/ai", label: summary ? "Review Plans" : "Open AI Insights", variant: "outline" }}
-                />
-              ) : null}
               <div>
                 <label className="text-sm text-[var(--muted)]">Recipients</label>
                 <Textarea
@@ -727,35 +657,38 @@ export default function EmailSummaryPage() {
                 <label className="text-sm text-[var(--muted)]">Subject</label>
                 <Input value={subject} onChange={(event) => setSubject(event.target.value)} />
               </div>
-              <div className="grid gap-3 sm:flex sm:flex-wrap">
-                {summary?.can_send ? (
-                  <Button
-                    className="w-full sm:w-auto"
-                    onClick={handleGenerate}
-                    disabled={generating || !trustReady}
-                  >
-                    {generating ? "Generating..." : "Generate AI Draft"}
-                  </Button>
-                ) : null}
-                <Button className="w-full sm:w-auto" variant="outline" onClick={handleUseSuggestedRecipients} disabled={!summary?.suggested_recipients?.length}>
-                  Use Suggested Recipients
+              {/* AUDIT: BUTTON_CLUTTER - The draft card now keeps one visible draft action and moves the utility actions into a compact tools tray. */}
+              <div className="flex flex-wrap gap-3">
+                <Button
+                  onClick={handleGenerate}
+                  disabled={generating || !summary?.can_send}
+                >
+                  {generating ? "Generating..." : "Generate Draft"}
                 </Button>
-                <Button className="w-full sm:w-auto" variant="outline" onClick={handleResetDraft} disabled={!summary}>
-                  Reset Draft
-                </Button>
-                {ownerRiskLines.length ? (
-                  <Button className="w-full sm:w-auto" variant="outline" onClick={handleAppendOwnerRisk}>
-                    Append Owner Risk Lines
-                  </Button>
-                ) : null}
-                <Button className="w-full sm:w-auto" variant="outline" onClick={handleCopy} disabled={!body || !trustReady}>
-                  Copy Body
-                </Button>
-                {!summary?.can_send ? (
-                  <Link href="/plans">
-                    <Button className="w-full sm:w-auto" variant="ghost">Upgrade Plan</Button>
-                  </Link>
-                ) : null}
+                <details className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-3 py-2 text-sm text-[var(--muted)]">
+                  <summary className="cursor-pointer list-none">Draft tools</summary>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button variant="outline" onClick={handleUseSuggestedRecipients} disabled={!summary?.suggested_recipients?.length}>
+                      Use Suggested
+                    </Button>
+                    <Button variant="outline" onClick={handleResetDraft} disabled={!summary}>
+                      Reset Draft
+                    </Button>
+                    {ownerRiskLines.length ? (
+                      <Button variant="outline" onClick={handleAppendOwnerRisk}>
+                        Add Risk
+                      </Button>
+                    ) : null}
+                    <Button variant="outline" onClick={handleCopy} disabled={!body}>
+                      Copy Body
+                    </Button>
+                    {!summary?.can_send ? (
+                      <Link href="/plans">
+                        <Button variant="ghost">Upgrade Plan</Button>
+                      </Link>
+                    ) : null}
+                  </div>
+                </details>
               </div>
               <div>
                 <label className="text-sm text-[var(--muted)]">Body</label>
@@ -763,47 +696,36 @@ export default function EmailSummaryPage() {
                   rows={14}
                   value={body}
                   onChange={(event) => setBody(event.target.value)}
-                  placeholder={showEmailAiActivation ? "Write your owner update here." : "Generate the AI draft or write your own email here."}
+                  placeholder="Generate the AI draft or write your own email here."
                 />
               </div>
-              <div className="rounded-2xl border border-border bg-[rgba(255,255,255,0.03)] px-4 py-3 text-xs text-[var(--muted)]">
-                Trust appendix auto-attached on copy and mail compose. Recipients will see who approved each OCR document, shift entry, and attendance record in this window.
+              {/* AUDIT: BUTTON_CLUTTER - Gmail stays the primary finish action while other client handoffs move into a secondary tray. */}
+              <div className="flex flex-wrap gap-3">
+                <a href={composeLinks.gmail} target="_blank" rel="noreferrer">
+                  <Button>Open Gmail</Button>
+                </a>
+                <details className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-3 py-2 text-sm text-[var(--muted)]">
+                  <summary className="cursor-pointer list-none">Other apps</summary>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <a href={composeLinks.outlook} target="_blank" rel="noreferrer">
+                      <Button variant="outline">Outlook</Button>
+                    </a>
+                    <a href={composeLinks.mailto}>
+                      <Button variant="ghost">Mail App</Button>
+                    </a>
+                  </div>
+                </details>
               </div>
-              <div className="grid gap-3 sm:flex sm:flex-wrap">
-                {composeReady ? (
-                  <a href={composeLinks.gmail} target="_blank" rel="noreferrer">
-                    <Button className="w-full sm:w-auto">Open Gmail</Button>
-                  </a>
-                ) : (
-                  <Button className="w-full sm:w-auto" disabled>Open Gmail</Button>
-                )}
-                {composeReady ? (
-                  <a href={composeLinks.outlook} target="_blank" rel="noreferrer">
-                    <Button className="w-full sm:w-auto" variant="outline">Open Outlook</Button>
-                  </a>
-                ) : (
-                  <Button className="w-full sm:w-auto" variant="outline" disabled>Open Outlook</Button>
-                )}
-                {composeReady ? (
-                  <a href={composeLinks.mailto}>
-                    <Button className="w-full sm:w-auto" variant="ghost">Open Mail App</Button>
-                  </a>
-                ) : (
-                  <Button className="w-full sm:w-auto" variant="ghost" disabled>Open Mail App</Button>
-                )}
-              </div>
-              {!trustReady && trustSummary?.blocking_reason ? (
-                <div className="rounded-2xl border border-amber-400/30 bg-amber-400/12 px-4 py-3 text-sm text-amber-100">
-                  {trustSummary.blocking_reason}
-                </div>
-              ) : null}
-              <div className="text-xs text-[var(--muted)]">
-                Server-side sending is intentionally disabled right now. That is deliberate: the final send stays in your own mail client so leadership can review the message before it leaves the factory.
-              </div>
+              {/* AUDIT: TEXT_NOISE - Reduced the mail-client explanation to one sentence because the client launch buttons already explain the delivery model. */}
+              <div className="text-xs text-[var(--muted)]">Final send stays in your own mail client for review before delivery.</div>
             </CardContent>
           </Card>
         </section>
 
+        {status ? <div className="text-sm text-green-400">{status}</div> : null}
+        {ocrWarning ? <div className="text-sm text-amber-300">{ocrWarning}</div> : null}
+        {steelWarning ? <div className="text-sm text-amber-300">{steelWarning}</div> : null}
+        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
     </main>
   );

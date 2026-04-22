@@ -6,12 +6,12 @@ import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
 import {
   cancelScheduledDowngrade,
   createBillingOrder,
-  getBillingOrderStatus,
   getBillingConfig,
   getBillingStatus,
   listInvoices,
@@ -20,12 +20,6 @@ import {
   type BillingConfig,
   type InvoiceItem,
 } from "@/lib/billing";
-import {
-  billingRoleLabel,
-  canManageBillingControls,
-  canStartBillingCheckout,
-  canViewBillingWorkspace,
-} from "@/lib/billing-access";
 import { calculatePlanEstimate, sortAddons, type BillingCycle } from "@/lib/pricing";
 import {
   getLastPlanUpgrade,
@@ -34,6 +28,7 @@ import {
   type PlansPayload,
 } from "@/lib/plans";
 import { getQuotaHealth, quotaLabel } from "@/lib/quota-health";
+import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import type { BillingStatus } from "@/lib/settings";
 import { useSession } from "@/lib/use-session";
 
@@ -87,14 +82,6 @@ function parseAddonQuantitiesParam(raw: string | null) {
   return quantities;
 }
 
-type CheckoutIntent =
-  | "upgrade_plan"
-  | "add_ocr_pack"
-  | "upgrade_and_add_pack"
-  | "review_current_plan"
-  | "contact_sales"
-  | "";
-
 function badgeClass(tone: "blue" | "green" | "amber" | "slate") {
   if (tone === "blue") {
     return "border border-sky-400/30 bg-sky-400/15 text-sky-200";
@@ -132,38 +119,9 @@ async function loadRazorpayScript() {
   });
 }
 
-function getIntentCopy(intent: CheckoutIntent, planName?: string) {
-  if (intent === "add_ocr_pack") {
-    return {
-      title: "Adding OCR packs",
-      detail: "This checkout started from an OCR-pack purchase flow. Review active packs and only pay for new incremental packs.",
-    };
-  }
-  if (intent === "upgrade_and_add_pack") {
-    return {
-      title: `Upgrading${planName ? ` to ${planName}` : ""} and adding OCR`,
-      detail: "Free plan OCR intent has been routed into a paid-plan checkout path so your pack purchase starts from a valid configuration.",
-    };
-  }
-  if (intent === "review_current_plan") {
-    return {
-      title: "Reviewing current billing setup",
-      detail: "Use the preflight summary below to confirm capacity, active OCR packs, and whether this organization needs a higher tier.",
-    };
-  }
-  if (intent === "contact_sales") {
-    return {
-      title: "Enterprise is sales-assisted",
-      detail: "Enterprise is not part of self-serve Razorpay checkout. Review the preflight below, then use the plans page to start the sales conversation.",
-    };
-  }
-  return {
-    title: `Upgrading${planName ? ` to ${planName}` : ""}`,
-    detail: "Review the preflight checks, adjust OCR packs if needed, and then open Razorpay only when the estimate is correct.",
-  };
-}
-
 function BillingPageInner() {
+  const { t } = useI18n();
+  useI18nNamespaces(["billing", "common", "forms", "errors"]);
   const { user, loading, error: sessionError } = useSession();
   const searchParams = useSearchParams();
   const [plansPayload, setPlansPayload] = useState<PlansPayload | null>(null);
@@ -178,34 +136,30 @@ function BillingPageInner() {
   const [overridePlan, setOverridePlan] = useState("free");
   const [checkoutPlan, setCheckoutPlan] = useState("starter");
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
+  const [requestedUsers, setRequestedUsers] = useState(20);
+  const [requestedFactories, setRequestedFactories] = useState(1);
   const [selectedAddonQuantities, setSelectedAddonQuantities] = useState<Record<string, number>>({});
-  const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
-  const [checkoutIntent, setCheckoutIntent] = useState<CheckoutIntent>("");
 
-  const canViewBilling = useMemo(() => canViewBillingWorkspace(user), [user]);
-  const canWriteBilling = useMemo(() => canStartBillingCheckout(user), [user]);
-  const canManageControls = useMemo(() => canManageBillingControls(user), [user]);
-  const currentRoleLabel = useMemo(() => billingRoleLabel(user), [user]);
+  const canViewBilling = useMemo(() => {
+    const role = user?.role || "";
+    return role === "admin" || role === "owner";
+  }, [user]);
+
+  const canWriteBilling = useMemo(() => {
+    return (user?.role || "") === "owner";
+  }, [user]);
 
   useEffect(() => {
     const plan = searchParams.get("plan");
     const cycle = searchParams.get("cycle");
+    const users = searchParams.get("users");
+    const factories = searchParams.get("factories");
     const addons = searchParams.get("addons");
     const addonQuantities = searchParams.get("addon_quantities");
-    const intent = searchParams.get("intent");
-    if (plan && plan !== "enterprise") setCheckoutPlan(plan);
+    if (plan) setCheckoutPlan(plan);
     if (cycle === "monthly" || cycle === "yearly") setBillingCycle(cycle);
-    if (
-      intent === "upgrade_plan" ||
-      intent === "add_ocr_pack" ||
-      intent === "upgrade_and_add_pack" ||
-      intent === "review_current_plan" ||
-      intent === "contact_sales"
-    ) {
-      setCheckoutIntent(intent);
-    } else {
-      setCheckoutIntent("");
-    }
+    if (users && Number(users) > 0) setRequestedUsers(Number(users));
+    if (factories && Number(factories) > 0) setRequestedFactories(Number(factories));
     if (addonQuantities) {
       setSelectedAddonQuantities(parseAddonQuantitiesParam(addonQuantities));
       return;
@@ -377,10 +331,8 @@ function BillingPageInner() {
     () => planOptions.filter((plan) => Number(plan.monthly_price || 0) > 0 && !plan.sales_only),
     [planOptions],
   );
-  const organizationUsers = Math.max(1, Number(billing?.footprint?.active_users || 1));
-  const organizationFactories = Math.max(1, Number(billing?.footprint?.active_factories || 1));
   const checkoutPlanInfo = useMemo(
-    () => paidPlans.find((plan) => plan.id === checkoutPlan) || paidPlans[0] || planOptions[0],
+    () => planOptions.find((plan) => plan.id === checkoutPlan) || paidPlans[0] || planOptions[0],
     [checkoutPlan, paidPlans, planOptions],
   );
   const activeAddonIds = useMemo(
@@ -407,8 +359,8 @@ function BillingPageInner() {
       plansPayload.pricing,
       addonOptions,
       {
-        users: organizationUsers,
-        factories: organizationFactories,
+        users: requestedUsers,
+        factories: requestedFactories,
         selectedAddonQuantities,
         activeAddonIds,
         activeAddonQuantities,
@@ -421,9 +373,9 @@ function BillingPageInner() {
     addonOptions,
     billingCycle,
     checkoutPlanInfo,
-    organizationFactories,
-    organizationUsers,
     plansPayload?.pricing,
+    requestedFactories,
+    requestedUsers,
     selectedAddonQuantities,
   ]);
   const summaryHealth = getQuotaHealth(billing?.usage?.summary_used, billing?.usage?.summary_limit);
@@ -431,96 +383,6 @@ function BillingPageInner() {
   const smartHealth = getQuotaHealth(billing?.usage?.smart_used, billing?.usage?.smart_limit);
   const ocrRequestsLocked = Number(billing?.usage?.max_requests ?? 0) < 0;
   const ocrCreditsLocked = Number(billing?.usage?.max_credits ?? 0) < 0;
-  const intentCopy = getIntentCopy(checkoutIntent, checkoutPlanInfo?.name);
-  const checkoutBlocker = useMemo(() => {
-    if (!canWriteBilling) {
-      return {
-        title: "Checkout permission required",
-        detail: `${currentRoleLabel}s can review plans, but only admins and owners can start Razorpay checkout.`,
-      };
-    }
-    if (!billingConfig?.configured || !billingConfig.key_id) {
-      return {
-        title: "Razorpay is not configured",
-        detail: "Add the Razorpay key, secret, and webhook secret on the backend before opening live checkout.",
-      };
-    }
-    if (checkoutPlanInfo?.sales_only || checkoutIntent === "contact_sales") {
-      return {
-        title: "Enterprise is sales-assisted",
-        detail: "Enterprise quotes do not go through self-serve Razorpay. Use the plans page to route this request into the sales-assisted path.",
-      };
-    }
-    if (checkoutEstimate && !checkoutEstimate.isCompatible) {
-      return {
-        title: "Selected plan is too small",
-        detail: `${checkoutPlanInfo?.name || "This plan"} does not fit the current organization footprint. Choose a higher plan before checkout.`,
-      };
-    }
-    return null;
-  }, [
-    billingConfig?.configured,
-    billingConfig?.key_id,
-    canWriteBilling,
-    checkoutEstimate,
-    checkoutIntent,
-    checkoutPlanInfo?.name,
-    checkoutPlanInfo?.sales_only,
-    currentRoleLabel,
-  ]);
-  const preflightItems = useMemo(
-    () => [
-      {
-        label: "Billing role access",
-        pass: canWriteBilling,
-        detail: canWriteBilling
-          ? `${currentRoleLabel} checkout access is active.`
-          : "Only admin and owner roles can start checkout.",
-      },
-      {
-        label: "Razorpay configuration",
-        pass: Boolean(billingConfig?.configured && billingConfig?.key_id),
-        detail:
-          billingConfig?.configured && billingConfig?.key_id
-            ? "Ready for live checkout."
-            : "Backend Razorpay keys are missing.",
-      },
-      {
-        label: "Current organization footprint",
-        pass: true,
-        detail: `${organizationUsers} active users and ${organizationFactories} active factories will be used for plan validation.`,
-      },
-      {
-        label: "Selected plan compatibility",
-        pass: Boolean(checkoutEstimate?.isCompatible) && !Boolean(checkoutPlanInfo?.sales_only),
-        detail: checkoutPlanInfo?.sales_only
-          ? "Enterprise is sales-assisted."
-          : checkoutEstimate?.isCompatible
-            ? `${checkoutPlanInfo?.name || "Selected plan"} fits the current footprint.`
-            : `${checkoutPlanInfo?.name || "Selected plan"} is below the current organization size.`,
-      },
-      {
-        label: "Active OCR pack deductions",
-        pass: true,
-        detail: checkoutEstimate?.alreadyActiveAddons.length
-          ? `${checkoutEstimate.alreadyActiveAddons
-              .map((addon) => `${addon.name} x${addon.activeQuantity || addon.quantity || 0}`)
-              .join(", ")} will not be charged again.`
-          : "No active OCR packs are being deducted from this estimate.",
-      },
-    ],
-    [
-      billingConfig?.configured,
-      billingConfig?.key_id,
-      canWriteBilling,
-      checkoutEstimate,
-      checkoutPlanInfo?.name,
-      checkoutPlanInfo?.sales_only,
-      currentRoleLabel,
-      organizationFactories,
-      organizationUsers,
-    ],
-  );
 
   const updateAddonQuantity = (addonId: string, quantity: number) => {
     setSelectedAddonQuantities((current) => {
@@ -537,7 +399,7 @@ function BillingPageInner() {
 
   const launchCheckout = async () => {
     if (!canWriteBilling) {
-      setError("Only admins and owners can start checkout.");
+      setError("Only owners can start checkout or change the billing plan.");
       return;
     }
     if (!checkoutPlanInfo) {
@@ -545,7 +407,7 @@ function BillingPageInner() {
       return;
     }
     if (checkoutPlanInfo.sales_only) {
-      setError("Enterprise is handled through contact sales and is not part of self-serve Razorpay checkout.");
+      setError("Enterprise is handled through contact sales. Use the manual override only for internal QA.");
       return;
     }
     if (!billingConfig?.configured || !billingConfig.key_id) {
@@ -563,12 +425,11 @@ function BillingPageInner() {
       const order = await createBillingOrder(
         checkoutPlanInfo.id,
         billingCycle,
-        organizationUsers,
-        organizationFactories,
+        requestedUsers,
+        requestedFactories,
         selectedAddonIds,
         selectedAddonQuantities,
       );
-      const orderId = order.order.id;
       const checkout = new window.Razorpay({
         key: billingConfig.key_id,
         amount: order.order.amount,
@@ -584,13 +445,17 @@ function BillingPageInner() {
         notes: {
           plan: order.plan,
           billing_cycle: order.billing_cycle,
-          requested_users: String(organizationUsers),
-          requested_factories: String(organizationFactories),
+          requested_users: String(requestedUsers),
+          requested_factories: String(requestedFactories),
           addon_ids: (order.quote?.chargeable_addon_ids || []).join(","),
         },
         handler: () => {
-          setStatus("Payment received. Waiting for billing confirmation...");
-          setPendingOrderId(orderId);
+          setStatus(
+            "Payment submitted to Razorpay. Your plan and add-ons will update automatically once the webhook confirms the payment.",
+          );
+          setTimeout(() => {
+            loadAll().catch(() => undefined);
+          }, 2500);
         },
         modal: {
           ondismiss: () => {
@@ -615,54 +480,6 @@ function BillingPageInner() {
     }
   };
 
-  useEffect(() => {
-    if (!pendingOrderId) return;
-    let cancelled = false;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    let attempts = 0;
-
-    const poll = async () => {
-      attempts += 1;
-      try {
-        const order = await getBillingOrderStatus(pendingOrderId);
-        if (cancelled) return;
-        if (order.is_paid) {
-          await loadAll();
-          if (cancelled) return;
-          if (order.is_plan_active) {
-            setStatus("Payment confirmed. Billing is now active.");
-            setPendingOrderId(null);
-            return;
-          }
-          setStatus("Payment received. Finalizing the plan and add-ons...");
-        } else if (order.is_terminal) {
-          setError("Payment did not complete. Please try checkout again.");
-          setPendingOrderId(null);
-          return;
-        } else {
-          setStatus("Waiting for Razorpay confirmation...");
-        }
-      } catch {
-        if (cancelled) return;
-      }
-
-      if (attempts >= 18) {
-        setStatus("Billing confirmation is still in progress. Refresh this page in a moment.");
-        setPendingOrderId(null);
-        return;
-      }
-      timeoutId = setTimeout(() => {
-        void poll();
-      }, 2500);
-    };
-
-    void poll();
-    return () => {
-      cancelled = true;
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [pendingOrderId]);
-
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
@@ -676,12 +493,13 @@ function BillingPageInner() {
       <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
-            <CardTitle>Billing</CardTitle>
+            <CardTitle>{t("billing.billing.title", "Billing")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
+            {/* AUDIT: FLOW_BROKEN - send signed-out users to the live auth entry instead of the stale login route */}
             <Link href="/access">
-              <Button>Open Login</Button>
+              <Button>Open Access</Button>
             </Link>
           </CardContent>
         </Card>
@@ -694,11 +512,11 @@ function BillingPageInner() {
       <main className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
-            <CardTitle>Billing</CardTitle>
+            <CardTitle>{t("billing.billing.title", "Billing")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-[var(--muted)]">
-              Billing checkout is available to admins and owners. Owners still control downgrade scheduling and emergency billing overrides.
+              Billing access is available to admins and owners. Owners handle plan changes and payments.
             </div>
             <div className="flex flex-wrap gap-3">
               <Link href="/plans">
@@ -714,42 +532,57 @@ function BillingPageInner() {
     );
   }
   return (
-    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <section className="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur lg:flex-row lg:items-start lg:justify-between">
+    <main className="min-h-screen px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div>
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Billing</div>
-            <h1 className="mt-2 text-3xl font-semibold">Compare, validate, and pay</h1>
-            <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
-              This page now acts as the transactional step after /plans. Start with the preflight checks, confirm the estimate, then open Razorpay only when the selection is valid.
-            </p>
+            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("billing.billing.title", "Billing")}</div>
+            <h1 className="mt-2 text-3xl font-semibold">{t("billing.billing.heading", "Plan status and live checkout")}</h1>
+            {/* AUDIT: TEXT_NOISE - shorten the hero copy so checkout stays more prominent than the explanation */}
+            <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">{t("billing.billing.description", "Review plan status, confirm the checkout fit, then pay through Razorpay.")}</p>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-            <Link href="/plans" className="w-full sm:w-auto">
-              <Button className="w-full sm:w-auto">Plans</Button>
-            </Link>
-            <Link href="/dashboard" className="w-full sm:w-auto">
-              <Button className="w-full sm:w-auto" variant="outline">Dashboard</Button>
-            </Link>
-          </div>
-        </section>
-
-        {status ? <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
-        {error || sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error || sessionError}</div> : null}
-        <section className="rounded-3xl border border-[var(--border)] bg-[rgba(8,14,24,0.72)] p-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--accent)]">Checkout intent</div>
-              <div className="mt-1 text-lg font-semibold text-white">{intentCopy.title}</div>
-              <div className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">{intentCopy.detail}</div>
+          {/* AUDIT: BUTTON_CLUTTER - move route jumps into a secondary tools tray so the checkout journey owns the top of the page */}
+          <details className="min-w-[220px] rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+            <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("billing.billing.tools", "Billing tools")}</summary>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link href="/plans">
+                <Button>{t("billing.plans.title", "Plans")}</Button>
+              </Link>
+              <Link href="/dashboard">
+                <Button variant="outline">{t("billing.billing.dashboard", "Dashboard")}</Button>
+              </Link>
             </div>
-            <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeClass(canWriteBilling ? "blue" : "slate")}`}>
-              {canWriteBilling ? `${currentRoleLabel} checkout access` : `${currentRoleLabel} read-only`}
-            </span>
-          </div>
+          </details>
         </section>
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {/* AUDIT: FLOW_BROKEN - add a simple checkout sequence so the page leads with a clear purchase path */}
+        <section className="grid gap-3 xl:grid-cols-3">
+          {[
+            {
+              label: "1. Check billing access",
+              detail: canWriteBilling ? "Owner access can start checkout and plan changes." : "Admins can review, but owners complete checkout.",
+            },
+            {
+              label: "2. Confirm the fit",
+              detail: checkoutEstimate?.isCompatible === false
+                ? `Current selection exceeds the ${checkoutPlanInfo?.name || "chosen"} plan cap.`
+                : `Users ${requestedUsers}, factories ${requestedFactories}, plan ${checkoutPlanInfo?.name || "-"}.`,
+            },
+            {
+              label: "3. Start checkout",
+              detail: billingConfig?.configured
+                ? "Razorpay is ready when the plan and add-ons look right."
+                : "Razorpay must be configured before checkout can start.",
+            },
+          ].map((step) => (
+            <div key={step.label} className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-5 py-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">{step.label}</div>
+              <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
+            </div>
+          ))}
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Card>
             <CardHeader>
               <div className="text-sm text-[var(--muted)]">Current Plan</div>
@@ -793,12 +626,11 @@ function BillingPageInner() {
           </Card>
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-          <Card className="order-2 xl:order-1">
-            <CardHeader>
-              <CardTitle className="text-xl">Usage Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm">
+        <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+          {/* AUDIT: DENSITY_OVERLOAD - move usage and quota diagnostics into a secondary reveal so checkout stays primary */}
+          <details className="rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-5 py-5">
+            <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">Usage summary</summary>
+            <div className="mt-4 space-y-4 text-sm">
               <div>
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-[var(--muted)]">Requests</span>
@@ -876,9 +708,7 @@ function BillingPageInner() {
                       />
                     </div>
                     <div className="mt-2 text-xs text-[var(--muted)]">
-                      {summaryHealth.detail} ·
-                      {" "}
-                      Used by anomaly scans, natural-language queries, and executive report summaries.
+                      {summaryHealth.detail} · Used by anomaly scans, natural-language queries, and executive report summaries.
                     </div>
                   </div>
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
@@ -900,9 +730,7 @@ function BillingPageInner() {
                       />
                     </div>
                     <div className="mt-2 text-xs text-[var(--muted)]">
-                      {emailHealth.detail} ·
-                      {" "}
-                      Used by AI-generated email summaries and outbound briefing drafts.
+                      {emailHealth.detail} · Used by AI-generated email summaries and outbound briefing drafts.
                     </div>
                   </div>
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
@@ -924,9 +752,7 @@ function BillingPageInner() {
                       />
                     </div>
                     <div className="mt-2 text-xs text-[var(--muted)]">
-                      {smartHealth.detail} ·
-                      {" "}
-                      Used by smart DPR input and history-based production suggestions.
+                      {smartHealth.detail} · Used by smart DPR input and history-based production suggestions.
                     </div>
                   </div>
                 </div>
@@ -940,124 +766,69 @@ function BillingPageInner() {
                   ))}
                 </div>
               ) : null}
-            </CardContent>
-          </Card>
+            </div>
+          </details>
 
-          <Card className="order-1 xl:order-2">
+          <Card>
             <CardHeader>
-              <CardTitle className="text-xl">Upgrade Checkout</CardTitle>
+              <CardTitle className="text-xl">Checkout</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              <div className="rounded-3xl border border-[var(--border)] bg-[rgba(8,14,24,0.72)] p-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Preflight</div>
-                    <div className="mt-1 text-sm font-semibold text-white">Confirm checkout readiness before payment</div>
-                  </div>
-                  <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeClass(checkoutBlocker ? "amber" : "green")}`}>
-                    {checkoutBlocker ? "Action needed" : "Ready to continue"}
-                  </span>
-                </div>
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {preflightItems.map((item) => (
-                    <div key={item.label} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{item.label}</div>
-                        <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeClass(item.pass ? "green" : "amber")}`}>
-                          {item.pass ? "Pass" : "Check"}
-                        </span>
-                      </div>
-                      <div className="mt-3 text-xs leading-5 text-[var(--muted)]">{item.detail}</div>
-                    </div>
-                  ))}
-                </div>
-                {checkoutBlocker ? (
-                  <div className="mt-4 rounded-2xl border border-amber-400/25 bg-amber-400/10 p-4 text-sm text-amber-100">
-                    <div className="font-semibold text-white">{checkoutBlocker.title}</div>
-                    <div className="mt-1 text-sm text-amber-100">{checkoutBlocker.detail}</div>
-                  </div>
-                ) : null}
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-[var(--muted)]">
+                Provider: Razorpay {billingConfig?.configured ? "configured" : "not configured"}
               </div>
-
-              <div className="rounded-3xl border border-[var(--border)] bg-[rgba(8,14,24,0.72)] p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Checkout path</div>
-                <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                  {[
-                    ["1", "Choose plan", "Pick a self-serve plan that matches the real organization footprint."],
-                    ["2", "Add OCR packs", "Add only the incremental OCR packs needed this cycle."],
-                    ["3", "Review estimate", "Confirm what is billable before opening Razorpay."],
-                  ].map(([step, title, detail]) => (
-                    <div key={step} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Step {step}</div>
-                      <div className="mt-2 text-sm font-semibold text-white">{title}</div>
-                      <div className="mt-1 text-xs leading-5 text-[var(--muted)]">{detail}</div>
-                    </div>
+              <div>
+                <label className="text-sm text-[var(--muted)]">Upgrade Plan</label>
+                <Select value={checkoutPlan} onChange={(event) => setCheckoutPlan(event.target.value)}>
+                  {planOptions.map((plan) => (
+                    <option key={plan.id} value={plan.id}>
+                      {plan.name}
+                      {plan.sales_only ? " - contact sales" : ""}
+                    </option>
                   ))}
-                </div>
+                </Select>
               </div>
-              <div className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Step 1</div>
-                    <div className="mt-1 text-sm font-semibold text-white">Choose plan and billing cycle</div>
-                  </div>
-                  <div className="rounded-full border border-[var(--border)] px-3 py-1 text-xs text-[var(--muted)]">
-                    Razorpay {billingConfig?.configured ? "ready" : "not configured"}
-                  </div>
+              <div>
+                <label className="text-sm text-[var(--muted)]">Billing Cycle</label>
+                <Select
+                  value={billingCycle}
+                  onChange={(event) => setBillingCycle(event.target.value as BillingCycle)}
+                >
+                  <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
+                </Select>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="text-sm text-[var(--muted)]">Users</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={requestedUsers}
+                    onChange={(event) => setRequestedUsers(Math.max(1, Number(event.target.value) || 1))}
+                  />
                 </div>
-                <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <label className="text-sm text-[var(--muted)]">Upgrade Plan</label>
-                    <Select value={checkoutPlan} onChange={(event) => setCheckoutPlan(event.target.value)}>
-                      {paidPlans.map((plan) => (
-                        <option key={plan.id} value={plan.id}>
-                          {plan.name}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Billing Cycle</label>
-                    <Select
-                      value={billingCycle}
-                      onChange={(event) => setBillingCycle(event.target.value as BillingCycle)}
-                    >
-                      <option value="monthly">Monthly</option>
-                      <option value="yearly">Yearly</option>
-                    </Select>
-                  </div>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] px-4 py-3">
-                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Current organization</div>
-                    <div className="mt-1 text-sm font-semibold text-white">
-                      {organizationUsers} active users / {organizationFactories} active factories
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] px-4 py-3">
-                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Plan capacity</div>
-                    <div className="mt-1 text-sm font-semibold text-white">
-                      {(checkoutPlanInfo?.user_limit || 0) > 0 ? checkoutPlanInfo?.user_limit : "Unlimited"} users / {(checkoutPlanInfo?.factory_limit || 0) > 0 ? checkoutPlanInfo?.factory_limit : "Unlimited"} factories
-                    </div>
-                    <div className="mt-2 text-xs leading-5 text-[var(--muted)]">
-                      Checkout uses the real active user and factory counts from this organization.
-                    </div>
-                  </div>
+                <div>
+                  <label className="text-sm text-[var(--muted)]">Factories</label>
+                  <Input
+                    type="number"
+                    min={1}
+                    value={requestedFactories}
+                    onChange={(event) =>
+                      setRequestedFactories(Math.max(1, Number(event.target.value) || 1))
+                    }
+                  />
                 </div>
               </div>
 
               <div className="space-y-3 rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div>
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Step 2</div>
-                    <div className="mt-1 text-sm font-semibold text-white">Add OCR scan packs</div>
-                  </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold">OCR scan packs</span>
                   <Link href="/plans" className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">
                     Compare on plans page
                   </Link>
                 </div>
-                <div className="text-xs leading-5 text-[var(--muted)]">
-                  Add needed packs only.
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 md:grid-cols-2">
                   {addonOptions.map((addon) => {
                     const activeQuantity = activeAddonQuantities[addon.id] || 0;
                     const selectedQuantity = selectedAddonQuantities[addon.id] || 0;
@@ -1100,7 +871,7 @@ function BillingPageInner() {
                             <div className="flex items-center gap-2">
                               <Button
                                 variant="outline"
-                                className="min-w-10 px-3 py-1"
+                                className="px-3 py-1"
                                 type="button"
                                 onClick={() => updateAddonQuantity(addon.id, selectedQuantity - 1)}
                               >
@@ -1111,7 +882,7 @@ function BillingPageInner() {
                               </span>
                               <Button
                                 variant="outline"
-                                className="min-w-10 px-3 py-1"
+                                className="px-3 py-1"
                                 type="button"
                                 onClick={() => updateAddonQuantity(addon.id, selectedQuantity + 1)}
                               >
@@ -1125,132 +896,116 @@ function BillingPageInner() {
                   })}
                 </div>
               </div>
+              <div className="space-y-2 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                <div className="flex items-center justify-between">
+                  <span>Base plan</span>
+                  <span>{formatAmount(checkoutPlanInfo?.monthly_price || 0, billingConfig?.currency || "INR")}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Included users / factories</span>
+                  <span>
+                    {(checkoutPlanInfo?.user_limit || 0) > 0 ? checkoutPlanInfo?.user_limit : "Unlimited"}
+                    {" / "}
+                    {(checkoutPlanInfo?.factory_limit || 0) > 0 ? checkoutPlanInfo?.factory_limit : "Unlimited"}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Billable OCR packs</span>
+                  <span>{formatAmount(checkoutEstimate?.addonMonthlyCost || 0, billingConfig?.currency || "INR")}</span>
+                </div>
+                {checkoutEstimate?.chargeableAddons.map((addon) => (
+                  <div key={addon.id} className="flex items-center justify-between text-xs text-[var(--muted)]">
+                    <span>
+                      {addon.name} x{addon.incrementalQuantity || addon.quantity || 0}
+                    </span>
+                    <span>
+                      {formatAmount(
+                        (addon.price || 0) * Math.max(0, addon.incrementalQuantity || addon.quantity || 0),
+                        billingConfig?.currency || "INR",
+                      )}
+                    </span>
+                  </div>
+                ))}
+                <div className="flex items-center justify-between border-t border-dashed border-[var(--border)] pt-3 font-semibold">
+                  <span>{billingCycle === "yearly" ? "Yearly total" : "Monthly total"}</span>
+                  <span>{formatAmount(checkoutEstimate?.cycleTotal || 0, billingConfig?.currency || "INR")}</span>
+                </div>
+              </div>
 
-              <div className="space-y-4 rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">Step 3</div>
-                  <div className="mt-1 text-sm font-semibold text-white">Review estimate and open checkout</div>
+              {checkoutEstimate?.chargeableAddons.length ? (
+                <div className="rounded-2xl border border-sky-400/25 bg-sky-400/10 p-4 text-sm text-sky-100">
+                  Charging for:{" "}
+                  {checkoutEstimate.chargeableAddons
+                    .map((addon) => `${addon.name} x${addon.incrementalQuantity || addon.quantity || 0}`)
+                    .join(", ")}
                 </div>
-                <div className="space-y-2 rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] p-4">
-                  <div className="flex items-center justify-between">
-                    <span>Base plan</span>
-                    <span>{formatAmount(checkoutPlanInfo?.monthly_price || 0, billingConfig?.currency || "INR")}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span>Billable OCR packs</span>
-                    <span>{formatAmount(checkoutEstimate?.addonMonthlyCost || 0, billingConfig?.currency || "INR")}</span>
-                  </div>
-                  {checkoutEstimate?.chargeableAddons.map((addon) => (
-                    <div key={addon.id} className="flex items-center justify-between text-xs text-[var(--muted)]">
-                      <span>
-                        {addon.name} x{addon.incrementalQuantity || addon.quantity || 0}
-                      </span>
-                      <span>
-                        {formatAmount(
-                          (addon.price || 0) * Math.max(0, addon.incrementalQuantity || addon.quantity || 0),
-                          billingConfig?.currency || "INR",
-                        )}
-                      </span>
-                    </div>
-                  ))}
-                  <div className="flex items-center justify-between border-t border-dashed border-[var(--border)] pt-3 font-semibold">
-                    <span>{billingCycle === "yearly" ? "Yearly total" : "Monthly total"}</span>
-                    <span>{formatAmount(checkoutEstimate?.cycleTotal || 0, billingConfig?.currency || "INR")}</span>
-                  </div>
+              ) : null}
+              {checkoutEstimate?.alreadyActiveAddons.length ? (
+                <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-4 text-sm text-emerald-100">
+                  Already active:{" "}
+                  {checkoutEstimate.alreadyActiveAddons
+                    .map((addon) => `${addon.name} x${addon.activeQuantity || addon.quantity || 0}`)
+                    .join(", ")}{" "}
+                  will not be charged again.
                 </div>
+              ) : null}
+              {checkoutEstimate && !checkoutEstimate.isCompatible ? (
+                <div className="rounded-2xl border border-rose-400/25 bg-rose-400/10 p-4 text-sm text-rose-100">
+                  This selection exceeds the hard user or factory cap for {checkoutPlanInfo?.name}. Pick a higher tier before checkout.
+                </div>
+              ) : null}
+              {checkoutPlanInfo?.sales_only ? (
+                <div className="rounded-2xl border border-amber-400/25 bg-amber-400/10 p-4 text-sm text-amber-100">
+                  Enterprise is handled through a contact-sales motion. Use this page to review the
+                  structure, then move the org with the manual override only during internal QA.
+                </div>
+              ) : null}
+              {!canWriteBilling ? (
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                  Read-only mode: admins can review billing status and invoices, while owners handle checkout and plan changes.
+                </div>
+              ) : null}
 
-                {checkoutEstimate?.chargeableAddons.length ? (
-                  <div className="rounded-2xl border border-sky-400/25 bg-sky-400/10 p-4 text-sm text-sky-100">
-                    Charging for:{" "}
-                    {checkoutEstimate.chargeableAddons
-                      .map((addon) => `${addon.name} x${addon.incrementalQuantity || addon.quantity || 0}`)
-                      .join(", ")}
-                  </div>
-                ) : null}
-                {checkoutEstimate?.alreadyActiveAddons.length ? (
-                  <div className="rounded-2xl border border-emerald-400/25 bg-emerald-400/10 p-4 text-sm text-emerald-100">
-                    Already active:{" "}
-                    {checkoutEstimate.alreadyActiveAddons
-                      .map((addon) => `${addon.name} x${addon.activeQuantity || addon.quantity || 0}`)
-                      .join(", ")}{" "}
-                    will not be charged again.
-                  </div>
-                ) : null}
-                {checkoutEstimate && !checkoutEstimate.isCompatible ? (
-                  <div className="rounded-2xl border border-rose-400/25 bg-rose-400/10 p-4 text-sm text-rose-100">
-                    This selection exceeds the hard user or factory cap for {checkoutPlanInfo?.name}. Pick a higher tier before checkout.
-                  </div>
-                ) : null}
-                {checkoutPlanInfo?.sales_only || checkoutIntent === "contact_sales" ? (
-                  <div className="rounded-2xl border border-amber-400/25 bg-amber-400/10 p-4 text-sm text-amber-100">
-                    Enterprise is sales-assisted. This page will not open self-serve Razorpay for that plan.
-                  </div>
-                ) : null}
-                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] p-4 text-sm text-[var(--muted)]">
-                  Need Enterprise? Use the plans page for the sales-assisted tier. Self-serve checkout only shows instantly billable plans and OCR add-ons.
-                </div>
-                {!canWriteBilling ? (
-                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.58)] p-4 text-sm text-[var(--muted)]">
-                    Read-only mode: admins and owners can handle checkout. Your current role can only review estimates here.
-                  </div>
-                ) : null}
-
-                <div className="grid gap-3 sm:flex sm:flex-wrap sm:items-center">
-                  <Button
-                    className="w-full sm:w-auto"
-                    onClick={launchCheckout}
-                    disabled={
-                      busy ||
-                      !canWriteBilling ||
-                      !checkoutPlanInfo ||
-                      !billingConfig?.configured ||
-                      Boolean(checkoutPlanInfo.sales_only) ||
-                      checkoutIntent === "contact_sales" ||
-                      Boolean(checkoutEstimate && !checkoutEstimate.isCompatible) ||
-                      Boolean(checkoutEstimate && checkoutEstimate.cycleTotal <= 0)
-                    }
-                  >
-                    {busy
-                      ? "Starting Checkout..."
-                      : checkoutPlanInfo?.sales_only || checkoutIntent === "contact_sales"
-                        ? "Sales-Assisted Plan"
-                        : canWriteBilling
-                          ? "Pay with Razorpay"
-                          : "Admin or Owner Access Required"}
-                  </Button>
-                  <div className="text-xs text-[var(--muted)]">
-                    This estimate uses the backend billing quote, active OCR-pack deductions, and the real active user and factory counts for this organization.
-                  </div>
-                </div>
+              <Button
+                onClick={launchCheckout}
+                disabled={
+                  busy ||
+                  !canWriteBilling ||
+                  !checkoutPlanInfo ||
+                  !billingConfig?.configured ||
+                  Boolean(checkoutPlanInfo.sales_only) ||
+                  Boolean(checkoutEstimate && !checkoutEstimate.isCompatible) ||
+                  Boolean(checkoutEstimate && checkoutEstimate.cycleTotal <= 0)
+                }
+              >
+                {busy
+                  ? "Starting Checkout..."
+                  : checkoutPlanInfo?.sales_only
+                    ? "Sales-Assisted Plan"
+                    : canWriteBilling
+                      ? "Pay with Razorpay"
+                      : "Owner Access Required"}
+              </Button>
+              <div className="text-xs text-[var(--muted)]">
+                This checkout uses the same backend pricing logic as the plans catalog, including hard caps, OCR pack quantities, and active-pack deductions.
               </div>
             </CardContent>
           </Card>
         </section>
 
-        <section className="space-y-4">
-          <div>
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Billing Operations</div>
-            <h2 className="mt-2 text-2xl font-semibold">Secondary controls and invoice history</h2>
-            <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
-              Checkout stays above. Use these owner-side controls after the current purchase path is settled.
-            </p>
-          </div>
-
-        <div className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl">Plan Controls</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
+        <section className="grid gap-4">
+          {/* AUDIT: BUTTON_CLUTTER - keep owner-only controls available, but move them into a secondary section so they do not compete with checkout */}
+          <details className="rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-5 py-5">
+            <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">Plan controls</summary>
+            <div className="mt-4 space-y-6">
               <div className="space-y-3">
-                <div className="text-sm font-semibold">Scheduled Downgrade</div>
+                <div className="text-sm font-semibold">Scheduled downgrade</div>
                 {billing?.pending_plan ? (
                   <div className="space-y-3">
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                       Pending plan: {billing.pending_plan} on {formatDateTime(billing.pending_plan_effective_at)}
                     </div>
                     <Button
-                      className="w-full sm:w-auto"
                       variant="outline"
                       onClick={() =>
                         handleAction(async () => {
@@ -1258,9 +1013,9 @@ function BillingPageInner() {
                           setStatus("Scheduled downgrade cancelled.");
                         })
                       }
-                      disabled={busy || !canManageControls}
+                      disabled={busy || !canWriteBilling}
                     >
-                      Cancel Downgrade
+                      Cancel downgrade
                     </Button>
                   </div>
                 ) : (
@@ -1273,7 +1028,6 @@ function BillingPageInner() {
                       ))}
                     </Select>
                     <Button
-                      className="w-full sm:w-auto"
                       variant="outline"
                       onClick={() =>
                         handleAction(async () => {
@@ -1281,9 +1035,9 @@ function BillingPageInner() {
                           setStatus("Downgrade scheduled at the end of the current billing cycle.");
                         })
                       }
-                      disabled={busy || !canManageControls}
+                      disabled={busy || !canWriteBilling}
                     >
-                      Schedule Downgrade
+                      Schedule downgrade
                     </Button>
                   </div>
                 )}
@@ -1291,10 +1045,9 @@ function BillingPageInner() {
 
               {billingConfig?.manual_plan_override_enabled ? (
                 <div className="space-y-3">
-                  <div className="text-sm font-semibold">Manual Org Plan Override</div>
+                  <div className="text-sm font-semibold">Manual org plan override</div>
                   <div className="text-sm text-[var(--muted)]">
-                    This emergency control is enabled by environment flag. Keep it off for normal
-                    billing so Razorpay stays the only upgrade path.
+                    This emergency control is enabled by environment flag. Keep it off for normal billing so Razorpay stays the only upgrade path.
                   </div>
                   <Select value={overridePlan} onChange={(event) => setOverridePlan(event.target.value)}>
                     {planOptions.map((plan) => (
@@ -1304,64 +1057,32 @@ function BillingPageInner() {
                     ))}
                   </Select>
                   <Button
-                    className="w-full sm:w-auto"
                     onClick={() =>
                       handleAction(async () => {
                         await updateOrganizationPlan(overridePlan);
                         setStatus(`Organization plan updated to ${overridePlan}.`);
                       })
                     }
-                    disabled={busy || !canManageControls}
+                    disabled={busy || !canWriteBilling}
                   >
-                    Update Organization Plan
+                    Update plan
                   </Button>
                 </div>
               ) : null}
-              {!canManageControls ? (
+              {!canWriteBilling ? (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  Owner-only controls live here. Admins can still start checkout above, but downgrade scheduling and emergency plan override stay owner-only.
+                  Owners are the only role allowed to schedule downgrades, start checkout, or use the emergency plan override.
                 </div>
               ) : null}
-            </CardContent>
-          </Card>
+            </div>
+          </details>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-xl">Invoice History</CardTitle>
-            </CardHeader>
-            <CardContent>
+          {/* AUDIT: DENSITY_OVERLOAD - move invoice history into a secondary section so the purchase journey stays first */}
+          <details className="rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-5 py-5">
+            <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">Invoice history</summary>
+            <div className="mt-4">
               {invoices.length ? (
-                <>
-                  <div className="space-y-3 md:hidden">
-                    {invoices.map((invoice) => (
-                      <div key={invoice.id} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <div className="font-semibold text-white">{invoice.plan}</div>
-                            <div className="mt-1 text-xs text-[var(--muted)]">Invoice #{invoice.id}</div>
-                          </div>
-                          <span className="text-sm font-semibold text-white">
-                            {formatAmount(invoice.amount, invoice.currency || "INR")}
-                          </span>
-                        </div>
-                        <div className="mt-3 grid gap-2 text-xs text-[var(--muted)]">
-                          <div className="flex items-center justify-between gap-3">
-                            <span>Status</span>
-                            <span className="text-right text-white">{invoice.status}</span>
-                          </div>
-                          <div className="flex items-center justify-between gap-3">
-                            <span>Issued</span>
-                            <span className="text-right text-white">{formatDateTime(invoice.issued_at)}</span>
-                          </div>
-                          <div className="flex items-center justify-between gap-3">
-                            <span>Provider</span>
-                            <span className="text-right text-white">{invoice.provider || "-"}</span>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="hidden overflow-x-auto md:block">
+                <div className="overflow-x-auto">
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">
@@ -1388,17 +1109,18 @@ function BillingPageInner() {
                       ))}
                     </tbody>
                   </table>
-                  </div>
-                </>
+                </div>
               ) : (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                   No invoices recorded yet.
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </details>
         </section>
+
+        {status ? <div className="text-sm text-green-400">{status}</div> : null}
+        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
     </main>
   );

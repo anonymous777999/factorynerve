@@ -1,6 +1,5 @@
-import { ApiError, backendUnavailableMessage } from "@/lib/api";
+import { ApiError } from "@/lib/api";
 import type { AuthContext, CurrentUser, FactoryAccess, OrganizationContext } from "@/lib/auth";
-import { trackProductEvent } from "@/lib/product-analytics";
 
 type SessionState = {
   user: CurrentUser | null;
@@ -15,7 +14,6 @@ type SessionState = {
 
 const SESSION_TTL_MS = 30_000;
 const SESSION_STORAGE_KEY = "dpr:web:session:v1";
-const MANAGER_GUARD_ROUTE_PREFIXES = ["/dashboard", "/analytics", "/approvals", "/steel"];
 let sessionHydratedFromStorage = false;
 
 const PENDING_SESSION_SNAPSHOT: SessionState = {
@@ -101,7 +99,7 @@ function toSessionError(err: unknown) {
       return "";
     }
     if (err.status === 0) {
-      return backendUnavailableMessage();
+      return "Backend not reachable. Check API base URL and backend status.";
     }
     return err.message;
   }
@@ -109,52 +107,6 @@ function toSessionError(err: unknown) {
     return "Session check timed out. Backend may be offline.";
   }
   return "Session check failed.";
-}
-
-function shouldResetSession(err: unknown) {
-  return err instanceof ApiError && err.status === 401;
-}
-
-function currentManagerGuardRoute() {
-  if (typeof window === "undefined") {
-    return null;
-  }
-  const pathname = window.location.pathname || "/";
-  for (const prefix of MANAGER_GUARD_ROUTE_PREFIXES) {
-    if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
-      return prefix;
-    }
-  }
-  return null;
-}
-
-function trackManagerSessionGuardResult(payload: {
-  route: string;
-  result: "pass" | "refresh_recovered" | "redirect_login" | "placeholder_rendered";
-  sessionAgeMinutes: number;
-  retryCount: number;
-  userRole: string;
-  hadCachedSession: boolean;
-  userId?: number | null;
-  factoryId?: string | null;
-}) {
-  void trackProductEvent(
-    "manager_session_guard_result",
-    {
-      route: payload.route,
-      result: payload.result,
-      session_age_minutes: payload.sessionAgeMinutes,
-      retry_count: payload.retryCount,
-      user_role: payload.userRole,
-      had_cached_session: payload.hadCachedSession,
-    },
-    {
-      context: {
-        userId: payload.userId,
-        factoryId: payload.factoryId,
-      },
-    },
-  );
 }
 
 export function getSessionSnapshot() {
@@ -251,14 +203,6 @@ export async function ensureSessionLoaded(loader: () => Promise<CurrentUser | Au
     return inflightSessionLoad;
   }
   const loadStartedAt = Date.now();
-  const trackedRoute = !force ? currentManagerGuardRoute() : null;
-  const cachedUser = sessionState.user;
-  const hadCachedSession = Boolean(cachedUser);
-  const cachedUserRole = cachedUser?.role || "";
-  const cachedUserId = cachedUser?.id ?? null;
-  const cachedFactoryId = sessionState.activeFactoryId ?? null;
-  const sessionAgeMinutes =
-    sessionState.loadedAt > 0 ? Math.max(0, Math.round((Date.now() - sessionState.loadedAt) / 60_000)) : 0;
 
   setSessionState({
     loading: sessionState.user ? false : true,
@@ -270,63 +214,27 @@ export async function ensureSessionLoaded(loader: () => Promise<CurrentUser | Au
       if (sessionState.loadedAt > loadStartedAt) {
         return;
       }
-      const nextUserRole = "user" in payload ? payload.user.role : payload.role;
-      const nextUserId = "user" in payload ? payload.user.id : payload.id;
-      const nextFactoryId = "user" in payload ? payload.active_factory_id || null : cachedFactoryId;
       setSessionState({
         ...applySessionPayload(payload),
         loading: false,
         error: "",
         loadedAt: Date.now(),
       });
-      if (trackedRoute && (cachedUserRole === "manager" || nextUserRole === "manager")) {
-        trackManagerSessionGuardResult({
-          route: trackedRoute,
-          result: hadCachedSession && sessionAgeMinutes > 0 ? "refresh_recovered" : "pass",
-          sessionAgeMinutes,
-          retryCount: 0,
-          userRole: nextUserRole,
-          hadCachedSession,
-          userId: nextUserId,
-          factoryId: nextFactoryId,
-        });
-      }
     })
     .catch((err) => {
       if (sessionState.loadedAt > loadStartedAt) {
         return;
       }
-      const nextState: Partial<SessionState> = {
+      setSessionState({
+        user: null,
+        factories: [],
+        activeFactoryId: null,
+        activeFactory: null,
+        organization: null,
         loading: false,
         error: toSessionError(err),
         loadedAt: Date.now(),
-      };
-      // Keep the last known session during transient wake-up and network failures
-      // so protected routes do not collapse into login placeholders mid-session.
-      if (shouldResetSession(err)) {
-        nextState.user = null;
-        nextState.factories = [];
-        nextState.activeFactoryId = null;
-        nextState.activeFactory = null;
-        nextState.organization = null;
-      }
-      setSessionState(nextState);
-      if (trackedRoute && cachedUserRole === "manager") {
-        trackManagerSessionGuardResult({
-          route: trackedRoute,
-          result: shouldResetSession(err)
-            ? "redirect_login"
-            : hadCachedSession
-              ? "refresh_recovered"
-              : "placeholder_rendered",
-          sessionAgeMinutes,
-          retryCount: 0,
-          userRole: cachedUserRole,
-          hadCachedSession,
-          userId: cachedUserId,
-          factoryId: cachedFactoryId,
-        });
-      }
+      });
     })
     .finally(() => {
       inflightSessionLoad = null;

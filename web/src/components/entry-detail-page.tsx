@@ -5,7 +5,6 @@ import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
 
 import { formatApiErrorMessage } from "@/lib/api";
-import { humanizeAiProvider, humanizePlanLabel } from "@/lib/ai-labels";
 import { transferBlob } from "@/lib/blob-transfer";
 import {
   approveEntry,
@@ -184,7 +183,7 @@ export default function EntryDetailPage() {
         if (job.status === "succeeded") {
           setSummaryJobId(null);
           await loadEntry();
-          setStatus("Summary refreshed.");
+          setStatus("AI summary finished and the entry view has been refreshed.");
           setBusy(false);
         } else if (job.status === "failed") {
           setSummaryJobId(null);
@@ -277,11 +276,7 @@ export default function EntryDetailPage() {
   };
 
   if (sessionLoading || loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center px-4 text-center text-sm text-[var(--muted)]">
-        Loading entry detail...
-      </main>
-    );
+    return <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">Loading entry detail...</main>;
   }
 
   if (!user || !entry) {
@@ -303,50 +298,59 @@ export default function EntryDetailPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-28 sm:px-6 sm:py-8 lg:px-8">
-      <div className="mx-auto max-w-6xl space-y-5 sm:space-y-6">
-        <section className="flex flex-col gap-5 rounded-[1.75rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-5 shadow-2xl backdrop-blur sm:p-6 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-3xl space-y-2">
+    <main className="min-h-screen px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-6xl space-y-6">
+        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
+          <div className="space-y-2">
             <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Entry Detail</div>
-            <h1 className="text-2xl font-semibold sm:text-3xl">
-              {formatDate(entry.date)} - {entry.shift}
+            <h1 className="text-3xl font-semibold">
+              Review the shift first, then edit or export if needed
             </h1>
             <p className="text-sm text-[var(--muted)]">
-              Submitted by {entry.submitted_by || `User ${entry.user_id || "-"}`} - status {entry.status}
+              {formatDate(entry.date)} | {entry.shift} | submitted by {entry.submitted_by || `User ${entry.user_id || "-"}`} | status {entry.status}
             </p>
-          </div>
-          <div className="flex w-full flex-col gap-3 sm:flex-row lg:w-auto">
-            <Link href="/dashboard" className="w-full sm:w-auto">
-              <Button variant="outline" className="w-full sm:w-auto">
-                Back
-              </Button>
-            </Link>
-            <Link href="/entry" className="w-full sm:w-auto">
-              <Button variant="ghost" className="w-full sm:w-auto">
-                New Entry
-              </Button>
-            </Link>
           </div>
         </section>
 
-        {status ? (
-          <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
-            {status}
+        {/* AUDIT: BUTTON_CLUTTER - keep route jumps available in a secondary tray so review stays primary. */}
+        <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
+          <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
+            Entry tools
+          </summary>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <Link href="/dashboard">
+              <Button variant="outline">Board</Button>
+            </Link>
+            <Link href="/entry">
+              <Button variant="ghost">New entry</Button>
+            </Link>
           </div>
-        ) : null}
-        {error || sessionError ? (
-          <div className="rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-            {error || sessionError}
-          </div>
-        ) : null}
+        </details>
 
-        <section className="grid gap-5 xl:grid-cols-[0.86fr_1.14fr] xl:items-start">
+        {/* AUDIT: FLOW_BROKEN - add a short review sequence so the page leads with the next operational move. */}
+        <section className="grid gap-3 md:grid-cols-3">
+          {[
+            { step: "1. Check status", caption: "Confirm the shift outcome and approval state first." },
+            { step: "2. Review notes", caption: "Use the summary and production context before changing anything." },
+            { step: "3. Act", caption: "Approve, edit, or export only after the record reads clean." },
+          ].map((item) => (
+            <div
+              key={item.step}
+              className="rounded-[24px] border border-[var(--border)] bg-[rgba(10,14,24,0.68)] px-5 py-4"
+            >
+              <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
+              <div className="mt-2 text-sm text-[var(--muted)]">{item.caption}</div>
+            </div>
+          ))}
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[0.86fr_1.14fr]">
           <Card>
             <CardHeader>
               <div className="text-sm text-[var(--muted)]">Entry Meta</div>
               <CardTitle className="text-xl">Production snapshot</CardTitle>
             </CardHeader>
-            <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
+            <CardContent className="grid gap-4 text-sm md:grid-cols-2">
               <div>
                 <div className="text-[var(--muted)]">Date</div>
                 <div className="font-semibold">{formatDate(entry.date)}</div>
@@ -404,16 +408,15 @@ export default function EntryDetailPage() {
                 {entry.ai_summary || "No AI summary available for this entry yet."}
               </div>
               {summaryMeta ? (
-                <div className="grid gap-3 text-sm text-[var(--muted)] sm:grid-cols-2">
-                  <div>AI service: <span className="text-[var(--text)]">{humanizeAiProvider(summaryMeta.provider)}</span></div>
-                  <div>Plan: <span className="text-[var(--text)]">{humanizePlanLabel(summaryMeta.plan)}</span></div>
+                <div className="grid gap-3 text-sm text-[var(--muted)] md:grid-cols-2">
+                  <div>Provider: <span className="text-[var(--text)]">{summaryMeta.provider}</span></div>
+                  <div>Plan: <span className="text-[var(--text)]">{summaryMeta.plan}</span></div>
                   <div>Estimated tokens: <span className="text-[var(--text)]">~{summaryMeta.estimated_tokens}</span></div>
                   <div>Last regenerated: <span className="text-[var(--text)]">{formatDateTime(summaryMeta.last_regenerated_at || undefined)}</span></div>
                 </div>
               ) : null}
               {canRegenerate ? (
                 <Button
-                  className="w-full sm:w-auto"
                   onClick={() =>
                     handleAction(async () => {
                       const job = await queueEntrySummaryJob(entry.id);
@@ -430,7 +433,7 @@ export default function EntryDetailPage() {
           </Card>
         </section>
 
-        <section className="grid gap-5 xl:grid-cols-[0.95fr_1.05fr] xl:items-start">
+        <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           <Card>
             <CardHeader>
               <div className="text-sm text-[var(--muted)]">Notes & Quality</div>
@@ -474,9 +477,8 @@ export default function EntryDetailPage() {
                 <div className="space-y-3">
                   <div className="text-sm font-medium">Approval Workflow</div>
                   <Input value={rejectReason} onChange={(event) => setRejectReason(event.target.value)} placeholder="Optional rejection reason" />
-                  <div className="flex flex-col gap-3 sm:flex-row">
+                  <div className="flex flex-wrap gap-3">
                     <Button
-                      className="w-full sm:w-auto"
                       onClick={() =>
                         handleAction(async () => {
                           const next = await approveEntry(entry.id);
@@ -490,7 +492,6 @@ export default function EntryDetailPage() {
                     </Button>
                     <Button
                       variant="outline"
-                      className="w-full sm:w-auto"
                       onClick={() =>
                         handleAction(async () => {
                           const next = await rejectEntry(entry.id, rejectReason || null);
@@ -506,22 +507,28 @@ export default function EntryDetailPage() {
                 </div>
               ) : null}
 
-              <div className="space-y-3">
-                <div className="text-sm font-medium">Downloads</div>
-                <div className="flex flex-col gap-3 sm:flex-row">
-                  <Button variant="outline" className="w-full sm:w-auto" onClick={() => handleDownload("pdf")} disabled={busy}>
-                    Download PDF
+              {/* AUDIT: BUTTON_CLUTTER - keep export controls available in a secondary reveal so review decisions stay first. */}
+              <details className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,24,0.62)] p-4">
+                <summary className="cursor-pointer list-none text-sm font-medium text-[var(--text)] marker:hidden">
+                  Downloads
+                </summary>
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Button variant="outline" onClick={() => handleDownload("pdf")} disabled={busy}>
+                    PDF
                   </Button>
-                  <Button variant="outline" className="w-full sm:w-auto" onClick={() => handleDownload("excel")} disabled={busy}>
-                    Download Excel
+                  <Button variant="outline" onClick={() => handleDownload("excel")} disabled={busy}>
+                    Excel
                   </Button>
                 </div>
-              </div>
+              </details>
 
               {canEdit ? (
-                <div className="space-y-4">
-                  <div className="text-sm font-medium">Edit Entry</div>
-                  <div className="grid gap-4 sm:grid-cols-2">
+                <details className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,24,0.62)] p-4">
+                  <summary className="cursor-pointer list-none text-sm font-medium text-[var(--text)] marker:hidden">
+                    Edit entry
+                  </summary>
+                  <div className="mt-4 space-y-4">
+                  <div className="grid gap-4 md:grid-cols-2">
                     <div>
                       <label className="text-sm text-[var(--muted)]">Units Target</label>
                       <Input
@@ -607,7 +614,6 @@ export default function EntryDetailPage() {
                     <Textarea rows={4} value={edit.notes} onChange={(event) => setEdit((prev) => ({ ...prev, notes: event.target.value }))} />
                   </div>
                   <Button
-                    className="w-full sm:w-auto"
                     onClick={() =>
                       handleAction(async () => {
                         const next = await updateEntry(entry.id, {
@@ -629,9 +635,10 @@ export default function EntryDetailPage() {
                     }
                     disabled={busy}
                   >
-                    Update Entry
+                    Save entry
                   </Button>
-                </div>
+                  </div>
+                </details>
               ) : (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                   This entry is not editable from your current role or time window.
@@ -643,7 +650,6 @@ export default function EntryDetailPage() {
                   <div className="text-sm font-medium text-red-200">Delete Entry</div>
                   <Button
                     variant="outline"
-                    className="w-full sm:w-auto"
                     onClick={() =>
                       handleAction(async () => {
                         if (!window.confirm(`Delete entry ${entry.id}? This hides it from normal views.`)) return;
@@ -661,6 +667,8 @@ export default function EntryDetailPage() {
           </Card>
         </section>
 
+        {status ? <div className="text-sm text-green-400">{status}</div> : null}
+        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
     </main>
   );

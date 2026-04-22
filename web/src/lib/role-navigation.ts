@@ -34,9 +34,9 @@ export function getHomeDestination(role?: string | null, accessibleFactories = 0
     case "accountant":
       return "/reports";
     case "manager":
-      return "/approvals";
-    case "admin":
       return "/dashboard";
+    case "admin":
+      return "/settings";
     case "owner":
       return accessibleFactories > 1 ? "/control-tower" : "/premium/dashboard";
     default:
@@ -55,11 +55,11 @@ export function getRolePrimaryHrefs(role?: string | null) {
     case "accountant":
       return ["/reports", "/attendance/reports", "/email-summary", "/steel/customers", "/steel/invoices"];
     case "manager":
-      return ["/approvals", "/dashboard", "/reports", "/steel", "/analytics", "/work-queue"];
+      return ["/dashboard", "/approvals", "/reports", "/steel", "/analytics", "/work-queue"];
     case "admin":
       return ["/settings", "/settings/attendance", "/reports", "/approvals", "/analytics", "/dashboard"];
     case "owner":
-      return ["/premium/dashboard", "/ai", "/control-tower", "/reports", "/email-summary", "/steel/charts"];
+      return ["/premium/dashboard", "/control-tower", "/reports", "/ai", "/email-summary", "/steel/charts"];
     default:
       return ["/dashboard", "/work-queue", "/profile"];
   }
@@ -76,11 +76,11 @@ export function getRoleDefaultFavoriteHrefs(role?: string | null) {
     case "accountant":
       return ["/reports", "/attendance/reports", "/email-summary", "/steel/customers", "/steel/invoices"];
     case "manager":
-      return ["/approvals", "/dashboard", "/reports", "/steel", "/analytics"];
+      return ["/dashboard", "/approvals", "/reports", "/steel", "/analytics"];
     case "admin":
       return ["/settings", "/settings/attendance", "/reports", "/approvals", "/analytics"];
     case "owner":
-      return ["/premium/dashboard", "/ai", "/control-tower", "/reports", "/email-summary"];
+      return ["/premium/dashboard", "/control-tower", "/reports", "/email-summary", "/ai"];
     default:
       return ["/dashboard", "/work-queue", "/profile"];
   }
@@ -97,11 +97,11 @@ export function getRoleMobileNavHrefs(role?: string | null) {
     case "accountant":
       return ["/reports", "/attendance/reports", "/email-summary", "/steel/customers", "/profile"];
     case "manager":
-      return ["/approvals", "/dashboard", "/reports", "/steel", "/analytics"];
+      return ["/dashboard", "/approvals", "/reports", "/steel", "/analytics"];
     case "admin":
       return ["/settings", "/reports", "/approvals", "/analytics", "/profile"];
     case "owner":
-      return ["/premium/dashboard", "/ai", "/reports", "/control-tower", "/email-summary"];
+      return ["/premium/dashboard", "/reports", "/control-tower", "/ai", "/email-summary"];
     default:
       return ["/dashboard", "/work-queue", "/ocr/scan", "/attendance", "/profile"];
   }
@@ -122,7 +122,7 @@ export function getRoleDesktopQuickLinkHrefs(role?: string | null) {
     case "admin":
       return ["/settings", "/settings/attendance", "/reports"];
     case "owner":
-      return ["/premium/dashboard", "/ai", "/control-tower", "/email-summary"];
+      return ["/premium/dashboard", "/control-tower", "/email-summary"];
     default:
       return ["/dashboard", "/work-queue", "/profile"];
   }
@@ -156,7 +156,7 @@ export function getRoleWorkflowHint(role?: string | null, industryType?: string 
     case "manager":
       return {
         title: "Manager flow",
-        detail: "Start in the review queue for the next decision, then move into reports and the operations board.",
+        detail: "Use the operations board for the next decision, then move into reports and the review queue.",
       };
     case "admin":
       return {
@@ -166,7 +166,7 @@ export function getRoleWorkflowHint(role?: string | null, industryType?: string 
     case "owner":
       return {
         title: "Owner flow",
-        detail: "Start from risk, summary, and money exposure. Drill into factory comparison only when a signal needs proof.",
+        detail: "Start from risk, summary, and money exposure. Drill into AI or factory comparison only when a signal needs proof.",
       };
     default:
       return {

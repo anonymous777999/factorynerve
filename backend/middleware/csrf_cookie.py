@@ -17,6 +17,8 @@ SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
 def _is_exempt(path: str) -> bool:
     if path in {"/health", "/metrics"}:
         return True
+    if path == "/observability/frontend-error":
+        return True
     if path.startswith("/auth/google"):
         return True
     if path.startswith("/auth-secure"):
@@ -48,4 +50,3 @@ def apply_cookie_csrf(app: FastAPI) -> None:
             return JSONResponse(status_code=403, content={"detail": detail})
 
         return await call_next(request)
-

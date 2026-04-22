@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 import os
 import secrets
 from typing import Any
@@ -12,19 +11,16 @@ from fastapi import HTTPException, Request, status
 from backend.utils import get_config
 
 
-logger = logging.getLogger(__name__)
-
-
 ACCESS_COOKIE = os.getenv("JWT_ACCESS_COOKIE", "dpr_access")
 REFRESH_COOKIE = os.getenv("JWT_REFRESH_COOKIE", "dpr_refresh")
 CSRF_COOKIE = os.getenv("JWT_CSRF_COOKIE", "dpr_csrf")
 CSRF_HEADER = os.getenv("JWT_CSRF_HEADER", "X-CSRF-Token")
 
-COOKIE_SAMESITE = os.getenv("JWT_COOKIE_SAMESITE", "Strict")
+COOKIE_SAMESITE = os.getenv("JWT_COOKIE_SAMESITE", "Lax")
 COOKIE_DOMAIN = os.getenv("JWT_COOKIE_DOMAIN") or None
 COOKIE_PATH = os.getenv("JWT_COOKIE_PATH", "/")
 
-REFRESH_TOKEN_DAYS = min(int(os.getenv("REFRESH_TOKEN_DAYS", "7")), 7)
+REFRESH_TOKEN_DAYS = int(os.getenv("REFRESH_TOKEN_DAYS", "30"))
 
 
 def _env_cookie_secure() -> bool | None:
@@ -46,53 +42,6 @@ def _should_use_secure_cookie(request: Request | None) -> bool:
     return False
 
 
-def _normalize_cookie_domain(value: str | None) -> str | None:
-    if not value:
-        return None
-    cleaned = value.strip().lower().lstrip(".")
-    if not cleaned:
-        return None
-    if ":" in cleaned:
-        cleaned = cleaned.split(":", 1)[0].strip()
-    return cleaned or None
-
-
-def _resolve_cookie_domain(request: Request | None) -> str | None:
-    configured = _normalize_cookie_domain(COOKIE_DOMAIN)
-    if not configured:
-        return None
-    if request is None:
-        return configured
-
-    host = (request.url.hostname or "").strip().lower().rstrip(".")
-    if not host:
-        return configured
-
-    if host == configured or host.endswith(f".{configured}"):
-        return configured
-
-    # Common production misconfiguration: cookie domain is pinned to `www`
-    # while users authenticate on the apex domain. In that case, widen the
-    # cookie to the shared parent domain so the session survives the redirect.
-    if configured.startswith("www."):
-        apex = configured[4:]
-        if host == apex or host.endswith(f".{apex}"):
-            logger.warning(
-                "JWT_COOKIE_DOMAIN=%s does not match request host %s; using parent domain %s instead.",
-                configured,
-                host,
-                apex,
-            )
-            return apex
-
-    logger.warning(
-        "Ignoring JWT_COOKIE_DOMAIN=%s for request host %s because the domains do not match.",
-        configured,
-        host,
-    )
-    return None
-
-
 def _cookie_kwargs(
     *, httponly: bool, max_age: int | None = None, request: Request | None = None
 ) -> dict[str, Any]:
@@ -102,9 +51,8 @@ def _cookie_kwargs(
         "samesite": COOKIE_SAMESITE,
         "path": COOKIE_PATH,
     }
-    cookie_domain = _resolve_cookie_domain(request)
-    if cookie_domain:
-        payload["domain"] = cookie_domain
+    if COOKIE_DOMAIN:
+        payload["domain"] = COOKIE_DOMAIN
     if max_age is not None:
         payload["max_age"] = max_age
     return payload
@@ -112,7 +60,7 @@ def _cookie_kwargs(
 
 def _access_max_age() -> int:
     config = get_config()
-    return int(config.jwt_access_token_minutes * 60)
+    return int(config.jwt_expire_hours * 3600)
 
 
 def _refresh_max_age() -> int:
@@ -150,11 +98,10 @@ def set_auth_cookies(
     return csrf
 
 
-def clear_auth_cookies(*, response, request: Request | None = None) -> None:
-    cookie_domain = _resolve_cookie_domain(request)
-    response.delete_cookie(ACCESS_COOKIE, path=COOKIE_PATH, domain=cookie_domain)
-    response.delete_cookie(REFRESH_COOKIE, path=COOKIE_PATH, domain=cookie_domain)
-    response.delete_cookie(CSRF_COOKIE, path=COOKIE_PATH, domain=cookie_domain)
+def clear_auth_cookies(*, response) -> None:
+    response.delete_cookie(ACCESS_COOKIE, path=COOKIE_PATH, domain=COOKIE_DOMAIN)
+    response.delete_cookie(REFRESH_COOKIE, path=COOKIE_PATH, domain=COOKIE_DOMAIN)
+    response.delete_cookie(CSRF_COOKIE, path=COOKIE_PATH, domain=COOKIE_DOMAIN)
 
 
 def get_access_cookie(request: Request) -> str | None:

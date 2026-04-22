@@ -118,7 +118,7 @@ A reviewer corrects OCR once and gets the exact corrected output everywhere.
 ### Demo script
 
 1. Upload a register image
-2. Correct one wrong quantity
+2.                                                  *rrect one wrong quantity
 3. Approve the document
 4. Export Excel
 5. Show the corrected value in the file

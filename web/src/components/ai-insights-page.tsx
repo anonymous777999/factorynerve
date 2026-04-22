@@ -16,7 +16,7 @@ import {
   type AnomalyResponse,
   type NaturalLanguageQueryResponse,
 } from "@/lib/ai";
-import { humanizeAiProvider, humanizeAiStatus, humanizePlanLabel } from "@/lib/ai-labels";
+import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import { getQuotaHealth, quotaLabel } from "@/lib/quota-health";
 import { useSession } from "@/lib/use-session";
 
@@ -28,38 +28,15 @@ type SavedPreset = {
   question: string;
 };
 
-const BUILT_IN_PRESETS: SavedPreset[] = [
-  {
-    id: "downtime-shift",
-    label: "Downtime by Shift",
-    question: "Show me last month's downtime by shift",
-  },
-  {
-    id: "performance-day",
-    label: "Performance by Day",
-    question: "Show me this month's performance by day",
-  },
-  {
-    id: "output-total",
-    label: "Output Snapshot",
-    question: "Show me last 7 days output total",
-  },
-  {
-    id: "manpower-shift",
-    label: "Manpower by Shift",
-    question: "Show me last 14 days manpower by shift",
-  },
-];
-
 function presetStorageKey(userId?: number) {
   return `dpr-ai-nlq-presets:${userId || "anon"}`;
 }
 
-function formatDateTime(value?: string) {
+function formatDateTime(value?: string, locale = "en-IN") {
   if (!value) return "-";
   const parsed = new Date(value);
   if (Number.isNaN(parsed.getTime())) return value;
-  return parsed.toLocaleString("en-IN", {
+  return parsed.toLocaleString(locale, {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -69,10 +46,35 @@ function formatDateTime(value?: string) {
 }
 
 export default function AiInsightsPage() {
+  const { locale, t } = useI18n();
+  useI18nNamespaces(["common", "ai"]);
+
   const { user, loading, error: sessionError } = useSession();
+  const builtInPresets = useMemo<SavedPreset[]>(() => [
+    {
+      id: "downtime-shift",
+      label: t("ai.preset.downtime_shift.label", "Downtime by Shift"),
+      question: t("ai.preset.downtime_shift.question", "Show me last month's downtime by shift"),
+    },
+    {
+      id: "performance-day",
+      label: t("ai.preset.performance_day.label", "Performance by Day"),
+      question: t("ai.preset.performance_day.question", "Show me this month's performance by day"),
+    },
+    {
+      id: "output-total",
+      label: t("ai.preset.output_total.label", "Output Snapshot"),
+      question: t("ai.preset.output_total.question", "Show me last 7 days output total"),
+    },
+    {
+      id: "manpower-shift",
+      label: t("ai.preset.manpower_shift.label", "Manpower by Shift"),
+      question: t("ai.preset.manpower_shift.question", "Show me last 14 days manpower by shift"),
+    },
+  ], [t]);
   const [usage, setUsage] = useState<AiUsage | null>(null);
   const [anomalies, setAnomalies] = useState<AnomalyResponse | null>(null);
-  const [question, setQuestion] = useState("Show me last month's downtime by shift");
+  const [question, setQuestion] = useState("");
   const [nlqResult, setNlqResult] = useState<NaturalLanguageQueryResponse | null>(null);
   const [savedPresets, setSavedPresets] = useState<SavedPreset[]>([]);
   const [presetName, setPresetName] = useState("");
@@ -87,6 +89,12 @@ export default function AiInsightsPage() {
   const [status, setStatus] = useState("");
   const summaryHealth = getQuotaHealth(usage?.summary_used, usage?.summary_limit);
   const smartHealth = getQuotaHealth(usage?.smart_used, usage?.smart_limit);
+
+  useEffect(() => {
+    if (!question) {
+      setQuestion(t("ai.preset.downtime_shift.question", "Show me last month's downtime by shift"));
+    }
+  }, [question, t]);
 
   const loadAiHome = useCallback(async (options?: { background?: boolean; selectedDays?: number }) => {
     const selectedDays = options?.selectedDays ?? (Number(days) || 14);
@@ -107,7 +115,7 @@ export default function AiInsightsPage() {
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("Could not load AI insights.");
+        setError(t("ai.errors.load", "Could not load AI insights."));
       }
     } finally {
       setLastUpdatedAt(new Date().toISOString());
@@ -115,7 +123,7 @@ export default function AiInsightsPage() {
       setPageLoading(false);
       setRefreshing(false);
     }
-  }, [days, hasLoadedOnce]);
+  }, [days, hasLoadedOnce, t]);
 
   useEffect(() => {
     setError("");
@@ -168,9 +176,7 @@ export default function AiInsightsPage() {
     window.localStorage.setItem(presetStorageKey(user.id), JSON.stringify(next));
   };
 
-  const combinedPresets = useMemo(() => {
-    return [...BUILT_IN_PRESETS, ...savedPresets];
-  }, [savedPresets]);
+  const combinedPresets = useMemo(() => [...builtInPresets, ...savedPresets], [builtInPresets, savedPresets]);
 
   const handleQuestion = async () => {
     setQueryBusy(true);
@@ -179,14 +185,14 @@ export default function AiInsightsPage() {
     try {
       const response = await askNaturalLanguageQuery(question);
       setNlqResult(response);
-      setStatus(humanizeAiStatus(response.provider));
+      setStatus(t("ai.status.answered", "NLQ answered with {{provider}}.", { provider: response.provider }));
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("Could not answer the question.");
+        setError(t("ai.errors.answer", "Could not answer the question."));
       }
     } finally {
       setQueryBusy(false);
@@ -195,10 +201,10 @@ export default function AiInsightsPage() {
 
   const handleSavePreset = () => {
     setSavingPreset(true);
-    const label = presetName.trim() || `Preset ${savedPresets.length + 1}`;
+    const label = presetName.trim() || t("ai.preset.custom_label", "Preset {{count}}", { count: savedPresets.length + 1 });
     const trimmedQuestion = question.trim();
     if (!trimmedQuestion) {
-      setError("Enter a question before saving a preset.");
+      setError(t("ai.errors.empty_preset", "Enter a question before saving a preset."));
       setSavingPreset(false);
       return;
     }
@@ -209,7 +215,7 @@ export default function AiInsightsPage() {
     };
     savePresets([nextPreset, ...savedPresets].slice(0, 8));
     setPresetName("");
-    setStatus(`Saved preset "${label}".`);
+    setStatus(t("ai.status.saved_preset", "Saved preset \"{{label}}\".", { label }));
     setError("");
     setSavingPreset(false);
   };
@@ -217,7 +223,7 @@ export default function AiInsightsPage() {
   const handleDeletePreset = (presetId: string) => {
     const next = savedPresets.filter((item) => item.id !== presetId);
     savePresets(next);
-    setStatus("Saved preset removed.");
+    setStatus(t("ai.status.deleted_preset", "Saved preset removed."));
   };
 
   if (loading || (pageLoading && user && !hasLoadedOnce)) {
@@ -244,12 +250,12 @@ export default function AiInsightsPage() {
       <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
-            <CardTitle>AI Insights</CardTitle>
+            <CardTitle>{t("ai.title", "AI Insights")}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
+            <div className="text-sm text-red-400">{sessionError || t("ai.sign_in_required", "Please sign in to continue.")}</div>
             <Link href="/access">
-              <Button>Open Login</Button>
+              <Button>{t("dashboard.action.open_login", "Open Access")}</Button>
             </Link>
           </CardContent>
         </Card>
@@ -258,159 +264,298 @@ export default function AiInsightsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 pb-24 md:px-8 md:pb-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div>
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">AI Insights</div>
-            <h1 className="mt-2 text-3xl font-semibold">Factory intelligence, risk signals, and plain-language answers</h1>
-            <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
-              Read anomaly drift, monitor AI capacity, and ask factory questions in business language without leaving DPR.ai.
-            </p>
-          </div>
-          <div className="space-y-3">
-            <div className="grid gap-3 sm:flex sm:flex-wrap">
-              <Link href="/entry">
-                <Button className="w-full sm:w-auto">Open DPR Entry</Button>
-              </Link>
-              <Link href="/reports">
-                <Button variant="outline" className="w-full sm:w-auto">Open Reports</Button>
-              </Link>
-              <Button
-                variant="outline"
-                className="w-full sm:w-auto"
-                onClick={() => {
-                  void loadAiHome({ background: true, selectedDays: Number(days) || 14 });
-                }}
-                disabled={refreshing}
-              >
-                {refreshing ? "Refreshing..." : "Refresh AI"}
-              </Button>
-            </div>
-            <div className="text-xs text-[var(--muted)]">
-              {refreshing
-                ? "Updating AI quota and anomaly scan..."
-                : lastUpdatedAt
-                  ? `Updated ${formatDateTime(lastUpdatedAt)}`
-                  : "Live updates every 45 seconds"}
+    <main className="min-h-screen px-4 py-8 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
+        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
+          <div className="max-w-4xl space-y-3">
+            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("ai.title", "AI Insights")}</div>
+            <h1 className="text-3xl font-semibold">{t("ai.hero.title", "Ask an operations question")}</h1>
+            <p className="max-w-3xl text-sm text-[var(--muted)]">{t("ai.hero.subtitle", "Start with NLQ, then check anomaly drift and quota context only when you need support.")}</p>
+            <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
+              <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
+                {t("ai.hero.plan", "Plan")}: <span className="font-semibold text-[var(--text)] capitalize">{usage?.plan || "-"}</span>
+              </span>
+              <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
+                {refreshing
+                  ? t("ai.hero.refreshing", "Refreshing AI...")
+                  : lastUpdatedAt
+                    ? t("ai.hero.updated", "Updated {{value}}", { value: formatDateTime(lastUpdatedAt, locale) })
+                    : t("ai.hero.live_updates", "Live updates every 45s")}
+              </span>
             </div>
           </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              className="px-4 py-2 text-xs"
+              onClick={() => document.getElementById("nlq-card")?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            >
+              {t("ai.actions.ask", "Ask AI")}
+            </Button>
+            <Button
+              variant="outline"
+              className="px-4 py-2 text-xs"
+              onClick={() => {
+                void loadAiHome({ background: true, selectedDays: Number(days) || 14 });
+              }}
+              disabled={refreshing}
+            >
+              {refreshing ? t("ai.actions.refreshing", "Refreshing...") : t("common.refresh", "Refresh")}
+            </Button>
+            <details className="group">
+              <summary className="list-none">
+                <Button variant="outline" className="px-4 py-2 text-xs">
+                  {t("ai.actions.more_tools", "More tools")}
+                </Button>
+              </summary>
+              <div className="mt-3 flex flex-wrap gap-3 rounded-[1.35rem] border border-[var(--border)] bg-[rgba(10,14,24,0.82)] p-3">
+                <Link href="/entry">
+                  <Button variant="outline" className="px-4 py-2 text-xs">{t("ai.actions.entry", "DPR Entry")}</Button>
+                </Link>
+                <Link href="/reports">
+                  <Button variant="outline" className="px-4 py-2 text-xs">{t("ai.actions.reports", "Reports")}</Button>
+                </Link>
+              </div>
+            </details>
           </div>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-3">
+          {[
+            {
+              step: t("ai.steps.ask", "Step 1"),
+              title: t("ai.steps.ask_title", "Ask"),
+              body: t("ai.steps.ask_body", "Type the KPI or trend question you need answered right now."),
+            },
+            {
+              step: t("ai.steps.answer", "Step 2"),
+              title: t("ai.steps.answer_title", "Check answer"),
+              body: nlqResult
+                ? t("ai.steps.answer_body_ready", "Latest answer came from {{provider}}.", { provider: nlqResult.provider })
+                : t("ai.steps.answer_body_empty", "The answer panel stays ready for the next NLQ result."),
+            },
+            {
+              step: t("ai.steps.investigate", "Step 3"),
+              title: t("ai.steps.investigate_title", "Investigate"),
+              body: t("ai.steps.investigate_body", "Use anomaly drift and quota context only when you need to validate or extend the answer."),
+            },
+          ].map((item) => (
+            <Card key={item.title} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+              <CardContent className="space-y-3 px-5 py-5">
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
+                <div className="text-xl font-semibold text-[var(--text)]">{item.title}</div>
+                <div className="text-sm leading-6 text-[var(--muted)]">{item.body}</div>
+              </CardContent>
+            </Card>
+          ))}
         </section>
 
         {refreshing ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3 text-sm text-[var(--muted)]">
-            Refreshing AI insights in the background...
-          </div>
-        ) : null}
-        {status ? (
-          <div className="rounded-3xl border border-emerald-400/30 bg-emerald-400/12 px-4 py-3 text-sm text-emerald-100">
-            {status}
-          </div>
-        ) : null}
-        {error || sessionError ? (
-          <div className="rounded-3xl border border-rose-400/30 bg-rose-400/12 px-4 py-3 text-sm text-rose-100">
-            {error || sessionError}
+            {t("ai.refreshing_background", "Refreshing AI insights in the background...")}
           </div>
         ) : null}
 
-        <section className="grid gap-4 sm:grid-cols-3">
-          <Card>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm text-[var(--muted)]">Summary Quota</div>
-                  <CardTitle>{quotaLabel(usage?.summary_used, usage?.summary_limit)}</CardTitle>
+        <details className="group rounded-[2rem] border border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl">
+          <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
+            <div>
+              <div className="text-sm text-[var(--muted)]">{t("ai.quota.title", "Plan and quota")}</div>
+              <div className="mt-1 text-xl font-semibold text-[var(--text)]">{t("ai.quota.subtitle", "Usage context")}</div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${summaryHealth.badgeClass}`}>{summaryHealth.badge}</span>
+              <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${smartHealth.badgeClass}`}>{smartHealth.badge}</span>
+            </div>
+          </summary>
+          <div className="grid gap-4 border-t border-[var(--border)] px-6 py-6 md:grid-cols-3">
+            <Card>
+              <CardHeader>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm text-[var(--muted)]">{t("ai.quota.summary", "Summary quota")}</div>
+                    <CardTitle>{quotaLabel(usage?.summary_used, usage?.summary_limit)}</CardTitle>
+                  </div>
+                  <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${summaryHealth.badgeClass}`}>
+                    {summaryHealth.badge}
+                  </span>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${summaryHealth.badgeClass}`}>
-                  {summaryHealth.badge}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-              <div className="text-xs uppercase tracking-[0.18em] text-white/80">{summaryHealth.detail}</div>
-              <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
-                <div
-                  className={`h-2 rounded-full ${summaryHealth.barClass}`}
-                  style={{ width: `${summaryHealth.percent}%` }}
-                />
-              </div>
-              <div>Used by anomaly scans, NLQ, and executive summaries.</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-sm text-[var(--muted)]">Smart Quota</div>
-                  <CardTitle>{quotaLabel(usage?.smart_used, usage?.smart_limit)}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-[var(--muted)]">
+                <div className="text-xs uppercase tracking-[0.18em] text-white/80">{summaryHealth.detail}</div>
+                <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
+                  <div className={`h-2 rounded-full ${summaryHealth.barClass}`} style={{ width: `${summaryHealth.percent}%` }} />
                 </div>
-                <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${smartHealth.badgeClass}`}>
-                  {smartHealth.badge}
-                </span>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-              <div className="text-xs uppercase tracking-[0.18em] text-white/80">{smartHealth.detail}</div>
-              <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
-                <div
-                  className={`h-2 rounded-full ${smartHealth.barClass}`}
-                  style={{ width: `${smartHealth.percent}%` }}
-                />
-              </div>
-              <div>Used by smart input and DPR suggestions from history.</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Current Plan</div>
-              <CardTitle>{humanizePlanLabel(usage?.plan)}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Natural-language answers start on {humanizePlanLabel(usage?.nlq_min_plan)}, and anomaly scanning starts on {humanizePlanLabel(usage?.anomaly_min_plan)}.
-            </CardContent>
-          </Card>
-        </section>
+                <div>{t("ai.quota.summary_detail", "Used by anomaly scans, NLQ, and executive summaries.")}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <div className="text-sm text-[var(--muted)]">{t("ai.quota.smart", "Smart quota")}</div>
+                    <CardTitle>{quotaLabel(usage?.smart_used, usage?.smart_limit)}</CardTitle>
+                  </div>
+                  <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${smartHealth.badgeClass}`}>
+                    {smartHealth.badge}
+                  </span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3 text-sm text-[var(--muted)]">
+                <div className="text-xs uppercase tracking-[0.18em] text-white/80">{smartHealth.detail}</div>
+                <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
+                  <div className={`h-2 rounded-full ${smartHealth.barClass}`} style={{ width: `${smartHealth.percent}%` }} />
+                </div>
+                <div>{t("ai.quota.smart_detail", "Used by smart input and DPR suggestions from history.")}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <div className="text-sm text-[var(--muted)]">{t("ai.quota.current_plan", "Current plan")}</div>
+                <CardTitle className="capitalize">{usage?.plan || "-"}</CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm text-[var(--muted)]">
+                {t("ai.quota.current_plan_detail", "NLQ starts at {{nlq}}, anomalies at {{anomaly}}.", {
+                  nlq: usage?.nlq_min_plan || "-",
+                  anomaly: usage?.anomaly_min_plan || "-",
+                })}
+              </CardContent>
+            </Card>
+          </div>
+        </details>
 
-        <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-          <Card>
-            <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+        <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+          <Card id="nlq-card">
+            <CardHeader>
+              <div className="text-sm text-[var(--muted)]">{t("ai.query.eyebrow", "Natural language query")}</div>
+              <CardTitle className="text-xl">{t("ai.query.title", "Ask a factory question")}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <div>
-                <div className="text-sm text-[var(--muted)]">Anomaly Alerts</div>
-                <CardTitle className="text-xl">Operational drift scanner</CardTitle>
+                <label className="text-sm text-[var(--muted)]">{t("ai.query.label", "Question")}</label>
+                <Input value={question} onChange={(event) => setQuestion(event.target.value)} />
               </div>
-              <div className="grid gap-3 sm:flex sm:items-center">
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={handleQuestion} disabled={queryBusy}>
+                  {queryBusy ? t("ai.query.thinking", "Thinking...") : t("ai.actions.ask", "Ask AI")}
+                </Button>
+                <Button variant="outline" onClick={() => setQuestion(builtInPresets[1]?.question || "")}>
+                  {t("ai.query.example", "Example")}
+                </Button>
+              </div>
+              <details className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)]">
+                <summary className="cursor-pointer list-none px-4 py-4 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                  {t("ai.query.presets", "Prompt presets")}
+                </summary>
+                <div className="space-y-3 border-t border-[var(--border)] px-4 py-4">
+                  <div className="flex flex-wrap gap-2">
+                    {combinedPresets.map((preset) => {
+                      const isCustom = savedPresets.some((item) => item.id === preset.id);
+                      return (
+                        <div key={preset.id} className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm font-semibold transition hover:border-[rgba(62,166,255,0.4)] hover:text-white"
+                            onClick={() => setQuestion(preset.question)}
+                          >
+                            {preset.label}
+                          </button>
+                          {isCustom ? (
+                            <button
+                              type="button"
+                              className="text-xs text-[var(--muted)] underline underline-offset-4"
+                              onClick={() => handleDeletePreset(preset.id)}
+                            >
+                              {t("ai.query.delete", "Delete")}
+                            </button>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-[1fr_auto]">
+                    <Input
+                      value={presetName}
+                      onChange={(event) => setPresetName(event.target.value)}
+                      placeholder={t("ai.query.preset_placeholder", "Optional preset label")}
+                    />
+                    <Button variant="outline" onClick={handleSavePreset} disabled={savingPreset}>
+                      {savingPreset ? t("ai.query.saving", "Saving...") : t("ai.query.save_preset", "Save preset")}
+                    </Button>
+                  </div>
+                </div>
+              </details>
+              <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
+                <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{t("ai.query.answer", "Answer")}</div>
+                <div className="mt-3 text-sm leading-6 text-[var(--text)]">
+                  {nlqResult?.answer || t("ai.query.answer_empty", "Run a query to see the answer here.")}
+                </div>
+                {nlqResult ? (
+                  <details className="mt-4 rounded-xl border border-[var(--border)] bg-[rgba(255,255,255,0.02)]">
+                    <summary className="cursor-pointer list-none px-3 py-3 text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
+                      {t("ai.query.details", "Query details")}
+                    </summary>
+                    <div className="space-y-2 border-t border-[var(--border)] px-3 py-3 text-xs text-[var(--muted)]">
+                      <div>{t("ai.query.details.provider", "Provider: {{value}}", { value: nlqResult.provider })}</div>
+                      <div>{t("ai.query.details.generated", "Generated: {{value}}", { value: formatDateTime(nlqResult.generated_at, locale) })}</div>
+                      <div>{t("ai.query.details.shape", "Query shape: {{value}}", { value: JSON.stringify(nlqResult.structured_query) })}</div>
+                    </div>
+                  </details>
+                ) : null}
+              </div>
+              {nlqResult?.data_points?.length ? (
+                <details className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)]">
+                  <summary className="cursor-pointer list-none px-4 py-4 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                    {t("ai.query.data_points", "Data points")}
+                  </summary>
+                  <div className="space-y-2 border-t border-[var(--border)] px-4 py-4">
+                    {nlqResult.data_points.map((item) => (
+                      <div key={item.group} className="flex items-center justify-between gap-3 text-sm">
+                        <span className="text-[var(--muted)]">{item.group}</span>
+                        <span className="font-semibold">{item.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </details>
+              ) : null}
+            </CardContent>
+          </Card>
+
+          <details className="rounded-[2rem] border border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl" open={Boolean(anomalies?.items?.length)}>
+            <summary className="flex cursor-pointer list-none flex-col gap-3 px-6 py-5 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="text-sm text-[var(--muted)]">{t("ai.anomalies.title", "Anomaly alerts")}</div>
+                <div className="mt-1 text-xl font-semibold text-[var(--text)]">{t("ai.anomalies.subtitle", "Operational drift scanner")}</div>
+              </div>
+              <div className="flex items-center gap-3">
                 <select
-                  className="w-full rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm sm:w-auto"
+                  className="rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm"
                   value={days}
                   onChange={(event) => setDays(event.target.value)}
                 >
-                  <option value="7">Last 7 days</option>
-                  <option value="14">Last 14 days</option>
-                  <option value="30">Last 30 days</option>
+                  <option value="7">{t("ai.anomalies.range.7", "Last 7 days")}</option>
+                  <option value="14">{t("ai.anomalies.range.14", "Last 14 days")}</option>
+                  <option value="30">{t("ai.anomalies.range.30", "Last 30 days")}</option>
                 </select>
                 <Button
                   variant="outline"
-                  className="w-full sm:w-auto"
+                  className="px-4 py-2 text-xs"
                   onClick={() => {
                     void loadAiHome({ background: true, selectedDays: Number(days) || 14 });
                   }}
                   disabled={refreshing}
                 >
-                  Scan
+                  {t("ai.anomalies.scan", "Scan")}
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            </summary>
+            <div className="space-y-4 border-t border-[var(--border)] px-6 py-6">
               <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4 text-sm text-[var(--muted)]">
-                {anomalies?.summary || "Run a fresh scan to build the latest anomaly brief for this factory."}
+                {anomalies?.summary || t("ai.anomalies.summary_empty", "Run the scan to load anomaly insight.")}
               </div>
               {anomalies?.items?.length ? (
                 <div className="space-y-3">
                   {anomalies.items.map((item) => (
                     <div key={`${item.entry_id}-${item.anomaly_type}`} className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
-                      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
                         <div className="font-semibold">
                           {item.anomaly_type.replaceAll("_", " ")} - {item.shift} - {item.date}
                         </div>
@@ -420,102 +565,25 @@ export default function AiInsightsPage() {
                       </div>
                       <div className="mt-2 text-sm text-[var(--muted)]">{item.message}</div>
                       <div className="mt-2 text-xs text-[var(--muted)]">
-                        Value {item.value.toFixed(1)} - baseline {item.baseline.toFixed(1)}
+                        {t("ai.anomalies.value_line", "Value {{value}} - baseline {{baseline}}", {
+                          value: item.value.toFixed(1),
+                          baseline: item.baseline.toFixed(1),
+                        })}
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
                 <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4 text-sm text-[var(--muted)]">
-                  No anomaly drift is standing out in the selected window yet.
+                  {t("ai.anomalies.empty", "No anomaly cards are loaded yet.")}
                 </div>
               )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Natural Language Query</div>
-              <CardTitle className="text-xl">Ask a factory question</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-3 rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Prompt presets</div>
-                <div className="flex flex-wrap gap-2">
-                  {combinedPresets.map((preset) => {
-                    const isCustom = savedPresets.some((item) => item.id === preset.id);
-                    return (
-                      <div key={preset.id} className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          className="rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm font-semibold transition hover:border-[rgba(62,166,255,0.4)] hover:text-white"
-                          onClick={() => setQuestion(preset.question)}
-                        >
-                          {preset.label}
-                        </button>
-                        {isCustom ? (
-                          <button
-                            type="button"
-                            className="text-xs text-[var(--muted)] underline underline-offset-4"
-                            onClick={() => handleDeletePreset(preset.id)}
-                          >
-                            Delete
-                          </button>
-                        ) : null}
-                      </div>
-                    );
-                  })}
-                </div>
-                <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
-                  <Input
-                    value={presetName}
-                    onChange={(event) => setPresetName(event.target.value)}
-                    placeholder="Optional preset label"
-                  />
-                  <Button variant="outline" className="w-full sm:w-auto" onClick={handleSavePreset} disabled={savingPreset}>
-                    {savingPreset ? "Saving..." : "Save Current Prompt"}
-                  </Button>
-                </div>
-              </div>
-              <div>
-                <label className="text-sm text-[var(--muted)]">Question</label>
-                <Input value={question} onChange={(event) => setQuestion(event.target.value)} />
-              </div>
-              <div className="grid gap-3 sm:flex sm:flex-wrap">
-                <Button className="w-full sm:w-auto" onClick={handleQuestion} disabled={queryBusy}>
-                  {queryBusy ? "Thinking..." : "Run Query"}
-                </Button>
-                <Button className="w-full sm:w-auto" variant="outline" onClick={() => setQuestion(BUILT_IN_PRESETS[1].question)}>
-                  Load Example
-                </Button>
-              </div>
-              <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Answer</div>
-                <div className="mt-3 text-sm leading-6 text-[var(--text)]">
-                  {nlqResult?.answer || "Ask a factory question to see a plain-language answer here."}
-                </div>
-                {nlqResult ? (
-                  <div className="mt-4 space-y-2 text-xs text-[var(--muted)]">
-                    <div>Answer service: {humanizeAiProvider(nlqResult.provider)}</div>
-                    <div>Generated: {formatDateTime(nlqResult.generated_at)}</div>
-                    <div>Structured factory lookup prepared for this question.</div>
-                  </div>
-                ) : null}
-              </div>
-              {nlqResult?.data_points?.length ? (
-                <div className="space-y-2 rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Data Points</div>
-                  {nlqResult.data_points.map((item) => (
-                    <div key={item.group} className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-between sm:gap-3">
-                      <span className="text-[var(--muted)]">{item.group}</span>
-                      <span className="font-semibold">{item.value}</span>
-                    </div>
-                  ))}
-                </div>
-              ) : null}
-            </CardContent>
-          </Card>
+            </div>
+          </details>
         </section>
+
+        {status ? <div className="text-sm text-emerald-300">{status}</div> : null}
+        {error || sessionError ? <div className="text-sm text-red-300">{error || sessionError}</div> : null}
       </div>
     </main>
   );

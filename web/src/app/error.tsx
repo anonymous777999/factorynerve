@@ -29,7 +29,7 @@ export default function Error({
     <main className="flex min-h-screen items-center justify-center px-4">
       <div className="w-full max-w-xl rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.94)] p-8 shadow-2xl">
         <div className="text-sm uppercase tracking-[0.22em] text-[var(--accent)]">Observability</div>
-        <h1 className="mt-3 text-3xl font-semibold">Page error.</h1>
+        <h1 className="mt-3 text-3xl font-semibold">We hit a page error, and it has been reported.</h1>
         <p className="mt-3 text-sm leading-6 text-[var(--muted)]">
           Let’s keep moving: you can retry this screen or jump back to the dashboard while the error is tracked in the launch monitor.
         </p>

@@ -136,13 +136,7 @@ def primary_provider_label() -> str:
     return "->".join(chain) if chain else "fallback"
 
 
-def _external_ai_disabled() -> bool:
-    return os.getenv("DISABLE_EXTERNAL_AI", "0") == "1"
-
-
 def _has_key(provider: str) -> bool:
-    if _external_ai_disabled():
-        return False
     if provider == "groq":
         return bool((os.getenv("GROQ_API_KEY") or "").strip())
     if provider == "anthropic":

@@ -120,10 +120,7 @@ def test_google_callback_rejects_unverified_google_email(monkeypatch):
     monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "client-secret")
     monkeypatch.setenv("GOOGLE_REDIRECT_URI", "https://www.factorynerve.online/api/auth/google/callback")
     monkeypatch.setenv("FRONTEND_OAUTH_REDIRECT", "https://www.factorynerve.online")
-    monkeypatch.setattr(
-        "backend.routers.auth_google._exchange_google_token",
-        lambda *args, **kwargs: _fake_google_token_response(),
-    )
+    monkeypatch.setattr("backend.routers.auth_google.httpx.post", lambda *args, **kwargs: _fake_google_token_response())
     monkeypatch.setattr(
         "backend.routers.auth_google.id_token.verify_oauth2_token",
         lambda *args, **kwargs: {
@@ -151,10 +148,7 @@ def test_google_callback_restores_recent_factory_context(monkeypatch, http_clien
     monkeypatch.setenv("GOOGLE_CLIENT_SECRET", "client-secret")
     monkeypatch.setenv("GOOGLE_REDIRECT_URI", "https://www.factorynerve.online/api/auth/google/callback")
     monkeypatch.setenv("FRONTEND_OAUTH_REDIRECT", "https://www.factorynerve.online")
-    monkeypatch.setattr(
-        "backend.routers.auth_google._exchange_google_token",
-        lambda *args, **kwargs: _fake_google_token_response(),
-    )
+    monkeypatch.setattr("backend.routers.auth_google.httpx.post", lambda *args, **kwargs: _fake_google_token_response())
 
     account = register_user(http_client, role="admin")
     state = _encode_state(False, "/dashboard")
@@ -223,6 +217,10 @@ def test_google_callback_restores_recent_factory_context(monkeypatch, http_clien
         response = google_callback(request, db)
 
     assert response.headers["location"] == "https://www.factorynerve.online/dashboard"
+    set_cookie = ", ".join(response.headers.getlist("set-cookie"))
+    assert "dpr_access=" in set_cookie
+    assert "dpr_refresh=" in set_cookie
+    assert "dpr_csrf=" in set_cookie
 
     with SessionLocal() as db:
         user = db.query(User).filter(User.email == account["email"]).first()

@@ -35,20 +35,8 @@ const backendHost =
   process.env.NEXT_PUBLIC_API_HOST || backendEnv.FASTAPI_HOST || "127.0.0.1";
 const backendPort =
   process.env.NEXT_PUBLIC_API_PORT || backendEnv.FASTAPI_PORT || "8765";
-const normalizedExplicitBackendOrigin = explicitBackendOrigin.trim().replace(/\/+$/, "");
-const isProductionBuild =
-  process.env.NODE_ENV === "production" ||
-  process.env.VERCEL === "1" ||
-  Boolean(process.env.VERCEL_ENV);
-
-if (isProductionBuild && !normalizedExplicitBackendOrigin) {
-  throw new Error(
-    "Missing API proxy origin for production build. Set API_PROXY_ORIGIN or NEXT_PUBLIC_API_PROXY_ORIGIN to the public backend URL before deploying web.",
-  );
-}
-
-const backendOrigin = normalizedExplicitBackendOrigin
-  ? normalizedExplicitBackendOrigin
+const backendOrigin = explicitBackendOrigin.trim()
+  ? explicitBackendOrigin.trim().replace(/\/+$/, "")
   : `http://${backendHost}:${backendPort}`;
 
 const nextConfig: NextConfig = {

@@ -1,0 +1,5 @@
+{
+  "errors.generic": "Something went wrong.",
+  "errors.network": "Backend not reachable. Check API base URL and backend status."
+}
+

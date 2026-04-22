@@ -117,9 +117,9 @@ export function SteelChartsPage() {
             <CardTitle>Steel Charts</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Login required."}</div>
+            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
             <Link href="/access">
-              <Button>Open Login</Button>
+              <Button>Open Access</Button>
             </Link>
           </CardContent>
         </Card>
@@ -197,18 +197,17 @@ export function SteelChartsPage() {
   const topLossBatch = overview?.top_loss_batch || overview?.anomaly_batches?.[0] || null;
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_32%),linear-gradient(180deg,#ecf4fa_0%,#f8fbfd_48%,#eef3f8_100%)] px-4 py-6 pb-24 text-slate-900 md:px-8 md:pb-8">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(56,189,248,0.14),transparent_32%),linear-gradient(180deg,#ecf4fa_0%,#f8fbfd_48%,#eef3f8_100%)] px-4 py-8 text-slate-900 md:px-8">
+      <div className="mx-auto max-w-7xl space-y-6">
         <section className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(135deg,rgba(255,255,255,0.94),rgba(239,248,255,0.92))] p-6 shadow-[0_22px_55px_rgba(15,23,42,0.08)] backdrop-blur">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.28em] text-sky-700">Steel Charts</div>
               <h1 className="mt-2 text-2xl font-semibold text-slate-900 md:text-4xl">
-                Chart workspace for stock trust, batch loss, dispatch, and revenue
+                Read steel signals without leaving the chart board
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
-                Read the key steel signals first, jump into the right action lane, then use the chart board below for
-                deeper pattern and drill-down work in {activeFactory?.name || "your factory"}.
+                Start with the key signal cards, then stay in the chart board below for the deeper operational read in {activeFactory?.name || "your factory"}.
               </p>
               <div className="mt-4 flex flex-wrap gap-2 text-xs">
                 <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-slate-600">
@@ -225,27 +224,65 @@ export function SteelChartsPage() {
                 </span>
               </div>
             </div>
-            <div className="grid gap-3 sm:flex sm:flex-wrap">
-              <Button variant="outline" className="w-full sm:w-auto" disabled={refreshing} onClick={() => void handleRefresh()}>
-                {refreshing ? "Refreshing..." : "Refresh Charts"}
+            {/* AUDIT: BUTTON_CLUTTER - move route jumps into a tools tray so the chart board remains the main focus. */}
+            <div className="flex flex-wrap gap-3">
+              <Button variant="outline" disabled={refreshing} onClick={() => void handleRefresh()}>
+                {refreshing ? "Refreshing..." : "Refresh"}
               </Button>
-              <Link href="/steel">
-                <Button variant="ghost" className="w-full sm:w-auto">Steel Hub</Button>
-              </Link>
-              <Link href="/reports">
-                <Button variant="ghost" className="w-full sm:w-auto">Reports</Button>
-              </Link>
+              <details className="group min-w-[220px] rounded-3xl border border-slate-200 bg-white/85">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-900">
+                  Chart tools
+                  <span className="text-xs text-slate-500 transition group-open:hidden">Open</span>
+                  <span className="hidden text-xs text-slate-500 group-open:inline">Hide</span>
+                </summary>
+                <div className="flex flex-wrap gap-3 border-t border-slate-200 px-4 py-4">
+                  <Link href="/steel">
+                    <Button variant="ghost">Steel hub</Button>
+                  </Link>
+                  <Link href="/reports">
+                    <Button variant="ghost">Reports</Button>
+                  </Link>
+                  <Link href="/steel/customers">
+                    <Button variant="ghost">Customers</Button>
+                  </Link>
+                </div>
+              </details>
             </div>
           </div>
         </section>
 
-        {error || sessionError ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error || sessionError}
-          </div>
-        ) : null}
+        {/* AUDIT: FLOW_BROKEN - add a short read path so the page moves from summary signals into the chart workspace. */}
+        <section className="grid gap-4 lg:grid-cols-3">
+          <Card className="rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
+            <CardHeader className="space-y-2">
+              <div className="text-xs uppercase tracking-[0.22em] text-sky-700">1. Read signals</div>
+              <CardTitle className="text-lg text-slate-900">Check the top risk first</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-slate-600">
+              Use the signal cards to spot which steel lane needs attention before opening a detailed route.
+            </CardContent>
+          </Card>
+          <Card className="rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
+            <CardHeader className="space-y-2">
+              <div className="text-xs uppercase tracking-[0.22em] text-sky-700">2. Choose a lane</div>
+              <CardTitle className="text-lg text-slate-900">Jump only when needed</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-slate-600">
+              Shortcut cards stay available, but they should support the chart read rather than replace it.
+            </CardContent>
+          </Card>
+          <Card className="rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
+            <CardHeader className="space-y-2">
+              <div className="text-xs uppercase tracking-[0.22em] text-sky-700">3. Stay in charts</div>
+              <CardTitle className="text-lg text-slate-900">Drill into the board</CardTitle>
+            </CardHeader>
+            <CardContent className="text-sm text-slate-600">
+              The industrial dashboard below remains the main workspace for range changes and pattern review.
+            </CardContent>
+          </Card>
+        </section>
 
-        <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Card className="rounded-[1.6rem] border border-emerald-200 bg-[linear-gradient(180deg,#ffffff,#f4fbf6)] shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
             <CardHeader>
               <div className="text-xs uppercase tracking-[0.18em] text-emerald-700">Signal</div>
@@ -257,7 +294,7 @@ export function SteelChartsPage() {
                 {confidenceTotal} tracked positions | Watch {watchConfidenceCount} | Critical {criticalConfidenceCount}
               </div>
               <Link href="/steel/reconciliations">
-                <Button variant="outline" className="w-full sm:w-auto">Open Stock Review</Button>
+                <Button variant="outline">Stock review</Button>
               </Link>
             </CardContent>
           </Card>
@@ -273,7 +310,7 @@ export function SteelChartsPage() {
                 Avg loss {formatPercent(overview?.batch_metrics.average_loss_percent)} across {Number(overview?.batch_metrics.total_batches || 0)} batches
               </div>
               <Link href="/steel?tab=risk">
-                <Button variant="outline" className="w-full sm:w-auto">Open Risk Review</Button>
+                <Button variant="outline">Risk lane</Button>
               </Link>
             </CardContent>
           </Card>
@@ -289,7 +326,7 @@ export function SteelChartsPage() {
                 {dispatchCount} recent dispatches with invoice closure and truck movement context.
               </div>
               <Link href="/steel/dispatches">
-                <Button variant="outline" className="w-full sm:w-auto">Open Dispatch</Button>
+                <Button variant="outline">Dispatches</Button>
               </Link>
             </CardContent>
           </Card>
@@ -309,13 +346,13 @@ export function SteelChartsPage() {
                   : "Financial values stay hidden for your current role."}
               </div>
               <Link href="/steel/invoices">
-                <Button variant="outline" className="w-full sm:w-auto">Open Invoices</Button>
+                <Button variant="outline">Invoices</Button>
               </Link>
             </CardContent>
           </Card>
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-3">
+        <section className="grid gap-4 xl:grid-cols-3">
           <Card className="rounded-[1.6rem] border border-slate-200 bg-white shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
             <CardHeader>
               <div className="text-xs uppercase tracking-[0.18em] text-slate-500">Action Lane</div>
@@ -334,7 +371,7 @@ export function SteelChartsPage() {
                     Use stock review first when physical and system quantities start drifting.
                   </div>
                   <Link href="/steel/reconciliations">
-                    <Button variant="outline" className="w-full sm:w-auto">Open mismatch review</Button>
+                    <Button variant="outline">Review</Button>
                   </Link>
                 </>
               ) : (
@@ -358,12 +395,12 @@ export function SteelChartsPage() {
                   <div className="text-xs text-slate-500">
                     Highest-risk operator signal: {topRiskOperator}
                   </div>
-                  <div className="grid gap-2 sm:flex sm:flex-wrap">
+                  <div className="flex flex-wrap gap-2">
                     <Link href={`/steel/batches/${topLossBatch.id}`}>
-                      <Button variant="outline" className="w-full sm:w-auto">Open batch</Button>
+                      <Button variant="outline">Batch</Button>
                     </Link>
                     <Link href="/steel?tab=risk">
-                      <Button variant="ghost" className="w-full sm:w-auto">Risk lane</Button>
+                      <Button variant="ghost">Risk lane</Button>
                     </Link>
                   </div>
                 </>
@@ -388,20 +425,26 @@ export function SteelChartsPage() {
               <div className="text-xs text-slate-500">
                 Customer and invoice follow-through is strongest when the chart signal is matched with dispatch proof.
               </div>
-              <div className="grid gap-2 sm:flex sm:flex-wrap">
+              <div className="flex flex-wrap gap-2">
                 <Link href="/steel/invoices">
-                  <Button variant="outline" className="w-full sm:w-auto">Open invoices</Button>
+                  <Button variant="outline">Invoices</Button>
                 </Link>
                 <Link href="/steel/dispatches">
-                  <Button variant="ghost" className="w-full sm:w-auto">Dispatch desk</Button>
+                  <Button variant="ghost">Dispatches</Button>
                 </Link>
               </div>
             </CardContent>
           </Card>
         </section>
 
+        {error || sessionError ? (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            {error || sessionError}
+          </div>
+        ) : null}
+
         <section className="space-y-3">
-          <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <div className="text-sm uppercase tracking-[0.22em] text-slate-500">Interactive Board</div>
               <h2 className="mt-1 text-2xl font-semibold text-slate-900">Read signals, filter patterns, and drill into action</h2>
@@ -409,14 +452,6 @@ export function SteelChartsPage() {
                 The chart workspace below is the main system. Use the cards above only as fast shortcuts, then stay in
                 the charts for deeper decisions.
               </p>
-            </div>
-            <div className="grid gap-2 sm:flex sm:flex-wrap">
-              <Link href="/steel/customers">
-                <Button variant="outline" className="w-full sm:w-auto">Customer Ledger</Button>
-              </Link>
-              <Link href="/reports">
-                <Button variant="ghost" className="w-full sm:w-auto">Reports</Button>
-              </Link>
             </div>
           </div>
 

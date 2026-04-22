@@ -7,6 +7,9 @@ import io
 import logging
 import os
 import secrets
+import threading
+import time
+from collections import defaultdict, deque
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from urllib.parse import urlparse
@@ -54,7 +57,6 @@ from backend.services.pending_registration_service import (
     create_or_update_pending_registration,
     verify_pending_registration_token,
 )
-from backend.services.invite_email_service import build_invite_email_payload
 from backend.services.password_reset_service import build_reset_link, create_reset_token, verify_reset_token
 from backend.services.user_code_service import (
     MAX_USER_CODE_ATTEMPTS,
@@ -71,7 +73,6 @@ from backend.auth_cookies import (
     set_auth_cookies,
     wants_cookie_auth,
 )
-from backend.auth_security.rate_limit import RateLimitError, check_rate_limit, reset_rate_limit
 
 
 logger = logging.getLogger(__name__)
@@ -79,7 +80,7 @@ router = APIRouter(tags=["Authentication"])
 
 LOGIN_ATTEMPT_LIMIT = 5
 LOGIN_ATTEMPT_WINDOW_SECONDS = 60
-REFRESH_TOKEN_DAYS = min(int(os.getenv("REFRESH_TOKEN_DAYS", "7")), 7)
+REFRESH_TOKEN_DAYS = int(os.getenv("REFRESH_TOKEN_DAYS", "30"))
 PASSWORD_RESET_TTL_MINUTES = int(os.getenv("PASSWORD_RESET_TTL_MINUTES", "30"))
 PASSWORD_RESET_EMAIL_SUBJECT = os.getenv("PASSWORD_RESET_EMAIL_SUBJECT", "Reset your DPR.ai password")
 EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("EMAIL_VERIFICATION_TTL_HOURS", "24"))
@@ -90,6 +91,8 @@ EMAIL_VERIFICATION_EMAIL_SUBJECT = os.getenv(
 PROFILE_PHOTO_MAX_BYTES = int(os.getenv("PROFILE_PHOTO_MAX_BYTES", str(5 * 1024 * 1024)))
 PROFILE_PHOTO_SIZE = max(256, int(os.getenv("PROFILE_PHOTO_SIZE", "512")))
 PROFILE_PHOTO_DIR = Path(__file__).resolve().parents[2] / "var" / "profile_photos"
+_rate_limit_lock = threading.Lock()
+_login_attempts: dict[str, deque[float]] = defaultdict(deque)
 
 
 def _to_bool(value: str | None, default: bool = False) -> bool:
@@ -227,54 +230,23 @@ def _send_auth_email(
         return False
 
 
-def _enforce_login_rate_limit(*, ip_address: str, email: str) -> None:
-    try:
-        check_rate_limit(
-            key=f"legacy-login:ip:{ip_address}",
-            max_requests=LOGIN_ATTEMPT_LIMIT,
-            window_seconds=LOGIN_ATTEMPT_WINDOW_SECONDS,
-        )
-        check_rate_limit(
-            key=f"legacy-login:email:{email}",
-            max_requests=LOGIN_ATTEMPT_LIMIT,
-            window_seconds=LOGIN_ATTEMPT_WINDOW_SECONDS,
-        )
-    except RateLimitError as error:
-        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=error.detail) from error
+def _check_rate_limit(ip_address: str) -> bool:
+    with _rate_limit_lock:
+        now = time.time()
+        attempts = _login_attempts[ip_address]
+        while attempts and now - attempts[0] > LOGIN_ATTEMPT_WINDOW_SECONDS:
+            attempts.popleft()
+        return len(attempts) >= LOGIN_ATTEMPT_LIMIT
 
 
-def _register_failed_attempt(*, ip_address: str, email: str) -> None:
-    try:
-        check_rate_limit(
-            key=f"legacy-login:fail-ip:{ip_address}",
-            max_requests=LOGIN_ATTEMPT_LIMIT,
-            window_seconds=LOGIN_ATTEMPT_WINDOW_SECONDS,
-        )
-        check_rate_limit(
-            key=f"legacy-login:fail-email:{email}",
-            max_requests=LOGIN_ATTEMPT_LIMIT,
-            window_seconds=LOGIN_ATTEMPT_WINDOW_SECONDS,
-        )
-    except RateLimitError:
-        pass
+def _register_failed_attempt(ip_address: str) -> None:
+    with _rate_limit_lock:
+        _login_attempts[ip_address].append(time.time())
 
 
-def _clear_attempts(*, ip_address: str, email: str) -> None:
-    reset_rate_limit(key=f"legacy-login:ip:{ip_address}")
-    reset_rate_limit(key=f"legacy-login:email:{email}")
-    reset_rate_limit(key=f"legacy-login:fail-ip:{ip_address}")
-    reset_rate_limit(key=f"legacy-login:fail-email:{email}")
-
-
-def _set_auth_no_store_headers(response: Response) -> None:
-    response.headers["Cache-Control"] = "no-store"
-    response.headers["Pragma"] = "no-cache"
-
-
-def _hash_user_agent(value: str | None) -> str | None:
-    if not value:
-        return None
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+def _clear_attempts(ip_address: str) -> None:
+    with _rate_limit_lock:
+        _login_attempts.pop(ip_address, None)
 
 
 def _log_auth_event(
@@ -295,7 +267,7 @@ def _log_auth_event(
             action=action,
             details=details,
             ip_address=hash_ip_address(request.client.host if request.client else None),
-            user_agent=_hash_user_agent(request.headers.get("user-agent")),
+            user_agent=request.headers.get("user-agent"),
             timestamp=datetime.now(timezone.utc),
         )
     )
@@ -372,7 +344,7 @@ class AuthContextResponse(BaseModel):
 
 
 class AuthResponse(AuthContextResponse):
-    access_token: str | None = None
+    access_token: str
     refresh_token: str | None = None
     token_type: str = "bearer"
 
@@ -390,7 +362,6 @@ class ActiveWorkflowTemplateResponse(BaseModel):
 
 
 class SessionSummaryResponse(BaseModel):
-    active_sessions: int
     active_devices: int
     last_activity: datetime | None = None
 
@@ -416,11 +387,6 @@ class EmailVerificationTokenRequest(BaseModel):
     token: str
 
 
-class InviteAcceptanceRequest(BaseModel):
-    token: str
-    password: str = Field(min_length=12, max_length=128)
-
-
 class RegisterResponse(BaseModel):
     message: str
     email: EmailStr
@@ -440,8 +406,6 @@ class EmailVerificationValidateResponse(BaseModel):
     valid: bool
     message: str
     email: EmailStr | None = None
-    flow_type: str = "email_verify"
-    invite: dict[str, object] | None = None
 
 
 class PasswordForgotResponse(BaseModel):
@@ -514,27 +478,6 @@ def _issue_refresh_token(
     return token
 
 
-def _preferred_factory_id_from_recent_tokens(db: Session, *, user_id: int) -> str | None:
-    preferred_factory_id: str | None = None
-    preferred_at: datetime | None = None
-    tokens = (
-        db.query(RefreshToken)
-        .filter(
-            RefreshToken.user_id == user_id,
-            RefreshToken.factory_id.isnot(None),
-        )
-        .all()
-    )
-    for token in tokens:
-        candidate_at = token.last_used_at or token.created_at
-        if candidate_at is None:
-            continue
-        if preferred_at is None or candidate_at > preferred_at:
-            preferred_at = candidate_at
-            preferred_factory_id = token.factory_id
-    return preferred_factory_id
-
-
 def _get_factory_access(db: Session, *, user_id: int) -> list[FactoryAccess]:
     rows = (
         db.query(UserFactoryRole, Factory)
@@ -598,7 +541,6 @@ def _build_auth_context(
 ) -> dict[str, object]:
     factories = _get_factory_access(db, user_id=user.id)
     active_factory = next((item for item in factories if item.factory_id == active_factory_id), None)
-    setattr(user, "org_role", getattr(user, "org_role", user.role))
     organization = _get_org_context(
         db,
         org_id=user.org_id,
@@ -662,42 +604,25 @@ def _build_active_template_context(
 def _revoke_refresh_token(db: Session, *, token: str, user_id: int) -> None:
     token_hash = _hash_refresh_token(token)
     record = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
-    if not record or record.user_id != user_id or record.revoked_at is not None:
-        return
-    record.revoked_at = datetime.now(timezone.utc)
-    db.add(record)
-
-
-def _invalidate_all_user_sessions(db: Session, *, user: User, invalidated_at: datetime | None = None) -> datetime:
-    now = invalidated_at or datetime.now(timezone.utc)
-    user.session_invalidated_at = now
-    db.query(RefreshToken).filter(
-        RefreshToken.user_id == user.id,
-        RefreshToken.revoked_at.is_(None),
-    ).update({"revoked_at": now}, synchronize_session=False)
-    return now
+    if record and record.user_id == user_id and record.revoked_at is None:
+        record.revoked_at = datetime.now(timezone.utc)
+        db.add(record)
 
 
 def _resolve_active_factory_id(
     db: Session, *, user_id: int, preferred_factory_id: str | None
 ) -> str | None:
-    candidates: list[str] = []
     if preferred_factory_id:
-        candidates.append(preferred_factory_id)
-    recent_factory_id = _preferred_factory_id_from_recent_tokens(db, user_id=user_id)
-    if recent_factory_id and recent_factory_id not in candidates:
-        candidates.append(recent_factory_id)
-    for candidate_factory_id in candidates:
         row = (
             db.query(UserFactoryRole)
             .filter(
                 UserFactoryRole.user_id == user_id,
-                UserFactoryRole.factory_id == candidate_factory_id,
+                UserFactoryRole.factory_id == preferred_factory_id,
             )
             .first()
         )
         if row:
-            return candidate_factory_id
+            return preferred_factory_id
     row = (
         db.query(UserFactoryRole)
         .filter(UserFactoryRole.user_id == user_id)
@@ -773,7 +698,6 @@ def _activate_pending_registration(
     *,
     pending: PendingRegistration,
     request: Request,
-    password_hash_override: str | None = None,
 ) -> None:
     existing_user = db.query(User).filter(User.email == pending.email.lower()).first()
     if existing_user:
@@ -783,33 +707,11 @@ def _activate_pending_registration(
         sanitize_text(pending.factory_name, max_length=255, preserve_newlines=False)
         or pending.factory_name.strip()
     )
-    if pending.invited_by_user_id is not None:
-        organization = (
-            db.query(Organization)
-            .filter(Organization.org_id == pending.org_id, Organization.is_active.is_(True))
-            .first()
-        )
-        if not organization:
-            raise HTTPException(status_code=400, detail="This invitation is no longer attached to an active organization.")
-        factory_query = db.query(Factory).filter(
-            Factory.org_id == organization.org_id,
-            Factory.is_active.is_(True),
-        )
-        if pending.company_code:
-            factory_query = factory_query.filter(Factory.factory_code == pending.company_code)
-        else:
-            factory_query = factory_query.filter(Factory.name == requested_factory)
-        factory = factory_query.first()
-        if not factory:
-            raise HTTPException(status_code=400, detail="This invitation is no longer attached to an active factory.")
-        factory_code = factory.factory_code
-        requested_factory = factory.name
-    else:
-        organization, factory, factory_code, requested_factory = resolve_registration_context(
-            db,
-            requested_factory=requested_factory,
-            provided_code=pending.company_code,
-        )
+    organization, factory, factory_code, requested_factory = resolve_registration_context(
+        db,
+        requested_factory=requested_factory,
+        provided_code=pending.company_code,
+    )
     resolved_org_id = organization.org_id
     has_existing_org_user = (
         db.query(User.id)
@@ -817,19 +719,17 @@ def _activate_pending_registration(
         .first()
         is not None
     )
-    if pending.invited_by_user_id is None and has_existing_org_user and pending.requested_role not in {UserRole.ATTENDANCE, UserRole.OPERATOR}:
+    if has_existing_org_user and pending.requested_role not in {UserRole.ATTENDANCE, UserRole.OPERATOR}:
         raise HTTPException(
             status_code=403,
             detail="Public registration is limited to attendance accounts. Ask an admin or owner to invite higher roles.",
         )
-    assigned_role = pending.requested_role if pending.invited_by_user_id is not None else (
-        UserRole.ADMIN if not has_existing_org_user else UserRole.ATTENDANCE
-    )
+    assigned_role = UserRole.ADMIN if not has_existing_org_user else UserRole.ATTENDANCE
 
     user = User(
         name=sanitize_text(pending.name, max_length=120, preserve_newlines=False) or pending.name.strip(),
         email=pending.email.lower(),
-        password_hash=password_hash_override or pending.password_hash,
+        password_hash=pending.password_hash,
         role=assigned_role,
         factory_name=requested_factory,
         factory_code=factory_code,
@@ -868,49 +768,13 @@ def _activate_pending_registration(
 
     _log_auth_event(
         db,
-        "USER_REGISTERED_VERIFIED" if pending.invited_by_user_id is None else "USER_INVITE_ACCEPTED",
-        "Pending public registration activated after email verification."
-        if pending.invited_by_user_id is None
-        else "Pending invited account created after recipient accepted the invitation.",
+        "USER_REGISTERED_VERIFIED",
+        "Pending public registration activated after email verification.",
         user.id,
         request,
         org_id=organization.org_id,
         factory_id=factory.factory_id,
     )
-
-
-def _pending_invite_details(db: Session, *, pending: PendingRegistration) -> dict[str, object]:
-    organization = (
-        db.query(Organization)
-        .filter(Organization.org_id == pending.org_id, Organization.is_active.is_(True))
-        .first()
-    )
-    factory = None
-    if organization:
-        factory_query = db.query(Factory).filter(
-            Factory.org_id == organization.org_id,
-            Factory.is_active.is_(True),
-        )
-        if pending.company_code:
-            factory_query = factory_query.filter(Factory.factory_code == pending.company_code)
-        else:
-            factory_query = factory_query.filter(Factory.name == pending.factory_name)
-        factory = factory_query.first()
-    inviter = db.query(User).filter(User.id == pending.invited_by_user_id).first() if pending.invited_by_user_id else None
-    payload = build_invite_email_payload(
-        recipient_name=pending.name,
-        invited_email=pending.email,
-        role=pending.requested_role,
-        organization_name=organization.name if organization else pending.factory_name,
-        factory_name=factory.name if factory else pending.factory_name,
-        factory_location=factory.location if factory else None,
-        company_code=pending.company_code,
-        inviter_name=inviter.name if inviter else "Factory Admin",
-        custom_note=pending.custom_note,
-        verification_link=None,
-        expires_in_hours=max(1, int((pending.expires_at - datetime.now(timezone.utc)).total_seconds() // 3600) or 1),
-    )
-    return payload["summary"]
 
 
 @router.post("/register", response_model=RegisterResponse, status_code=status.HTTP_201_CREATED)
@@ -926,19 +790,6 @@ def register_user(
         existing_user = db.query(User).filter(User.email == payload.email.lower()).first()
         if existing_user:
             raise HTTPException(status_code=409, detail="Email is already registered.")
-        existing_pending = (
-            db.query(PendingRegistration)
-            .filter(
-                PendingRegistration.email == payload.email.lower(),
-                PendingRegistration.used_at.is_(None),
-            )
-            .first()
-        )
-        if existing_pending and existing_pending.invited_by_user_id is not None:
-            raise HTTPException(
-                status_code=409,
-                detail="This email already has a pending admin invitation. Open the verification email or ask the admin to resend it.",
-            )
 
         requested_factory = (
             sanitize_text(payload.factory_name, max_length=255, preserve_newlines=False)
@@ -954,14 +805,11 @@ def register_user(
             db,
             name=sanitize_text(payload.name, max_length=120, preserve_newlines=False) or payload.name.strip(),
             email=payload.email.lower(),
-            org_id=_org_id_hint,
-            invited_by_user_id=None,
             password_hash=hash_password(payload.password),
             requested_role=payload.role,
             factory_name=requested_factory,
             company_code=payload.company_code,
             phone_number=payload.phone_number,
-            custom_note=None,
             ttl_hours=EMAIL_VERIFICATION_TTL_HOURS,
         )
         verification_link = (
@@ -1033,66 +881,70 @@ def login_user(
     db: Session = Depends(get_db),
 ) -> AuthResponse:
     ip_address = request.client.host if request.client else "unknown"
-    email = payload.email.lower().strip()
     generic_error = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
-    _enforce_login_rate_limit(ip_address=ip_address, email=email)
+    if _check_rate_limit(ip_address):
+        raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
     try:
-        user = db.query(User).filter(User.email == email, User.is_active.is_(True)).first()
+        user = db.query(User).filter(User.email == payload.email.lower(), User.is_active.is_(True)).first()
         if not user:
             pending = (
                 db.query(PendingRegistration)
                 .filter(
-                    PendingRegistration.email == email,
+                    PendingRegistration.email == payload.email.lower(),
                     PendingRegistration.used_at.is_(None),
                     PendingRegistration.expires_at > datetime.now(timezone.utc),
                 )
                 .first()
             )
             if pending and verify_password(payload.password, pending.password_hash):
-                _register_failed_attempt(ip_address=ip_address, email=email)
-                _log_auth_event(db, "USER_LOGIN_FAILED", "Failed login attempt.", None, request)
+                _register_failed_attempt(ip_address)
+                _log_auth_event(
+                    db,
+                    "USER_LOGIN_BLOCKED_PENDING_VERIFICATION",
+                    "Login blocked because signup is still waiting for email verification.",
+                    None,
+                    request,
+                )
                 db.commit()
-                raise generic_error
-            _register_failed_attempt(ip_address=ip_address, email=email)
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Verify your email before signing in.",
+                )
+            _register_failed_attempt(ip_address)
             _log_auth_event(db, "USER_LOGIN_FAILED", "Failed login attempt.", None, request)
             db.commit()
             raise generic_error
         if not verify_password(payload.password, user.password_hash):
-            _register_failed_attempt(ip_address=ip_address, email=email)
+            _register_failed_attempt(ip_address)
             _log_auth_event(db, "USER_LOGIN_FAILED", "Failed login attempt.", None, request)
             db.commit()
             raise generic_error
         if user.auth_provider == "local" and user.email_verified_at is None:
-            _register_failed_attempt(ip_address=ip_address, email=email)
-            _log_auth_event(db, "USER_LOGIN_FAILED", "Failed login attempt.", None, request)
+            _register_failed_attempt(ip_address)
+            _log_auth_event(
+                db,
+                "USER_LOGIN_BLOCKED_UNVERIFIED",
+                "Login blocked because email is not verified.",
+                user.id,
+                request,
+                org_id=user.org_id,
+                factory_id=None,
+            )
             db.commit()
-            raise generic_error
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Verify your email before signing in.",
+            )
 
         user.last_login = datetime.now(timezone.utc)
-        _clear_attempts(ip_address=ip_address, email=email)
-        active_factory_id = _resolve_active_factory_id(
-            db,
-            user_id=user.id,
-            preferred_factory_id=None,
+        _clear_attempts(ip_address)
+        role_row = (
+            db.query(UserFactoryRole)
+            .filter(UserFactoryRole.user_id == user.id)
+            .order_by(UserFactoryRole.assigned_at.asc())
+            .first()
         )
-        role_row = None
-        if active_factory_id:
-            role_row = (
-                db.query(UserFactoryRole)
-                .filter(
-                    UserFactoryRole.user_id == user.id,
-                    UserFactoryRole.factory_id == active_factory_id,
-                )
-                .first()
-            )
-        if not role_row:
-            role_row = (
-                db.query(UserFactoryRole)
-                .filter(UserFactoryRole.user_id == user.id)
-                .order_by(UserFactoryRole.assigned_at.asc())
-                .first()
-            )
-            active_factory_id = role_row.factory_id if role_row else None
+        active_factory_id = role_row.factory_id if role_row else None
         active_role = role_row.role.value if role_row else user.role.value
         _log_auth_event(
             db,
@@ -1122,7 +974,6 @@ def login_user(
             refresh_token=refresh_token,
             **auth_context,
         )
-        _set_auth_no_store_headers(response)
         if wants_cookie_auth(request):
             csrf_token = set_auth_cookies(
                 response=response,
@@ -1131,8 +982,6 @@ def login_user(
                 request=request,
             )
             response.headers["X-CSRF-Token"] = csrf_token
-            auth_response.access_token = None
-            auth_response.refresh_token = None
         return auth_response
     except HTTPException:
         raise
@@ -1150,7 +999,6 @@ def logout_user(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
-    _set_auth_no_store_headers(response)
     credentials = request.headers.get("Authorization", "")
     token = credentials.replace("Bearer ", "").strip() if credentials else ""
     if not token:
@@ -1171,7 +1019,7 @@ def logout_user(
         refresh_token = get_refresh_cookie(request)
     if refresh_token:
         _revoke_refresh_token(db, token=refresh_token, user_id=current_user.id)
-    clear_auth_cookies(response=response, request=request)
+    clear_auth_cookies(response=response)
 
     _log_auth_event(db, "USER_LOGOUT", "User logged out.", current_user.id, request)
     db.commit()
@@ -1185,7 +1033,6 @@ def logout_all_devices(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
-    _set_auth_no_store_headers(response)
     if get_access_cookie(request) or get_refresh_cookie(request):
         require_csrf(request)
 
@@ -1201,8 +1048,13 @@ def logout_all_devices(
         if not existing:
             db.add(TokenBlacklist(token_jti=jti, user_id=current_user.id, expires_at=exp))
 
-    _invalidate_all_user_sessions(db, user=current_user)
-    clear_auth_cookies(response=response, request=request)
+    now = datetime.now(timezone.utc)
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == current_user.id,
+        RefreshToken.revoked_at.is_(None),
+        RefreshToken.expires_at > now,
+    ).update({"revoked_at": now}, synchronize_session=False)
+    clear_auth_cookies(response=response)
 
     _log_auth_event(
         db,
@@ -1291,7 +1143,6 @@ def refresh_access_token(
         refresh_token=refresh_token,
         **auth_context,
     )
-    _set_auth_no_store_headers(response)
     if wants_cookie_auth(request) or get_refresh_cookie(request) or get_access_cookie(request):
         csrf_token = set_auth_cookies(
             response=response,
@@ -1300,8 +1151,6 @@ def refresh_access_token(
             request=request,
         )
         response.headers["X-CSRF-Token"] = csrf_token
-        auth_response.access_token = None
-        auth_response.refresh_token = None
     return auth_response
 
 
@@ -1310,12 +1159,6 @@ def resend_email_verification(
     payload: EmailVerificationRequest, request: Request, db: Session = Depends(get_db)
 ) -> EmailVerificationResponse:
     email = payload.email.lower().strip()
-    ip_address = request.client.host if request.client else "unknown"
-    try:
-        check_rate_limit(key=f"verify-resend:ip:{ip_address}", max_requests=3, window_seconds=300)
-        check_rate_limit(key=f"verify-resend:email:{email}", max_requests=3, window_seconds=300)
-    except RateLimitError as error:
-        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=error.detail) from error
     pending = db.query(PendingRegistration).filter(PendingRegistration.email == email).first()
     user = (
         db.query(User)
@@ -1334,14 +1177,11 @@ def resend_email_verification(
             db,
             name=pending.name,
             email=pending.email,
-            org_id=pending.org_id,
-            invited_by_user_id=pending.invited_by_user_id,
             password_hash=pending.password_hash,
             requested_role=pending.requested_role,
             factory_name=pending.factory_name,
             company_code=pending.company_code,
             phone_number=pending.phone_number,
-            custom_note=pending.custom_note,
             ttl_hours=EMAIL_VERIFICATION_TTL_HOURS,
         )
         verification_link = (
@@ -1350,38 +1190,16 @@ def resend_email_verification(
         )
         delivered = True
         if delivery_mode == "email":
-            if pending.invited_by_user_id is not None:
-                invite_details = _pending_invite_details(db, pending=pending)
-                invite_payload = build_invite_email_payload(
-                    recipient_name=pending.name,
-                    invited_email=pending.email,
-                    role=pending.requested_role,
-                    organization_name=str(invite_details["organization_name"]),
-                    factory_name=str(invite_details["factory_name"]),
-                    factory_location=invite_details.get("factory_location") if isinstance(invite_details.get("factory_location"), str) else None,
-                    company_code=invite_details.get("company_code") if isinstance(invite_details.get("company_code"), str) else None,
-                    inviter_name=str(invite_details["inviter_name"]),
-                    custom_note=pending.custom_note,
-                    verification_link=verification_link,
-                    expires_in_hours=EMAIL_VERIFICATION_TTL_HOURS,
-                )
-                delivered = _send_auth_email(
-                    subject=str(invite_payload["subject"]),
-                    to_email=pending.email,
-                    body=str(invite_payload["text_body"]),
-                    context="resend_invitation",
-                )
-            else:
-                delivered = _send_auth_email(
-                    subject=EMAIL_VERIFICATION_EMAIL_SUBJECT,
-                    to_email=pending.email,
-                    body=(
-                        "You requested a new DPR.ai verification link.\n\n"
-                        f"Verify your email within {EMAIL_VERIFICATION_TTL_HOURS} hours:\n{verification_link}\n\n"
-                        "If you did not request this, you can ignore this email."
-                    ),
-                    context="resend_verification",
-                )
+            delivered = _send_auth_email(
+                subject=EMAIL_VERIFICATION_EMAIL_SUBJECT,
+                to_email=pending.email,
+                body=(
+                    "You requested a new DPR.ai verification link.\n\n"
+                    f"Verify your email within {EMAIL_VERIFICATION_TTL_HOURS} hours:\n{verification_link}\n\n"
+                    "If you did not request this, you can ignore this email."
+                ),
+                context="resend_verification",
+            )
         if delivered:
             _log_auth_event(
                 db,
@@ -1442,14 +1260,8 @@ def validate_email_verification_token(
     if pending:
         return EmailVerificationValidateResponse(
             valid=True,
-            message=(
-                "Invitation verified. Set your password and accept to create the account now."
-                if pending.invited_by_user_id is not None
-                else "Verification link verified. Confirm to create the account now."
-            ),
+            message="Verification link verified. Confirm to create the account now.",
             email=pending.email,
-            flow_type="invite_accept" if pending.invited_by_user_id is not None else "signup_verify",
-            invite=_pending_invite_details(db, pending=pending) if pending.invited_by_user_id is not None else None,
         )
 
     record = verify_verification_token(db, token=token)
@@ -1457,7 +1269,6 @@ def validate_email_verification_token(
         return EmailVerificationValidateResponse(
             valid=False,
             message="This verification link is invalid or has expired. Request a new one.",
-            flow_type="email_verify",
         )
 
     user = db.query(User).filter(User.id == record.user_id, User.is_active.is_(True)).first()
@@ -1465,20 +1276,17 @@ def validate_email_verification_token(
         return EmailVerificationValidateResponse(
             valid=False,
             message="This verification link is invalid or has expired. Request a new one.",
-            flow_type="email_verify",
         )
     if user.email_verified_at is not None:
         return EmailVerificationValidateResponse(
             valid=True,
             message="Email already verified. You can sign in now.",
             email=user.email,
-            flow_type="email_verify",
         )
     return EmailVerificationValidateResponse(
         valid=True,
         message="Verification link verified. Confirm your email to activate the account.",
         email=user.email,
-        flow_type="email_verify",
     )
 
 
@@ -1490,8 +1298,6 @@ def verify_email_address(
 ) -> EmailVerificationResponse:
     pending = verify_pending_registration_token(db, token=payload.token)
     if pending:
-        if pending.invited_by_user_id is not None:
-            raise HTTPException(status_code=400, detail="This invite needs password setup and acceptance before the account can be created.")
         _activate_pending_registration(db, pending=pending, request=request)
         db.commit()
         return EmailVerificationResponse(
@@ -1530,41 +1336,11 @@ def verify_email_address(
     )
 
 
-@router.post("/email/verify/accept", response_model=EmailVerificationResponse)
-def accept_invited_email(
-    payload: InviteAcceptanceRequest,
-    request: Request,
-    db: Session = Depends(get_db),
-) -> EmailVerificationResponse:
-    validate_password_strength(payload.password)
-    pending = verify_pending_registration_token(db, token=payload.token)
-    if not pending or pending.invited_by_user_id is None:
-        raise HTTPException(status_code=400, detail="Invalid or expired invitation token.")
-
-    _activate_pending_registration(
-        db,
-        pending=pending,
-        request=request,
-        password_hash_override=hash_password(payload.password),
-    )
-    db.commit()
-    return EmailVerificationResponse(
-        message="Invitation accepted. Your account is now created and ready to sign in.",
-        delivery_mode="email",
-    )
-
-
 @router.post("/password/forgot", response_model=PasswordForgotResponse)
 def password_forgot(
     payload: PasswordForgotRequest, request: Request, db: Session = Depends(get_db)
 ) -> PasswordForgotResponse:
     email = payload.email.lower().strip()
-    ip_address = request.client.host if request.client else "unknown"
-    try:
-        check_rate_limit(key=f"forgot:ip:{ip_address}", max_requests=3, window_seconds=300)
-        check_rate_limit(key=f"forgot:email:{email}", max_requests=3, window_seconds=300)
-    except RateLimitError as error:
-        raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=error.detail) from error
     user = db.query(User).filter(User.email == email, User.is_active.is_(True)).first()
     delivery_mode = "preview" if _should_expose_reset_link() else "email"
     reset_link: str | None = None
@@ -1632,7 +1408,11 @@ def password_reset(
     now = datetime.now(timezone.utc)
     user.password_hash = hash_password(payload.new_password)
     record.used_at = now
-    _invalidate_all_user_sessions(db, user=user, invalidated_at=now)
+
+    db.query(RefreshToken).filter(
+        RefreshToken.user_id == user.id,
+        RefreshToken.revoked_at.is_(None),
+    ).update({"revoked_at": now}, synchronize_session=False)
 
     _log_auth_event(
         db,
@@ -1651,8 +1431,6 @@ def password_reset(
 def list_factories(
     payload: RefreshRequest, db: Session = Depends(get_db)
 ) -> FactoryListResponse:
-    if not payload.refresh_token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Refresh token missing.")
     now = datetime.now(timezone.utc)
     token_hash = _hash_refresh_token(payload.refresh_token)
     record = db.query(RefreshToken).filter(RefreshToken.token_hash == token_hash).first()
@@ -1736,16 +1514,11 @@ def select_factory(
     )
     db.commit()
     auth_context = _build_auth_context(db, user=current_user, active_factory_id=payload.factory_id)
-    auth_response = AuthResponse(
+    return AuthResponse(
         access_token=access_token,
         refresh_token=refresh_token,
         **auth_context,
     )
-    _set_auth_no_store_headers(response)
-    if get_refresh_cookie(request) or get_access_cookie(request) or wants_cookie_auth(request):
-        auth_response.access_token = None
-        auth_response.refresh_token = None
-    return auth_response
 
 
 @router.get("/me", response_model=UserReadSchema)
@@ -1794,10 +1567,8 @@ def get_session_summary(
         if candidate and (last_activity is None or candidate > last_activity):
             last_activity = candidate
 
-    active_sessions = len(active_tokens)
     return SessionSummaryResponse(
-        active_sessions=active_sessions,
-        active_devices=active_sessions,
+        active_devices=len(active_tokens),
         last_activity=last_activity,
     )
 
@@ -1942,7 +1713,6 @@ def delete_profile_photo(
 def change_password(
     payload: ChangePasswordRequest,
     request: Request,
-    response: Response,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
@@ -1950,13 +1720,10 @@ def change_password(
         raise HTTPException(status_code=401, detail="Invalid credentials.")
     try:
         validate_password_strength(payload.new_password)
-        now = datetime.now(timezone.utc)
         current_user.password_hash = hash_password(payload.new_password)
-        _invalidate_all_user_sessions(db, user=current_user, invalidated_at=now)
-        clear_auth_cookies(response=response, request=request)
         _log_auth_event(db, "PASSWORD_CHANGED", "User changed password.", current_user.id, request)
         db.commit()
-        return {"message": "Password changed. Sign in again."}
+        return {"message": "Password changed successfully."}
     except ValueError as error:
         db.rollback()
         raise HTTPException(status_code=400, detail=str(error)) from error

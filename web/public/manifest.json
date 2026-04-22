@@ -1,9 +1,9 @@
 {
-  "name": "FactoryNerve",
-  "short_name": "FactoryNerve",
-  "id": "/",
-  "scope": "/",
-  "start_url": "/dashboard",
+  "name": "DPR.ai",
+  "short_name": "DPR.ai",
+  "id": "https://www.factorynerve.online/",
+  "scope": "https://www.factorynerve.online/",
+  "start_url": "https://www.factorynerve.online/",
   "lang": "en",
   "dir": "ltr",
   "display": "standalone",
@@ -11,87 +11,45 @@
   "orientation": "portrait-primary",
   "background_color": "#0b0e14",
   "theme_color": "#0b0e14",
-  "description": "Factory-first mobile operating system for attendance, OCR, approvals, dispatch, and reporting.",
+  "description": "Factory operations system for attendance, OCR, approvals, dispatch, and reporting.",
   "categories": ["business", "productivity", "utilities"],
   "prefer_related_applications": false,
   "shortcuts": [
     {
       "name": "Today Board",
       "short_name": "Board",
-      "url": "/dashboard",
-      "description": "Open daily priorities and live factory signals.",
-      "icons": [
-        {
-          "src": "/icons/shortcut-96.png",
-          "sizes": "96x96",
-          "type": "image/png"
-        }
-      ]
+      "url": "https://www.factorynerve.online/dashboard",
+      "description": "Open daily priorities and live factory signals."
     },
     {
       "name": "Attendance",
       "short_name": "Attendance",
-      "url": "/attendance",
-      "description": "Punch, check attendance status, and review manpower.",
-      "icons": [
-        {
-          "src": "/icons/shortcut-96.png",
-          "sizes": "96x96",
-          "type": "image/png"
-        }
-      ]
+      "url": "https://www.factorynerve.online/attendance",
+      "description": "Punch, check attendance status, and review manpower."
     },
     {
       "name": "Scan Document",
       "short_name": "Scan",
-      "url": "/ocr/scan",
-      "description": "Capture a register image and send it into OCR.",
-      "icons": [
-        {
-          "src": "/icons/shortcut-96.png",
-          "sizes": "96x96",
-          "type": "image/png"
-        }
-      ]
+      "url": "https://www.factorynerve.online/ocr/scan",
+      "description": "Capture a register image and send it into OCR."
     },
     {
       "name": "Review Queue",
       "short_name": "Approvals",
-      "url": "/approvals",
-      "description": "Clear pending review, OCR, attendance, and stock work.",
-      "icons": [
-        {
-          "src": "/icons/shortcut-96.png",
-          "sizes": "96x96",
-          "type": "image/png"
-        }
-      ]
+      "url": "https://www.factorynerve.online/approvals",
+      "description": "Clear pending review, OCR, attendance, and stock work."
     }
   ],
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "https://www.factorynerve.online/icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
+      "type": "image/png"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "https://www.factorynerve.online/icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icons/icon-maskable-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/icons/icon-maskable-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
+      "type": "image/png"
     }
   ]
 }

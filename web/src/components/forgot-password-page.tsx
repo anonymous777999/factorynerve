@@ -5,11 +5,14 @@ import { useState } from "react";
 
 import { ApiError } from "@/lib/api";
 import { requestPasswordReset, resendEmailVerification, type PasswordForgotResponse } from "@/lib/auth";
+import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import { AuthShell } from "@/components/auth-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
 export default function ForgotPasswordPage() {
+  const { t } = useI18n();
+  useI18nNamespaces(["auth", "errors", "forms", "common"]);
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -18,17 +21,6 @@ export default function ForgotPasswordPage() {
   const [resendingVerification, setResendingVerification] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState("");
   const isEmailDelivery = response?.delivery_mode !== "preview";
-  const stateCard = response
-    ? {
-        title: isEmailDelivery ? "Inbox check required" : "Local reset link ready",
-        detail: isEmailDelivery
-          ? "Use only the newest email for this address. The reset link is time-limited and older links should be ignored."
-          : "Preview mode is active, so you can open or copy the reset link directly from this screen.",
-        className: isEmailDelivery
-          ? "border-[rgba(34,197,94,0.22)] bg-[rgba(34,197,94,0.08)] text-green-100"
-          : "border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.08)] text-sky-100",
-      }
-    : null;
 
   const copyResetLink = async () => {
     if (!response?.reset_link) return;
@@ -43,10 +35,10 @@ export default function ForgotPasswordPage() {
         document.execCommand("copy");
         document.body.removeChild(textArea);
       }
-      setCopyStatus("Reset link copied.");
+      setCopyStatus(t("auth.forgot.copy_success", "Reset link copied."));
       window.setTimeout(() => setCopyStatus(""), 2200);
     } catch {
-      setCopyStatus("Could not copy automatically. You can still open the link below.");
+      setCopyStatus(t("auth.forgot.copy_failed", "Could not copy automatically. You can still open the link below."));
       window.setTimeout(() => setCopyStatus(""), 2600);
     }
   };
@@ -67,7 +59,7 @@ export default function ForgotPasswordPage() {
       } else if (err instanceof Error) {
         setError(err.message);
       } else {
-        setError("Could not start password recovery.");
+        setError(t("auth.forgot.failed", "Could not start password recovery."));
       }
     } finally {
       setLoading(false);
@@ -76,7 +68,7 @@ export default function ForgotPasswordPage() {
 
   const onResendVerification = async () => {
     if (!email) {
-      setVerificationStatus("Enter the same signup email first, then resend verification.");
+      setVerificationStatus(t("auth.forgot.resend_requires_email", "Enter the same signup email first, then resend verification."));
       return;
     }
     setResendingVerification(true);
@@ -90,153 +82,126 @@ export default function ForgotPasswordPage() {
       } else if (err instanceof Error) {
         setVerificationStatus(err.message);
       } else {
-        setVerificationStatus("Could not resend the verification email.");
+        setVerificationStatus(t("auth.forgot.resend_failed", "Could not resend the verification email."));
       }
     } finally {
       setResendingVerification(false);
     }
   };
 
+  // AUDIT: TEXT_NOISE - shorten the auth-shell narrative so the recovery action stays primary
   return (
     <AuthShell
-      badge="Password Recovery"
-      title="Forgot password"
-      description="Enter your account email and we will prepare a secure password reset path for you."
-      journeyTitle="Recover access without exposing who is in the system."
-      journeyDescription="The recovery flow protects user privacy, sends time-limited reset links, and avoids leaking whether a specific email address is registered."
+      badge={t("auth.forgot.badge", "Password Recovery")}
+      title={t("auth.forgot.title", "Forgot password")}
+      description={t("auth.forgot.description", "Enter your account email and we will prepare a reset path.")}
+      journeyTitle={t("auth.forgot.journey_title", "Recover access without leaking account state.")}
+      journeyDescription={t("auth.forgot.journey_description", "The flow stays privacy-safe and only works for verified, active accounts.")}
       steps={[
         {
-          title: "Request a reset link",
-          description: "Submit the account email you want to recover. The response stays privacy-safe either way.",
+          title: t("auth.forgot.step_1_title", "Request a reset link"),
+          description: t("auth.forgot.step_1_detail", "Submit the account email. The response stays privacy-safe either way."),
         },
         {
-          title: "Open the newest email",
-          description: "Only the latest valid reset email should be used, especially if multiple links were requested.",
+          title: t("auth.forgot.step_2_title", "Open the newest link"),
+          description: t("auth.forgot.step_2_detail", "Use only the latest valid email if multiple links were requested."),
         },
         {
-          title: "Set a fresh password",
-          description: "Choose a strong password, then sign in again using the same email address.",
+          title: t("auth.forgot.step_3_title", "Set a fresh password"),
+          description: t("auth.forgot.step_3_detail", "Choose a strong password, then sign in again with the same email."),
         },
       ]}
-      supportTitle="Privacy-safe by design"
-      supportDescription="No account lookup."
+      supportTitle={t("auth.forgot.support_title", "Privacy-safe by design")}
+      supportDescription={t("auth.forgot.support_description", "This screen never confirms whether an email exists. Reset works only after signup verification creates the real account.")}
       cardClassName="max-w-xl"
       contentClassName="space-y-5"
     >
       <form onSubmit={onSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-text-primary">Email Address</label>
-          <Input
-            type="email"
-            autoComplete="email"
-            placeholder="your@email.com"
-            value={email}
-            onChange={(event) => setEmail(event.target.value)}
-            required
-            className="w-full"
-          />
-        </div>
-        {error && (
-          <div className="rounded-lg border border-color-danger/25 bg-color-danger/10 p-3 text-sm text-color-danger">
-            {error}
-          </div>
-        )}
-        <Button
-          type="submit"
-          disabled={loading}
-          variant="primary"
-          className="w-full h-12 text-base font-semibold"
-        >
-          {loading ? "Preparing reset..." : "Send Reset Link"}
-        </Button>
-      </form>
-
-      {stateCard ? (
-        <div className={`rounded-2xl border p-4 text-sm ${stateCard.className}`}>
-          <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/80">Recovery Status</div>
-          <div className="mt-2 text-base font-semibold text-text-primary">{stateCard.title}</div>
-          <div className="mt-2 leading-6">{stateCard.detail}</div>
-        </div>
-      ) : null}
-
-      {response ? (
-        <div className="rounded-lg border border-color-success/25 bg-color-success/10 p-4 text-sm">
-          <div className="font-semibold text-color-success">
-            {isEmailDelivery ? "Reset email sent if the account exists" : "Reset link ready"}
-          </div>
-          <div className="mt-3 text-text-primary/90">{response.message}</div>
-          <div className="mt-4 rounded-md border border-border bg-card-elevated p-3">
-            <div className="text-xs font-semibold uppercase tracking-widest text-text-muted">
-              What to do next
+            <div>
+              <label className="text-sm text-[var(--muted)]">{t("forms.email", "Email")}</label>
+              <Input
+                type="email"
+                autoComplete="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                required
+              />
             </div>
-            <ol className="mt-3 space-y-2 text-sm text-text-primary/90">
-              <li>1. Check the inbox for {email}.</li>
-              <li>2. Open the newest reset link only.</li>
-              <li>3. Set a new password, then sign in again.</li>
-            </ol>
-          </div>
-          <div className="mt-3 rounded-md border border-color-warning/25 bg-color-warning/10 p-3 text-xs text-color-warning">
-            If you only just signed up and have not clicked the verification email yet, password reset will not arrive. Verify the signup email first because the real account is created only after verification.
-          </div>
-          {isEmailDelivery ? (
-            <div className="mt-3 rounded-md border border-border bg-card-elevated p-3 text-xs text-text-muted">
-              Same result for every email.
+            {error ? <div className="text-sm text-red-400">{error}</div> : null}
+            <Button type="submit" disabled={loading} className="w-full">
+              {loading ? t("auth.forgot.submitting", "Preparing...") : t("auth.forgot.submit", "Send link")}
+            </Button>
+          </form>
+
+          {response ? (
+            // AUDIT: DENSITY_OVERLOAD - collapse repeated guidance so the next recovery action is clearer
+            <div className="rounded-2xl border border-[rgba(34,197,94,0.22)] bg-[rgba(34,197,94,0.08)] p-4 text-sm">
+              <div className="font-semibold text-green-300">
+                {isEmailDelivery ? t("auth.forgot.sent", "Reset email sent if the account exists") : t("auth.forgot.preview_ready", "Reset link ready")}
+              </div>
+              <div className="mt-2 text-[var(--text)]/90">{response.message}</div>
+              <div className="mt-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-sm text-[var(--text)]/90">
+                Next: check the inbox for {email}, open the newest link, then sign in again after the reset.
+              </div>
+              <details className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-xs text-[var(--muted)]">
+                <summary className="cursor-pointer list-none font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+                  {t("auth.forgot.help", "Need help")}
+                </summary>
+                <div className="mt-3 space-y-3">
+                  <div className="rounded-xl border border-[rgba(245,158,11,0.28)] bg-[rgba(245,158,11,0.10)] p-3 text-amber-100">
+                    {t("auth.forgot.help_unverified", "If signup email verification is still pending, reset will not arrive until the real account exists.")}
+                  </div>
+                  {isEmailDelivery ? (
+                    <div>
+                      {t("auth.forgot.help_privacy", "For privacy, this page always shows the same result whether the email exists or not.")}
+                    </div>
+                  ) : null}
+                </div>
+              </details>
+              {response.reset_link ? (
+                <div className="mt-4 space-y-3">
+                  <div className="text-[var(--muted)]">
+                    Local preview mode is active, so your reset link is shown here directly.
+                  </div>
+                  <a
+                    href={response.reset_link}
+                    className="inline-flex rounded-full border border-[rgba(62,166,255,0.4)] bg-[rgba(62,166,255,0.12)] px-4 py-2 text-sm font-semibold text-[var(--text)] transition hover:bg-[rgba(62,166,255,0.18)]"
+                  >
+                    {t("auth.forgot.open_reset_form", "Open Reset Form")}
+                  </a>
+                  <Button type="button" variant="outline" onClick={copyResetLink}>
+                    {t("auth.forgot.copy_link", "Copy link")}
+                  </Button>
+                  {copyStatus ? <div className="text-xs text-[var(--muted)]">{copyStatus}</div> : null}
+                  <div className="break-all text-xs text-[var(--muted)]">{response.reset_link}</div>
+                </div>
+              ) : (
+                <div className="mt-3 text-[var(--muted)]">
+                  {t("auth.forgot.check_inbox", "Check your inbox, spam, and promotions folder for the reset email.")}
+                </div>
+              )}
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <Button type="button" variant="outline" onClick={onResendVerification} disabled={resendingVerification}>
+                  {resendingVerification ? t("auth.forgot.resend_verifying", "Sending...") : t("auth.forgot.resend_verify", "Resend verify")}
+                </Button>
+                <Link href="/access" className="text-sm text-[var(--accent)] underline">
+                  {t("auth.forgot.back_to_sign_in", "Back to sign in")}
+                </Link>
+              </div>
+              {verificationStatus ? (
+                <div className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-sm text-[var(--muted)]">
+                  {verificationStatus}
+                </div>
+              ) : null}
             </div>
           ) : null}
-          {response.reset_link ? (
-            <div className="mt-4 space-y-3">
-              <div className="text-text-muted">
-                Local preview mode is active, so your reset link is shown here directly.
-              </div>
-              <div className="grid gap-3 sm:flex sm:flex-wrap">
-                <a
-                  href={response.reset_link}
-                  className="inline-flex w-full items-center justify-center rounded-md border border-color-primary/40 bg-color-primary/20 px-4 py-2 text-sm font-semibold text-text-primary transition hover:bg-color-primary/30 sm:w-auto"
-                >
-                  Open Reset Form
-                </a>
-                <Button type="button" variant="outline" onClick={copyResetLink} className="w-full sm:w-auto">
-                  Copy Reset Link
-                </Button>
-              </div>
-              {copyStatus ? <div className="text-xs text-text-muted">{copyStatus}</div> : null}
-              <div className="break-all rounded-md border border-border bg-card p-3 text-xs text-text-muted font-mono">
-                {response.reset_link}
-              </div>
-            </div>
-          ) : (
-            <div className="mt-3 text-text-muted">
-              Check your inbox, spam, and promotions folder for the reset email.
-            </div>
-          )}
-          <div className="mt-4 grid gap-3 sm:flex sm:flex-row">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={onResendVerification}
-              disabled={resendingVerification}
-              className="w-full flex-1"
-            >
-              {resendingVerification ? "Sending..." : "Resend Verification Email"}
-            </Button>
-            <Link href="/access" className="inline-flex w-full items-center justify-center text-sm text-color-primary hover:underline sm:w-auto">
-              Back to sign in
+
+          <div className="text-center text-sm text-[var(--muted)]">
+            Remembered it?{" "}
+            <Link href="/access" className="text-[var(--accent)] underline">
+              {t("auth.forgot.back_to_sign_in", "Back to sign in")}
             </Link>
           </div>
-          {verificationStatus ? (
-            <div className="mt-3 rounded-md border border-border bg-card-elevated p-3 text-sm text-text-muted">
-              {verificationStatus}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      <div className="text-center text-sm text-text-muted">
-        Remembered it?{" "}
-        <Link href="/access" className="text-color-primary hover:underline font-medium">
-          Back to sign in
-        </Link>
-      </div>
     </AuthShell>
   );
 }
