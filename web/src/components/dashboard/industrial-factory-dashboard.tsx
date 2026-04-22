@@ -208,7 +208,7 @@ export function IndustrialFactoryDashboard({
           onSelect={handleFilterSelect}
         />
       ))}
-      <Card className="rounded-[1.6rem] !border-[#e7e5e4] !bg-white shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
+      <Card className="rounded-[1.6rem] !border-[#e7e5e4] !bg-none !bg-white shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
         <CardHeader>
           <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Active Filters</div>
           <CardTitle className="mt-2 text-lg text-[#111111]">Control context</CardTitle>
@@ -225,7 +225,7 @@ export function IndustrialFactoryDashboard({
           ))}
         </CardContent>
       </Card>
-      <Card className="rounded-[1.6rem] !border-[#e7e5e4] !bg-white shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
+      <Card className="rounded-[1.6rem] !border-[#e7e5e4] !bg-none !bg-white shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
         <CardHeader>
           <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Action Center</div>
           <CardTitle className="mt-2 text-lg text-[#111111]">Next best step</CardTitle>
@@ -248,7 +248,7 @@ export function IndustrialFactoryDashboard({
                 {lastDrillDown?.seriesName}: {lastDrillDown?.label} ({Math.round(lastDrillDown?.value || 0)})
               </div>
               <Link href={drilldownAction.href} className="block">
-                <Button className="w-full !border-[#111111] !bg-[#111111] !text-white hover:!border-[#2f2f2f] hover:!bg-[#2f2f2f] sm:w-auto">
+                <Button className="w-full !border-[#111111] !bg-none !bg-[#111111] !text-white hover:!border-[#2f2f2f] hover:!bg-none hover:!bg-[#2f2f2f] sm:w-auto">
                   {drilldownAction.label}
                 </Button>
               </Link>
@@ -314,8 +314,8 @@ export function IndustrialFactoryDashboard({
                 onClick={() => setSelectedRange(filter.key)}
                 className={
                   selectedRange === filter.key
-                    ? "shrink-0 rounded-full !border-[#111111] !bg-[#111111] px-4 py-2 text-sm font-semibold !text-white shadow-sm transition"
-                    : "shrink-0 rounded-full !border-[#d6d3d1] !bg-[#f5f5f4] px-4 py-2 text-sm font-semibold !text-[#57534e] transition hover:!border-[#a8a29e] hover:!bg-[#e7e5e4]"
+                    ? "shrink-0 rounded-full !border-[#111111] !bg-none !bg-[#111111] px-4 py-2 text-sm font-semibold !text-white shadow-sm transition"
+                    : "shrink-0 rounded-full !border-[#d6d3d1] !bg-none !bg-[#f5f5f4] px-4 py-2 text-sm font-semibold !text-[#57534e] transition hover:!border-[#a8a29e] hover:!bg-none hover:!bg-[#e7e5e4]"
                 }
               >
                 {filter.label}
@@ -360,7 +360,7 @@ export function IndustrialFactoryDashboard({
                 {viewConfig.showProduction ? (
                   <ProductionLossChart data={activeData.productionLoss} loading={visualLoading} onDrillDown={handleDrillDown} />
                 ) : (
-                  <Card className="rounded-[1.6rem] border border-dashed border-[#e7e5e4] bg-white">
+                  <Card className="rounded-[1.6rem] border border-dashed border-[#e7e5e4] !bg-none bg-white">
                     <CardContent className="py-10 text-center text-sm text-[#57534e]">
                       Production trend is hidden for the current filter combination.
                     </CardContent>
@@ -380,7 +380,7 @@ export function IndustrialFactoryDashboard({
                     />
                   ) : null}
                   {!viewConfig.showInventory && !viewConfig.showLossDonut ? (
-                    <Card className="rounded-[1.6rem] border border-dashed border-[#e7e5e4] bg-white">
+                    <Card className="rounded-[1.6rem] border border-dashed border-[#e7e5e4] !bg-none bg-white">
                       <CardContent className="py-10 text-center text-sm text-[#57534e]">
                         Inventory and severity panels are hidden for this lens.
                       </CardContent>
@@ -399,7 +399,7 @@ export function IndustrialFactoryDashboard({
               <DispatchTrendChart data={activeData.dispatchTrend} loading={visualLoading} onDrillDown={handleDrillDown} />
             ) : null}
             {!viewConfig.showTopLoss && !viewConfig.showDispatch ? (
-              <Card className="rounded-[1.6rem] border border-dashed border-[#e7e5e4] bg-white xl:col-span-2">
+              <Card className="rounded-[1.6rem] border border-dashed border-[#e7e5e4] !bg-none bg-white xl:col-span-2">
                 <CardContent className="py-10 text-center text-sm text-[#57534e]">
                   Top-loss and dispatch trends are hidden for the selected process focus.
                 </CardContent>
@@ -413,7 +413,7 @@ export function IndustrialFactoryDashboard({
             ) : null}
             {viewConfig.showKpiTable ? <IndustrialKpiTable rows={activeData.kpiRows} /> : null}
             {!viewConfig.showRevenue && !viewConfig.showKpiTable ? (
-              <Card className="rounded-[1.6rem] border border-dashed border-[#e7e5e4] bg-white xl:col-span-2">
+              <Card className="rounded-[1.6rem] border border-dashed border-[#e7e5e4] !bg-none bg-white xl:col-span-2">
                 <CardContent className="py-10 text-center text-sm text-[#57534e]">
                   Revenue and KPI table are hidden for this filter combination.
                 </CardContent>

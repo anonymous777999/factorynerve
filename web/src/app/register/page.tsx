@@ -10,6 +10,7 @@ import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import { validatePhoneNumber } from "@/lib/validation";
 import { AuthShell } from "@/components/auth-shell";
 import { GoogleAuthButton } from "@/components/google-auth-button";
+import { PasswordField } from "@/components/password-field";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
@@ -321,12 +322,11 @@ export default function RegisterPage() {
                 />
               </div>
               <div className="md:col-span-1">
-                <label className="text-sm text-[var(--muted)]">{t("forms.password", "Password")}</label>
-                <Input
-                  type="password"
+                <PasswordField
+                  label={t("forms.password", "Password")}
                   autoComplete="new-password"
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+                  onChange={setPassword}
                   required
                 />
                 <p className="mt-2 text-xs text-[var(--muted)]">{t("auth.register.password_hint", "Use 12+ characters with mixed case, number, and symbol.")}</p>

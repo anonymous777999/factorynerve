@@ -28,7 +28,7 @@ export function SmartInsightsPanel({
   loading?: boolean;
 }) {
   return (
-    <Card className="rounded-[1.9rem] !border-[#e7e5e4] !bg-white !text-[#111111] shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+    <Card className="rounded-[1.9rem] !border-[#e7e5e4] !bg-none !bg-white !text-[#111111] shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
       <CardHeader>
         <div className="text-xs uppercase tracking-[0.24em] text-[#78716c]">Ranked Insights</div>
         <CardTitle className="mt-2 text-xl text-[#111111] md:text-2xl">Industrial decision prompts</CardTitle>
@@ -62,7 +62,7 @@ export function SmartInsightsPanel({
                 {insight.primaryAction ? (
                   <div className="mt-4">
                     <Link href={insight.primaryAction.href}>
-                      <Button variant="outline" className="!border-[#111111] !bg-[#111111] !text-white hover:!border-[#2f2f2f] hover:!bg-[#2f2f2f]">
+                      <Button variant="outline" className="!border-[#111111] !bg-none !bg-[#111111] !text-white hover:!border-[#2f2f2f] hover:!bg-none hover:!bg-[#2f2f2f]">
                         {insight.primaryAction.label}
                       </Button>
                     </Link>

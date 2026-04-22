@@ -16,7 +16,7 @@ export function IndustrialKpiTable({
   rows: KpiTableRow[];
 }) {
   return (
-    <Card className="rounded-[1.8rem] !border-[#e7e5e4] !bg-white !text-[#111111] shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
+    <Card className="rounded-[1.8rem] !border-[#e7e5e4] !bg-none !bg-white !text-[#111111] shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
       <CardHeader>
         <div className="text-xs uppercase tracking-[0.22em] text-slate-500">Monthly KPI Review</div>
         <CardTitle className="mt-2 text-xl text-slate-900">Compact KPI table</CardTitle>

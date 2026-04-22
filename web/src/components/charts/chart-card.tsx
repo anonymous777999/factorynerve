@@ -23,7 +23,7 @@ export function ChartCard({
   isEmpty?: boolean;
 }) {
   return (
-    <Card className="h-full rounded-[1.9rem] !border-[#e7e5e4] !bg-white !text-[#111111] shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+    <Card className="h-full rounded-[1.9rem] !border-[#e7e5e4] !bg-none !bg-white !text-[#111111] shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
       <CardHeader>
         <div className="text-xs uppercase tracking-[0.22em] text-[#78716c]">Industrial Signal</div>
         <CardTitle className="mt-2 text-lg text-[#111111] md:text-xl">{title}</CardTitle>
