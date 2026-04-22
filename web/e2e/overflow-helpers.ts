@@ -73,6 +73,8 @@ export async function createAuthenticatedSession(page: Page) {
       return Boolean(payload?.user?.id);
     })
     .toBe(true);
+
+  return { email, password };
 }
 
 export async function gotoStable(page: Page, path: string) {

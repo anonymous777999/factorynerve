@@ -248,6 +248,28 @@ input[type="checkbox"] {
   word-break: break-word;
 }
 
+.ui-no-select {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.ui-no-callout {
+  -webkit-touch-callout: none;
+}
+
+.ui-select-text,
+[data-allow-text-selection="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
+
+.ui-no-select :where(.ui-select-text, [data-allow-text-selection="true"], input, textarea, select, [contenteditable="true"], [contenteditable=""], pre, code) {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
+}
+
 .overflow-safe-children > * {
   min-width: 0;
 }

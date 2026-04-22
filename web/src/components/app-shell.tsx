@@ -533,7 +533,7 @@ const shellHiddenRoutes = new Set(["/", "/login", "/access", "/register", "/forg
 
 function navLinkClasses(active: boolean) {
   return cn(
-    "group block rounded-xl border px-3.5 py-2.5 transition",
+    "ui-no-select ui-no-callout group block rounded-xl border px-3.5 py-2.5 transition",
     active
       ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)] shadow-[0_0_0_1px_rgba(62,166,255,0.15)]"
       : "border-[var(--border)] bg-[rgba(20,24,36,0.7)] hover:border-[rgba(62,166,255,0.28)] hover:bg-[rgba(28,34,51,0.82)]",
@@ -936,7 +936,7 @@ function NavContent({
         return (
           <div key={section.title} className="space-y-3">
             {hideSectionTitles ? null : (
-              <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+              <div className="ui-no-select ui-no-callout px-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
                 {translatedSectionTitle}
               </div>
             )}
@@ -993,7 +993,7 @@ function NavContent({
                       aria-label={favorited ? `Unpin ${translatedItem.label}` : `Pin ${translatedItem.label}`}
                       aria-pressed={favorited}
                       className={cn(
-                        "mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition",
+                        "ui-no-select ui-no-callout mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition",
                         favorited
                           ? "border-[rgba(255,218,102,0.3)] bg-[rgba(255,218,102,0.12)] text-amber-200 opacity-100"
                           : "border-[var(--border)] bg-[rgba(8,12,20,0.56)] text-[var(--muted)] opacity-0 group-hover/navitem:opacity-100 group-focus-within/navitem:opacity-100 hover:border-[rgba(62,166,255,0.28)] hover:text-[var(--text)]",
@@ -1052,7 +1052,7 @@ function DesktopContextRail({
                 type="button"
                 aria-label={translate ? translate("shell.hide_workspace", "Hide workspace") : "Hide workspace"}
                 title={translate ? translate("shell.hide_workspace", "Hide workspace") : "Hide workspace"}
-                className="inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(8,12,20,0.62)] px-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)] hover:bg-[rgba(20,24,36,0.85)]"
+                className="ui-no-select ui-no-callout inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(8,12,20,0.62)] px-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)] hover:bg-[rgba(20,24,36,0.85)]"
                 onClick={onHide}
               >
                 Hide
@@ -1112,7 +1112,7 @@ function DesktopContextRail({
                   key={item.href}
                   href={item.href}
                   prefetch
-                  className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.5)] px-4 py-3 transition hover:border-[rgba(62,166,255,0.28)] hover:bg-[rgba(20,24,36,0.82)]"
+                  className="ui-no-select ui-no-callout flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.5)] px-4 py-3 transition hover:border-[rgba(62,166,255,0.28)] hover:bg-[rgba(20,24,36,0.82)]"
                   onMouseEnter={() => onWarm(item.href)}
                   onFocus={() => onWarm(item.href)}
                 >
@@ -1149,7 +1149,7 @@ function MobileBottomNav({
   translate?: TranslateFn;
 }) {
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border)] bg-[rgba(11,14,20,0.95)] px-3 pb-[calc(0.8rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:hidden">
+    <nav className="safe-x-inset fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border)] bg-[rgba(11,14,20,0.95)] px-3 pb-[calc(0.8rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:hidden">
       <div className="mx-auto flex max-w-xl items-end justify-between gap-1">
         {items.map((item) => {
           const active = item.match(pathname);
@@ -1162,7 +1162,7 @@ function MobileBottomNav({
               href={item.href}
               prefetch
               className={cn(
-                "group relative flex min-w-0 flex-1 flex-col items-center justify-end px-2 text-[11px] font-medium transition",
+                "ui-no-select ui-no-callout group relative flex min-w-0 flex-1 flex-col items-center justify-end px-2 text-[11px] font-medium transition",
                 active ? "text-[var(--text)]" : "text-[var(--muted)]",
               )}
               onMouseEnter={() => onWarm(item.href)}
@@ -1841,7 +1841,7 @@ function AppShellFrame({
           <div className="mt-3 border-t border-[var(--border)] pt-3">
             {/* AUDIT: BUTTON_CLUTTER — Moved language and account utilities into a collapsible tray so the shell stays focused on navigation first. */}
             <details className="group rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.45)] px-3 py-3">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-left">
+              <summary className="ui-no-select ui-no-callout flex cursor-pointer list-none items-center justify-between gap-3 text-left">
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
                     {t("shell.account_title", "Account")}
@@ -1856,7 +1856,7 @@ function AppShellFrame({
               </summary>
               <div className="mt-4 space-y-3">
                 <div className="flex items-center gap-2">
-                  <label className="shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                  <label className="ui-no-select ui-no-callout shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
                     {t("language.label", "Language")}
                   </label>
                   <Select
@@ -1876,7 +1876,7 @@ function AppShellFrame({
                 <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
                   <Link
                     href="/profile"
-                    className="inline-flex h-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-2 text-[11px] font-medium text-[var(--text)] transition hover:border-[rgba(62,166,255,0.34)] hover:bg-[rgba(20,24,36,0.86)]"
+                    className="ui-no-select ui-no-callout inline-flex h-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-2 text-[11px] font-medium text-[var(--text)] transition hover:border-[rgba(62,166,255,0.34)] hover:bg-[rgba(20,24,36,0.86)]"
                   >
                     {t("nav.profile.label", "Profile")}
                   </Link>
@@ -1884,7 +1884,7 @@ function AppShellFrame({
                     type="button"
                     onClick={() => void handleLogout()}
                     disabled={accountActionBusy !== null}
-                    className="inline-flex h-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-2 text-[11px] font-medium text-[var(--text)] transition hover:border-[rgba(62,166,255,0.34)] hover:bg-[rgba(20,24,36,0.86)] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="ui-no-select ui-no-callout inline-flex h-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-2 text-[11px] font-medium text-[var(--text)] transition hover:border-[rgba(62,166,255,0.34)] hover:bg-[rgba(20,24,36,0.86)] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {accountActionBusy === "logout"
                       ? t("shell.logging_out", "Logging out...")
@@ -1894,7 +1894,7 @@ function AppShellFrame({
                     type="button"
                     onClick={() => void handleSwitchAccount()}
                     disabled={accountActionBusy !== null}
-                    className="inline-flex h-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-2 text-[11px] font-medium text-[var(--text)] transition hover:border-[rgba(62,166,255,0.34)] hover:bg-[rgba(20,24,36,0.86)] disabled:cursor-not-allowed disabled:opacity-60"
+                    className="ui-no-select ui-no-callout inline-flex h-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-2 text-[11px] font-medium text-[var(--text)] transition hover:border-[rgba(62,166,255,0.34)] hover:bg-[rgba(20,24,36,0.86)] disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {accountActionBusy === "switch"
                       ? t("shell.switching", "Switching...")
@@ -1922,7 +1922,7 @@ function AppShellFrame({
                 <button
                   type="button"
                   aria-label={t("shell.go_back", "Go back")}
-                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(20,24,36,0.86)] text-base font-semibold text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)]"
+                  className="ui-no-select ui-no-callout inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(20,24,36,0.86)] text-base font-semibold text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)]"
                   onClick={handleMobileBack}
                 >
                   {"<"}
@@ -1943,7 +1943,7 @@ function AppShellFrame({
                     ? t("shell.hide_sidebar", "Hide sidebar")
                     : t("shell.show_sidebar", "Show sidebar")
                 }
-                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(20,24,36,0.86)] text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)]"
+                className="ui-no-select ui-no-callout inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(20,24,36,0.86)] text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)]"
                 onClick={toggleSidebar}
               >
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
@@ -1978,7 +1978,7 @@ function AppShellFrame({
                   type="button"
                   aria-label={t("shell.show_workspace", "Show workspace")}
                   title={t("shell.show_workspace", "Show workspace")}
-                  className="fixed right-6 top-6 z-30 hidden items-center justify-center rounded-full border border-[rgba(62,166,255,0.28)] bg-[rgba(12,16,26,0.96)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text)] shadow-[0_12px_30px_rgba(3,8,20,0.35)] transition hover:border-[rgba(62,166,255,0.48)] hover:bg-[rgba(20,24,36,0.98)] xl:inline-flex"
+                  className="ui-no-select ui-no-callout fixed right-6 top-6 z-30 hidden items-center justify-center rounded-full border border-[rgba(62,166,255,0.28)] bg-[rgba(12,16,26,0.96)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text)] shadow-[0_12px_30px_rgba(3,8,20,0.35)] transition hover:border-[rgba(62,166,255,0.48)] hover:bg-[rgba(20,24,36,0.98)] xl:inline-flex"
                   onClick={toggleDesktopContextRail}
                 >
                   Workspace
