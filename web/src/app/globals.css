@@ -56,6 +56,8 @@ body {
   font-family: var(--font-body), "IBM Plex Sans", sans-serif;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
+  width: 100%;
+  max-width: 100%;
 }
 
 h1,
@@ -81,6 +83,16 @@ select {
 
 html {
   color-scheme: dark;
+  width: 100%;
+  max-width: 100%;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+  height: auto;
 }
 
 * {
@@ -229,6 +241,76 @@ input[type="checkbox"] {
   text-shadow:
     0 0 26px rgba(197, 109, 45, 0.18),
     0 20px 46px rgba(2, 6, 23, 0.48);
+}
+
+.overflow-safe-text {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.overflow-safe-children > * {
+  min-width: 0;
+}
+
+.safe-top-inset {
+  padding-top: calc(env(safe-area-inset-top, 0px) + var(--space-2));
+}
+
+.safe-bottom-inset {
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-2));
+}
+
+.safe-x-inset {
+  padding-left: calc(env(safe-area-inset-left, 0px) + var(--space-2));
+  padding-right: calc(env(safe-area-inset-right, 0px) + var(--space-2));
+}
+
+.safe-fixed-right {
+  right: calc(env(safe-area-inset-right, 0px) + 1rem);
+}
+
+.safe-fixed-left {
+  left: calc(env(safe-area-inset-left, 0px) + 1rem);
+}
+
+.responsive-scroll-area__viewport {
+  width: 100%;
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior-x: contain;
+  scrollbar-gutter: stable both-edges;
+}
+
+.responsive-scroll-area__inner {
+  min-width: 100%;
+}
+
+.responsive-scroll-area__indicator {
+  pointer-events: none;
+  position: absolute;
+  top: 0.25rem;
+  bottom: 0.25rem;
+  z-index: 1;
+  width: 2.5rem;
+  border-radius: 999px;
+  transition: opacity 180ms ease;
+}
+
+.responsive-scroll-area__indicator--left {
+  left: 0;
+  background: linear-gradient(90deg, rgba(6, 12, 20, 0.88), rgba(6, 12, 20, 0));
+}
+
+.responsive-scroll-area__indicator--right {
+  right: 0;
+  background: linear-gradient(270deg, rgba(6, 12, 20, 0.88), rgba(6, 12, 20, 0));
+}
+
+:where(.overflow-x-auto) {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior-x: contain;
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -8,6 +8,7 @@ import { IndustrialFactoryDashboard } from "@/components/dashboard/industrial-fa
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
@@ -783,7 +784,10 @@ export function SteelCommandCenterPage() {
                   <div className={`rounded-2xl px-4 py-3 text-sm ${badgeTone("yellow")}`}>Review<div className="mt-1 text-2xl font-semibold text-white">{overview?.confidence_counts.yellow || 0}</div></div>
                   <div className={`rounded-2xl px-4 py-3 text-sm ${badgeTone("red")}`}>Mismatch<div className="mt-1 text-2xl font-semibold text-white">{overview?.confidence_counts.red || 0}</div></div>
                 </div>
-                <div className="overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+                <ResponsiveScrollArea
+                  className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]"
+                  debugLabel="steel-command-center-batches"
+                >
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">
@@ -826,7 +830,7 @@ export function SteelCommandCenterPage() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </ResponsiveScrollArea>
               </CardContent>
             </Card>
 
@@ -1357,7 +1361,10 @@ export function SteelCommandCenterPage() {
           <Card>
             <CardHeader><CardTitle>Recent Batches and Variance Signals</CardTitle></CardHeader>
             <CardContent>
-              <div className="overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+              <ResponsiveScrollArea
+                className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]"
+                debugLabel="steel-command-center-ledger"
+              >
                 <table className="min-w-full text-left text-sm">
                   <thead className="text-[var(--muted)]">
                     <tr className="border-b border-[var(--border)]">
@@ -1397,7 +1404,7 @@ export function SteelCommandCenterPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ResponsiveScrollArea>
             </CardContent>
           </Card>
         </>

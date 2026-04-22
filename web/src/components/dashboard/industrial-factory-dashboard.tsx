@@ -15,6 +15,7 @@ import { KPIBox } from "@/components/dashboard/kpi-box";
 import { SmartInsightsPanel } from "@/components/dashboard/smart-insights-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import {
   buildSmartInsights,
   INDUSTRIAL_DASHBOARD_DATA,
@@ -299,7 +300,11 @@ export function IndustrialFactoryDashboard({
               </div>
             </div>
           ) : null}
-          <div className="flex gap-3 overflow-x-auto pb-1">
+          <ResponsiveScrollArea
+            className="pb-1"
+            debugLabel="industrial-dashboard-filters"
+            innerClassName="flex min-w-max gap-3 pr-2"
+          >
             {FILTERS.map((filter) => (
               <button
                 key={filter.key}
@@ -314,7 +319,7 @@ export function IndustrialFactoryDashboard({
                 {filter.label}
               </button>
             ))}
-          </div>
+          </ResponsiveScrollArea>
           <div className="rounded-[1.4rem] border border-[#dce5ef] bg-white p-4 shadow-[0_12px_28px_rgba(15,23,42,0.05)]">
             <div className="text-sm uppercase tracking-[0.18em] text-slate-500">Active Time Window</div>
             <div className="mt-2 text-xl font-semibold text-slate-900 md:text-2xl">{activeData.title}</div>

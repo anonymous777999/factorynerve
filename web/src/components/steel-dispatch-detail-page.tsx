@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
 import {
@@ -267,7 +268,7 @@ export function SteelDispatchDetailPage() {
                 {detail.dispatch.status}
               </div>
               {/* AUDIT: BUTTON_CLUTTER - move cross-route links into a secondary tools tray so dispatch progression stays primary. */}
-              <details className="group min-w-[220px] rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)]">
+              <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
                   Dispatch tools
                   <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
@@ -436,7 +437,10 @@ export function SteelDispatchDetailPage() {
                   </div>
                 </div>
               </div>
-              <div className="overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+              <ResponsiveScrollArea
+                className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]"
+                debugLabel="steel-dispatch-detail-lines"
+              >
                 <table className="min-w-full text-left text-sm">
                   <thead className="text-[var(--muted)]">
                     <tr className="border-b border-[var(--border)]">
@@ -471,7 +475,7 @@ export function SteelDispatchDetailPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ResponsiveScrollArea>
             </CardContent>
           </Card>
 

@@ -2,6 +2,7 @@
 
 import type { KpiTableRow } from "@/lib/industrial-dashboard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 
 function statusTone(status: KpiTableRow["status"], changePercent: number) {
   if (status === "up") return changePercent >= 0 ? "text-emerald-600 bg-emerald-50" : "text-amber-600 bg-amber-50";
@@ -50,7 +51,7 @@ export function IndustrialKpiTable({
             </div>
           ))}
         </div>
-        <div className="hidden overflow-x-auto md:block">
+        <ResponsiveScrollArea className="hidden md:block" debugLabel="industrial-kpi-table">
           <table className="min-w-full text-left text-sm">
           <thead className="text-slate-500">
             <tr className="border-b border-slate-200">
@@ -80,7 +81,7 @@ export function IndustrialKpiTable({
             ))}
           </tbody>
           </table>
-        </div>
+        </ResponsiveScrollArea>
       </CardContent>
     </Card>
   );

@@ -229,7 +229,7 @@ export function SteelChartsPage() {
               <Button variant="outline" disabled={refreshing} onClick={() => void handleRefresh()}>
                 {refreshing ? "Refreshing..." : "Refresh"}
               </Button>
-              <details className="group min-w-[220px] rounded-3xl border border-slate-200 bg-white/85">
+              <details className="group w-full min-w-0 rounded-3xl border border-slate-200 bg-white/85 sm:w-auto sm:min-w-[220px]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-slate-900">
                   Chart tools
                   <span className="text-xs text-slate-500 transition group-open:hidden">Open</span>

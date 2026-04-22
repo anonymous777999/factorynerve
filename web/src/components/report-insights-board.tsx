@@ -135,7 +135,7 @@ export default function ReportInsightsBoard({
   }
 
   return (
-    <section className="space-y-6">
+    <section className="space-y-6" data-component="report-insights-board">
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">
@@ -181,7 +181,25 @@ export default function ReportInsightsBoard({
                 </div>
                 <div className="text-xs text-[var(--muted)]">Bars compare actual output to target for each day.</div>
               </div>
-              <div className="mt-6 grid grid-cols-7 gap-3 md:grid-cols-10 xl:grid-cols-14">
+              <div className="space-y-3 md:hidden">
+                {insights.daily_series.slice(-7).map((point) => (
+                  <div key={point.date} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="text-sm font-semibold text-[var(--text)]">{formatDate(point.date)}</div>
+                      <div className="text-xs font-semibold text-[var(--text)]">{point.performance_percent.toFixed(0)}%</div>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                        <div className="h-full rounded-full bg-[linear-gradient(90deg,#3ea6ff,#60a5fa)]" style={{ width: clampPercent((point.units_target / maxDailyUnits) * 100) }} />
+                      </div>
+                      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                        <div className="h-full rounded-full bg-[linear-gradient(90deg,#2dd4bf,#10b981)]" style={{ width: clampPercent((point.units_produced / maxDailyUnits) * 100) }} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="hidden gap-3 md:grid md:grid-cols-10 xl:grid-cols-14">
                 {insights.daily_series.slice(-14).map((point) => (
                   <div key={point.date} className="space-y-2 text-center">
                     <div className="flex h-44 items-end justify-center gap-1 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">

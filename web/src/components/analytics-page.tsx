@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import {
@@ -241,7 +242,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
+    <main className="min-h-screen px-4 py-8 md:px-8" data-component="analytics-page">
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div>
@@ -249,7 +250,7 @@ export default function AnalyticsPage() {
             <h1 className="mt-2 text-3xl font-semibold">{t("analytics.hero.title", "Performance insights")}</h1>
             <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">{t("analytics.hero.subtitle", "Start with this week, then compare monthly and trend signals.")}</p>
           </div>
-          <details className="min-w-[240px] rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+          <details className="w-full min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4 sm:w-auto sm:min-w-[240px]">
             <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("analytics.tools.title", "Analytics tools")}</summary>
             <div className="mt-4 space-y-4">
               <div className="flex flex-wrap gap-3">
@@ -357,21 +358,40 @@ export default function AnalyticsPage() {
             </CardHeader>
             <CardContent>
               {weekly.length ? (
-                <div className="grid grid-cols-7 gap-3">
-                  {weekly.map((point) => (
-                    <div key={point.date} className="space-y-2 text-center">
-                      <div className="flex h-40 items-end justify-center rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
-                        <div
-                          className="w-full rounded-full bg-[linear-gradient(180deg,#3ea6ff,#2dd4bf)]"
-                          style={{ height: `${Math.max(8, Math.min(100, point.production_percent))}%` }}
-                        />
+                <>
+                  <div className="space-y-3 md:hidden">
+                    {weekly.map((point) => (
+                      <div key={point.date} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="text-sm font-semibold text-[var(--text)]">{formatDate(point.date, locale)}</div>
+                          <div className="text-sm font-semibold text-[var(--text)]">{point.production_percent.toFixed(0)}%</div>
+                        </div>
+                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+                          <div
+                            className="h-full rounded-full bg-[linear-gradient(90deg,#3ea6ff,#2dd4bf)]"
+                            style={{ width: `${Math.max(8, Math.min(100, point.production_percent))}%` }}
+                          />
+                        </div>
+                        <div className="mt-3 text-xs text-[var(--muted)]">{t("analytics.weekly.units", "{{count}} units", { count: point.units })}</div>
                       </div>
-                      <div className="text-xs text-[var(--muted)]">{formatDate(point.date, locale)}</div>
-                      <div className="text-sm font-semibold">{point.production_percent.toFixed(0)}%</div>
-                      <div className="text-xs text-[var(--muted)]">{t("analytics.weekly.units", "{{count}} units", { count: point.units })}</div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                  <div className="hidden gap-3 md:grid md:grid-cols-7">
+                    {weekly.map((point) => (
+                      <div key={point.date} className="space-y-2 text-center">
+                        <div className="flex h-40 items-end justify-center rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
+                          <div
+                            className="w-full rounded-full bg-[linear-gradient(180deg,#3ea6ff,#2dd4bf)]"
+                            style={{ height: `${Math.max(8, Math.min(100, point.production_percent))}%` }}
+                          />
+                        </div>
+                        <div className="text-xs text-[var(--muted)]">{formatDate(point.date, locale)}</div>
+                        <div className="text-sm font-semibold">{point.production_percent.toFixed(0)}%</div>
+                        <div className="text-xs text-[var(--muted)]">{t("analytics.weekly.units", "{{count}} units", { count: point.units })}</div>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                   {t("analytics.weekly.empty", "No weekly analytics data available.")}
@@ -457,7 +477,7 @@ export default function AnalyticsPage() {
                           <div className="mt-1 text-xl font-semibold">{manager.totals.average_performance.toFixed(1)}%</div>
                         </div>
                       </div>
-                      <div className="overflow-x-auto">
+                      <ResponsiveScrollArea debugLabel="analytics-manager-table">
                         <table className="min-w-full text-left text-sm">
                           <thead className="text-[var(--muted)]">
                             <tr className="border-b border-[var(--border)]">
@@ -476,7 +496,7 @@ export default function AnalyticsPage() {
                             ))}
                           </tbody>
                         </table>
-                      </div>
+                      </ResponsiveScrollArea>
                     </>
                   ) : (
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-[var(--muted)]">

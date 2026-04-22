@@ -322,7 +322,7 @@ export default function SettingsAttendancePage() {
               </p>
             </div>
             {/* AUDIT: BUTTON_CLUTTER - move companion attendance routes into a secondary tray so the active admin editor stays primary. */}
-            <details className="group min-w-[220px] rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)]">
+            <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
                 Attendance tools
                 <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>

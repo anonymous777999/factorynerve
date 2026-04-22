@@ -1122,7 +1122,7 @@ export default function WorkQueuePage() {
                               <Link href={item.href}>
                                 <Button
                                   variant={section.tone === "danger" ? "primary" : "outline"}
-                                  className="h-11 min-w-[9rem] px-5"
+                                  className="h-11 w-full px-5 sm:w-auto sm:min-w-[9rem]"
                                 >
                                   {item.action}
                                 </Button>

@@ -17,6 +17,7 @@ import type { BillingStatus } from "@/lib/settings";
 import { useSession } from "@/lib/use-session";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { ResponsiveScrollArea } from "./ui/responsive-scroll-area";
 
 const CUSTOMER_FEATURES: Array<{ key: string; label: string }> = [
   { key: "pdf", label: "PDF export" },
@@ -197,7 +198,7 @@ export default function PlansPage() {
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">{t("billing.plans.description", "Pick a plan first, then add OCR packs only if you need more scans.")}</p>
             </div>
             {/* AUDIT: BUTTON_CLUTTER - move billing and dashboard jumps into a secondary tools tray so plan cards own the decision flow */}
-            <details className="min-w-[240px] rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+            <details className="w-full min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4 sm:w-auto sm:min-w-[240px]">
             <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("billing.plans.tools", "Plan tools")}</summary>
             <div className="mt-4 flex flex-wrap gap-3">
               <Link href="/billing">
@@ -445,7 +446,10 @@ export default function PlansPage() {
         {plans.length ? (
           <details className="rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-5 py-5">
             <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">Compare all plans</summary>
-            <div className="mt-4 overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+            <ResponsiveScrollArea
+              className="mt-4 rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]"
+              debugLabel="plans-compare-table"
+            >
               <table className="min-w-full text-left text-sm">
                 <thead className="text-[var(--muted)]">
                   <tr className="border-b border-[var(--border)]">
@@ -510,7 +514,7 @@ export default function PlansPage() {
                   ))}
                 </tbody>
               </table>
-            </div>
+            </ResponsiveScrollArea>
           </details>
         ) : null}
 

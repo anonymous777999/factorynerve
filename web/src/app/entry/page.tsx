@@ -859,7 +859,7 @@ export default function EntryPage() {
                 <div className="mt-2 text-2xl font-semibold">{activeDefinition.title}</div>
                 <div className="mt-2 text-sm text-slate-300">{activeDefinition.caption}</div>
               </div>
-              <div className="min-w-[180px]">
+              <div className="w-full sm:w-auto sm:min-w-[180px]">
                 <div className="flex items-center justify-between text-xs text-slate-400">
                   <span>Progress</span>
                   <span>{Math.round(progressPercent)}%</span>
@@ -1439,12 +1439,12 @@ export default function EntryPage() {
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#08101D]/95 px-4 py-4 backdrop-blur lg:hidden">
+      <div className="safe-bottom-inset fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#08101D]/95 px-4 py-4 backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-xl items-center gap-3">
           <button
             type="button"
             onClick={handleBack}
-            className={`min-w-[88px] text-sm font-medium transition ${
+            className={`w-20 shrink-0 text-sm font-medium transition ${
               activeStep === 0 ? "cursor-not-allowed text-slate-500" : "text-slate-200 hover:text-white"
             }`}
             disabled={activeStep === 0}

@@ -22,6 +22,26 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
     {
+      name: "mobile-320",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 320, height: 568 },
+        deviceScaleFactor: 2,
+        hasTouch: true,
+        isMobile: true,
+      },
+    },
+    {
+      name: "mobile-360",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 360, height: 740 },
+        deviceScaleFactor: 3,
+        hasTouch: true,
+        isMobile: true,
+      },
+    },
+    {
       name: "android-chrome",
       use: { ...devices["Pixel 7"] },
     },
@@ -38,6 +58,8 @@ export default defineConfig({
         FASTAPI_HOST: "127.0.0.1",
         FASTAPI_PORT: "8765",
         DPR_NO_RELOAD: "1",
+        EMAIL_VERIFICATION_EXPOSE_LINK: "1",
+        PASSWORD_RESET_EXPOSE_LINK: "1",
       },
     },
     {

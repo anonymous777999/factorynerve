@@ -19,6 +19,7 @@ import { getSteelOverview, type SteelOverview } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
 
 type DerivedFactoryStat = {
@@ -519,6 +520,14 @@ export default function PremiumDashboardPage() {
     return [...new Set((auditTrail || []).map((item) => item.action))].sort();
   }, [auditTrail]);
 
+  const heatmapDailySummary = useMemo(() => {
+    const dailyCounts = new Map<string, number>();
+    for (const cell of dashboard?.heatmap || []) {
+      dailyCounts.set(cell.day, (dailyCounts.get(cell.day) || 0) + cell.count);
+    }
+    return Array.from(dailyCounts.entries()).map(([day, count]) => ({ day, count }));
+  }, [dashboard]);
+
   const handleExportPdf = async () => {
     setStatus("");
     setError("");
@@ -646,7 +655,7 @@ export default function PremiumDashboardPage() {
     : [];
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
+    <main className="min-h-screen px-4 py-8 md:px-8" data-component="premium-dashboard-page">
       <div className="mx-auto max-w-[1500px] space-y-6">
         <section className="rounded-[2rem] border border-[rgba(62,166,255,0.18)] bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.18),rgba(11,14,20,0.92)_50%)] p-6 shadow-[0_40px_120px_rgba(3,8,20,0.45)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
@@ -1192,8 +1201,17 @@ export default function PremiumDashboardPage() {
                   <CardTitle className="text-xl">Status Matrix Heatmap</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="overflow-x-auto">
-                    <div className="grid min-w-[980px] grid-cols-[100px_repeat(24,minmax(0,1fr))] gap-2">
+                  <div className="grid gap-3 lg:hidden">
+                    {heatmapDailySummary.map((item) => (
+                      <div key={item.day} className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4">
+                        <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{item.day}</div>
+                        <div className="mt-2 text-lg font-semibold text-[var(--text)]">{item.count}</div>
+                        <div className="mt-1 text-xs text-[var(--muted)]">Events across the full day</div>
+                      </div>
+                    ))}
+                  </div>
+                  <ResponsiveScrollArea debugLabel="premium-heatmap" className="hidden lg:block">
+                    <div className="grid min-w-max lg:min-w-[980px] grid-cols-[100px_repeat(24,minmax(0,1fr))] gap-2">
                       <div />
                       {Array.from({ length: 24 }).map((_, hour) => (
                         <div key={hour} className="text-center text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
@@ -1218,7 +1236,7 @@ export default function PremiumDashboardPage() {
                         );
                       })}
                     </div>
-                  </div>
+                  </ResponsiveScrollArea>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
                     <span>Low</span>
                     {[1, 2, 3, 4].map((level) => (

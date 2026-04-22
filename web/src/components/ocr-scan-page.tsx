@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { formatApiErrorMessage } from "@/lib/api";
 import { transferBlob } from "@/lib/blob-transfer";
 import { createImageEnhancer } from "@/lib/image-enhance-client";
@@ -1537,7 +1538,7 @@ export default function OcrScanPage() {
                           <div className="text-sm font-semibold text-white">Extracted preview</div>
                           <div className="mt-1 text-xs text-slate-400">First rows from the corrected draft that will feed review and export.</div>
                         </div>
-                        <div className="overflow-x-auto">
+                        <ResponsiveScrollArea debugLabel="ocr-scan-preview-table">
                           <table className="min-w-full text-left text-sm">
                             <tbody>
                               {(resultPreview?.rows.slice(0, 4) || []).map((row, rowIndex) => (
@@ -1556,7 +1557,7 @@ export default function OcrScanPage() {
                               ) : null}
                             </tbody>
                           </table>
-                        </div>
+                        </ResponsiveScrollArea>
                       </div>
                     </div>
                   </div>

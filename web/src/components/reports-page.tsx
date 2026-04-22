@@ -1,5 +1,6 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -29,13 +30,17 @@ import { getOcrVerificationSummary, type OcrVerificationSummary } from "@/lib/oc
 import { getSteelOverview, type SteelOverview } from "@/lib/steel";
 import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import { useSession } from "@/lib/use-session";
-import ReportInsightsBoard from "@/components/report-insights-board";
 import { ReportsPageSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+
+const ReportInsightsBoard = dynamic(() => import("@/components/report-insights-board"), {
+  loading: () => <Skeleton className="h-[36rem] w-full rounded-[2rem]" />,
+});
 
 type IssueFilter = "any" | "yes" | "no";
 
@@ -670,7 +675,7 @@ export default function ReportsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
+    <main className="min-h-screen px-4 py-8 md:px-8" data-component="reports-page">
       <div className="mx-auto max-w-7xl space-y-6">
         {/* AUDIT: FLOW_BROKEN - Added a simple export journey so the page reads like pick range, export, then inspect secondary reporting lanes. */}
         <section className="grid gap-4 md:grid-cols-3">
@@ -1108,7 +1113,7 @@ export default function ReportsPage() {
                   ))}
                 </div>
               ) : filteredRows.length ? (
-                <div className="overflow-x-auto">
+                <ResponsiveScrollArea debugLabel="reports-results-table">
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">
@@ -1157,7 +1162,7 @@ export default function ReportsPage() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </ResponsiveScrollArea>
               ) : (
                 <div className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                   <div>No entries match this range.</div>

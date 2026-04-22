@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import { getLiveAttendance, type AttendanceLive, type AttendanceLiveRow } from "@/lib/attendance";
@@ -247,7 +248,7 @@ export default function AttendanceLivePage() {
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{t("attendance.live.hero.title", "Live attendance across the active factory")}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">{t("attendance.live.hero.subtitle", "Start with the next attendance signal, then scan the full board.")}</p>
             </div>
-            <details className="min-w-[240px] rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+            <details className="w-full min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4 sm:w-auto sm:min-w-[240px]">
               <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("attendance.live.tools.title", "Board tools")}</summary>
               <div className="mt-4 space-y-4">
                 <div className="flex flex-wrap gap-3">
@@ -441,7 +442,7 @@ export default function AttendanceLivePage() {
                 </div>
               ) : null}
               {filteredRows.length ? (
-                <div className="overflow-x-auto">
+                <ResponsiveScrollArea debugLabel="attendance-live-table">
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">
@@ -477,7 +478,7 @@ export default function AttendanceLivePage() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </ResponsiveScrollArea>
               ) : (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                   {t("attendance.live.table.no_rows", "No attendance rows match this filter yet.")}

@@ -7,6 +7,7 @@ import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
 import {
@@ -542,7 +543,7 @@ function BillingPageInner() {
             <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">{t("billing.billing.description", "Review plan status, confirm the checkout fit, then pay through Razorpay.")}</p>
           </div>
           {/* AUDIT: BUTTON_CLUTTER - move route jumps into a secondary tools tray so the checkout journey owns the top of the page */}
-          <details className="min-w-[220px] rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+          <details className="w-full min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4 sm:w-auto sm:min-w-[220px]">
             <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("billing.billing.tools", "Billing tools")}</summary>
             <div className="mt-4 flex flex-wrap gap-3">
               <Link href="/plans">
@@ -626,9 +627,9 @@ function BillingPageInner() {
           </Card>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+        <section className="min-w-0 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           {/* AUDIT: DENSITY_OVERLOAD - move usage and quota diagnostics into a secondary reveal so checkout stays primary */}
-          <details className="rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-5 py-5">
+          <details className="min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-4 py-5 sm:px-5">
             <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">Usage summary</summary>
             <div className="mt-4 space-y-4 text-sm">
               <div>
@@ -769,11 +770,11 @@ function BillingPageInner() {
             </div>
           </details>
 
-          <Card>
+          <Card className="min-w-0">
             <CardHeader>
               <CardTitle className="text-xl">Checkout</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 text-sm">
+            <CardContent className="min-w-0 space-y-4 text-sm">
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-[var(--muted)]">
                 Provider: Razorpay {billingConfig?.configured ? "configured" : "not configured"}
               </div>
@@ -821,10 +822,10 @@ function BillingPageInner() {
                 </div>
               </div>
 
-              <div className="space-y-3 rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                <div className="flex items-center justify-between">
+              <div className="min-w-0 space-y-3 rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="text-sm font-semibold">OCR scan packs</span>
-                  <Link href="/plans" className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">
+                  <Link href="/plans" className="overflow-safe-text text-xs uppercase tracking-[0.18em] text-[var(--accent)]">
                     Compare on plans page
                   </Link>
                 </div>
@@ -835,20 +836,20 @@ function BillingPageInner() {
                     return (
                       <div
                         key={addon.id}
-                        className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.8)] p-3"
+                        className="min-w-0 rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.8)] p-3"
                       >
                         <div className="space-y-3">
-                          <div className="flex items-start justify-between gap-3">
-                            <div>
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
                               <div className="font-semibold text-white">{addon.name}</div>
-                              <div className="mt-1 text-xs leading-5 text-[var(--muted)]">
+                              <div className="overflow-safe-text mt-1 text-xs leading-5 text-[var(--muted)]">
                                 {addon.description}
                               </div>
                               <div className="mt-2 text-xs text-[var(--muted)]">
                                 {addon.scan_quota ? `${addon.scan_quota} scans per pack` : "Billable pack"}
                               </div>
                             </div>
-                            <div className="text-xs font-semibold text-white">
+                            <div className="shrink-0 text-xs font-semibold text-white">
                               {formatAmount(addon.price, billingConfig?.currency || "INR")}/mo
                             </div>
                           </div>
@@ -864,7 +865,7 @@ function BillingPageInner() {
                               </span>
                             ) : null}
                           </div>
-                          <div className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.6)] px-3 py-2">
+                          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.6)] px-3 py-2">
                             <span className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
                               Quantity
                             </span>
@@ -896,12 +897,12 @@ function BillingPageInner() {
                   })}
                 </div>
               </div>
-              <div className="space-y-2 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                <div className="flex items-center justify-between">
+              <div className="min-w-0 space-y-2 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <span>Base plan</span>
                   <span>{formatAmount(checkoutPlanInfo?.monthly_price || 0, billingConfig?.currency || "INR")}</span>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <span>Included users / factories</span>
                   <span>
                     {(checkoutPlanInfo?.user_limit || 0) > 0 ? checkoutPlanInfo?.user_limit : "Unlimited"}
@@ -909,13 +910,13 @@ function BillingPageInner() {
                     {(checkoutPlanInfo?.factory_limit || 0) > 0 ? checkoutPlanInfo?.factory_limit : "Unlimited"}
                   </span>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <span>Billable OCR packs</span>
                   <span>{formatAmount(checkoutEstimate?.addonMonthlyCost || 0, billingConfig?.currency || "INR")}</span>
                 </div>
                 {checkoutEstimate?.chargeableAddons.map((addon) => (
-                  <div key={addon.id} className="flex items-center justify-between text-xs text-[var(--muted)]">
-                    <span>
+                  <div key={addon.id} className="flex flex-wrap items-center justify-between gap-3 text-xs text-[var(--muted)]">
+                    <span className="overflow-safe-text">
                       {addon.name} x{addon.incrementalQuantity || addon.quantity || 0}
                     </span>
                     <span>
@@ -926,7 +927,7 @@ function BillingPageInner() {
                     </span>
                   </div>
                 ))}
-                <div className="flex items-center justify-between border-t border-dashed border-[var(--border)] pt-3 font-semibold">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-[var(--border)] pt-3 font-semibold">
                   <span>{billingCycle === "yearly" ? "Yearly total" : "Monthly total"}</span>
                   <span>{formatAmount(checkoutEstimate?.cycleTotal || 0, billingConfig?.currency || "INR")}</span>
                 </div>
@@ -995,7 +996,7 @@ function BillingPageInner() {
 
         <section className="grid gap-4">
           {/* AUDIT: BUTTON_CLUTTER - keep owner-only controls available, but move them into a secondary section so they do not compete with checkout */}
-          <details className="rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-5 py-5">
+          <details className="min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-4 py-5 sm:px-5">
             <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">Plan controls</summary>
             <div className="mt-4 space-y-6">
               <div className="space-y-3">
@@ -1078,11 +1079,11 @@ function BillingPageInner() {
           </details>
 
           {/* AUDIT: DENSITY_OVERLOAD - move invoice history into a secondary section so the purchase journey stays first */}
-          <details className="rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-5 py-5">
+          <details className="min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-4 py-5 sm:px-5">
             <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">Invoice history</summary>
             <div className="mt-4">
               {invoices.length ? (
-                <div className="overflow-x-auto">
+                <ResponsiveScrollArea debugLabel="billing-invoice-history">
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">
@@ -1109,7 +1110,7 @@ function BillingPageInner() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </ResponsiveScrollArea>
               ) : (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                   No invoices recorded yet.

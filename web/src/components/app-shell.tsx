@@ -20,6 +20,7 @@ import {
   getRolePrimaryHrefs,
   getRoleWorkflowHint,
 } from "@/lib/role-navigation";
+import { logOverflowIssues } from "@/lib/overflow-debug";
 import { warmRouteData } from "@/lib/route-warmup";
 import { listSteelReconciliations } from "@/lib/steel";
 import { subscribeToWorkflowRefresh } from "@/lib/workflow-sync";
@@ -1183,7 +1184,7 @@ function MobileBottomNav({
               >
                 <NavIcon href={item.href} active={scanAction || active} />
                 {badgeCount > 0 ? (
-                  <span className="absolute -right-1 -top-1 inline-flex min-w-[1.1rem] items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                  <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
                     {formatBadgeCount(badgeCount)}
                   </span>
                 ) : null}
@@ -1642,8 +1643,24 @@ function AppShellFrame({
   const showDesktopContextRail =
     shellLayout.desktopRail === "context" && !desktopContextRailHidden;
 
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    const runAudit = () => {
+      window.requestAnimationFrame(() => {
+        logOverflowIssues(pathname);
+      });
+    };
+    runAudit();
+    window.addEventListener("resize", runAudit);
+    window.addEventListener("orientationchange", runAudit);
+    return () => {
+      window.removeEventListener("resize", runAudit);
+      window.removeEventListener("orientationchange", runAudit);
+    };
+  }, [pathname]);
+
   return (
-    <div className="relative flex min-h-screen overflow-hidden">
+    <div className="relative flex min-h-screen overflow-hidden" data-component="app-shell">
       {sidebarOpen ? (
         <button
           type="button"
@@ -1856,7 +1873,7 @@ function AppShellFrame({
                   </Select>
                 </div>
 
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
                   <Link
                     href="/profile"
                     className="inline-flex h-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-2 text-[11px] font-medium text-[var(--text)] transition hover:border-[rgba(62,166,255,0.34)] hover:bg-[rgba(20,24,36,0.86)]"
@@ -1897,7 +1914,7 @@ function AppShellFrame({
         )}
       >
         {shellLayout.mobileTopBar ? (
-          <div className="sticky top-0 z-30 border-b border-[var(--border)] bg-[rgba(11,14,20,0.92)] px-4 py-3 backdrop-blur lg:hidden">
+          <div className="safe-top-inset safe-x-inset sticky top-0 z-30 border-b border-[var(--border)] bg-[rgba(11,14,20,0.92)] py-3 backdrop-blur lg:hidden">
             <div className="flex items-center gap-3">
               {mobileTabActive ? (
                 <div className="h-10 w-10 shrink-0" />
@@ -1985,9 +2002,10 @@ function AppShellFrame({
       ) : null}
       <div
         className={cn(
-          "fixed bottom-[5.5rem] right-4 z-40 w-[min(22rem,calc(100vw-2rem))] lg:bottom-4 lg:right-6",
+          "safe-fixed-right fixed bottom-[calc(env(safe-area-inset-bottom,0px)+5.5rem)] z-40 w-[calc(100%_-_2rem)] max-w-[22rem] lg:bottom-4 lg:right-6",
           immersiveScannerRoute ? "hidden" : "",
         )}
+        data-overflow-debug-ignore="true"
       >
         <JobsDrawer />
       </div>

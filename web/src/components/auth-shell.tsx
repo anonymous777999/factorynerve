@@ -54,10 +54,10 @@ export function AuthShell({
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,rgba(3,9,16,0.95),rgba(7,14,24,0.97))]" />
       <div className="auth-ocean-mesh pointer-events-none absolute inset-0 opacity-90" />
       <div className="auth-dot-field pointer-events-none absolute inset-0 opacity-70" />
-      <div className="pointer-events-none absolute inset-x-0 top-[-8%] h-[45%] bg-[radial-gradient(circle_at_top,rgba(120,214,255,0.16),transparent_58%)]" />
-      <div className="auth-float-slow pointer-events-none absolute -left-20 top-14 h-72 w-72 rounded-full bg-cyan-300/10 blur-3xl" />
-      <div className="auth-float-delay pointer-events-none absolute right-[-4rem] top-[16%] h-80 w-80 rounded-full bg-sky-400/10 blur-3xl" />
-      <div className="auth-float-slower pointer-events-none absolute bottom-[-4rem] left-[14%] h-64 w-64 rounded-full bg-teal-300/8 blur-3xl" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 -translate-y-8 h-[45%] bg-[radial-gradient(circle_at_top,rgba(120,214,255,0.16),transparent_58%)]" />
+      <div className="auth-float-slow pointer-events-none absolute left-4 top-14 h-40 w-40 rounded-full bg-cyan-300/10 blur-3xl sm:-left-20 sm:h-72 sm:w-72" />
+      <div className="auth-float-delay pointer-events-none absolute right-4 top-[16%] h-44 w-44 rounded-full bg-sky-400/10 blur-3xl sm:right-0 sm:h-80 sm:w-80 sm:translate-x-16" />
+      <div className="auth-float-slower pointer-events-none absolute bottom-4 left-[14%] h-36 w-36 rounded-full bg-teal-300/8 blur-3xl sm:bottom-0 sm:h-64 sm:w-64 sm:translate-y-16" />
 
       <div className="relative mx-auto w-full max-w-5xl">
         <Link

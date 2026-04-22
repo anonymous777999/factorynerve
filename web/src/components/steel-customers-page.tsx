@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
@@ -434,7 +435,10 @@ export function SteelCustomersPage() {
                 <summary className="cursor-pointer list-none text-sm font-semibold text-white marker:hidden">
                   View directory
                 </summary>
-                <div className="mt-4 overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+                <ResponsiveScrollArea
+                  className="mt-4 rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]"
+                  debugLabel="steel-customers-directory"
+                >
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">
@@ -500,7 +504,7 @@ export function SteelCustomersPage() {
                       ) : null}
                     </tbody>
                   </table>
-                </div>
+                </ResponsiveScrollArea>
               </details>
             </CardContent>
           </Card>

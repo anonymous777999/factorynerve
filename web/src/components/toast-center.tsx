@@ -48,7 +48,7 @@ export function ToastCenter() {
   if (!visibleToasts.length) return null;
 
   return (
-    <div className="pointer-events-none fixed right-4 top-4 z-[70] flex w-[min(24rem,calc(100vw-2rem))] flex-col gap-3 lg:right-6">
+    <div className="safe-fixed-right safe-top-inset pointer-events-none fixed top-0 z-[70] flex w-[calc(100%_-_2rem)] max-w-[24rem] flex-col gap-3 lg:right-6">
       {visibleToasts.map((toast) => (
         <div
           key={toast.id}

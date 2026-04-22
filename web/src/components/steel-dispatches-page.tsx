@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
@@ -502,7 +503,7 @@ export function SteelDispatchesPage() {
               </div>
             </div>
             {/* AUDIT: BUTTON_CLUTTER - move route jumps into a secondary tools tray so dispatch creation stays primary. */}
-            <details className="group min-w-[220px] rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)]">
+            <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
                 Dispatch tools
                 <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
@@ -707,7 +708,7 @@ export function SteelDispatchesPage() {
                       Total selected: <span className="font-semibold text-white">{formatKg(totalWeight)} KG</span>
                     </div>
                   </div>
-                  <div className="overflow-x-auto">
+                  <ResponsiveScrollArea debugLabel="steel-dispatch-allocation">
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">
@@ -758,7 +759,7 @@ export function SteelDispatchesPage() {
                       })}
                     </tbody>
                   </table>
-                  </div>
+                  </ResponsiveScrollArea>
                 </div>
               ) : (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
@@ -900,7 +901,7 @@ export function SteelDispatchesPage() {
                   <span className="text-xs text-[var(--muted)] transition group-open:hidden">{dispatches.length} items</span>
                   <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
                 </summary>
-                <div className="overflow-x-auto border-t border-[var(--border)]">
+                <ResponsiveScrollArea className="border-t border-[var(--border)]" debugLabel="steel-dispatch-history">
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">
@@ -946,7 +947,7 @@ export function SteelDispatchesPage() {
                       ) : null}
                     </tbody>
                   </table>
-                </div>
+                </ResponsiveScrollArea>
               </details>
             </CardContent>
           </Card>

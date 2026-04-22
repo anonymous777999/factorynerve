@@ -18,6 +18,7 @@ import { signalWorkflowRefresh, subscribeToWorkflowRefresh } from "@/lib/workflo
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -532,7 +533,7 @@ function ReviewDetailPanel({
           </div>
         ) : null}
 
-        <div className={cn("border-t border-[var(--border)] pt-5", mobile ? "sticky bottom-0 bg-[rgba(17,21,33,0.96)] pb-2" : "")}>
+        <div className={cn("border-t border-[var(--border)] pt-5", mobile ? "safe-bottom-inset sticky bottom-0 bg-[rgba(17,21,33,0.96)] pb-2" : "")}>
           <div className="flex flex-col gap-3 sm:flex-row">
             <Button className="flex-1" onClick={() => void onApprove(item)} disabled={isBusy}>
               {isBusy ? "Saving..." : "Approve & Close"}
@@ -1150,7 +1151,7 @@ export default function AttendanceReviewPage() {
                                 <div className="text-sm text-[var(--muted)]">Critical items stay at the top for faster closure.</div>
                               </CardHeader>
                               <CardContent className="px-0 pb-0">
-                                <div className="overflow-x-auto">
+                                <ResponsiveScrollArea debugLabel="attendance-review-backlog-table">
                                   <table className="min-w-full border-separate border-spacing-0">
                                     <thead>
                                       <tr className="text-left text-xs uppercase tracking-[0.14em] text-[var(--muted)]">
@@ -1228,7 +1229,7 @@ export default function AttendanceReviewPage() {
                                       })}
                                     </tbody>
                                   </table>
-                                </div>
+                                </ResponsiveScrollArea>
                               </CardContent>
                             </Card>
 

@@ -16,6 +16,7 @@ import { signalWorkflowRefresh, subscribeToWorkflowRefresh } from "@/lib/workflo
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DashboardPageSkeleton } from "@/components/page-skeletons";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 
 const ALL_SHIFTS = ["morning", "evening", "night"] as const;
 
@@ -1530,7 +1531,7 @@ export default function DashboardHome() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
+    <main className="min-h-screen px-4 py-8 md:px-8" data-component="dashboard-home">
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">
@@ -1637,7 +1638,7 @@ export default function DashboardHome() {
               <CardTitle className="text-xl">{t("dashboard.attention.title", "What needs review now")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm">
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
                   <div className="text-xs text-[var(--muted)]">{t("dashboard.metric.alerts", "Alerts")}</div>
                   <div className="mt-1 text-lg font-semibold">{state.alerts.length}</div>
@@ -1660,7 +1661,7 @@ export default function DashboardHome() {
               {state.ocrSummary ? (
                 <div className="rounded-2xl border border-cyan-400/30 bg-[rgba(34,211,238,0.08)] p-4">
                   <div className="text-xs uppercase tracking-[0.18em] text-cyan-100">Trusted OCR</div>
-                  <div className="mt-3 grid grid-cols-3 gap-3">
+                  <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-xl border border-cyan-400/20 bg-[rgba(8,18,28,0.42)] p-3">
                       <div className="text-[11px] text-cyan-100/80">Approved docs</div>
                       <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary.trusted_documents}</div>
@@ -1882,7 +1883,25 @@ export default function DashboardHome() {
                 </div>
               ) : state.weekly.length ? (
                 <div className="space-y-3">
-                  <div className="grid grid-cols-7 gap-2">
+                  <div className="space-y-3 md:hidden">
+                    {state.weekly.map((point) => (
+                      <div key={point.date} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="text-sm font-semibold text-[var(--text)]">
+                            {formatDate(point.date, locale).split(" ").slice(0, 2).join(" ")}
+                          </div>
+                          <div className="text-sm font-semibold text-[var(--text)]">{point.production_percent.toFixed(0)}%</div>
+                        </div>
+                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+                          <div
+                            className="h-full rounded-full bg-[linear-gradient(90deg,#3ea6ff,#2dd4bf)]"
+                            style={{ width: `${Math.max(8, Math.min(100, point.production_percent))}%` }}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="hidden gap-2 md:grid md:grid-cols-7">
                     {state.weekly.map((point) => (
                       <div key={point.date} className="space-y-2 text-center">
                         <div className="flex h-36 items-end justify-center rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
@@ -2111,7 +2130,7 @@ export default function DashboardHome() {
             </CardHeader>
             <CardContent>
               {recentEntries.length ? (
-                <div className="overflow-x-auto">
+                <ResponsiveScrollArea debugLabel="dashboard-recent-entries">
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">
@@ -2144,7 +2163,7 @@ export default function DashboardHome() {
                       ))}
                     </tbody>
                   </table>
-                </div>
+                </ResponsiveScrollArea>
               ) : (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                   {t("dashboard.entries.empty", "No entries submitted yet.")}

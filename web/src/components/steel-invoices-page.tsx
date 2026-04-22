@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ApiError } from "@/lib/api";
@@ -324,7 +325,7 @@ export function SteelInvoicesPage() {
               </p>
             </div>
             {/* AUDIT: BUTTON_CLUTTER - move cross-route steel actions into a secondary tools tray so invoice creation stays primary. */}
-            <details className="group min-w-[220px] rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)]">
+            <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
                 Invoice tools
                 <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
@@ -537,7 +538,7 @@ export function SteelInvoicesPage() {
                   <span className="text-xs text-[var(--muted)] transition group-open:hidden">{invoices.length} items</span>
                   <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
                 </summary>
-                <div className="overflow-x-auto border-t border-[var(--border)]">
+                <ResponsiveScrollArea className="border-t border-[var(--border)]" debugLabel="steel-invoices-history">
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">
@@ -577,7 +578,7 @@ export function SteelInvoicesPage() {
                       ) : null}
                     </tbody>
                   </table>
-                </div>
+                </ResponsiveScrollArea>
               </details>
             </CardContent>
           </Card>

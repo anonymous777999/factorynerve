@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { ApiError } from "@/lib/api";
 import { getAuthContext, selectFactory } from "@/lib/auth";
 import { primeSession } from "@/lib/session-store";
@@ -709,7 +710,7 @@ export default function SettingsPage() {
               </CardHeader>
               <CardContent>
                 {users.length ? (
-                  <div className="overflow-x-auto">
+                  <ResponsiveScrollArea debugLabel="settings-managed-users">
                     <table className="min-w-full text-left text-sm">
                       <thead className="text-[var(--muted)]">
                         <tr className="border-b border-[var(--border)]">
@@ -739,7 +740,7 @@ export default function SettingsPage() {
                         ))}
                       </tbody>
                     </table>
-                  </div>
+                  </ResponsiveScrollArea>
                 ) : (
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                     No managed users found.

@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { getSteelBatchDetail, type SteelBatchDetail } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
 
@@ -292,7 +293,10 @@ export function SteelBatchDetailPage() {
               <CardTitle className="text-xl">Every movement posted by this batch</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="overflow-x-auto rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+              <ResponsiveScrollArea
+                className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]"
+                debugLabel="steel-batch-detail-transactions"
+              >
                 <table className="min-w-full text-left text-sm">
                   <thead className="text-[var(--muted)]">
                     <tr className="border-b border-[var(--border)]">
@@ -318,7 +322,7 @@ export function SteelBatchDetailPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ResponsiveScrollArea>
             </CardContent>
           </Card>
 

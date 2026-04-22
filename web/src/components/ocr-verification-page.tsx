@@ -34,6 +34,7 @@ import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -996,7 +997,10 @@ function ReviewWorkspace({
         )}
 
         {showAllRows ? (
-          <div className="overflow-x-auto rounded-[1.45rem] border border-[var(--border)] bg-[rgba(8,12,20,0.82)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+          <ResponsiveScrollArea
+            debugLabel="ocr-verification-table"
+            className="rounded-[1.45rem] border border-[var(--border)] bg-[rgba(8,12,20,0.82)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+          >
             <table className="min-w-full text-left text-sm">
               <thead className="text-[var(--muted)]">
                 <tr className="border-b border-[var(--border)]">
@@ -1037,7 +1041,7 @@ function ReviewWorkspace({
                 ))}
               </tbody>
             </table>
-          </div>
+          </ResponsiveScrollArea>
         ) : null}
 
         <div className="flex flex-wrap gap-3">
@@ -1133,21 +1137,25 @@ function ReviewWorkspace({
 
       {mobile ? (
         <>
-          <div className="flex gap-2 overflow-x-auto rounded-[1.35rem] border border-[var(--border)] bg-[rgba(18,22,34,0.94)] p-2 shadow-[var(--shadow-sm)]">
+          <ResponsiveScrollArea
+            className="rounded-[1.35rem] border border-[var(--border)] bg-[rgba(18,22,34,0.94)] shadow-[var(--shadow-sm)]"
+            debugLabel="ocr-verification-mobile-tabs"
+            innerClassName="flex min-w-max gap-2 p-2"
+          >
             {(["document", "issues", "fix"] as MobileReviewTab[]).map((tab) => (
               <button
                 key={tab}
                 type="button"
                 onClick={() => onMobileTabChange(tab)}
                 className={cn(
-                  "min-w-[7rem] rounded-[1rem] px-4 py-3 text-sm font-semibold capitalize transition",
+                  "min-w-28 rounded-[1rem] px-4 py-3 text-sm font-semibold capitalize transition",
                   mobileTab === tab ? "bg-[var(--accent)] text-black" : "bg-[var(--card-strong)] text-[var(--muted)]",
                 )}
               >
                 {tab}
               </button>
             ))}
-          </div>
+          </ResponsiveScrollArea>
 
           {mobileTab === "document" ? viewerSection : null}
           {mobileTab === "issues" ? issuesSection : null}
@@ -1165,7 +1173,7 @@ function ReviewWorkspace({
         </section>
       )}
 
-      <div className={cn("sticky z-20 rounded-[1.5rem] border border-[var(--border)] bg-[rgba(10,14,24,0.94)] p-4 shadow-2xl backdrop-blur", mobile ? "bottom-2" : "bottom-4")}>
+      <div className={cn("sticky z-20 rounded-[1.5rem] border border-[var(--border)] bg-[rgba(10,14,24,0.94)] p-4 shadow-2xl backdrop-blur", mobile ? "safe-bottom-inset bottom-2" : "bottom-4")}>
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="text-sm text-[var(--muted)]">
             {totalIssues ? `${checkedIssueCount} of ${totalIssues} issues checked.` : "No open issues detected."}

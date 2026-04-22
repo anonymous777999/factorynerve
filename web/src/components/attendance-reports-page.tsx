@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import { getAttendanceReportSummary, type AttendanceReportSummary } from "@/lib/attendance";
@@ -185,7 +186,7 @@ export default function AttendanceReportsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
+    <main className="min-h-screen px-4 py-8 md:px-8" data-component="attendance-reports-page">
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.9)] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
@@ -198,7 +199,7 @@ export default function AttendanceReportsPage() {
                 })}
               </p>
             </div>
-            <details className="min-w-[240px] rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+            <details className="w-full min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4 lg:w-auto lg:min-w-[240px]">
               <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("attendance.reports.tools.title", "Report tools")}</summary>
               <div className="mt-4 space-y-4">
                 <div className="flex flex-wrap gap-3">
@@ -301,7 +302,7 @@ export default function AttendanceReportsPage() {
           </CardHeader>
           <CardContent>
             {payload?.days.length ? (
-              <div className="overflow-x-auto">
+              <ResponsiveScrollArea debugLabel="attendance-reports-breakdown">
                 <table className="min-w-full text-left text-sm">
                   <thead className="text-[var(--muted)]">
                     <tr className="border-b border-[var(--border)]">
@@ -330,7 +331,7 @@ export default function AttendanceReportsPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
+              </ResponsiveScrollArea>
             ) : (
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                 {t("attendance.reports.breakdown.empty", "No attendance data is available for the selected range yet.")}

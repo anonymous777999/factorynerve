@@ -449,7 +449,7 @@ export default function LoginPage() {
               <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[#3ce8d1] transition group-open:hidden">{t("common.open", "Open")}</span>
               <span className="hidden text-xs font-semibold uppercase tracking-[0.24em] text-[#3ce8d1] group-open:inline">{t("common.close", "Close")}</span>
             </summary>
-            <div className="mt-5 grid grid-cols-3 gap-3">
+            <div className="mt-5 grid gap-3 sm:grid-cols-3">
               {workflowMap.map((step) => (
                 <div
                   key={step.id}
@@ -462,10 +462,10 @@ export default function LoginPage() {
                   <div className={`text-center text-[3rem] font-semibold tracking-[-0.08em] ${step.active ? "text-[#90c2ff]" : "text-white/78"}`}>
                     {step.id}
                   </div>
-                  <div className="mt-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-white">
+                  <div className="overflow-safe-text mt-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-white">
                     {step.label}
                   </div>
-                  <div className="mt-2 text-center text-[0.67rem] uppercase tracking-[0.18em] text-white/46">{step.detail}</div>
+                  <div className="overflow-safe-text mt-2 text-center text-[0.67rem] uppercase tracking-[0.18em] text-white/46">{step.detail}</div>
                 </div>
               ))}
             </div>

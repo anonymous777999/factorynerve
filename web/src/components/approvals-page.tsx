@@ -33,6 +33,7 @@ import { signalWorkflowRefresh, subscribeToWorkflowRefresh } from "@/lib/workflo
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -2249,7 +2250,7 @@ export default function ApprovalsPage() {
                       {remainingFilteredTasks.length ? (
                         <>
                           <div className="hidden lg:block">
-                            <div className="overflow-x-auto">
+                            <ResponsiveScrollArea debugLabel="approvals-backlog-table">
                               <table className="min-w-full border-separate border-spacing-0">
                                 <thead>
                                   <tr className="text-left text-xs uppercase tracking-[0.14em] text-[var(--muted)]">
@@ -2338,7 +2339,7 @@ export default function ApprovalsPage() {
                                   })}
                                 </tbody>
                               </table>
-                            </div>
+                            </ResponsiveScrollArea>
                           </div>
 
                           <div className="space-y-4 p-5 lg:hidden">
