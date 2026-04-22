@@ -39,6 +39,7 @@ import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SafeText } from "@/components/ui/safe-text";
 import { Select } from "@/components/ui/select";
 
 type TabKey = "factory" | "users" | "usage";
@@ -430,11 +431,23 @@ export default function SettingsPage() {
 
         <Card>
           <CardHeader>
-            <div className="flex flex-wrap gap-3">
-              <Button variant={tab === "factory" ? "primary" : "outline"} onClick={() => setTab("factory")}>{t("settings.tabs.factory", "Factory")}</Button>
-              <Button variant={tab === "users" ? "primary" : "outline"} onClick={() => setTab("users")}>{t("settings.tabs.users", "Users")}</Button>
-              <Button variant={tab === "usage" ? "primary" : "outline"} onClick={() => setTab("usage")}>{t("settings.tabs.usage", "Usage")}</Button>
-            </div>
+            <ResponsiveScrollArea
+              debugLabel="settings-tabs"
+              viewportClassName="-mx-1 px-1"
+              showIndicators={false}
+            >
+              <div className="flex min-w-max gap-3">
+                <Button className="whitespace-nowrap" variant={tab === "factory" ? "primary" : "outline"} onClick={() => setTab("factory")}>
+                  {t("settings.tabs.factory", "Factory")}
+                </Button>
+                <Button className="whitespace-nowrap" variant={tab === "users" ? "primary" : "outline"} onClick={() => setTab("users")}>
+                  {t("settings.tabs.users", "Users")}
+                </Button>
+                <Button className="whitespace-nowrap" variant={tab === "usage" ? "primary" : "outline"} onClick={() => setTab("usage")}>
+                  {t("settings.tabs.usage", "Usage")}
+                </Button>
+              </div>
+            </ResponsiveScrollArea>
           </CardHeader>
         </Card>
 
@@ -704,43 +717,97 @@ export default function SettingsPage() {
 
         {tab === "users" ? (
           <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-            <Card>
+            <Card className="min-w-0">
               <CardHeader>
                 <CardTitle className="text-xl">Users</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="min-w-0 space-y-4">
                 {users.length ? (
-                  <ResponsiveScrollArea debugLabel="settings-managed-users">
-                    <table className="min-w-full text-left text-sm">
-                      <thead className="text-[var(--muted)]">
-                        <tr className="border-b border-[var(--border)]">
-                          <th className="px-3 py-3 font-medium">User ID</th>
-                          <th className="px-3 py-3 font-medium">Name</th>
-                          <th className="px-3 py-3 font-medium">Email</th>
-                          <th className="px-3 py-3 font-medium">Role</th>
-                          <th className="px-3 py-3 font-medium">Factory Access</th>
-                          <th className="px-3 py-3 font-medium">Plan</th>
-                          <th className="px-3 py-3 font-medium">Active</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {users.map((row) => (
-                          <tr key={row.id} className="border-b border-[var(--border)]/60">
-                            <td className="px-3 py-3 font-semibold">{row.user_code}</td>
-                            <td className="px-3 py-3">{row.name}</td>
-                            <td className="px-3 py-3">{row.email}</td>
-                            <td className="px-3 py-3">{row.role}</td>
-                            <td className="px-3 py-3">
-                              <div>{row.factory_count === 1 ? "1 factory" : `${row.factory_count} factories`}</div>
-                              <div className="text-xs text-[var(--muted)]">{row.factory_name}</div>
-                            </td>
-                            <td className="px-3 py-3">{row.plan}</td>
-                            <td className="px-3 py-3">{row.is_active ? "Yes" : "No"}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </ResponsiveScrollArea>
+                  <>
+                    <div className="grid gap-3 md:hidden">
+                      {users.map((row) => (
+                        <div key={row.id} className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                          <div className="flex flex-wrap items-start justify-between gap-3">
+                            <div className="min-w-0 flex-1">
+                              <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">User #{row.user_code}</div>
+                              <SafeText as="div" className="mt-1 text-sm font-semibold">
+                                {row.name}
+                              </SafeText>
+                              <SafeText as="div" className="mt-1 text-xs text-[var(--muted)]">
+                                {row.email}
+                              </SafeText>
+                            </div>
+                            <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                              {row.role}
+                            </span>
+                          </div>
+                          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-2xl border border-[var(--border)]/70 bg-[rgba(15,23,42,0.34)] p-3">
+                              <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">Factory Access</div>
+                              <div className="mt-1 text-sm font-medium">{row.factory_count === 1 ? "1 factory" : `${row.factory_count} factories`}</div>
+                              <SafeText as="div" className="mt-1 text-xs text-[var(--muted)]">
+                                {row.factory_name}
+                              </SafeText>
+                            </div>
+                            <div className="grid gap-3 sm:grid-cols-2">
+                              <div className="rounded-2xl border border-[var(--border)]/70 bg-[rgba(15,23,42,0.34)] p-3">
+                                <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">Plan</div>
+                                <div className="mt-1 text-sm font-medium">{row.plan}</div>
+                              </div>
+                              <div className="rounded-2xl border border-[var(--border)]/70 bg-[rgba(15,23,42,0.34)] p-3">
+                                <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">Active</div>
+                                <div className="mt-1 text-sm font-medium">{row.is_active ? "Yes" : "No"}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="hidden md:block">
+                      <ResponsiveScrollArea
+                        debugLabel="settings-managed-users"
+                        viewportClassName="-mx-1 px-1 pb-2"
+                        innerClassName="min-w-[860px]"
+                      >
+                        <table className="min-w-full text-left text-sm">
+                          <thead className="text-[var(--muted)]">
+                            <tr className="border-b border-[var(--border)]">
+                              <th className="px-3 py-3 font-medium">User ID</th>
+                              <th className="px-3 py-3 font-medium">Name</th>
+                              <th className="px-3 py-3 font-medium">Email</th>
+                              <th className="px-3 py-3 font-medium">Role</th>
+                              <th className="px-3 py-3 font-medium">Factory Access</th>
+                              <th className="px-3 py-3 font-medium">Plan</th>
+                              <th className="px-3 py-3 font-medium">Active</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {users.map((row) => (
+                              <tr key={row.id} className="border-b border-[var(--border)]/60 align-top">
+                                <td className="px-3 py-3 font-semibold">{row.user_code}</td>
+                                <td className="px-3 py-3">
+                                  <SafeText>{row.name}</SafeText>
+                                </td>
+                                <td className="px-3 py-3">
+                                  <SafeText>{row.email}</SafeText>
+                                </td>
+                                <td className="px-3 py-3">{row.role}</td>
+                                <td className="px-3 py-3">
+                                  <div>{row.factory_count === 1 ? "1 factory" : `${row.factory_count} factories`}</div>
+                                  <SafeText as="div" className="mt-1 text-xs text-[var(--muted)]">
+                                    {row.factory_name}
+                                  </SafeText>
+                                </td>
+                                <td className="px-3 py-3">{row.plan}</td>
+                                <td className="px-3 py-3">{row.is_active ? "Yes" : "No"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </ResponsiveScrollArea>
+                    </div>
+                  </>
                 ) : (
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                     No managed users found.
@@ -749,12 +816,12 @@ export default function SettingsPage() {
               </CardContent>
             </Card>
 
-            <div className="space-y-6">
-              <Card>
+            <div className="min-w-0 space-y-6">
+              <Card className="min-w-0">
                 <CardHeader>
                   <CardTitle className="text-xl">Invite User</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="min-w-0 space-y-4">
                   <div>
                     <label className="text-sm text-[var(--muted)]">Name</label>
                     <Input value={inviteName} onChange={(e) => setInviteName(e.target.value)} />
@@ -793,17 +860,18 @@ export default function SettingsPage() {
                       })
                     }
                     disabled={busy}
+                    className="w-full sm:w-auto"
                   >
                     Invite User
                   </Button>
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="min-w-0">
                 <CardHeader>
                   <CardTitle className="text-xl">Factory Access</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="min-w-0 space-y-4">
                   {canManageFactoryAccess ? (
                     <>
                       <div>
@@ -823,9 +891,11 @@ export default function SettingsPage() {
                         </div>
                       ) : accessSnapshot ? (
                         <>
-                          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                            <div className="text-sm font-semibold">{accessSnapshot.user.name}</div>
-                            <div className="mt-1 text-xs text-[var(--muted)]">
+                          <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                            <SafeText as="div" className="text-sm font-semibold">
+                              {accessSnapshot.user.name}
+                            </SafeText>
+                            <div className="mt-1 overflow-safe-text text-xs text-[var(--muted)]">
                               #{accessSnapshot.user.user_code} - {accessSnapshot.user.role} - {accessSnapshot.user.factory_count} assigned
                             </div>
                           </div>
@@ -835,29 +905,33 @@ export default function SettingsPage() {
                               return (
                                 <label
                                   key={factoryOption.factory_id}
-                                  className="flex items-start justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4"
+                                  className="flex min-w-0 flex-col gap-4 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 sm:flex-row sm:items-start sm:justify-between"
                                 >
-                                  <div>
-                                    <div className="text-sm font-semibold">{factoryOption.name}</div>
-                                    <div className="mt-1 text-xs text-[var(--muted)]">
+                                  <div className="min-w-0 flex-1">
+                                    <SafeText as="div" className="text-sm font-semibold">
+                                      {factoryOption.name}
+                                    </SafeText>
+                                    <div className="mt-1 overflow-safe-text text-xs text-[var(--muted)]">
                                       {factoryOption.industry_label} · Members {factoryOption.member_count}
                                       {factoryOption.is_primary ? " · Primary context" : ""}
                                     </div>
                                     {factoryOption.location ? (
-                                      <div className="mt-1 text-xs text-[var(--muted)]">{factoryOption.location}</div>
+                                      <SafeText as="div" className="mt-1 text-xs text-[var(--muted)]">
+                                        {factoryOption.location}
+                                      </SafeText>
                                     ) : null}
                                   </div>
                                   <input
                                     type="checkbox"
                                     checked={checked}
                                     onChange={() => toggleAccessFactory(factoryOption.factory_id)}
-                                    className="mt-1 h-4 w-4 accent-[var(--accent)]"
+                                    className="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]"
                                   />
                                 </label>
                               );
                             })}
                           </div>
-                          <div className="text-xs text-[var(--muted)]">
+                          <div className="overflow-safe-text text-xs text-[var(--muted)]">
                             Owners and admins can place one user across multiple factories. At least one factory must stay selected.
                           </div>
                           <Button
@@ -896,6 +970,7 @@ export default function SettingsPage() {
                               })
                             }
                             disabled={busy || !accessSnapshot || !accessFactoryIds.length}
+                            className="w-full sm:w-auto"
                           >
                             Save Factory Access
                           </Button>
@@ -914,11 +989,11 @@ export default function SettingsPage() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="min-w-0">
                 <CardHeader>
                   <CardTitle className="text-xl">Update Role / Deactivate</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="min-w-0 space-y-4">
                   <div>
                     <label className="text-sm text-[var(--muted)]">User Code or ID</label>
                     <Input type="number" min={1} step={1} inputMode="numeric" value={roleUserId} onChange={(e) => setRoleUserId(digitsOnly(e.target.value))} />
@@ -947,6 +1022,7 @@ export default function SettingsPage() {
                         })
                       }
                       disabled={busy || !roleUserId}
+                      className="w-full sm:w-auto"
                     >
                       Update Role
                     </Button>
@@ -965,6 +1041,7 @@ export default function SettingsPage() {
                           })
                         }
                         disabled={busy || !deactivateUserId}
+                        className="w-full sm:w-auto"
                       >
                         Deactivate User
                       </Button>
