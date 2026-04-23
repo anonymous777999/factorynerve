@@ -22,8 +22,8 @@ from backend.ledger_scan import (
 from backend.table_scan import build_table_excel_bytes, extract_table_from_image as table_extract_table_from_image
 from backend.database import SessionLocal
 from backend.models.report import AuditLog
+from backend.services.ops_alerts import record_ocr_failure
 from backend.utils import PROJECT_ROOT
-from backend.services.whatsapp import notify_ocr_failure
 
 
 logger = logging.getLogger(__name__)
@@ -189,7 +189,12 @@ def _worker_loop() -> None:
                 _schedule_retry(job_id, delay)
             else:
                 _update_job(job_id, status="failed", error=str(error))
-                notify_ocr_failure(job_id, str(error))
+                record_ocr_failure(
+                    job_id,
+                    str(error),
+                    attempts=job.attempts,
+                    max_attempts=job.max_attempts,
+                )
         finally:
             _queue.task_done()
 

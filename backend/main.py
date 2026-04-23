@@ -41,6 +41,12 @@ from backend.metrics import (
 from backend.middleware.security import apply_security
 from backend.middleware.response_envelope import apply_response_envelope
 from backend.middleware.csrf_cookie import apply_cookie_csrf
+from backend.services.ops_alerts import (
+    initialize_ops_alerting,
+    record_request_exception as record_ops_request_exception,
+    record_request_outcome as record_ops_request_outcome,
+    shutdown_ops_alerting,
+)
 
 try:
     import sentry_sdk  # type: ignore
@@ -59,11 +65,14 @@ async def lifespan(_app: FastAPI):
     try:
         logger.info("Starting backend initialization.")
         init_db()
+        initialize_ops_alerting()
         logger.info("Backend startup completed successfully.")
         yield
     except Exception as error:  # pylint: disable=broad-except
         logger.exception("Startup initialization failed.")
         raise RuntimeError("Backend startup failed.") from error
+    finally:
+        shutdown_ops_alerting()
 
 
 app = FastAPI(title=config.app_name, version="0.3.0", lifespan=lifespan)
@@ -106,10 +115,11 @@ async def log_requests(request: Request, call_next: Callable) -> Response:
     start = time.perf_counter()
     try:
         response = await call_next(request)
-    except Exception:
+    except Exception as error:
         duration_ms = (time.perf_counter() - start) * 1000
         record_request(request.url.path, 500, duration_ms, request.method)
         record_exception()
+        record_ops_request_exception(request, error, duration_ms)
         logger.exception(
             "request_failed method=%s path=%s duration_ms=%.2f",
             request.method,
@@ -126,6 +136,7 @@ async def log_requests(request: Request, call_next: Callable) -> Response:
         raise
     duration_ms = (time.perf_counter() - start) * 1000
     record_request(request.url.path, response.status_code, duration_ms, request.method)
+    record_ops_request_outcome(request, response.status_code, duration_ms)
     logger.info(
         "request method=%s path=%s status=%s duration_ms=%.2f",
         request.method,

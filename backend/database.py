@@ -136,9 +136,10 @@ def _audit_writes(session: Session, _flush_context: Any, _instances: Any) -> Non
     from backend.models.org_feature_usage import OrgFeatureUsage
     from backend.models.ocr_usage import OcrUsage
     from backend.models.org_ocr_usage import OrgOcrUsage
+    from backend.models.ops_alert_event import OpsAlertEvent
     from backend.models.refresh_token import RefreshToken
 
-    excluded = (AuditLog, FeatureUsage, OrgFeatureUsage, OcrUsage, OrgOcrUsage, RefreshToken)
+    excluded = (AuditLog, FeatureUsage, OrgFeatureUsage, OcrUsage, OrgOcrUsage, OpsAlertEvent, RefreshToken)
     tracked_new = [obj for obj in session.new if not isinstance(obj, excluded)]
     tracked_dirty = [
         obj for obj in session.dirty if session.is_modified(obj) and not isinstance(obj, excluded)
@@ -238,6 +239,7 @@ def init_db() -> None:
         import backend.models.auth_audit_log  # noqa: F401
         import backend.models.shift_template  # noqa: F401
         import backend.models.email_verification_token  # noqa: F401
+        import backend.models.ops_alert_event  # noqa: F401
         import backend.models.pending_registration  # noqa: F401
 
         Base.metadata.create_all(bind=engine)
