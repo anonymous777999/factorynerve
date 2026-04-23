@@ -34,6 +34,16 @@ import backend.models.email_queue  # noqa: F401
 import backend.models.subscription  # noqa: F401
 import backend.models.invoice  # noqa: F401
 import backend.models.webhook_event  # noqa: F401
+import backend.models.payment_order  # noqa: F401
+import backend.models.password_reset_token  # noqa: F401
+import backend.models.email_verification_token  # noqa: F401
+import backend.models.pending_registration  # noqa: F401
+import backend.models.ops_alert_event  # noqa: F401
+import backend.models.attendance_record  # noqa: F401
+import backend.models.attendance_event  # noqa: F401
+import backend.models.attendance_regularization  # noqa: F401
+import backend.models.employee_profile  # noqa: F401
+import backend.models.shift_template  # noqa: F401
 
 config = context.config
 
