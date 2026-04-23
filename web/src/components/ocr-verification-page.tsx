@@ -33,6 +33,7 @@ import { signalWorkflowRefresh, subscribeToWorkflowRefresh } from "@/lib/workflo
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OcrGuideCard } from "@/components/ocr-guide-card";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
@@ -1897,7 +1898,7 @@ export default function OcrVerificationPage() {
               <SectionHeading
                 eyebrow="Review"
                 title="Review Documents"
-                detail="Open the next document, confirm the risky values, and move only trusted OCR rows into export."
+                detail="Open the next document and clear risky OCR values before export."
               />
               <div className="mt-4 flex flex-wrap gap-3">
                 {([
@@ -1989,38 +1990,35 @@ export default function OcrVerificationPage() {
           </div>
         </section>
 
-        {/* AUDIT: FLOW_BROKEN - make the document-review journey scan as a short sequence before the denser queue surfaces appear. */}
-        <section className="grid gap-4 md:grid-cols-3">
-          {[
+        <OcrGuideCard
+          pageKey="ocr-verify"
+          title="How review moves to trusted export"
+          summary="Keep the queue and active document visible. Open the guide when you want the full review path instead of scanning extra text."
+          steps={[
             {
-              step: "Step 1",
-              title: "Pick document",
-              body: nextQueueVerification
+              label: "1. Pick",
+              detail: nextQueueVerification
                 ? `${nextQueueVerification.source_filename || `Document #${nextQueueVerification.id}`} is ready at the top of the queue.`
-                : "Open a scanned file or pull a document from the queue.",
+                : "Open a scanned file or pull the next document from the queue.",
             },
             {
-              step: "Step 2",
-              title: "Fix risky fields",
-              body: totalIssues
+              label: "2. Fix",
+              detail: totalIssues
                 ? `${unresolvedIssueCount} flagged issue${unresolvedIssueCount === 1 ? "" : "s"} still need review.`
                 : "No flagged issues are blocking this review right now.",
             },
             {
-              step: "Step 3",
-              title: "Send forward",
-              body: canApprove ? "Approve only when the risky values are clear and the export is ready to trust." : "Save or submit once the review note and flagged values are complete.",
+              label: "3. Send",
+              detail: canApprove
+                ? "Approve only when the risky values are clear and the export is ready to trust."
+                : "Save or submit once the review note and flagged values are complete.",
             },
-          ].map((item) => (
-            <Card key={item.title} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
-              <CardContent className="space-y-3 px-5 py-5">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
-                <div className="text-xl font-semibold text-[var(--text)]">{item.title}</div>
-                <div className="text-sm leading-6 text-[var(--muted)]">{item.body}</div>
-              </CardContent>
-            </Card>
-          ))}
-        </section>
+          ]}
+          className="border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(15,22,35,0.97),rgba(11,17,29,0.98))] text-[var(--text)]"
+          summaryClassName="text-[var(--accent)]"
+          bodyClassName="text-[var(--muted)]"
+          stepClassName="border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)]"
+        />
 
         {status ? <div className="rounded-[1.35rem] border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
         {error || sessionError ? <div className="rounded-[1.35rem] border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error || sessionError}</div> : null}

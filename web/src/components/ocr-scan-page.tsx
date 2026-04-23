@@ -11,6 +11,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 
+import { OcrGuideCard } from "@/components/ocr-guide-card";
 import { Button } from "@/components/ui/button";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { formatApiErrorMessage } from "@/lib/api";
@@ -959,31 +960,36 @@ export default function OcrScanPage() {
                   <h1 className="max-w-2xl text-3xl font-semibold tracking-[-0.04em] text-white sm:text-[2.8rem]">
                     Scan registers with a calmer, cleaner capture flow.
                   </h1>
-                  {/* AUDIT: TEXT_NOISE - shorten the hero copy so capture remains more prominent than the stage explanation */}
                   <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-200/82 sm:text-base">
-                    Capture first, clean the page, then move the same draft into review and export.
+                    Capture first, then clean and review only when the page needs it.
                   </p>
                 </div>
-                {/* AUDIT: FLOW_BROKEN - turn the side panel into a compact workflow guide so the next step is clearer during capture */}
-                <div className="rounded-[1.6rem] border border-white/10 bg-[rgba(8,14,24,0.62)] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.26)] backdrop-blur-xl">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">Workflow path</div>
-                  <div className="mt-3 space-y-3 text-sm text-slate-200">
-                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-2.5">
-                      <span>Capture</span>
-                      <span className={cn("rounded-full px-2.5 py-1 text-xs font-semibold", cameraReady ? "bg-emerald-400/16 text-emerald-100" : "bg-amber-400/16 text-amber-100")}>
-                        {cameraReady ? "Live" : "Upload fallback"}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-2.5">
-                      <span>Next</span>
-                      <span className="text-xs text-slate-300">Crop + enhance</span>
-                    </div>
-                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-white/8 bg-white/[0.04] px-3 py-2.5">
-                      <span>Finish</span>
-                      <span className="text-xs text-slate-300">Review + export</span>
-                    </div>
-                  </div>
-                </div>
+                <OcrGuideCard
+                  pageKey="ocr-scan"
+                  title="How capture flows forward"
+                  summary="The camera stays primary. Open the guide only when you want the full path from capture to trusted draft."
+                  steps={[
+                    {
+                      label: "1. Capture",
+                      detail: cameraReady
+                        ? "Use the live camera for the cleanest page edge and fastest next step."
+                        : "Upload from gallery when the camera is unavailable or the page is already saved.",
+                    },
+                    {
+                      label: "2. Clean",
+                      detail: "Crop the page, apply the right filter, and keep only the surface that should be read.",
+                    },
+                    {
+                      label: "3. Review",
+                      detail: "Save the result as a draft, then use verification only for risky fields or trust checks.",
+                    },
+                  ]}
+                  className="border-white/10 bg-[rgba(8,14,24,0.62)] text-white shadow-[0_20px_60px_rgba(0,0,0,0.26)] backdrop-blur-xl"
+                  summaryClassName="text-slate-400"
+                  titleClassName="text-white"
+                  bodyClassName="text-slate-300"
+                  stepClassName="border-white/8 bg-white/[0.04] text-slate-300"
+                />
               </div>
             </div>
           </div>

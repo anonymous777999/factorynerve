@@ -23,6 +23,7 @@ import { triggerBlobDownload } from "@/lib/reports";
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OcrGuideCard } from "@/components/ocr-guide-card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -355,7 +356,7 @@ export default function OcrPage() {
             </div>
             <h1 className="mt-2 text-3xl font-semibold">Logbook OCR and template manager</h1>
             <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
-              Run the async OCR queue for ledger and table exports, monitor job state, and manage OCR templates for higher plans.
+              Run OCR jobs, check the queue, and keep templates ready for repeat layouts.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -373,6 +374,30 @@ export default function OcrPage() {
             </Link>
           </div>
         </section>
+
+        <OcrGuideCard
+          pageKey="ocr-home"
+          title="How OCR moves through this workspace"
+          summary="Start with the queue only when you need it. The main actions stay visible, and the deeper workflow stays here."
+          steps={[
+            {
+              label: "1. Start",
+              detail: "Choose ledger or table mode, add the image, and queue the OCR run.",
+            },
+            {
+              label: "2. Check",
+              detail: "Watch job status and download the result once the queue finishes.",
+            },
+            {
+              label: "3. Reuse",
+              detail: "Open scan or verification when the document needs capture, cleanup, or trust review.",
+            },
+          ]}
+          className="border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(18,27,42,0.97),rgba(11,18,30,0.98))] text-[var(--text)] shadow-xl"
+          summaryClassName="text-[var(--accent)]"
+          bodyClassName="text-[var(--muted)]"
+          stepClassName="border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)]"
+        />
 
         <section className="grid gap-4 md:grid-cols-3">
           <Card>
