@@ -241,6 +241,9 @@ def init_db() -> None:
         import backend.models.email_verification_token  # noqa: F401
         import backend.models.ops_alert_event  # noqa: F401
         import backend.models.pending_registration  # noqa: F401
+        import backend.models.admin_alert_recipient  # noqa: F401
+        import backend.models.ops_alert_daily_summary  # noqa: F401
+        import backend.models.phone_verification  # noqa: F401
 
         Base.metadata.create_all(bind=engine)
         _ensure_factory_profile_columns()

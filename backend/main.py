@@ -16,12 +16,14 @@ from backend.database import init_db
 from backend.routers.analytics import router as analytics_router
 from backend.routers.ai import router as ai_router
 from backend.routers.alerts import router as alerts_router
+from backend.routers.alert_recipients import router as alert_recipients_router
 from backend.routers.attendance import router as attendance_router
 from backend.routers.entries import router as entries_router
 from backend.routers.emails import router as emails_router
 from backend.routers.intelligence import router as intelligence_router
 from backend.routers.auth import router as auth_router
 from backend.routers.auth_google import router as auth_google_router
+from backend.routers.phone_auth import router as phone_auth_router
 from backend.routers.auth_secure import router as auth_secure_router
 from backend.routers.jobs import router as jobs_router
 from backend.routers.reports import router as reports_router
@@ -87,6 +89,7 @@ if sentry_sdk and os.getenv("SENTRY_DSN"):
         app.add_middleware(SentryAsgiMiddleware)
 app.include_router(auth_router, prefix="/auth")
 app.include_router(auth_google_router, prefix="/auth")
+app.include_router(phone_auth_router, prefix="/auth")
 app.include_router(auth_secure_router, prefix="/auth-secure")
 app.include_router(jobs_router, prefix="/jobs")
 app.include_router(entries_router, prefix="/entries")
@@ -96,6 +99,7 @@ app.include_router(ai_router, prefix="/ai")
 app.include_router(alerts_router, prefix="/alerts")
 app.include_router(attendance_router, prefix="/attendance")
 app.include_router(settings_router, prefix="/settings")
+app.include_router(alert_recipients_router, prefix="/settings")
 app.include_router(ocr_router, prefix="/ocr")
 app.include_router(observability_router, prefix="/observability")
 app.include_router(emails_router, prefix="/emails")

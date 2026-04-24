@@ -44,6 +44,9 @@ import backend.models.attendance_event  # noqa: F401
 import backend.models.attendance_regularization  # noqa: F401
 import backend.models.employee_profile  # noqa: F401
 import backend.models.shift_template  # noqa: F401
+import backend.models.admin_alert_recipient  # noqa: F401
+import backend.models.ops_alert_daily_summary  # noqa: F401
+import backend.models.phone_verification  # noqa: F401
 
 config = context.config
 

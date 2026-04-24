@@ -1,15 +1,19 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 import queue
 import sys
+import time
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 import pytest
 
 from backend.database import SessionLocal, init_db
+from backend.models.admin_alert_recipient import AdminAlertRecipient
+from backend.models.organization import Organization
 from backend.main import app
+from backend.models.phone_verification import PhoneVerificationStatus
 from backend.models.ops_alert_event import OpsAlertEvent
 from backend.ocr_jobs import enqueue_job
 import backend.ocr_jobs as ocr_jobs
@@ -24,6 +28,7 @@ from backend.services.ops_alerts.detectors import (
 from backend.services.ops_alerts.dispatcher import AlertDispatcher
 from backend.services.ops_alerts.formatter import format_alert_message
 from backend.services.ops_alerts.providers import TwilioWhatsAppProvider
+from backend.services.ops_alerts.recipients import resolve_alert_delivery_targets
 from backend.services.ops_alerts.rate_limit import InMemoryAlertRateLimiter, RedisAlertRateLimiter
 from backend.services.ops_alerts.service import OpsAlertService, OpsAlertSettings, build_alert_settings
 from backend.services.ops_alerts.types import AlertCandidate, AlertEventType, AlertSeverity
@@ -54,6 +59,14 @@ def _enabled_settings() -> OpsAlertSettings:
         t5_min_requests=100,
         t5_warn_percent=5.0,
         t5_critical_percent=15.0,
+        org_rate_limit_window_seconds=600,
+        org_rate_limit_normal_max=20,
+        org_rate_limit_critical_max=50,
+        escalation_window_seconds=1800,
+        escalation_high_repeat_count=3,
+        escalation_critical_repeat_count=5,
+        daily_summary_hour_utc=18,
+        daily_summary_minute_utc=0,
     )
 
 
@@ -81,8 +94,9 @@ def test_formatter_matches_required_whatsapp_structure():
     )
 
     assert message.startswith("🚨 HIGH — OCR Failure Spike\n")
-    assert "App: DPR.ai | Env: production" in message
+    assert "Org: DPR.ai | App: DPR.ai | Env: production" in message
     assert "Time: 2026-04-23T22:42:00+05:30" in message
+    assert "Context: 12 OCR extraction failures in the last 5 minutes exceeded the threshold of 10." in message
     assert "Meta: failures: 12 | window: 5m | threshold: 10 | top_error: timeout" in message
     assert message.endswith("Ref ID: ocr-1776964320-a3f")
 
@@ -111,7 +125,6 @@ def test_twilio_provider_validate_config_requires_secrets(monkeypatch):
     monkeypatch.delenv("TWILIO_ACCOUNT_SID", raising=False)
     monkeypatch.delenv("TWILIO_AUTH_TOKEN", raising=False)
     monkeypatch.delenv("TWILIO_WHATSAPP_FROM", raising=False)
-    monkeypatch.delenv("TWILIO_WHATSAPP_TO_DEFAULT", raising=False)
 
     provider = TwilioWhatsAppProvider()
 
@@ -180,7 +193,7 @@ def test_twilio_provider_handles_success_and_retryable_failure(monkeypatch):
     provider.account_sid = "sid"
     provider.auth_token = "token"
     provider.from_number = "whatsapp:+14155238886"
-    provider.default_to_number = "whatsapp:+919999999999"
+    provider.default_to_number = ""
 
     class FakeMessages:
         def create(self, **kwargs):
@@ -190,13 +203,14 @@ def test_twilio_provider_handles_success_and_retryable_failure(monkeypatch):
         messages = FakeMessages()
 
     monkeypatch.setattr(provider, "_build_client", lambda: FakeClient())
-    result = provider.deliver("hello")
+    result = provider.deliver("hello", to_number="+919999999999")
     assert result.success is True
     assert result.external_id == "SM123"
 
     class RetryableError(RuntimeError):
         status = 503
 
+    provider.default_to_number = "+919999999999"
     monkeypatch.setattr(provider, "_build_client", lambda: (_ for _ in ()).throw(RetryableError("twilio down")))
     failed = provider.deliver("hello")
     assert failed.success is False
@@ -206,7 +220,10 @@ def test_twilio_provider_handles_success_and_retryable_failure(monkeypatch):
 def test_service_deduplicates_alert_enqueues():
     service = OpsAlertService(_enabled_settings())
     enqueued: list[str] = []
-    service._dispatcher = SimpleNamespace(enqueue=lambda candidate: enqueued.append(candidate.dedup_key) or True)
+    service._dispatcher = SimpleNamespace(
+        enqueue=lambda candidate: enqueued.append(candidate.dedup_key) or True,
+        record_suppressed=lambda candidate, reason: None,
+    )
     service._rate_limiter = InMemoryAlertRateLimiter()
 
     candidate = AlertCandidate(
@@ -277,6 +294,7 @@ def test_dispatcher_persists_delivery_history_rows(tmp_path):
         summary="Unhandled RuntimeError on GET /health.",
         dedup_key="t1:exception:/health:abc123",
         ref_id="srv-test-123",
+        to_number="whatsapp:+919999999999",
     )
 
     dispatcher._deliver_candidate(candidate)
@@ -286,6 +304,72 @@ def test_dispatcher_persists_delivery_history_rows(tmp_path):
         assert row is not None
         assert row.delivery_status == "delivered"
         assert row.attempt_count == 1
+        assert row.recipient_phone == "whatsapp:+919999999999"
+
+
+def test_dispatcher_continues_when_one_recipient_fails():
+    init_db()
+
+    with SessionLocal() as db:
+        db.add(Organization(org_id="org-test", name="Org Test", plan="free"))
+        db.commit()
+        db.add_all(
+                [
+                AdminAlertRecipient(
+                    org_id="org-test",
+                    phone_number="+911111111111",
+                    phone_e164="+911111111111",
+                    verification_status=PhoneVerificationStatus.VERIFIED.value,
+                    is_active=True,
+                ),
+                AdminAlertRecipient(
+                    org_id="org-test",
+                    phone_number="+922222222222",
+                    phone_e164="+922222222222",
+                    verification_status=PhoneVerificationStatus.VERIFIED.value,
+                    is_active=True,
+                ),
+            ]
+        )
+        db.commit()
+
+    class FakeProvider:
+        name = "twilio"
+
+        def deliver(self, message: str, *, to_number: str | None = None):
+            if to_number == "whatsapp:+922222222222":
+                return SimpleNamespace(success=False, provider="twilio", retryable=False, error="downstream reject")
+            return SimpleNamespace(success=True, provider="twilio", retryable=False, error=None, external_id="SM9")
+
+    dispatcher = AlertDispatcher(
+        provider=FakeProvider(),
+        app_name="DPR.ai",
+        env_name="production",
+        timezone_name="Asia/Kolkata",
+        worker_count=1,
+        retry_attempts=1,
+        retry_backoff_seconds=0.01,
+    )
+    candidate = AlertCandidate(
+        event_type=AlertEventType.PAYMENT_FAILURE,
+        severity=AlertSeverity.HIGH,
+        summary="Payment failed.",
+        dedup_key="t3:payment:org-test:123",
+        ref_id="pay-fanout-1",
+        org_id="org-test",
+    )
+
+    dispatcher._deliver_candidate(candidate)
+
+    with SessionLocal() as db:
+        rows = db.query(OpsAlertEvent).filter(OpsAlertEvent.ref_id == "pay-fanout-1").all()
+        assert len(rows) == 3
+        root_row = next(row for row in rows if row.recipient_phone is None)
+        assert root_row.status == "sent"
+        assert root_row.delivery_status == "partial_failure"
+        statuses = {row.recipient_phone: row.delivery_status for row in rows if row.recipient_phone is not None}
+        assert statuses["whatsapp:+911111111111"] == "delivered"
+        assert statuses["whatsapp:+922222222222"] == "failed"
 
 
 def test_request_middleware_reports_auth_route_outcomes_without_blocking(monkeypatch):
@@ -314,6 +398,189 @@ def test_only_login_paths_feed_auth_anomaly_tracking():
     assert captured == [("/auth/login", 401)]
 
 
+def test_recipient_preferences_filter_delivery_targets():
+    init_db()
+
+    with SessionLocal() as db:
+        db.add(Organization(org_id="org-pref", name="Pref Org", plan="free"))
+        db.commit()
+        db.add_all(
+            [
+                AdminAlertRecipient(
+                    org_id="org-pref",
+                    phone_number="+911111111111",
+                    phone_e164="+911111111111",
+                    verification_status=PhoneVerificationStatus.VERIFIED.value,
+                    is_active=True,
+                    event_types=None,
+                    severity_levels=None,
+                ),
+                AdminAlertRecipient(
+                    org_id="org-pref",
+                    phone_number="+922222222222",
+                    phone_e164="+922222222222",
+                    verification_status=PhoneVerificationStatus.VERIFIED.value,
+                    is_active=True,
+                    event_types=[],
+                    severity_levels=None,
+                ),
+                AdminAlertRecipient(
+                    org_id="org-pref",
+                    phone_number="+933333333333",
+                    phone_e164="+933333333333",
+                    verification_status=PhoneVerificationStatus.VERIFIED.value,
+                    is_active=True,
+                    event_types=[AlertEventType.AUTH_ANOMALY.value],
+                    severity_levels=[AlertSeverity.CRITICAL.value],
+                ),
+            ]
+        )
+        db.commit()
+
+        targets = resolve_alert_delivery_targets(
+            db,
+            org_id="org-pref",
+            candidate=AlertCandidate(
+                event_type=AlertEventType.OCR_FAILURE_SPIKE,
+                severity=AlertSeverity.HIGH,
+                summary="OCR failures exceeded threshold.",
+                dedup_key="t2:ocr-failure-spike:org-pref",
+                org_id="org-pref",
+            ),
+        )
+
+    assert [target.phone_number for target in targets] == ["whatsapp:+911111111111"]
+
+
+def test_org_rate_limited_alerts_are_persisted_as_suppressed():
+    init_db()
+
+    class FakeProvider:
+        name = "twilio"
+
+        def deliver(self, message: str, *, to_number: str | None = None):
+            return SimpleNamespace(success=True, provider="twilio", retryable=False, error=None, external_id="SM10")
+
+    settings = OpsAlertSettings(
+        **{**_enabled_settings().__dict__, "org_rate_limit_normal_max": 1, "org_rate_limit_critical_max": 1}
+    )
+    service = OpsAlertService(settings, provider=FakeProvider())
+    service._rate_limiter = InMemoryAlertRateLimiter()
+    service.start()
+    try:
+        first = AlertCandidate(
+            event_type=AlertEventType.OCR_FAILURE_SPIKE,
+            severity=AlertSeverity.HIGH,
+            summary="First alert.",
+            dedup_key="t2:first",
+            group_key="t2:first-group",
+            ref_id="rate-limit-1",
+            org_id="org-rate",
+            org_name="Rate Org",
+            to_number="whatsapp:+919999999999",
+        )
+        second = AlertCandidate(
+            event_type=AlertEventType.OCR_FAILURE_SPIKE,
+            severity=AlertSeverity.HIGH,
+            summary="Second alert.",
+            dedup_key="t2:second",
+            group_key="t2:second-group",
+            ref_id="rate-limit-2",
+            org_id="org-rate",
+            org_name="Rate Org",
+            to_number="whatsapp:+919999999999",
+        )
+        service.emit_alert_candidate(first)
+        time.sleep(0.1)
+        service.emit_alert_candidate(second)
+        time.sleep(0.1)
+    finally:
+        service.stop()
+
+    with SessionLocal() as db:
+        row = (
+            db.query(OpsAlertEvent)
+            .filter(
+                OpsAlertEvent.ref_id == "rate-limit-2",
+                OpsAlertEvent.recipient_phone.is_(None),
+            )
+            .first()
+        )
+        assert row is not None
+        assert row.status == "suppressed"
+        assert row.suppressed_reason == "org_rate_limited"
+
+
+def test_daily_summary_creates_summary_record_and_alert():
+    init_db()
+
+    class FakeProvider:
+        name = "twilio"
+
+        def deliver(self, message: str, *, to_number: str | None = None):
+            return SimpleNamespace(success=True, provider="twilio", retryable=False, error=None, external_id="SM11")
+
+    summary_day = date(2026, 5, 1)
+    summary_ts = datetime(2026, 5, 1, 10, 0, tzinfo=timezone.utc)
+
+    with SessionLocal() as db:
+        db.add(Organization(org_id="org-summary", name="Summary Org", plan="pro"))
+        db.commit()
+        db.add(
+            AdminAlertRecipient(
+                org_id="org-summary",
+                phone_number="+911234567890",
+                phone_e164="+911234567890",
+                verification_status=PhoneVerificationStatus.VERIFIED.value,
+                is_active=True,
+                receive_daily_summary=True,
+            )
+        )
+        db.add(
+            OpsAlertEvent(
+                ref_id="summary-source-1",
+                org_id="org-summary",
+                org_name="Summary Org",
+                event_type=AlertEventType.OCR_FAILURE_SPIKE.value,
+                severity=AlertSeverity.HIGH.value,
+                status="sent",
+                dedup_key="source:1",
+                group_key="source-group:1",
+                escalation_level=0,
+                is_summary=False,
+                summary="OCR failures exceeded threshold.",
+                recipient_phone=None,
+                meta={"failures": 12},
+                provider="twilio",
+                delivery_status="delivered",
+                created_at=summary_ts,
+            )
+        )
+        db.commit()
+
+    service = OpsAlertService(_enabled_settings(), provider=FakeProvider())
+    service.start()
+    try:
+        sent = service.run_daily_summary_once(summary_date=summary_day)
+        time.sleep(0.1)
+    finally:
+        service.stop()
+
+    assert sent == 1
+    with SessionLocal() as db:
+        summary_row = (
+            db.query(OpsAlertEvent)
+            .filter(
+                OpsAlertEvent.org_id == "org-summary",
+                OpsAlertEvent.event_type == AlertEventType.DAILY_SUMMARY.value,
+                OpsAlertEvent.recipient_phone.is_(None),
+            )
+            .first()
+        )
+        assert summary_row is not None
+        assert summary_row.is_summary is True
+
+
 def test_billing_webhook_records_signature_failures(monkeypatch):
     monkeypatch.setenv("RAZORPAY_WEBHOOK_SECRET", "secret")
     captured: list[tuple[str, str]] = []
@@ -337,11 +604,15 @@ def test_billing_webhook_records_signature_failures(monkeypatch):
 
 
 def test_ocr_worker_records_final_failures(monkeypatch, tmp_path):
-    captured: list[tuple[str, str, int | None, int | None]] = []
+    captured: list[tuple[str, str, str | None, int | None, int | None]] = []
     monkeypatch.setattr(ocr_jobs, "JOB_DIR", tmp_path)
     monkeypatch.setattr(ocr_jobs, "_queue", queue.Queue())
     monkeypatch.setattr(ocr_jobs, "_jobs", {})
-    monkeypatch.setattr(ocr_jobs, "record_ocr_failure", lambda job_id, error, attempts=None, max_attempts=None: captured.append((job_id, error, attempts, max_attempts)))
+    monkeypatch.setattr(
+        ocr_jobs,
+        "record_ocr_failure",
+        lambda job_id, error, org_id=None, attempts=None, max_attempts=None: captured.append((job_id, error, org_id, attempts, max_attempts)),
+    )
     monkeypatch.setattr(ocr_jobs, "_process_ledger", lambda job: (_ for _ in ()).throw(RuntimeError("ocr timeout")))
 
     job = enqueue_job("ledger", b"test-image", params={})

@@ -192,6 +192,7 @@ def _worker_loop() -> None:
                 record_ocr_failure(
                     job_id,
                     str(error),
+                    org_id=str(job.params.get("org_id") or "") or None,
                     attempts=job.attempts,
                     max_attempts=job.max_attempts,
                 )

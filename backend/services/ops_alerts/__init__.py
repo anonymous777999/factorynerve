@@ -12,6 +12,7 @@ from backend.services.ops_alerts.service import (
     record_request_exception,
     record_request_outcome,
     resolve_client_ip,
+    run_daily_summary_once,
     send_alert,
     shutdown_ops_alerting,
 )
@@ -28,6 +29,7 @@ __all__ = [
     "record_request_exception",
     "record_request_outcome",
     "resolve_client_ip",
+    "run_daily_summary_once",
     "send_alert",
     "shutdown_ops_alerting",
 ]

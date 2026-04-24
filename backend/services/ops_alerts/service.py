@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, time as dt_time, timedelta, timezone
 import logging
 import os
 import secrets
@@ -14,7 +14,10 @@ from typing import Any
 
 from fastapi import Request
 
-from backend.database import hash_ip_address
+from backend.database import SessionLocal, hash_ip_address
+from backend.models.ops_alert_daily_summary import OpsAlertDailySummary
+from backend.models.ops_alert_event import OpsAlertEvent
+from backend.models.organization import Organization
 from backend.services.ops_alerts.detectors import (
     build_exception_fingerprint,
     count_recent_statuses,
@@ -26,7 +29,7 @@ from backend.services.ops_alerts.detectors import (
 )
 from backend.services.ops_alerts.dispatcher import AlertDispatcher
 from backend.services.ops_alerts.providers import build_provider
-from backend.services.ops_alerts.rate_limit import build_rate_limiter
+from backend.services.ops_alerts.rate_limit import build_org_rate_limiter, build_rate_limiter
 from backend.services.ops_alerts.types import AlertCandidate, AlertEventType, AlertSeverity
 from backend.utils import get_config
 
@@ -36,6 +39,12 @@ logger = logging.getLogger(__name__)
 _service_lock = threading.Lock()
 _service: "OpsAlertService | None" = None
 AUTH_ALERT_PATHS = frozenset({"/auth/login", "/auth-secure/login"})
+SEVERITY_ORDER = {
+    AlertSeverity.LOW: 1,
+    AlertSeverity.MEDIUM: 2,
+    AlertSeverity.HIGH: 3,
+    AlertSeverity.CRITICAL: 4,
+}
 
 
 def _to_bool(value: str | None, default: bool = False) -> bool:
@@ -97,6 +106,14 @@ class OpsAlertSettings:
     t5_min_requests: int
     t5_warn_percent: float
     t5_critical_percent: float
+    org_rate_limit_window_seconds: int
+    org_rate_limit_normal_max: int
+    org_rate_limit_critical_max: int
+    escalation_window_seconds: int
+    escalation_high_repeat_count: int
+    escalation_critical_repeat_count: int
+    daily_summary_hour_utc: int
+    daily_summary_minute_utc: int
 
 
 def build_alert_settings() -> OpsAlertSettings:
@@ -114,7 +131,7 @@ def build_alert_settings() -> OpsAlertSettings:
     enabled = alerts_requested and app_env == "production" and deployment_env in allowed_deployment_envs
     provider_name = (os.getenv("ALERTS_PROVIDER") or "twilio").strip().lower()
     timezone_name = (os.getenv("ALERT_TIMEZONE") or "Asia/Kolkata").strip() or "Asia/Kolkata"
-    settings = OpsAlertSettings(
+    return OpsAlertSettings(
         app_name=app_name,
         app_env=app_env,
         deployment_env=deployment_env,
@@ -138,8 +155,15 @@ def build_alert_settings() -> OpsAlertSettings:
         t5_min_requests=_to_int(os.getenv("ALERT_T5_MIN_REQUESTS"), 100),
         t5_warn_percent=_to_float(os.getenv("ALERT_T5_WARN_PERCENT"), 5.0),
         t5_critical_percent=_to_float(os.getenv("ALERT_T5_CRITICAL_PERCENT"), 15.0),
+        org_rate_limit_window_seconds=_to_int(os.getenv("ALERT_ORG_RATE_LIMIT_WINDOW_SECONDS"), 600),
+        org_rate_limit_normal_max=_to_int(os.getenv("ALERT_ORG_RATE_LIMIT_NORMAL_MAX"), 20),
+        org_rate_limit_critical_max=_to_int(os.getenv("ALERT_ORG_RATE_LIMIT_CRITICAL_MAX"), 50),
+        escalation_window_seconds=_to_int(os.getenv("ALERT_ESCALATION_WINDOW_SECONDS"), 1800),
+        escalation_high_repeat_count=_to_int(os.getenv("ALERT_ESCALATION_HIGH_REPEAT_COUNT"), 3),
+        escalation_critical_repeat_count=_to_int(os.getenv("ALERT_ESCALATION_CRITICAL_REPEAT_COUNT"), 5),
+        daily_summary_hour_utc=_to_int(os.getenv("ALERT_DAILY_SUMMARY_HOUR_UTC"), 18),
+        daily_summary_minute_utc=_to_int(os.getenv("ALERT_DAILY_SUMMARY_MINUTE_UTC"), 0),
     )
-    return settings
 
 
 def _generate_ref_id(event_type: AlertEventType, timestamp: datetime) -> str:
@@ -181,6 +205,26 @@ def _log_alert_suppressed(*, event_type: str, reason: str) -> None:
     )
 
 
+def _request_org_id(request: Request | None) -> str | None:
+    if request is None:
+        return None
+    org_id = getattr(request.state, "org_id", None)
+    if org_id is None:
+        return None
+    cleaned = str(org_id).strip()
+    return cleaned or None
+
+
+def _request_org_name(request: Request | None) -> str | None:
+    if request is None:
+        return None
+    org_name = getattr(request.state, "org_name", None)
+    if org_name is None:
+        return None
+    cleaned = str(org_name).strip()
+    return cleaned or None
+
+
 class OpsAlertService:
     def __init__(self, settings: OpsAlertSettings, *, provider=None) -> None:
         self.settings = settings
@@ -188,7 +232,12 @@ class OpsAlertService:
         self._request_events: deque[tuple[float, int]] = deque()
         self._ocr_failures: deque[tuple[float, dict[str, Any]]] = deque()
         self._auth_failures: dict[str, deque[tuple[float, dict[str, Any]]]] = defaultdict(deque)
+        self._group_events: dict[str, deque[float]] = defaultdict(deque)
         self._rate_limiter = build_rate_limiter()
+        self._org_rate_limiter = build_org_rate_limiter()
+        self._summary_stop = threading.Event()
+        self._summary_thread: threading.Thread | None = None
+        self._last_summary_date: date | None = None
         resolved_provider = provider or build_provider(settings.provider_name)
         self._dispatcher = AlertDispatcher(
             provider=resolved_provider,
@@ -202,8 +251,20 @@ class OpsAlertService:
 
     def start(self) -> None:
         self._dispatcher.start()
+        if self._summary_thread is None:
+            self._summary_stop.clear()
+            self._summary_thread = threading.Thread(
+                target=self._summary_loop,
+                name="ops-alert-summary",
+                daemon=True,
+            )
+            self._summary_thread.start()
 
     def stop(self) -> None:
+        self._summary_stop.set()
+        if self._summary_thread is not None:
+            self._summary_thread.join(timeout=2.0)
+            self._summary_thread = None
         self._dispatcher.stop()
 
     def emit_alert_candidate(self, candidate: AlertCandidate) -> None:
@@ -212,7 +273,14 @@ class OpsAlertService:
             return
         if not candidate.ref_id:
             candidate.ref_id = _generate_ref_id(candidate.event_type, candidate.timestamp)
+        if candidate.org_id and not candidate.org_name:
+            candidate.org_name = self._resolve_org_name(candidate.org_id)
+        self._apply_escalation(candidate)
+        if not self._org_limit_allows(candidate):
+            self._dispatcher.record_suppressed(candidate, reason="org_rate_limited")
+            return
         if not self._rate_limiter.acquire(candidate.dedup_key, candidate.cooldown_seconds):
+            self._dispatcher.record_suppressed(candidate, reason="dedupe_cooldown")
             return
         if not self._dispatcher.enqueue(candidate):
             drop_reason = "dispatcher_stopped"
@@ -223,6 +291,7 @@ class OpsAlertService:
 
     def record_request_exception(self, request: Request, error: Exception, duration_ms: float) -> None:
         path = request.url.path
+        org_id = _request_org_id(request)
         fingerprint = build_exception_fingerprint(path=path, error=error)
         message = (
             f"Unhandled {error.__class__.__name__} on {request.method} {path}. "
@@ -232,8 +301,11 @@ class OpsAlertService:
             event_type=AlertEventType.SERVER_EXCEPTION,
             severity=AlertSeverity.CRITICAL,
             summary=message,
-            dedup_key=f"t1:exception:{path}:{fingerprint}",
+            dedup_key=f"t1:exception:{org_id or 'global'}:{path}:{fingerprint}",
+            group_key=f"t1:exception-group:{org_id or 'global'}:{path}:{fingerprint}",
             cooldown_seconds=self.settings.default_cooldown_seconds,
+            org_id=org_id,
+            org_name=_request_org_name(request),
             meta={
                 "path": path,
                 "method": request.method,
@@ -282,13 +354,14 @@ class OpsAlertService:
                         f"{int(self.settings.t1_5xx_window_seconds / 60)} minutes exceeded the configured threshold."
                     ),
                     dedup_key="t1:5xx-spike",
+                    group_key="t1:5xx-spike-group",
                     cooldown_seconds=self.settings.default_cooldown_seconds,
                     meta={
                         "errors": spike["error_requests"],
                         "requests": spike["total_requests"],
                         "error_rate": f"{spike['error_percent']}%",
                         "window": f"{int(self.settings.t1_5xx_window_seconds / 60)}m",
-                        "threshold": self.settings.t1_5xx_min_count,
+                        "threshold": spike["threshold_count"],
                     },
                 )
             )
@@ -310,6 +383,7 @@ class OpsAlertService:
                         f"{int(self.settings.t5_error_window_seconds / 60)} minutes."
                     ),
                     dedup_key=f"t5:error-rate:{severity.value.lower()}",
+                    group_key="t5:error-rate-group",
                     cooldown_seconds=self.settings.default_cooldown_seconds,
                     meta={
                         "errors": abnormal["error_requests"],
@@ -326,6 +400,7 @@ class OpsAlertService:
         *,
         job_id: str,
         error: str | None,
+        org_id: str | None = None,
         attempts: int | None = None,
         max_attempts: int | None = None,
     ) -> None:
@@ -357,8 +432,10 @@ class OpsAlertService:
                     f"{int(self.settings.t2_ocr_window_seconds / 60)} minutes exceeded the threshold of "
                     f"{self.settings.t2_ocr_min_failures}."
                 ),
-                dedup_key="t2:ocr-failure-spike",
+                dedup_key=f"t2:ocr-failure-spike:{org_id or 'global'}",
+                group_key=f"t2:ocr-failure-spike-group:{org_id or 'global'}",
                 cooldown_seconds=self.settings.default_cooldown_seconds,
+                org_id=org_id,
                 meta={
                     "failures": spike["failure_count"],
                     "window": f"{int(self.settings.t2_ocr_window_seconds / 60)}m",
@@ -376,6 +453,7 @@ class OpsAlertService:
         order_id: str | None = None,
         payment_id: str | None = None,
         user_id: int | None = None,
+        org_id: str | None = None,
         error_message: str | None = None,
     ) -> None:
         if not self.settings.enabled:
@@ -388,8 +466,10 @@ class OpsAlertService:
                 summary=(
                     f"Razorpay reported a payment failure for {_mask_identifier(payment_id or order_id or 'unknown')}."
                 ),
-                dedup_key=f"t3:payment:{dedup_id}",
+                dedup_key=f"t3:payment:{org_id or 'global'}:{dedup_id}",
+                group_key=f"t3:payment-group:{org_id or 'global'}:{dedup_id}",
                 cooldown_seconds=30 * 60,
+                org_id=org_id,
                 meta={
                     "event": event_type,
                     "order_id": _mask_identifier(order_id or "-"),
@@ -399,6 +479,7 @@ class OpsAlertService:
                 },
                 storage_meta={
                     "event": event_type,
+                    "org_id": org_id or "-",
                     "order_id": order_id or "-",
                     "payment_id": payment_id or "-",
                     "user_id": user_id or "-",
@@ -412,6 +493,7 @@ class OpsAlertService:
         *,
         kind: str,
         error_message: str,
+        org_id: str | None = None,
         order_id: str | None = None,
     ) -> None:
         if not self.settings.enabled:
@@ -423,8 +505,10 @@ class OpsAlertService:
                 summary=(
                     f"Payment webhook processing failed during {kind}. Investigate provider state and webhook delivery immediately."
                 ),
-                dedup_key=f"t3:webhook:{kind}",
+                dedup_key=f"t3:webhook:{org_id or 'global'}:{kind}",
+                group_key=f"t3:webhook-group:{org_id or 'global'}:{kind}",
                 cooldown_seconds=self.settings.default_cooldown_seconds,
+                org_id=org_id,
                 meta={
                     "kind": kind,
                     "order_id": _mask_identifier(order_id or "-"),
@@ -432,6 +516,7 @@ class OpsAlertService:
                 },
                 storage_meta={
                     "kind": kind,
+                    "org_id": org_id or "-",
                     "order_id": order_id or "-",
                     "error": _stringify_error(error_message),
                 },
@@ -441,6 +526,7 @@ class OpsAlertService:
     def record_auth_failure(self, request: Request, *, status_code: int, reason: str | None = None) -> None:
         if not self.settings.enabled:
             return
+        org_id = _request_org_id(request)
         raw_ip = resolve_client_ip(request) or "unknown"
         ip_hash = hash_ip_address(raw_ip) or "unknown"
         now_ts = time.time()
@@ -470,8 +556,11 @@ class OpsAlertService:
                     f"{int(self.settings.t4_auth_window_seconds / 60)} minutes exceeded the threshold of "
                     f"{self.settings.t4_auth_min_attempts}."
                 ),
-                dedup_key=f"t4:auth:{ip_hash}",
+                dedup_key=f"t4:auth:{org_id or 'global'}:{ip_hash}",
+                group_key=f"t4:auth-group:{org_id or 'global'}:{ip_hash}",
                 cooldown_seconds=15 * 60,
+                org_id=org_id,
+                org_name=_request_org_name(request),
                 meta={
                     "attempts": attempt_count,
                     "window": f"{int(self.settings.t4_auth_window_seconds / 60)}m",
@@ -481,6 +570,7 @@ class OpsAlertService:
                     "status": status_code,
                 },
                 storage_meta={
+                    "org_id": org_id or "-",
                     "attempts": attempt_count,
                     "window": f"{int(self.settings.t4_auth_window_seconds / 60)}m",
                     "threshold": self.settings.t4_auth_min_attempts,
@@ -491,6 +581,165 @@ class OpsAlertService:
                 },
             )
         )
+
+    def run_daily_summary_once(self, *, summary_date: date | None = None) -> int:
+        target_date = summary_date or datetime.now(timezone.utc).date()
+        start_dt = datetime.combine(target_date, dt_time.min, tzinfo=timezone.utc)
+        end_dt = start_dt + timedelta(days=1)
+        sent_count = 0
+        with SessionLocal() as db:
+            rows = (
+                db.query(OpsAlertEvent)
+                .filter(
+                    OpsAlertEvent.created_at >= start_dt,
+                    OpsAlertEvent.created_at < end_dt,
+                    OpsAlertEvent.recipient_phone.is_(None),
+                    OpsAlertEvent.is_summary.is_(False),
+                    OpsAlertEvent.org_id.isnot(None),
+                )
+                .order_by(OpsAlertEvent.created_at.asc())
+                .all()
+            )
+            grouped: dict[str, list[OpsAlertEvent]] = defaultdict(list)
+            for row in rows:
+                if row.org_id:
+                    grouped[row.org_id].append(row)
+            for org_id, org_rows in grouped.items():
+                total_alerts = len(org_rows)
+                if total_alerts <= 0:
+                    continue
+                critical_count = sum(1 for row in org_rows if row.severity == AlertSeverity.CRITICAL.value)
+                high_count = sum(1 for row in org_rows if row.severity == AlertSeverity.HIGH.value)
+                event_counts: dict[str, int] = {}
+                for row in org_rows:
+                    event_counts[row.event_type] = event_counts.get(row.event_type, 0) + 1
+                top_event_type = max(event_counts.items(), key=lambda item: item[1])[0] if event_counts else None
+                org_name = next((row.org_name for row in org_rows if row.org_name), None) or self._resolve_org_name(org_id)
+                message_body = (
+                    f"{total_alerts} alerts recorded for {target_date.isoformat()}. "
+                    f"Critical: {critical_count}, high: {high_count}. "
+                    f"Top event: {top_event_type or 'n/a'}."
+                )
+                existing = (
+                    db.query(OpsAlertDailySummary)
+                    .filter(
+                        OpsAlertDailySummary.org_id == org_id,
+                        OpsAlertDailySummary.summary_date == target_date,
+                    )
+                    .first()
+                )
+                if existing is None:
+                    existing = OpsAlertDailySummary(
+                        org_id=org_id,
+                        org_name=org_name,
+                        summary_date=target_date,
+                        total_alerts=total_alerts,
+                        critical_count=critical_count,
+                        high_count=high_count,
+                        top_event_type=top_event_type,
+                        message_body=message_body,
+                    )
+                    db.add(existing)
+                else:
+                    existing.org_name = org_name
+                    existing.total_alerts = total_alerts
+                    existing.critical_count = critical_count
+                    existing.high_count = high_count
+                    existing.top_event_type = top_event_type
+                    existing.message_body = message_body
+                db.commit()
+                severity = AlertSeverity.CRITICAL if critical_count > 0 else AlertSeverity.HIGH if high_count > 0 else AlertSeverity.MEDIUM
+                self.emit_alert_candidate(
+                    AlertCandidate(
+                        event_type=AlertEventType.DAILY_SUMMARY,
+                        severity=severity,
+                        summary=message_body,
+                        dedup_key=f"daily-summary:{org_id}:{target_date.isoformat()}",
+                        group_key=f"daily-summary-group:{org_id}",
+                        cooldown_seconds=24 * 60 * 60,
+                        org_id=org_id,
+                        org_name=org_name,
+                        is_summary=True,
+                        meta={
+                            "summary_date": target_date.isoformat(),
+                            "total_alerts": total_alerts,
+                            "critical": critical_count,
+                            "high": high_count,
+                            "top_event_type": top_event_type or "-",
+                        },
+                    )
+                )
+                sent_count += 1
+        return sent_count
+
+    def _summary_loop(self) -> None:
+        while not self._summary_stop.wait(30.0):
+            try:
+                self._run_daily_summary_if_due()
+            except Exception:  # pylint: disable=broad-except
+                logger.exception("Daily ops alert summary failed.")
+
+    def _run_daily_summary_if_due(self, *, now: datetime | None = None) -> None:
+        current = now or datetime.now(timezone.utc)
+        if current.hour < self.settings.daily_summary_hour_utc:
+            return
+        if current.hour == self.settings.daily_summary_hour_utc and current.minute < self.settings.daily_summary_minute_utc:
+            return
+        run_date = current.date()
+        with self._lock:
+            if self._last_summary_date == run_date:
+                return
+            self._last_summary_date = run_date
+        self.run_daily_summary_once(summary_date=run_date)
+
+    def _apply_escalation(self, candidate: AlertCandidate) -> None:
+        if not candidate.group_key:
+            return
+        now_ts = candidate.timestamp.timestamp()
+        with self._lock:
+            bucket = self._group_events[candidate.group_key]
+            bucket.append(now_ts)
+            cutoff = now_ts - max(1, self.settings.escalation_window_seconds)
+            while bucket and bucket[0] < cutoff:
+                bucket.popleft()
+            repeat_count = len(bucket)
+        candidate.escalation_level = repeat_count if repeat_count > 1 else 0
+        if repeat_count >= self.settings.escalation_critical_repeat_count:
+            self._raise_severity(candidate, AlertSeverity.CRITICAL)
+        elif repeat_count >= self.settings.escalation_high_repeat_count:
+            self._raise_severity(candidate, AlertSeverity.HIGH)
+
+    def _raise_severity(self, candidate: AlertCandidate, severity: AlertSeverity) -> None:
+        if SEVERITY_ORDER[severity] > SEVERITY_ORDER[candidate.severity]:
+            candidate.severity = severity
+
+    def _org_limit_allows(self, candidate: AlertCandidate) -> bool:
+        org_key = candidate.org_id or "__global__"
+        severity_bucket = "critical" if candidate.severity == AlertSeverity.CRITICAL else "normal"
+        limit = (
+            self.settings.org_rate_limit_critical_max
+            if severity_bucket == "critical"
+            else self.settings.org_rate_limit_normal_max
+        )
+        return self._org_rate_limiter.acquire(
+            org_key,
+            severity_bucket=severity_bucket,
+            window_seconds=self.settings.org_rate_limit_window_seconds,
+            limit=limit,
+        )
+
+    def _resolve_org_name(self, org_id: str | None) -> str | None:
+        if not org_id:
+            return None
+        try:
+            with SessionLocal() as db:
+                org = db.query(Organization).filter(Organization.org_id == org_id).first()
+                if org is None:
+                    return None
+                return str(org.name or "").strip() or None
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Failed to resolve organization name for alert org_id=%s.", org_id)
+            return None
 
 
 def initialize_ops_alerting() -> None:
@@ -559,10 +808,17 @@ def record_request_exception(request: Request, error: Exception, duration_ms: fl
     _service.record_request_exception(request, error, duration_ms)
 
 
-def record_ocr_failure(job_id: str, error: str | None, *, attempts: int | None = None, max_attempts: int | None = None) -> None:
+def record_ocr_failure(
+    job_id: str,
+    error: str | None,
+    *,
+    org_id: str | None = None,
+    attempts: int | None = None,
+    max_attempts: int | None = None,
+) -> None:
     if _service is None:
         return
-    _service.record_ocr_failure(job_id=job_id, error=error, attempts=attempts, max_attempts=max_attempts)
+    _service.record_ocr_failure(job_id=job_id, error=error, org_id=org_id, attempts=attempts, max_attempts=max_attempts)
 
 
 def record_payment_failure(
@@ -571,6 +827,7 @@ def record_payment_failure(
     order_id: str | None = None,
     payment_id: str | None = None,
     user_id: int | None = None,
+    org_id: str | None = None,
     error_message: str | None = None,
 ) -> None:
     if _service is None:
@@ -580,17 +837,30 @@ def record_payment_failure(
         order_id=order_id,
         payment_id=payment_id,
         user_id=user_id,
+        org_id=org_id,
         error_message=error_message,
     )
 
 
-def record_payment_webhook_error(*, kind: str, error_message: str, order_id: str | None = None) -> None:
+def record_payment_webhook_error(
+    *,
+    kind: str,
+    error_message: str,
+    org_id: str | None = None,
+    order_id: str | None = None,
+) -> None:
     if _service is None:
         return
-    _service.record_payment_webhook_error(kind=kind, error_message=error_message, order_id=order_id)
+    _service.record_payment_webhook_error(kind=kind, error_message=error_message, org_id=org_id, order_id=order_id)
 
 
 def record_auth_failure(request: Request, *, status_code: int, reason: str | None = None) -> None:
     if _service is None:
         return
     _service.record_auth_failure(request, status_code=status_code, reason=reason)
+
+
+def run_daily_summary_once(*, summary_date: date | None = None) -> int:
+    if _service is None:
+        return 0
+    return _service.run_daily_summary_once(summary_date=summary_date)

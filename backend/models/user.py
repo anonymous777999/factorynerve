@@ -10,6 +10,7 @@ from sqlalchemy import Boolean, DateTime, Enum as SqlEnum, ForeignKey, Index, In
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.database import Base
+from backend.models.phone_verification import PhoneVerificationStatus
 
 
 class UserRole(str, Enum):
@@ -44,6 +45,15 @@ class User(Base):
     factory_name: Mapped[str] = mapped_column(String(255), nullable=False)
     factory_code: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     phone_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    phone_e164: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    phone_verification_status: Mapped[PhoneVerificationStatus] = mapped_column(
+        SqlEnum(PhoneVerificationStatus, name="phone_verification_status"),
+        nullable=False,
+        default=PhoneVerificationStatus.PENDING,
+    )
+    phone_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    phone_last_otp_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    phone_otp_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     verification_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -68,6 +78,7 @@ class UserBaseSchema(BaseModel):
     factory_name: str = Field(min_length=2, max_length=255)
     factory_code: str | None = Field(default=None, max_length=32)
     phone_number: str | None = Field(default=None, max_length=32)
+    phone_e164: str | None = Field(default=None, max_length=20)
 
 
 class UserCreateSchema(UserBaseSchema):
@@ -86,6 +97,10 @@ class UserReadSchema(UserBaseSchema):
     id: int
     user_code: int
     is_active: bool
+    phone_verification_status: str = PhoneVerificationStatus.PENDING.value
+    phone_verified_at: datetime | None = None
+    phone_last_otp_sent_at: datetime | None = None
+    phone_otp_attempts: int = 0
     email_verified_at: datetime | None = None
     verification_sent_at: datetime | None = None
     created_at: datetime

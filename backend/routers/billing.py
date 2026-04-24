@@ -813,6 +813,7 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
             order_id = _extract_order_id(data)
             payment_entity = _extract_payment_entity(data)
             payment_id = str(payment_entity.get("id") or "") or None
+            org_id = None
             if event_type == "payment.failed":
                 _mark_payment_order_status(db, order_id=order_id, status="failed")
             user_id = _extract_user_id(data)
@@ -820,12 +821,16 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
                 order_entity = _fetch_order_entity(order_id)
                 if order_entity:
                     user_id = _user_id_from_receipt(str(order_entity.get("receipt") or ""))
+            if user_id:
+                user = db.query(User).filter(User.id == user_id).first()
+                org_id = resolve_org_id(user) if user else None
             if event_type == "payment.failed":
                 record_payment_failure(
                     event_type=event_type,
                     order_id=order_id,
                     payment_id=payment_id,
                     user_id=user_id,
+                    org_id=org_id,
                     error_message=str(payment_entity.get("error_description") or payment_entity.get("error_reason") or "payment failed"),
                 )
             if user_id:
@@ -847,6 +852,7 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
         record_payment_webhook_error(
             kind="processing_exception",
             error_message=str(error),
+            org_id=org_id if "org_id" in locals() else None,
             order_id=_extract_order_id(data) if "data" in locals() else None,
         )
         raise

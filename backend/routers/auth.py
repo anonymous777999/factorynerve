@@ -39,6 +39,9 @@ from backend.security import (
     validate_password_strength,
     verify_password,
 )
+from backend.phone_utils import normalize_phone_e164
+from backend.models.phone_verification import PhoneVerificationStatus
+from backend.services.otp_service import apply_user_phone_change
 from backend.utils import get_config, normalize_identifier_code, normalize_phone_number, sanitize_text
 from backend.plans import DEFAULT_PLAN, get_org_plan
 from backend.models.subscription import Subscription
@@ -734,6 +737,8 @@ def _activate_pending_registration(
         factory_name=requested_factory,
         factory_code=factory_code,
         phone_number=pending.phone_number,
+        phone_e164=pending.phone_number,
+        phone_verification_status=PhoneVerificationStatus.PENDING,
         org_id=resolved_org_id,
         is_active=True,
         email_verified_at=datetime.now(timezone.utc),
@@ -809,7 +814,7 @@ def register_user(
             requested_role=payload.role,
             factory_name=requested_factory,
             company_code=payload.company_code,
-            phone_number=payload.phone_number,
+            phone_number=normalize_phone_e164(payload.phone_number) if payload.phone_number else None,
             ttl_hours=EMAIL_VERIFICATION_TTL_HOURS,
         )
         verification_link = (
@@ -1609,7 +1614,9 @@ def update_profile(
                 raise HTTPException(status_code=400, detail="Full name must be at least 2 characters.")
             current_user.name = cleaned_name
         if payload.phone_number is not None:
-            current_user.phone_number = payload.phone_number or None
+            next_phone = normalize_phone_e164(payload.phone_number) if payload.phone_number else None
+            if next_phone != current_user.phone_e164:
+                apply_user_phone_change(current_user, next_phone)
         _log_auth_event(db, "PROFILE_UPDATED", "User updated their profile.", current_user.id, request)
         db.commit()
         db.refresh(current_user)

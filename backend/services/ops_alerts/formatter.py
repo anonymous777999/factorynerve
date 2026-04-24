@@ -9,9 +9,6 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from backend.services.ops_alerts.types import AlertCandidate
 
 
-DIVIDER = "────────────────────"
-
-
 def _resolve_timezone(timezone_name: str):
     try:
         return ZoneInfo(timezone_name)
@@ -44,6 +41,8 @@ def format_alert_message(
 ) -> str:
     tzinfo = _resolve_timezone(timezone_name)
     alert_time = candidate.timestamp.astimezone(tzinfo)
+    org_name = (candidate.org_name or app_name or "Unknown").strip() or "Unknown"
+    prefix = f"Escalated x{candidate.escalation_level} | " if candidate.escalation_level and candidate.escalation_level > 1 else ""
     meta_pairs = [
         f"{key}: {_stringify_meta_value(value)}"
         for key, value in candidate.meta.items()
@@ -51,12 +50,10 @@ def format_alert_message(
     meta_line = " | ".join(meta_pairs) if meta_pairs else "-"
     return "\n".join(
         [
-            f"🚨 {candidate.severity.value} — {candidate.event_type.label}",
-            f"App: {app_name} | Env: {env_name}",
+            f"{prefix}🚨 {candidate.severity.value} — {candidate.event_type.label}",
+            f"Org: {org_name} | App: {app_name} | Env: {env_name}",
             f"Time: {alert_time.isoformat(timespec='seconds')}",
-            DIVIDER,
-            candidate.summary.strip(),
-            DIVIDER,
+            f"Context: {candidate.summary.strip()}",
             f"Meta: {meta_line}",
             f"Ref ID: {candidate.ref_id or '-'}",
         ]

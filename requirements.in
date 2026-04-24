@@ -31,6 +31,9 @@ alembic
 psycopg2-binary
 httpx
 redis
+fakeredis
+phonenumbers
+structlog
 google-auth
 passlib[argon2]
 argon2-cffi

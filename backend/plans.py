@@ -257,6 +257,15 @@ def get_plan(plan: str | None) -> dict[str, Any]:
     return PLAN_CATALOG.get(key, PLAN_CATALOG["free"])
 
 
+def ops_alert_recipient_limit(plan: str | None) -> int:
+    normalized = normalize_plan(plan)
+    if normalized == "enterprise":
+        return 20
+    if normalized in {"growth", "factory", "business"}:
+        return 10
+    return 2
+
+
 def plan_has_hard_caps() -> bool:
     return HARD_USER_FACTORY_CAPS
 

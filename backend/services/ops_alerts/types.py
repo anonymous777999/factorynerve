@@ -23,6 +23,7 @@ class AlertEventType(str, Enum):
     PAYMENT_WEBHOOK_ERROR = "payment_webhook_error"
     AUTH_ANOMALY = "auth_anomaly"
     ABNORMAL_ERROR_RATE = "abnormal_error_rate"
+    DAILY_SUMMARY = "daily_summary"
 
     @property
     def label(self) -> str:
@@ -34,6 +35,7 @@ class AlertEventType(str, Enum):
             AlertEventType.PAYMENT_WEBHOOK_ERROR: "Payment Webhook Error",
             AlertEventType.AUTH_ANOMALY: "Unauthorized Access Pattern",
             AlertEventType.ABNORMAL_ERROR_RATE: "Abnormal Error Rate",
+            AlertEventType.DAILY_SUMMARY: "Daily Alert Summary",
         }
         return labels[self]
 
@@ -47,6 +49,7 @@ class AlertEventType(str, Enum):
             AlertEventType.PAYMENT_WEBHOOK_ERROR: "payhook",
             AlertEventType.AUTH_ANOMALY: "auth",
             AlertEventType.ABNORMAL_ERROR_RATE: "errrate",
+            AlertEventType.DAILY_SUMMARY: "daily",
         }
         return prefixes[self]
 
@@ -62,6 +65,11 @@ class AlertCandidate:
     timestamp: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     cooldown_seconds: int = 600
     ref_id: str | None = None
+    org_id: str | None = None
+    org_name: str | None = None
+    group_key: str | None = None
+    is_summary: bool = False
+    escalation_level: int = 0
     to_number: str | None = None
 
 

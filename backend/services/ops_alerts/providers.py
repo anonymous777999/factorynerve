@@ -12,6 +12,13 @@ from backend.services.ops_alerts.types import AlertDispatchResult
 logger = logging.getLogger(__name__)
 
 
+def _whatsapp_address(value: str | None) -> str:
+    cleaned = (value or "").strip()
+    if not cleaned:
+        return ""
+    return cleaned if cleaned.startswith("whatsapp:") else f"whatsapp:{cleaned}"
+
+
 class AlertProvider(Protocol):
     name: str
 
@@ -41,8 +48,6 @@ class TwilioWhatsAppProvider:
             missing.append("TWILIO_AUTH_TOKEN")
         if not self.from_number:
             missing.append("TWILIO_WHATSAPP_FROM")
-        if not self.default_to_number:
-            missing.append("TWILIO_WHATSAPP_TO_DEFAULT")
         if missing:
             raise ValueError("Missing required Twilio alert environment variables: " + ", ".join(sorted(missing)))
 
@@ -55,8 +60,9 @@ class TwilioWhatsAppProvider:
         return Client(self.account_sid, self.auth_token)
 
     def deliver(self, message: str, *, to_number: str | None = None) -> AlertDispatchResult:
-        target = (to_number or self.default_to_number).strip()
-        if not target or not self.from_number:
+        target = _whatsapp_address(to_number or self.default_to_number)
+        from_number = _whatsapp_address(self.from_number)
+        if not target or not from_number:
             return AlertDispatchResult(
                 success=False,
                 provider=self.name,
@@ -65,7 +71,7 @@ class TwilioWhatsAppProvider:
             )
         try:
             client = self._build_client()
-            response = client.messages.create(from_=self.from_number, to=target, body=message)
+            response = client.messages.create(from_=from_number, to=target, body=message)
             external_id = getattr(response, "sid", None)
             status = getattr(response, "status", None)
             return AlertDispatchResult(
