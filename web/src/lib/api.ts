@@ -96,9 +96,55 @@ type CacheEntry = {
 };
 
 const responseCache = new Map<string, CacheEntry>();
+let inflightCsrfBootstrap: Promise<string | null> | null = null;
 
 function canUseResponseCache() {
   return typeof window !== "undefined";
+}
+
+async function bootstrapCsrfCookie(timeoutMs: number): Promise<string | null> {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const existing = getCookie(CSRF_COOKIE);
+  if (existing) {
+    return existing;
+  }
+
+  if (inflightCsrfBootstrap) {
+    return inflightCsrfBootstrap;
+  }
+
+  const task = (async () => {
+    const controller = timeoutMs > 0 ? new AbortController() : null;
+    const timeoutId = controller ? window.setTimeout(() => controller.abort(), Math.min(timeoutMs, 8000)) : null;
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/context`, {
+        method: "GET",
+        credentials: "include",
+        cache: "no-store",
+        headers: {
+          "X-Response-Envelope": "v1",
+        },
+        signal: controller?.signal,
+      });
+      const headerToken = response.headers.get(CSRF_HEADER);
+      const cookieToken = getCookie(CSRF_COOKIE);
+      return cookieToken || headerToken;
+    } catch {
+      return getCookie(CSRF_COOKIE);
+    } finally {
+      if (timeoutId) {
+        window.clearTimeout(timeoutId);
+      }
+    }
+  })();
+
+  inflightCsrfBootstrap = task.finally(() => {
+    inflightCsrfBootstrap = null;
+  });
+  return inflightCsrfBootstrap;
 }
 
 function buildCacheKey(
@@ -193,8 +239,9 @@ export async function apiFetch<T>(
     headers.set("X-Response-Envelope", "v1");
   }
 
-  if (useCookies && !SAFE_METHODS.includes(method) && !headers.has("Authorization")) {
-    const csrf = getCookie(CSRF_COOKIE);
+  const needsCookieCsrf = useCookies && !SAFE_METHODS.includes(method) && !headers.has("Authorization");
+  if (needsCookieCsrf) {
+    const csrf = getCookie(CSRF_COOKIE) || (await bootstrapCsrfCookie(timeoutMs));
     if (csrf) {
       headers.set(CSRF_HEADER, csrf);
     }
@@ -206,7 +253,7 @@ export async function apiFetch<T>(
       ? JSON.stringify(rawBody)
       : rawBody;
 
-  const performFetch = async () => {
+  const performFetch = async (allowCsrfRetry = true) => {
     const controller = !options.signal && timeoutMs > 0 ? new AbortController() : null;
     const timeoutId = controller ? setTimeout(() => controller.abort(), timeoutMs) : null;
     let response: Response;
@@ -226,6 +273,34 @@ export async function apiFetch<T>(
       throw err;
     } finally {
       if (timeoutId) clearTimeout(timeoutId);
+    }
+
+    if (
+      allowCsrfRetry &&
+      needsCookieCsrf &&
+      response.status === 403 &&
+      !headers.has("Authorization")
+    ) {
+      let shouldRetry = false;
+      try {
+        const cloned = response.clone();
+        const payload = await cloned.json();
+        const detail =
+          payload && typeof payload === "object" && "detail" in payload
+            ? (payload as { detail?: unknown }).detail
+            : undefined;
+        shouldRetry = typeof detail === "string" && detail.trim() === "CSRF validation failed.";
+      } catch {
+        shouldRetry = false;
+      }
+
+      if (shouldRetry) {
+        const csrf = await bootstrapCsrfCookie(timeoutMs);
+        if (csrf) {
+          headers.set(CSRF_HEADER, csrf);
+          return performFetch(false);
+        }
+      }
     }
 
     const contentType = response.headers.get("content-type") || "";
