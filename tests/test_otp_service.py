@@ -23,8 +23,8 @@ from backend.services.otp_service import (
     NoActiveOTPError,
     OTPService,
 )
-from backend.services.rate_limit_service import RateLimitService
-from backend.services.sms_service import MockSMSProvider
+from backend.services.rate_limit_service import InMemoryRateLimitService, RateLimitService, build_otp_rate_limit_service
+from backend.services.sms_service import MockSMSProvider, build_sms_provider
 
 
 def _build_service(provider: MockSMSProvider | None = None) -> tuple[OTPService, MockSMSProvider]:
@@ -266,3 +266,20 @@ def test_new_otp_invalidates_prior_active_otp():
 
     assert first_record is not None and first_record.used is True
     assert second_record is not None and second_record.used is False
+
+
+def test_otp_service_falls_back_to_in_memory_rate_limits_without_redis(monkeypatch):
+    monkeypatch.setattr("backend.services.rate_limit_service.get_redis_client", lambda: None)
+    limiter = build_otp_rate_limit_service()
+
+    assert isinstance(limiter, InMemoryRateLimitService)
+
+
+def test_unknown_sms_provider_returns_controlled_failure(monkeypatch):
+    monkeypatch.setenv("SMS_PROVIDER", "does-not-exist")
+    provider = build_sms_provider()
+    result = provider.send_otp("+919876543299", "123456", "sms")
+
+    assert result.success is False
+    assert result.provider == "does-not-exist"
+    assert "unsupported sms provider" in (result.error or "").lower()

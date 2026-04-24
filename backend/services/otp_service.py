@@ -21,6 +21,7 @@ from backend.models.user import User
 from backend.otp_utils import generate_otp_code, hash_otp_code, verify_otp_code
 from backend.phone_utils import mask_phone_number
 from backend.services.rate_limit_service import RateLimitService
+from backend.services.rate_limit_service import build_otp_rate_limit_service
 from backend.services.sms_service import SMSProvider, SMSResult, build_sms_provider
 
 
@@ -99,7 +100,7 @@ class OTPService:
         rate_limits: RateLimitService | None = None,
     ) -> None:
         self._sms_provider = sms_provider or build_sms_provider()
-        self._rate_limits = rate_limits or RateLimitService()
+        self._rate_limits = rate_limits or build_otp_rate_limit_service()
 
     def start_user_verification(
         self,

@@ -43,9 +43,29 @@ class MockSMSProvider(SMSProvider):
         return SMSResult(success=True, provider="mock")
 
 
+class UnavailableSMSProvider(SMSProvider):
+    def __init__(self, *, provider_name: str, error: str) -> None:
+        self.provider_name = provider_name
+        self.error = error
+
+    def send_otp(self, phone_e164: str, otp: str, channel: str) -> SMSResult:
+        logger.warning(
+            "otp_provider_unavailable",
+            provider=self.provider_name,
+            phone_masked=mask_phone_number(phone_e164),
+            channel=channel,
+            error=self.error,
+        )
+        return SMSResult(success=False, provider=self.provider_name, error=self.error)
+
+
 class TwilioSMSProvider(SMSProvider):
     def send_otp(self, phone_e164: str, otp: str, channel: str) -> SMSResult:
-        raise NotImplementedError("TODO: implement Twilio OTP delivery.")
+        return SMSResult(
+            success=False,
+            provider="twilio",
+            error="Twilio OTP delivery is not configured for phone verification yet.",
+        )
 
 
 def build_sms_provider() -> SMSProvider:
@@ -54,4 +74,7 @@ def build_sms_provider() -> SMSProvider:
         return MockSMSProvider()
     if provider_name == "twilio":
         return TwilioSMSProvider()
-    raise ValueError(f"Unsupported SMS provider: {provider_name}")
+    return UnavailableSMSProvider(
+        provider_name=provider_name or "unknown",
+        error=f"Unsupported SMS provider: {provider_name or 'unknown'}",
+    )
