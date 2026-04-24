@@ -24,61 +24,115 @@ phone_verification_purpose = sa.Enum("user_verification", "alert_recipient", nam
 
 def upgrade() -> None:
     bind = op.get_bind()
-    phone_verification_status.create(bind, checkfirst=True)
-    phone_verification_channel.create(bind, checkfirst=True)
-    phone_verification_purpose.create(bind, checkfirst=True)
+    inspector = sa.inspect(bind)
+    table_names = set(inspector.get_table_names())
 
-    op.add_column("users", sa.Column("phone_e164", sa.String(length=20), nullable=True))
-    op.add_column(
-        "users",
-        sa.Column("phone_verification_status", phone_verification_status, nullable=False, server_default="pending"),
-    )
-    op.add_column("users", sa.Column("phone_verified_at", sa.DateTime(timezone=True), nullable=True))
-    op.add_column("users", sa.Column("phone_last_otp_sent_at", sa.DateTime(timezone=True), nullable=True))
-    op.add_column("users", sa.Column("phone_otp_attempts", sa.Integer(), nullable=False, server_default="0"))
+    if bind.dialect.name == "postgresql":
+        op.execute(
+            """
+            DO $$
+            BEGIN
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'phone_verification_status') THEN
+                    CREATE TYPE phone_verification_status AS ENUM ('pending', 'verified', 'failed');
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'phone_verification_channel') THEN
+                    CREATE TYPE phone_verification_channel AS ENUM ('sms', 'whatsapp');
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'phone_verification_purpose') THEN
+                    CREATE TYPE phone_verification_purpose AS ENUM ('user_verification', 'alert_recipient');
+                END IF;
+            END
+            $$;
+            """
+        )
+        op.execute("ALTER TYPE phone_verification_status ADD VALUE IF NOT EXISTS 'pending'")
+        op.execute("ALTER TYPE phone_verification_status ADD VALUE IF NOT EXISTS 'verified'")
+        op.execute("ALTER TYPE phone_verification_status ADD VALUE IF NOT EXISTS 'failed'")
+        op.execute("ALTER TYPE phone_verification_channel ADD VALUE IF NOT EXISTS 'sms'")
+        op.execute("ALTER TYPE phone_verification_channel ADD VALUE IF NOT EXISTS 'whatsapp'")
+        op.execute("ALTER TYPE phone_verification_purpose ADD VALUE IF NOT EXISTS 'user_verification'")
+        op.execute("ALTER TYPE phone_verification_purpose ADD VALUE IF NOT EXISTS 'alert_recipient'")
+    else:
+        phone_verification_status.create(bind, checkfirst=True)
+        phone_verification_channel.create(bind, checkfirst=True)
+        phone_verification_purpose.create(bind, checkfirst=True)
 
-    op.add_column("admin_alert_recipients", sa.Column("phone_e164", sa.String(length=20), nullable=True))
-    op.add_column(
-        "admin_alert_recipients",
-        sa.Column("verification_status", sa.String(length=24), nullable=False, server_default="pending"),
-    )
-    op.add_column("admin_alert_recipients", sa.Column("verified_at", sa.DateTime(timezone=True), nullable=True))
-    op.add_column("admin_alert_recipients", sa.Column("verified_by_user_id", sa.Integer(), nullable=True))
-    op.add_column("admin_alert_recipients", sa.Column("otp_attempts", sa.Integer(), nullable=False, server_default="0"))
-    op.add_column("admin_alert_recipients", sa.Column("last_otp_sent_at", sa.DateTime(timezone=True), nullable=True))
-    op.create_foreign_key(
-        "fk_admin_alert_recipients_verified_by_user_id_users",
-        "admin_alert_recipients",
-        "users",
-        ["verified_by_user_id"],
-        ["id"],
-    )
+    user_columns = {column["name"] for column in inspector.get_columns("users")}
+    if "phone_e164" not in user_columns:
+        op.add_column("users", sa.Column("phone_e164", sa.String(length=20), nullable=True))
+    if "phone_verification_status" not in user_columns:
+        default_clause = (
+            sa.text("'pending'::phone_verification_status")
+            if bind.dialect.name == "postgresql"
+            else sa.text("'pending'")
+        )
+        op.add_column(
+            "users",
+            sa.Column("phone_verification_status", phone_verification_status, nullable=False, server_default=default_clause),
+        )
+    if "phone_verified_at" not in user_columns:
+        op.add_column("users", sa.Column("phone_verified_at", sa.DateTime(timezone=True), nullable=True))
+    if "phone_last_otp_sent_at" not in user_columns:
+        op.add_column("users", sa.Column("phone_last_otp_sent_at", sa.DateTime(timezone=True), nullable=True))
+    if "phone_otp_attempts" not in user_columns:
+        op.add_column("users", sa.Column("phone_otp_attempts", sa.Integer(), nullable=False, server_default="0"))
 
-    op.create_table(
-        "phone_verifications",
-        sa.Column("id", sa.String(length=36), nullable=False),
-        sa.Column("phone_e164", sa.String(length=20), nullable=False),
-        sa.Column("otp_hash", sa.String(length=72), nullable=False),
-        sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("attempts", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("used", sa.Boolean(), nullable=False, server_default=sa.false()),
-        sa.Column("channel", phone_verification_channel, nullable=False),
-        sa.Column("purpose", phone_verification_purpose, nullable=False),
-        sa.Column("user_id", sa.Integer(), nullable=True),
-        sa.Column("recipient_id", sa.Integer(), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(["recipient_id"], ["admin_alert_recipients.id"]),
-        sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
-        sa.PrimaryKeyConstraint("id"),
-    )
-    op.create_index(
-        "ix_phone_verifications_phone_purpose_active",
-        "phone_verifications",
-        ["phone_e164", "purpose", "used", "expires_at"],
-        unique=False,
-    )
-    op.create_index("ix_phone_verifications_user_id", "phone_verifications", ["user_id"], unique=False)
-    op.create_index("ix_phone_verifications_recipient_id", "phone_verifications", ["recipient_id"], unique=False)
+    recipient_columns = {column["name"] for column in inspector.get_columns("admin_alert_recipients")}
+    if "phone_e164" not in recipient_columns:
+        op.add_column("admin_alert_recipients", sa.Column("phone_e164", sa.String(length=20), nullable=True))
+    if "verification_status" not in recipient_columns:
+        op.add_column(
+            "admin_alert_recipients",
+            sa.Column("verification_status", sa.String(length=24), nullable=False, server_default="pending"),
+        )
+    if "verified_at" not in recipient_columns:
+        op.add_column("admin_alert_recipients", sa.Column("verified_at", sa.DateTime(timezone=True), nullable=True))
+    if "verified_by_user_id" not in recipient_columns:
+        op.add_column("admin_alert_recipients", sa.Column("verified_by_user_id", sa.Integer(), nullable=True))
+    if "otp_attempts" not in recipient_columns:
+        op.add_column("admin_alert_recipients", sa.Column("otp_attempts", sa.Integer(), nullable=False, server_default="0"))
+    if "last_otp_sent_at" not in recipient_columns:
+        op.add_column("admin_alert_recipients", sa.Column("last_otp_sent_at", sa.DateTime(timezone=True), nullable=True))
+    existing_fks = {fk["name"] for fk in inspector.get_foreign_keys("admin_alert_recipients")}
+    if "fk_admin_alert_recipients_verified_by_user_id_users" not in existing_fks:
+        op.create_foreign_key(
+            "fk_admin_alert_recipients_verified_by_user_id_users",
+            "admin_alert_recipients",
+            "users",
+            ["verified_by_user_id"],
+            ["id"],
+        )
+
+    if "phone_verifications" not in table_names:
+        op.create_table(
+            "phone_verifications",
+            sa.Column("id", sa.String(length=36), nullable=False),
+            sa.Column("phone_e164", sa.String(length=20), nullable=False),
+            sa.Column("otp_hash", sa.String(length=72), nullable=False),
+            sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
+            sa.Column("attempts", sa.Integer(), nullable=False, server_default="0"),
+            sa.Column("used", sa.Boolean(), nullable=False, server_default=sa.false()),
+            sa.Column("channel", phone_verification_channel, nullable=False),
+            sa.Column("purpose", phone_verification_purpose, nullable=False),
+            sa.Column("user_id", sa.Integer(), nullable=True),
+            sa.Column("recipient_id", sa.Integer(), nullable=True),
+            sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
+            sa.ForeignKeyConstraint(["recipient_id"], ["admin_alert_recipients.id"]),
+            sa.ForeignKeyConstraint(["user_id"], ["users.id"]),
+            sa.PrimaryKeyConstraint("id"),
+        )
+    existing_phone_indexes = {index["name"] for index in inspector.get_indexes("phone_verifications")}
+    if "ix_phone_verifications_phone_purpose_active" not in existing_phone_indexes:
+        op.create_index(
+            "ix_phone_verifications_phone_purpose_active",
+            "phone_verifications",
+            ["phone_e164", "purpose", "used", "expires_at"],
+            unique=False,
+        )
+    if "ix_phone_verifications_user_id" not in existing_phone_indexes:
+        op.create_index("ix_phone_verifications_user_id", "phone_verifications", ["user_id"], unique=False)
+    if "ix_phone_verifications_recipient_id" not in existing_phone_indexes:
+        op.create_index("ix_phone_verifications_recipient_id", "phone_verifications", ["recipient_id"], unique=False)
 
 
 def downgrade() -> None:

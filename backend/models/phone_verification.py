@@ -28,6 +28,10 @@ class PhoneVerificationPurpose(str, Enum):
     ALERT_RECIPIENT = "alert_recipient"
 
 
+def _enum_values(enum_cls: type[Enum]) -> list[str]:
+    return [str(member.value) for member in enum_cls]
+
+
 class PhoneVerification(Base):
     __tablename__ = "phone_verifications"
     __table_args__ = (
@@ -43,11 +47,19 @@ class PhoneVerification(Base):
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     channel: Mapped[PhoneVerificationChannel] = mapped_column(
-        SqlEnum(PhoneVerificationChannel, name="phone_verification_channel"),
+        SqlEnum(
+            PhoneVerificationChannel,
+            name="phone_verification_channel",
+            values_callable=_enum_values,
+        ),
         nullable=False,
     )
     purpose: Mapped[PhoneVerificationPurpose] = mapped_column(
-        SqlEnum(PhoneVerificationPurpose, name="phone_verification_purpose"),
+        SqlEnum(
+            PhoneVerificationPurpose,
+            name="phone_verification_purpose",
+            values_callable=_enum_values,
+        ),
         nullable=False,
     )
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)

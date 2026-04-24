@@ -833,46 +833,20 @@ def _ensure_entries_columns() -> None:
 def _ensure_users_columns() -> None:
     """Ensure users.factory_code exists and is populated per factory."""
     try:
+        inspector = inspect(engine)
+        columns = {column["name"] for column in inspector.get_columns("users")}
         with engine.connect() as conn:
-            dialect = engine.dialect.name
-            if dialect == "sqlite":
-                cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(users)").fetchall()}
-                if "factory_code" not in cols:
-                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN factory_code VARCHAR(32)")
-                if "org_id" not in cols:
-                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN org_id VARCHAR(36)")
-                    conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_users_org_id ON users (org_id)")
-                if "google_id" not in cols:
-                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN google_id VARCHAR(255)")
-                if "profile_picture" not in cols:
-                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN profile_picture VARCHAR(500)")
-                if "auth_provider" not in cols:
-                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN auth_provider VARCHAR(32) DEFAULT 'local'")
-            else:
-                try:
-                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN factory_code VARCHAR(32)")
-                except Exception:
-                    pass
-                try:
-                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN org_id VARCHAR(36)")
-                except Exception:
-                    pass
-                try:
-                    conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_users_org_id ON users (org_id)")
-                except Exception:
-                    pass
-                try:
-                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN google_id VARCHAR(255)")
-                except Exception:
-                    pass
-                try:
-                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN profile_picture VARCHAR(500)")
-                except Exception:
-                    pass
-                try:
-                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN auth_provider VARCHAR(32) DEFAULT 'local'")
-                except Exception:
-                    pass
+            if "factory_code" not in columns:
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN factory_code VARCHAR(32)")
+            if "org_id" not in columns:
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN org_id VARCHAR(36)")
+            if "google_id" not in columns:
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN google_id VARCHAR(255)")
+            if "profile_picture" not in columns:
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN profile_picture VARCHAR(500)")
+            if "auth_provider" not in columns:
+                conn.exec_driver_sql("ALTER TABLE users ADD COLUMN auth_provider VARCHAR(32) DEFAULT 'local'")
+            conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_users_org_id ON users (org_id)")
 
             factories = conn.execute(text("SELECT DISTINCT factory_name FROM users")).fetchall()
             for (factory_name,) in factories:
@@ -936,6 +910,27 @@ def _ensure_phone_and_alerting_columns() -> None:
                     $$;
                     """
                 )
+                conn.exec_driver_sql(
+                    "ALTER TYPE phone_verification_status ADD VALUE IF NOT EXISTS 'pending'"
+                )
+                conn.exec_driver_sql(
+                    "ALTER TYPE phone_verification_status ADD VALUE IF NOT EXISTS 'verified'"
+                )
+                conn.exec_driver_sql(
+                    "ALTER TYPE phone_verification_status ADD VALUE IF NOT EXISTS 'failed'"
+                )
+                conn.exec_driver_sql(
+                    "ALTER TYPE phone_verification_channel ADD VALUE IF NOT EXISTS 'sms'"
+                )
+                conn.exec_driver_sql(
+                    "ALTER TYPE phone_verification_channel ADD VALUE IF NOT EXISTS 'whatsapp'"
+                )
+                conn.exec_driver_sql(
+                    "ALTER TYPE phone_verification_purpose ADD VALUE IF NOT EXISTS 'user_verification'"
+                )
+                conn.exec_driver_sql(
+                    "ALTER TYPE phone_verification_purpose ADD VALUE IF NOT EXISTS 'alert_recipient'"
+                )
 
             if "users" in table_names:
                 user_columns = {column["name"] for column in inspector.get_columns("users")}
@@ -945,7 +940,7 @@ def _ensure_phone_and_alerting_columns() -> None:
                     if dialect == "postgresql":
                         conn.exec_driver_sql(
                             "ALTER TABLE users ADD COLUMN phone_verification_status phone_verification_status "
-                            "NOT NULL DEFAULT 'pending'"
+                            "NOT NULL DEFAULT 'pending'::phone_verification_status"
                         )
                     else:
                         conn.exec_driver_sql(
@@ -1062,6 +1057,55 @@ def _ensure_phone_and_alerting_columns() -> None:
                     "CREATE INDEX IF NOT EXISTS ix_ops_alert_events_org_created_at_desc "
                     "ON ops_alert_events (org_id, created_at DESC)"
                 )
+
+            if "phone_verifications" not in table_names:
+                if dialect == "postgresql":
+                    conn.exec_driver_sql(
+                        """
+                        CREATE TABLE phone_verifications (
+                            id VARCHAR(36) PRIMARY KEY,
+                            phone_e164 VARCHAR(20) NOT NULL,
+                            otp_hash VARCHAR(72) NOT NULL,
+                            expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
+                            attempts INTEGER NOT NULL DEFAULT 0,
+                            used BOOLEAN NOT NULL DEFAULT FALSE,
+                            channel phone_verification_channel NOT NULL,
+                            purpose phone_verification_purpose NOT NULL,
+                            user_id INTEGER NULL REFERENCES users (id),
+                            recipient_id INTEGER NULL REFERENCES admin_alert_recipients (id),
+                            created_at TIMESTAMP WITH TIME ZONE NOT NULL
+                        )
+                        """
+                    )
+                else:
+                    conn.exec_driver_sql(
+                        """
+                        CREATE TABLE phone_verifications (
+                            id VARCHAR(36) PRIMARY KEY,
+                            phone_e164 VARCHAR(20) NOT NULL,
+                            otp_hash VARCHAR(72) NOT NULL,
+                            expires_at TIMESTAMP NOT NULL,
+                            attempts INTEGER NOT NULL DEFAULT 0,
+                            used BOOLEAN NOT NULL DEFAULT FALSE,
+                            channel VARCHAR(24) NOT NULL,
+                            purpose VARCHAR(40) NOT NULL,
+                            user_id INTEGER NULL REFERENCES users (id),
+                            recipient_id INTEGER NULL REFERENCES admin_alert_recipients (id),
+                            created_at TIMESTAMP NOT NULL
+                        )
+                        """
+                    )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_phone_verifications_phone_purpose_active "
+                "ON phone_verifications (phone_e164, purpose, used, expires_at)"
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_phone_verifications_user_id ON phone_verifications (user_id)"
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_phone_verifications_recipient_id "
+                "ON phone_verifications (recipient_id)"
+            )
 
             conn.commit()
     except Exception:

@@ -47,7 +47,11 @@ class User(Base):
     phone_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
     phone_e164: Mapped[str | None] = mapped_column(String(20), nullable=True)
     phone_verification_status: Mapped[PhoneVerificationStatus] = mapped_column(
-        SqlEnum(PhoneVerificationStatus, name="phone_verification_status"),
+        SqlEnum(
+            PhoneVerificationStatus,
+            name="phone_verification_status",
+            values_callable=lambda enum_cls: [str(member.value) for member in enum_cls],
+        ),
         nullable=False,
         default=PhoneVerificationStatus.PENDING,
     )
