@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 import os
 from typing import Any
@@ -94,18 +94,26 @@ def _current_org_id(current_user: User) -> str:
 
 
 def _serialize_alert_row(row: OpsAlertEvent) -> OpsAlertHistoryItem:
+    ref_id = str(row.ref_id or f"alert-{getattr(row, 'id', 'unknown')}")
+    event_type = str(row.event_type or "unknown_event")
+    severity = str(row.severity or "UNKNOWN").upper()
+    status = str(row.status or "queued").lower()
+    delivery_status = str(row.delivery_status or "queued").lower()
+    escalation_level = int(row.escalation_level or 0)
+    summary = str(row.summary or "Alert event recorded.")
+    timestamp = row.created_at or row.dispatched_at or datetime.now(timezone.utc)
     return OpsAlertHistoryItem(
-        ref_id=row.ref_id,
+        ref_id=ref_id,
         org_id=row.org_id,
         org_name=row.org_name,
-        event_type=row.event_type,
-        severity=row.severity,
-        status=row.status,
-        delivery_status=row.delivery_status,
+        event_type=event_type,
+        severity=severity,
+        status=status,
+        delivery_status=delivery_status,
         suppressed_reason=row.suppressed_reason,
-        escalation_level=row.escalation_level,
-        timestamp=row.created_at,
-        summary=row.summary,
+        escalation_level=escalation_level,
+        timestamp=timestamp,
+        summary=summary,
         recipient_phone=row.recipient_phone,
     )
 

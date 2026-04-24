@@ -1,8 +1,9 @@
-from http import HTTPStatus
 from datetime import datetime, timezone
+from http import HTTPStatus
 
 from backend.database import SessionLocal, init_db
 from backend.models.ops_alert_event import OpsAlertEvent
+from backend.routers.observability import _serialize_alert_row
 from backend.models.user import User
 
 from tests.utils import register_user
@@ -123,3 +124,33 @@ def test_alert_dashboard_returns_scoped_history_and_detail(http_client):
     assert detail_payload["status"] == "suppressed"
     assert detail_payload["suppressed_reason"] == "org_rate_limited"
     assert len(detail_payload["deliveries"]) == 1
+
+
+def test_alert_dashboard_tolerates_legacy_rows_with_missing_fields(http_client):
+    row = OpsAlertEvent(
+        ref_id="obs-legacy-1",
+        org_id="org-legacy",
+        org_name="Legacy Org",
+        event_type="",
+        severity="high",
+        status="queued",
+        dedup_key="legacy:1",
+        summary="legacy row",
+        recipient_phone=None,
+        meta=None,
+        provider="twilio",
+        delivery_status="queued",
+        created_at=datetime(2026, 4, 24, 13, 0, tzinfo=timezone.utc),
+    )
+    row.status = None  # type: ignore[assignment]
+    row.delivery_status = None  # type: ignore[assignment]
+    row.summary = None  # type: ignore[assignment]
+    row.escalation_level = None  # type: ignore[assignment]
+
+    payload = _serialize_alert_row(row)
+    assert payload.ref_id == "obs-legacy-1"
+    assert payload.event_type == "unknown_event"
+    assert payload.status == "queued"
+    assert payload.delivery_status == "queued"
+    assert payload.summary == "Alert event recorded."
+    assert payload.escalation_level == 0
