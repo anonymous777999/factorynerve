@@ -42,6 +42,31 @@ def test_cookie_session_flow(http_client, base_url):
     assert after.status_code == HTTPStatus.UNAUTHORIZED
 
 
+def test_safe_get_restores_missing_csrf_cookie_for_cookie_session(http_client, base_url):
+    register_user(http_client, use_cookies=True)
+
+    csrf_cookie = None
+    for cookie in http_client.cookies.jar:
+        if cookie.name == "dpr_csrf":
+            csrf_cookie = cookie
+            break
+    assert csrf_cookie is not None, "CSRF cookie not set on login/register."
+
+    if csrf_cookie.secure and base_url.startswith("http://"):
+        pytest.skip("Secure cookies are not sent over http. Set JWT_COOKIE_SECURE=0 for local dev.")
+
+    http_client.cookies.jar.clear(domain=csrf_cookie.domain, path=csrf_cookie.path, name=csrf_cookie.name)
+    assert http_client.cookies.get("dpr_csrf") is None
+
+    me = http_client.get("/auth/me")
+    assert me.status_code == HTTPStatus.OK, me.text
+    restored = http_client.cookies.get("dpr_csrf")
+    assert restored, "Expected GET /auth/me to restore missing CSRF cookie."
+
+    logout = http_client.post("/auth/logout", headers={"X-CSRF-Token": restored})
+    assert logout.status_code == HTTPStatus.OK, logout.text
+
+
 def test_session_timeout_behaves_like_unauthorized(http_client):
     user = register_user(http_client)
     bad = http_client.get(

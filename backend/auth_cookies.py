@@ -71,6 +71,21 @@ def generate_csrf_token() -> str:
     return secrets.token_urlsafe(32)
 
 
+def set_csrf_cookie(
+    *,
+    response,
+    csrf_token: str | None = None,
+    request: Request | None = None,
+) -> str:
+    csrf = csrf_token or generate_csrf_token()
+    response.set_cookie(
+        CSRF_COOKIE,
+        csrf,
+        **_cookie_kwargs(httponly=False, max_age=_refresh_max_age(), request=request),
+    )
+    return csrf
+
+
 def set_auth_cookies(
     *,
     response,
@@ -110,6 +125,10 @@ def get_access_cookie(request: Request) -> str | None:
 
 def get_refresh_cookie(request: Request) -> str | None:
     return request.cookies.get(REFRESH_COOKIE)
+
+
+def get_csrf_cookie(request: Request) -> str | None:
+    return request.cookies.get(CSRF_COOKIE)
 
 
 def require_csrf(request: Request) -> None:
