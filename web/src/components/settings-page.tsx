@@ -41,8 +41,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { SafeText } from "@/components/ui/safe-text";
 import { Select } from "@/components/ui/select";
+import SettingsAlertsTab from "@/components/settings-alerts-tab";
 
-type TabKey = "factory" | "users" | "usage";
+type TabKey = "factory" | "users" | "usage" | "alerts";
 
 const USER_ROLES = ["attendance", "operator", "supervisor", "accountant", "manager", "admin", "owner"];
 
@@ -107,6 +108,7 @@ export default function SettingsPage() {
   const canManage = user?.role === "manager" || user?.role === "admin" || user?.role === "owner";
   const canManageFactoryAccess = user?.role === "admin" || user?.role === "owner";
   const canViewBilling = user?.role === "admin" || user?.role === "owner";
+  const canManageAlerts = user?.role === "admin" || user?.role === "owner";
   const assignableRoles = useMemo(
     () =>
       user?.role === "admin" || user?.role === "owner"
@@ -446,6 +448,11 @@ export default function SettingsPage() {
                 <Button className="whitespace-nowrap" variant={tab === "usage" ? "primary" : "outline"} onClick={() => setTab("usage")}>
                   {t("settings.tabs.usage", "Usage")}
                 </Button>
+                {canManageAlerts ? (
+                  <Button className="whitespace-nowrap" variant={tab === "alerts" ? "primary" : "outline"} onClick={() => setTab("alerts")}>
+                    {t("settings.tabs.alerts", "Alerts")}
+                  </Button>
+                ) : null}
               </div>
             </ResponsiveScrollArea>
           </CardHeader>
@@ -1113,6 +1120,8 @@ export default function SettingsPage() {
             </Card>
           </div>
         ) : null}
+
+        {tab === "alerts" && canManageAlerts ? <SettingsAlertsTab active={tab === "alerts"} /> : null}
 
         {status ? <div className="text-sm text-green-400">{status}</div> : null}
         {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}

@@ -24,5 +24,6 @@
   "settings.cards.plan_status": "Plan {{plan}} · Billing status: {{status}}",
   "settings.tabs.factory": "Factory",
   "settings.tabs.users": "Users",
-  "settings.tabs.usage": "Usage"
+  "settings.tabs.usage": "Usage",
+  "settings.tabs.alerts": "Alerts"
 }
