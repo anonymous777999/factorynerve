@@ -51,6 +51,7 @@ class PhoneVerification(Base):
             PhoneVerificationChannel,
             name="phone_verification_channel",
             values_callable=_enum_values,
+            native_enum=False,
         ),
         nullable=False,
     )
@@ -59,6 +60,7 @@ class PhoneVerification(Base):
             PhoneVerificationPurpose,
             name="phone_verification_purpose",
             values_callable=_enum_values,
+            native_enum=False,
         ),
         nullable=False,
     )

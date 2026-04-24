@@ -51,6 +51,7 @@ class User(Base):
             PhoneVerificationStatus,
             name="phone_verification_status",
             values_callable=lambda enum_cls: [str(member.value) for member in enum_cls],
+            native_enum=False,
         ),
         nullable=False,
         default=PhoneVerificationStatus.PENDING,

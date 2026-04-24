@@ -892,61 +892,15 @@ def _ensure_phone_and_alerting_columns() -> None:
         table_names = set(inspector.get_table_names())
         dialect = engine.dialect.name
         with engine.connect() as conn:
-            if dialect == "postgresql":
-                conn.exec_driver_sql(
-                    """
-                    DO $$
-                    BEGIN
-                        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'phone_verification_status') THEN
-                            CREATE TYPE phone_verification_status AS ENUM ('pending', 'verified', 'failed');
-                        END IF;
-                        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'phone_verification_channel') THEN
-                            CREATE TYPE phone_verification_channel AS ENUM ('sms', 'whatsapp');
-                        END IF;
-                        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'phone_verification_purpose') THEN
-                            CREATE TYPE phone_verification_purpose AS ENUM ('user_verification', 'alert_recipient');
-                        END IF;
-                    END
-                    $$;
-                    """
-                )
-                conn.exec_driver_sql(
-                    "ALTER TYPE phone_verification_status ADD VALUE IF NOT EXISTS 'pending'"
-                )
-                conn.exec_driver_sql(
-                    "ALTER TYPE phone_verification_status ADD VALUE IF NOT EXISTS 'verified'"
-                )
-                conn.exec_driver_sql(
-                    "ALTER TYPE phone_verification_status ADD VALUE IF NOT EXISTS 'failed'"
-                )
-                conn.exec_driver_sql(
-                    "ALTER TYPE phone_verification_channel ADD VALUE IF NOT EXISTS 'sms'"
-                )
-                conn.exec_driver_sql(
-                    "ALTER TYPE phone_verification_channel ADD VALUE IF NOT EXISTS 'whatsapp'"
-                )
-                conn.exec_driver_sql(
-                    "ALTER TYPE phone_verification_purpose ADD VALUE IF NOT EXISTS 'user_verification'"
-                )
-                conn.exec_driver_sql(
-                    "ALTER TYPE phone_verification_purpose ADD VALUE IF NOT EXISTS 'alert_recipient'"
-                )
-
             if "users" in table_names:
                 user_columns = {column["name"] for column in inspector.get_columns("users")}
                 if "phone_e164" not in user_columns:
                     conn.exec_driver_sql("ALTER TABLE users ADD COLUMN phone_e164 VARCHAR(20)")
                 if "phone_verification_status" not in user_columns:
-                    if dialect == "postgresql":
-                        conn.exec_driver_sql(
-                            "ALTER TABLE users ADD COLUMN phone_verification_status phone_verification_status "
-                            "NOT NULL DEFAULT 'pending'::phone_verification_status"
-                        )
-                    else:
-                        conn.exec_driver_sql(
-                            "ALTER TABLE users ADD COLUMN phone_verification_status VARCHAR(24) "
-                            "NOT NULL DEFAULT 'pending'"
-                        )
+                    conn.exec_driver_sql(
+                        "ALTER TABLE users ADD COLUMN phone_verification_status VARCHAR(24) "
+                        "NOT NULL DEFAULT 'pending'"
+                    )
                 if "phone_verified_at" not in user_columns:
                     conn.exec_driver_sql("ALTER TABLE users ADD COLUMN phone_verified_at TIMESTAMP")
                 if "phone_last_otp_sent_at" not in user_columns:
@@ -1059,42 +1013,23 @@ def _ensure_phone_and_alerting_columns() -> None:
                 )
 
             if "phone_verifications" not in table_names:
-                if dialect == "postgresql":
-                    conn.exec_driver_sql(
-                        """
-                        CREATE TABLE phone_verifications (
-                            id VARCHAR(36) PRIMARY KEY,
-                            phone_e164 VARCHAR(20) NOT NULL,
-                            otp_hash VARCHAR(72) NOT NULL,
-                            expires_at TIMESTAMP WITH TIME ZONE NOT NULL,
-                            attempts INTEGER NOT NULL DEFAULT 0,
-                            used BOOLEAN NOT NULL DEFAULT FALSE,
-                            channel phone_verification_channel NOT NULL,
-                            purpose phone_verification_purpose NOT NULL,
-                            user_id INTEGER NULL REFERENCES users (id),
-                            recipient_id INTEGER NULL REFERENCES admin_alert_recipients (id),
-                            created_at TIMESTAMP WITH TIME ZONE NOT NULL
-                        )
-                        """
+                conn.exec_driver_sql(
+                    """
+                    CREATE TABLE phone_verifications (
+                        id VARCHAR(36) PRIMARY KEY,
+                        phone_e164 VARCHAR(20) NOT NULL,
+                        otp_hash VARCHAR(72) NOT NULL,
+                        expires_at TIMESTAMP NOT NULL,
+                        attempts INTEGER NOT NULL DEFAULT 0,
+                        used BOOLEAN NOT NULL DEFAULT FALSE,
+                        channel VARCHAR(24) NOT NULL,
+                        purpose VARCHAR(40) NOT NULL,
+                        user_id INTEGER NULL REFERENCES users (id),
+                        recipient_id INTEGER NULL REFERENCES admin_alert_recipients (id),
+                        created_at TIMESTAMP NOT NULL
                     )
-                else:
-                    conn.exec_driver_sql(
-                        """
-                        CREATE TABLE phone_verifications (
-                            id VARCHAR(36) PRIMARY KEY,
-                            phone_e164 VARCHAR(20) NOT NULL,
-                            otp_hash VARCHAR(72) NOT NULL,
-                            expires_at TIMESTAMP NOT NULL,
-                            attempts INTEGER NOT NULL DEFAULT 0,
-                            used BOOLEAN NOT NULL DEFAULT FALSE,
-                            channel VARCHAR(24) NOT NULL,
-                            purpose VARCHAR(40) NOT NULL,
-                            user_id INTEGER NULL REFERENCES users (id),
-                            recipient_id INTEGER NULL REFERENCES admin_alert_recipients (id),
-                            created_at TIMESTAMP NOT NULL
-                        )
-                        """
-                    )
+                    """
+                )
             conn.exec_driver_sql(
                 "CREATE INDEX IF NOT EXISTS ix_phone_verifications_phone_purpose_active "
                 "ON phone_verifications (phone_e164, purpose, used, expires_at)"

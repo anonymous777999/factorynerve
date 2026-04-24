@@ -27,48 +27,13 @@ def upgrade() -> None:
     inspector = sa.inspect(bind)
     table_names = set(inspector.get_table_names())
 
-    if bind.dialect.name == "postgresql":
-        op.execute(
-            """
-            DO $$
-            BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'phone_verification_status') THEN
-                    CREATE TYPE phone_verification_status AS ENUM ('pending', 'verified', 'failed');
-                END IF;
-                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'phone_verification_channel') THEN
-                    CREATE TYPE phone_verification_channel AS ENUM ('sms', 'whatsapp');
-                END IF;
-                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'phone_verification_purpose') THEN
-                    CREATE TYPE phone_verification_purpose AS ENUM ('user_verification', 'alert_recipient');
-                END IF;
-            END
-            $$;
-            """
-        )
-        op.execute("ALTER TYPE phone_verification_status ADD VALUE IF NOT EXISTS 'pending'")
-        op.execute("ALTER TYPE phone_verification_status ADD VALUE IF NOT EXISTS 'verified'")
-        op.execute("ALTER TYPE phone_verification_status ADD VALUE IF NOT EXISTS 'failed'")
-        op.execute("ALTER TYPE phone_verification_channel ADD VALUE IF NOT EXISTS 'sms'")
-        op.execute("ALTER TYPE phone_verification_channel ADD VALUE IF NOT EXISTS 'whatsapp'")
-        op.execute("ALTER TYPE phone_verification_purpose ADD VALUE IF NOT EXISTS 'user_verification'")
-        op.execute("ALTER TYPE phone_verification_purpose ADD VALUE IF NOT EXISTS 'alert_recipient'")
-    else:
-        phone_verification_status.create(bind, checkfirst=True)
-        phone_verification_channel.create(bind, checkfirst=True)
-        phone_verification_purpose.create(bind, checkfirst=True)
-
     user_columns = {column["name"] for column in inspector.get_columns("users")}
     if "phone_e164" not in user_columns:
         op.add_column("users", sa.Column("phone_e164", sa.String(length=20), nullable=True))
     if "phone_verification_status" not in user_columns:
-        default_clause = (
-            sa.text("'pending'::phone_verification_status")
-            if bind.dialect.name == "postgresql"
-            else sa.text("'pending'")
-        )
         op.add_column(
             "users",
-            sa.Column("phone_verification_status", phone_verification_status, nullable=False, server_default=default_clause),
+            sa.Column("phone_verification_status", sa.String(length=24), nullable=False, server_default="pending"),
         )
     if "phone_verified_at" not in user_columns:
         op.add_column("users", sa.Column("phone_verified_at", sa.DateTime(timezone=True), nullable=True))
@@ -112,8 +77,8 @@ def upgrade() -> None:
             sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
             sa.Column("attempts", sa.Integer(), nullable=False, server_default="0"),
             sa.Column("used", sa.Boolean(), nullable=False, server_default=sa.false()),
-            sa.Column("channel", phone_verification_channel, nullable=False),
-            sa.Column("purpose", phone_verification_purpose, nullable=False),
+            sa.Column("channel", sa.String(length=24), nullable=False),
+            sa.Column("purpose", sa.String(length=40), nullable=False),
             sa.Column("user_id", sa.Integer(), nullable=True),
             sa.Column("recipient_id", sa.Integer(), nullable=True),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
