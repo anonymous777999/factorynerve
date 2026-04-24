@@ -249,6 +249,7 @@ def init_db() -> None:
         _ensure_factory_profile_columns()
         _ensure_factory_template_columns()
         _ensure_user_code_columns()
+        _ensure_users_columns()
         _ensure_auth_email_columns()
         _ensure_entry_idempotency_columns()
         _ensure_entry_performance_indexes()
@@ -256,6 +257,7 @@ def init_db() -> None:
         _ensure_ocr_verification_columns()
         _ensure_steel_columns()
         _ensure_attendance_columns()
+        _ensure_phone_and_alerting_columns()
         logger.info("Database initialization complete.")
     except Exception as error:  # pylint: disable=broad-except
         logger.exception("Database initialization failed.")
@@ -907,6 +909,163 @@ def _ensure_users_columns() -> None:
             conn.commit()
     except Exception:
         logger.exception("Failed to ensure users.factory_code column.")
+
+
+def _ensure_phone_and_alerting_columns() -> None:
+    """Backfill newer phone verification and alerting columns when migrations were skipped."""
+    try:
+        inspector = inspect(engine)
+        table_names = set(inspector.get_table_names())
+        dialect = engine.dialect.name
+        with engine.connect() as conn:
+            if dialect == "postgresql":
+                conn.exec_driver_sql(
+                    """
+                    DO $$
+                    BEGIN
+                        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'phone_verification_status') THEN
+                            CREATE TYPE phone_verification_status AS ENUM ('pending', 'verified', 'failed');
+                        END IF;
+                        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'phone_verification_channel') THEN
+                            CREATE TYPE phone_verification_channel AS ENUM ('sms', 'whatsapp');
+                        END IF;
+                        IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'phone_verification_purpose') THEN
+                            CREATE TYPE phone_verification_purpose AS ENUM ('user_verification', 'alert_recipient');
+                        END IF;
+                    END
+                    $$;
+                    """
+                )
+
+            if "users" in table_names:
+                user_columns = {column["name"] for column in inspector.get_columns("users")}
+                if "phone_e164" not in user_columns:
+                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN phone_e164 VARCHAR(20)")
+                if "phone_verification_status" not in user_columns:
+                    if dialect == "postgresql":
+                        conn.exec_driver_sql(
+                            "ALTER TABLE users ADD COLUMN phone_verification_status phone_verification_status "
+                            "NOT NULL DEFAULT 'pending'"
+                        )
+                    else:
+                        conn.exec_driver_sql(
+                            "ALTER TABLE users ADD COLUMN phone_verification_status VARCHAR(24) "
+                            "NOT NULL DEFAULT 'pending'"
+                        )
+                if "phone_verified_at" not in user_columns:
+                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN phone_verified_at TIMESTAMP")
+                if "phone_last_otp_sent_at" not in user_columns:
+                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN phone_last_otp_sent_at TIMESTAMP")
+                if "phone_otp_attempts" not in user_columns:
+                    conn.exec_driver_sql(
+                        "ALTER TABLE users ADD COLUMN phone_otp_attempts INTEGER NOT NULL DEFAULT 0"
+                    )
+                conn.exec_driver_sql(
+                    "UPDATE users SET phone_e164 = phone_number "
+                    "WHERE phone_e164 IS NULL AND phone_number IS NOT NULL AND TRIM(phone_number) != ''"
+                )
+                conn.exec_driver_sql(
+                    "UPDATE users SET phone_verification_status = 'pending' "
+                    "WHERE phone_verification_status IS NULL OR TRIM(CAST(phone_verification_status AS TEXT)) = ''"
+                )
+                conn.exec_driver_sql(
+                    "UPDATE users SET phone_otp_attempts = 0 WHERE phone_otp_attempts IS NULL"
+                )
+
+            if "admin_alert_recipients" in table_names:
+                recipient_columns = {column["name"] for column in inspector.get_columns("admin_alert_recipients")}
+                if "phone_e164" not in recipient_columns:
+                    conn.exec_driver_sql("ALTER TABLE admin_alert_recipients ADD COLUMN phone_e164 VARCHAR(20)")
+                if "verification_status" not in recipient_columns:
+                    conn.exec_driver_sql(
+                        "ALTER TABLE admin_alert_recipients ADD COLUMN verification_status VARCHAR(24) "
+                        "NOT NULL DEFAULT 'pending'"
+                    )
+                if "verified_at" not in recipient_columns:
+                    conn.exec_driver_sql("ALTER TABLE admin_alert_recipients ADD COLUMN verified_at TIMESTAMP")
+                if "verified_by_user_id" not in recipient_columns:
+                    conn.exec_driver_sql("ALTER TABLE admin_alert_recipients ADD COLUMN verified_by_user_id INTEGER")
+                if "otp_attempts" not in recipient_columns:
+                    conn.exec_driver_sql(
+                        "ALTER TABLE admin_alert_recipients ADD COLUMN otp_attempts INTEGER NOT NULL DEFAULT 0"
+                    )
+                if "last_otp_sent_at" not in recipient_columns:
+                    conn.exec_driver_sql(
+                        "ALTER TABLE admin_alert_recipients ADD COLUMN last_otp_sent_at TIMESTAMP"
+                    )
+                if "event_types" not in recipient_columns:
+                    if dialect == "postgresql":
+                        conn.exec_driver_sql("ALTER TABLE admin_alert_recipients ADD COLUMN event_types JSONB")
+                    else:
+                        conn.exec_driver_sql("ALTER TABLE admin_alert_recipients ADD COLUMN event_types JSON")
+                if "severity_levels" not in recipient_columns:
+                    if dialect == "postgresql":
+                        conn.exec_driver_sql("ALTER TABLE admin_alert_recipients ADD COLUMN severity_levels JSONB")
+                    else:
+                        conn.exec_driver_sql("ALTER TABLE admin_alert_recipients ADD COLUMN severity_levels JSON")
+                if "receive_daily_summary" not in recipient_columns:
+                    conn.exec_driver_sql(
+                        "ALTER TABLE admin_alert_recipients ADD COLUMN receive_daily_summary BOOLEAN NOT NULL DEFAULT TRUE"
+                    )
+                conn.exec_driver_sql(
+                    "UPDATE admin_alert_recipients SET phone_e164 = phone_number "
+                    "WHERE phone_e164 IS NULL AND phone_number IS NOT NULL AND TRIM(phone_number) != ''"
+                )
+                conn.exec_driver_sql(
+                    "UPDATE admin_alert_recipients SET verification_status = 'pending' "
+                    "WHERE verification_status IS NULL OR TRIM(verification_status) = ''"
+                )
+                conn.exec_driver_sql(
+                    "UPDATE admin_alert_recipients SET otp_attempts = 0 WHERE otp_attempts IS NULL"
+                )
+                conn.exec_driver_sql(
+                    "UPDATE admin_alert_recipients SET receive_daily_summary = TRUE "
+                    "WHERE receive_daily_summary IS NULL"
+                )
+
+            if "ops_alert_events" in table_names:
+                alert_columns = {column["name"] for column in inspector.get_columns("ops_alert_events")}
+                if "org_id" not in alert_columns:
+                    conn.exec_driver_sql("ALTER TABLE ops_alert_events ADD COLUMN org_id VARCHAR(36)")
+                if "org_name" not in alert_columns:
+                    conn.exec_driver_sql("ALTER TABLE ops_alert_events ADD COLUMN org_name VARCHAR(200)")
+                if "status" not in alert_columns:
+                    conn.exec_driver_sql(
+                        "ALTER TABLE ops_alert_events ADD COLUMN status VARCHAR(24) NOT NULL DEFAULT 'queued'"
+                    )
+                if "group_key" not in alert_columns:
+                    conn.exec_driver_sql("ALTER TABLE ops_alert_events ADD COLUMN group_key VARCHAR(255)")
+                if "escalation_level" not in alert_columns:
+                    conn.exec_driver_sql(
+                        "ALTER TABLE ops_alert_events ADD COLUMN escalation_level INTEGER NOT NULL DEFAULT 0"
+                    )
+                if "is_summary" not in alert_columns:
+                    conn.exec_driver_sql(
+                        "ALTER TABLE ops_alert_events ADD COLUMN is_summary BOOLEAN NOT NULL DEFAULT FALSE"
+                    )
+                if "suppressed_reason" not in alert_columns:
+                    conn.exec_driver_sql("ALTER TABLE ops_alert_events ADD COLUMN suppressed_reason VARCHAR(64)")
+                conn.exec_driver_sql(
+                    "UPDATE ops_alert_events SET status = 'queued' WHERE status IS NULL OR TRIM(status) = ''"
+                )
+                conn.exec_driver_sql(
+                    "UPDATE ops_alert_events SET escalation_level = 0 WHERE escalation_level IS NULL"
+                )
+                conn.exec_driver_sql(
+                    "UPDATE ops_alert_events SET is_summary = FALSE WHERE is_summary IS NULL"
+                )
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS ix_ops_alert_events_org_created_at "
+                    "ON ops_alert_events (org_id, created_at)"
+                )
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS ix_ops_alert_events_org_created_at_desc "
+                    "ON ops_alert_events (org_id, created_at DESC)"
+                )
+
+            conn.commit()
+    except Exception:
+        logger.exception("Failed to ensure phone verification and alerting columns.")
 
 
 def _ensure_auth_email_columns() -> None:

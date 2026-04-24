@@ -153,6 +153,8 @@ def main() -> None:
                 "[render-start] Alembic upgrade failed; falling back to app init_db startup path. "
                 f"Exit status: {error.returncode}"
             )
+            _run_init_db(env)
+            print("[render-start] init_db compatibility bootstrap completed after Alembic failure.")
 
     os.execvpe(
         sys.executable,
