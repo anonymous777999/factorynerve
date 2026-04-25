@@ -35,12 +35,13 @@ def _is_exempt(path: str) -> bool:
 
 
 def apply_cookie_csrf(app: FastAPI) -> None:
-    def _attach_missing_csrf_cookie(request: Request, response: Response) -> Response:
-        if get_csrf_cookie(request):
-            return response
+    def _ensure_csrf_cookie_and_header(request: Request, response: Response) -> Response:
         if not (get_access_cookie(request) or get_refresh_cookie(request)):
             return response
-        csrf = set_csrf_cookie(response=response, request=request)
+
+        csrf = get_csrf_cookie(request)
+        if not csrf:
+            csrf = set_csrf_cookie(response=response, request=request)
         response.headers.setdefault("X-CSRF-Token", csrf)
         return response
 
@@ -48,7 +49,7 @@ def apply_cookie_csrf(app: FastAPI) -> None:
     async def cookie_csrf_middleware(request: Request, call_next: Callable) -> Response:
         if request.method in SAFE_METHODS or _is_exempt(request.url.path):
             response = await call_next(request)
-            return _attach_missing_csrf_cookie(request, response)
+            return _ensure_csrf_cookie_and_header(request, response)
 
         if request.headers.get("Authorization"):
             return await call_next(request)

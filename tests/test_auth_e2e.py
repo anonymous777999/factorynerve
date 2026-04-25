@@ -67,6 +67,24 @@ def test_safe_get_restores_missing_csrf_cookie_for_cookie_session(http_client, b
     assert logout.status_code == HTTPStatus.OK, logout.text
 
 
+def test_safe_get_exposes_csrf_header_for_cookie_session(http_client, base_url):
+    register_user(http_client, use_cookies=True)
+
+    csrf_cookie = None
+    for cookie in http_client.cookies.jar:
+        if cookie.name == "dpr_csrf":
+            csrf_cookie = cookie
+            break
+    assert csrf_cookie is not None, "CSRF cookie not set on login/register."
+
+    if csrf_cookie.secure and base_url.startswith("http://"):
+        pytest.skip("Secure cookies are not sent over http. Set JWT_COOKIE_SECURE=0 for local dev.")
+
+    me = http_client.get("/auth/me")
+    assert me.status_code == HTTPStatus.OK, me.text
+    assert me.headers.get("X-CSRF-Token") == http_client.cookies.get("dpr_csrf")
+
+
 def test_session_timeout_behaves_like_unauthorized(http_client):
     user = register_user(http_client)
     bad = http_client.get(
