@@ -27,6 +27,7 @@ import {
   type OcrVerificationRecord,
   type OcrVerificationSavePayload,
 } from "@/lib/ocr";
+import { buildStructuredPdfBlob, exportRowsToCsv, exportRowsToMarkdown } from "@/lib/ocr-export";
 import { triggerBlobDownload } from "@/lib/reports";
 import { cn } from "@/lib/utils";
 import { signalWorkflowRefresh, subscribeToWorkflowRefresh } from "@/lib/workflow-sync";
@@ -75,14 +76,6 @@ function fallbackHeaders(
     );
   }
   return headers;
-}
-
-function toCsv(headers: string[], rows: string[][]) {
-  const escape = (value: string) => `"${String(value).replaceAll('"', '""')}"`;
-  return [
-    headers.map(escape).join(","),
-    ...rows.map((row) => headers.map((_, index) => escape(row[index] || "")).join(",")),
-  ].join("\n");
 }
 
 function formatTimestamp(value?: string | null) {
@@ -390,6 +383,9 @@ function ReviewWorkspace({
   onApprove,
   onReject,
   onDownloadExcel,
+  onDownloadCsv,
+  onDownloadPdf,
+  onCopyMarkdown,
   onApplySafeCleanup,
   onAddRow,
   onRemoveRow,
@@ -426,6 +422,9 @@ function ReviewWorkspace({
   onApprove: () => void;
   onReject: () => void;
   onDownloadExcel: () => void;
+  onDownloadCsv: () => void;
+  onDownloadPdf: () => void;
+  onCopyMarkdown: () => void;
   onApplySafeCleanup: () => void;
   onAddRow: () => void;
   onRemoveRow: (rowIndex: number) => void;
@@ -921,12 +920,14 @@ function ReviewWorkspace({
           <Button variant="outline" onClick={onDownloadExcel} disabled={!rows.length || busy}>
             {verificationExportLabel(activeVerification)}
           </Button>
-          <Button
-            variant="outline"
-            onClick={() => triggerBlobDownload(new Blob([toCsv(headers, rows)], { type: "text/csv;charset=utf-8" }), "ocr-reviewed.csv")}
-            disabled={!rows.length}
-          >
+          <Button variant="outline" onClick={onDownloadCsv} disabled={!rows.length}>
             Download CSV
+          </Button>
+          <Button variant="outline" onClick={onDownloadPdf} disabled={!rows.length}>
+            Download PDF
+          </Button>
+          <Button variant="outline" onClick={onCopyMarkdown} disabled={!rows.length}>
+            Copy Markdown
           </Button>
         </div>
       </CardHeader>
@@ -1319,7 +1320,16 @@ export default function OcrVerificationPage() {
     setLanguage(record.language || "eng");
     setColumns(record.columns || 3);
     setPreview({
+      type: record.doc_type_hint || "table",
+      title: record.source_filename || "OCR Extraction",
+      headers: record.headers || [],
       rows: record.original_rows || [],
+      raw_text: record.raw_text || null,
+      language: record.language || "eng",
+      confidence: record.avg_confidence || 0,
+      routing: record.routing_meta || null,
+      reused: false,
+      reused_verification_id: record.id,
       columns: record.columns || 3,
       avg_confidence: record.avg_confidence || 0,
       warnings: record.warnings || [],
@@ -1483,6 +1493,10 @@ export default function OcrVerificationPage() {
     language,
     avgConfidence: preview?.avg_confidence ?? activeVerification?.avg_confidence ?? null,
     warnings: preview?.warnings ?? activeVerification?.warnings ?? [],
+    documentHash: activeVerification?.document_hash ?? null,
+    docTypeHint: activeVerification?.doc_type_hint ?? preview?.type ?? "table",
+    routingMeta: activeVerification?.routing_meta ?? preview?.routing ?? null,
+    rawText: activeVerification?.raw_text ?? preview?.raw_text ?? null,
     headers,
     originalRows: preview?.rows ?? activeVerification?.original_rows ?? rows,
     reviewedRows: rows,
@@ -1623,6 +1637,39 @@ export default function OcrVerificationPage() {
       setError(formatApiErrorMessage(err, "Could not download reviewed Excel."));
     } finally {
       setBusy(false);
+    }
+  };
+
+  const handleDownloadCsv = async () => {
+    try {
+      const csv = exportRowsToCsv(headers, rows);
+      triggerBlobDownload(new Blob([csv], { type: "text/csv;charset=utf-8" }), "ocr-reviewed.csv");
+      setStatus("Downloaded CSV review export.");
+    } catch (err) {
+      setError(formatApiErrorMessage(err, "Could not prepare reviewed CSV."));
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    try {
+      const pdf = await buildStructuredPdfBlob({
+        title: activeVerification?.source_filename || "OCR Review Export",
+        headers,
+        rows,
+      });
+      triggerBlobDownload(pdf, "ocr-reviewed.pdf");
+      setStatus("Downloaded PDF review export.");
+    } catch (err) {
+      setError(formatApiErrorMessage(err, "Could not prepare reviewed PDF."));
+    }
+  };
+
+  const handleCopyMarkdown = async () => {
+    try {
+      await navigator.clipboard.writeText(exportRowsToMarkdown(headers, rows));
+      setStatus("Copied Markdown review table.");
+    } catch (err) {
+      setError(formatApiErrorMessage(err, "Could not copy Markdown table."));
     }
   };
 
@@ -2189,6 +2236,9 @@ export default function OcrVerificationPage() {
               onApprove={handleApprove}
               onReject={handleReject}
               onDownloadExcel={handleDownloadExcel}
+              onDownloadCsv={handleDownloadCsv}
+              onDownloadPdf={handleDownloadPdf}
+              onCopyMarkdown={handleCopyMarkdown}
               onApplySafeCleanup={handleApplySafeCleanup}
               onAddRow={addRow}
               onRemoveRow={removeRow}
@@ -2239,6 +2289,9 @@ export default function OcrVerificationPage() {
               onApprove={handleApprove}
               onReject={handleReject}
               onDownloadExcel={handleDownloadExcel}
+              onDownloadCsv={handleDownloadCsv}
+              onDownloadPdf={handleDownloadPdf}
+              onCopyMarkdown={handleCopyMarkdown}
               onApplySafeCleanup={handleApplySafeCleanup}
               onAddRow={addRow}
               onRemoveRow={removeRow}

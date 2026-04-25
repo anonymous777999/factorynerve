@@ -16,6 +16,20 @@ def _verification_form():
         "language": "eng",
         "avg_confidence": "88.5",
         "warnings": json.dumps(["low contrast"]),
+        "document_hash": "abc123",
+        "doc_type_hint": "logbook",
+        "routing_meta": json.dumps(
+            {
+                "clarity_score": 91,
+                "score_reason": "known document type",
+                "model_tier": "fast",
+                "forced": False,
+                "scorer_used": True,
+                "actual_cost_usd": 0.0008,
+                "cost_saved_usd": 0.0132,
+            }
+        ),
+        "raw_text": "2026-03-29 | 125 | 125 / ok",
         "headers": json.dumps(["Date", "Output", "Raw"]),
         "original_rows": json.dumps([["2026-03-29", "120", "120 / ok"]]),
         "reviewed_rows": json.dumps([["2026-03-29", "125", "125 / ok"]]),
@@ -40,6 +54,10 @@ def test_ocr_verification_draft_submit_approve(http_client):
     created_payload = created.json()
     assert created_payload["status"] == "draft"
     assert created_payload["created_by_name"] == "QA User"
+    assert created_payload["document_hash"] == "abc123"
+    assert created_payload["doc_type_hint"] == "logbook"
+    assert created_payload["raw_text"] == "2026-03-29 | 125 | 125 / ok"
+    assert created_payload["routing_meta"]["model_tier"] == "fast"
     verification_id = created_payload["id"]
 
     listing = http_client.get("/ocr/verifications", headers=headers)
@@ -203,6 +221,18 @@ def test_ocr_verification_update_persists_scan_quality_and_audit_log(http_client
         json={
             "avg_confidence": 61.2,
             "warnings": ["blurred edge", "manual fix applied"],
+            "document_hash": "updated-hash",
+            "doc_type_hint": "dispatch-note",
+            "routing_meta": {
+                "clarity_score": 63,
+                "score_reason": "blur lowered clarity",
+                "model_tier": "balanced",
+                "forced": False,
+                "scorer_used": True,
+                "actual_cost_usd": 0.0035,
+                "cost_saved_usd": 0.0105,
+            },
+            "raw_text": "updated raw text",
             "scan_quality": {
                 "confidence_band": "medium",
                 "quality_signals": ["low light", "tilt corrected"],
@@ -224,6 +254,10 @@ def test_ocr_verification_update_persists_scan_quality_and_audit_log(http_client
     payload = updated.json()
     assert payload["avg_confidence"] == 61.2
     assert payload["warnings"] == ["blurred edge", "manual fix applied"]
+    assert payload["document_hash"] == "updated-hash"
+    assert payload["doc_type_hint"] == "dispatch-note"
+    assert payload["routing_meta"]["model_tier"] == "balanced"
+    assert payload["raw_text"] == "updated raw text"
     assert payload["scan_quality"] == {
         "confidence_band": "medium",
         "quality_signals": ["low light", "tilt corrected"],

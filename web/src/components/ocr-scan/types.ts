@@ -12,5 +12,12 @@ export type OCRFields = {
   quantity: string;
 };
 
-export const DETECTING_TEXT = "Detecting...";
+export type StructuredOcrResultState = {
+  type: string;
+  title: string;
+  headers: string[];
+  rows: string[][];
+  rawText?: string | null;
+};
 
+export const DETECTING_TEXT = "Detecting...";

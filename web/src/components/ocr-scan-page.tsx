@@ -12,10 +12,13 @@ import {
 } from "react";
 
 import { OcrGuideCard } from "@/components/ocr-guide-card";
+import { OcrResultsGrid } from "@/components/ocr-scan/ocr-results-grid";
+import { OcrRoutingBadge } from "@/components/ocr-scan/ocr-routing-badge";
 import { Button } from "@/components/ui/button";
-import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
+import { Select } from "@/components/ui/select";
 import { formatApiErrorMessage } from "@/lib/api";
 import { transferBlob } from "@/lib/blob-transfer";
+import { prepareOcrUploadFile } from "@/lib/file-prep";
 import { createImageEnhancer } from "@/lib/image-enhance-client";
 import { defaultEnhanceSettings, type CropBox, type EnhanceSettings } from "@/lib/image-enhance";
 import { canUseOcrScan, validateOcrImageFile } from "@/lib/ocr-access";
@@ -23,33 +26,36 @@ import {
   createOcrVerification,
   downloadOcrVerificationExport,
   previewOcrLogbook,
+  updateOcrVerification,
   warpOcrImage,
   type OcrPreviewResult,
+  type OcrRoutingMeta,
 } from "@/lib/ocr";
+import { buildStructuredPdfBlob, exportRowsToCsv, exportRowsToMarkdown } from "@/lib/ocr-export";
 import { useSession } from "@/lib/use-session";
 import { signalWorkflowRefresh } from "@/lib/workflow-sync";
 import { cn } from "@/lib/utils";
 
 type ScanScreen = "camera" | "crop" | "enhance" | "output" | "processing" | "result";
 type FilterPreset = "original" | "clean" | "contrast";
-type OutputChoice = "excel" | "pdf";
+type OutputChoice = "excel" | "pdf" | "csv";
 type ProcessingStage = "analyzing" | "extracting" | "formatting";
-type OCRFields = {
-  date: string;
-  material: string;
-  quantity: string;
-};
-type LastFields = OCRFields & { updatedAt: number };
 type CropPoint = { x: number; y: number };
 type ResultPreview = {
+  type: string;
+  title: string;
+  headers: string[];
   rows: string[][];
   columns: number;
   language: string;
   avgConfidence: number | null;
   rawColumnAdded: boolean;
+  rawText?: string | null;
+  routing?: OcrRoutingMeta | null;
+  reused?: boolean;
+  warnings?: string[];
 };
 
-const LAST_FIELD_STORAGE_KEY = "dpr:ocr:last-fields:v2";
 const OUTPUT_FILE_NAME = "factory-scan";
 const FULL_CROP: CropBox = { left: 0, top: 0, right: 1, bottom: 1 };
 const DEFAULT_CROP_POINTS: CropPoint[] = [
@@ -197,38 +203,6 @@ function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promi
   });
 }
 
-function normalizeRows(result: OcrPreviewResult, lastFields: LastFields | null) {
-  const columns = Math.max(result.columns || 0, ...result.rows.map((row) => row.length), 3);
-  const normalized = (result.rows.length ? result.rows : [Array.from({ length: columns }, () => "")]).map((row) =>
-    Array.from({ length: columns }, (_, index) => String(row[index] ?? "")),
-  );
-  if (lastFields && normalized[0]) {
-    if (!normalized[0][0]?.trim()) normalized[0][0] = lastFields.date;
-    if (!normalized[0][1]?.trim()) normalized[0][1] = lastFields.material;
-    if (!normalized[0][2]?.trim()) normalized[0][2] = lastFields.quantity;
-  }
-  return normalized;
-}
-
-function extractFields(rows: string[][], lastFields: LastFields | null): OCRFields {
-  const firstRow = rows[0] || [];
-  return {
-    date: firstRow[0]?.trim() || lastFields?.date || "",
-    material: firstRow[1]?.trim() || lastFields?.material || "",
-    quantity: firstRow[2]?.trim() || lastFields?.quantity || "",
-  };
-}
-
-function applyFieldsToRows(rows: string[][], fields: OCRFields) {
-  const next = rows.map((row) => [...row]);
-  if (!next.length) next.push(["", "", ""]);
-  while (next[0].length < 3) next[0].push("");
-  next[0][0] = fields.date;
-  next[0][1] = fields.material;
-  next[0][2] = fields.quantity;
-  return next;
-}
-
 function hintsFromWarnings(warnings: string[] | undefined) {
   const hints: string[] = [];
   for (const warning of warnings || []) {
@@ -251,100 +225,6 @@ function summarizeCrop(points: CropPoint[]) {
 function formatConfidence(value: number | null) {
   if (value == null || Number.isNaN(value)) return "Not available";
   return `${Math.round(value)}%`;
-}
-
-async function blobToUint8Array(blob: Blob) {
-  return new Uint8Array(await blob.arrayBuffer());
-}
-
-function concatUint8Arrays(chunks: Uint8Array[]) {
-  const total = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
-  const result = new Uint8Array(total);
-  let offset = 0;
-  for (const chunk of chunks) {
-    result.set(chunk, offset);
-    offset += chunk.length;
-  }
-  return result;
-}
-
-async function buildPdfBlobFromImage(file: File) {
-  const bitmap = await createImageBitmap(file);
-  const canvas = document.createElement("canvas");
-  canvas.width = bitmap.width;
-  canvas.height = bitmap.height;
-  const context = canvas.getContext("2d");
-  if (!context) {
-    throw new Error("Canvas is unavailable.");
-  }
-  context.drawImage(bitmap, 0, 0);
-  const jpegBlob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob(
-      (blob) => (blob ? resolve(blob) : reject(new Error("Could not prepare PDF preview."))),
-      "image/jpeg",
-      0.9,
-    );
-  });
-
-  const imageBytes = await blobToUint8Array(jpegBlob);
-  const pageWidth = bitmap.width >= bitmap.height ? 841.89 : 595.28;
-  const pageHeight = bitmap.width >= bitmap.height ? 595.28 : 841.89;
-  const margin = 24;
-  const scale = Math.min((pageWidth - margin * 2) / bitmap.width, (pageHeight - margin * 2) / bitmap.height);
-  const drawWidth = bitmap.width * scale;
-  const drawHeight = bitmap.height * scale;
-  const originX = (pageWidth - drawWidth) / 2;
-  const originY = (pageHeight - drawHeight) / 2;
-
-  const encoder = new TextEncoder();
-  const header = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34, 0x0a, 0x25, 0xe2, 0xe3, 0xcf, 0xd3, 0x0a]);
-  const contentStream = encoder.encode(
-    `q\n${drawWidth.toFixed(2)} 0 0 ${drawHeight.toFixed(2)} ${originX.toFixed(2)} ${originY.toFixed(2)} cm\n/Im0 Do\nQ\n`,
-  );
-
-  const objects: Uint8Array[] = [
-    encoder.encode("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"),
-    encoder.encode("2 0 obj\n<< /Type /Pages /Count 1 /Kids [3 0 R] >>\nendobj\n"),
-    encoder.encode(
-      `3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pageWidth.toFixed(2)} ${pageHeight.toFixed(2)}] /Resources << /ProcSet [/PDF /ImageC] /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`,
-    ),
-    concatUint8Arrays([
-      encoder.encode(
-        `4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${bitmap.width} /Height ${bitmap.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${imageBytes.length} >>\nstream\n`,
-      ),
-      imageBytes,
-      encoder.encode("\nendstream\nendobj\n"),
-    ]),
-    concatUint8Arrays([
-      encoder.encode(`5 0 obj\n<< /Length ${contentStream.length} >>\nstream\n`),
-      contentStream,
-      encoder.encode("endstream\nendobj\n"),
-    ]),
-  ];
-
-  let offset = header.length;
-  const offsets = [0];
-  for (const object of objects) {
-    offsets.push(offset);
-    offset += object.length;
-  }
-
-  const xrefOffset = offset;
-  const xrefLines = [
-    "xref",
-    `0 ${objects.length + 1}`,
-    "0000000000 65535 f ",
-    ...offsets.slice(1).map((value) => `${String(value).padStart(10, "0")} 00000 n `),
-    "trailer",
-    `<< /Size ${objects.length + 1} /Root 1 0 R >>`,
-    "startxref",
-    String(xrefOffset),
-    "%%EOF",
-  ];
-
-  return new Blob([header.slice(), ...objects.map((object) => object.slice()), encoder.encode(`${xrefLines.join("\n")}\n`).slice()], {
-    type: "application/pdf",
-  });
 }
 
 function GalleryIcon() {
@@ -415,6 +295,9 @@ export default function OcrScanPage() {
   const [showInsights, setShowInsights] = useState(false);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
+  const [docTypeHint, setDocTypeHint] = useState("logbook");
+  const [languageHint, setLanguageHint] = useState("auto");
+  const [forceModel, setForceModel] = useState<"auto" | "fast" | "balanced" | "best">("auto");
 
   const [originalFile, setOriginalFile] = useState<File | null>(null);
   const [originalUrl, setOriginalUrl] = useState("");
@@ -424,11 +307,14 @@ export default function OcrScanPage() {
   const [enhancedUrl, setEnhancedUrl] = useState("");
   const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
 
-  const [fields, setFields] = useState<OCRFields>({ date: "", material: "", quantity: "" });
   const [qualityHints, setQualityHints] = useState<string[]>([]);
   const [savedId, setSavedId] = useState<number | null>(null);
   const [resultPreview, setResultPreview] = useState<ResultPreview | null>(null);
-  const [lastFields, setLastFields] = useState<LastFields | null>(null);
+  const [editableHeaders, setEditableHeaders] = useState<string[]>([]);
+  const [editableRows, setEditableRows] = useState<string[][]>([]);
+  const [documentHash, setDocumentHash] = useState<string | null>(null);
+  const [draftDirty, setDraftDirty] = useState(false);
+  const [prepSteps, setPrepSteps] = useState<string[]>([]);
 
   const [cropPoints, setCropPoints] = useState<CropPoint[]>(defaultCropPoints);
   const [activeHandle, setActiveHandle] = useState<number | null>(null);
@@ -476,31 +362,17 @@ export default function OcrScanPage() {
     setEnhancedFile(null);
     setEnhancedUrl("");
     setPdfBlob(null);
-    setFields({ date: "", material: "", quantity: "" });
     setQualityHints([]);
     setSavedId(null);
     setResultPreview(null);
+    setEditableHeaders([]);
+    setEditableRows([]);
+    setDocumentHash(null);
+    setDraftDirty(false);
+    setPrepSteps([]);
     setCropPoints(defaultCropPoints());
     setActiveHandle(null);
     setCropNaturalSize({ width: 0, height: 0 });
-  }, []);
-
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(LAST_FIELD_STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as Partial<LastFields>;
-      if (typeof parsed.date === "string" && typeof parsed.material === "string" && typeof parsed.quantity === "string") {
-        setLastFields({
-          date: parsed.date,
-          material: parsed.material,
-          quantity: parsed.quantity,
-          updatedAt: typeof parsed.updatedAt === "number" ? parsed.updatedAt : Date.now(),
-        });
-      }
-    } catch {
-      // ignore local cache issues
-    }
   }, []);
 
   useEffect(() => {
@@ -624,12 +496,6 @@ export default function OcrScanPage() {
     };
   }, []);
 
-  const persistLastFields = useCallback((nextFields: OCRFields) => {
-    const nextLast = { ...nextFields, updatedAt: Date.now() };
-    setLastFields(nextLast);
-    window.localStorage.setItem(LAST_FIELD_STORAGE_KEY, JSON.stringify(nextLast));
-  }, []);
-
   const moveHandle = useCallback((index: number, clientX: number, clientY: number) => {
     const surface = cropSurfaceRef.current;
     if (!surface) return;
@@ -689,10 +555,14 @@ export default function OcrScanPage() {
     setEnhancedFile(null);
     setEnhancedUrl("");
     setPdfBlob(null);
-    setFields({ date: "", material: "", quantity: "" });
     setQualityHints([]);
     setSavedId(null);
     setResultPreview(null);
+    setEditableHeaders([]);
+    setEditableRows([]);
+    setDocumentHash(null);
+    setDraftDirty(false);
+    setPrepSteps([]);
     setCropPoints(defaultCropPoints());
     setCropNaturalSize({ width: 0, height: 0 });
     setSelectedFilter("clean");
@@ -733,10 +603,14 @@ export default function OcrScanPage() {
     setEnhancedFile(null);
     setEnhancedUrl("");
     setPdfBlob(null);
-    setFields({ date: "", material: "", quantity: "" });
     setQualityHints([]);
     setSavedId(null);
     setResultPreview(null);
+    setEditableHeaders([]);
+    setEditableRows([]);
+    setDocumentHash(null);
+    setDraftDirty(false);
+    setPrepSteps([]);
     setCropPoints(defaultCropPoints());
     setCropNaturalSize({ width: 0, height: 0 });
     setSelectedFilter("clean");
@@ -792,6 +666,45 @@ export default function OcrScanPage() {
     }
   }, [cropNaturalSize.height, cropNaturalSize.width, cropPoints, originalFile, perspectiveFile]);
 
+  const persistStructuredDraft = useCallback(async () => {
+    if (!resultPreview || !originalFile) {
+      throw new Error("Process a document first.");
+    }
+    const payload = {
+      templateId: null,
+      sourceFilename: originalFile.name,
+      columns: Math.max(editableHeaders.length, ...editableRows.map((row) => row.length), resultPreview.columns, 1),
+      language: resultPreview.language,
+      avgConfidence: resultPreview.avgConfidence ?? null,
+      warnings: resultPreview.warnings ?? [],
+      documentHash,
+      docTypeHint,
+      routingMeta: resultPreview.routing ?? null,
+      rawText: resultPreview.rawText ?? null,
+      headers: editableHeaders,
+      originalRows: resultPreview.rows,
+      reviewedRows: editableRows,
+      rawColumnAdded: resultPreview.rawColumnAdded,
+      reviewerNotes: "",
+    };
+    if (savedId) {
+      return updateOcrVerification(savedId, payload);
+    }
+    return createOcrVerification({
+      ...payload,
+      file: processFile,
+    });
+  }, [
+    docTypeHint,
+    documentHash,
+    editableHeaders,
+    editableRows,
+    originalFile,
+    processFile,
+    resultPreview,
+    savedId,
+  ]);
+
   const handleProcess = useCallback(async () => {
     if (!processFile || !originalFile) return;
     setBusyAction(true);
@@ -801,56 +714,91 @@ export default function OcrScanPage() {
     setScreen("processing");
 
     try {
-      const pdfPromise = buildPdfBlobFromImage(processFile);
+      const prepared = await prepareOcrUploadFile(processFile);
       const result = await withTimeout(
         previewOcrLogbook({
-          file: processFile,
+          file: prepared.file,
           columns: 5,
-          language: "auto",
+          language: languageHint,
           templateId: null,
+          docTypeHint,
+          forceModel,
+          documentHash: prepared.sha256,
         }),
-        15000,
+        25000,
         "Processing timed out.",
       );
-      const normalizedRows = normalizeRows(result, lastFields);
-      const nextFields = extractFields(normalizedRows, lastFields);
-      const reviewedRows = applyFieldsToRows(normalizedRows, nextFields);
+      const reviewedRows = (result.rows || []).map((row) => row.map((cell) => String(cell ?? "")));
+      const headers =
+        result.headers?.length
+          ? result.headers
+          : Array.from(
+              { length: result.columns || Math.max(...reviewedRows.map((row) => row.length), 1) },
+              (_, index) => `Column ${index + 1}`,
+            );
 
-      setFields(nextFields);
-      setQualityHints(hintsFromWarnings(result.warnings));
-      setResultPreview({
+      const nextPreview: ResultPreview = {
+        type: result.type || docTypeHint,
+        title: result.title || "OCR Extraction",
+        headers,
         rows: reviewedRows,
-        columns: result.columns || Math.max(...reviewedRows.map((row) => row.length), 1),
-        language: result.used_language || "auto",
-        avgConfidence: result.avg_confidence ?? null,
+        columns: result.columns || Math.max(headers.length, ...reviewedRows.map((row) => row.length), 1),
+        language: result.used_language || languageHint || "auto",
+        avgConfidence: result.avg_confidence ?? result.confidence ?? null,
         rawColumnAdded: result.raw_column_added ?? false,
-      });
-
-      const saved = await createOcrVerification({
-        columns: result.columns || Math.max(...reviewedRows.map((row) => row.length), 1),
-        language: result.used_language || "auto",
-        avgConfidence: result.avg_confidence ?? null,
+        rawText: result.raw_text ?? null,
+        routing: result.routing ?? null,
+        reused: result.reused ?? false,
         warnings: result.warnings ?? [],
-        headers: [],
-        originalRows: result.rows ?? reviewedRows,
-        reviewedRows,
-        rawColumnAdded: result.raw_column_added ?? false,
-        reviewerNotes: "",
-        templateId: null,
-        sourceFilename: originalFile.name,
-        file: processFile,
-      });
+      };
 
-      setSavedId(saved.id);
-      signalWorkflowRefresh("ocr-verification-created");
-      persistLastFields(nextFields);
-      setPdfBlob(await pdfPromise);
-      setStatus(
-        outputChoice === "excel"
-          ? `Draft #${saved.id} saved. Excel export will use these corrected rows. Approve it in Review Documents to make the export trusted.`
-          : `Draft #${saved.id} saved.`,
+      setQualityHints(hintsFromWarnings(result.warnings));
+      setResultPreview(nextPreview);
+      setEditableHeaders(headers);
+      setEditableRows(reviewedRows);
+      setDocumentHash(prepared.sha256);
+      setPrepSteps(prepared.steps);
+
+      let nextSavedId = result.reused_verification_id ?? null;
+      if (!nextSavedId) {
+        const saved = await createOcrVerification({
+          columns: nextPreview.columns,
+          language: nextPreview.language,
+          avgConfidence: nextPreview.avgConfidence ?? null,
+          warnings: nextPreview.warnings ?? [],
+          documentHash: prepared.sha256,
+          docTypeHint,
+          routingMeta: result.routing ?? null,
+          rawText: result.raw_text ?? null,
+          headers,
+          originalRows: result.rows ?? reviewedRows,
+          reviewedRows,
+          rawColumnAdded: result.raw_column_added ?? false,
+          reviewerNotes: "",
+          templateId: null,
+          sourceFilename: originalFile.name,
+          file: prepared.file,
+        });
+        nextSavedId = saved.id;
+        signalWorkflowRefresh("ocr-verification-created");
+      }
+
+      setSavedId(nextSavedId);
+      setDraftDirty(false);
+      setPdfBlob(
+        await buildStructuredPdfBlob({
+          title: nextPreview.title,
+          headers,
+          rows: reviewedRows,
+        }),
       );
-
+      setStatus(
+        result.reused && nextSavedId
+          ? `Reused OCR draft #${nextSavedId}. Existing extraction data was loaded for review.`
+          : outputChoice === "excel"
+            ? `Draft #${nextSavedId} saved. Excel export still depends on review for trust.`
+            : `Draft #${nextSavedId} saved.`,
+      );
       setScreen("result");
     } catch (reason) {
       setError(humanExtractError(reason));
@@ -858,32 +806,99 @@ export default function OcrScanPage() {
     } finally {
       setBusyAction(false);
     }
-  }, [lastFields, originalFile, outputChoice, persistLastFields, processFile]);
+  }, [docTypeHint, forceModel, languageHint, originalFile, outputChoice, processFile]);
+
+  const handleSaveDraftUpdates = useCallback(async () => {
+    if (!resultPreview) return;
+    setBusyAction(true);
+    setError("");
+    setStatus("");
+    try {
+      const saved = await persistStructuredDraft();
+      setSavedId(saved.id);
+      setDraftDirty(false);
+      signalWorkflowRefresh("ocr-verification-updated");
+      setPdfBlob(
+        await buildStructuredPdfBlob({
+          title: resultPreview.title,
+          headers: editableHeaders,
+          rows: editableRows,
+        }),
+      );
+      setStatus(`Draft #${saved.id} updated.`);
+    } catch (reason) {
+      setError(humanExtractError(reason));
+    } finally {
+      setBusyAction(false);
+    }
+  }, [editableHeaders, editableRows, persistStructuredDraft, resultPreview]);
 
   const handleDownloadPdf = useCallback(async () => {
     if (!pdfBlob || !originalFile) return;
+    if (draftDirty) {
+      try {
+        await persistStructuredDraft();
+        setDraftDirty(false);
+      } catch (reason) {
+        setError(humanExtractError(reason));
+        return;
+      }
+    }
     await transferBlob(pdfBlob, `${fileBaseName(originalFile.name)}.pdf`, {
       title: "OCR PDF export",
-      text: "Processed factory scan ready to share or save.",
+      text: "Structured OCR review export ready to share or save.",
     });
-  }, [originalFile, pdfBlob]);
+  }, [draftDirty, originalFile, pdfBlob, persistStructuredDraft]);
+
+  const handleDownloadCsv = useCallback(async () => {
+    if (!originalFile || !editableHeaders.length) return;
+    if (draftDirty) {
+      try {
+        await persistStructuredDraft();
+        setDraftDirty(false);
+      } catch (reason) {
+        setError(humanExtractError(reason));
+        return;
+      }
+    }
+    const csv = exportRowsToCsv(editableHeaders, editableRows);
+    await transferBlob(new Blob([csv], { type: "text/csv;charset=utf-8" }), `${fileBaseName(originalFile.name)}.csv`, {
+      title: "OCR CSV export",
+      text: "Structured OCR rows ready to share or save.",
+    });
+    setStatus("CSV export downloaded.");
+  }, [draftDirty, editableHeaders, editableRows, originalFile, persistStructuredDraft]);
+
+  const handleCopyMarkdown = useCallback(async () => {
+    if (!editableHeaders.length) return;
+    const markdown = exportRowsToMarkdown(editableHeaders, editableRows);
+    await navigator.clipboard.writeText(markdown);
+    setStatus("Markdown table copied.");
+  }, [editableHeaders, editableRows]);
 
   const handleDownloadExcel = useCallback(async () => {
     if (!savedId) return;
     setBusyAction(true);
     try {
-      const download = await downloadOcrVerificationExport(savedId);
+      let targetId = savedId;
+      if (draftDirty) {
+        const saved = await persistStructuredDraft();
+        targetId = saved.id;
+        setSavedId(saved.id);
+        setDraftDirty(false);
+      }
+      const download = await downloadOcrVerificationExport(targetId);
       await transferBlob(download.blob, download.filename, {
         title: "OCR Excel export",
         text: "Reviewed OCR file ready to share or save.",
       });
-      setStatus(`Downloaded corrected Excel from draft #${savedId}.`);
+      setStatus(`Downloaded corrected Excel from draft #${targetId}.`);
     } catch (reason) {
       setStatus(humanExportError(reason));
     } finally {
       setBusyAction(false);
     }
-  }, [savedId]);
+  }, [draftDirty, persistStructuredDraft, savedId]);
 
   const handleRetake = () => {
     resetFlow();
@@ -1351,7 +1366,7 @@ export default function OcrScanPage() {
                       <div className="mt-3 space-y-3">
                         {[
                           "Crop corrections are already applied.",
-                          "The first row will prefill date, material, and quantity.",
+                          "The final upload will be compressed and hashed before OCR.",
                           "Exports still route through the review draft for trust.",
                         ].map((item) => (
                           <div key={item} className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3 text-sm text-slate-300">
@@ -1369,10 +1384,40 @@ export default function OcrScanPage() {
                   <div className="text-lg font-semibold text-white">Output destination</div>
                   <div className="mt-1 text-sm text-slate-400">Choose what the operator needs next.</div>
                 </div>
+                <div className="grid gap-3">
+                  <label className="grid gap-1 text-sm text-slate-300">
+                    <span>Document type</span>
+                    <Select value={docTypeHint} onChange={(event) => setDocTypeHint(event.target.value)}>
+                      <option value="logbook">Logbook</option>
+                      <option value="register">Register</option>
+                      <option value="dispatch-note">Dispatch note</option>
+                      <option value="invoice">Invoice</option>
+                      <option value="table">General table</option>
+                    </Select>
+                  </label>
+                  <label className="grid gap-1 text-sm text-slate-300">
+                    <span>OCR language</span>
+                    <Select value={languageHint} onChange={(event) => setLanguageHint(event.target.value)}>
+                      <option value="auto">Auto detect</option>
+                      <option value="eng">English</option>
+                      <option value="eng+hin+mar">English + Hindi + Marathi</option>
+                    </Select>
+                  </label>
+                  <label className="grid gap-1 text-sm text-slate-300">
+                    <span>Extraction tier</span>
+                    <Select value={forceModel} onChange={(event) => setForceModel(event.target.value as "auto" | "fast" | "balanced" | "best")}>
+                      <option value="auto">Auto</option>
+                      <option value="fast">Fast</option>
+                      <option value="balanced">Balanced</option>
+                      <option value="best">Best</option>
+                    </Select>
+                  </label>
+                </div>
                 <div className="space-y-3">
               {[
                 { value: "excel" as const, label: "Generate Excel", icon: <ExcelIcon /> },
                 { value: "pdf" as const, label: "Generate PDF", icon: <PdfIcon /> },
+                { value: "csv" as const, label: "Generate CSV", icon: <ExcelIcon /> },
               ].map((item) => (
                 <button
                   key={item.value}
@@ -1393,7 +1438,9 @@ export default function OcrScanPage() {
                     <span className="mt-1 block text-sm text-slate-400">
                       {item.value === "excel"
                         ? "Best for corrected rows, handoff, and downstream review."
-                        : "Best for quick sharing and frozen visual output."}
+                        : item.value === "pdf"
+                          ? "Best for quick sharing and frozen visual output."
+                          : "Best for lightweight structured handoff."}
                     </span>
                   </span>
                 </button>
@@ -1496,74 +1543,68 @@ export default function OcrScanPage() {
                       {savedId ? `Draft #${savedId}` : "Draft pending"}
                     </div>
                   </div>
-                  <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)]">
-                    <div className="space-y-4">
-                      <div className="overflow-hidden rounded-[1.4rem] border border-white/8 bg-black/30">
-                      {displayEnhanceUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={displayEnhanceUrl} alt="Processed scan preview" className="max-h-[28rem] w-full object-contain" />
-                      ) : null}
+                  <div className="space-y-4 p-4">
+                    <div className="grid gap-4 xl:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)]">
+                      <div className="space-y-4">
+                        <div className="overflow-hidden rounded-[1.4rem] border border-white/8 bg-black/30">
+                          {displayEnhanceUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={displayEnhanceUrl} alt="Processed scan preview" className="max-h-[28rem] w-full object-contain" />
+                          ) : null}
+                        </div>
+                        <div className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-4">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <div className="text-sm font-semibold text-white">{resultPreview?.title || "OCR Extraction"}</div>
+                              <div className="mt-1 text-xs text-slate-400">{resultPreview?.type || docTypeHint}</div>
+                            </div>
+                            <OcrRoutingBadge routing={resultPreview?.routing} />
+                          </div>
+                          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
+                              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Language</div>
+                              <div className="mt-2 text-sm font-medium text-white">{resultPreview?.language || "auto"}</div>
+                            </div>
+                            <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
+                              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Confidence</div>
+                              <div className="mt-2 text-sm font-medium text-white">{formatConfidence(resultPreview?.avgConfidence ?? null)}</div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      {/* AUDIT: DENSITY_OVERLOAD - move diagnostic metadata into a secondary reveal so export and review actions stay primary */}
-                      <details className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-4">
-                        <summary className="cursor-pointer list-none text-sm font-semibold text-white">Draft quality</summary>
-                        <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                          <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Language</div>
-                            <div className="mt-2 text-sm font-medium text-white">{resultPreview?.language || "auto"}</div>
+                      <div className="space-y-3">
+                        {[
+                          ["Columns", String(editableHeaders.length || resultPreview?.columns || 0)],
+                          ["Rows", String(editableRows.length || resultPreview?.rows.length || 0)],
+                          ["Hints", qualityHints.length ? qualityHints.join(", ") : "No scan warnings"],
+                          ["Prepared", prepSteps.length ? prepSteps.join(", ") : "No extra preprocessing"],
+                        ].map(([label, value]) => (
+                          <div key={label} className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</div>
+                            <div className="mt-2 text-sm font-medium text-white">{value}</div>
                           </div>
-                          <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Confidence</div>
-                            <div className="mt-2 text-sm font-medium text-white">{formatConfidence(resultPreview?.avgConfidence ?? null)}</div>
-                          </div>
-                          <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Columns</div>
-                            <div className="mt-2 text-sm font-medium text-white">{resultPreview?.columns || 0}</div>
-                          </div>
-                          <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
-                            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">Raw helper column</div>
-                            <div className="mt-2 text-sm font-medium text-white">{resultPreview?.rawColumnAdded ? "Added" : "Not needed"}</div>
-                          </div>
-                        </div>
-                      </details>
+                        ))}
+                      </div>
                     </div>
-                    <div className="space-y-3">
-                      {[
-                        ["Date", fields.date || "Not detected"],
-                        ["Material", fields.material || "Not detected"],
-                        ["Quantity", fields.quantity || "Not detected"],
-                        ["Hints", qualityHints.length ? qualityHints.join(", ") : "No scan warnings"],
-                      ].map(([label, value]) => (
-                        <div key={label} className="rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
-                          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400">{label}</div>
-                          <div className="mt-2 text-sm font-medium text-white">{value}</div>
-                        </div>
-                      ))}
-                      <div className="overflow-hidden rounded-[1.4rem] border border-white/8 bg-white/[0.04]">
-                        <div className="border-b border-white/8 px-4 py-3">
-                          <div className="text-sm font-semibold text-white">Extracted preview</div>
-                          <div className="mt-1 text-xs text-slate-400">First rows from the corrected draft that will feed review and export.</div>
-                        </div>
-                        <ResponsiveScrollArea debugLabel="ocr-scan-preview-table">
-                          <table className="min-w-full text-left text-sm">
-                            <tbody>
-                              {(resultPreview?.rows.slice(0, 4) || []).map((row, rowIndex) => (
-                                <tr key={`preview-row-${rowIndex}`} className="border-b border-white/6 last:border-b-0">
-                                  {row.slice(0, Math.min(resultPreview?.columns || row.length, 5)).map((cell, cellIndex) => (
-                                    <td key={`preview-cell-${rowIndex}-${cellIndex}`} className="max-w-[9rem] px-4 py-3 align-top text-slate-200">
-                                      <div className="truncate">{cell || "-"}</div>
-                                    </td>
-                                  ))}
-                                </tr>
-                              ))}
-                              {!resultPreview?.rows.length ? (
-                                <tr>
-                                  <td className="px-4 py-4 text-slate-400">Preview rows are not available yet.</td>
-                                </tr>
-                              ) : null}
-                            </tbody>
-                          </table>
-                        </ResponsiveScrollArea>
+
+                    <div className="overflow-hidden rounded-[1.4rem] border border-white/8 bg-white/[0.04]">
+                      <div className="border-b border-white/8 px-4 py-3">
+                        <div className="text-sm font-semibold text-white">Structured result</div>
+                        <div className="mt-1 text-xs text-slate-400">Edit the extracted table before review or export.</div>
+                      </div>
+                      <div className="p-4">
+                        <OcrResultsGrid
+                          headers={editableHeaders}
+                          rows={editableRows}
+                          onChangeHeaders={(headers) => {
+                            setEditableHeaders(headers);
+                            setDraftDirty(true);
+                          }}
+                          onChangeRows={(rows) => {
+                            setEditableRows(rows);
+                            setDraftDirty(true);
+                          }}
+                        />
                       </div>
                     </div>
                   </div>
@@ -1576,6 +1617,17 @@ export default function OcrScanPage() {
                   <div className="mt-1 text-sm text-slate-400">Choose the next action for this OCR draft.</div>
                 </div>
                 <div className="space-y-3">
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-5 py-4 text-left transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={busyAction || !resultPreview || !draftDirty}
+                    onClick={() => void handleSaveDraftUpdates()}
+                  >
+                    <span>
+                      <span className="block text-base font-semibold text-white">Save Draft Updates</span>
+                      <span className="mt-1 block text-sm text-slate-400">Persist header and row edits back into the verification draft.</span>
+                    </span>
+                  </button>
                   <button
                     type="button"
                     className={cn(
@@ -1614,6 +1666,30 @@ export default function OcrScanPage() {
                       </span>
                     </span>
                   </button>
+
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-5 py-4 text-left transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={!editableHeaders.length}
+                    onClick={() => void handleDownloadCsv()}
+                  >
+                    <span>
+                      <span className="block text-base font-semibold text-white">Download CSV</span>
+                      <span className="mt-1 block text-sm text-slate-400">Structured rows for quick handoff outside Excel.</span>
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-[1.5rem] border border-white/10 bg-white/[0.04] px-5 py-4 text-left transition hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled={!editableHeaders.length}
+                    onClick={() => void handleCopyMarkdown()}
+                  >
+                    <span>
+                      <span className="block text-base font-semibold text-white">Copy Markdown Table</span>
+                      <span className="mt-1 block text-sm text-slate-400">Paste the structured result into chat, notes, or tickets.</span>
+                    </span>
+                  </button>
                 </div>
 
                 {savedId ? (
@@ -1638,6 +1714,7 @@ export default function OcrScanPage() {
                     {[
                       ["Draft", savedId ? `#${savedId}` : "Not saved"],
                       ["Excel source", savedId ? "Corrected review draft rows" : "Not ready"],
+                      ["Dedupe", resultPreview?.reused ? "Reused prior extraction" : "Fresh extraction"],
                       ["Next step", savedId ? "Review, approve, and export trusted output" : "Save the draft first"],
                     ].map(([label, value]) => (
                       <div key={label} className="flex items-center justify-between gap-4">

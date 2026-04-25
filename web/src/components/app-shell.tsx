@@ -48,6 +48,7 @@ const DISPATCH_WORK_ROLES = ["manager"] as const;
 const ATTENDANCE_REVIEW_NAV_ROLES = ["supervisor"] as const;
 const REVIEW_QUEUE_NAV_ROLES = ["supervisor", "manager", "admin"] as const;
 const OCR_VERIFY_NAV_ROLES = ["supervisor"] as const;
+const OCR_HISTORY_NAV_ROLES = ["operator", "supervisor", "manager", "admin", "owner"] as const;
 const STOCK_REVIEW_NAV_ROLES = ["supervisor"] as const;
 const ATTENDANCE_REPORT_NAV_ROLES = ["accountant"] as const;
 const OWNER_DESK_NAV_ROLES = ["owner"] as const;
@@ -242,6 +243,13 @@ const navSections: NavSection[] = [
         description: "Approve OCR rows before they reach reports and exports",
         roles: OCR_VERIFY_NAV_ROLES,
         match: (pathname) => pathname === "/ocr/verify" || pathname.startsWith("/ocr/verify/"),
+      },
+      {
+        label: "OCR History",
+        href: "/ocr/history",
+        description: "Reopen OCR drafts, exports, and recent document runs",
+        roles: OCR_HISTORY_NAV_ROLES,
+        match: (pathname) => pathname === "/ocr/history" || pathname.startsWith("/ocr/history/"),
       },
       {
         label: "Stock Review",
@@ -471,6 +479,10 @@ const ITEM_TRANSLATION_KEY: Record<string, { label: string; description: string 
   "/ocr/verify": {
     label: "nav.review_documents.label",
     description: "nav.review_documents.description",
+  },
+  "/ocr/history": {
+    label: "nav.ocr_history.label",
+    description: "nav.ocr_history.description",
   },
   "/steel/reconciliations": {
     label: "nav.stock_review.label",

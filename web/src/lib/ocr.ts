@@ -43,8 +43,27 @@ export type OcrTemplateCreateResult = {
   template: OcrTemplate;
 };
 
+export type OcrRoutingMeta = {
+  clarity_score: number;
+  score_reason?: string | null;
+  model_tier: "fast" | "balanced" | "best";
+  forced: boolean;
+  scorer_used: boolean;
+  actual_cost_usd: number;
+  cost_saved_usd: number;
+};
+
 export type OcrPreviewResult = {
+  type: string;
+  title: string;
+  headers: string[];
   rows: string[][];
+  raw_text?: string | null;
+  language?: string | null;
+  confidence?: number | null;
+  routing?: OcrRoutingMeta | null;
+  reused?: boolean;
+  reused_verification_id?: number | null;
   columns: number;
   avg_confidence: number;
   warnings: string[];
@@ -110,6 +129,10 @@ export type OcrVerificationRecord = {
   language: string;
   avg_confidence: number;
   warnings: string[];
+  document_hash?: string | null;
+  doc_type_hint?: string | null;
+  routing_meta?: OcrRoutingMeta | null;
+  raw_text?: string | null;
   headers: string[];
   original_rows: string[][];
   reviewed_rows: string[][];
@@ -138,6 +161,10 @@ export type OcrVerificationSavePayload = {
   language: string;
   avgConfidence?: number | null;
   warnings?: string[];
+  documentHash?: string | null;
+  docTypeHint?: string | null;
+  routingMeta?: OcrRoutingMeta | null;
+  rawText?: string | null;
   headers?: string[];
   originalRows?: string[][];
   reviewedRows?: string[][];
@@ -242,6 +269,9 @@ export async function previewOcrLogbook(payload: {
   columns: number;
   language: string;
   templateId?: number | null;
+  docTypeHint?: string | null;
+  forceModel?: "auto" | "fast" | "balanced" | "best";
+  documentHash?: string | null;
 }) {
   const formData = new FormData();
   formData.set("file", payload.file);
@@ -249,6 +279,15 @@ export async function previewOcrLogbook(payload: {
   formData.set("language", payload.language);
   if (payload.templateId) {
     formData.set("template_id", String(payload.templateId));
+  }
+  if (payload.docTypeHint) {
+    formData.set("doc_type_hint", payload.docTypeHint);
+  }
+  if (payload.forceModel && payload.forceModel !== "auto") {
+    formData.set("force_model", payload.forceModel);
+  }
+  if (payload.documentHash) {
+    formData.set("document_hash", payload.documentHash);
   }
   return apiFetch<OcrPreviewResult>("/ocr/logbook", {
     method: "POST",
@@ -357,6 +396,18 @@ function buildVerificationFormData(payload: OcrVerificationSavePayload) {
   if (payload.warnings) {
     formData.set("warnings", JSON.stringify(payload.warnings));
   }
+  if (payload.documentHash) {
+    formData.set("document_hash", payload.documentHash);
+  }
+  if (payload.docTypeHint) {
+    formData.set("doc_type_hint", payload.docTypeHint);
+  }
+  if (payload.routingMeta) {
+    formData.set("routing_meta", JSON.stringify(payload.routingMeta));
+  }
+  if (payload.rawText != null) {
+    formData.set("raw_text", payload.rawText);
+  }
   if (payload.headers) {
     formData.set("headers", JSON.stringify(payload.headers));
   }
@@ -415,6 +466,10 @@ export async function updateOcrVerification(
       avg_confidence:
         typeof payload.avgConfidence === "number" ? payload.avgConfidence : null,
       warnings: payload.warnings ?? [],
+      document_hash: payload.documentHash ?? null,
+      doc_type_hint: payload.docTypeHint ?? null,
+      routing_meta: payload.routingMeta ?? null,
+      raw_text: payload.rawText ?? null,
       headers: payload.headers ?? [],
       original_rows: payload.originalRows ?? [],
       reviewed_rows: payload.reviewedRows ?? [],

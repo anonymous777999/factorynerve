@@ -52,6 +52,11 @@ from backend.services.background_jobs import (
     update_job,
     write_job_file,
 )
+from backend.services.ocr_document_pipeline import (
+    build_structured_ocr_result,
+    find_reusable_verification,
+    serialize_reused_ocr_result,
+)
 from backend.tenancy import resolve_factory_id, resolve_org_id
 
 
@@ -72,6 +77,10 @@ class OcrVerificationUpdatePayload(BaseModel):
     avg_confidence: float | None = Field(default=None, ge=0, le=100)
     warnings: list[str] | None = None
     scan_quality: dict | None = None
+    document_hash: str | None = Field(default=None, max_length=128)
+    doc_type_hint: str | None = Field(default=None, max_length=80)
+    routing_meta: dict | None = None
+    raw_text: str | None = Field(default=None, max_length=50000)
     headers: list[str] | None = None
     original_rows: list[list[str]] | None = None
     reviewed_rows: list[list[str]] | None = None
@@ -180,6 +189,46 @@ def _normalize_scan_quality(values: dict | None, *, field_name: str) -> dict | N
     }
 
 
+def _normalize_document_hash(value: str | None) -> str | None:
+    normalized = sanitize_text(value, max_length=128, preserve_newlines=False)
+    return normalized.lower() if normalized else None
+
+
+def _normalize_doc_type_hint(value: str | None) -> str | None:
+    normalized = sanitize_text(value, max_length=80, preserve_newlines=False)
+    return normalized.lower() if normalized else None
+
+
+def _normalize_routing_meta(values: dict | None, *, field_name: str) -> dict | None:
+    if values is None:
+        return None
+    if not isinstance(values, dict):
+        raise HTTPException(status_code=400, detail=f"{field_name} must be an object.")
+
+    model_tier = sanitize_text(str(values.get("model_tier") or ""), max_length=20, preserve_newlines=False) or "fast"
+    if model_tier not in {"fast", "balanced", "best"}:
+        model_tier = "fast"
+    score_reason = sanitize_text(str(values.get("score_reason") or ""), max_length=500, preserve_newlines=False) or None
+
+    def _safe_float(key: str, default: float = 0.0, minimum: float = 0.0, maximum: float = 100.0) -> float:
+        raw = values.get(key)
+        try:
+            parsed = float(raw)
+        except (TypeError, ValueError):
+            return default
+        return max(minimum, min(maximum, parsed))
+
+    return {
+        "clarity_score": _safe_float("clarity_score"),
+        "score_reason": score_reason,
+        "model_tier": model_tier,
+        "forced": bool(values.get("forced")),
+        "scorer_used": bool(values.get("scorer_used")),
+        "actual_cost_usd": _safe_float("actual_cost_usd", maximum=1000.0),
+        "cost_saved_usd": _safe_float("cost_saved_usd", maximum=1000.0),
+    }
+
+
 def _save_verification_source(filename: str | None, image_bytes: bytes) -> tuple[str, str]:
     OCR_VERIFICATION_DIR.mkdir(parents=True, exist_ok=True)
     safe_name = _safe_file_name(filename)
@@ -245,6 +294,10 @@ def _serialize_verification(db: Session, verification: OcrVerification) -> dict:
         "avg_confidence": float(verification.avg_confidence or 0),
         "warnings": verification.warnings or [],
         "scan_quality": verification.scan_quality or None,
+        "document_hash": verification.document_hash,
+        "doc_type_hint": verification.doc_type_hint,
+        "routing_meta": verification.routing_meta or None,
+        "raw_text": verification.raw_text,
         "headers": verification.headers or [],
         "original_rows": verification.original_rows or [],
         "reviewed_rows": verification.reviewed_rows or [],
@@ -312,6 +365,10 @@ def _apply_verification_payload(
     avg_confidence: float | None = None,
     warnings: list[str] | None = None,
     scan_quality: dict | None = None,
+    document_hash: str | None = None,
+    doc_type_hint: str | None = None,
+    routing_meta: dict | None = None,
+    raw_text: str | None = None,
     headers: list[str] | None = None,
     original_rows: list[list[str]] | None = None,
     reviewed_rows: list[list[str]] | None = None,
@@ -332,6 +389,14 @@ def _apply_verification_payload(
         verification.warnings = warnings
     if scan_quality is not None:
         verification.scan_quality = scan_quality
+    if document_hash is not None:
+        verification.document_hash = _normalize_document_hash(document_hash)
+    if doc_type_hint is not None:
+        verification.doc_type_hint = _normalize_doc_type_hint(doc_type_hint)
+    if routing_meta is not None:
+        verification.routing_meta = routing_meta
+    if raw_text is not None:
+        verification.raw_text = sanitize_text(raw_text, max_length=50000)
     if headers is not None:
         verification.headers = headers
     if original_rows is not None:
@@ -972,6 +1037,10 @@ async def create_verification(
     avg_confidence: float | None = Form(default=None),
     warnings: str | None = Form(default=None),
     scan_quality: str | None = Form(default=None),
+    document_hash: str | None = Form(default=None),
+    doc_type_hint: str | None = Form(default=None),
+    routing_meta: str | None = Form(default=None),
+    raw_text: str | None = Form(default=None),
     headers: str | None = Form(default=None),
     original_rows: str | None = Form(default=None),
     reviewed_rows: str | None = Form(default=None),
@@ -997,6 +1066,10 @@ async def create_verification(
     parsed_scan_quality = _normalize_scan_quality(
         _parse_json_value(scan_quality, field_name="scan_quality"),
         field_name="scan_quality",
+    )
+    parsed_routing_meta = _normalize_routing_meta(
+        _parse_json_value(routing_meta, field_name="routing_meta"),
+        field_name="routing_meta",
     )
     parsed_headers = _normalize_string_list(_parse_json_value(headers, field_name="headers"), field_name="headers") or []
     parsed_original_rows = _normalize_rows(_parse_json_value(original_rows, field_name="original_rows"), field_name="original_rows") or []
@@ -1028,6 +1101,10 @@ async def create_verification(
         avg_confidence=max(0.0, min(float(avg_confidence), 100.0)) if avg_confidence is not None else None,
         warnings=parsed_warnings,
         scan_quality=parsed_scan_quality,
+        document_hash=_normalize_document_hash(document_hash),
+        doc_type_hint=_normalize_doc_type_hint(doc_type_hint),
+        routing_meta=parsed_routing_meta,
+        raw_text=sanitize_text(raw_text, max_length=50000),
         headers=parsed_headers,
         original_rows=parsed_original_rows,
         reviewed_rows=parsed_reviewed_rows,
@@ -1045,6 +1122,7 @@ async def create_verification(
             details=(
                 f"Verification created id={verification.id} status=draft "
                 f"confidence={verification.avg_confidence or 0:.1f} "
+                f"tier={(verification.routing_meta or {}).get('model_tier', 'fast')} "
                 f"band={(verification.scan_quality or {}).get('confidence_band', 'unknown')} "
                 f"outcome={(verification.scan_quality or {}).get('outcome', 'success')}"
             ),
@@ -1170,6 +1248,7 @@ def update_verification(
     headers = _normalize_string_list(payload.headers, field_name="headers")
     warnings = _normalize_string_list(payload.warnings, field_name="warnings")
     scan_quality = _normalize_scan_quality(payload.scan_quality, field_name="scan_quality")
+    routing_meta = _normalize_routing_meta(payload.routing_meta, field_name="routing_meta")
     original_rows = _normalize_rows(payload.original_rows, field_name="original_rows")
     reviewed_rows = _normalize_rows(payload.reviewed_rows, field_name="reviewed_rows")
 
@@ -1182,6 +1261,10 @@ def update_verification(
         avg_confidence=payload.avg_confidence,
         warnings=warnings,
         scan_quality=scan_quality,
+        document_hash=payload.document_hash,
+        doc_type_hint=payload.doc_type_hint,
+        routing_meta=routing_meta,
+        raw_text=payload.raw_text,
         headers=headers,
         original_rows=original_rows,
         reviewed_rows=reviewed_rows,
@@ -1205,6 +1288,7 @@ def update_verification(
         details=(
             f"Verification updated id={verification.id} status={verification.status} "
             f"confidence={verification.avg_confidence or 0:.1f} "
+            f"tier={(verification.routing_meta or {}).get('model_tier', 'fast')} "
             f"band={(verification.scan_quality or {}).get('confidence_band', 'unknown')} "
             f"corrections={(verification.scan_quality or {}).get('correction_count', 0)}"
         ),
@@ -1303,6 +1387,9 @@ async def ocr_logbook(
     columns: int = Form(default=3),
     language: str = Form(default="eng"),
     template_id: int | None = Form(default=None),
+    doc_type_hint: str | None = Form(default=None),
+    force_model: str | None = Form(default=None),
+    document_hash: str | None = Form(default=None),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -1325,6 +1412,32 @@ async def ocr_logbook(
         if not template:
             raise HTTPException(status_code=404, detail="Template not found.")
 
+    reusable = find_reusable_verification(
+        db,
+        org_id=resolve_org_id(current_user),
+        document_hash=_normalize_document_hash(document_hash),
+        template_id=template.id if template else template_id,
+        doc_type_hint=doc_type_hint,
+    )
+    if reusable is not None:
+        reused_payload = {
+            **serialize_reused_ocr_result(reusable, template=template),
+            "template": {
+                "id": template.id,
+                "name": template.name,
+                "columns": template.columns,
+                "header_mode": template.header_mode,
+                "language": template.language,
+                "column_names": template.column_names or [],
+                "column_keywords": template.column_keywords or [],
+                "raw_column_label": template.raw_column_label or "Raw",
+                "enable_raw_column": template.enable_raw_column,
+            }
+            if template
+            else None,
+        }
+        return reused_payload
+
     try:
         result, used_language, fallback_used = _run_ocr_with_fallback(
             image_bytes,
@@ -1341,15 +1454,18 @@ async def ocr_logbook(
         logger.exception("OCR failed.")
         raise HTTPException(status_code=500, detail="OCR failed unexpectedly.") from error
 
+    structured = build_structured_ocr_result(
+        image_bytes,
+        base_result=result,
+        used_language=used_language,
+        fallback_used=fallback_used,
+        template=template,
+        doc_type_hint=doc_type_hint,
+        force_model=force_model,
+    )
+
     return {
-        "rows": result.rows,
-        "columns": template.columns if template else columns,
-        "avg_confidence": result.avg_confidence,
-        "warnings": result.warnings,
-        "cell_confidence": result.cell_confidence,
-        "used_language": used_language,
-        "fallback_used": fallback_used,
-        "raw_column_added": result.raw_column_added,
+        **structured,
         "template": {
             "id": template.id,
             "name": template.name,
