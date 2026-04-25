@@ -179,6 +179,7 @@ export default function RegisterPage() {
       supportTitle={t("auth.register.support_title", "Why this feels stricter now")}
       supportDescription={t("auth.register.support_description", "Wrong or fake emails can no longer create a working account. They only create a pending signup that stays locked until the real inbox verifies it.")}
       cardClassName="max-w-3xl"
+      guidanceKey="auth-register-help"
     >
       {success ? (
         <div className="space-y-5">

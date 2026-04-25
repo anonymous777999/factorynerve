@@ -126,6 +126,7 @@ export default function VerifyEmailPage() {
       supportDescription={t("auth.verify.support_description", "This keeps every activated account tied to a reachable email owner before factory access starts.")}
       cardClassName="max-w-xl"
       contentClassName="space-y-5"
+      guidanceKey="auth-verify-help"
     >
       {verifying ? (
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">

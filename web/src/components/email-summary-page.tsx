@@ -15,6 +15,7 @@ import { getSteelOverview, type SteelOverview } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -341,23 +342,30 @@ export default function EmailSummaryPage() {
   return (
     <main className="min-h-screen px-4 py-8 md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* AUDIT: FLOW_BROKEN - Added an explicit three-step frame so the page reads as a send workflow instead of a toolbox. */}
-        <section className="grid gap-4 md:grid-cols-3">
-          {[
-            { step: "1", title: "Pick range", detail: "Choose the window and refresh the snapshot." },
-            { step: "2", title: "Review trust", detail: "Check OCR, risk, and operating signals before drafting." },
-            { step: "3", title: "Open mail", detail: "Generate the message, then finish in your own mail client." },
-          ].map((item) => (
-            <div
-              key={item.step}
-              className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-soft)]"
-            >
-              <div className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--accent)]">Step {item.step}</div>
-              <div className="mt-2 font-semibold text-[var(--text)]">{item.title}</div>
-              <div className="mt-1 text-sm text-[var(--muted)]">{item.detail}</div>
-            </div>
-          ))}
-        </section>
+        <GuidanceBlock
+          surfaceKey="email-summary-flow"
+          title="How this send flow works"
+          summary="Keep the summary clean by choosing the range, checking trust, and opening your mail client only when the draft is ready."
+          eyebrow="Email Summary"
+          className="border-[var(--border)] bg-[var(--card)] shadow-[var(--shadow-soft)]"
+        >
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              { step: "1", title: "Pick range", detail: "Choose the window and refresh the snapshot." },
+              { step: "2", title: "Review trust", detail: "Check OCR, risk, and operating signals before drafting." },
+              { step: "3", title: "Open mail", detail: "Generate the message, then finish in your own mail client." },
+            ].map((item) => (
+              <div
+                key={item.step}
+                className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card-strong)] px-5 py-4 shadow-[var(--shadow-soft)]"
+              >
+                <div className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--accent)]">Step {item.step}</div>
+                <div className="mt-2 font-semibold text-[var(--text)]">{item.title}</div>
+                <div className="mt-1 text-sm text-[var(--muted)]">{item.detail}</div>
+              </div>
+            ))}
+          </div>
+        </GuidanceBlock>
 
         <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div>

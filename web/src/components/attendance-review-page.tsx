@@ -17,6 +17,7 @@ import { useSession } from "@/lib/use-session";
 import { signalWorkflowRefresh, subscribeToWorkflowRefresh } from "@/lib/workflow-sync";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
@@ -926,36 +927,43 @@ export default function AttendanceReviewPage() {
           </div>
         </section>
 
-        {/* AUDIT: FLOW_BROKEN - make the review path scan as a short sequence before the dense queue opens up. */}
-        <section className="grid gap-4 md:grid-cols-3">
-          {[
-            {
-              step: "Step 1",
-              title: "Pick issue",
-              body: nextReview
-                ? `${nextReview.issueLabel} is featured first so the most urgent attendance decision is obvious.`
-                : "No issue is waiting right now.",
-            },
-            {
-              step: "Step 2",
-              title: "Apply fix",
-              body: "Use the detail panel to inspect punches, suggested corrections, and note history before you decide.",
-            },
-            {
-              step: "Step 3",
-              title: "Close it",
-              body: "Approve to close the record or reject with a note so the audit trail stays clear.",
-            },
-          ].map((item) => (
-            <Card key={item.title} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
-              <CardContent className="space-y-3 px-5 py-5">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
-                <div className="text-xl font-semibold text-[var(--text)]">{item.title}</div>
-                <div className="text-sm leading-6 text-[var(--muted)]">{item.body}</div>
-              </CardContent>
-            </Card>
-          ))}
-        </section>
+        <GuidanceBlock
+          surfaceKey="attendance-review-flow"
+          title="How to close attendance issues"
+          summary="Use this only when you want the decision sequence. The queue itself should stay visible and fast."
+          eyebrow="Attendance Review"
+          className="border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl"
+        >
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              {
+                step: "Step 1",
+                title: "Pick issue",
+                body: nextReview
+                  ? `${nextReview.issueLabel} is featured first so the most urgent attendance decision is obvious.`
+                  : "No issue is waiting right now.",
+              },
+              {
+                step: "Step 2",
+                title: "Apply fix",
+                body: "Use the detail panel to inspect punches, suggested corrections, and note history before you decide.",
+              },
+              {
+                step: "Step 3",
+                title: "Close it",
+                body: "Approve to close the record or reject with a note so the audit trail stays clear.",
+              },
+            ].map((item) => (
+              <Card key={item.title} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+                <CardContent className="space-y-3 px-5 py-5">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
+                  <div className="text-xl font-semibold text-[var(--text)]">{item.title}</div>
+                  <div className="text-sm leading-6 text-[var(--muted)]">{item.body}</div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </GuidanceBlock>
 
         {status ? (
           <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">

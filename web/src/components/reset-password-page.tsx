@@ -141,6 +141,7 @@ export default function ResetPasswordPage() {
       supportDescription={t("auth.reset.support_description", "Password reset revokes active refresh sessions so only the new password opens fresh sessions.")}
       cardClassName="max-w-xl"
       contentClassName="space-y-5"
+      guidanceKey="auth-reset-help"
     >
       {verifying ? (
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">

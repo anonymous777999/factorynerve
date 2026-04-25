@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import { cn } from "@/lib/utils";
@@ -24,6 +25,7 @@ type AuthShellProps = {
   children: ReactNode;
   cardClassName?: string;
   contentClassName?: string;
+  guidanceKey?: string;
 };
 
 export function AuthShell({
@@ -38,6 +40,7 @@ export function AuthShell({
   children,
   cardClassName,
   contentClassName,
+  guidanceKey = "auth-login-help",
 }: AuthShellProps) {
   const { t } = useI18n();
   useI18nNamespaces(["auth", "common"]);
@@ -113,44 +116,55 @@ export function AuthShell({
           </CardContent>
         </Card>
 
-        <section className="mt-4 grid gap-4 lg:grid-cols-[1.18fr_0.82fr]">
-          <div
-            className="auth-rise rounded-[1.7rem] border border-white/10 bg-[linear-gradient(180deg,rgba(12,20,33,0.78),rgba(8,14,24,0.92))] p-5 shadow-[0_18px_60px_rgba(2,6,23,0.34)] backdrop-blur-xl"
-            style={{ animationDelay: "360ms" }}
+        <div className="auth-rise mt-4" style={{ animationDelay: "360ms" }}>
+          <GuidanceBlock
+            surfaceKey={guidanceKey}
+            title={t("auth.shell.learn_more", "Why this is required")}
+            summary={resolvedSupportDescription}
+            eyebrow={t("auth.shell.guardrails", "Guardrails")}
+            collapsedLabel={t("common.open", "Open")}
+            expandedLabel={t("common.close", "Close")}
+            critical
+            className="border-white/10 bg-[linear-gradient(180deg,rgba(12,20,33,0.78),rgba(8,14,24,0.92))] shadow-[0_18px_60px_rgba(2,6,23,0.34)] backdrop-blur-xl"
+            eyebrowClassName="text-emerald-100/70"
+            titleClassName="text-white"
+            summaryClassName="text-slate-300"
+            contentClassName="border-white/8"
           >
-            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">{t("auth.shell.workflow_map", "Workflow map")}</div>
-            <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">{journeyTitle}</h2>
-            <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">{journeyDescription}</p>
+            <div className="grid gap-4 lg:grid-cols-[1.18fr_0.82fr]">
+              <div className="rounded-[1.7rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
+                <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">{t("auth.shell.workflow_map", "Workflow map")}</div>
+                <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">{journeyTitle}</h2>
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">{journeyDescription}</p>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              {steps.map((step, index) => (
-                <div
-                  key={`${step.title}-${index}`}
-                  className="rounded-[1.35rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-cyan-200/15 bg-cyan-300/10 text-sm font-semibold text-cyan-100">
-                      {index + 1}
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  {steps.map((step, index) => (
+                    <div
+                      key={`${step.title}-${index}`}
+                      className="rounded-[1.35rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-cyan-200/15 bg-cyan-300/10 text-sm font-semibold text-cyan-100">
+                          {index + 1}
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold tracking-[-0.01em] text-white">{step.title}</div>
+                          <div className="mt-1 text-sm leading-6 text-slate-300">{step.description}</div>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-sm font-semibold tracking-[-0.01em] text-white">{step.title}</div>
-                      <div className="mt-1 text-sm leading-6 text-slate-300">{step.description}</div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
+              </div>
 
-          <div
-            className="auth-rise rounded-[1.7rem] border border-emerald-400/18 bg-[linear-gradient(180deg,rgba(9,25,23,0.88),rgba(7,17,22,0.96))] p-5 shadow-[0_18px_60px_rgba(2,6,23,0.34)] backdrop-blur-xl"
-            style={{ animationDelay: "440ms" }}
-          >
-            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-100/70">{t("auth.shell.guardrails", "Guardrails")}</div>
-            <div className="mt-3 text-xl font-semibold tracking-[-0.02em] text-emerald-50">{resolvedSupportTitle}</div>
-            <div className="mt-3 text-sm leading-7 text-emerald-50/80">{resolvedSupportDescription}</div>
-          </div>
-        </section>
+              <div className="rounded-[1.7rem] border border-emerald-400/18 bg-[linear-gradient(180deg,rgba(9,25,23,0.88),rgba(7,17,22,0.96))] p-5 shadow-[0_18px_60px_rgba(2,6,23,0.34)] backdrop-blur-xl">
+                <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-100/70">{t("auth.shell.guardrails", "Guardrails")}</div>
+                <div className="mt-3 text-xl font-semibold tracking-[-0.02em] text-emerald-50">{resolvedSupportTitle}</div>
+                <div className="mt-3 text-sm leading-7 text-emerald-50/80">{resolvedSupportDescription}</div>
+              </div>
+            </div>
+          </GuidanceBlock>
+        </div>
       </div>
     </main>
   );

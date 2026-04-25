@@ -14,6 +14,7 @@ import { Select } from "@/components/ui/select";
 import { logout, selectFactory } from "@/lib/auth";
 import { listUnreadAlerts } from "@/lib/dashboard";
 import { listEntries } from "@/lib/entries";
+import { useGuidancePreferences } from "@/lib/guidance";
 import type { AppLanguage } from "@/lib/i18n";
 import { listOcrVerifications } from "@/lib/ocr";
 import {
@@ -1222,6 +1223,7 @@ function AppShellFrame({
   const immersiveScannerRoute = shellLayout.mode === "camera";
   const router = useRouter();
   const { language, setLanguage, t } = useI18n();
+  const { showTips, setShowTips } = useGuidancePreferences();
   useI18nNamespaces(["common", "navigation"]);
   const { activeFactory, activeFactoryId, factories, organization, user } = useSession();
   const [hydrated, setHydrated] = useState(false);
@@ -1876,6 +1878,38 @@ function AppShellFrame({
                       </option>
                     ))}
                   </Select>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-3 py-2.5">
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                      {t("shell.tips_title", "Tips")}
+                    </div>
+                    <div className="mt-1 text-xs text-[var(--text)]">
+                      {t("shell.tips_subtitle", "Show optional guidance and first-use hints")}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={showTips}
+                    onClick={() => setShowTips(!showTips)}
+                    className={cn(
+                      "ui-no-select ui-no-callout inline-flex h-8 w-14 items-center rounded-full border px-1 transition",
+                      showTips
+                        ? "border-cyan-300/35 bg-cyan-400/18 text-cyan-100"
+                        : "border-[var(--border)] bg-[rgba(8,12,20,0.75)] text-[var(--muted)]",
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-[10px] font-semibold text-slate-900 transition",
+                        showTips ? "translate-x-6" : "translate-x-0",
+                      )}
+                    >
+                      {showTips ? "On" : "Off"}
+                    </span>
+                  </button>
                 </div>
 
                 <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">

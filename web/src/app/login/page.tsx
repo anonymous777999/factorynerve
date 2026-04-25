@@ -9,6 +9,7 @@ import { ApiError, formatApiErrorMessage } from "@/lib/api";
 import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import { getHomeDestination } from "@/lib/role-navigation";
 import { Button } from "@/components/ui/button";
+import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { Input } from "@/components/ui/input";
 
 function destinationLabel(path: string, t: (key: string, fallback?: string) => string) {
@@ -441,48 +442,60 @@ export default function LoginPage() {
           </form>
         </section>
 
-        {/* AUDIT: DENSITY_OVERLOAD - keep workflow and guardrail diagnostics available but collapsed so sign-in remains the dominant action. */}
-        <section className="mt-9 space-y-4">
-          <details className="group rounded-[1.85rem] border border-white/6 bg-[linear-gradient(180deg,rgba(24,28,37,0.96),rgba(18,23,33,0.98))] px-5 py-5 shadow-[0_12px_32px_rgba(3,7,18,0.22)]">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[1.4rem] font-semibold uppercase tracking-[-0.04em] text-[#eef3fb]">
-              {t("auth.login.workflow_map_title", "Workflow map")}
-              <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[#3ce8d1] transition group-open:hidden">{t("common.open", "Open")}</span>
-              <span className="hidden text-xs font-semibold uppercase tracking-[0.24em] text-[#3ce8d1] group-open:inline">{t("common.close", "Close")}</span>
-            </summary>
-            <div className="mt-5 grid gap-3 sm:grid-cols-3">
-              {workflowMap.map((step) => (
-                <div
-                  key={step.id}
-                  className={`rounded-[1.5rem] border px-4 py-5 shadow-[0_12px_32px_rgba(3,7,18,0.22)] ${
-                    step.active
-                      ? "border-[#78b6ff] bg-[linear-gradient(180deg,rgba(28,35,49,0.98),rgba(17,22,31,0.98))] shadow-[inset_0_-2px_0_rgba(131,187,255,0.85),0_12px_32px_rgba(3,7,18,0.28)]"
-                      : "border-white/6 bg-[linear-gradient(180deg,rgba(24,28,37,0.96),rgba(18,23,33,0.98))]"
-                  }`}
-                >
-                  <div className={`text-center text-[3rem] font-semibold tracking-[-0.08em] ${step.active ? "text-[#90c2ff]" : "text-white/78"}`}>
-                    {step.id}
-                  </div>
-                  <div className="overflow-safe-text mt-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-white">
-                    {step.label}
-                  </div>
-                  <div className="overflow-safe-text mt-2 text-center text-[0.67rem] uppercase tracking-[0.18em] text-white/46">{step.detail}</div>
+        <section className="mt-9">
+          <GuidanceBlock
+            surfaceKey="auth-login-help"
+            title={t("auth.login.help_title", "Why sign-in is locked down")}
+            summary={t("auth.login.help_summary", "Verification, session protection, and route handoff stay available here without crowding the sign-in form.")}
+            eyebrow={t("auth.login.safety_guardrails", "Safety guardrails")}
+            collapsedLabel={t("common.open", "Open")}
+            expandedLabel={t("common.close", "Close")}
+            critical
+            className="border-white/6 bg-[linear-gradient(180deg,rgba(24,28,37,0.96),rgba(18,23,33,0.98))] shadow-[0_12px_32px_rgba(3,7,18,0.22)]"
+            eyebrowClassName="text-[#3ce8d1]"
+            titleClassName="text-[#eef3fb]"
+            summaryClassName="text-[#97a6bd]"
+            contentClassName="border-white/6"
+          >
+            <div className="space-y-4">
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#3ce8d1]">
+                  {t("auth.login.workflow_map_title", "Workflow map")}
                 </div>
-              ))}
-            </div>
-          </details>
+                <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                  {workflowMap.map((step) => (
+                    <div
+                      key={step.id}
+                      className={`rounded-[1.5rem] border px-4 py-5 shadow-[0_12px_32px_rgba(3,7,18,0.22)] ${
+                        step.active
+                          ? "border-[#78b6ff] bg-[linear-gradient(180deg,rgba(28,35,49,0.98),rgba(17,22,31,0.98))] shadow-[inset_0_-2px_0_rgba(131,187,255,0.85),0_12px_32px_rgba(3,7,18,0.28)]"
+                          : "border-white/6 bg-[linear-gradient(180deg,rgba(24,28,37,0.96),rgba(18,23,33,0.98))]"
+                      }`}
+                    >
+                      <div className={`text-center text-[3rem] font-semibold tracking-[-0.08em] ${step.active ? "text-[#90c2ff]" : "text-white/78"}`}>
+                        {step.id}
+                      </div>
+                      <div className="overflow-safe-text mt-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-white">
+                        {step.label}
+                      </div>
+                      <div className="overflow-safe-text mt-2 text-center text-[0.67rem] uppercase tracking-[0.18em] text-white/46">{step.detail}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
-          <details className="group rounded-[1.85rem] border border-white/6 bg-[linear-gradient(180deg,rgba(24,28,37,0.96),rgba(18,23,33,0.98))] px-5 py-5 shadow-[0_12px_32px_rgba(3,7,18,0.22)]">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-[1.4rem] font-semibold uppercase tracking-[-0.04em] text-[#eef3fb]">
-              {t("auth.login.safety_guardrails", "Safety guardrails")}
-              <span className="text-xs font-semibold uppercase tracking-[0.24em] text-[#3ce8d1] transition group-open:hidden">{t("common.open", "Open")}</span>
-              <span className="hidden text-xs font-semibold uppercase tracking-[0.24em] text-[#3ce8d1] group-open:inline">{t("common.close", "Close")}</span>
-            </summary>
-            <div className="mt-5 space-y-4">
-              {guardrails.map((guardrail) => (
-                <GuardrailCard key={`${guardrail.eyebrow}-${guardrail.title}`} {...guardrail} />
-              ))}
+              <div>
+                <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#3ce8d1]">
+                  {t("auth.login.safety_guardrails", "Safety guardrails")}
+                </div>
+                <div className="mt-4 space-y-4">
+                  {guardrails.map((guardrail) => (
+                    <GuardrailCard key={`${guardrail.eyebrow}-${guardrail.title}`} {...guardrail} />
+                  ))}
+                </div>
+              </div>
             </div>
-          </details>
+          </GuidanceBlock>
         </section>
 
         <section className="mt-8 overflow-hidden rounded-[1.85rem] border border-[#16384a] bg-[linear-gradient(180deg,rgba(12,28,39,0.96),rgba(8,18,28,0.98))] shadow-[0_22px_54px_rgba(2,6,23,0.36)]">

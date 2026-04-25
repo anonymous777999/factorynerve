@@ -115,6 +115,7 @@ export default function ForgotPasswordPage() {
       supportDescription={t("auth.forgot.support_description", "This screen never confirms whether an email exists. Reset works only after signup verification creates the real account.")}
       cardClassName="max-w-xl"
       contentClassName="space-y-5"
+      guidanceKey="auth-forgot-help"
     >
       <form onSubmit={onSubmit} className="space-y-4">
             <div>

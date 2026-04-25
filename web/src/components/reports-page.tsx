@@ -33,6 +33,7 @@ import { useSession } from "@/lib/use-session";
 import { ReportsPageSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
@@ -677,23 +678,30 @@ export default function ReportsPage() {
   return (
     <main className="min-h-screen px-4 py-8 md:px-8" data-component="reports-page">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* AUDIT: FLOW_BROKEN - Added a simple export journey so the page reads like pick range, export, then inspect secondary reporting lanes. */}
-        <section className="grid gap-4 md:grid-cols-3">
-          {[
-            { step: "1", title: t("reports.steps.range", "Pick range"), detail: t("reports.steps.range_detail", "Set the window and apply the range you want to report.") },
-            { step: "2", title: t("reports.steps.export", "Export report"), detail: t("reports.steps.export_detail", "Queue the main export first, then choose secondary formats if needed.") },
-            { step: "3", title: t("reports.steps.share", "Share update"), detail: t("reports.steps.share_detail", "Use the connected summary lanes only after trust checks are clear.") },
-          ].map((item) => (
-            <div
-              key={item.step}
-              className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-soft)]"
-            >
-              <div className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--accent)]">{t("common.step", "Step")} {item.step}</div>
-              <div className="mt-2 font-semibold text-[var(--text)]">{item.title}</div>
-              <div className="mt-1 text-sm text-[var(--muted)]">{item.detail}</div>
-            </div>
-          ))}
-        </section>
+        <GuidanceBlock
+          surfaceKey="reports-flow"
+          title={t("reports.help.title", "How this desk flows")}
+          summary={t("reports.help.summary", "Keep reporting clean by setting the range, exporting the main file, then opening secondary lanes only when needed.")}
+          eyebrow={t("reports.title", "Reports")}
+          className="border-[var(--border)] bg-[rgba(20,24,36,0.88)] shadow-[var(--shadow-soft)]"
+        >
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              { step: "1", title: t("reports.steps.range", "Pick range"), detail: t("reports.steps.range_detail", "Set the window and apply the range you want to report.") },
+              { step: "2", title: t("reports.steps.export", "Export report"), detail: t("reports.steps.export_detail", "Queue the main export first, then choose secondary formats if needed.") },
+              { step: "3", title: t("reports.steps.share", "Share update"), detail: t("reports.steps.share_detail", "Use the connected summary lanes only after trust checks are clear.") },
+            ].map((item) => (
+              <div
+                key={item.step}
+                className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card-strong)] px-5 py-4"
+              >
+                <div className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--accent)]">{t("common.step", "Step")} {item.step}</div>
+                <div className="mt-2 font-semibold text-[var(--text)]">{item.title}</div>
+                <div className="mt-1 text-sm text-[var(--muted)]">{item.detail}</div>
+              </div>
+            ))}
+          </div>
+        </GuidanceBlock>
 
         <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div>

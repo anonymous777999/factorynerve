@@ -15,6 +15,7 @@ import { useSession } from "@/lib/use-session";
 import { signalWorkflowRefresh, subscribeToWorkflowRefresh } from "@/lib/workflow-sync";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { DashboardPageSkeleton } from "@/components/page-skeletons";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 
@@ -1575,32 +1576,34 @@ export default function DashboardHome() {
         </details>
 
         {roleLaunchGuide ? (
-          <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
-            <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-              <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
-                  {roleLaunchGuide.eyebrow}
-                </div>
-                <CardTitle className="mt-1 text-xl">{roleLaunchGuide.title}</CardTitle>
-                <div className="mt-2 max-w-3xl text-sm text-[var(--muted)]">{roleLaunchGuide.detail}</div>
+          <GuidanceBlock
+            surfaceKey="dashboard-launch"
+            title={roleLaunchGuide.title}
+            summary={roleLaunchGuide.detail}
+            eyebrow={roleLaunchGuide.eyebrow}
+            autoOpenVisits={1}
+            className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]"
+          >
+            <div className="space-y-4">
+              <div className="flex justify-end">
+                <Link href={roleLaunchGuide.steps[0]?.href || "/dashboard"}>
+                  <Button variant="outline">{roleLaunchGuide.steps[0]?.action || "Open Workspace"}</Button>
+                </Link>
               </div>
-              <Link href={roleLaunchGuide.steps[0]?.href || "/dashboard"}>
-                <Button variant="outline">{roleLaunchGuide.steps[0]?.action || "Open Workspace"}</Button>
-              </Link>
-            </CardHeader>
-            <CardContent className="grid gap-3 lg:grid-cols-3">
-              {roleLaunchGuide.steps.map((step, index) => (
-                <div key={`${step.href}-${index}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Step {index + 1}</div>
-                  <div className="mt-2 text-sm font-semibold text-[var(--text)]">{step.title}</div>
-                  <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
-                  <Link href={step.href} className="mt-3 inline-block text-xs text-[var(--accent)] underline underline-offset-4">
-                    {step.action}
-                  </Link>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+              <div className="grid gap-3 lg:grid-cols-3">
+                {roleLaunchGuide.steps.map((step, index) => (
+                  <div key={`${step.href}-${index}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                    <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Step {index + 1}</div>
+                    <div className="mt-2 text-sm font-semibold text-[var(--text)]">{step.title}</div>
+                    <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
+                    <Link href={step.href} className="mt-3 inline-block text-xs text-[var(--accent)] underline underline-offset-4">
+                      {step.action}
+                    </Link>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </GuidanceBlock>
         ) : null}
 
         <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr_1fr]">

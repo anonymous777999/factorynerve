@@ -41,8 +41,12 @@ export function OcrGuideCard({
   stepClassName,
   renderFooter,
 }: OcrGuideCardProps) {
-  const { expanded, ready, onExpandedChange } = useOcrGuide(pageKey);
+  const { expanded, ready, visible, onExpandedChange } = useOcrGuide(pageKey);
   const isExpanded = ready ? expanded : false;
+
+  if (!visible) {
+    return null;
+  }
 
   return (
     <section className={cn("overflow-hidden rounded-[1.6rem] border", className)}>

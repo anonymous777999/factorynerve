@@ -33,6 +33,7 @@ import { signalWorkflowRefresh, subscribeToWorkflowRefresh } from "@/lib/workflo
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -1830,38 +1831,45 @@ export default function ApprovalsPage() {
           </div>
         </section>
 
-        {/* AUDIT: FLOW_BROKEN - make the review journey scan as a short sequence before the dense queue surfaces begin. */}
-        <section className="grid gap-4 md:grid-cols-3">
-          {[
-            {
-              step: "Step 1",
-              title: "Pick lane",
-              body: hasActiveFilters
-                ? `Filters are active across ${activeFilterCount} lane${activeFilterCount === 1 ? "" : "s"}.`
-                : "Start with the full queue or jump into a preset lane when the backlog shifts.",
-            },
-            {
-              step: "Step 2",
-              title: "Review next",
-              body: nextReviewItem
-                ? `${nextReviewItem.typeLabel} stays featured until you close or reroute it.`
-                : "No decision item is waiting right now.",
-            },
-            {
-              step: "Step 3",
-              title: "Close it",
-              body: "Approve, reject, or escalate from the detail panel without losing your place in the queue.",
-            },
-          ].map((item) => (
-            <Card key={item.title} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
-              <CardContent className="space-y-3 px-5 py-5">
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
-                <div className="text-xl font-semibold text-[var(--text)]">{item.title}</div>
-                <div className="text-sm leading-6 text-[var(--muted)]">{item.body}</div>
-              </CardContent>
-            </Card>
-          ))}
-        </section>
+        <GuidanceBlock
+          surfaceKey="approvals-flow"
+          title="How to work the queue fast"
+          summary="Use this only when you want the quick lane logic. The queue itself should stay action-first."
+          eyebrow="Review"
+          className="border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl"
+        >
+          <div className="grid gap-4 md:grid-cols-3">
+            {[
+              {
+                step: "Step 1",
+                title: "Pick lane",
+                body: hasActiveFilters
+                  ? `Filters are active across ${activeFilterCount} lane${activeFilterCount === 1 ? "" : "s"}.`
+                  : "Start with the full queue or jump into a preset lane when the backlog shifts.",
+              },
+              {
+                step: "Step 2",
+                title: "Review next",
+                body: nextReviewItem
+                  ? `${nextReviewItem.typeLabel} stays featured until you close or reroute it.`
+                  : "No decision item is waiting right now.",
+              },
+              {
+                step: "Step 3",
+                title: "Close it",
+                body: "Approve, reject, or escalate from the detail panel without losing your place in the queue.",
+              },
+            ].map((item) => (
+              <Card key={item.title} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+                <CardContent className="space-y-3 px-5 py-5">
+                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
+                  <div className="text-xl font-semibold text-[var(--text)]">{item.title}</div>
+                  <div className="text-sm leading-6 text-[var(--muted)]">{item.body}</div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </GuidanceBlock>
 
         {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
         {status ? <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}

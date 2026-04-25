@@ -24,9 +24,11 @@ import { coerceIntegerInput } from "@/lib/validation";
 import { signalWorkflowRefresh } from "@/lib/workflow-sync";
 import { EntryPageSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
+import { GuidanceHint } from "@/components/ui/guidance-block";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useGuidancePreferences } from "@/lib/guidance";
 
 type Me = CurrentUser;
 type ShiftValue = EntryPayload["shift"];
@@ -295,6 +297,8 @@ export default function EntryPage() {
   const [error, setError] = useState("");
   const [activeStep, setActiveStep] = useState<StepIndex>(0);
   const queryAppliedRef = useRef(false);
+  const entryTips = useGuidancePreferences("entry-flow", { autoOpenVisits: 2 });
+  const showEntryTips = entryTips.visible && entryTips.expanded;
 
   const loadShiftMap = useCallback(async (date: string) => {
     const response = await listEntries({ date, page: 1, page_size: 50 });
@@ -857,7 +861,9 @@ export default function EntryPage() {
                   Step {activeStep + 1}/{STEP_DEFINITIONS.length}
                 </div>
                 <div className="mt-2 text-2xl font-semibold">{activeDefinition.title}</div>
-                <div className="mt-2 text-sm text-slate-300">{activeDefinition.caption}</div>
+                <GuidanceHint className="mt-2 text-sm text-slate-300">
+                  {showEntryTips ? activeDefinition.caption : null}
+                </GuidanceHint>
               </div>
               <div className="w-full sm:w-auto sm:min-w-[180px]">
                 <div className="flex items-center justify-between text-xs text-slate-400">
@@ -899,11 +905,26 @@ export default function EntryPage() {
                       ) : null}
                     </div>
                     <div className="mt-3 text-base font-semibold text-white">{step.title}</div>
-                    <div className="mt-2 text-sm leading-5 text-slate-300">{step.caption}</div>
+                    <GuidanceHint className="mt-2 text-sm leading-5 text-slate-300">
+                      {showEntryTips ? step.caption : null}
+                    </GuidanceHint>
                   </button>
                 );
               })}
             </div>
+
+            {entryTips.visible ? (
+              <div className="mt-4 flex justify-end">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="px-3 py-2 text-xs"
+                  onClick={() => entryTips.setExpanded(!entryTips.expanded)}
+                >
+                  {entryTips.expanded ? "Hide step tips" : "Show step tips"}
+                </Button>
+              </div>
+            ) : null}
 
             <div className="mt-6 space-y-4">
               {status ? (
