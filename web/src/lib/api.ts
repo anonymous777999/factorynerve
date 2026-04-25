@@ -97,19 +97,27 @@ type CacheEntry = {
 
 const responseCache = new Map<string, CacheEntry>();
 let inflightCsrfBootstrap: Promise<string | null> | null = null;
+let csrfHeaderToken: string | null = null;
+
+function rememberCsrfToken(token?: string | null) {
+  const normalized = String(token || "").trim();
+  if (normalized) {
+    csrfHeaderToken = normalized;
+  }
+  return csrfHeaderToken;
+}
 
 function canUseResponseCache() {
   return typeof window !== "undefined";
 }
 
-async function bootstrapCsrfCookie(timeoutMs: number): Promise<string | null> {
+async function bootstrapCsrfCookie(timeoutMs: number, force = false): Promise<string | null> {
   if (typeof window === "undefined") {
     return null;
   }
 
-  const existing = getCookie(CSRF_COOKIE);
-  if (existing) {
-    return existing;
+  if (!force && csrfHeaderToken) {
+    return csrfHeaderToken;
   }
 
   if (inflightCsrfBootstrap) {
@@ -117,6 +125,7 @@ async function bootstrapCsrfCookie(timeoutMs: number): Promise<string | null> {
   }
 
   const task = (async () => {
+    const existing = getCookie(CSRF_COOKIE);
     const controller = timeoutMs > 0 ? new AbortController() : null;
     const timeoutId = controller ? window.setTimeout(() => controller.abort(), Math.min(timeoutMs, 8000)) : null;
     try {
@@ -129,11 +138,11 @@ async function bootstrapCsrfCookie(timeoutMs: number): Promise<string | null> {
         },
         signal: controller?.signal,
       });
-      const headerToken = response.headers.get(CSRF_HEADER);
+      const headerToken = rememberCsrfToken(response.headers.get(CSRF_HEADER));
       const cookieToken = getCookie(CSRF_COOKIE);
-      return cookieToken || headerToken;
+      return headerToken || cookieToken || existing;
     } catch {
-      return getCookie(CSRF_COOKIE);
+      return csrfHeaderToken || getCookie(CSRF_COOKIE) || existing;
     } finally {
       if (timeoutId) {
         window.clearTimeout(timeoutId);
@@ -241,7 +250,7 @@ export async function apiFetch<T>(
 
   const needsCookieCsrf = useCookies && !SAFE_METHODS.includes(method) && !headers.has("Authorization");
   if (needsCookieCsrf) {
-    const csrf = getCookie(CSRF_COOKIE) || (await bootstrapCsrfCookie(timeoutMs));
+    const csrf = csrfHeaderToken || (await bootstrapCsrfCookie(timeoutMs)) || getCookie(CSRF_COOKIE);
     if (csrf) {
       headers.set(CSRF_HEADER, csrf);
     }
@@ -275,6 +284,8 @@ export async function apiFetch<T>(
       if (timeoutId) clearTimeout(timeoutId);
     }
 
+    rememberCsrfToken(response.headers.get(CSRF_HEADER));
+
     if (
       allowCsrfRetry &&
       needsCookieCsrf &&
@@ -295,7 +306,7 @@ export async function apiFetch<T>(
       }
 
       if (shouldRetry) {
-        const csrf = await bootstrapCsrfCookie(timeoutMs);
+        const csrf = await bootstrapCsrfCookie(timeoutMs, true);
         if (csrf) {
           headers.set(CSRF_HEADER, csrf);
           return performFetch(false);
