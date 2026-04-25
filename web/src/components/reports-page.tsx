@@ -797,7 +797,7 @@ export default function ReportsPage() {
           <Card>
             <CardHeader className="space-y-4">
               <div>
-                <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">{t("reports.step_one", "Step 1")}</div>
+                <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">{t("reports.step_one", "Range")}</div>
                 <CardTitle className="mt-2 text-xl">{t("reports.pick_range", "Pick range")}</CardTitle>
               </div>
               {/* AUDIT: TEXT_NOISE - Quick range controls stay visible, but the labels are shortened so they scan as presets rather than helper text. */}
@@ -894,13 +894,13 @@ export default function ReportsPage() {
 
           <Card>
             <CardHeader>
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">{t("reports.step_two", "Step 2")}</div>
+                <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">{t("reports.step_two", "Export")}</div>
               <CardTitle className="mt-2 text-xl">{t("reports.export_report", "Export report")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* AUDIT: TEXT_NOISE - The export desk now leads with one short instruction instead of explaining every downstream reporting lane up front. */}
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                Queue the range Excel first, then use secondary formats only when that is the real need.
+                Export Excel first. Use other formats only when needed.
               </div>
               <Button onClick={handleRangeExcelJob} disabled={busy}>
                 {busy ? "Working..." : "Export Excel"}

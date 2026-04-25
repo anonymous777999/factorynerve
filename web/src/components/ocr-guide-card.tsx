@@ -31,9 +31,9 @@ export function OcrGuideCard({
   title,
   summary,
   steps,
-  eyebrow = "Guide",
-  collapsedLabel = "Show guide",
-  expandedLabel = "Hide guide",
+  eyebrow = "Tips",
+  collapsedLabel = "Show tips",
+  expandedLabel = "Hide tips",
   className,
   summaryClassName,
   titleClassName,
@@ -72,7 +72,7 @@ export function OcrGuideCard({
           <div className="grid gap-3 md:grid-cols-3">
             {steps.map((step) => (
               <div key={step.label} className={cn("rounded-2xl border px-4 py-4", stepClassName)}>
-                <div className="text-xs font-semibold uppercase tracking-[0.18em]">{step.label}</div>
+                <div className="text-sm font-semibold">{step.label}</div>
                 <div className="mt-2 text-sm leading-6">{step.detail}</div>
               </div>
             ))}

@@ -387,22 +387,22 @@ export default function SettingsPage() {
 
         <GuidanceBlock
           surfaceKey="settings-flow"
-          title={t("settings.help.title", "How this admin lane stays clean")}
-          summary={t("settings.help.summary", "Focus on one change at a time, then verify usage or billing only after the active setup work is stable.")}
+          title={t("settings.help.title", "Admin flow")}
+          summary={t("settings.help.summary", "Make one change at a time. Check usage or billing after setup is stable.")}
           eyebrow={t("settings.title", "Settings")}
           className="border-[var(--border)] bg-[rgba(10,14,24,0.68)]"
         >
           <div className="grid gap-3 md:grid-cols-3">
             {[
-              { step: t("settings.steps.scope", "1. Pick scope"), caption: t("settings.steps.scope_detail", "Choose factory, people, or plan work first.") },
-              { step: t("settings.steps.rules", "2. Update rules"), caption: t("settings.steps.rules_detail", "Save the active admin change before switching lanes.") },
-              { step: t("settings.steps.verify", "3. Verify impact"), caption: t("settings.steps.verify_detail", "Check usage and billing once the setup is stable.") },
+              { step: t("settings.steps.scope", "Pick scope"), caption: t("settings.steps.scope_detail", "Choose factory, people, or plan work first.") },
+              { step: t("settings.steps.rules", "Update rules"), caption: t("settings.steps.rules_detail", "Save the active admin change before switching lanes.") },
+              { step: t("settings.steps.verify", "Verify impact"), caption: t("settings.steps.verify_detail", "Check usage and billing once the setup is stable.") },
             ].map((item) => (
               <div
                 key={item.step}
                 className="rounded-[24px] border border-[var(--border)] bg-[rgba(10,14,24,0.68)] px-5 py-4"
               >
-                <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
+                <div className="text-sm font-semibold text-[var(--text)]">{item.step}</div>
                 <div className="mt-2 text-sm text-[var(--muted)]">{item.caption}</div>
               </div>
             ))}

@@ -168,23 +168,6 @@ export function SteelBatchDetailPage() {
           </div>
         </section>
 
-        {/* AUDIT: FLOW_BROKEN - add a short trace sequence so the page guides the next inspection step. */}
-        <section className="grid gap-3 md:grid-cols-3">
-          {[
-            { step: "1. Check loss", caption: "Confirm variance, severity, and expected-vs-actual output." },
-            { step: "2. Inspect ledger", caption: "Review movement checkpoints before trusting the stock story." },
-            { step: "3. Verify audit", caption: "Use the audit trail only after the batch math is clear." },
-          ].map((item) => (
-            <div
-              key={item.step}
-              className="rounded-[24px] border border-[var(--border)] bg-[rgba(10,14,24,0.68)] px-5 py-4"
-            >
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
-              <div className="mt-2 text-sm text-[var(--muted)]">{item.caption}</div>
-            </div>
-          ))}
-        </section>
-
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Card>
             <CardHeader><CardTitle className="text-base">Input</CardTitle></CardHeader>

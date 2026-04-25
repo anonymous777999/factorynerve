@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
+import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -194,7 +195,7 @@ export default function AttendanceReportsPage() {
               <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">{t("attendance.reports.title", "Attendance Reports")}</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{t("attendance.reports.hero.title", "Daily attendance signal across the selected range")}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                {t("attendance.reports.hero.subtitle", "Review the range first, then scan daily attendance, review load, and exceptions for {{factory}}.", {
+                {t("attendance.reports.hero.subtitle", "Review attendance and exceptions for {{factory}}.", {
                   factory: payload?.factory_name || activeFactory?.name || user.factory_name,
                 })}
               </p>
@@ -230,34 +231,42 @@ export default function AttendanceReportsPage() {
           </div>
         </section>
 
-        <section className="grid gap-3 xl:grid-cols-3">
-          {[
-            {
-              label: t("attendance.reports.steps.range", "1. Set range"),
-              detail: t("attendance.reports.steps.range_detail", "{{from}} to {{to}} is the current report window.", {
-                from: formatDate(dateFrom, locale),
-                to: formatDate(dateTo, locale),
-              }),
-            },
-            {
-              label: t("attendance.reports.steps.totals", "2. Check totals"),
-              detail: t("attendance.reports.steps.totals_detail", "Pending review {{pending}}, late {{late}}, overtime {{overtime}}.", {
-                pending: payload?.totals.pending_review || 0,
-                late: payload?.totals.late_records || 0,
-                overtime: payload?.totals.overtime_records || 0,
-              }),
-            },
-            {
-              label: t("attendance.reports.steps.scan", "3. Scan days"),
-              detail: t("attendance.reports.steps.scan_detail", "Use the daily breakdown after the range and totals look right."),
-            },
-          ].map((step) => (
-            <div key={step.label} className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-5 py-4">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">{step.label}</div>
-              <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
-            </div>
-          ))}
-        </section>
+        <GuidanceBlock
+          surfaceKey="attendance-reports"
+          title={t("attendance.reports.steps.title", "How to scan this")}
+          summary={t("attendance.reports.steps.summary", "Set the range, check totals, then open daily detail.")}
+          eyebrow={t("attendance.reports.steps.eyebrow", "On demand")}
+          autoOpenVisits={1}
+        >
+          <div className="grid gap-3 xl:grid-cols-3">
+            {[
+              {
+                label: t("attendance.reports.steps.range", "Set range"),
+                detail: t("attendance.reports.steps.range_detail", "{{from}} to {{to}} is the current report window.", {
+                  from: formatDate(dateFrom, locale),
+                  to: formatDate(dateTo, locale),
+                }),
+              },
+              {
+                label: t("attendance.reports.steps.totals", "Check totals"),
+                detail: t("attendance.reports.steps.totals_detail", "Pending review {{pending}}, late {{late}}, overtime {{overtime}}.", {
+                  pending: payload?.totals.pending_review || 0,
+                  late: payload?.totals.late_records || 0,
+                  overtime: payload?.totals.overtime_records || 0,
+                }),
+              },
+              {
+                label: t("attendance.reports.steps.scan", "Scan days"),
+                detail: t("attendance.reports.steps.scan_detail", "Use the daily breakdown after the range and totals look right."),
+              },
+            ].map((step) => (
+              <div key={step.label} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+                <div className="text-sm font-semibold text-[var(--text)]">{step.label}</div>
+                <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
+              </div>
+            ))}
+          </div>
+        </GuidanceBlock>
 
         {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
         {refreshing ? (

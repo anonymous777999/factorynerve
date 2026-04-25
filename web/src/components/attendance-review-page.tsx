@@ -929,27 +929,27 @@ export default function AttendanceReviewPage() {
 
         <GuidanceBlock
           surfaceKey="attendance-review-flow"
-          title="How to close attendance issues"
-          summary="Use this only when you want the decision sequence. The queue itself should stay visible and fast."
+          title="Review tips"
+          summary="Open this only when you want the decision sequence."
           eyebrow="Attendance Review"
           className="border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl"
         >
           <div className="grid gap-4 md:grid-cols-3">
             {[
               {
-                step: "Step 1",
+                step: "Pick issue",
                 title: "Pick issue",
                 body: nextReview
                   ? `${nextReview.issueLabel} is featured first so the most urgent attendance decision is obvious.`
                   : "No issue is waiting right now.",
               },
               {
-                step: "Step 2",
+                step: "Apply fix",
                 title: "Apply fix",
                 body: "Use the detail panel to inspect punches, suggested corrections, and note history before you decide.",
               },
               {
-                step: "Step 3",
+                step: "Close it",
                 title: "Close it",
                 body: "Approve to close the record or reject with a note so the audit trail stays clear.",
               },

@@ -70,21 +70,8 @@ export default function HomeRoute() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* AUDIT: TEXT_NOISE - keep the home entry message compact so the sign-in action stays primary */}
-            <p className="max-w-2xl text-sm text-[var(--muted)]">Open the workspace to capture production, review signals, and move the factory forward from one system.</p>
+            <p className="max-w-2xl text-sm text-[var(--muted)]">Open your workspace.</p>
             {error ? <div className="text-sm text-red-400">{error}</div> : null}
-            {/* AUDIT: FLOW_BROKEN - add a simple entry sequence so the public home feels like a product doorway instead of a dead-end card */}
-            <div className="grid gap-3 md:grid-cols-3">
-              {[
-                { label: "1. Sign in", detail: "Open your role-based workspace." },
-                { label: "2. Run work", detail: "Capture, review, and report from one desk." },
-                { label: "3. Stay in flow", detail: "Move between dashboards without starting over." },
-              ].map((step) => (
-                <div key={step.label} className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-5 py-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">{step.label}</div>
-                  <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
-                </div>
-              ))}
-            </div>
             <div className="flex flex-wrap gap-3">
               {/* AUDIT: FLOW_BROKEN - route the primary entry action to the live auth entry instead of the stale login route */}
               <Link href="/access">

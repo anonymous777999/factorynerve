@@ -222,9 +222,9 @@ export function SteelReconciliationsPage() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Reconciliations</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Review the next stock mismatch first</h1>
+              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Stock mismatches</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Start with pending physical counts, tag the root cause, and keep the history trail available without crowding the review flow.
+                Review pending counts and resolve the mismatch.
               </p>
             </div>
             {/* AUDIT: BUTTON_CLUTTER - move route jumps into a secondary tray so reconciliation review stays primary. */}
@@ -244,37 +244,6 @@ export function SteelReconciliationsPage() {
               </div>
             </details>
           </div>
-        </section>
-
-        {/* AUDIT: FLOW_BROKEN - add a short sequence so the page leads clearly from pending review to history. */}
-        <section className="grid gap-4 lg:grid-cols-3">
-          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
-            <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">1. Open pending count</div>
-              <CardTitle className="text-lg">Start with the next mismatch</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Pending reconciliations need the first review pass before approved and rejected history matters.
-            </CardContent>
-          </Card>
-          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
-            <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">2. Tag the cause</div>
-              <CardTitle className="text-lg">Record why stock drifted</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Choose the mismatch cause before approving or rejecting so the next action lane stays traceable.
-            </CardContent>
-          </Card>
-          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
-            <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">3. Keep history</div>
-              <CardTitle className="text-lg">Use filters when needed</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Status and item filters stay available once the active mismatch is handled.
-            </CardContent>
-          </Card>
         </section>
 
         {nextPending ? (

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -246,7 +247,7 @@ export default function AttendanceLivePage() {
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">{t("attendance.live.title", "Attendance Board")}</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{t("attendance.live.hero.title", "Live attendance across the active factory")}</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">{t("attendance.live.hero.subtitle", "Start with the next attendance signal, then scan the full board.")}</p>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">{t("attendance.live.hero.subtitle", "See the next signal and act.")}</p>
             </div>
             <details className="w-full min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4 sm:w-auto sm:min-w-[240px]">
               <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("attendance.live.tools.title", "Board tools")}</summary>
@@ -283,16 +284,23 @@ export default function AttendanceLivePage() {
           </div>
         </section>
 
-        <section className="grid gap-3 xl:grid-cols-3">
+        <GuidanceBlock
+          surfaceKey="attendance-live"
+          title={t("attendance.live.steps.title", "Board tips")}
+          summary={t("attendance.live.steps.summary", "Review the next signal first. Open totals or filters only when needed.")}
+          eyebrow={t("attendance.live.steps.eyebrow", "On demand")}
+          autoOpenVisits={1}
+        >
+          <div className="grid gap-3 xl:grid-cols-3">
           {[
             {
-              label: t("attendance.live.steps.signal", "1. Review next signal"),
+              label: t("attendance.live.steps.signal", "Review next signal"),
               detail: nextAttentionRow
                 ? t("attendance.live.steps.signal_ready", "{{name}} is the first row in focus.", { name: nextAttentionRow.name })
                 : t("attendance.live.steps.signal_empty", "No urgent attendance signal is open right now."),
             },
             {
-              label: t("attendance.live.steps.totals", "2. Scan totals"),
+              label: t("attendance.live.steps.totals", "Scan totals"),
               detail: t("attendance.live.steps.totals_detail", "Working {{working}}, closed {{closed}}, not punched {{notPunched}}.", {
                 working: payload?.totals.working || 0,
                 closed: payload?.totals.completed || 0,
@@ -300,16 +308,17 @@ export default function AttendanceLivePage() {
               }),
             },
             {
-              label: t("attendance.live.steps.filter", "3. Filter the board"),
+              label: t("attendance.live.steps.filter", "Filter the board"),
               detail: t("attendance.live.steps.filter_detail", "Use board tools only when you need a date or status slice."),
             },
           ].map((step) => (
-            <div key={step.label} className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-5 py-4">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">{step.label}</div>
+            <div key={step.label} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+              <div className="text-sm font-semibold text-[var(--text)]">{step.label}</div>
               <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
             </div>
           ))}
-        </section>
+          </div>
+        </GuidanceBlock>
 
         {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
         {refreshing ? (

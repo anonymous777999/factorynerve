@@ -370,31 +370,6 @@ export default function AttendancePage() {
           </div>
         ) : null}
 
-        <section className="mb-6 grid gap-3 lg:grid-cols-3">
-          {[
-            {
-              label: t("attendance.hero.sequence.status", "1. Check status"),
-              detail: t("attendance.hero.sequence.status_detail", "{{status}} for the {{shift}} shift.", {
-                status: statusLabel(today?.status),
-                shift: shiftLabel(displayShift),
-              }),
-            },
-            {
-              label: t("attendance.hero.sequence.record", "2. Record punch"),
-              detail: t("attendance.hero.sequence.record_detail", "Use {{action}} as the main action.", { action: mainAction.label }),
-            },
-            {
-              label: t("attendance.hero.sequence.history", "3. Review history"),
-              detail: t("attendance.hero.sequence.history_detail", "Open attendance history only after the current punch is settled."),
-            },
-          ].map((step) => (
-            <div key={step.label} className="rounded-[24px] border border-white/10 bg-white/5 px-5 py-4">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">{step.label}</div>
-              <div className="mt-2 text-sm text-slate-300">{step.detail}</div>
-            </div>
-          ))}
-        </section>
-
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(17,25,40,0.96),rgba(11,15,25,0.98))] p-6 shadow-[0_24px_80px_rgba(6,10,18,0.48)]">
             <div className="text-base font-semibold tracking-wide text-slate-100">{factoryName}</div>

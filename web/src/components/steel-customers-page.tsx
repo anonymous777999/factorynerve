@@ -286,23 +286,6 @@ export function SteelCustomersPage() {
           </div>
         </details>
 
-        {/* AUDIT: FLOW_BROKEN - add a short customer setup path so the first move is obvious before the ledger expands. */}
-        <section className="grid gap-3 md:grid-cols-3">
-          {[
-            { step: "1. Add buyer", caption: "Create the customer profile first." },
-            { step: "2. Set limits", caption: "Capture credit, terms, and status." },
-            { step: "3. Open ledger", caption: "Review receivables and follow-up next." },
-          ].map((item) => (
-            <div
-              key={item.step}
-              className="rounded-[24px] border border-[var(--border)] bg-[rgba(10,14,24,0.72)] px-5 py-4"
-            >
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
-              <div className="mt-2 text-sm text-[var(--muted)]">{item.caption}</div>
-            </div>
-          ))}
-        </section>
-
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <Card>
             <CardHeader><CardTitle className="text-base">Customers</CardTitle></CardHeader>

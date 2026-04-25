@@ -195,34 +195,6 @@ export function SteelInvoiceDetailPage() {
         </section>
 
         {/* AUDIT: FLOW_BROKEN - add a short next-step sequence so the invoice detail leads directly into dispatch follow-through. */}
-        <section className="grid gap-4 lg:grid-cols-3">
-          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
-            <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">1. Check progress</div>
-              <CardTitle className="text-lg">See what is already shipped</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Track ordered weight, active trucks, and the quantity that is still waiting to move.
-            </CardContent>
-          </Card>
-          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
-            <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">2. Open next truck</div>
-              <CardTitle className="text-lg">Keep dispatch moving</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">{nextDispatchCopy}</CardContent>
-          </Card>
-          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
-            <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">3. Review trust</div>
-              <CardTitle className="text-lg">Confirm cash and audit state</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Commercial status, notes, and invoice events stay available once the dispatch path is clear.
-            </CardContent>
-          </Card>
-        </section>
-
         {/* AUDIT: FLOW_BROKEN - feature the next dispatch action before supporting audit context so the page has a clear operational handoff. */}
         <section className="grid gap-4 lg:grid-cols-[1.18fr_0.82fr]">
           <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">

@@ -303,9 +303,7 @@ export default function EntryDetailPage() {
         <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div className="space-y-2">
             <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Entry Detail</div>
-            <h1 className="text-3xl font-semibold">
-              Review the shift first, then edit or export if needed
-            </h1>
+            <h1 className="text-3xl font-semibold">Entry detail</h1>
             <p className="text-sm text-[var(--muted)]">
               {formatDate(entry.date)} | {entry.shift} | submitted by {entry.submitted_by || `User ${entry.user_id || "-"}`} | status {entry.status}
             </p>
@@ -326,23 +324,6 @@ export default function EntryDetailPage() {
             </Link>
           </div>
         </details>
-
-        {/* AUDIT: FLOW_BROKEN - add a short review sequence so the page leads with the next operational move. */}
-        <section className="grid gap-3 md:grid-cols-3">
-          {[
-            { step: "1. Check status", caption: "Confirm the shift outcome and approval state first." },
-            { step: "2. Review notes", caption: "Use the summary and production context before changing anything." },
-            { step: "3. Act", caption: "Approve, edit, or export only after the record reads clean." },
-          ].map((item) => (
-            <div
-              key={item.step}
-              className="rounded-[24px] border border-[var(--border)] bg-[rgba(10,14,24,0.68)] px-5 py-4"
-            >
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
-              <div className="mt-2 text-sm text-[var(--muted)]">{item.caption}</div>
-            </div>
-          ))}
-        </section>
 
         <section className="grid gap-6 xl:grid-cols-[0.86fr_1.14fr]">
           <Card>

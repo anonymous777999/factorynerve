@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
@@ -248,7 +249,7 @@ export default function AnalyticsPage() {
           <div>
             <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("analytics.title", "Analytics")}</div>
             <h1 className="mt-2 text-3xl font-semibold">{t("analytics.hero.title", "Performance insights")}</h1>
-            <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">{t("analytics.hero.subtitle", "Start with this week, then compare monthly and trend signals.")}</p>
+            <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">{t("analytics.hero.subtitle", "Review this week, then check trend shifts.")}</p>
           </div>
           <details className="w-full min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4 sm:w-auto sm:min-w-[240px]">
             <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("analytics.tools.title", "Analytics tools")}</summary>
@@ -284,33 +285,41 @@ export default function AnalyticsPage() {
           </details>
         </section>
 
-        <section className="grid gap-3 xl:grid-cols-3">
-          {[
-            {
-              label: t("analytics.steps.review_week", "1. Review week"),
-              detail: weekly.length
-                ? t("analytics.steps.review_week_ready", "{{count}} recent production points are ready.", { count: weekly.length })
-                : t("analytics.steps.review_week_empty", "Weekly production will appear here first."),
-            },
-            {
-              label: t("analytics.steps.compare_month", "2. Compare month"),
-              detail: monthly
-                ? t("analytics.steps.compare_month_ready", "Monthly average is {{average}}%.", { average: monthly.average.toFixed(1) })
-                : t("analytics.steps.compare_month_empty", "Monthly summary follows the weekly read."),
-            },
-            {
-              label: t("analytics.steps.check_trends", "3. Check trends"),
-              detail: trends
-                ? t("analytics.steps.check_trends_ready", "Trend is {{value}}.", { value: trends.production_trend })
-                : t("analytics.steps.check_trends_empty", "Diagnostics appear after the core production story."),
-            },
-          ].map((step) => (
-            <div key={step.label} className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-5 py-4">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">{step.label}</div>
-              <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
-            </div>
-          ))}
-        </section>
+        <GuidanceBlock
+          surfaceKey="analytics"
+          title={t("analytics.steps.title", "How to read this")}
+          summary={t("analytics.steps.summary", "Start with the week. Open monthly and trend detail only when needed.")}
+          eyebrow={t("analytics.steps.eyebrow", "On demand")}
+          autoOpenVisits={1}
+        >
+          <div className="grid gap-3 xl:grid-cols-3">
+            {[
+              {
+                label: t("analytics.steps.review_week", "Review week"),
+                detail: weekly.length
+                  ? t("analytics.steps.review_week_ready", "{{count}} recent production points are ready.", { count: weekly.length })
+                  : t("analytics.steps.review_week_empty", "Weekly production will appear here first."),
+              },
+              {
+                label: t("analytics.steps.compare_month", "Compare month"),
+                detail: monthly
+                  ? t("analytics.steps.compare_month_ready", "Monthly average is {{average}}%.", { average: monthly.average.toFixed(1) })
+                  : t("analytics.steps.compare_month_empty", "Monthly summary follows the weekly read."),
+              },
+              {
+                label: t("analytics.steps.check_trends", "Check trends"),
+                detail: trends
+                  ? t("analytics.steps.check_trends_ready", "Trend is {{value}}.", { value: trends.production_trend })
+                  : t("analytics.steps.check_trends_empty", "Diagnostics appear after the core production story."),
+              },
+            ].map((step) => (
+              <div key={step.label} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+                <div className="text-sm font-semibold text-[var(--text)]">{step.label}</div>
+                <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
+              </div>
+            ))}
+          </div>
+        </GuidanceBlock>
 
         {refreshing ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3 text-sm text-[var(--muted)]">
@@ -324,14 +333,14 @@ export default function AnalyticsPage() {
               <div className="text-sm text-[var(--muted)]">{t("analytics.cards.plan", "Plan")}</div>
               <CardTitle>{usage?.plan || "-"}</CardTitle>
             </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">{t("analytics.cards.plan_detail", "Current analytics access is controlled by your org plan.")}</CardContent>
+            <CardContent className="text-sm text-[var(--muted)]">{t("analytics.cards.plan_detail", "Access depends on plan.")}</CardContent>
           </Card>
           <Card>
             <CardHeader>
               <div className="text-sm text-[var(--muted)]">{t("analytics.cards.weekly_average", "Weekly Average")}</div>
               <CardTitle>{weeklyAverage.toFixed(1)}%</CardTitle>
             </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">{t("analytics.cards.weekly_average_detail", "Average production percentage across returned weekly points.")}</CardContent>
+            <CardContent className="text-sm text-[var(--muted)]">{t("analytics.cards.weekly_average_detail", "Average across this week.")}</CardContent>
           </Card>
           <Card>
             <CardHeader>

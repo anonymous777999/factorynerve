@@ -719,29 +719,12 @@ export default function PremiumDashboardPage() {
           </div>
         </details>
 
-        {/* AUDIT: FLOW_BROKEN - add a short owner sequence so the page frames the next decision clearly. */}
-        <section className="grid gap-3 md:grid-cols-3">
-          {[
-            { step: "1. Read risk", caption: "Start with premium signals, not raw route switching." },
-            { step: "2. Focus scope", caption: "Use linked filters to narrow the factory and shift context." },
-            { step: "3. Open desk", caption: "Jump into steel, reports, or OCR only after the pattern is clear." },
-          ].map((item) => (
-            <div
-              key={item.step}
-              className="rounded-[24px] border border-[var(--border)] bg-[rgba(10,14,24,0.68)] px-5 py-4"
-            >
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
-              <div className="mt-2 text-sm text-[var(--muted)]">{item.caption}</div>
-            </div>
-          ))}
-        </section>
-
         <Card>
           <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <CardTitle className="text-xl">Linked Filters</CardTitle>
               <p className="mt-2 text-sm text-[var(--muted)]">
-                Select one chart dimension and the rest of the command center updates with the same scope.
+                Pick one scope to sync the view.
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-4">

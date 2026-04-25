@@ -560,17 +560,17 @@ function BillingPageInner() {
         <section className="grid gap-3 xl:grid-cols-3">
           {[
             {
-              label: "1. Check billing access",
+              label: "Check billing access",
               detail: canWriteBilling ? "Owner access can start checkout and plan changes." : "Admins can review, but owners complete checkout.",
             },
             {
-              label: "2. Confirm the fit",
+              label: "Confirm the fit",
               detail: checkoutEstimate?.isCompatible === false
                 ? `Current selection exceeds the ${checkoutPlanInfo?.name || "chosen"} plan cap.`
                 : `Users ${requestedUsers}, factories ${requestedFactories}, plan ${checkoutPlanInfo?.name || "-"}.`,
             },
             {
-              label: "3. Start checkout",
+              label: "Start checkout",
               detail: billingConfig?.configured
                 ? "Razorpay is ready when the plan and add-ons look right."
                 : "Razorpay must be configured before checkout can start.",
@@ -681,9 +681,7 @@ function BillingPageInner() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <div className="text-sm font-semibold text-white">AI Quota Usage</div>
-                    <div className="mt-1 text-xs leading-5 text-[var(--muted)]">
-                      Tracks smart suggestions, anomaly scans, executive summaries, and AI email drafting.
-                    </div>
+                    <div className="mt-1 text-xs leading-5 text-[var(--muted)]">Live AI usage</div>
                   </div>
                   <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeClass("blue")}`}>
                     Live sync
@@ -709,7 +707,7 @@ function BillingPageInner() {
                       />
                     </div>
                     <div className="mt-2 text-xs text-[var(--muted)]">
-                      {summaryHealth.detail} · Used by anomaly scans, natural-language queries, and executive report summaries.
+                      {summaryHealth.detail}
                     </div>
                   </div>
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
@@ -731,7 +729,7 @@ function BillingPageInner() {
                       />
                     </div>
                     <div className="mt-2 text-xs text-[var(--muted)]">
-                      {emailHealth.detail} · Used by AI-generated email summaries and outbound briefing drafts.
+                      {emailHealth.detail}
                     </div>
                   </div>
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
@@ -957,8 +955,7 @@ function BillingPageInner() {
               ) : null}
               {checkoutPlanInfo?.sales_only ? (
                 <div className="rounded-2xl border border-amber-400/25 bg-amber-400/10 p-4 text-sm text-amber-100">
-                  Enterprise is handled through a contact-sales motion. Use this page to review the
-                  structure, then move the org with the manual override only during internal QA.
+                  Enterprise plans use contact sales. Internal QA can still review the structure here.
                 </div>
               ) : null}
               {!canWriteBilling ? (

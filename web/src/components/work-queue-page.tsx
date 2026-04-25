@@ -1236,15 +1236,17 @@ export default function WorkQueuePage() {
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{t("queue.title", "Work Queue")}</h1>
               {/* AUDIT: TEXT_NOISE - The hero now states the operating outcome once and leaves the detailed coordination logic to the queue itself. */}
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                {t("queue.hero.subtitle", "See the next task, act on it, and only open queue diagnostics when you need broader context.")}
+                {t("queue.hero.subtitle", "See the next task and act fast.")}
               </p>
             </div>
             <div className="space-y-3 text-sm text-[var(--muted)]">
-              <div>
-                Active factory: <span className="font-semibold text-[var(--text)]">{activeFactory?.name || user.factory_name}</span>
-              </div>
-              <div className="mt-1">
-                Organization: <span className="font-semibold text-[var(--text)]">{organization?.name || "Current organization"}</span>
+              <div className="flex flex-wrap gap-2 text-xs">
+                <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
+                  Factory: <span className="font-semibold text-[var(--text)]">{activeFactory?.name || user.factory_name}</span>
+                </span>
+                <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
+                  Org: <span className="font-semibold text-[var(--text)]">{organization?.name || "Current organization"}</span>
+                </span>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button
@@ -1326,36 +1328,28 @@ export default function WorkQueuePage() {
                 <div className="text-sm text-[var(--muted)]">Open Items</div>
                 <CardTitle>{filterCounts.all}</CardTitle>
               </CardHeader>
-              <CardContent className="text-sm text-[var(--muted)]">
-                Combined queue items across daily work, review, and alerts.
-              </CardContent>
+              <CardContent className="text-sm text-[var(--muted)]">All lanes</CardContent>
             </Card>
             <Card>
               <CardHeader>
                 <div className="text-sm text-[var(--muted)]">Today</div>
                 <CardTitle>{filterCounts.today}</CardTitle>
               </CardHeader>
-              <CardContent className="text-sm text-[var(--muted)]">
-                Missing shifts, saved draft work, and offline queue follow-up.
-              </CardContent>
+              <CardContent className="text-sm text-[var(--muted)]">Today only</CardContent>
             </Card>
             <Card>
               <CardHeader>
                 <div className="text-sm text-[var(--muted)]">Review</div>
                 <CardTitle>{filterCounts.review}</CardTitle>
               </CardHeader>
-              <CardContent className="text-sm text-[var(--muted)]">
-                Pending entry approvals, OCR checks, and stock trust decisions.
-              </CardContent>
+              <CardContent className="text-sm text-[var(--muted)]">Needs review</CardContent>
             </Card>
             <Card>
               <CardHeader>
                 <div className="text-sm text-[var(--muted)]">Unread Alerts</div>
                 <CardTitle>{state.alerts.length}</CardTitle>
               </CardHeader>
-              <CardContent className="text-sm text-[var(--muted)]">
-                Factory alerts waiting for attention on the operations board.
-              </CardContent>
+              <CardContent className="text-sm text-[var(--muted)]">Unread now</CardContent>
             </Card>
           </section>
         </details>

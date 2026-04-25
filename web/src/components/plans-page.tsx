@@ -231,9 +231,9 @@ export default function PlansPage() {
         {/* AUDIT: FLOW_BROKEN - add a clear pricing sequence so the page leads users from plan choice into add-ons and billing */}
         <section className="grid gap-3 xl:grid-cols-3">
           {[
-            { label: "1. Choose a plan", detail: plans.length ? `${plans.length} plans are available in this catalog.` : "Pricing catalog is loading." },
-            { label: "2. Add OCR only if needed", detail: addons.length ? `${addons.length} OCR packs are available after plan choice.` : "No OCR packs are available right now." },
-            { label: "3. Continue to billing", detail: canViewBilling ? "Admins and owners can continue straight into checkout." : "Ask your admin or owner to complete billing." },
+            { label: "Choose a plan", detail: plans.length ? `${plans.length} plans are available in this catalog.` : "Pricing catalog is loading." },
+            { label: "Add OCR if needed", detail: addons.length ? `${addons.length} OCR packs are available after plan choice.` : "No OCR packs are available right now." },
+            { label: "Continue to billing", detail: canViewBilling ? "Admins and owners can continue straight into checkout." : "Ask your admin or owner to complete billing." },
           ].map((step) => (
             <div key={step.label} className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-5 py-4">
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">{step.label}</div>
@@ -338,10 +338,7 @@ export default function PlansPage() {
                     <div className="text-3xl font-semibold text-white">
                       {plan.display_price || (plan.sales_only ? "Custom" : `${formatMoney(plan.monthly_price || 0)}/mo`)}
                     </div>
-                    <div className="mt-2 text-sm text-[var(--muted)]">{plan.subtitle || "Factory operations plan"}</div>
-                    {plan.custom_price_hint ? (
-                      <div className="mt-2 text-xs text-[var(--muted)]">{plan.custom_price_hint}</div>
-                    ) : null}
+                    {plan.subtitle ? <div className="mt-2 text-sm text-[var(--muted)]">{plan.subtitle}</div> : null}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4 text-sm">
@@ -402,7 +399,7 @@ export default function PlansPage() {
             <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">OCR Packs</div>
             <h2 className="mt-2 text-2xl font-semibold">Add extra OCR only when you need it</h2>
             {/* AUDIT: TEXT_NOISE - keep the add-on explanation compact so the pack actions stay easier to scan */}
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">Choose a pack only after the core plan covers your team and factory count.</p>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--muted)]">Add OCR when needed.</p>
           </div>
           <div className="grid gap-4 md:grid-cols-3">
             {addons.map((addon) => {

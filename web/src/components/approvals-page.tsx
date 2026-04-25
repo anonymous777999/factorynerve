@@ -1833,29 +1833,29 @@ export default function ApprovalsPage() {
 
         <GuidanceBlock
           surfaceKey="approvals-flow"
-          title="How to work the queue fast"
-          summary="Use this only when you want the quick lane logic. The queue itself should stay action-first."
+          title="Queue tips"
+          summary="Open this only when you want the quick lane logic."
           eyebrow="Review"
           className="border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl"
         >
           <div className="grid gap-4 md:grid-cols-3">
             {[
               {
-                step: "Step 1",
+                step: "Pick lane",
                 title: "Pick lane",
                 body: hasActiveFilters
                   ? `Filters are active across ${activeFilterCount} lane${activeFilterCount === 1 ? "" : "s"}.`
                   : "Start with the full queue or jump into a preset lane when the backlog shifts.",
               },
               {
-                step: "Step 2",
+                step: "Review next",
                 title: "Review next",
                 body: nextReviewItem
                   ? `${nextReviewItem.typeLabel} stays featured until you close or reroute it.`
                   : "No decision item is waiting right now.",
               },
               {
-                step: "Step 3",
+                step: "Close it",
                 title: "Close it",
                 body: "Approve, reject, or escalate from the detail panel without losing your place in the queue.",
               },

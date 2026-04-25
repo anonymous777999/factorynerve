@@ -377,19 +377,19 @@ export default function OcrPage() {
 
         <OcrGuideCard
           pageKey="ocr-home"
-          title="How OCR moves through this workspace"
-          summary="Start with the queue only when you need it. The main actions stay visible, and the deeper workflow stays here."
+          title="OCR tips"
+          summary="Open this only when you want the full path. The main actions stay visible."
           steps={[
             {
-              label: "1. Start",
+              label: "Start",
               detail: "Choose ledger or table mode, add the image, and queue the OCR run.",
             },
             {
-              label: "2. Check",
+              label: "Check",
               detail: "Watch job status and download the result once the queue finishes.",
             },
             {
-              label: "3. Reuse",
+              label: "Reuse",
               detail: "Open scan or verification when the document needs capture, cleanup, or trust review.",
             },
           ]}

@@ -486,23 +486,6 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
           </div>
         </details>
 
-        {/* AUDIT: FLOW_BROKEN - add a short collections sequence so the ledger leads with the next recovery move. */}
-        <section className="grid gap-3 md:grid-cols-3">
-          {[
-            { step: "1. Read exposure", caption: "Check the highest-risk invoice and overdue signal first." },
-            { step: "2. Capture proof", caption: "Use payments and verification to stabilize the customer record." },
-            { step: "3. Assign follow-up", caption: "Create or update recovery tasks once the ledger is clear." },
-          ].map((item) => (
-            <div
-              key={item.step}
-              className="rounded-[24px] border border-[var(--border)] bg-[rgba(10,14,24,0.68)] px-5 py-4"
-            >
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
-              <div className="mt-2 text-sm text-[var(--muted)]">{item.caption}</div>
-            </div>
-          ))}
-        </section>
-
         <section className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader><CardTitle className="text-base">Invoice Total</CardTitle></CardHeader>

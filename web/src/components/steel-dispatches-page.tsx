@@ -525,36 +525,6 @@ export function SteelDispatchesPage() {
         </section>
 
         {/* AUDIT: FLOW_BROKEN - add a short sequence so the screen points from invoice selection to truck release. */}
-        <section className="grid gap-4 lg:grid-cols-3">
-          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
-            <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">1. Pick invoice</div>
-              <CardTitle className="text-lg">Load remaining quantity</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Start from an invoice so every truck line inherits a real customer, item, and remaining quantity.
-            </CardContent>
-          </Card>
-          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
-            <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">2. Check truck</div>
-              <CardTitle className="text-lg">Confirm logistics and capacity</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Truck, driver, entry, exit, and capacity should all be captured before the dispatch is saved.
-            </CardContent>
-          </Card>
-          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
-            <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">3. Save dispatch</div>
-              <CardTitle className="text-lg">Create the gate pass</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Once the checklist is clear, save the draft or create the live dispatch without losing invoice traceability.
-            </CardContent>
-          </Card>
-        </section>
-
         <section className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader><CardTitle className="text-base">Recent Dispatches</CardTitle></CardHeader>

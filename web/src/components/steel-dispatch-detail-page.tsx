@@ -291,38 +291,6 @@ export function SteelDispatchDetailPage() {
         </section>
 
         {/* AUDIT: FLOW_BROKEN - add a short progression strip so the dispatch screen clearly points from manifest to closure. */}
-        <section className="grid gap-4 lg:grid-cols-3">
-          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
-            <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">1. Check manifest</div>
-              <CardTitle className="text-lg">Confirm truck and load</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Validate the truck, driver, and invoice-linked material before changing dispatch state.
-            </CardContent>
-          </Card>
-          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
-            <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">2. Move status</div>
-              <CardTitle className="text-lg">{nextAction ? nextAction.title : "Dispatch is up to date"}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              {nextAction
-                ? nextAction.description
-                : "No further progression is available right now. Review notes, ledger movements, or the audit trail instead."}
-            </CardContent>
-          </Card>
-          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
-            <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">3. Review evidence</div>
-              <CardTitle className="text-lg">Check ledger and proof</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Timeline, receiver notes, inventory movements, and audit events remain available once the next move is recorded.
-            </CardContent>
-          </Card>
-        </section>
-
         {/* AUDIT: FLOW_BROKEN - surface the next valid status change before lower-signal audit context so the page has one obvious action. */}
         <section className="grid gap-4 lg:grid-cols-[1.12fr_0.88fr]">
           <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">

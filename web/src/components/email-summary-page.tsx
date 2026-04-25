@@ -407,7 +407,7 @@ export default function EmailSummaryPage() {
 
         <Card>
           <CardHeader>
-            <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">Step 1</div>
+            <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">Range</div>
             <CardTitle className="text-xl">Pick range</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -433,13 +433,13 @@ export default function EmailSummaryPage() {
               </div>
             </div>
             {/* AUDIT: FLOW_BROKEN - Replaced the long recommendation sentence with one short next-step cue. */}
-            <div className="text-xs text-[var(--muted)]">Refresh the window, then review trust before drafting.</div>
+            <div className="text-xs text-[var(--muted)]">Refresh, then review trust.</div>
           </CardContent>
         </Card>
 
         <section className="space-y-4">
           <div>
-            <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">Step 2</div>
+            <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">Trust</div>
             <h2 className="mt-2 text-2xl font-semibold">Review trust</h2>
           </div>
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -466,7 +466,7 @@ export default function EmailSummaryPage() {
                   <CardTitle>{summary?.plan || "-"}</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-[var(--muted)]">
-                  Email AI requires {summary?.min_plan || "growth"} or higher.
+                  Requires {summary?.min_plan || "growth"} or higher.
                 </CardContent>
               </Card>
               <Card>
@@ -587,7 +587,7 @@ export default function EmailSummaryPage() {
                           </div>
                         </div>
                       </div>
-                      <div className="mt-3 text-sm text-cyan-50/85">Only approved OCR should feed leadership updates.</div>
+                      <div className="mt-3 text-sm text-cyan-50/85">Use approved OCR only.</div>
                     </div>
                     {steelOverview ? (
                       <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.08)] p-4 md:col-span-2">
@@ -624,7 +624,7 @@ export default function EmailSummaryPage() {
                             </div>
                           ))}
                         </div>
-                        <div className="mt-4 text-sm text-red-50/80">Use this block when the owner wants the week&apos;s biggest risk in one glance.</div>
+                        <div className="mt-4 text-sm text-red-50/80">One-glance owner risk.</div>
                       </div>
                     ) : null}
                   </div>
@@ -648,7 +648,7 @@ export default function EmailSummaryPage() {
 
           <Card>
             <CardHeader>
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">Step 3</div>
+                <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">Draft</div>
               <CardTitle className="text-xl">Draft and send</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">

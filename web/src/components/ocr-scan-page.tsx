@@ -966,21 +966,21 @@ export default function OcrScanPage() {
                 </div>
                 <OcrGuideCard
                   pageKey="ocr-scan"
-                  title="How capture flows forward"
-                  summary="The camera stays primary. Open the guide only when you want the full path from capture to trusted draft."
+                  title="Capture tips"
+                  summary="The camera stays primary. Open this only when you want the full capture path."
                   steps={[
                     {
-                      label: "1. Capture",
+                      label: "Capture",
                       detail: cameraReady
                         ? "Use the live camera for the cleanest page edge and fastest next step."
                         : "Upload from gallery when the camera is unavailable or the page is already saved.",
                     },
                     {
-                      label: "2. Clean",
+                      label: "Clean",
                       detail: "Crop the page, apply the right filter, and keep only the surface that should be read.",
                     },
                     {
-                      label: "3. Review",
+                      label: "Review",
                       detail: "Save the result as a draft, then use verification only for risky fields or trust checks.",
                     },
                   ]}

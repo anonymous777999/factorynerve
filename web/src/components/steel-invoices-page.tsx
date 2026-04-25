@@ -347,36 +347,6 @@ export function SteelInvoicesPage() {
         </section>
 
         {/* AUDIT: FLOW_BROKEN - add a short three-step sequence so the invoice journey points to a clear finish. */}
-        <section className="grid gap-4 lg:grid-cols-3">
-          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
-            <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">1. Pick buyer</div>
-              <CardTitle className="text-lg">Lock the commercial owner</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Select an existing customer or type the buyer name before adding invoice lines.
-            </CardContent>
-          </Card>
-          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
-            <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">2. Add lines</div>
-              <CardTitle className="text-lg">Match weight to goods</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Build each line from finished items and optional batches so the draft reflects real plant output.
-            </CardContent>
-          </Card>
-          <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
-            <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">3. Create invoice</div>
-              <CardTitle className="text-lg">Hand off to dispatch</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Once created, the invoice becomes the source of truth for due dates, receivables, and dispatch weight.
-            </CardContent>
-          </Card>
-        </section>
-
         <section className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader><CardTitle className="text-base">Recent Invoices</CardTitle></CardHeader>

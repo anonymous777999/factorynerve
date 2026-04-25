@@ -1992,23 +1992,23 @@ export default function OcrVerificationPage() {
 
         <OcrGuideCard
           pageKey="ocr-verify"
-          title="How review moves to trusted export"
-          summary="Keep the queue and active document visible. Open the guide when you want the full review path instead of scanning extra text."
+          title="Review tips"
+          summary="Keep the queue and active document visible. Open this only when you want the full review path."
           steps={[
             {
-              label: "1. Pick",
+              label: "Pick",
               detail: nextQueueVerification
                 ? `${nextQueueVerification.source_filename || `Document #${nextQueueVerification.id}`} is ready at the top of the queue.`
                 : "Open a scanned file or pull the next document from the queue.",
             },
             {
-              label: "2. Fix",
+              label: "Fix",
               detail: totalIssues
                 ? `${unresolvedIssueCount} flagged issue${unresolvedIssueCount === 1 ? "" : "s"} still need review.`
                 : "No flagged issues are blocking this review right now.",
             },
             {
-              label: "3. Send",
+              label: "Send",
               detail: canApprove
                 ? "Approve only when the risky values are clear and the export is ready to trust."
                 : "Save or submit once the review note and flagged values are complete.",

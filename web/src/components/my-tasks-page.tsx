@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getActiveWorkflowTemplate, type ActiveWorkflowTemplateContext } from "@/lib/auth";
 import { listUnreadAlerts, type AlertItem } from "@/lib/dashboard";
@@ -327,11 +328,17 @@ export default function MyTasksPage() {
           <div className="space-y-2">
             <div className="text-sm uppercase tracking-[0.32em] text-[var(--accent)]">{t("tasks.hero.eyebrow", "Daily Work")}</div>
             <h1 className="text-3xl font-semibold md:text-4xl">{t("tasks.title", "My Tasks")}</h1>
-            <p className="max-w-3xl text-sm text-[var(--muted)]">{t("tasks.hero.subtitle", "Start with the next task, then check saved work and factory signals.")}</p>
+            <p className="max-w-3xl text-sm text-[var(--muted)]">{t("tasks.hero.subtitle", "Start the next task and clear blockers.")}</p>
           </div>
           <div className="space-y-2 text-sm text-[var(--muted)]">
-            <div>{t("tasks.hero.active_factory", "Active factory: {{value}}", { value: activeFactory?.name || user.factory_name })}</div>
-            <div>{t("tasks.hero.workflow", "Workflow: {{value}}", { value: templateContext?.workflow_template_label || activeFactory?.workflow_template_label || "Standard" })}</div>
+            <div className="flex flex-wrap gap-2 text-xs">
+              <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
+                {t("tasks.hero.active_factory", "Factory: {{value}}", { value: activeFactory?.name || user.factory_name })}
+              </span>
+              <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
+                {t("tasks.hero.workflow", "Workflow: {{value}}", { value: templateContext?.workflow_template_label || activeFactory?.workflow_template_label || "Standard" })}
+              </span>
+            </div>
             <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
@@ -354,23 +361,31 @@ export default function MyTasksPage() {
           </div>
         </section>
 
-        <section className="grid gap-3 xl:grid-cols-3">
+        <GuidanceBlock
+          surfaceKey="my-tasks"
+          title={t("tasks.steps.title", "Task tips")}
+          summary={t("tasks.steps.summary", "Start the next task first. Open saved work or alerts only when needed.")}
+          eyebrow={t("tasks.steps.eyebrow", "On demand")}
+          autoOpenVisits={1}
+        >
+          <div className="grid gap-3 xl:grid-cols-3">
           {[
-            { label: t("tasks.steps.start", "1. Start next"), detail: t("tasks.steps.start_detail", "{{value}}", { value: primaryTask?.title || t("tasks.task.clear", "You are clear for now") }) },
-            { label: t("tasks.steps.saved", "2. Check saved work"), detail: draft ? t("tasks.steps.saved_with_draft", "Continue the saved draft or sync offline work.") : t("tasks.steps.saved_empty", "Nothing is waiting in local draft storage.") },
+            { label: t("tasks.steps.start", "Start next"), detail: t("tasks.steps.start_detail", "{{value}}", { value: primaryTask?.title || t("tasks.task.clear", "You are clear for now") }) },
+            { label: t("tasks.steps.saved", "Check saved work"), detail: draft ? t("tasks.steps.saved_with_draft", "Continue the saved draft or sync offline work.") : t("tasks.steps.saved_empty", "Nothing is waiting in local draft storage.") },
             {
-              label: t("tasks.steps.clear", "3. Clear signals"),
+              label: t("tasks.steps.clear", "Clear signals"),
               detail: alerts.length
                 ? t("tasks.steps.clear_with_alerts", "{{count}} unread alert{{suffix}} still need attention.", { count: alerts.length, suffix: alerts.length === 1 ? "" : "s" })
                 : t("tasks.steps.clear_empty", "No unread alerts are blocking you right now."),
             },
           ].map((step) => (
-            <div key={step.label} className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-5 py-4">
-              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--accent)]">{step.label}</div>
+            <div key={step.label} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
+              <div className="text-sm font-semibold text-[var(--text)]">{step.label}</div>
               <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
             </div>
           ))}
-        </section>
+          </div>
+        </GuidanceBlock>
 
         {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
         {refreshing ? (

@@ -671,24 +671,24 @@ export default function DashboardHome() {
   const roleLaunchGuide = useMemo<RoleLaunchGuide | null>(() => {
     if (user?.role === "operator") {
       return {
-        eyebrow: "Operator Guide",
-        title: "Three moves to finish a clean shift",
-        detail: "Keep the day simple: record work, capture paper, and leave the queue cleaner than you found it.",
+        eyebrow: "Operator",
+        title: "Finish today cleanly",
+        detail: "Record work, capture paper, and close alerts.",
         steps: [
           {
-            title: "Log the next shift entry",
+            title: "Log the next entry",
             detail: `${pendingShifts} shift slot${pendingShifts === 1 ? "" : "s"} still need a production entry today.`,
             href: "/entry",
             action: "Open Shift Entry",
           },
           {
-            title: "Capture paper only when needed",
+            title: "Capture paper",
             detail: `${queueCount} offline item${queueCount === 1 ? "" : "s"} are waiting on this browser right now.`,
             href: "/ocr/scan",
             action: "Open Document Capture",
           },
           {
-            title: "End with signal awareness",
+            title: "Check alerts",
             detail: `${state.alerts.length} alert${state.alerts.length === 1 ? "" : "s"} can still affect the floor today.`,
             href: "/dashboard",
             action: "Review Alerts",
@@ -699,18 +699,18 @@ export default function DashboardHome() {
 
     if (user?.role === "supervisor") {
       return {
-        eyebrow: "Supervisor Guide",
-        title: "Use review first, then protect the flow",
-        detail: "The fastest supervisor loop is queue first, mismatch second, and reporting third.",
+        eyebrow: "Supervisor",
+        title: "Clear blockers first",
+        detail: "Review first, then check exceptions and alerts.",
         steps: [
           {
-            title: "Clear the mixed review inbox",
+            title: "Clear the inbox",
             detail: "Attendance, OCR, and stock items should stop blocking work here before they reach management.",
             href: "/approvals",
             action: "Open Approval Inbox",
           },
           {
-            title: activeFactory?.industry_type === "steel" ? "Stabilize steel trust" : "Check reporting exceptions",
+            title: activeFactory?.industry_type === "steel" ? "Stabilize steel trust" : "Check exceptions",
             detail:
               activeFactory?.industry_type === "steel"
                 ? "Reconciliation and dispatch blockers are the next place hidden risk appears."
@@ -719,7 +719,7 @@ export default function DashboardHome() {
             action: activeFactory?.industry_type === "steel" ? "Open Reconciliations" : "Open Reports",
           },
           {
-            title: "Finish with an escalation check",
+            title: "Review signals",
             detail: `${anomalyCount} anomaly signal${anomalyCount === 1 ? "" : "s"} and ${state.alerts.length} alert${state.alerts.length === 1 ? "" : "s"} are visible right now.`,
             href: "/reports",
             action: "Refresh Reporting View",
@@ -730,24 +730,24 @@ export default function DashboardHome() {
 
     if (user?.role === "admin") {
       return {
-        eyebrow: "Admin Guide",
-        title: "Keep the system clean, then check workflow health",
-        detail: "Admins should lead with setup, access, and reporting stability instead of daily worker actions.",
+        eyebrow: "Admin",
+        title: "Keep the system clean",
+        detail: "Setup, access, and reporting come first.",
         steps: [
           {
-            title: "Review factory and access controls",
+            title: "Review setup",
             detail: "User roles, factory setup, and template rules should stay clean before operations start drifting.",
             href: "/settings",
             action: "Open Factory Admin",
           },
           {
-            title: "Check report and summary health",
+            title: "Check reporting",
             detail: "Use reports to confirm trusted outputs are moving correctly across the factory.",
             href: "/reports",
             action: "Open Reports",
           },
           {
-            title: "Watch approval load only when issues appear",
+            title: "Watch review load",
             detail: "Approvals matter for admin when policy, trust, or workflow breakdown needs attention.",
             href: "/approvals",
             action: "Open Review Queue",
@@ -758,12 +758,12 @@ export default function DashboardHome() {
 
     if (user?.role === "manager") {
       return {
-        eyebrow: "Manager Guide",
-        title: "Decide from one trusted operating view",
-        detail: "Use reports and approvals as the operating truth before you drill into analytics or plant control.",
+        eyebrow: "Manager",
+        title: "Decide from one view",
+        detail: "Clear decisions, then review reports and trends.",
         steps: [
           {
-            title: "Start with the next blocked decision",
+            title: "Clear the next decision",
             detail: canReview
               ? "Approvals and exceptions should clear before they distort downstream summaries."
               : "Open the main operating board and resolve the next decision there.",
@@ -771,7 +771,7 @@ export default function DashboardHome() {
             action: canReview ? "Open Review Queue" : "Open Board",
           },
           {
-            title: steelCommercialMode ? "Keep steel and reporting together" : "Use reports as the business desk",
+            title: steelCommercialMode ? "Keep steel and reporting together" : "Open the business desk",
             detail: steelCommercialMode
               ? "Stock, dispatch, invoice, and customer movement should stay close to the same report window."
               : `${monthlyUnits.toLocaleString(locale)} recent units are already available for reporting and trend review.`,
@@ -779,7 +779,7 @@ export default function DashboardHome() {
             action: steelCommercialMode && canUseSteel ? "Open Steel Control" : "Open Reports",
           },
           {
-            title: "Close the loop with owner context",
+            title: "Send the summary",
             detail: "Owner summaries and control-tower checks should come after the numbers are already trusted.",
             href: canSeeControlTower ? "/control-tower" : "/email-summary",
             action: canSeeControlTower ? "Open Factory Network" : "Open Email Summary",
@@ -791,12 +791,12 @@ export default function DashboardHome() {
     if (user?.role === "owner") {
       const ownerHomeHref = (organization?.accessible_factories || 0) > 1 ? "/control-tower" : "/premium/dashboard";
       return {
-        eyebrow: "Owner Guide",
-        title: "Move from risk to proof to action",
-        detail: "Owners should not hunt through daily screens. Start from risk, verify the evidence, then send the decision-ready summary.",
+        eyebrow: "Owner",
+        title: "Move from risk to action",
+        detail: "Check risk, verify it, then send the summary.",
         steps: [
           {
-            title: ownerHomeHref === "/control-tower" ? "Compare factories first" : "Open the owner desk",
+            title: ownerHomeHref === "/control-tower" ? "Compare factories" : "Open the owner desk",
             detail:
               ownerHomeHref === "/control-tower"
                 ? "Find the factory creating the biggest risk before drilling into details."
@@ -805,7 +805,7 @@ export default function DashboardHome() {
             action: ownerHomeHref === "/control-tower" ? "Open Factory Network" : "Open Owner Desk",
           },
           {
-            title: "Verify anomaly and leakage signals",
+            title: "Review live signals",
             detail: anomalyCount
               ? `${anomalyCount} live signal${anomalyCount === 1 ? "" : "s"} are ready for owner review.`
               : "The radar is calm, which makes this the right time to confirm reporting trust and repeated patterns.",
@@ -813,7 +813,7 @@ export default function DashboardHome() {
             action: "Open AI Insights",
           },
           {
-            title: "Finish with the outbound summary",
+            title: "Send the update",
             detail: "Owner updates work best after reports and OCR trust are already clean.",
             href: "/email-summary",
             action: "Open Email Summary",
@@ -1593,7 +1593,6 @@ export default function DashboardHome() {
               <div className="grid gap-3 lg:grid-cols-3">
                 {roleLaunchGuide.steps.map((step, index) => (
                   <div key={`${step.href}-${index}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Step {index + 1}</div>
                     <div className="mt-2 text-sm font-semibold text-[var(--text)]">{step.title}</div>
                     <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
                     <Link href={step.href} className="mt-3 inline-block text-xs text-[var(--accent)] underline underline-offset-4">

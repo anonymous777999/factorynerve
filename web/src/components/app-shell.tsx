@@ -1101,7 +1101,6 @@ function DesktopContextRail({
           </div>
           <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.5)] px-4 py-4">
             <div className="text-sm font-semibold text-[var(--text)]">{workflowHint.title}</div>
-            <div className="mt-2 text-sm leading-6 text-[var(--muted)]">{workflowHint.detail}</div>
           </div>
         </div>
 
@@ -1126,7 +1125,6 @@ function DesktopContextRail({
                   </div>
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-[var(--text)]">{translatedItem.label}</div>
-                    <div className="mt-1 text-xs leading-5 text-[var(--muted)]">{translatedItem.description}</div>
                   </div>
                 </Link>
               );
@@ -1854,7 +1852,7 @@ function AppShellFrame({
                     {t("shell.account_title", "Account")}
                   </div>
                   <div className="mt-1 text-sm font-semibold text-[var(--text)]">
-                    {t("shell.account_subtitle", "Profile, language, and sign-out tools")}
+                    {t("shell.account_subtitle", "Profile and language")}
                   </div>
                 </div>
                 <span className="text-[var(--muted)] transition group-open:rotate-180">
@@ -1886,7 +1884,7 @@ function AppShellFrame({
                       {t("shell.tips_title", "Tips")}
                     </div>
                     <div className="mt-1 text-xs text-[var(--text)]">
-                      {t("shell.tips_subtitle", "Show optional guidance and first-use hints")}
+                      {t("shell.tips_subtitle", "Show tips")}
                     </div>
                   </div>
                   <button

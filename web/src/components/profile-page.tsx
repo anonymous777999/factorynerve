@@ -557,7 +557,7 @@ export default function ProfilePage() {
           </div>
           <h1 className="mt-2 text-3xl font-semibold text-white">Your account</h1>
           {/* AUDIT: TEXT_NOISE - shorten the hero copy so identity and security actions feel more immediate */}
-          <p className="mt-2 max-w-3xl text-sm text-slate-300">Update your details first, then security, then workspace access.</p>
+          <p className="mt-2 max-w-3xl text-sm text-slate-300">Manage your profile and access.</p>
         </section>
 
         {sessionError ? (
@@ -565,20 +565,6 @@ export default function ProfilePage() {
             {sessionError}
           </div>
         ) : null}
-
-        {/* AUDIT: FLOW_BROKEN - add a simple profile sequence so the page has a clear order instead of four equal sections */}
-        <section className="grid gap-3 xl:grid-cols-3">
-          {[
-            { label: "1. Edit identity", detail: editingProfile ? "Profile editing is open now." : "Open the profile card to change name, phone, or photo." },
-            { label: "2. Update security", detail: showPasswordForm ? "Password update is open now." : "Use the security card for password and device sessions." },
-            { label: "3. Check access", detail: `${organization?.name || "Current organization"} access details are listed in the workspace card.` },
-          ].map((step) => (
-            <div key={step.label} className="rounded-[1.7rem] border border-white/10 bg-[rgba(20,24,36,0.72)] px-5 py-4">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">{step.label}</div>
-              <div className="mt-2 text-sm text-slate-300">{step.detail}</div>
-            </div>
-          ))}
-        </section>
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
           <div className="space-y-6">
