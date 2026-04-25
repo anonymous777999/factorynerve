@@ -17,9 +17,11 @@ from backend.routers.analytics import router as analytics_router
 from backend.routers.ai import router as ai_router
 from backend.routers.alerts import router as alerts_router
 from backend.routers.alert_recipients import router as alert_recipients_router
+from backend.routers.whatsapp_standalone import router as whatsapp_alerts_router
 from backend.routers.attendance import router as attendance_router
 from backend.routers.entries import router as entries_router
 from backend.routers.emails import router as emails_router
+from backend.routers.feedback import router as feedback_router
 from backend.routers.intelligence import router as intelligence_router
 from backend.routers.auth import router as auth_router
 from backend.routers.auth_google import router as auth_google_router
@@ -97,6 +99,8 @@ app.include_router(reports_router, prefix="/reports")
 app.include_router(analytics_router, prefix="/analytics")
 app.include_router(ai_router, prefix="/ai")
 app.include_router(alerts_router, prefix="/alerts")
+app.include_router(feedback_router, prefix="/feedback")
+app.include_router(whatsapp_alerts_router)
 app.include_router(attendance_router, prefix="/attendance")
 app.include_router(settings_router, prefix="/settings")
 app.include_router(alert_recipients_router, prefix="/settings")

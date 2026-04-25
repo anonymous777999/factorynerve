@@ -3,6 +3,7 @@ import "./globals.css";
 import { AppProviders } from "@/components/app-providers";
 import { AppShell } from "@/components/app-shell";
 import { BetaRolloutBanner } from "@/components/beta-rollout-banner";
+import { FeedbackSyncAgent } from "@/components/feedback-sync-agent";
 import { FrontendErrorMonitor } from "@/components/frontend-error-monitor";
 import { OfflineSyncAgent } from "@/components/offline-sync-agent";
 import { ServiceWorker } from "@/components/service-worker";
@@ -53,6 +54,7 @@ export default function RootLayout({
           <ToastCenter />
           <FrontendErrorMonitor />
           <OfflineSyncAgent />
+          <FeedbackSyncAgent />
           <ServiceWorker buildVersion={serviceWorkerBuildVersion} />
         </AppProviders>
       </body>

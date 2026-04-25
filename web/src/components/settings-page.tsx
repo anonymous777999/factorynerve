@@ -42,8 +42,9 @@ import { Input } from "@/components/ui/input";
 import { SafeText } from "@/components/ui/safe-text";
 import { Select } from "@/components/ui/select";
 import SettingsAlertsTab from "@/components/settings-alerts-tab";
+import SettingsFeedbackTab from "@/components/settings-feedback-tab";
 
-type TabKey = "factory" | "users" | "usage" | "alerts";
+type TabKey = "factory" | "users" | "usage" | "alerts" | "feedback";
 
 const USER_ROLES = ["attendance", "operator", "supervisor", "accountant", "manager", "admin", "owner"];
 
@@ -109,6 +110,7 @@ export default function SettingsPage() {
   const canManageFactoryAccess = user?.role === "admin" || user?.role === "owner";
   const canViewBilling = user?.role === "admin" || user?.role === "owner";
   const canManageAlerts = user?.role === "admin" || user?.role === "owner";
+  const canManageFeedback = user?.role === "admin" || user?.role === "owner";
   const assignableRoles = useMemo(
     () =>
       user?.role === "admin" || user?.role === "owner"
@@ -451,6 +453,11 @@ export default function SettingsPage() {
                 {canManageAlerts ? (
                   <Button className="whitespace-nowrap" variant={tab === "alerts" ? "primary" : "outline"} onClick={() => setTab("alerts")}>
                     {t("settings.tabs.alerts", "Alerts")}
+                  </Button>
+                ) : null}
+                {canManageFeedback ? (
+                  <Button className="whitespace-nowrap" variant={tab === "feedback" ? "primary" : "outline"} onClick={() => setTab("feedback")}>
+                    {t("settings.tabs.feedback", "Feedback")}
                   </Button>
                 ) : null}
               </div>
@@ -1122,6 +1129,7 @@ export default function SettingsPage() {
         ) : null}
 
         {tab === "alerts" && canManageAlerts ? <SettingsAlertsTab active={tab === "alerts"} /> : null}
+        {tab === "feedback" && canManageFeedback ? <SettingsFeedbackTab active={tab === "feedback"} /> : null}
 
         {status ? <div className="text-sm text-green-400">{status}</div> : null}
         {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}

@@ -244,6 +244,10 @@ def init_db() -> None:
         import backend.models.admin_alert_recipient  # noqa: F401
         import backend.models.ops_alert_daily_summary  # noqa: F401
         import backend.models.phone_verification  # noqa: F401
+        import backend.models.feedback  # noqa: F401
+        import backend.models.alert_recipient  # noqa: F401
+        import backend.models.alert_preference  # noqa: F401
+        import backend.models.alert_log  # noqa: F401
 
         Base.metadata.create_all(bind=engine)
         _ensure_factory_profile_columns()
@@ -258,6 +262,7 @@ def init_db() -> None:
         _ensure_steel_columns()
         _ensure_attendance_columns()
         _ensure_phone_and_alerting_columns()
+        _ensure_feedback_columns()
         logger.info("Database initialization complete.")
     except Exception as error:  # pylint: disable=broad-except
         logger.exception("Database initialization failed.")
@@ -1045,6 +1050,22 @@ def _ensure_phone_and_alerting_columns() -> None:
             conn.commit()
     except Exception:
         logger.exception("Failed to ensure phone verification and alerting columns.")
+
+
+def _ensure_feedback_columns() -> None:
+    """Backfill newer feedback columns for databases that skipped migrations."""
+    try:
+        inspector = inspect(engine)
+        table_names = set(inspector.get_table_names())
+        if "feedback" not in table_names:
+            return
+        columns = {column["name"] for column in inspector.get_columns("feedback")}
+        with engine.connect() as conn:
+            if "rating" not in columns:
+                conn.exec_driver_sql("ALTER TABLE feedback ADD COLUMN rating VARCHAR(16)")
+            conn.commit()
+    except Exception:
+        logger.exception("Failed to ensure feedback columns.")
 
 
 def _ensure_auth_email_columns() -> None:

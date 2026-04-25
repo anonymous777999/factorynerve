@@ -4,7 +4,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { FeedbackActivityTracker } from "@/components/feedback-activity-tracker";
+import { ErrorFeedbackPrompt } from "@/components/error-feedback-prompt";
+import { FeedbackWidget } from "@/components/feedback-widget";
 import { JobsDrawer } from "@/components/jobs-drawer";
+import { MicroFeedbackPrompt } from "@/components/micro-feedback-prompt";
 import { WorkflowReminderStrip } from "@/components/workflow-reminder-strip";
 import { Select } from "@/components/ui/select";
 import { logout, selectFactory } from "@/lib/auth";
@@ -1661,6 +1665,7 @@ function AppShellFrame({
 
   return (
     <div className="relative flex min-h-screen overflow-hidden" data-component="app-shell">
+      <FeedbackActivityTracker pathname={pathname} />
       {sidebarOpen ? (
         <button
           type="button"
@@ -2009,6 +2014,31 @@ function AppShellFrame({
       >
         <JobsDrawer />
       </div>
+      <FeedbackWidget
+        pathname={pathname}
+        immersiveScannerRoute={immersiveScannerRoute}
+        userId={user?.id ?? null}
+        activeFactoryName={activeFactory?.name || user?.factory_name || null}
+        organizationName={organization?.name || null}
+        role={resolvedRole}
+        appLanguage={language}
+      />
+      <MicroFeedbackPrompt
+        pathname={pathname}
+        userId={user?.id ?? null}
+        activeFactoryName={activeFactory?.name || user?.factory_name || null}
+        organizationName={organization?.name || null}
+        role={resolvedRole}
+        appLanguage={language}
+      />
+      <ErrorFeedbackPrompt
+        pathname={pathname}
+        userId={user?.id ?? null}
+        activeFactoryName={activeFactory?.name || user?.factory_name || null}
+        organizationName={organization?.name || null}
+        role={resolvedRole}
+        appLanguage={language}
+      />
     </div>
   );
 }
