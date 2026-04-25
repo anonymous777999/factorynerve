@@ -34,7 +34,6 @@ import { signalWorkflowRefresh, subscribeToWorkflowRefresh } from "@/lib/workflo
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { OcrGuideCard } from "@/components/ocr-guide-card";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
@@ -1718,8 +1717,6 @@ export default function OcrVerificationPage() {
   const activeDocumentLabel = activeVerification?.source_filename || file?.name || (preview ? "New document review" : "No document open");
   const activeDocumentStatus = activeVerification?.status || (preview ? "draft" : "idle");
 
-  const pendingCount = verifications.filter((item) => item.status === "pending").length;
-
   const sourceImageUrl = useMemo(() => {
     if (localImageUrl) return localImageUrl;
     if (activeVerification?.source_image_url) return `/api${activeVerification.source_image_url}`;
@@ -1868,7 +1865,6 @@ export default function OcrVerificationPage() {
   );
 
   const totalIssues = reviewIssues.length;
-  const checkedIssueCount = resolvedIssueKeys.length;
   const unresolvedIssueCount = unresolvedIssues.length;
   const unresolvedCriticalCount = unresolvedIssues.filter((issue) => issue.tone === "critical").length;
   const approveNeedsOverride = unresolvedCriticalCount > 0 && reviewerNotes.trim().length < 20;
@@ -1936,136 +1932,54 @@ export default function OcrVerificationPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.09),transparent_24%),radial-gradient(circle_at_top_right,rgba(34,197,94,0.06),transparent_20%)] px-4 py-4 md:px-6">
+    <main className="min-h-screen bg-[linear-gradient(180deg,#0d1218_0%,#111820_100%)] px-4 py-4 md:px-6">
       <div className="w-full space-y-4">
-        <section className="sticky top-3 z-20 overflow-hidden rounded-[2rem] border border-[var(--border-strong)] bg-[linear-gradient(135deg,rgba(18,27,42,0.97),rgba(11,18,30,0.98))] p-5 shadow-2xl backdrop-blur md:p-6">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.18),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(34,197,94,0.1),transparent_28%)]" />
-          <div className="relative grid gap-5 xl:grid-cols-[minmax(0,1.35fr)_24rem]">
+        <section className="sticky top-3 z-20 overflow-hidden rounded-[2rem] border border-white/8 bg-[linear-gradient(180deg,rgba(248,248,246,0.98),rgba(244,245,246,0.98))] p-5 shadow-2xl backdrop-blur md:p-6">
+          <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-end">
             <div>
-              <SectionHeading
-                eyebrow="Review"
-                title="Review Documents"
-                detail="Open the next document and clear risky OCR values before export."
-              />
-              <div className="mt-4 flex flex-wrap gap-3">
-                {([
-                  ["Select", activeVerification || preview ? "done" : "current"],
-                  ["Review", totalIssues ? "current" : "pending"],
-                  ["Approve", activeVerification?.status === "pending" ? "current" : activeVerification?.status === "approved" ? "done" : "pending"],
-                ] as Array<[string, "done" | "current" | "pending"]>).map(([step, phase]) => (
-                  <SurfaceBadge
-                    key={step}
-                    className={cn(
-                      phase === "done"
-                        ? "border-emerald-400/30 bg-[rgba(34,197,94,0.12)] text-emerald-100"
-                        : phase === "current"
-                          ? "border-cyan-400/30 bg-[rgba(34,211,238,0.12)] text-cyan-100"
-                          : "border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)]",
-                    )}
-                  >
-                    {step}
-                  </SurfaceBadge>
-                ))}
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8a93a0]">
+                Review
               </div>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#101418]">
+                Review OCR documents
+              </h1>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#66707c]">
+                Open the next document, clear the risky values, and export a trusted sheet.
+              </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <SurfaceBadge className="border-white/10 bg-white/[0.03] text-[var(--muted)]">
+                <span className="rounded-full border border-[#d4d9df] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#66707c]">
                   {activeDocumentLabel}
-                </SurfaceBadge>
-                <SurfaceBadge className={cn("", activeDocumentStatus === "idle" ? "border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)]" : statusBadgeClass(activeDocumentStatus))}>
+                </span>
+                <span className="rounded-full border border-[#d4d9df] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#66707c]">
                   {activeDocumentStatus === "idle" ? "idle" : activeDocumentStatus.replace("_", " ")}
-                </SurfaceBadge>
-                <SurfaceBadge className="border-cyan-400/30 bg-[rgba(34,211,238,0.12)] text-cyan-100">
-                  {totalIssues ? `${Math.round((checkedIssueCount / totalIssues) * 100)}% reviewed` : "Clean review"}
-                </SurfaceBadge>
-                <SurfaceBadge className="border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100">
-                  {unresolvedCriticalCount} critical
-                </SurfaceBadge>
-                <SurfaceBadge className="border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100">
-                  {unresolvedIssueCount} issues left
-                </SurfaceBadge>
-                <SurfaceBadge className="border-white/10 bg-white/[0.03] text-[var(--muted)]">
-                  {pendingCount} waiting in queue
-                </SurfaceBadge>
-              </div>
-              <div className="mt-5 flex flex-wrap gap-3">
-                {nextQueueVerification ? (
-                  <Button className="px-4 py-2 text-xs" onClick={() => hydrateFromRecord(nextQueueVerification)}>
-                    Open next doc
-                  </Button>
-                ) : (
-                  <Link href="/ocr/scan">
-                    <Button className="px-4 py-2 text-xs">Open scan</Button>
-                  </Link>
-                )}
-                <details className="group">
-                  <summary className="list-none">
-                    <Button variant="outline" className="px-4 py-2 text-xs">
-                      More tools
-                    </Button>
-                  </summary>
-                  <div className="mt-3 flex flex-wrap gap-3 rounded-[1.35rem] border border-[var(--border)] bg-[rgba(10,14,24,0.82)] p-3">
-                    <Link href="/ocr/scan">
-                      <Button variant="outline" className="px-4 py-2 text-xs">Scan desk</Button>
-                    </Link>
-                    <Button variant="outline" className="px-4 py-2 text-xs" onClick={() => setShowQuickIntake((current) => !current)}>
-                      {showQuickIntake ? "Hide intake" : "Quick intake"}
-                    </Button>
-                  </div>
-                </details>
+                </span>
+                <span className="rounded-full border border-[#d4d9df] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#66707c]">
+                  {totalIssues ? `${unresolvedIssueCount} issues left` : "Clean review"}
+                </span>
               </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-              <MetricCard
-                label="Current document"
-                value={activeDocumentLabel}
-                detail={
-                  activeVerification
-                    ? `Status ${activeVerification.status}. Last updated ${formatTimestamp(activeVerification.updated_at)}.`
-                    : preview
-                      ? "New preview is open and ready for review."
-                      : "Pick a queue document or scan a new one to start."
-                }
-                className="border-cyan-400/20 bg-[rgba(8,12,20,0.64)]"
-              />
-              <MetricCard
-                label="Review focus"
-                value={totalIssues ? `${unresolvedIssueCount} issues left` : "Clean review"}
-                detail="Keep the first pass on flagged fields, then use the full table only when a deeper cleanup is needed."
-                className="border-emerald-400/20 bg-[rgba(8,12,20,0.64)]"
-              />
+            <div className="flex flex-col gap-3">
+              {nextQueueVerification ? (
+                <Button className="h-12 rounded-[18px] bg-[#111827] px-4 text-sm text-white shadow-none hover:bg-[#1f2937]" onClick={() => hydrateFromRecord(nextQueueVerification)}>
+                  Open next document
+                </Button>
+              ) : (
+                <Link href="/ocr/scan">
+                  <Button className="h-12 w-full rounded-[18px] bg-[#111827] px-4 text-sm text-white shadow-none hover:bg-[#1f2937]">
+                    Open scan
+                  </Button>
+                </Link>
+              )}
+              <Button
+                variant="outline"
+                className="h-11 rounded-[18px] border-[#d4d9df] bg-white px-4 text-sm text-[#111827] hover:bg-[#fbfbfa]"
+                onClick={() => setShowQuickIntake((current) => !current)}
+              >
+                {showQuickIntake ? "Hide intake" : "Quick intake"}
+              </Button>
             </div>
           </div>
         </section>
-
-        <OcrGuideCard
-          pageKey="ocr-verify"
-          title="Review tips"
-          summary="Keep the queue and active document visible. Open this only when you want the full review path."
-          steps={[
-            {
-              label: "Pick",
-              detail: nextQueueVerification
-                ? `${nextQueueVerification.source_filename || `Document #${nextQueueVerification.id}`} is ready at the top of the queue.`
-                : "Open a scanned file or pull the next document from the queue.",
-            },
-            {
-              label: "Fix",
-              detail: totalIssues
-                ? `${unresolvedIssueCount} flagged issue${unresolvedIssueCount === 1 ? "" : "s"} still need review.`
-                : "No flagged issues are blocking this review right now.",
-            },
-            {
-              label: "Send",
-              detail: canApprove
-                ? "Approve only when the risky values are clear and the export is ready to trust."
-                : "Save or submit once the review note and flagged values are complete.",
-            },
-          ]}
-          className="border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(15,22,35,0.97),rgba(11,17,29,0.98))] text-[var(--text)]"
-          summaryClassName="text-[var(--accent)]"
-          bodyClassName="text-[var(--muted)]"
-          stepClassName="border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)]"
-        />
 
         {status ? <div className="rounded-[1.35rem] border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
         {error || sessionError ? <div className="rounded-[1.35rem] border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error || sessionError}</div> : null}
@@ -2099,10 +2013,6 @@ export default function OcrVerificationPage() {
                 </details>
               </CardHeader>
               <CardContent className="space-y-3">
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-                  <MetricCard label="Queue size" value={filteredVerifications.length} detail="Documents matching the current search and status filters." />
-                  <MetricCard label="Pending approvals" value={pendingCount} detail="Sheets waiting for an approver to unlock trusted export." />
-                </div>
                 {filteredVerifications.length ? (
                   filteredVerifications.map((verification) => {
                     const warningCount = verification.warnings.length;

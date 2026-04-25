@@ -14,6 +14,16 @@ export function exportRowsToMarkdown(headers: string[], rows: string[][]) {
   return [headerLine, dividerLine, ...body].join("\n");
 }
 
+export function exportRowsToJson(headers: string[], rows: string[][]) {
+  return JSON.stringify(
+    rows.map((row) =>
+      Object.fromEntries(headers.map((header, index) => [header || `column_${index + 1}`, row[index] || ""])),
+    ),
+    null,
+    2,
+  );
+}
+
 export async function buildStructuredPdfBlob(options: {
   title: string;
   headers: string[];

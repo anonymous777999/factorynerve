@@ -1,17 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import { ErrorBanner } from "@/components/ocr/error-banner";
+import { OcrShell } from "@/components/ocr/ocr-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { canUseOcrScan } from "@/lib/ocr-access";
 import {
   downloadOcrVerificationExport,
   listOcrVerifications,
   type OcrVerificationRecord,
 } from "@/lib/ocr";
-import { triggerBlobDownload } from "@/lib/reports";
+import { transferBlob } from "@/lib/blob-transfer";
 import { useSession } from "@/lib/use-session";
 
 function formatTimestamp(value?: string | null) {
@@ -30,6 +33,7 @@ function formatTimestamp(value?: string | null) {
 export default function OcrHistoryPage() {
   const { user, loading, error: sessionError } = useSession();
   const [records, setRecords] = useState<OcrVerificationRecord[]>([]);
+  const [search, setSearch] = useState("");
   const [busyId, setBusyId] = useState<number | null>(null);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
@@ -37,9 +41,35 @@ export default function OcrHistoryPage() {
   useEffect(() => {
     if (!user || !canUseOcrScan(user.role)) return;
     listOcrVerifications()
-      .then(setRecords)
-      .catch((reason) => setError(reason instanceof Error ? reason.message : "Could not load OCR history."));
+      .then((items) =>
+        setRecords(
+          [...items].sort(
+            (left, right) =>
+              new Date(right.updated_at || 0).getTime() -
+              new Date(left.updated_at || 0).getTime(),
+          ),
+        ),
+      )
+      .catch((reason) =>
+        setError(reason instanceof Error ? reason.message : "Could not load OCR history."),
+      );
   }, [user]);
+
+  const filteredRecords = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    if (!query) return records;
+    return records.filter((record) =>
+      [
+        record.source_filename,
+        record.doc_type_hint,
+        record.status,
+        record.template_name,
+      ]
+        .join(" ")
+        .toLowerCase()
+        .includes(query),
+    );
+  }, [records, search]);
 
   const handleDownload = async (recordId: number) => {
     setBusyId(recordId);
@@ -47,8 +77,8 @@ export default function OcrHistoryPage() {
     setStatus("");
     try {
       const download = await downloadOcrVerificationExport(recordId);
-      triggerBlobDownload(download.blob, download.filename);
-      setStatus(`Downloaded export for document #${recordId}.`);
+      const result = await transferBlob(download.blob, download.filename);
+      setStatus(result === "shared" ? `Shared export for document #${recordId}.` : `Downloaded export for document #${recordId}.`);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not download OCR export.");
     } finally {
@@ -97,80 +127,82 @@ export default function OcrHistoryPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
-          <div>
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">OCR</div>
-            <h1 className="mt-2 text-3xl font-semibold">Document history</h1>
-            <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
-              Review prior OCR drafts, dedupe hits, and trusted exports from the current verification system.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/ocr/scan">
-              <Button>Scan a Document</Button>
-            </Link>
-            <Link href="/ocr/verify">
-              <Button variant="outline">Open Review Queue</Button>
-            </Link>
-          </div>
-        </section>
+    <OcrShell
+      title="Recent OCR documents"
+      subtitle="Reopen past runs, check their status, and download the latest export."
+      step="result"
+    >
+      <div className="space-y-4">
+        {status ? <ErrorBanner tone="success" message={status} /> : null}
+        {error ? <ErrorBanner message={error} actionLabel="Scan again" onAction={() => window.location.assign("/ocr/scan")} /> : null}
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Recent OCR Documents</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {records.length ? (
-              records.map((record) => (
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_13rem]">
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search by file, type, or status"
+            className="mt-0 h-12 rounded-[18px] border-[#d4d9df] bg-white text-[#111827] placeholder:text-[#98a2b3] focus:border-[#111827] focus:bg-white focus:ring-[#111827]/10"
+          />
+          <Link href="/ocr/scan">
+            <Button className="h-12 w-full rounded-[18px] bg-[#111827] text-white shadow-none hover:bg-[#1f2937]">
+              Scan another image
+            </Button>
+          </Link>
+        </div>
+
+        <div className="overflow-hidden rounded-[28px] border border-[#e7eaee] bg-white">
+          <div className="grid gap-3 border-b border-[#eff2f5] px-4 py-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8a93a0] md:grid-cols-[minmax(0,2fr)_1fr_1fr_1fr_10rem]">
+            <div>Document</div>
+            <div>Type</div>
+            <div>Status</div>
+            <div>Updated</div>
+            <div className="text-right">Action</div>
+          </div>
+          <div className="divide-y divide-[#eff2f5]">
+            {filteredRecords.length ? (
+              filteredRecords.map((record) => (
                 <div
                   key={record.id}
-                  className="flex flex-col gap-4 rounded-[1.4rem] border border-[var(--border)] bg-[var(--card-strong)] p-4 lg:flex-row lg:items-center lg:justify-between"
+                  className="grid gap-3 px-4 py-4 md:grid-cols-[minmax(0,2fr)_1fr_1fr_1fr_10rem] md:items-center"
                 >
-                  <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5 xl:items-center">
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Document</div>
-                      <div className="mt-1 text-sm font-semibold text-[var(--text)]">{record.source_filename || `Document #${record.id}`}</div>
+                  <div className="min-w-0">
+                    <div className="truncate text-sm font-medium text-[#111827]">
+                      {record.source_filename || `Document #${record.id}`}
                     </div>
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Type</div>
-                      <div className="mt-1 text-sm text-[var(--text)]">{record.doc_type_hint || "table"}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Status</div>
-                      <div className="mt-1 text-sm text-[var(--text)]">{record.status}</div>
-                    </div>
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Confidence</div>
-                      <div className="mt-1 text-sm text-[var(--text)]">{Math.round(record.avg_confidence || 0)}%</div>
-                    </div>
-                    <div>
-                      <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Updated</div>
-                      <div className="mt-1 text-sm text-[var(--text)]">{formatTimestamp(record.updated_at)}</div>
+                    <div className="mt-1 text-xs text-[#8a93a0]">
+                      {Math.round(record.avg_confidence || 0)}% confidence
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="text-sm text-[#66707c]">{record.doc_type_hint || "table"}</div>
+                  <div>
+                    <span className="rounded-full border border-[#e5e7eb] bg-[#fbfbfa] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#66707c]">
+                      {record.status}
+                    </span>
+                  </div>
+                  <div className="text-sm text-[#66707c]">{formatTimestamp(record.updated_at)}</div>
+                  <div className="flex justify-end gap-2">
                     <Link href={`/ocr/verify?verification_id=${record.id}`}>
-                      <Button variant="outline">Open</Button>
+                      <Button variant="outline" className="h-10 rounded-[16px] border-[#d4d9df] bg-[#f8fafc] px-4 text-[#111827] hover:bg-white">
+                        Open
+                      </Button>
                     </Link>
-                    <Button variant="outline" disabled={busyId === record.id} onClick={() => void handleDownload(record.id)}>
-                      {busyId === record.id ? "Preparing..." : "Export Excel"}
+                    <Button
+                      variant="outline"
+                      className="h-10 rounded-[16px] border-[#d4d9df] bg-[#f8fafc] px-4 text-[#111827] hover:bg-white"
+                      disabled={busyId === record.id}
+                      onClick={() => void handleDownload(record.id)}
+                    >
+                      {busyId === record.id ? "..." : "Excel"}
                     </Button>
                   </div>
                 </div>
               ))
             ) : (
-              <div className="rounded-[1.4rem] border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                No OCR documents yet.
-              </div>
+              <div className="px-4 py-10 text-center text-sm text-[#8a93a0]">No OCR documents match this search.</div>
             )}
-          </CardContent>
-        </Card>
-
-        {status ? <div className="text-sm text-green-400">{status}</div> : null}
-        {error ? <div className="text-sm text-red-400">{error}</div> : null}
+          </div>
+        </div>
       </div>
-    </main>
+    </OcrShell>
   );
 }

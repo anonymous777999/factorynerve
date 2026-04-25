@@ -263,6 +263,39 @@ input[type="checkbox"] {
     0 20px 46px rgba(2, 6, 23, 0.48);
 }
 
+@keyframes ocr-camera-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 0 rgba(255, 255, 255, 0.18),
+      0 10px 30px rgba(15, 23, 42, 0.28);
+  }
+  50% {
+    transform: scale(1.03);
+    box-shadow:
+      0 0 0 14px rgba(255, 255, 255, 0.04),
+      0 18px 42px rgba(15, 23, 42, 0.34);
+  }
+}
+
+.ocr-camera-fab {
+  transition:
+    transform 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.ocr-camera-fab:hover,
+.ocr-camera-fab:focus-visible {
+  transform: translateY(-1px) scale(1.02);
+}
+
+.ocr-camera-capture {
+  animation: ocr-camera-pulse 2.6s ease-in-out infinite;
+}
+
 .overflow-safe-text {
   overflow-wrap: anywhere;
   word-break: break-word;
