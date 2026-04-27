@@ -163,6 +163,9 @@ function humanExtractError(error: unknown) {
   if (lowered.includes("no table")) return "No table structure found in this image.";
   if (lowered.includes("no text")) return "The scan is too unclear to read.";
   if (lowered.includes("too large")) return "Max 20 MB. Try compressing the image.";
+  if (lowered.includes("only image files are supported")) {
+    return "This file could not be prepared for OCR. Try PNG, JPG, PDF, or TIFF.";
+  }
   if (lowered.includes("timed out")) return "Extraction took too long. Please retry.";
   return "Extraction failed. Please retry.";
 }
@@ -597,9 +600,20 @@ export default function OcrScanPage() {
 
     try {
       setProcessingStage("preprocess");
-      const warped = await warpOcrImage({ file });
-      const deskewedFile = buildWarpedFile(warped.blob, file.name);
-      const deskewedUrl = URL.createObjectURL(warped.blob);
+      const normalizedSource = await prepareOcrUploadFile(file);
+      let deskewedFile = normalizedSource.file;
+      let deskewedUrl = URL.createObjectURL(normalizedSource.file);
+      let warpSkipped = false;
+
+      try {
+        const warped = await warpOcrImage({ file: normalizedSource.file });
+        deskewedFile = buildWarpedFile(warped.blob, file.name);
+        URL.revokeObjectURL(deskewedUrl);
+        deskewedUrl = URL.createObjectURL(warped.blob);
+      } catch {
+        warpSkipped = true;
+      }
+
       setPreparedPreviewFile(deskewedFile);
       setPreparedPreviewUrl(deskewedUrl);
 
@@ -641,7 +655,9 @@ export default function OcrScanPage() {
         rawText: result.raw_text ?? null,
         language: result.used_language || "auto",
         avgConfidence: result.avg_confidence ?? result.confidence ?? null,
-        warnings: result.warnings ?? [],
+        warnings: warpSkipped
+          ? Array.from(new Set([...(result.warnings ?? []), "Perspective correction skipped."]))
+          : (result.warnings ?? []),
         scanQuality: result.scan_quality ?? null,
         routingMeta: result.routing ?? null,
         routingLabel: result.routing?.model_tier ?? null,
@@ -695,7 +711,10 @@ export default function OcrScanPage() {
       }
 
       if (!draftSaveFailed) {
-        if (result.scan_quality?.confidence_band === "low") {
+        if (warpSkipped) {
+          setStatus("Sheet ready to review. Perspective correction was skipped for this image.");
+          setStatusTone("warning");
+        } else if (result.scan_quality?.confidence_band === "low") {
           setStatus("Image quality may affect accuracy.");
           setStatusTone("warning");
         } else {
