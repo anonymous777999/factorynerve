@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 BYTEZ_API_BASE = "https://api.bytez.com/models/v2"
 BYTEZ_DEFAULT_MODEL = "google/gemma-7b"
+DEFAULT_ANTHROPIC_MODEL = "claude-3-5-haiku-20241022"
 
 SYSTEM_PROMPT = (
     "You are a document table extraction expert.\n"
@@ -65,18 +66,27 @@ TEXT_ALIGN = Alignment(horizontal="left", vertical="center", wrap_text=True)
 def _get_client() -> Anthropic:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not set in the environment.")
+        raise ValueError("ANTHROPIC_API_KEY is not set. Cannot use Anthropic as table scan provider.")
     return Anthropic(api_key=api_key)
 
 
 def _table_scan_provider() -> str:
-    return (os.getenv("TABLE_SCAN_PROVIDER") or os.getenv("LEDGER_SCAN_PROVIDER") or "anthropic").strip().lower()
+    configured = (os.getenv("TABLE_SCAN_PROVIDER") or os.getenv("LEDGER_SCAN_PROVIDER") or "").strip().lower()
+    if configured:
+        return configured
+    if _has_provider_key("anthropic"):
+        return "anthropic"
+    if _has_provider_key("bytez"):
+        return "bytez"
+    return "tesseract"
 
 
 def _normalize_provider(provider: str | None) -> str:
     key = (provider or "").strip().lower()
     if key in {"claude", "anthropic"}:
         return "anthropic"
+    if key in {"local", "ocr", "tesseract"}:
+        return "tesseract"
     if key == "bytez":
         return "bytez"
     return ""
@@ -95,17 +105,36 @@ def _table_scan_provider_chain(primary: str | None) -> list[str]:
                 seen.add(normalized)
         if chain:
             return chain
-    first = _normalize_provider(primary) or "anthropic"
-    fallback = "bytez" if first == "anthropic" else "anthropic"
-    return [first, fallback]
+    first = _normalize_provider(primary) or _normalize_provider(_table_scan_provider()) or "tesseract"
+    fallback_order = {
+        "anthropic": ["tesseract", "bytez"],
+        "bytez": ["tesseract", "anthropic"],
+        "tesseract": ["anthropic", "bytez"],
+    }
+    chain = [first]
+    for candidate in fallback_order.get(first, ["tesseract", "anthropic", "bytez"]):
+        if candidate not in chain:
+            chain.append(candidate)
+    return chain
 
 
 def _has_provider_key(provider: str) -> bool:
+    if provider == "tesseract":
+        return True
     if provider == "anthropic":
         return bool((os.getenv("ANTHROPIC_API_KEY") or "").strip())
     if provider == "bytez":
         return bool((os.getenv("BYTEZ_API_KEY") or "").strip())
     return False
+
+
+def _anthropic_model_name() -> str:
+    return (
+        os.getenv("TABLE_SCAN_ANTHROPIC_MODEL")
+        or os.getenv("OCR_ANTHROPIC_MODEL")
+        or os.getenv("ANTHROPIC_MODEL")
+        or DEFAULT_ANTHROPIC_MODEL
+    ).strip()
 
 
 def _bytez_auth_header(api_key: str) -> str:
@@ -234,7 +263,25 @@ def _extract_text(response) -> str:
     return "".join(parts).strip()
 
 
+def _call_local_tesseract(image_bytes: bytes) -> dict[str, Any]:
+    from backend.ocr_utils import extract_table_from_image as local_extract_table_from_image
+
+    local_result = local_extract_table_from_image(
+        image_bytes,
+        columns=5,
+        language="auto",
+    )
+    max_columns = max((len(row) for row in local_result.rows), default=0)
+    headers = [f"Column {index}" for index in range(1, max_columns + 1)]
+    normalized_rows = [
+        list(row) + [""] * max(0, max_columns - len(row))
+        for row in (local_result.rows or [])
+    ]
+    return {"headers": headers, "rows": normalized_rows}
+
+
 def _call_claude(
+    image_bytes: bytes,
     base64_image: str,
     *,
     system_prompt: str,
@@ -247,7 +294,7 @@ def _call_claude(
         text_message = f"{user_message}\n\n{extra_message}"
 
     response = client.messages.create(
-        model="claude-haiku-4-5-20251001",
+        model=_anthropic_model_name(),
         max_tokens=2048,
         temperature=0,
         system=system_prompt,
@@ -387,6 +434,8 @@ def extract_table_from_image(
     last_error: Exception | None = None
 
     def _run_provider(provider: str) -> dict:
+        if provider == "tesseract":
+            return _call_local_tesseract(image_bytes)
         if provider == "bytez":
             output = _call_bytez(base64_image, system_prompt=system_prompt, user_message=user_message)
             table = _normalize_table(output)
@@ -397,7 +446,12 @@ def extract_table_from_image(
             if raw is None:
                 raw = output if isinstance(output, str) else json.dumps(output)
         else:
-            raw = _call_claude(base64_image, system_prompt=system_prompt, user_message=user_message)
+            raw = _call_claude(
+                image_bytes,
+                base64_image,
+                system_prompt=system_prompt,
+                user_message=user_message,
+            )
 
         parsed = _extract_json_candidate(raw)
         table = _normalize_table(parsed) if parsed is not None else None
@@ -416,6 +470,7 @@ def extract_table_from_image(
                 raw = output if isinstance(output, str) else json.dumps(output)
         else:
             raw = _call_claude(
+                image_bytes,
                 base64_image,
                 system_prompt=system_prompt,
                 user_message=user_message,
@@ -433,7 +488,7 @@ def extract_table_from_image(
 
     for provider in providers:
         if not _has_provider_key(provider):
-            logger.warning("TableScan provider %s skipped (missing API key).", provider)
+            logger.warning("TableScan provider %s skipped (missing credentials or local OCR unavailable).", provider)
             failures.append(f"{provider}:missing_key")
             continue
         try:
@@ -443,7 +498,7 @@ def extract_table_from_image(
             return table
         except Exception as error:  # pylint: disable=broad-except
             last_error = error
-            logger.warning("TableScan provider failed (%s): %s", provider, error)
+            logger.warning("TableScan provider failed (%s): %s", provider, error, exc_info=True)
             failures.append(provider)
 
     if last_error:

@@ -18,7 +18,7 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from PIL import Image, ImageEnhance
 
 MAX_WIDTH = 1000
-MODEL_NAME = "claude-haiku-4-5-20251001"
+DEFAULT_ANTHROPIC_MODEL = "claude-3-5-haiku-20241022"
 logger = logging.getLogger(__name__)
 BYTEZ_API_BASE = "https://api.bytez.com/models/v2"
 BYTEZ_DEFAULT_MODEL = "google/gemma-7b"
@@ -118,7 +118,7 @@ def preprocess_image_bytes(image_bytes: bytes, *, profile: str | None = None) ->
 def _get_client() -> Anthropic:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not set in the environment.")
+        raise ValueError("ANTHROPIC_API_KEY is not set. Cannot use Anthropic as ledger scan provider.")
     return Anthropic(api_key=api_key)
 
 
@@ -137,13 +137,22 @@ def _mock_rows() -> list[dict]:
 
 
 def _ledger_scan_provider() -> str:
-    return os.getenv("LEDGER_SCAN_PROVIDER", "anthropic").strip().lower()
+    configured = os.getenv("LEDGER_SCAN_PROVIDER", "").strip().lower()
+    if configured:
+        return configured
+    if _has_provider_key("anthropic"):
+        return "anthropic"
+    if _has_provider_key("bytez"):
+        return "bytez"
+    return "tesseract"
 
 
 def _normalize_provider(provider: str | None) -> str:
     key = (provider or "").strip().lower()
     if key in {"claude", "anthropic"}:
         return "anthropic"
+    if key in {"local", "ocr", "tesseract"}:
+        return "tesseract"
     if key == "bytez":
         return "bytez"
     return ""
@@ -162,17 +171,36 @@ def _ledger_scan_provider_chain(primary: str | None) -> list[str]:
                 seen.add(normalized)
         if chain:
             return chain
-    first = _normalize_provider(primary) or "anthropic"
-    fallback = "bytez" if first == "anthropic" else "anthropic"
-    return [first, fallback]
+    first = _normalize_provider(primary) or _normalize_provider(_ledger_scan_provider()) or "tesseract"
+    fallback_order = {
+        "anthropic": ["tesseract", "bytez"],
+        "bytez": ["tesseract", "anthropic"],
+        "tesseract": ["anthropic", "bytez"],
+    }
+    chain = [first]
+    for candidate in fallback_order.get(first, ["tesseract", "anthropic", "bytez"]):
+        if candidate not in chain:
+            chain.append(candidate)
+    return chain
 
 
 def _has_provider_key(provider: str) -> bool:
+    if provider == "tesseract":
+        return True
     if provider == "anthropic":
         return bool((os.getenv("ANTHROPIC_API_KEY") or "").strip())
     if provider == "bytez":
         return bool((os.getenv("BYTEZ_API_KEY") or "").strip())
     return False
+
+
+def _anthropic_model_name() -> str:
+    return (
+        os.getenv("LEDGER_SCAN_ANTHROPIC_MODEL")
+        or os.getenv("OCR_ANTHROPIC_MODEL")
+        or os.getenv("ANTHROPIC_MODEL")
+        or DEFAULT_ANTHROPIC_MODEL
+    ).strip()
 
 
 def _bytez_auth_header(api_key: str) -> str:
@@ -352,6 +380,30 @@ def _extract_text(response) -> str:
     return "".join(parts).strip()
 
 
+def _call_local_tesseract(base64_image: str) -> list[dict]:
+    from backend.ocr_utils import extract_table_from_image as local_extract_table_from_image
+
+    image_bytes = base64.b64decode(base64_image)
+    local_result = local_extract_table_from_image(
+        image_bytes,
+        columns=3,
+        language="auto",
+    )
+    rows: list[dict] = []
+    for row in local_result.rows or []:
+        particular = str(row[0] if len(row) > 0 else "").strip()
+        dr_raw = row[1] if len(row) > 1 else None
+        cr_raw = row[2] if len(row) > 2 else None
+        rows.append(
+            {
+                "particular": particular,
+                "dr": _normalize_amount(dr_raw),
+                "cr": _normalize_amount(cr_raw),
+            }
+        )
+    return rows
+
+
 def _call_claude(
     base64_image: str,
     *,
@@ -365,7 +417,7 @@ def _call_claude(
         text_message = f"{user_message}\n\n{extra_message}"
 
     response = client.messages.create(
-        model=MODEL_NAME,
+        model=_anthropic_model_name(),
         max_tokens=2048,
         temperature=0,
         system=system_prompt,
@@ -405,6 +457,8 @@ def extract_data_from_image(
     last_error: Exception | None = None
 
     def _run_provider(provider: str) -> list[dict]:
+        if provider == "tesseract":
+            return _call_local_tesseract(base64_image)
         if provider == "bytez":
             output = _call_bytez(base64_image, system_prompt=system_prompt, user_message=user_message)
             rows = _maybe_rows_from_output(output)
@@ -453,7 +507,7 @@ def extract_data_from_image(
 
     for provider in providers:
         if not _has_provider_key(provider):
-            logger.warning("LedgerScan provider %s skipped (missing API key).", provider)
+            logger.warning("LedgerScan provider %s skipped (missing credentials or local OCR unavailable).", provider)
             failures.append(f"{provider}:missing_key")
             continue
         try:
@@ -463,7 +517,7 @@ def extract_data_from_image(
             return rows
         except Exception as error:  # pylint: disable=broad-except
             last_error = error
-            logger.warning("LedgerScan provider failed (%s): %s", provider, error)
+            logger.warning("LedgerScan provider failed (%s): %s", provider, error, exc_info=True)
             failures.append(provider)
 
     if last_error:

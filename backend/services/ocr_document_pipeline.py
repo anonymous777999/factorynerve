@@ -16,6 +16,15 @@ from backend.table_scan import extract_table_from_image
 
 
 logger = logging.getLogger(__name__)
+_DEFAULT_ROUTE = {
+    "clarity_score": 0.0,
+    "score_reason": "Routing fallback used.",
+    "model_tier": "fast",
+    "forced": False,
+    "scorer_used": False,
+    "actual_cost_usd": 0.0008,
+    "cost_saved_usd": 0.0132,
+}
 
 
 def _title_from_hint(doc_type_hint: str | None, template: OcrTemplate | None) -> str:
@@ -106,17 +115,21 @@ def build_structured_ocr_result(
     doc_type_hint: str | None = None,
     force_model: str | None = None,
 ) -> dict[str, Any]:
-    route = choose_ocr_route(
-        image_bytes,
-        force_model=force_model,
-        doc_type_hint=doc_type_hint,
-        has_template=template is not None,
-    )
+    try:
+        route = choose_ocr_route(
+            image_bytes,
+            force_model=force_model,
+            doc_type_hint=doc_type_hint,
+            has_template=template is not None,
+        )
+    except Exception as error:  # pylint: disable=broad-except
+        logger.warning("Structured OCR routing failed; using fast tier defaults: %s", error, exc_info=True)
+        route = dict(_DEFAULT_ROUTE)
     fallback_headers = list(template.column_names or []) if template and template.column_names else None
     normalized = normalize_structured_payload(
-        {"headers": fallback_headers, "rows": base_result.rows},
+        {"headers": fallback_headers, "rows": base_result.rows or []},
         fallback_headers=fallback_headers,
-        fallback_rows=base_result.rows,
+        fallback_rows=base_result.rows or [],
         fallback_type=_doc_type(doc_type_hint),
         fallback_title=_title_from_hint(doc_type_hint, template),
     )
@@ -135,24 +148,27 @@ def build_structured_ocr_result(
             if candidate["rows"]:
                 normalized = candidate
         except Exception as error:  # pylint: disable=broad-except
-            logger.warning("Structured OCR AI table fallback failed: %s", error)
+            logger.warning("Structured OCR AI table fallback failed: %s", error, exc_info=True)
 
-    raw_text = normalized["raw_text"] or _flatten_rows(normalized["rows"])
-    warnings = list(dict.fromkeys([*base_result.warnings, *normalized.get("warnings", [])]))
+    raw_text = normalized.get("raw_text") or _flatten_rows(normalized.get("rows") or [])
+    warnings = list(dict.fromkeys([*(base_result.warnings or []), *(normalized.get("warnings") or [])]))
+    normalized_headers = normalized.get("headers") or []
+    normalized_rows = normalized.get("rows") or []
+    avg_confidence = float(base_result.avg_confidence or 0)
     return {
-        "type": normalized["type"],
-        "title": normalized["title"],
-        "headers": normalized["headers"],
-        "rows": normalized["rows"],
+        "type": normalized.get("type") or _doc_type(doc_type_hint),
+        "title": normalized.get("title") or _title_from_hint(doc_type_hint, template),
+        "headers": normalized_headers,
+        "rows": normalized_rows,
         "raw_text": raw_text,
         "language": used_language,
-        "confidence": float(base_result.avg_confidence or 0),
+        "confidence": avg_confidence,
         "warnings": warnings,
-        "routing": route,
-        "columns": max(len(normalized["headers"]), max((len(row) for row in normalized["rows"]), default=0), 1),
-        "avg_confidence": float(base_result.avg_confidence or 0),
-        "cell_confidence": base_result.cell_confidence,
-        "cell_boxes": base_result.cell_boxes,
+        "routing": route or dict(_DEFAULT_ROUTE),
+        "columns": max(len(normalized_headers), max((len(row) for row in normalized_rows), default=0), 1),
+        "avg_confidence": avg_confidence,
+        "cell_confidence": base_result.cell_confidence or [],
+        "cell_boxes": base_result.cell_boxes or [],
         "used_language": used_language,
         "fallback_used": fallback_used,
         "raw_column_added": bool(base_result.raw_column_added),

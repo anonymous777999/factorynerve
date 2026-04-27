@@ -821,14 +821,23 @@ def _run_ocr_with_fallback(
         fallback_language = "eng+hin+mar"
         used_language = primary_language
 
-    result = extract_table_from_image(
-        image_bytes,
-        columns=columns,
-        language=primary_language,
-        column_centers=column_centers,
-        column_keywords=column_keywords,
-        enable_raw_column=enable_raw_column,
-    )
+    try:
+        result = extract_table_from_image(
+            image_bytes,
+            columns=columns,
+            language=primary_language,
+            column_centers=column_centers,
+            column_keywords=column_keywords,
+            enable_raw_column=enable_raw_column,
+        )
+    except Exception as error:  # pylint: disable=broad-except
+        logger.error(
+            "OCR extraction failed on primary pass: %s: %s",
+            type(error).__name__,
+            error,
+            exc_info=True,
+        )
+        raise
 
     needs_fallback = _is_low_confidence(result) or len(result.rows or []) < 2
     if fallback_language and needs_fallback:
@@ -847,7 +856,13 @@ def _run_ocr_with_fallback(
                 used_language = fallback_language
             else:
                 used_language = primary_language
-        except Exception:
+        except Exception as error:  # pylint: disable=broad-except
+            logger.error(
+                "OCR extraction fallback failed: %s: %s",
+                type(error).__name__,
+                error,
+                exc_info=True,
+            )
             used_language = primary_language
             if hasattr(result, "warnings"):
                 result.warnings.append("Fallback OCR language failed; using primary result.")
@@ -1542,10 +1557,10 @@ async def ocr_logbook(
             enable_raw_column=bool(template.enable_raw_column) if template else False,
         )
     except RuntimeError as error:
-        logger.exception("OCR failed.")
+        logger.error("OCR extraction failed: %s: %s", type(error).__name__, error, exc_info=True)
         raise HTTPException(status_code=400, detail=str(error)) from error
     except Exception as error:  # pylint: disable=broad-except
-        logger.exception("OCR failed.")
+        logger.error("OCR extraction failed: %s: %s", type(error).__name__, error, exc_info=True)
         raise HTTPException(status_code=500, detail="OCR failed unexpectedly.") from error
 
     scan_quality_payload = None
@@ -1567,7 +1582,8 @@ async def ocr_logbook(
             "notes": "Image quality may affect accuracy." if image_quality.warnings else None,
             "cell_boxes": result.cell_boxes,
         }
-    except Exception:  # pylint: disable=broad-except
+    except Exception as error:  # pylint: disable=broad-except
+        logger.warning("OCR scan quality analysis failed: %s", error, exc_info=True)
         scan_quality_payload = None
 
     structured = build_structured_ocr_result(

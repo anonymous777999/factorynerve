@@ -166,7 +166,21 @@ function humanExtractError(error: unknown) {
   if (lowered.includes("only image files are supported")) {
     return "This file could not be prepared for OCR. Try PNG, JPG, PDF, or TIFF.";
   }
+  if (lowered.includes("anthropic") || lowered.includes("bytez") || lowered.includes("provider")) {
+    return "The structured OCR provider is unavailable right now. Please retry in a moment.";
+  }
+  if (lowered.includes("tesseract") || lowered.includes("pytesseract")) {
+    return "The OCR engine is unavailable right now. Please retry shortly.";
+  }
   if (lowered.includes("timed out")) return "Extraction took too long. Please retry.";
+  if (
+    message &&
+    message !== "Could not process this image." &&
+    !lowered.includes("failed unexpectedly") &&
+    !lowered.includes("request failed")
+  ) {
+    return message;
+  }
   return "Extraction failed. Please retry.";
 }
 
@@ -583,7 +597,9 @@ export default function OcrScanPage() {
           setStatusTone("success");
           signalWorkflowRefresh("ocr-scan-autosave");
         })
-        .catch(() => undefined);
+        .catch((error) => {
+          console.error("OCR draft autosave failed:", error);
+        });
     }, 900);
     return () => window.clearTimeout(timer);
   }, [draftDirty, persistStructuredDraft, resultPreview]);
@@ -725,6 +741,7 @@ export default function OcrScanPage() {
       signalWorkflowRefresh("ocr-scan");
       void loadRecentRecords();
     } catch (reason) {
+      console.error("OCR extraction error:", reason);
       setStatus(humanExtractError(reason));
       setStatusTone("error");
       setStep("upload");
