@@ -317,6 +317,8 @@ export async function previewOcrLogbook(payload: {
   return apiFetch<OcrPreviewResult>("/ocr/logbook", {
     method: "POST",
     body: formData,
+  }, {
+    timeoutMs: 90000,
   });
 }
 

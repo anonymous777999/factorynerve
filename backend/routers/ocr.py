@@ -567,6 +567,21 @@ def _result_score(result) -> tuple[float, int, int]:
     return (float(result.avg_confidence or 0.0), row_count, cell_count)
 
 
+def _should_retry_with_fallback_language(result) -> bool:
+    rows = result.rows or []
+    row_count = len(rows)
+    populated_cells = sum(1 for row in rows for cell in row if str(cell).strip())
+    confidence = float(getattr(result, "avg_confidence", 0.0) or 0.0)
+
+    if row_count == 0 or populated_cells == 0:
+        return True
+    if row_count <= 1 and populated_cells <= 2:
+        return True
+    if confidence < 20 and populated_cells <= 4:
+        return True
+    return False
+
+
 def _job_urls(job_id: str) -> dict[str, str]:
     return {
         "status_url": f"/ocr/jobs/{job_id}",
@@ -839,7 +854,7 @@ def _run_ocr_with_fallback(
         )
         raise
 
-    needs_fallback = _is_low_confidence(result) or len(result.rows or []) < 2
+    needs_fallback = _should_retry_with_fallback_language(result)
     if fallback_language and needs_fallback:
         fallback_used = True
         try:

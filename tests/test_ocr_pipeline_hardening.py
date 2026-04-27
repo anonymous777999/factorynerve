@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from backend.ocr_utils import OcrResult
+from backend.routers import ocr as ocr_router
 from backend.services import ocr_routing
 from backend.services.ocr_document_pipeline import build_structured_ocr_result
 from backend import table_scan
@@ -61,3 +62,19 @@ def test_build_structured_ocr_result_survives_routing_failure(monkeypatch):
 
     assert result["rows"] == [["A", "B"]]
     assert result["routing"]["model_tier"] == "fast"
+
+
+def test_language_fallback_only_retries_when_primary_result_is_truly_sparse():
+    usable = OcrResult(
+        rows=[["Date", "Qty"], ["2026-04-28", "12"]],
+        avg_confidence=24.0,
+        warnings=["low confidence"],
+    )
+    sparse = OcrResult(
+        rows=[[""]],
+        avg_confidence=12.0,
+        warnings=["low confidence"],
+    )
+
+    assert ocr_router._should_retry_with_fallback_language(usable) is False
+    assert ocr_router._should_retry_with_fallback_language(sparse) is True
