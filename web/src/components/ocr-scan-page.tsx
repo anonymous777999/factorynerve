@@ -47,6 +47,7 @@ import {
   loadOcrUiState,
   saveOcrUiState,
 } from "@/lib/ocr-ui-state";
+import { warmBackendConnection } from "@/lib/auth";
 import { useSession } from "@/lib/use-session";
 import { signalWorkflowRefresh } from "@/lib/workflow-sync";
 
@@ -615,8 +616,13 @@ export default function OcrScanPage() {
     setProcessingWarning(await inspectImageWarning(file));
 
     try {
+      const backendWake = warmBackendConnection();
       setProcessingStage("preprocess");
       const normalizedSource = await prepareOcrUploadFile(file);
+      const backendReady = await backendWake;
+      if (!backendReady) {
+        throw new Error("OCR service is waking up. Please retry in a few seconds.");
+      }
       let deskewedFile = normalizedSource.file;
       let deskewedUrl = URL.createObjectURL(normalizedSource.file);
       let warpSkipped = false;
