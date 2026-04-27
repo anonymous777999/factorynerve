@@ -27,6 +27,39 @@ _DEFAULT_ROUTE = {
 }
 
 
+def _populated_cell_count(rows: list[list[str]] | None) -> int:
+    if not rows:
+        return 0
+    return sum(1 for row in rows for cell in row if str(cell or "").strip())
+
+
+def _should_run_ai_table_enhancement(
+    base_result: OcrResult,
+    route: dict[str, Any],
+) -> bool:
+    tier = str(route.get("model_tier") or "fast")
+    if tier not in {"balanced", "best"}:
+        return False
+
+    if bool(route.get("forced")):
+        return True
+
+    rows = base_result.rows or []
+    row_count = len(rows)
+    populated_cells = _populated_cell_count(rows)
+    avg_confidence = float(base_result.avg_confidence or 0.0)
+
+    if row_count == 0 or populated_cells == 0:
+        return True
+    if row_count <= 1 and populated_cells <= 4:
+        return True
+    if avg_confidence < 24 and populated_cells <= 8:
+        return True
+    if avg_confidence < 18:
+        return True
+    return False
+
+
 def _title_from_hint(doc_type_hint: str | None, template: OcrTemplate | None) -> str:
     if template and template.name:
         return template.name
@@ -134,8 +167,7 @@ def build_structured_ocr_result(
         fallback_title=_title_from_hint(doc_type_hint, template),
     )
 
-    tier = str(route.get("model_tier") or "fast")
-    if tier in {"balanced", "best"}:
+    if _should_run_ai_table_enhancement(base_result, route):
         try:
             ai_table = extract_table_from_image(image_bytes)
             candidate = normalize_structured_payload(

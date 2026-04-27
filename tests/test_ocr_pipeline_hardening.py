@@ -64,6 +64,90 @@ def test_build_structured_ocr_result_survives_routing_failure(monkeypatch):
     assert result["routing"]["model_tier"] == "fast"
 
 
+def test_structured_ocr_result_skips_ai_enhancement_when_base_result_is_usable(monkeypatch):
+    monkeypatch.setattr(
+        "backend.services.ocr_document_pipeline.choose_ocr_route",
+        lambda *_args, **_kwargs: {
+            "clarity_score": 52.0,
+            "score_reason": "blur lowered clarity",
+            "model_tier": "balanced",
+            "forced": False,
+            "scorer_used": True,
+            "actual_cost_usd": 0.0035,
+            "cost_saved_usd": 0.0105,
+        },
+    )
+
+    calls = {"count": 0}
+
+    def fake_ai_extract(_image_bytes: bytes):
+        calls["count"] += 1
+        return {"headers": ["Date", "Qty"], "rows": [["2026-04-28", "12"]]}
+
+    monkeypatch.setattr(
+        "backend.services.ocr_document_pipeline.extract_table_from_image",
+        fake_ai_extract,
+    )
+
+    base_result = OcrResult(
+        rows=[["Date", "Qty"], ["2026-04-28", "12"]],
+        avg_confidence=42.0,
+        warnings=["low confidence"],
+    )
+    result = build_structured_ocr_result(
+        b"fake-image",
+        base_result=base_result,
+        used_language="eng",
+        fallback_used=False,
+        doc_type_hint="table",
+    )
+
+    assert calls["count"] == 0
+    assert result["rows"] == [["Date", "Qty"], ["2026-04-28", "12"]]
+
+
+def test_structured_ocr_result_uses_ai_enhancement_when_base_result_is_sparse(monkeypatch):
+    monkeypatch.setattr(
+        "backend.services.ocr_document_pipeline.choose_ocr_route",
+        lambda *_args, **_kwargs: {
+            "clarity_score": 38.0,
+            "score_reason": "blur lowered clarity",
+            "model_tier": "best",
+            "forced": False,
+            "scorer_used": True,
+            "actual_cost_usd": 0.014,
+            "cost_saved_usd": 0.0,
+        },
+    )
+
+    calls = {"count": 0}
+
+    def fake_ai_extract(_image_bytes: bytes):
+        calls["count"] += 1
+        return {"headers": ["Date", "Qty"], "rows": [["2026-04-28", "12"]]}
+
+    monkeypatch.setattr(
+        "backend.services.ocr_document_pipeline.extract_table_from_image",
+        fake_ai_extract,
+    )
+
+    base_result = OcrResult(
+        rows=[[""]],
+        avg_confidence=11.0,
+        warnings=["low confidence"],
+    )
+    result = build_structured_ocr_result(
+        b"fake-image",
+        base_result=base_result,
+        used_language="eng",
+        fallback_used=False,
+        doc_type_hint="table",
+    )
+
+    assert calls["count"] == 1
+    assert result["rows"] == [["2026-04-28", "12"]]
+
+
 def test_language_fallback_only_retries_when_primary_result_is_truly_sparse():
     usable = OcrResult(
         rows=[["Date", "Qty"], ["2026-04-28", "12"]],

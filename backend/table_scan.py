@@ -67,7 +67,20 @@ def _get_client() -> Anthropic:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         raise ValueError("ANTHROPIC_API_KEY is not set. Cannot use Anthropic as table scan provider.")
-    return Anthropic(api_key=api_key)
+    return Anthropic(api_key=api_key, timeout=_provider_timeout_seconds())
+
+
+def _provider_timeout_seconds() -> float:
+    raw = (
+        os.getenv("TABLE_SCAN_PROVIDER_TIMEOUT_SECONDS")
+        or os.getenv("OCR_PROVIDER_TIMEOUT_SECONDS")
+        or "15"
+    ).strip()
+    try:
+        value = float(raw)
+    except ValueError:
+        value = 15.0
+    return max(3.0, min(60.0, value))
 
 
 def _table_scan_provider() -> str:
@@ -218,7 +231,12 @@ def _call_bytez(base64_image: str, *, system_prompt: str, user_message: str) -> 
         bool(provider_key),
     )
 
-    response = requests.post(f"{BYTEZ_API_BASE}/{model_id}", headers=headers, json=payload, timeout=180)
+    response = requests.post(
+        f"{BYTEZ_API_BASE}/{model_id}",
+        headers=headers,
+        json=payload,
+        timeout=_provider_timeout_seconds(),
+    )
     if response.status_code >= 400:
         raise RuntimeError(f"Bytez request failed ({response.status_code}): {response.text}")
     data = response.json()
@@ -314,6 +332,7 @@ def _call_claude(
                 ],
             }
         ],
+        timeout=_provider_timeout_seconds(),
     )
     return _extract_text(response)
 
