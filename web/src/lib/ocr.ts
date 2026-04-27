@@ -1,4 +1,5 @@
 import { getCookie } from "@/lib/cookies";
+import { warmBackendConnection } from "@/lib/auth";
 
 import { ApiError, apiFetch } from "@/lib/api";
 
@@ -225,6 +226,21 @@ function toJsonOrText(value: string) {
   }
 }
 
+async function withOcrWakeRetry<T>(operation: () => Promise<T>, retryMessage: string): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 503) {
+      const woke = await warmBackendConnection(true);
+      if (woke) {
+        return operation();
+      }
+      throw new ApiError(retryMessage, 503, error.detail);
+    }
+    throw error;
+  }
+}
+
 async function fetchBlob(path: string): Promise<OcrJobDownload> {
   const response = await fetch(`/api${path}`, {
     credentials: "include",
@@ -314,12 +330,16 @@ export async function previewOcrLogbook(payload: {
   if (payload.documentHash) {
     formData.set("document_hash", payload.documentHash);
   }
-  return apiFetch<OcrPreviewResult>("/ocr/logbook", {
-    method: "POST",
-    body: formData,
-  }, {
-    timeoutMs: 90000,
-  });
+  return withOcrWakeRetry(
+    () =>
+      apiFetch<OcrPreviewResult>("/ocr/logbook", {
+        method: "POST",
+        body: formData,
+      }, {
+        timeoutMs: 90000,
+      }),
+    "DPR.ai is waking up. Please retry the scan in a few seconds.",
+  );
 }
 
 export async function startOcrExcelJob(payload: {
