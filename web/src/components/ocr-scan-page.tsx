@@ -167,6 +167,18 @@ function humanExtractError(error: unknown) {
   return "Extraction failed. Please retry.";
 }
 
+function humanDraftSaveError(error: unknown) {
+  const message = formatApiErrorMessage(error, "Could not save this OCR draft.");
+  const lowered = message.toLowerCase();
+  if (lowered.includes("not authenticated") || lowered.includes("sign in")) {
+    return "Your session expired. Sign in again to save this OCR draft.";
+  }
+  if (lowered.includes("too large")) {
+    return "The extracted sheet is ready, but saving the draft failed because the upload is too large.";
+  }
+  return "The sheet was extracted, but saving the OCR draft failed. You can keep editing while we retry.";
+}
+
 function humanExportError(error: unknown) {
   const message = formatApiErrorMessage(error, "Could not prepare Excel.");
   if (message.toLowerCase().includes("authentication")) {
@@ -649,37 +661,47 @@ export default function OcrScanPage() {
       setZoom(1);
       setStep("preview");
 
+      let draftSaveFailed = false;
       if (result.reused_verification_id) {
         setSavedId(result.reused_verification_id);
       } else {
-        const saved = await createOcrVerification({
-          templateId: null,
-          sourceFilename: sourceName,
-          columns: headers.length,
-          language: nextPreview.language,
-          avgConfidence: nextPreview.avgConfidence ?? null,
-          warnings: nextPreview.warnings,
-          scanQuality: nextPreview.scanQuality ?? null,
-          documentHash: prepared.sha256,
-          docTypeHint: nextPreview.type,
-          routingMeta: result.routing ?? null,
-          rawText: nextPreview.rawText ?? null,
-          headers,
-          originalRows: nextPreview.rows,
-          reviewedRows: rows,
-          rawColumnAdded: false,
-          reviewerNotes: "",
-          file: prepared.file,
-        });
-        setSavedId(saved.id);
+        try {
+          const saved = await createOcrVerification({
+            templateId: null,
+            sourceFilename: sourceName,
+            columns: headers.length,
+            language: nextPreview.language,
+            avgConfidence: nextPreview.avgConfidence ?? null,
+            warnings: nextPreview.warnings,
+            scanQuality: nextPreview.scanQuality ?? null,
+            documentHash: prepared.sha256,
+            docTypeHint: nextPreview.type,
+            routingMeta: result.routing ?? null,
+            rawText: nextPreview.rawText ?? null,
+            headers,
+            originalRows: nextPreview.rows,
+            reviewedRows: rows,
+            rawColumnAdded: false,
+            reviewerNotes: "",
+            file: prepared.file,
+          });
+          setSavedId(saved.id);
+        } catch (saveReason) {
+          draftSaveFailed = true;
+          setSavedId(null);
+          setStatus(humanDraftSaveError(saveReason));
+          setStatusTone("warning");
+        }
       }
 
-      if (result.scan_quality?.confidence_band === "low") {
-        setStatus("Image quality may affect accuracy.");
-        setStatusTone("warning");
-      } else {
-        setStatus(result.reused ? "Existing OCR draft reopened." : "Sheet ready to review.");
-        setStatusTone("success");
+      if (!draftSaveFailed) {
+        if (result.scan_quality?.confidence_band === "low") {
+          setStatus("Image quality may affect accuracy.");
+          setStatusTone("warning");
+        } else {
+          setStatus(result.reused ? "Existing OCR draft reopened." : "Sheet ready to review.");
+          setStatusTone("success");
+        }
       }
       signalWorkflowRefresh("ocr-scan");
       void loadRecentRecords();
@@ -878,7 +900,7 @@ export default function OcrScanPage() {
   const handleDownloadExcel = useCallback(async () => {
     setExcelBusy(true);
     try {
-      const record = draftDirty ? await persistStructuredDraft() : null;
+      const record = draftDirty || !savedId ? await persistStructuredDraft() : null;
       const verificationId = record?.id ?? savedId;
       if (!verificationId) {
         throw new Error("Save the OCR draft before exporting.");
@@ -937,7 +959,7 @@ export default function OcrScanPage() {
 
   const handleGenerateShareLink = useCallback(async () => {
     try {
-      const record = draftDirty ? await persistStructuredDraft() : null;
+      const record = draftDirty || !savedId ? await persistStructuredDraft() : null;
       const verificationId = record?.id ?? savedId;
       if (!verificationId) {
         throw new Error("Save the OCR draft before sharing.");

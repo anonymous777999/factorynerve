@@ -456,7 +456,7 @@ def _ensure_subscription_addon_columns() -> None:
 
 
 def _ensure_ocr_verification_columns() -> None:
-    """Ensure OCR verification records can store scan-quality metadata."""
+    """Ensure OCR verification records can store structured OCR metadata."""
     try:
         inspector = inspect(engine)
         table_names = set(inspector.get_table_names())
@@ -466,9 +466,20 @@ def _ensure_ocr_verification_columns() -> None:
         with engine.connect() as conn:
             if "scan_quality" not in columns:
                 conn.exec_driver_sql("ALTER TABLE ocr_verifications ADD COLUMN scan_quality JSON")
+            if "document_hash" not in columns:
+                conn.exec_driver_sql("ALTER TABLE ocr_verifications ADD COLUMN document_hash VARCHAR(128)")
+            if "doc_type_hint" not in columns:
+                conn.exec_driver_sql("ALTER TABLE ocr_verifications ADD COLUMN doc_type_hint VARCHAR(80)")
+            if "routing_meta" not in columns:
+                conn.exec_driver_sql("ALTER TABLE ocr_verifications ADD COLUMN routing_meta JSON")
+            if "raw_text" not in columns:
+                conn.exec_driver_sql("ALTER TABLE ocr_verifications ADD COLUMN raw_text TEXT")
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_ocr_verifications_document_hash ON ocr_verifications (document_hash)"
+            )
             conn.commit()
     except Exception:
-        logger.exception("Failed to ensure ocr_verifications.scan_quality column.")
+        logger.exception("Failed to ensure structured OCR verification columns.")
 
 
 def _ensure_steel_columns() -> None:
