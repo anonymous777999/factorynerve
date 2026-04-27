@@ -246,6 +246,13 @@ def test_ocr_verification_update_persists_scan_quality_and_audit_log(http_client
                 "outcome": "partial",
                 "next_action": "manager_review",
                 "notes": "Second row required manual cleanup",
+                "cell_boxes": [
+                    [
+                        {"x": 0.1, "y": 0.2, "width": 0.25, "height": 0.08},
+                        None,
+                        {"x": 0.62, "y": 0.2, "width": 0.2, "height": 0.08},
+                    ]
+                ],
             },
         },
         headers=headers,
@@ -271,6 +278,13 @@ def test_ocr_verification_update_persists_scan_quality_and_audit_log(http_client
         "outcome": "partial",
         "next_action": "manager_review",
         "notes": "Second row required manual cleanup",
+        "cell_boxes": [
+            [
+                {"x": 0.1, "y": 0.2, "width": 0.25, "height": 0.08},
+                None,
+                {"x": 0.62, "y": 0.2, "width": 0.2, "height": 0.08},
+            ]
+        ],
     }
 
     with SessionLocal() as db:
@@ -349,3 +363,25 @@ def test_ocr_verification_summary_uses_only_approved_documents_as_trusted(http_c
     assert payload["export_ready_documents"] == 1
     assert payload["approval_rate"] == 100.0
     assert payload["last_trusted_at"] is not None
+
+
+def test_ocr_verification_share_link_exports_without_auth(http_client):
+    user = register_user(http_client, role="admin")
+    headers = {"Authorization": f"Bearer {user['access_token']}"}
+
+    created = http_client.post("/ocr/verifications", data=_verification_form(), headers=headers)
+    assert created.status_code == HTTPStatus.CREATED, created.text
+    verification_id = created.json()["id"]
+
+    share = http_client.post(
+        f"/ocr/verifications/{verification_id}/share-link",
+        headers=headers,
+    )
+    assert share.status_code == HTTPStatus.OK, share.text
+    share_payload = share.json()
+    assert share_payload["url"].startswith("/api/ocr/shared/")
+    assert share_payload["expires_at"]
+
+    exported = http_client.get(share_payload["url"].replace("/api", ""))
+    assert exported.status_code == HTTPStatus.OK, exported.text
+    assert exported.headers["x-ocr-verification-id"] == str(verification_id)

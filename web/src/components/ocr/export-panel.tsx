@@ -1,65 +1,87 @@
 import type { ReactNode } from "react";
 
-import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 type ExportPanelProps = {
-  canDownloadExcel: boolean;
+  rowCount: number;
+  columnCount: number;
+  correctionCount: number;
   busy?: boolean;
   status?: string;
+  primaryLabel?: string;
   onDownloadExcel: () => void;
   onDownloadCsv: () => void;
   onDownloadJson: () => void;
-  secondaryAction?: ReactNode;
+  onCopyClipboard: () => void;
+  shareCard?: ReactNode;
 };
 
+function ActionCard({
+  label,
+  onClick,
+  primary = false,
+  busy = false,
+}: {
+  label: string;
+  onClick: () => void;
+  primary?: boolean;
+  busy?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      className={cn(
+        "rounded-[24px] border px-5 py-5 text-left transition duration-200 disabled:cursor-not-allowed disabled:opacity-60",
+        primary
+          ? "border-[#185FA5] bg-[#185FA5] text-white shadow-[0_20px_42px_rgba(24,95,165,0.24)] hover:bg-[#164f8a]"
+          : "border-[#dfe6ed] bg-white text-[#101828] hover:border-[#185FA5]/35 hover:shadow-[0_14px_30px_rgba(15,23,42,0.06)]",
+      )}
+    >
+      <div className={cn("text-sm", primary ? "text-white/85" : "text-[#667085]")}>
+        {primary ? "Primary export" : "Secondary export"}
+      </div>
+      <div className="mt-2 text-lg font-semibold tracking-tight">
+        {label}
+      </div>
+    </button>
+  );
+}
+
 export function ExportPanel({
-  canDownloadExcel,
+  rowCount,
+  columnCount,
+  correctionCount,
   busy = false,
   status,
+  primaryLabel = "Download .xlsx",
   onDownloadExcel,
   onDownloadCsv,
   onDownloadJson,
-  secondaryAction,
+  onCopyClipboard,
+  shareCard,
 }: ExportPanelProps) {
   return (
-    <div className="space-y-4 rounded-[28px] border border-[#e7eaee] bg-white p-4">
-      <div>
-        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8a93a0]">
-          Export
-        </div>
-        <div className="mt-1 text-sm text-[#66707c]">Excel stays primary. CSV and JSON are lightweight fallbacks.</div>
+    <div className="space-y-5">
+      <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">
+        <span className="font-medium">Extraction complete</span>
+        <span className="text-emerald-900/80">
+          {" "}
+          - {rowCount} rows, {columnCount} columns, {correctionCount} corrections made
+        </span>
       </div>
 
-      <Button
-        type="button"
-        className="h-12 w-full rounded-[18px] bg-[#111827] text-white shadow-none hover:bg-[#1f2937]"
-        onClick={onDownloadExcel}
-        disabled={busy || !canDownloadExcel}
-      >
-        {busy ? "Preparing Excel..." : "Download Excel"}
-      </Button>
+      <ActionCard label={primaryLabel} onClick={onDownloadExcel} primary busy={busy} />
 
-      <div className="grid grid-cols-2 gap-3">
-        <Button
-          type="button"
-          variant="outline"
-          className="h-11 rounded-[18px] border-[#d4d9df] bg-[#f8fafc] text-[#111827] hover:bg-white"
-          onClick={onDownloadCsv}
-        >
-          CSV
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className="h-11 rounded-[18px] border-[#d4d9df] bg-[#f8fafc] text-[#111827] hover:bg-white"
-          onClick={onDownloadJson}
-        >
-          JSON
-        </Button>
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <ActionCard label="CSV" onClick={onDownloadCsv} />
+        <ActionCard label="JSON" onClick={onDownloadJson} />
+        <ActionCard label="Copy to clipboard" onClick={onCopyClipboard} />
+        {shareCard ? <div>{shareCard}</div> : <div className="rounded-[24px] border border-[#dfe6ed] bg-white px-5 py-5" />}
       </div>
 
-      {secondaryAction}
-      {status ? <div className="text-sm text-[#66707c]">{status}</div> : null}
+      {status ? <div className="text-sm text-[#667085]">{status}</div> : null}
     </div>
   );
 }

@@ -24,6 +24,13 @@ export function exportRowsToJson(headers: string[], rows: string[][]) {
   );
 }
 
+export function exportRowsToClipboardText(headers: string[], rows: string[][]) {
+  return [
+    headers.join("\t"),
+    ...rows.map((row) => headers.map((_, index) => row[index] || "").join("\t")),
+  ].join("\n");
+}
+
 export async function buildStructuredPdfBlob(options: {
   title: string;
   headers: string[];

@@ -53,6 +53,22 @@ export type OcrRoutingMeta = {
   cost_saved_usd: number;
 };
 
+export type OcrScanQuality = {
+  confidence_band: "high" | "medium" | "low" | "unknown";
+  quality_signals: string[];
+  auto_processing?: string[];
+  fallback_used?: boolean;
+  correction_count?: number;
+  page_count?: number;
+  adjustment_count?: number;
+  retake_count?: number;
+  manual_review_recommended?: boolean;
+  outcome?: "success" | "partial" | "failed";
+  next_action?: string | null;
+  notes?: string | null;
+  cell_boxes?: Array<Array<{ x: number; y: number; width: number; height: number } | null>> | null;
+};
+
 export type OcrPreviewResult = {
   type: string;
   title: string;
@@ -67,7 +83,9 @@ export type OcrPreviewResult = {
   columns: number;
   avg_confidence: number;
   warnings: string[];
+  scan_quality?: OcrScanQuality | null;
   cell_confidence?: number[][];
+  cell_boxes?: Array<Array<{ x: number; y: number; width: number; height: number } | null>> | null;
   used_language: string;
   fallback_used: boolean;
   raw_column_added: boolean;
@@ -129,6 +147,7 @@ export type OcrVerificationRecord = {
   language: string;
   avg_confidence: number;
   warnings: string[];
+  scan_quality?: OcrScanQuality | null;
   document_hash?: string | null;
   doc_type_hint?: string | null;
   routing_meta?: OcrRoutingMeta | null;
@@ -161,6 +180,7 @@ export type OcrVerificationSavePayload = {
   language: string;
   avgConfidence?: number | null;
   warnings?: string[];
+  scanQuality?: OcrScanQuality | null;
   documentHash?: string | null;
   docTypeHint?: string | null;
   routingMeta?: OcrRoutingMeta | null;
@@ -190,6 +210,11 @@ export type OcrVerificationSummary = {
   approval_rate?: number | null;
   last_trusted_at?: string | null;
   trust_note: string;
+};
+
+export type OcrVerificationShareLink = {
+  url: string;
+  expires_at: string;
 };
 
 function toJsonOrText(value: string) {
@@ -396,6 +421,9 @@ function buildVerificationFormData(payload: OcrVerificationSavePayload) {
   if (payload.warnings) {
     formData.set("warnings", JSON.stringify(payload.warnings));
   }
+  if (payload.scanQuality) {
+    formData.set("scan_quality", JSON.stringify(payload.scanQuality));
+  }
   if (payload.documentHash) {
     formData.set("document_hash", payload.documentHash);
   }
@@ -445,6 +473,12 @@ export async function downloadOcrVerificationExport(verificationId: number) {
   return fetchBlob(`/ocr/verifications/${verificationId}/export`);
 }
 
+export async function createOcrVerificationShareLink(verificationId: number) {
+  return apiFetch<OcrVerificationShareLink>(`/ocr/verifications/${verificationId}/share-link`, {
+    method: "POST",
+  });
+}
+
 export async function createOcrVerification(payload: OcrVerificationSavePayload) {
   return apiFetch<OcrVerificationRecord>("/ocr/verifications", {
     method: "POST",
@@ -466,6 +500,7 @@ export async function updateOcrVerification(
       avg_confidence:
         typeof payload.avgConfidence === "number" ? payload.avgConfidence : null,
       warnings: payload.warnings ?? [],
+      scan_quality: payload.scanQuality ?? null,
       document_hash: payload.documentHash ?? null,
       doc_type_hint: payload.docTypeHint ?? null,
       routing_meta: payload.routingMeta ?? null,

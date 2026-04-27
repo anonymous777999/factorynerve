@@ -4,7 +4,7 @@ const OCR_UI_STORAGE_KEY = "dpr:ocr-ui-state";
 const MAX_STORED_IMAGE_BYTES = 1_400_000;
 
 export type PersistedOcrUiState = {
-  step: "entry" | "prepare" | "processing" | "result";
+  step: "entry" | "prepare" | "processing" | "result" | "upload" | "preview" | "export";
   fileName?: string;
   fileType?: string;
   imageDataUrl?: string | null;
@@ -12,6 +12,7 @@ export type PersistedOcrUiState = {
   selectedFilter?: "original" | "clean" | "contrast";
   headers?: string[];
   rows?: string[][];
+  columnTypes?: Array<"text" | "number" | "date">;
   title?: string;
   resultType?: string;
   confidence?: number | null;
@@ -19,6 +20,8 @@ export type PersistedOcrUiState = {
   documentHash?: string | null;
   savedId?: number | null;
   status?: string;
+  showLowConfidence?: boolean;
+  headerRowEnabled?: boolean;
 };
 
 export function loadOcrUiState() {
@@ -71,4 +74,3 @@ export async function dataUrlToFile(dataUrl: string, name: string, type: string)
     lastModified: Date.now(),
   });
 }
-

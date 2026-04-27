@@ -10,11 +10,12 @@ import re
 import shutil
 import subprocess
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status, Request
 from fastapi.responses import FileResponse
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from pydantic import BaseModel, Field
 from sqlalchemy import false
 from sqlalchemy.orm import Session
@@ -33,6 +34,7 @@ from backend.models.ocr_template import OcrTemplate
 from backend.models.ocr_verification import OcrVerification
 from backend.models.factory import Factory
 from backend.ocr_utils import (
+    analyze_image_quality,
     detect_column_centers,
     extract_table_from_image,
     warp_perspective,
@@ -67,6 +69,7 @@ router = APIRouter(tags=["OCR"])
 OCR_VERIFICATION_DIR = PROJECT_ROOT / "exports" / "ocr_verifications"
 _ALLOWED_VERIFICATION_STATUSES = {"draft", "pending", "approved", "rejected"}
 _FILENAME_SAFE_RE = re.compile(r"[^A-Za-z0-9._-]+")
+_OCR_SHARE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
 
 
 class OcrVerificationUpdatePayload(BaseModel):
@@ -101,6 +104,30 @@ def _safe_file_name(filename: str | None, default_stem: str = "ocr-source") -> s
     raw = sanitize_text(filename, max_length=120, preserve_newlines=False) or default_stem
     safe = _FILENAME_SAFE_RE.sub("_", Path(raw).name).strip("._")
     return safe or default_stem
+
+
+def _ocr_share_serializer() -> URLSafeTimedSerializer:
+    secret = os.getenv("AUTH_RESET_SECRET") or os.getenv("JWT_SECRET_KEY") or "dev-secret"
+    return URLSafeTimedSerializer(secret_key=secret, salt="ocr-share")
+
+
+def _build_ocr_share_token(verification: OcrVerification) -> str:
+    return _ocr_share_serializer().dumps(
+        {
+            "verification_id": verification.id,
+            "org_id": verification.org_id,
+            "factory_id": verification.factory_id,
+        }
+    )
+
+
+def _read_ocr_share_token(token: str) -> dict:
+    try:
+        return _ocr_share_serializer().loads(token, max_age=_OCR_SHARE_MAX_AGE_SECONDS)
+    except SignatureExpired as error:
+        raise HTTPException(status_code=410, detail="Share link expired.") from error
+    except BadSignature as error:
+        raise HTTPException(status_code=404, detail="Share link invalid.") from error
 
 
 def _parse_json_value(raw: str | None, *, field_name: str):
@@ -173,6 +200,35 @@ def _normalize_scan_quality(values: dict | None, *, field_name: str) -> dict | N
             return default
         return max(minimum, min(maximum, parsed))
 
+    raw_boxes = values.get("cell_boxes")
+    cell_boxes: list[list[dict | None]] = []
+    if isinstance(raw_boxes, list):
+        for row in raw_boxes:
+            if not isinstance(row, list):
+                continue
+            normalized_row: list[dict | None] = []
+            for box in row:
+                if not isinstance(box, dict):
+                    normalized_row.append(None)
+                    continue
+                try:
+                    x = float(box.get("x", 0.0))
+                    y = float(box.get("y", 0.0))
+                    width = float(box.get("width", 0.0))
+                    height = float(box.get("height", 0.0))
+                except (TypeError, ValueError):
+                    normalized_row.append(None)
+                    continue
+                normalized_row.append(
+                    {
+                        "x": max(0.0, min(1.0, x)),
+                        "y": max(0.0, min(1.0, y)),
+                        "width": max(0.0, min(1.0, width)),
+                        "height": max(0.0, min(1.0, height)),
+                    }
+                )
+            cell_boxes.append(normalized_row)
+
     return {
         "confidence_band": band,
         "quality_signals": quality_signals,
@@ -186,6 +242,7 @@ def _normalize_scan_quality(values: dict | None, *, field_name: str) -> dict | N
         "outcome": outcome,
         "next_action": next_action,
         "notes": notes,
+        "cell_boxes": cell_boxes or None,
     }
 
 
@@ -349,6 +406,31 @@ def _verification_export_filename(verification: OcrVerification) -> str:
     base = _safe_file_name(verification.source_filename, default_stem=f"ocr-verification-{verification.id}")
     stem = Path(base).stem or f"ocr-verification-{verification.id}"
     return f"{stem}-{verification.status}.xlsx"
+
+
+def _verification_export_response(verification: OcrVerification) -> Response:
+    rows = _verification_export_rows(verification)
+    if not rows:
+        raise HTTPException(status_code=409, detail="Verification record has no rows to export.")
+    headers = _verification_export_headers(verification, rows)
+    excel_bytes = build_table_excel_bytes({"headers": headers, "rows": rows})
+    trusted_export = verification.status == "approved"
+    export_source = _verification_export_source(verification)
+    filename = _verification_export_filename(verification)
+    return Response(
+        content=excel_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Cache-Control": "no-store",
+            "Pragma": "no-cache",
+            "X-Ocr-Verification-Id": str(verification.id),
+            "X-Ocr-Export-Source": export_source,
+            "X-Ocr-Trusted-Export": str(trusted_export).lower(),
+            "X-Total-Rows": str(len(rows)),
+            "X-Total-Columns": str(len(headers)),
+        },
+    )
 
 
 def _verification_row_count(verification: OcrVerification) -> int:
@@ -1186,14 +1268,8 @@ def export_verification_excel(
     _require_ocr_access(current_user)
     verification = _get_verification_or_404(db, verification_id, current_user)
     rows = _verification_export_rows(verification)
-    if not rows:
-        raise HTTPException(status_code=409, detail="Verification record has no rows to export.")
-
     headers = _verification_export_headers(verification, rows)
-    excel_bytes = build_table_excel_bytes({"headers": headers, "rows": rows})
     trusted_export = verification.status == "approved"
-    export_source = _verification_export_source(verification)
-    filename = _verification_export_filename(verification)
     _log_ocr_event(
         db,
         action="OCR_VERIFICATION_EXCEL_EXPORT",
@@ -1208,20 +1284,38 @@ def export_verification_excel(
         factory_id=verification.factory_id,
     )
     db.commit()
-    return Response(
-        content=excel_bytes,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={
-            "Content-Disposition": f'attachment; filename="{filename}"',
-            "Cache-Control": "no-store",
-            "Pragma": "no-cache",
-            "X-Ocr-Verification-Id": str(verification.id),
-            "X-Ocr-Export-Source": export_source,
-            "X-Ocr-Trusted-Export": str(trusted_export).lower(),
-            "X-Total-Rows": str(len(rows)),
-            "X-Total-Columns": str(len(headers)),
-        },
-    )
+    return _verification_export_response(verification)
+
+
+@router.post("/verifications/{verification_id}/share-link", status_code=status.HTTP_200_OK)
+def create_verification_share_link(
+    verification_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    _require_ocr_access(current_user)
+    verification = _get_verification_or_404(db, verification_id, current_user)
+    token = _build_ocr_share_token(verification)
+    expires_at = datetime.now(timezone.utc) + timedelta(seconds=_OCR_SHARE_MAX_AGE_SECONDS)
+    return {
+      "url": f"/api/ocr/shared/{token}",
+      "expires_at": expires_at.isoformat(),
+    }
+
+
+@router.get("/shared/{token}", status_code=status.HTTP_200_OK)
+def export_shared_verification_excel(
+    token: str,
+    db: Session = Depends(get_db),
+) -> Response:
+    payload = _read_ocr_share_token(token)
+    verification_id = int(payload.get("verification_id") or 0)
+    verification = db.query(OcrVerification).filter(OcrVerification.id == verification_id).first()
+    if not verification:
+        raise HTTPException(status_code=404, detail="Verification record not found.")
+    if payload.get("org_id") != verification.org_id or payload.get("factory_id") != verification.factory_id:
+        raise HTTPException(status_code=404, detail="Share link invalid.")
+    return _verification_export_response(verification)
 
 
 @router.put("/verifications/{verification_id}", status_code=status.HTTP_200_OK)
@@ -1454,6 +1548,28 @@ async def ocr_logbook(
         logger.exception("OCR failed.")
         raise HTTPException(status_code=500, detail="OCR failed unexpectedly.") from error
 
+    scan_quality_payload = None
+    try:
+        image_quality = analyze_image_quality(image_bytes)
+        warning_band = "low" if image_quality.warnings else "high"
+        scan_quality_payload = {
+            "confidence_band": warning_band,
+            "quality_signals": image_quality.warnings,
+            "auto_processing": ["deskew", "compression"],
+            "fallback_used": fallback_used,
+            "correction_count": 0,
+            "page_count": 1,
+            "adjustment_count": 0,
+            "retake_count": 0,
+            "manual_review_recommended": bool(image_quality.warnings),
+            "outcome": "partial" if image_quality.warnings else "success",
+            "next_action": "upload_better_image" if image_quality.warnings else None,
+            "notes": "Image quality may affect accuracy." if image_quality.warnings else None,
+            "cell_boxes": result.cell_boxes,
+        }
+    except Exception:  # pylint: disable=broad-except
+        scan_quality_payload = None
+
     structured = build_structured_ocr_result(
         image_bytes,
         base_result=result,
@@ -1466,6 +1582,7 @@ async def ocr_logbook(
 
     return {
         **structured,
+        "scan_quality": scan_quality_payload,
         "template": {
             "id": template.id,
             "name": template.name,

@@ -28,15 +28,18 @@ export function canApproveOcrVerification(role?: string | null) {
 export function validateOcrImageFile(
   input: File | null,
   fieldLabel: string,
-  options?: { required?: boolean },
+  options?: { required?: boolean; allowPdf?: boolean },
 ) {
   if (!input) {
     return options?.required ? `${fieldLabel} is required.` : "";
   }
   const lowerName = input.name.toLowerCase();
   const isHeic = lowerName.endsWith(".heic") || lowerName.endsWith(".heif");
-  if (!input.type.startsWith("image/") && !isHeic) {
-    return `${fieldLabel} must be an image file (JPG, PNG, WEBP).`;
+  const isPdf = input.type === "application/pdf" || lowerName.endsWith(".pdf");
+  if (!input.type.startsWith("image/") && !isHeic && !(options?.allowPdf && isPdf)) {
+    return options?.allowPdf
+      ? `${fieldLabel} must be PNG, JPG, PDF, or TIFF.`
+      : `${fieldLabel} must be an image file (JPG, PNG, WEBP).`;
   }
   if (input.size > OCR_MAX_SOURCE_BYTES) {
     return `${fieldLabel} must be smaller than 20 MB before processing.`;

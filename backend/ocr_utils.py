@@ -38,6 +38,7 @@ class OcrResult:
     warnings: list[str]
     raw_column_added: bool = False
     cell_confidence: list[list[float]] | None = None
+    cell_boxes: list[list[dict[str, float] | None]] | None = None
 
 
 @dataclass(slots=True)
@@ -424,12 +425,15 @@ def extract_table_from_image(
         spacing = float(np.median(diffs))
     raw_column_added = False
 
+    processed_height, processed_width = processed.shape[:2]
     table_rows: list[list[str]] = []
     table_conf: list[list[float]] = []
+    table_boxes: list[list[dict[str, float] | None]] = []
     for row in rows:
         row_cols = [""] * (len(centers) + (1 if enable_raw_column else 0))
         row_conf = [0.0] * (len(centers) + (1 if enable_raw_column else 0))
         row_counts = [0] * (len(centers) + (1 if enable_raw_column else 0))
+        box_accumulators: list[dict[str, float] | None] = [None] * (len(centers) + (1 if enable_raw_column else 0))
         row_sorted = sorted(row, key=lambda w: float(w["xc"]))
         for word in row_sorted:
             xc = float(word["xc"])
@@ -461,11 +465,41 @@ def extract_table_from_image(
                 row_cols[col_idx] = text
             row_conf[col_idx] += max(0.0, min(100.0, conf))
             row_counts[col_idx] += 1
+            left = float(word["x"])
+            top = float(word["y"])
+            right = left + float(word["w"])
+            bottom = top + float(word["h"])
+            existing_box = box_accumulators[col_idx]
+            if existing_box is None:
+                box_accumulators[col_idx] = {
+                    "left": left,
+                    "top": top,
+                    "right": right,
+                    "bottom": bottom,
+                }
+            else:
+                existing_box["left"] = min(existing_box["left"], left)
+                existing_box["top"] = min(existing_box["top"], top)
+                existing_box["right"] = max(existing_box["right"], right)
+                existing_box["bottom"] = max(existing_box["bottom"], bottom)
         table_rows.append(row_cols)
         table_conf.append(
             [
                 (row_conf[i] / row_counts[i]) if row_counts[i] else 0.0
                 for i in range(len(row_cols))
+            ]
+        )
+        table_boxes.append(
+            [
+                {
+                    "x": max(0.0, min(1.0, accumulator["left"] / processed_width)),
+                    "y": max(0.0, min(1.0, accumulator["top"] / processed_height)),
+                    "width": max(0.0, min(1.0, (accumulator["right"] - accumulator["left"]) / processed_width)),
+                    "height": max(0.0, min(1.0, (accumulator["bottom"] - accumulator["top"]) / processed_height)),
+                }
+                if accumulator is not None
+                else None
+                for accumulator in box_accumulators
             ]
         )
 
@@ -479,4 +513,5 @@ def extract_table_from_image(
         warnings=warnings,
         raw_column_added=raw_column_added,
         cell_confidence=table_conf,
+        cell_boxes=table_boxes,
     )
