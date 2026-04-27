@@ -36,12 +36,17 @@ def _populated_cell_count(rows: list[list[str]] | None) -> int:
 def _should_run_ai_table_enhancement(
     base_result: OcrResult,
     route: dict[str, Any],
+    *,
+    doc_type_hint: str | None = None,
 ) -> bool:
     tier = str(route.get("model_tier") or "fast")
     if tier not in {"balanced", "best"}:
         return False
 
     if bool(route.get("forced")):
+        return True
+
+    if _doc_type(doc_type_hint) in {"table", "sheet", "spreadsheet"}:
         return True
 
     rows = base_result.rows or []
@@ -167,8 +172,15 @@ def build_structured_ocr_result(
         fallback_title=_title_from_hint(doc_type_hint, template),
     )
 
-    if _should_run_ai_table_enhancement(base_result, route):
+    if _should_run_ai_table_enhancement(base_result, route, doc_type_hint=doc_type_hint):
         try:
+            logger.info(
+                "Structured OCR attempting AI enhancement tier=%s doc_type=%s rows=%s avg_confidence=%.2f",
+                route.get("model_tier"),
+                _doc_type(doc_type_hint),
+                len(base_result.rows or []),
+                float(base_result.avg_confidence or 0.0),
+            )
             ai_table = extract_table_from_image(image_bytes)
             candidate = normalize_structured_payload(
                 ai_table,
@@ -178,7 +190,14 @@ def build_structured_ocr_result(
                 fallback_title=_title_from_hint(doc_type_hint, template),
             )
             if candidate["rows"]:
+                logger.info(
+                    "Structured OCR AI enhancement applied rows=%s columns=%s",
+                    len(candidate["rows"]),
+                    len(candidate["headers"]),
+                )
                 normalized = candidate
+            else:
+                logger.info("Structured OCR AI enhancement returned no rows; keeping base OCR result.")
         except Exception as error:  # pylint: disable=broad-except
             logger.warning("Structured OCR AI table fallback failed: %s", error, exc_info=True)
 

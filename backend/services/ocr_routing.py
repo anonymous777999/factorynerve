@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 OcrModelTier = Literal["fast", "balanced", "best"]
 
 _TIER_COSTS = {"fast": 0.0008, "balanced": 0.0035, "best": 0.014}
+_STRUCTURED_TABLE_HINTS = {"table", "sheet", "spreadsheet"}
 
 
 def _clamp(value: float, minimum: float = 0.0, maximum: float = 100.0) -> float:
@@ -50,6 +51,7 @@ def choose_ocr_route(
         quality = analyze_image_quality(image_bytes)
         score = 92.0
         reasons: list[str] = []
+        normalized_hint = (doc_type_hint or "").strip().lower()
         if quality.blur_variance < 110:
             score -= 28
             reasons.append("blur lowered clarity")
@@ -62,7 +64,7 @@ def choose_ocr_route(
         if has_template:
             score += 8
             reasons.append("template improved extraction confidence")
-        if (doc_type_hint or "").strip().lower() in {"logbook", "register", "ledger"}:
+        if normalized_hint in {"logbook", "register", "ledger"}:
             score += 4
             reasons.append("known document type")
 
@@ -73,6 +75,10 @@ def choose_ocr_route(
             tier = "balanced"
         else:
             tier = "best"
+
+        if normalized_hint in _STRUCTURED_TABLE_HINTS and tier == "fast":
+            tier = "balanced"
+            reasons.append("structured table extraction requested")
 
         actual_cost = _TIER_COSTS[tier]
         return {
