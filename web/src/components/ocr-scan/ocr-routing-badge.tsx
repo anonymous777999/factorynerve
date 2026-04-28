@@ -20,9 +20,18 @@ function tierTone(tier: OcrRoutingMeta["model_tier"]) {
 
 export function OcrRoutingBadge({ routing }: OcrRoutingBadgeProps) {
   if (!routing) return null;
+  const providerLabel =
+    routing.provider_used === "anthropic"
+      ? "Anthropic AI"
+      : routing.provider_used === "bytez"
+        ? "Bytez AI"
+        : "Local OCR";
   return (
     <div className="flex flex-wrap gap-2">
       <span className={cn("rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em]", tierTone(routing.model_tier))}>
+        {providerLabel}
+      </span>
+      <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs text-slate-300">
         {routing.model_tier}
       </span>
       <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs text-slate-300">

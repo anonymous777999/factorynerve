@@ -3,7 +3,10 @@ from __future__ import annotations
 from backend.ocr_utils import OcrResult
 from backend.routers import ocr as ocr_router
 from backend.services import ocr_routing
-from backend.services.ocr_document_pipeline import build_structured_ocr_result
+from backend.services.ocr_document_pipeline import (
+    _reuse_has_remote_ai,
+    build_structured_ocr_result,
+)
 from backend import table_scan
 
 
@@ -65,6 +68,16 @@ def test_build_structured_ocr_result_survives_routing_failure(monkeypatch):
         "backend.services.ocr_document_pipeline.choose_ocr_route",
         lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("routing broke")),
     )
+    monkeypatch.setattr(
+        "backend.services.ocr_document_pipeline.extract_table_from_image",
+        lambda *_args, **_kwargs: {
+            "headers": ["Column 1", "Column 2"],
+            "rows": [["A", "B"]],
+            "provider_used": "anthropic",
+            "provider_model": "claude-3-5-haiku-20241022",
+            "ai_applied": True,
+        },
+    )
 
     base_result = OcrResult(rows=[["A", "B"]], avg_confidence=48.0, warnings=["low confidence"])
     result = build_structured_ocr_result(
@@ -76,7 +89,8 @@ def test_build_structured_ocr_result_survives_routing_failure(monkeypatch):
     )
 
     assert result["rows"] == [["A", "B"]]
-    assert result["routing"]["model_tier"] == "fast"
+    assert result["routing"]["model_tier"] == "balanced"
+    assert result["routing"]["provider_used"] == "anthropic"
 
 
 def test_structured_ocr_result_uses_ai_enhancement_for_balanced_table_route(monkeypatch):
@@ -95,7 +109,7 @@ def test_structured_ocr_result_uses_ai_enhancement_for_balanced_table_route(monk
 
     calls = {"count": 0}
 
-    def fake_ai_extract(_image_bytes: bytes):
+    def fake_ai_extract(_image_bytes: bytes, **_kwargs):
         calls["count"] += 1
         return {"headers": ["Date", "Qty"], "rows": [["2026-04-28", "12"]]}
 
@@ -137,7 +151,7 @@ def test_structured_ocr_result_skips_ai_enhancement_for_fast_route(monkeypatch):
 
     calls = {"count": 0}
 
-    def fake_ai_extract(_image_bytes: bytes):
+    def fake_ai_extract(_image_bytes: bytes, **_kwargs):
         calls["count"] += 1
         return {"headers": ["Date", "Qty"], "rows": [["2026-04-28", "12"]]}
 
@@ -179,7 +193,7 @@ def test_structured_ocr_result_uses_ai_enhancement_when_base_result_is_sparse(mo
 
     calls = {"count": 0}
 
-    def fake_ai_extract(_image_bytes: bytes):
+    def fake_ai_extract(_image_bytes: bytes, **_kwargs):
         calls["count"] += 1
         return {"headers": ["Date", "Qty"], "rows": [["2026-04-28", "12"]]}
 
@@ -203,6 +217,90 @@ def test_structured_ocr_result_uses_ai_enhancement_when_base_result_is_sparse(mo
 
     assert calls["count"] == 1
     assert result["rows"] == [["2026-04-28", "12"]]
+
+
+def test_structured_ocr_result_marks_anthropic_provider(monkeypatch):
+    monkeypatch.setattr(
+        "backend.services.ocr_document_pipeline.choose_ocr_route",
+        lambda *_args, **_kwargs: {
+            "clarity_score": 61.0,
+            "score_reason": "structured table extraction requested",
+            "model_tier": "balanced",
+            "forced": False,
+            "scorer_used": True,
+            "actual_cost_usd": 0.0035,
+            "cost_saved_usd": 0.0105,
+        },
+    )
+    monkeypatch.setattr(
+        "backend.services.ocr_document_pipeline.extract_table_from_image",
+        lambda *_args, **_kwargs: {
+            "headers": ["Date", "Qty"],
+            "rows": [["2026-04-28", "12"]],
+            "raw_text": "Date Qty",
+            "provider_used": "anthropic",
+            "provider_model": "claude-3-5-haiku-20241022",
+            "ai_applied": True,
+        },
+    )
+
+    result = build_structured_ocr_result(
+        b"fake-image",
+        base_result=OcrResult(rows=[["A"]], avg_confidence=41.0, warnings=[]),
+        used_language="eng",
+        fallback_used=False,
+        doc_type_hint="table",
+    )
+
+    assert result["routing"]["provider_used"] == "anthropic"
+    assert result["routing"]["ai_applied"] is True
+    assert result["rows"] == [["2026-04-28", "12"]]
+
+
+def test_structured_ocr_result_requires_remote_ai_for_table(monkeypatch):
+    monkeypatch.setattr(
+        "backend.services.ocr_document_pipeline.choose_ocr_route",
+        lambda *_args, **_kwargs: {
+            "clarity_score": 61.0,
+            "score_reason": "structured table extraction requested",
+            "model_tier": "balanced",
+            "forced": False,
+            "scorer_used": True,
+            "actual_cost_usd": 0.0035,
+            "cost_saved_usd": 0.0105,
+        },
+    )
+    monkeypatch.setattr(
+        "backend.services.ocr_document_pipeline.extract_table_from_image",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("anthropic failed")),
+    )
+
+    try:
+        build_structured_ocr_result(
+            b"fake-image",
+            base_result=OcrResult(rows=[["A"]], avg_confidence=41.0, warnings=[]),
+            used_language="eng",
+            fallback_used=False,
+            doc_type_hint="table",
+        )
+    except RuntimeError as error:
+        assert "AI table extraction failed" in str(error)
+    else:
+        raise AssertionError("Expected remote AI requirement to raise when AI extraction fails.")
+
+
+def test_reuse_has_remote_ai_accepts_only_ai_backed_records():
+    class VerificationStub:
+        def __init__(self, routing_meta):
+            self.routing_meta = routing_meta
+
+    remote = VerificationStub({"provider_used": "anthropic", "ai_applied": True})
+    local = VerificationStub({"provider_used": "tesseract", "ai_applied": False})
+    missing = VerificationStub(None)
+
+    assert _reuse_has_remote_ai(remote) is True
+    assert _reuse_has_remote_ai(local) is False
+    assert _reuse_has_remote_ai(missing) is False
 
 
 def test_language_fallback_only_retries_when_primary_result_is_truly_sparse():

@@ -25,6 +25,7 @@ _DEFAULT_ROUTE = {
     "actual_cost_usd": 0.0008,
     "cost_saved_usd": 0.0132,
 }
+_AI_REQUIRED_DOC_TYPES = {"table", "sheet", "spreadsheet"}
 
 
 def _populated_cell_count(rows: list[list[str]] | None) -> int:
@@ -77,6 +78,20 @@ def _title_from_hint(doc_type_hint: str | None, template: OcrTemplate | None) ->
 def _doc_type(doc_type_hint: str | None) -> str:
     normalized = (doc_type_hint or "").strip().lower()
     return normalized or "table"
+
+
+def _requires_remote_table_ai(doc_type_hint: str | None) -> bool:
+    return _doc_type(doc_type_hint) in _AI_REQUIRED_DOC_TYPES
+
+
+def _reuse_has_remote_ai(candidate: OcrVerification) -> bool:
+    routing = candidate.routing_meta or {}
+    if not isinstance(routing, dict):
+        return False
+    return bool(routing.get("ai_applied")) and str(routing.get("provider_used") or "").strip().lower() in {
+        "anthropic",
+        "bytez",
+    }
 
 
 def _flatten_rows(rows: list[list[str]]) -> str | None:
@@ -138,6 +153,8 @@ def find_reusable_verification(
             continue
         if candidate_hint != normalized_hint:
             continue
+        if normalized_hint in _AI_REQUIRED_DOC_TYPES and not _reuse_has_remote_ai(candidate):
+            continue
         if candidate.reviewed_rows or candidate.original_rows:
             return candidate
     return None
@@ -171,6 +188,18 @@ def build_structured_ocr_result(
         fallback_type=_doc_type(doc_type_hint),
         fallback_title=_title_from_hint(doc_type_hint, template),
     )
+    route_meta = dict(route or _DEFAULT_ROUTE)
+    route_meta.setdefault("provider_used", "tesseract")
+    route_meta.setdefault("provider_model", "local-tesseract")
+    route_meta.setdefault("ai_applied", False)
+    ai_required = _requires_remote_table_ai(doc_type_hint)
+    if ai_required and str(route_meta.get("model_tier") or "fast") == "fast":
+        route_meta["model_tier"] = "balanced"
+        route_meta["score_reason"] = (
+            f"{route_meta.get('score_reason') or 'Routing fallback used.'}; "
+            "structured table extraction forced through remote AI"
+        )
+        route = route_meta
 
     if _should_run_ai_table_enhancement(base_result, route, doc_type_hint=doc_type_hint):
         try:
@@ -181,7 +210,12 @@ def build_structured_ocr_result(
                 len(base_result.rows or []),
                 float(base_result.avg_confidence or 0.0),
             )
-            ai_table = extract_table_from_image(image_bytes)
+            ai_table = extract_table_from_image(
+                image_bytes,
+                provider_preference="anthropic",
+                allow_local_fallback=False,
+                model_tier=str(route.get("model_tier") or "balanced"),
+            )
             candidate = normalize_structured_payload(
                 ai_table,
                 fallback_headers=normalized["headers"],
@@ -196,10 +230,17 @@ def build_structured_ocr_result(
                     len(candidate["headers"]),
                 )
                 normalized = candidate
+                route_meta["provider_used"] = ai_table.get("provider_used") or "anthropic"
+                route_meta["provider_model"] = ai_table.get("provider_model") or route_meta.get("provider_model")
+                route_meta["ai_applied"] = bool(ai_table.get("ai_applied", True))
             else:
                 logger.info("Structured OCR AI enhancement returned no rows; keeping base OCR result.")
         except Exception as error:  # pylint: disable=broad-except
+            if ai_required:
+                raise RuntimeError("AI table extraction failed for this scan. Please retry.") from error
             logger.warning("Structured OCR AI table fallback failed: %s", error, exc_info=True)
+    elif ai_required:
+        raise RuntimeError("AI table extraction was not scheduled for this scan.")
 
     raw_text = normalized.get("raw_text") or _flatten_rows(normalized.get("rows") or [])
     warnings = list(dict.fromkeys([*(base_result.warnings or []), *(normalized.get("warnings") or [])]))
@@ -215,7 +256,7 @@ def build_structured_ocr_result(
         "language": used_language,
         "confidence": avg_confidence,
         "warnings": warnings,
-        "routing": route or dict(_DEFAULT_ROUTE),
+        "routing": route_meta,
         "columns": max(len(normalized_headers), max((len(row) for row in normalized_rows), default=0), 1),
         "avg_confidence": avg_confidence,
         "cell_confidence": base_result.cell_confidence or [],

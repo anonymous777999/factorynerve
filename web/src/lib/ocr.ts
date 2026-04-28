@@ -52,6 +52,9 @@ export type OcrRoutingMeta = {
   scorer_used: boolean;
   actual_cost_usd: number;
   cost_saved_usd: number;
+  provider_used?: string | null;
+  provider_model?: string | null;
+  ai_applied?: boolean;
 };
 
 export type OcrScanQuality = {

@@ -134,6 +134,14 @@ function formatConfidence(value: number | null) {
   return `${Math.round(value)}% confidence`;
 }
 
+function formatExtractionSource(routing?: OcrRoutingMeta | null, confidence?: number | null) {
+  if (routing?.provider_used === "anthropic") return "Anthropic AI";
+  if (routing?.provider_used === "bytez") return "Bytez AI";
+  if (routing?.provider_used === "tesseract") return "Local OCR";
+  if (routing?.ai_applied) return "AI extraction";
+  return formatConfidence(confidence ?? null);
+}
+
 function lowConfidenceCount(matrix: number[][], visible: boolean) {
   if (!visible) return 0;
   return matrix.reduce(
@@ -1242,7 +1250,7 @@ export default function OcrScanPage() {
                         Source image
                       </div>
                       <div className="mt-1 text-sm text-[#667085]">
-                        {resultPreview.routingLabel ? `${resultPreview.routingLabel} OCR` : formatConfidence(resultPreview.avgConfidence)}
+                        {formatExtractionSource(resultPreview.routingMeta, resultPreview.avgConfidence)}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

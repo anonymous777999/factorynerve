@@ -20,7 +20,9 @@ logger = logging.getLogger(__name__)
 
 BYTEZ_API_BASE = "https://api.bytez.com/models/v2"
 BYTEZ_DEFAULT_MODEL = "google/gemma-7b"
-DEFAULT_ANTHROPIC_MODEL = "claude-3-5-haiku-20241022"
+DEFAULT_ANTHROPIC_MODEL_FAST = "claude-3-5-haiku-20241022"
+DEFAULT_ANTHROPIC_MODEL_BALANCED = "claude-3-5-haiku-20241022"
+DEFAULT_ANTHROPIC_MODEL_BEST = "claude-sonnet-4-20250514"
 
 SYSTEM_PROMPT = (
     "You are a document table extraction expert.\n"
@@ -105,7 +107,7 @@ def _normalize_provider(provider: str | None) -> str:
     return ""
 
 
-def _table_scan_provider_chain(primary: str | None) -> list[str]:
+def _table_scan_provider_chain(primary: str | None, *, allow_local_fallback: bool = True) -> list[str]:
     chain_env = os.getenv("TABLE_SCAN_PROVIDER_CHAIN")
     if chain_env:
         raw = [item.strip() for item in chain_env.split(",")]
@@ -128,7 +130,9 @@ def _table_scan_provider_chain(primary: str | None) -> list[str]:
     for candidate in fallback_order.get(first, ["tesseract", "anthropic", "bytez"]):
         if candidate not in chain:
             chain.append(candidate)
-    return chain
+    if allow_local_fallback:
+        return chain
+    return [provider for provider in chain if provider != "tesseract"]
 
 
 def _has_provider_key(provider: str) -> bool:
@@ -141,12 +145,30 @@ def _has_provider_key(provider: str) -> bool:
     return False
 
 
-def _anthropic_model_name() -> str:
+def _anthropic_model_name(model_tier: str | None = None) -> str:
+    normalized_tier = (model_tier or "").strip().lower()
+    if normalized_tier == "best":
+        return (
+            os.getenv("TABLE_SCAN_ANTHROPIC_MODEL_BEST")
+            or os.getenv("OCR_ANTHROPIC_MODEL_BEST")
+            or DEFAULT_ANTHROPIC_MODEL_BEST
+        ).strip()
+    if normalized_tier == "balanced":
+        return (
+            os.getenv("TABLE_SCAN_ANTHROPIC_MODEL_BALANCED")
+            or os.getenv("OCR_ANTHROPIC_MODEL_BALANCED")
+            or os.getenv("TABLE_SCAN_ANTHROPIC_MODEL")
+            or os.getenv("OCR_ANTHROPIC_MODEL")
+            or os.getenv("ANTHROPIC_MODEL")
+            or DEFAULT_ANTHROPIC_MODEL_BALANCED
+        ).strip()
     return (
-        os.getenv("TABLE_SCAN_ANTHROPIC_MODEL")
+        os.getenv("TABLE_SCAN_ANTHROPIC_MODEL_FAST")
+        or os.getenv("OCR_ANTHROPIC_MODEL_FAST")
+        or os.getenv("TABLE_SCAN_ANTHROPIC_MODEL")
         or os.getenv("OCR_ANTHROPIC_MODEL")
         or os.getenv("ANTHROPIC_MODEL")
-        or DEFAULT_ANTHROPIC_MODEL
+        or DEFAULT_ANTHROPIC_MODEL_FAST
     ).strip()
 
 
@@ -304,6 +326,7 @@ def _call_claude(
     *,
     system_prompt: str,
     user_message: str,
+    model_tier: str | None = None,
     extra_message: str | None = None,
 ) -> str:
     client = _get_client()
@@ -312,7 +335,7 @@ def _call_claude(
         text_message = f"{user_message}\n\n{extra_message}"
 
     response = client.messages.create(
-        model=_anthropic_model_name(),
+        model=_anthropic_model_name(model_tier),
         max_tokens=2048,
         temperature=0,
         system=system_prompt,
@@ -440,6 +463,9 @@ def extract_table_from_image(
     system_prompt: str | None = None,
     user_message: str | None = None,
     preprocess_profile: str | None = None,
+    provider_preference: str | None = None,
+    allow_local_fallback: bool = True,
+    model_tier: str | None = None,
 ) -> dict:
     profile = (
         preprocess_profile
@@ -448,17 +474,24 @@ def extract_table_from_image(
     )
     base64_image = preprocess_image_bytes(image_bytes, profile=profile)
     system_prompt, user_message = _resolve_prompts(system_prompt, user_message)
-    providers = _table_scan_provider_chain(_table_scan_provider())
+    providers = _table_scan_provider_chain(provider_preference or _table_scan_provider(), allow_local_fallback=allow_local_fallback)
     failures: list[str] = []
     last_error: Exception | None = None
 
     def _run_provider(provider: str) -> dict:
         if provider == "tesseract":
-            return _call_local_tesseract(image_bytes)
+            table = _call_local_tesseract(image_bytes)
+            table["provider_used"] = "tesseract"
+            table["provider_model"] = "local-tesseract"
+            table["ai_applied"] = False
+            return table
         if provider == "bytez":
             output = _call_bytez(base64_image, system_prompt=system_prompt, user_message=user_message)
             table = _normalize_table(output)
             if table is not None:
+                table["provider_used"] = "bytez"
+                table["provider_model"] = os.getenv("TABLE_SCAN_MODEL_ID") or os.getenv("BYTEZ_MODEL_ID") or BYTEZ_DEFAULT_MODEL
+                table["ai_applied"] = True
                 return table
 
             raw = _extract_text_from_bytez_output(output)
@@ -470,11 +503,16 @@ def extract_table_from_image(
                 base64_image,
                 system_prompt=system_prompt,
                 user_message=user_message,
+                model_tier=model_tier,
             )
 
         parsed = _extract_json_candidate(raw)
         table = _normalize_table(parsed) if parsed is not None else None
         if table is not None:
+            table["provider_used"] = "anthropic"
+            table["provider_model"] = _anthropic_model_name(model_tier)
+            table["ai_applied"] = True
+            table["raw_text"] = raw
             return table
         if parsed is not None:
             raise ValueError("AI response JSON did not match the expected table schema.")
@@ -493,6 +531,7 @@ def extract_table_from_image(
                 base64_image,
                 system_prompt=system_prompt,
                 user_message=user_message,
+                model_tier=model_tier,
                 extra_message=RETRY_MESSAGE,
             )
 
@@ -503,6 +542,10 @@ def extract_table_from_image(
                 raise ValueError("AI response JSON did not match the expected table schema after retry.")
             raise ValueError("AI response was not valid JSON after retry.")
 
+        table["provider_used"] = "anthropic"
+        table["provider_model"] = _anthropic_model_name(model_tier)
+        table["ai_applied"] = True
+        table["raw_text"] = raw
         return table
 
     for provider in providers:

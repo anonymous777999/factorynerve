@@ -1601,15 +1601,22 @@ async def ocr_logbook(
         logger.warning("OCR scan quality analysis failed: %s", error, exc_info=True)
         scan_quality_payload = None
 
-    structured = build_structured_ocr_result(
-        image_bytes,
-        base_result=result,
-        used_language=used_language,
-        fallback_used=fallback_used,
-        template=template,
-        doc_type_hint=doc_type_hint,
-        force_model=force_model,
-    )
+    try:
+        structured = build_structured_ocr_result(
+            image_bytes,
+            base_result=result,
+            used_language=used_language,
+            fallback_used=fallback_used,
+            template=template,
+            doc_type_hint=doc_type_hint,
+            force_model=force_model,
+        )
+    except RuntimeError as error:
+        logger.error("Structured OCR build failed: %s: %s", type(error).__name__, error, exc_info=True)
+        raise HTTPException(status_code=502, detail=str(error)) from error
+    except Exception as error:  # pylint: disable=broad-except
+        logger.error("Structured OCR build failed unexpectedly: %s: %s", type(error).__name__, error, exc_info=True)
+        raise HTTPException(status_code=500, detail="Structured OCR failed unexpectedly.") from error
 
     return {
         **structured,
