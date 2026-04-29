@@ -101,9 +101,9 @@ _TABLE_EXCEL_FORMAT_TO_MIME = {
     "WEBP": "image/webp",
     "GIF": "image/gif",
 }
-_TABLE_EXCEL_MODEL_HAIKU = "claude-haiku-4-5-20251001"
-_TABLE_EXCEL_MODEL_SONNET = "claude-sonnet-4-6"
-_TABLE_EXCEL_MODEL_OPUS = "claude-opus-4-6"
+_TABLE_EXCEL_MODEL_HAIKU = "claude-3-haiku-20240307"
+_TABLE_EXCEL_MODEL_SONNET = "claude-3-5-sonnet-20240620"
+_TABLE_EXCEL_MODEL_OPUS = "claude-3-opus-20240229"
 _TABLE_EXCEL_TIER_TO_MODEL = {
     "fast": _TABLE_EXCEL_MODEL_HAIKU,
     "balanced": _TABLE_EXCEL_MODEL_SONNET,
@@ -431,7 +431,11 @@ def _call_table_excel_anthropic(
 ) -> dict[str, object]:
     api_key = (os.getenv("ANTHROPIC_API_KEY") or "").strip()
     if not api_key:
-        raise _table_excel_error(502, "ANTHROPIC_API_KEY is not configured.")
+        logger.error("[OCR] API key: missing")
+        raise _table_excel_error(502, "ANTHROPIC_API_KEY is not configured. Structured OCR requires a valid Anthropic API key.")
+    
+    logger.info("[OCR] API key: present")
+    logger.info("[OCR] Using AI model=%s", selected_model)
 
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
     payload = {
@@ -469,12 +473,15 @@ def _call_table_excel_anthropic(
             json=payload,
             timeout=_table_excel_timeout_seconds(),
         )
+        logger.info("[OCR] API response received status=%s", response.status_code)
     except requests.RequestException as error:
+        logger.error("[OCR] Error: %s", error)
         raise _table_excel_error(502, f"Anthropic API request failed: {error}") from error
 
     try:
         ai_data = response.json()
     except ValueError as error:
+        logger.error("[OCR] Error: Anthropic returned non-JSON")
         raise _table_excel_error(502, "Anthropic API returned a non-JSON response.") from error
 
     if response.status_code >= 400:
@@ -483,10 +490,12 @@ def _call_table_excel_anthropic(
             api_error = ai_data.get("error")
             if isinstance(api_error, dict):
                 message = str(api_error.get("message") or message)
+        logger.error("[OCR] Error: %s", message)
         raise _table_excel_error(502, message)
 
     extracted_json = _extract_json_candidate(_extract_table_excel_json_text(ai_data))
     if not isinstance(extracted_json, dict):
+        logger.error("[OCR] Error: AI returned invalid JSON format")
         raise _table_excel_error(502, "Anthropic API returned JSON in an unsupported format.")
     return extracted_json
 
@@ -673,7 +682,8 @@ def _build_table_excel_workbook(extracted_json: dict[str, object]) -> tuple[byte
     except TableExcelRouteError:
         raise
     except Exception as error:
-        raise _table_excel_error(500, "Excel generation failed.") from error
+        logger.error("[OCR] Error: %s", error)
+        raise _table_excel_error(500, f"Excel generation failed: {error}") from error
 
     return output.getvalue(), {
         "total_rows": total_rows,
@@ -701,6 +711,7 @@ def _run_table_excel_pipeline(
         )
 
     selected_model = _select_table_excel_model(image_quality_score)
+    logger.info("[OCR] Using AI")
     logger.info(
         "Table Excel model selected model=%s quality_score=%s mime=%s size_bytes=%s",
         selected_model,
@@ -757,6 +768,7 @@ def _run_table_preview_pipeline(
         )
 
     selected_model, forced = _select_table_preview_model(image_quality_score, force_model=force_model)
+    logger.info("[OCR] Using AI")
     model_tier = _TABLE_EXCEL_MODEL_TO_TIER.get(selected_model, "balanced")
     logger.info(
         "Structured table preview model selected model=%s quality_score=%s mime=%s size_bytes=%s",
@@ -1569,7 +1581,16 @@ def _run_ocr_with_fallback(
     column_centers: list[float] | None,
     column_keywords: list[list[str]] | None,
     enable_raw_column: bool,
+    allow_fallback: bool = False,
 ) -> tuple:
+    if not allow_fallback:
+        logger.error("[OCR] Using fallback but allow_fallback=False")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Structured OCR provider unavailable (AI required but failed or not configured)."
+        )
+
+    logger.info("[OCR] Using fallback")
     fallback_used = False
     used_language = language
     primary_language = language
@@ -1590,6 +1611,7 @@ def _run_ocr_with_fallback(
             enable_raw_column=enable_raw_column,
         )
     except Exception as error:  # pylint: disable=broad-except
+        logger.error("[OCR] Error: %s", error)
         logger.error(
             "OCR extraction failed on primary pass: %s: %s",
             type(error).__name__,
@@ -1616,6 +1638,7 @@ def _run_ocr_with_fallback(
             else:
                 used_language = primary_language
         except Exception as error:  # pylint: disable=broad-except
+            logger.error("[OCR] Error: %s", error)
             logger.error(
                 "OCR extraction fallback failed: %s: %s",
                 type(error).__name__,
@@ -2294,7 +2317,7 @@ async def ocr_logbook(
 
     requested_language = template.language if template else language
 
-    if requested_doc_type in {"table", "sheet", "spreadsheet"}:
+    if requested_doc_type in {"table", "sheet", "spreadsheet", "logbook", "ledger", "register"}:
         fallback_used = False
         try:
             structured = _run_table_preview_pipeline(
@@ -2311,9 +2334,10 @@ async def ocr_logbook(
             raise HTTPException(status_code=error.status_code, detail=error.payload.get("error")) from error
         except Exception as error:  # pylint: disable=broad-except
             logger.error("Structured table preview failed unexpectedly: %s: %s", type(error).__name__, error, exc_info=True)
-            raise HTTPException(status_code=500, detail="Structured OCR failed unexpectedly.") from error
+            raise HTTPException(status_code=500, detail=f"Structured OCR failed: {error}") from error
     else:
         try:
+            # Only allow fallback for very specific unknown types, otherwise force AI path above
             result, used_language, fallback_used = _run_ocr_with_fallback(
                 image_bytes,
                 columns=template.columns if template else columns,
@@ -2321,6 +2345,7 @@ async def ocr_logbook(
                 column_centers=template.column_centers if template else None,
                 column_keywords=template.column_keywords if template else None,
                 enable_raw_column=bool(template.enable_raw_column) if template else False,
+                allow_fallback=False, # KILL SILENT FALLBACK
             )
         except RuntimeError as error:
             logger.error("OCR extraction failed: %s: %s", type(error).__name__, error, exc_info=True)
@@ -2344,7 +2369,7 @@ async def ocr_logbook(
             raise HTTPException(status_code=502, detail=str(error)) from error
         except Exception as error:  # pylint: disable=broad-except
             logger.error("Structured OCR build failed unexpectedly: %s: %s", type(error).__name__, error, exc_info=True)
-            raise HTTPException(status_code=500, detail="Structured OCR failed unexpectedly.") from error
+            raise HTTPException(status_code=500, detail=f"Structured OCR failed: {error}") from error
 
     scan_quality_payload = None
     try:
@@ -2592,10 +2617,16 @@ async def ocr_table_excel(
         logger.warning("Table Excel OCR failed status=%s error=%s", error.status_code, error.payload.get("error"))
         return JSONResponse(status_code=error.status_code, content=error.payload)
     except Exception as error:  # pylint: disable=broad-except
-        logger.exception("Table Excel OCR failed unexpectedly.")
-        return JSONResponse(status_code=500, content={"error": "Table Excel OCR failed unexpectedly."})
+        logger.exception("[OCR] Error: Table Excel OCR failed unexpectedly")
+        return JSONResponse(status_code=500, content={"error": f"Table Excel OCR failed: {error}"})
 
-    headers = _table_excel_response_headers(metadata, filename="table_scan.xlsx")
+    headers = {
+        "Content-Disposition": "attachment; filename=output.xlsx",
+        "X-Total-Rows": str(metadata.get("total_rows", 0)),
+        "X-Total-Columns": str(metadata.get("total_columns", 0)),
+        "X-Model-Used": str(metadata.get("model_used", "")),
+        "Cache-Control": "no-store",
+    }
     if request is not None:
         safe_name = sanitize_text(upload.filename, max_length=200, preserve_newlines=False) or "unknown"
         org_id = resolve_org_id(current_user)
@@ -2610,6 +2641,7 @@ async def ocr_table_excel(
             factory_id=factory_id,
         )
         db.commit()
+
     return Response(
         content=excel_bytes,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
