@@ -24,10 +24,16 @@ node_modules/
 dist/
 build/
 docs/tab-screenshots/
+docs/audit-screenshots/
 127.0.0.1_3000_reports(iPhone SE).png
 tmp_play.py
 x.py
+.tmp/
+_apk_unpack/
+base.apk
+review_accounts.json
 web/.next/
+web/.next-dev.log
 web/node_modules/
 web/test-results/
 web/playwright-report/
