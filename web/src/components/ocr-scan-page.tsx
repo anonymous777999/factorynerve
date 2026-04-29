@@ -172,7 +172,7 @@ function humanExtractError(error: unknown) {
   const lowered = message.toLowerCase();
   if (lowered.includes("no table")) return "No table structure found in this image.";
   if (lowered.includes("no text")) return "The scan is too unclear to read.";
-  if (lowered.includes("too large")) return "Max 20 MB. Try compressing the image.";
+  if (lowered.includes("too large")) return "Max 8 MB. Try compressing the image.";
   if (lowered.includes("only image files are supported")) {
     return "This file could not be prepared for OCR. Try PNG, JPG, PDF, or TIFF.";
   }

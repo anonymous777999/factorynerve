@@ -257,7 +257,41 @@ def test_structured_ocr_result_marks_anthropic_provider(monkeypatch):
     assert result["rows"] == [["2026-04-28", "12"]]
 
 
-def test_structured_ocr_result_requires_remote_ai_for_table(monkeypatch):
+def test_structured_ocr_result_falls_back_to_local_result_when_remote_ai_fails(monkeypatch):
+    monkeypatch.setattr(
+        "backend.services.ocr_document_pipeline.choose_ocr_route",
+        lambda *_args, **_kwargs: {
+            "clarity_score": 61.0,
+            "score_reason": "structured table extraction requested",
+            "model_tier": "balanced",
+            "forced": False,
+            "scorer_used": True,
+            "actual_cost_usd": 0.0035,
+            "cost_saved_usd": 0.0105,
+        },
+    )
+    monkeypatch.setattr(
+        "backend.services.ocr_document_pipeline.extract_table_from_image",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("anthropic failed")),
+    )
+
+    result = build_structured_ocr_result(
+        b"fake-image",
+        base_result=OcrResult(rows=[["Date", "Qty"], ["2026-04-28", "12"]], avg_confidence=41.0, warnings=[]),
+        used_language="eng",
+        fallback_used=False,
+        doc_type_hint="table",
+    )
+
+    assert result["rows"] == [["Date", "Qty"], ["2026-04-28", "12"]]
+    assert result["routing"]["provider_used"] == "tesseract"
+    assert result["routing"]["ai_applied"] is False
+    assert result["routing"]["ai_attempted"] is True
+    assert result["routing"]["ai_degraded_to_base"] is True
+    assert "AI enhancement unavailable; using local OCR result." in result["warnings"]
+
+
+def test_structured_ocr_result_still_raises_when_remote_ai_fails_and_local_result_is_empty(monkeypatch):
     monkeypatch.setattr(
         "backend.services.ocr_document_pipeline.choose_ocr_route",
         lambda *_args, **_kwargs: {
@@ -278,7 +312,7 @@ def test_structured_ocr_result_requires_remote_ai_for_table(monkeypatch):
     try:
         build_structured_ocr_result(
             b"fake-image",
-            base_result=OcrResult(rows=[["A"]], avg_confidence=41.0, warnings=[]),
+            base_result=OcrResult(rows=[], avg_confidence=0.0, warnings=[]),
             used_language="eng",
             fallback_used=False,
             doc_type_hint="table",
@@ -286,7 +320,7 @@ def test_structured_ocr_result_requires_remote_ai_for_table(monkeypatch):
     except RuntimeError as error:
         assert "AI table extraction failed" in str(error)
     else:
-        raise AssertionError("Expected remote AI requirement to raise when AI extraction fails.")
+        raise AssertionError("Expected remote AI requirement to raise when both AI and local OCR are unusable.")
 
 
 def test_reuse_has_remote_ai_accepts_only_ai_backed_records():

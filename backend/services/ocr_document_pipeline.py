@@ -34,6 +34,16 @@ def _populated_cell_count(rows: list[list[str]] | None) -> int:
     return sum(1 for row in rows for cell in row if str(cell or "").strip())
 
 
+def _structured_rows_usable(rows: list[list[str]] | None) -> bool:
+    row_count = len(rows or [])
+    populated_cells = _populated_cell_count(rows)
+    if row_count == 0 or populated_cells == 0:
+        return False
+    if row_count <= 1 and populated_cells <= 2:
+        return False
+    return True
+
+
 def _should_run_ai_table_enhancement(
     base_result: OcrResult,
     route: dict[str, Any],
@@ -192,7 +202,10 @@ def build_structured_ocr_result(
     route_meta.setdefault("provider_used", "tesseract")
     route_meta.setdefault("provider_model", "local-tesseract")
     route_meta.setdefault("ai_applied", False)
+    route_meta.setdefault("ai_attempted", False)
+    route_meta.setdefault("ai_degraded_to_base", False)
     ai_required = _requires_remote_table_ai(doc_type_hint)
+    extra_warnings: list[str] = []
     if ai_required and str(route_meta.get("model_tier") or "fast") == "fast":
         route_meta["model_tier"] = "balanced"
         route_meta["score_reason"] = (
@@ -202,6 +215,7 @@ def build_structured_ocr_result(
         route = route_meta
 
     if _should_run_ai_table_enhancement(base_result, route, doc_type_hint=doc_type_hint):
+        route_meta["ai_attempted"] = True
         try:
             logger.info(
                 "Structured OCR attempting AI enhancement tier=%s doc_type=%s rows=%s avg_confidence=%.2f",
@@ -236,14 +250,38 @@ def build_structured_ocr_result(
             else:
                 logger.info("Structured OCR AI enhancement returned no rows; keeping base OCR result.")
         except Exception as error:  # pylint: disable=broad-except
-            if ai_required:
+            if ai_required and _structured_rows_usable(normalized.get("rows") or []):
+                route_meta["ai_degraded_to_base"] = True
+                route_meta["ai_failure_reason"] = type(error).__name__
+                extra_warnings.append("AI enhancement unavailable; using local OCR result.")
+                logger.warning(
+                    "Structured OCR AI enhancement failed; using base OCR result instead: %s",
+                    error,
+                    exc_info=True,
+                )
+            elif ai_required:
                 raise RuntimeError("AI table extraction failed for this scan. Please retry.") from error
-            logger.warning("Structured OCR AI table fallback failed: %s", error, exc_info=True)
+            else:
+                logger.warning("Structured OCR AI table fallback failed: %s", error, exc_info=True)
     elif ai_required:
-        raise RuntimeError("AI table extraction was not scheduled for this scan.")
+        if _structured_rows_usable(normalized.get("rows") or []):
+            route_meta["ai_degraded_to_base"] = True
+            route_meta["ai_failure_reason"] = "not_scheduled"
+            extra_warnings.append("AI enhancement unavailable; using local OCR result.")
+            logger.warning("Structured OCR AI enhancement was not scheduled; keeping usable base OCR result.")
+        else:
+            raise RuntimeError("AI table extraction was not scheduled for this scan.")
 
     raw_text = normalized.get("raw_text") or _flatten_rows(normalized.get("rows") or [])
-    warnings = list(dict.fromkeys([*(base_result.warnings or []), *(normalized.get("warnings") or [])]))
+    warnings = list(
+        dict.fromkeys(
+            [
+                *(base_result.warnings or []),
+                *(normalized.get("warnings") or []),
+                *extra_warnings,
+            ]
+        )
+    )
     normalized_headers = normalized.get("headers") or []
     normalized_rows = normalized.get("rows") or []
     avg_confidence = float(base_result.avg_confidence or 0)
