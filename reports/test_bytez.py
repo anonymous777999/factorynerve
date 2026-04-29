@@ -1,9 +1,7 @@
-# pip install bytez
-
 import os
 from pathlib import Path
 
-from bytez import Bytez
+import pytest
 
 
 def _load_dotenv(path: Path) -> None:
@@ -19,17 +17,21 @@ def _load_dotenv(path: Path) -> None:
         if key and key not in os.environ:
             os.environ[key] = value
 
-# Read raw API key from env. Do not include "Key " prefix here.
-_load_dotenv(Path(__file__).resolve().parents[1] / ".env")
-key = os.getenv("BYTEZ_API_KEY")
-if not key:
-    raise RuntimeError("BYTEZ_API_KEY is not set in the environment.")
+@pytest.mark.skipif(
+    os.getenv("RUN_BYTEZ_INTEGRATION") != "1",
+    reason="Set RUN_BYTEZ_INTEGRATION=1 to run the optional Bytez integration test",
+)
+def test_bytez_hello():
+    bytez = pytest.importorskip("bytez")
 
-sdk = Bytez(key)
+    _load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+    key = os.getenv("BYTEZ_API_KEY")
+    if not key:
+        pytest.skip("BYTEZ_API_KEY is not configured for this environment")
 
-model = sdk.model("google/gemma-3-4b-it")
-results = model.run([
-    {"role": "user", "content": "Hello"}
-])
+    sdk = bytez.Bytez(key)
+    model = sdk.model("google/gemma-3-4b-it")
+    results = model.run([{"role": "user", "content": "Hello"}])
 
-print({"error": results.error, "output": results.output})
+    assert results.error is None
+    assert results.output

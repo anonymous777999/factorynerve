@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import mimetypes
@@ -9,13 +10,19 @@ import os
 import re
 import shutil
 import subprocess
+import time
 import uuid
 from datetime import datetime, timedelta, timezone
+from io import BytesIO
 from pathlib import Path
 
+import requests
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status, Request
 from fastapi.responses import FileResponse, JSONResponse
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+from openpyxl import Workbook
+from openpyxl.styles import Font
+from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field
 from sqlalchemy import false
 from sqlalchemy.orm import Session
@@ -28,7 +35,7 @@ from backend.ledger_scan import (
     preprocess_image_bytes,
     validate_data as ledger_validate_data,
 )
-from backend.table_scan import build_table_excel_bytes, extract_table_from_image as table_extract_table_from_image
+from backend.table_scan import build_table_excel_bytes
 from backend.models.report import AuditLog
 from backend.models.ocr_template import OcrTemplate
 from backend.models.ocr_verification import OcrVerification
@@ -80,6 +87,38 @@ _IMAGE_MAGIC_SIGNATURES: tuple[bytes, ...] = (
     b"MM\x00*",
     b"RIFF",
 )
+_TABLE_EXCEL_SUPPORTED_MIME_TYPES = {
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "image/gif",
+}
+_TABLE_EXCEL_NATIVE_MIME_TYPES = {"image/png", "image/jpeg"}
+_TABLE_EXCEL_FORMAT_TO_MIME = {
+    "PNG": "image/png",
+    "JPEG": "image/jpeg",
+    "WEBP": "image/webp",
+    "GIF": "image/gif",
+}
+_TABLE_EXCEL_MODEL_HAIKU = "claude-haiku-4-5-20251001"
+_TABLE_EXCEL_MODEL_SONNET = "claude-sonnet-4-6"
+_TABLE_EXCEL_MODEL_OPUS = "claude-opus-4-6"
+_TABLE_EXCEL_PROMPT = """You are a precise data extraction engine. Extract ALL data from this image into a structured JSON format suitable for Excel export.
+
+Rules:
+- If the image contains a table: return { "type": "table", "headers": [...], "rows": [[...], [...]] }
+- If the image contains a form: return { "type": "form", "fields": [{ "label": "...", "value": "..." }] }
+- If the image contains mixed content: return { "type": "mixed", "sections": [...] }
+- If the image contains plain text/paragraphs: return { "type": "text", "lines": [...] }
+- Preserve all numbers, dates, currencies exactly as they appear
+- Do NOT add commentary, explanations, or markdown - return ONLY valid JSON"""
+
+
+class TableExcelRouteError(Exception):
+    def __init__(self, status_code: int, payload: dict[str, object]):
+        super().__init__(str(payload.get("error") or "Table Excel route failed."))
+        self.status_code = status_code
+        self.payload = payload
 
 
 class OcrVerificationUpdatePayload(BaseModel):
@@ -164,6 +203,440 @@ async def _read_image_upload_for_mock(file: UploadFile) -> bytes:
     if not image_bytes:
         raise HTTPException(status_code=400, detail="File is required.")
     return image_bytes
+
+
+def _table_excel_error(status_code: int, message: str, **extra: object) -> TableExcelRouteError:
+    payload: dict[str, object] = {"error": message}
+    payload.update(extra)
+    return TableExcelRouteError(status_code=status_code, payload=payload)
+
+
+def _pick_table_excel_upload(file: UploadFile | None, image: UploadFile | None) -> UploadFile:
+    upload = next(
+        (candidate for candidate in (file, image) if candidate is not None and candidate.filename),
+        file or image,
+    )
+    if upload is None:
+        raise _table_excel_error(400, "Image file is required.")
+    return upload
+
+
+async def _read_table_excel_upload(
+    file: UploadFile | None,
+    image: UploadFile | None,
+) -> tuple[UploadFile, bytes]:
+    upload = _pick_table_excel_upload(file, image)
+    try:
+        image_bytes = await _read_validated_image_upload(upload)
+    except HTTPException as error:
+        detail = error.detail if isinstance(error.detail, str) else "Invalid image upload."
+        raise _table_excel_error(int(error.status_code), detail) from error
+    return upload, image_bytes
+
+
+def _table_excel_timeout_seconds() -> float:
+    raw = (
+        os.getenv("TABLE_EXCEL_PROVIDER_TIMEOUT_SECONDS")
+        or os.getenv("TABLE_SCAN_PROVIDER_TIMEOUT_SECONDS")
+        or os.getenv("OCR_PROVIDER_TIMEOUT_SECONDS")
+        or "45"
+    ).strip()
+    try:
+        value = float(raw)
+    except ValueError:
+        value = 45.0
+    return max(5.0, min(120.0, value))
+
+
+def _normalize_table_excel_mime_type(content_type: str | None, filename: str | None) -> str | None:
+    normalized = (content_type or "").strip().lower()
+    if normalized == "image/jpg":
+        return "image/jpeg"
+    if normalized in _TABLE_EXCEL_SUPPORTED_MIME_TYPES:
+        return normalized
+    guessed, _ = mimetypes.guess_type(filename or "")
+    guessed_normalized = (guessed or "").strip().lower()
+    if guessed_normalized == "image/jpg":
+        return "image/jpeg"
+    return guessed_normalized or None
+
+
+def _inspect_table_excel_image(
+    image_bytes: bytes,
+    *,
+    content_type: str | None,
+    filename: str | None,
+) -> dict[str, object]:
+    try:
+        with Image.open(BytesIO(image_bytes)) as img:
+            width, height = img.size
+            mime_type = _TABLE_EXCEL_FORMAT_TO_MIME.get((img.format or "").upper())
+    except (UnidentifiedImageError, OSError) as error:
+        raise _table_excel_error(400, "Upload a supported PNG, JPG, JPEG, WEBP, or GIF image.") from error
+
+    mime_type = mime_type or _normalize_table_excel_mime_type(content_type, filename)
+    if mime_type not in _TABLE_EXCEL_SUPPORTED_MIME_TYPES:
+        raise _table_excel_error(400, "Upload a supported PNG, JPG, JPEG, WEBP, or GIF image.")
+
+    if len(image_bytes) < 20 * 1024:
+        score = 20
+    elif width < 200 or height < 200:
+        score = 30
+    elif width > 600 or height > 600:
+        score = 90
+    else:
+        score = 60
+
+    if mime_type not in _TABLE_EXCEL_NATIVE_MIME_TYPES:
+        score -= 15
+    score = max(0, min(100, score))
+
+    return {
+        "image_quality_score": score,
+        "image_mime_type": mime_type,
+        "width": width,
+        "height": height,
+        "size_bytes": len(image_bytes),
+    }
+
+
+def _select_table_excel_model(image_quality_score: int) -> str:
+    if image_quality_score >= 80:
+        return _TABLE_EXCEL_MODEL_HAIKU
+    if image_quality_score >= 50:
+        return _TABLE_EXCEL_MODEL_SONNET
+    return _TABLE_EXCEL_MODEL_OPUS
+
+
+def _table_excel_prompt_text(system_prompt: str | None, user_message: str | None) -> str:
+    extras: list[str] = []
+    if system_prompt:
+        extras.append(f"Additional caller context: {system_prompt.strip()}")
+    if user_message:
+        extras.append(f"Additional caller request: {user_message.strip()}")
+    if not extras:
+        return _TABLE_EXCEL_PROMPT
+    return f"{_TABLE_EXCEL_PROMPT}\n\n" + "\n".join(extras)
+
+
+def _extract_table_excel_json_text(ai_data: object) -> str:
+    if not isinstance(ai_data, dict):
+        raise _table_excel_error(502, "Anthropic API returned an invalid response.")
+    error = ai_data.get("error")
+    if isinstance(error, dict):
+        raise _table_excel_error(502, str(error.get("message") or "Anthropic API request failed."))
+    content = ai_data.get("content")
+    if not isinstance(content, list):
+        raise _table_excel_error(502, "Anthropic API returned no message content.")
+    text_blocks = [
+        str(block.get("text") or "")
+        for block in content
+        if isinstance(block, dict) and str(block.get("type") or "") == "text"
+    ]
+    text = "\n".join(item for item in text_blocks if item).strip()
+    if not text:
+        raise _table_excel_error(502, "Anthropic API returned an empty extraction result.")
+    return text
+
+
+def _extract_json_candidate(raw: str) -> object:
+    stripped = raw.strip()
+    try:
+        return json.loads(stripped)
+    except json.JSONDecodeError:
+        pass
+
+    opener = stripped.find("{")
+    if opener != -1:
+        closer = stripped.rfind("}")
+        if closer > opener:
+            candidate = stripped[opener : closer + 1]
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                pass
+
+    opener = stripped.find("[")
+    if opener != -1:
+        closer = stripped.rfind("]")
+        if closer > opener:
+            candidate = stripped[opener : closer + 1]
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                pass
+
+    raise _table_excel_error(502, "Anthropic API returned invalid JSON.")
+
+
+def _call_table_excel_anthropic(
+    image_bytes: bytes,
+    *,
+    image_mime_type: str,
+    selected_model: str,
+    system_prompt: str | None,
+    user_message: str | None,
+) -> dict[str, object]:
+    api_key = (os.getenv("ANTHROPIC_API_KEY") or "").strip()
+    if not api_key:
+        raise _table_excel_error(502, "ANTHROPIC_API_KEY is not configured.")
+
+    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+    payload = {
+        "model": selected_model,
+        "max_tokens": 4096,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": image_mime_type,
+                            "data": image_base64,
+                        },
+                    },
+                    {
+                        "type": "text",
+                        "text": _table_excel_prompt_text(system_prompt, user_message),
+                    },
+                ],
+            }
+        ],
+    }
+
+    try:
+        response = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers={
+                "Content-Type": "application/json",
+                "x-api-key": api_key,
+                "anthropic-version": "2023-06-01",
+            },
+            json=payload,
+            timeout=_table_excel_timeout_seconds(),
+        )
+    except requests.RequestException as error:
+        raise _table_excel_error(502, f"Anthropic API request failed: {error}") from error
+
+    try:
+        ai_data = response.json()
+    except ValueError as error:
+        raise _table_excel_error(502, "Anthropic API returned a non-JSON response.") from error
+
+    if response.status_code >= 400:
+        message = "Anthropic API request failed."
+        if isinstance(ai_data, dict):
+            api_error = ai_data.get("error")
+            if isinstance(api_error, dict):
+                message = str(api_error.get("message") or message)
+        raise _table_excel_error(502, message)
+
+    extracted_json = _extract_json_candidate(_extract_table_excel_json_text(ai_data))
+    if not isinstance(extracted_json, dict):
+        raise _table_excel_error(502, "Anthropic API returned JSON in an unsupported format.")
+    return extracted_json
+
+
+def _normalize_table_excel_value(value: object) -> str:
+    return "" if value is None else str(value)
+
+
+def _normalize_table_excel_extracted_json(extracted_json: dict[str, object]) -> dict[str, object]:
+    extracted_type = str(extracted_json.get("type") or "").strip().lower()
+    if extracted_type not in {"table", "form", "mixed", "text"}:
+        raise _table_excel_error(502, "Anthropic API returned an unsupported extraction type.")
+
+    if extracted_type == "table":
+        raw_headers = extracted_json.get("headers")
+        raw_rows = extracted_json.get("rows")
+        headers = [
+            _normalize_table_excel_value(header)
+            for header in raw_headers
+        ] if isinstance(raw_headers, list) else []
+        rows: list[list[str]] = []
+        max_columns = len(headers)
+        if isinstance(raw_rows, list):
+            for row in raw_rows:
+                if not isinstance(row, list):
+                    continue
+                normalized_row = [_normalize_table_excel_value(cell) for cell in row]
+                rows.append(normalized_row)
+                max_columns = max(max_columns, len(normalized_row))
+        if max_columns == 0:
+            raise _table_excel_error(502, "Anthropic API did not return any extractable table data.")
+        if not headers:
+            headers = [f"Column {index}" for index in range(1, max_columns + 1)]
+        for row in rows:
+            if len(row) < len(headers):
+                row.extend([""] * (len(headers) - len(row)))
+        return {"type": "table", "headers": headers, "rows": rows}
+
+    if extracted_type == "form":
+        raw_fields = extracted_json.get("fields")
+        fields: list[dict[str, str]] = []
+        if isinstance(raw_fields, list):
+            for field in raw_fields:
+                if not isinstance(field, dict):
+                    continue
+                fields.append(
+                    {
+                        "label": _normalize_table_excel_value(field.get("label")),
+                        "value": _normalize_table_excel_value(field.get("value")),
+                    }
+                )
+        return {"type": "form", "fields": fields}
+
+    if extracted_type == "text":
+        raw_lines = extracted_json.get("lines")
+        lines = [_normalize_table_excel_value(line) for line in raw_lines] if isinstance(raw_lines, list) else []
+        return {"type": "text", "lines": lines}
+
+    raw_sections = extracted_json.get("sections")
+    sections = list(raw_sections) if isinstance(raw_sections, list) else []
+    return {"type": "mixed", "sections": sections}
+
+
+def _auto_fit_openpyxl_columns(sheet) -> None:
+    for column_cells in sheet.columns:
+        max_len = 10
+        for cell in column_cells:
+            if cell.value is not None:
+                max_len = max(max_len, len(str(cell.value)) + 2)
+        sheet.column_dimensions[column_cells[0].column_letter].width = min(max_len, 50)
+
+
+def _build_table_excel_workbook(extracted_json: dict[str, object]) -> tuple[bytes, dict[str, object]]:
+    normalized = _normalize_table_excel_extracted_json(extracted_json)
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Extracted Data"
+
+    extracted_type = str(normalized["type"])
+    total_rows = 0
+    total_columns = 0
+
+    try:
+        if extracted_type == "table":
+            headers = [str(value) for value in normalized.get("headers", [])]
+            rows = [[str(cell) for cell in row] for row in normalized.get("rows", [])]
+            sheet.append(headers)
+            sheet[1][0].font = Font(bold=True)
+            for cell in sheet[1]:
+                cell.font = Font(bold=True)
+            for row in rows:
+                sheet.append(row)
+            total_rows = len(rows)
+            total_columns = len(headers)
+        elif extracted_type == "form":
+            sheet.append(["Field", "Value"])
+            for cell in sheet[1]:
+                cell.font = Font(bold=True)
+            fields = normalized.get("fields", [])
+            for field in fields:
+                label = str(field.get("label") or "") if isinstance(field, dict) else ""
+                value = str(field.get("value") or "") if isinstance(field, dict) else ""
+                sheet.append([label, value])
+            total_rows = len(fields)
+            total_columns = 2
+        elif extracted_type == "text":
+            lines = [str(line) for line in normalized.get("lines", [])]
+            for line in lines:
+                sheet.append([line])
+            total_rows = len(lines)
+            total_columns = 1
+        else:
+            sections = normalized.get("sections", [])
+            for section in sections:
+                sheet.append([json.dumps(section, ensure_ascii=False)])
+            total_rows = len(sections)
+            total_columns = 1
+
+        if sheet.max_row == 1 and sheet.max_column == 1 and sheet["A1"].value is None:
+            sheet["A1"] = "No extractable data found"
+            total_rows = 0
+            total_columns = 1
+
+        _auto_fit_openpyxl_columns(sheet)
+        output = BytesIO()
+        workbook.save(output)
+    except TableExcelRouteError:
+        raise
+    except Exception as error:
+        raise _table_excel_error(500, "Excel generation failed.") from error
+
+    return output.getvalue(), {
+        "total_rows": total_rows,
+        "total_columns": total_columns,
+        "extracted_type": extracted_type,
+    }
+
+
+def _run_table_excel_pipeline(
+    image_bytes: bytes,
+    *,
+    content_type: str | None,
+    filename: str | None,
+    system_prompt: str | None,
+    user_message: str | None,
+) -> tuple[bytes, dict[str, object]]:
+    started_at = time.perf_counter()
+    inspection = _inspect_table_excel_image(image_bytes, content_type=content_type, filename=filename)
+    image_quality_score = int(inspection["image_quality_score"])
+    if image_quality_score < 30:
+        raise _table_excel_error(
+            400,
+            "Image too vague or low quality to process",
+            imageQualityScore=image_quality_score,
+        )
+
+    selected_model = _select_table_excel_model(image_quality_score)
+    logger.info(
+        "Table Excel model selected model=%s quality_score=%s mime=%s size_bytes=%s",
+        selected_model,
+        image_quality_score,
+        inspection["image_mime_type"],
+        inspection["size_bytes"],
+    )
+
+    extracted_json = _call_table_excel_anthropic(
+        image_bytes,
+        image_mime_type=str(inspection["image_mime_type"]),
+        selected_model=selected_model,
+        system_prompt=system_prompt,
+        user_message=user_message,
+    )
+    excel_bytes, metadata = _build_table_excel_workbook(extracted_json)
+    elapsed_ms = int((time.perf_counter() - started_at) * 1000)
+    logger.info(
+        "Table Excel completed model=%s quality_score=%s elapsed_ms=%s extracted_type=%s",
+        selected_model,
+        image_quality_score,
+        elapsed_ms,
+        metadata.get("extracted_type"),
+    )
+    metadata.update(
+        {
+            "image_quality_score": image_quality_score,
+            "model_used": selected_model,
+            "time_taken_ms": elapsed_ms,
+            "image_mime_type": inspection["image_mime_type"],
+        }
+    )
+    return excel_bytes, metadata
+
+
+def _table_excel_response_headers(metadata: dict[str, object], *, filename: str) -> dict[str, str]:
+    return {
+        "Content-Disposition": f'attachment; filename="{filename}"',
+        "Cache-Control": "no-store",
+        "Pragma": "no-cache",
+        "X-Total-Rows": str(metadata.get("total_rows", 0)),
+        "X-Total-Columns": str(metadata.get("total_columns", 0)),
+        "X-Image-Quality-Score": str(metadata.get("image_quality_score", "")),
+        "X-Model-Used": str(metadata.get("model_used", "")),
+    }
 
 
 def _build_ocr_share_token(verification: OcrVerification) -> str:
@@ -714,19 +1187,16 @@ def _run_ocr_excel_job(progress, *, job_id: str) -> dict[str, object]:
         output_name = "logbook_ledger_scan.xlsx"
         action = "OCR_LEDGER_EXCEL_ASYNC"
     elif mode == "table":
-        progress(35, "Extracting table grid")
-        table = table_extract_table_from_image(
+        progress(35, "Scoring table image quality")
+        progress(58, "Extracting structured data with Anthropic")
+        excel_bytes, metadata = _run_table_excel_pipeline(
             image_bytes,
+            content_type=str(input_file.get("media_type") or context.get("content_type") or ""),
+            filename=str(context.get("source_filename") or "table-ocr-input.png"),
             system_prompt=context.get("system_prompt"),
             user_message=context.get("user_message"),
-            preprocess_profile=context.get("preprocess_profile"),
         )
         progress(82, "Building table Excel workbook")
-        excel_bytes = build_table_excel_bytes(table)
-        metadata = {
-            "total_rows": len(table.get("rows", [])),
-            "total_columns": len(table.get("headers", [])),
-        }
         output_name = "table_scan.xlsx"
         action = "OCR_TABLE_EXCEL_ASYNC"
     else:
@@ -1853,7 +2323,8 @@ async def ocr_logbook_excel_async(
 
 @router.post("/table-excel", status_code=status.HTTP_200_OK)
 async def ocr_table_excel(
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(default=None),
+    image: UploadFile | None = File(default=None),
     system_prompt: str | None = Form(default=None),
     user_message: str | None = Form(default=None),
     preprocess_profile: str | None = Form(default=None),
@@ -1862,7 +2333,11 @@ async def ocr_table_excel(
     db: Session = Depends(get_db),
 ) -> Response:
     _require_ocr_access(current_user)
-    image_bytes = await _read_validated_image_upload(file)
+    del preprocess_profile
+    try:
+        upload, image_bytes = await _read_table_excel_upload(file, image)
+    except TableExcelRouteError as error:
+        return JSONResponse(status_code=error.status_code, content=error.payload)
     org_id = resolve_org_id(current_user)
     plan = get_org_plan_for_usage(db, org_id=org_id, user_id=current_user.id)
     check_rate_limit(current_user.id, plan=plan)
@@ -1872,41 +2347,23 @@ async def ocr_table_excel(
         check_and_record_usage(db, user_id=current_user.id, image_bytes=len(image_bytes), plan=plan)
 
     try:
-        table = table_extract_table_from_image(
+        excel_bytes, metadata = _run_table_excel_pipeline(
             image_bytes,
+            content_type=upload.content_type,
+            filename=upload.filename,
             system_prompt=system_prompt,
             user_message=user_message,
-            preprocess_profile=preprocess_profile,
         )
-        excel_bytes = build_table_excel_bytes(table)
-    except ValueError as error:
-        logger.exception("TableScan JSON parsing failed.")
-        raise HTTPException(status_code=400, detail=str(error)) from error
-    except AuthenticationError as error:
-        logger.exception("TableScan authentication failed.")
-        raise HTTPException(status_code=401, detail="Anthropic authentication failed. Check ANTHROPIC_API_KEY.") from error
-    except BadRequestError as error:
-        logger.exception("TableScan request rejected by Anthropic.")
-        message = str(error)
-        if "credit balance is too low" in message.lower():
-            raise HTTPException(status_code=429, detail="Anthropic API credits are too low.") from error
-        raise HTTPException(status_code=400, detail=message) from error
-    except RuntimeError as error:
-        logger.exception("TableScan configuration error.")
-        raise HTTPException(status_code=500, detail=str(error)) from error
+    except TableExcelRouteError as error:
+        logger.warning("Table Excel OCR failed status=%s error=%s", error.status_code, error.payload.get("error"))
+        return JSONResponse(status_code=error.status_code, content=error.payload)
     except Exception as error:  # pylint: disable=broad-except
-        logger.exception("TableScan OCR failed.")
-        raise HTTPException(status_code=500, detail="TableScan OCR failed unexpectedly.") from error
+        logger.exception("Table Excel OCR failed unexpectedly.")
+        return JSONResponse(status_code=500, content={"error": "Table Excel OCR failed unexpectedly."})
 
-    headers = {
-        "Content-Disposition": "attachment; filename=table_scan.xlsx",
-        "Cache-Control": "no-store",
-        "Pragma": "no-cache",
-        "X-Total-Rows": str(len(table.get("rows", []))),
-        "X-Total-Columns": str(len(table.get("headers", []))),
-    }
+    headers = _table_excel_response_headers(metadata, filename="table_scan.xlsx")
     if request is not None:
-        safe_name = sanitize_text(file.filename, max_length=200, preserve_newlines=False) or "unknown"
+        safe_name = sanitize_text(upload.filename, max_length=200, preserve_newlines=False) or "unknown"
         org_id = resolve_org_id(current_user)
         factory_id = resolve_factory_id(db, current_user)
         _log_ocr_event(
@@ -1928,7 +2385,8 @@ async def ocr_table_excel(
 
 @router.post("/table-excel-async", status_code=status.HTTP_202_ACCEPTED)
 async def ocr_table_excel_async(
-    file: UploadFile = File(...),
+    file: UploadFile | None = File(default=None),
+    image: UploadFile | None = File(default=None),
     system_prompt: str | None = Form(default=None),
     user_message: str | None = Form(default=None),
     preprocess_profile: str | None = Form(default=None),
@@ -1936,7 +2394,24 @@ async def ocr_table_excel_async(
     db: Session = Depends(get_db),
 ) -> dict:
     _require_ocr_access(current_user)
-    image_bytes = await _read_validated_image_upload(file)
+    del preprocess_profile
+    try:
+        upload, image_bytes = await _read_table_excel_upload(file, image)
+        inspection = _inspect_table_excel_image(
+            image_bytes,
+            content_type=upload.content_type,
+            filename=upload.filename,
+        )
+    except TableExcelRouteError as error:
+        return JSONResponse(status_code=error.status_code, content=error.payload)
+    if int(inspection["image_quality_score"]) < 30:
+        return JSONResponse(
+            status_code=400,
+            content={
+                "error": "Image too vague or low quality to process",
+                "imageQualityScore": int(inspection["image_quality_score"]),
+            },
+        )
     org_id = resolve_org_id(current_user)
     plan = get_org_plan_for_usage(db, org_id=org_id, user_id=current_user.id)
     check_rate_limit(current_user.id, plan=plan)
@@ -1949,12 +2424,11 @@ async def ocr_table_excel_async(
         owner_id=current_user.id,
         org_id=org_id,
         factory_id=resolve_factory_id(db, current_user),
-        source_filename=_safe_file_name(file.filename, "table-ocr-input.png"),
-        content_type=file.content_type,
+        source_filename=_safe_file_name(upload.filename, "table-ocr-input.png"),
+        content_type=upload.content_type,
         size_bytes=len(image_bytes),
         system_prompt=system_prompt,
         user_message=user_message,
-        preprocess_profile=preprocess_profile,
         image_bytes=image_bytes,
     )
     payload = dict(job)
@@ -2006,6 +2480,8 @@ def download_ocr_job(job_id: str, current_user: User = Depends(get_current_user)
             {
                 "X-Total-Rows": str((metadata or {}).get("total_rows", 0)),
                 "X-Total-Columns": str((metadata or {}).get("total_columns", 0)),
+                "X-Image-Quality-Score": str((metadata or {}).get("image_quality_score", "")),
+                "X-Model-Used": str((metadata or {}).get("model_used", "")),
             }
         )
     return Response(
