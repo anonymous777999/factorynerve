@@ -3,6 +3,7 @@ from http import HTTPStatus
 from io import BytesIO
 
 from openpyxl import load_workbook
+from PIL import Image
 
 from backend.database import SessionLocal
 from backend.models.report import AuditLog
@@ -27,6 +28,11 @@ def _verification_form():
                 "scorer_used": True,
                 "actual_cost_usd": 0.0008,
                 "cost_saved_usd": 0.0132,
+                "provider_used": "anthropic",
+                "provider_model": "claude-haiku-4-5-20251001",
+                "ai_applied": True,
+                "ai_attempted": True,
+                "ai_degraded_to_base": False,
             }
         ),
         "raw_text": "2026-03-29 | 125 | 125 / ok",
@@ -45,6 +51,13 @@ def _verification_form_with_rows(reviewed_rows: list[list[str]], *, original_row
     return payload
 
 
+def _png_upload_bytes() -> bytes:
+    image = Image.new("RGB", (16, 16), color=(240, 240, 240))
+    output = BytesIO()
+    image.save(output, format="PNG")
+    return output.getvalue()
+
+
 def test_ocr_verification_draft_submit_approve(http_client):
     user = register_user(http_client, role="admin")
     headers = {"Authorization": f"Bearer {user['access_token']}"}
@@ -58,6 +71,9 @@ def test_ocr_verification_draft_submit_approve(http_client):
     assert created_payload["doc_type_hint"] == "logbook"
     assert created_payload["raw_text"] == "2026-03-29 | 125 | 125 / ok"
     assert created_payload["routing_meta"]["model_tier"] == "fast"
+    assert created_payload["routing_meta"]["provider_used"] == "anthropic"
+    assert created_payload["routing_meta"]["provider_model"] == "claude-haiku-4-5-20251001"
+    assert created_payload["routing_meta"]["ai_applied"] is True
     verification_id = created_payload["id"]
 
     listing = http_client.get("/ocr/verifications", headers=headers)
@@ -177,6 +193,31 @@ def test_ocr_verification_export_uses_reviewed_rows(http_client):
     assert sheet["A2"].value == "2026-03-29"
     assert str(sheet["B2"].value) == "125"
     assert str(sheet["C2"].value) == "125 / ok"
+
+
+def test_ocr_verification_create_persists_source_image_and_ai_routing_meta(http_client):
+    user = register_user(http_client, role="admin")
+    headers = {"Authorization": f"Bearer {user['access_token']}"}
+
+    created = http_client.post(
+        "/ocr/verifications",
+        data=_verification_form(),
+        files={"file": ("ocr-check.png", _png_upload_bytes(), "image/png")},
+        headers=headers,
+    )
+    assert created.status_code == HTTPStatus.CREATED, created.text
+    payload = created.json()
+    assert payload["has_source_image"] is True
+    assert payload["source_image_url"]
+    assert payload["routing_meta"]["provider_used"] == "anthropic"
+    assert payload["routing_meta"]["provider_model"] == "claude-haiku-4-5-20251001"
+    assert payload["routing_meta"]["ai_applied"] is True
+    assert payload["routing_meta"]["ai_attempted"] is True
+    assert payload["routing_meta"]["ai_degraded_to_base"] is False
+
+    source = http_client.get(payload["source_image_url"], headers=headers)
+    assert source.status_code == HTTPStatus.OK, source.text
+    assert source.headers["content-type"] == "image/png"
 
 
 def test_approved_ocr_verification_export_is_marked_trusted(http_client):

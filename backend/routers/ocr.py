@@ -66,6 +66,7 @@ from backend.services.ocr_document_pipeline import (
     find_reusable_verification,
     serialize_reused_ocr_result,
 )
+from backend.services.ocr_normalization import normalize_structured_payload
 from backend.tenancy import resolve_factory_id, resolve_org_id
 
 
@@ -103,6 +104,21 @@ _TABLE_EXCEL_FORMAT_TO_MIME = {
 _TABLE_EXCEL_MODEL_HAIKU = "claude-haiku-4-5-20251001"
 _TABLE_EXCEL_MODEL_SONNET = "claude-sonnet-4-6"
 _TABLE_EXCEL_MODEL_OPUS = "claude-opus-4-6"
+_TABLE_EXCEL_TIER_TO_MODEL = {
+    "fast": _TABLE_EXCEL_MODEL_HAIKU,
+    "balanced": _TABLE_EXCEL_MODEL_SONNET,
+    "best": _TABLE_EXCEL_MODEL_OPUS,
+}
+_TABLE_EXCEL_MODEL_TO_TIER = {
+    _TABLE_EXCEL_MODEL_HAIKU: "fast",
+    _TABLE_EXCEL_MODEL_SONNET: "balanced",
+    _TABLE_EXCEL_MODEL_OPUS: "best",
+}
+_TABLE_EXCEL_TIER_COSTS = {
+    "fast": {"actual_cost_usd": 0.0008, "cost_saved_usd": 0.0132},
+    "balanced": {"actual_cost_usd": 0.0035, "cost_saved_usd": 0.0105},
+    "best": {"actual_cost_usd": 0.0140, "cost_saved_usd": 0.0},
+}
 _TABLE_EXCEL_PROMPT = """You are a precise data extraction engine. Extract ALL data from this image into a structured JSON format suitable for Excel export.
 
 Rules:
@@ -308,6 +324,42 @@ def _select_table_excel_model(image_quality_score: int) -> str:
     return _TABLE_EXCEL_MODEL_OPUS
 
 
+def _normalize_force_model_tier(force_model: str | None) -> str | None:
+    normalized = sanitize_text(force_model, max_length=20, preserve_newlines=False)
+    if normalized:
+        normalized = normalized.lower()
+    if normalized in {"fast", "balanced", "best"}:
+        return normalized
+    return None
+
+
+def _select_table_preview_model(image_quality_score: int, *, force_model: str | None) -> tuple[str, bool]:
+    forced_tier = _normalize_force_model_tier(force_model)
+    if forced_tier:
+        return _TABLE_EXCEL_TIER_TO_MODEL[forced_tier], True
+    return _select_table_excel_model(image_quality_score), False
+
+
+def _table_preview_doc_type(doc_type_hint: str | None) -> str:
+    normalized = sanitize_text(doc_type_hint, max_length=80, preserve_newlines=False)
+    return normalized.lower() if normalized else "table"
+
+
+def _table_preview_title(doc_type_hint: str | None, template: OcrTemplate | None) -> str:
+    if template and template.name:
+        return template.name
+    doc_type = _table_preview_doc_type(doc_type_hint)
+    if not doc_type:
+        return "OCR Extraction"
+    return doc_type.replace("-", " ").replace("_", " ").title()
+
+
+def _flatten_preview_rows(rows: list[list[str]]) -> str | None:
+    parts = [" | ".join(cell for cell in row if cell) for row in rows]
+    joined = "\n".join(part for part in parts if part.strip())
+    return joined or None
+
+
 def _table_excel_prompt_text(system_prompt: str | None, user_message: str | None) -> str:
     extras: list[str] = []
     if system_prompt:
@@ -498,6 +550,63 @@ def _normalize_table_excel_extracted_json(extracted_json: dict[str, object]) -> 
     return {"type": "mixed", "sections": sections}
 
 
+def _build_table_preview_payload(
+    extracted_json: dict[str, object],
+    *,
+    template: OcrTemplate | None,
+    doc_type_hint: str | None,
+) -> dict[str, object]:
+    normalized = _normalize_table_excel_extracted_json(extracted_json)
+    extracted_type = str(normalized["type"])
+
+    if extracted_type == "table":
+        headers = [str(value) for value in normalized.get("headers", [])]
+        rows = [[str(cell) for cell in row] for row in normalized.get("rows", [])]
+    elif extracted_type == "form":
+        headers = ["Field", "Value"]
+        rows = [
+            [
+                str(field.get("label") or ""),
+                str(field.get("value") or ""),
+            ]
+            for field in normalized.get("fields", [])
+            if isinstance(field, dict)
+        ]
+    elif extracted_type == "text":
+        headers = ["Text"]
+        rows = [[str(line)] for line in normalized.get("lines", [])]
+    else:
+        headers = ["Section"]
+        rows = [
+            [json.dumps(section, ensure_ascii=True)]
+            for section in normalized.get("sections", [])
+        ]
+
+    fallback_headers = list(template.column_names or []) if template and template.column_names else headers
+    structured = normalize_structured_payload(
+        {
+            "type": _table_preview_doc_type(doc_type_hint),
+            "title": _table_preview_title(doc_type_hint, template),
+            "headers": headers,
+            "rows": rows,
+        },
+        fallback_headers=fallback_headers,
+        fallback_rows=rows,
+        fallback_type=_table_preview_doc_type(doc_type_hint),
+        fallback_title=_table_preview_title(doc_type_hint, template),
+    )
+    structured["warnings"] = [
+        str(value).strip()
+        for value in extracted_json.get("warnings", [])
+        if str(value).strip()
+    ] if isinstance(extracted_json.get("warnings"), list) else []
+    if not structured.get("rows"):
+        raise _table_excel_error(502, "Anthropic API did not return any extractable data for this scan.")
+    if not structured.get("raw_text"):
+        structured["raw_text"] = _flatten_preview_rows(structured.get("rows") or [])
+    return structured
+
+
 def _auto_fit_openpyxl_columns(sheet) -> None:
     for column_cells in sheet.columns:
         max_len = 10
@@ -625,6 +734,96 @@ def _run_table_excel_pipeline(
         }
     )
     return excel_bytes, metadata
+
+
+def _run_table_preview_pipeline(
+    image_bytes: bytes,
+    *,
+    content_type: str | None,
+    filename: str | None,
+    template: OcrTemplate | None,
+    doc_type_hint: str | None,
+    force_model: str | None,
+    language: str,
+) -> dict[str, object]:
+    started_at = time.perf_counter()
+    inspection = _inspect_table_excel_image(image_bytes, content_type=content_type, filename=filename)
+    image_quality_score = int(inspection["image_quality_score"])
+    if image_quality_score < 30:
+        raise _table_excel_error(
+            400,
+            "Image too vague or low quality to process",
+            imageQualityScore=image_quality_score,
+        )
+
+    selected_model, forced = _select_table_preview_model(image_quality_score, force_model=force_model)
+    model_tier = _TABLE_EXCEL_MODEL_TO_TIER.get(selected_model, "balanced")
+    logger.info(
+        "Structured table preview model selected model=%s quality_score=%s mime=%s size_bytes=%s",
+        selected_model,
+        image_quality_score,
+        inspection["image_mime_type"],
+        inspection["size_bytes"],
+    )
+
+    extracted_json = _call_table_excel_anthropic(
+        image_bytes,
+        image_mime_type=str(inspection["image_mime_type"]),
+        selected_model=selected_model,
+        system_prompt=None,
+        user_message=None,
+    )
+    structured = _build_table_preview_payload(
+        extracted_json,
+        template=template,
+        doc_type_hint=doc_type_hint,
+    )
+
+    elapsed_ms = int((time.perf_counter() - started_at) * 1000)
+    cost_meta = _TABLE_EXCEL_TIER_COSTS.get(model_tier, {"actual_cost_usd": 0.0, "cost_saved_usd": 0.0})
+    headers = structured.get("headers") or []
+    rows = structured.get("rows") or []
+    logger.info(
+        "Structured table preview completed model=%s quality_score=%s elapsed_ms=%s rows=%s columns=%s",
+        selected_model,
+        image_quality_score,
+        elapsed_ms,
+        len(rows),
+        len(headers),
+    )
+    return {
+        "type": structured.get("type") or _table_preview_doc_type(doc_type_hint),
+        "title": structured.get("title") or _table_preview_title(doc_type_hint, template),
+        "headers": headers,
+        "rows": rows,
+        "raw_text": structured.get("raw_text"),
+        "language": language,
+        "confidence": float(image_quality_score),
+        "warnings": structured.get("warnings") or [],
+        "routing": {
+            "clarity_score": float(image_quality_score),
+            "score_reason": f"Claude vision extracted structured {structured.get('type') or 'table'} content directly from the uploaded image.",
+            "model_tier": model_tier,
+            "forced": forced,
+            "scorer_used": True,
+            "actual_cost_usd": float(cost_meta["actual_cost_usd"]),
+            "cost_saved_usd": float(cost_meta["cost_saved_usd"]),
+            "provider_used": "anthropic",
+            "provider_model": selected_model,
+            "ai_applied": True,
+            "ai_attempted": True,
+            "ai_degraded_to_base": False,
+        },
+        "columns": max(len(headers), max((len(row) for row in rows), default=0), 1),
+        "avg_confidence": float(image_quality_score),
+        "cell_confidence": [],
+        "cell_boxes": [],
+        "used_language": language,
+        "fallback_used": False,
+        "raw_column_added": False,
+        "reused": False,
+        "reused_verification_id": None,
+    }
 
 
 def _table_excel_response_headers(metadata: dict[str, object], *, filename: str) -> dict[str, str]:
@@ -794,6 +993,13 @@ def _normalize_routing_meta(values: dict | None, *, field_name: str) -> dict | N
     if model_tier not in {"fast", "balanced", "best"}:
         model_tier = "fast"
     score_reason = sanitize_text(str(values.get("score_reason") or ""), max_length=500, preserve_newlines=False) or None
+    provider_used = sanitize_text(str(values.get("provider_used") or ""), max_length=40, preserve_newlines=False) or None
+    provider_model = sanitize_text(str(values.get("provider_model") or ""), max_length=120, preserve_newlines=False) or None
+    ai_failure_reason = sanitize_text(
+        str(values.get("ai_failure_reason") or ""),
+        max_length=80,
+        preserve_newlines=False,
+    ) or None
 
     def _safe_float(key: str, default: float = 0.0, minimum: float = 0.0, maximum: float = 100.0) -> float:
         raw = values.get(key)
@@ -811,6 +1017,12 @@ def _normalize_routing_meta(values: dict | None, *, field_name: str) -> dict | N
         "scorer_used": bool(values.get("scorer_used")),
         "actual_cost_usd": _safe_float("actual_cost_usd", maximum=1000.0),
         "cost_saved_usd": _safe_float("cost_saved_usd", maximum=1000.0),
+        "provider_used": provider_used,
+        "provider_model": provider_model,
+        "ai_applied": bool(values.get("ai_applied")),
+        "ai_attempted": bool(values.get("ai_attempted")),
+        "ai_degraded_to_base": bool(values.get("ai_degraded_to_base")),
+        "ai_failure_reason": ai_failure_reason,
     }
 
 
@@ -2042,6 +2254,7 @@ async def ocr_logbook(
 ) -> dict:
     _require_ocr_access(current_user)
     image_bytes = await _read_validated_image_upload(file)
+    requested_doc_type = _normalize_doc_type_hint(doc_type_hint) or "table"
 
     template = None
     if template_id is not None:
@@ -2058,7 +2271,7 @@ async def ocr_logbook(
         org_id=resolve_org_id(current_user),
         document_hash=_normalize_document_hash(document_hash),
         template_id=template.id if template else template_id,
-        doc_type_hint=doc_type_hint,
+        doc_type_hint=requested_doc_type,
     )
     if reusable is not None:
         reused_payload = {
@@ -2079,21 +2292,59 @@ async def ocr_logbook(
         }
         return reused_payload
 
-    try:
-        result, used_language, fallback_used = _run_ocr_with_fallback(
-            image_bytes,
-            columns=template.columns if template else columns,
-            language=template.language if template else language,
-            column_centers=template.column_centers if template else None,
-            column_keywords=template.column_keywords if template else None,
-            enable_raw_column=bool(template.enable_raw_column) if template else False,
-        )
-    except RuntimeError as error:
-        logger.error("OCR extraction failed: %s: %s", type(error).__name__, error, exc_info=True)
-        raise HTTPException(status_code=400, detail=str(error)) from error
-    except Exception as error:  # pylint: disable=broad-except
-        logger.error("OCR extraction failed: %s: %s", type(error).__name__, error, exc_info=True)
-        raise HTTPException(status_code=500, detail="OCR failed unexpectedly.") from error
+    requested_language = template.language if template else language
+
+    if requested_doc_type in {"table", "sheet", "spreadsheet"}:
+        fallback_used = False
+        try:
+            structured = _run_table_preview_pipeline(
+                image_bytes,
+                content_type=file.content_type,
+                filename=file.filename,
+                template=template,
+                doc_type_hint=requested_doc_type,
+                force_model=force_model,
+                language=requested_language,
+            )
+        except TableExcelRouteError as error:
+            logger.error("Structured table preview failed: %s", error.payload, exc_info=True)
+            raise HTTPException(status_code=error.status_code, detail=error.payload.get("error")) from error
+        except Exception as error:  # pylint: disable=broad-except
+            logger.error("Structured table preview failed unexpectedly: %s: %s", type(error).__name__, error, exc_info=True)
+            raise HTTPException(status_code=500, detail="Structured OCR failed unexpectedly.") from error
+    else:
+        try:
+            result, used_language, fallback_used = _run_ocr_with_fallback(
+                image_bytes,
+                columns=template.columns if template else columns,
+                language=requested_language,
+                column_centers=template.column_centers if template else None,
+                column_keywords=template.column_keywords if template else None,
+                enable_raw_column=bool(template.enable_raw_column) if template else False,
+            )
+        except RuntimeError as error:
+            logger.error("OCR extraction failed: %s: %s", type(error).__name__, error, exc_info=True)
+            raise HTTPException(status_code=400, detail=str(error)) from error
+        except Exception as error:  # pylint: disable=broad-except
+            logger.error("OCR extraction failed: %s: %s", type(error).__name__, error, exc_info=True)
+            raise HTTPException(status_code=500, detail="OCR failed unexpectedly.") from error
+
+        try:
+            structured = build_structured_ocr_result(
+                image_bytes,
+                base_result=result,
+                used_language=used_language,
+                fallback_used=fallback_used,
+                template=template,
+                doc_type_hint=requested_doc_type,
+                force_model=force_model,
+            )
+        except RuntimeError as error:
+            logger.error("Structured OCR build failed: %s: %s", type(error).__name__, error, exc_info=True)
+            raise HTTPException(status_code=502, detail=str(error)) from error
+        except Exception as error:  # pylint: disable=broad-except
+            logger.error("Structured OCR build failed unexpectedly: %s: %s", type(error).__name__, error, exc_info=True)
+            raise HTTPException(status_code=500, detail="Structured OCR failed unexpectedly.") from error
 
     scan_quality_payload = None
     try:
@@ -2112,28 +2363,11 @@ async def ocr_logbook(
             "outcome": "partial" if image_quality.warnings else "success",
             "next_action": "upload_better_image" if image_quality.warnings else None,
             "notes": "Image quality may affect accuracy." if image_quality.warnings else None,
-            "cell_boxes": result.cell_boxes,
+            "cell_boxes": structured.get("cell_boxes"),
         }
     except Exception as error:  # pylint: disable=broad-except
         logger.warning("OCR scan quality analysis failed: %s", error, exc_info=True)
         scan_quality_payload = None
-
-    try:
-        structured = build_structured_ocr_result(
-            image_bytes,
-            base_result=result,
-            used_language=used_language,
-            fallback_used=fallback_used,
-            template=template,
-            doc_type_hint=doc_type_hint,
-            force_model=force_model,
-        )
-    except RuntimeError as error:
-        logger.error("Structured OCR build failed: %s: %s", type(error).__name__, error, exc_info=True)
-        raise HTTPException(status_code=502, detail=str(error)) from error
-    except Exception as error:  # pylint: disable=broad-except
-        logger.error("Structured OCR build failed unexpectedly: %s: %s", type(error).__name__, error, exc_info=True)
-        raise HTTPException(status_code=500, detail="Structured OCR failed unexpectedly.") from error
 
     return {
         **structured,
