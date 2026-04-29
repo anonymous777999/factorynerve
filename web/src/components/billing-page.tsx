@@ -17,6 +17,7 @@ import {
   getBillingStatus,
   listInvoices,
   scheduleDowngrade,
+  syncBillingOrder,
   updateOrganizationPlan,
   type BillingConfig,
   type InvoiceItem,
@@ -450,13 +451,23 @@ function BillingPageInner() {
           requested_factories: String(requestedFactories),
           addon_ids: (order.quote?.chargeable_addon_ids || []).join(","),
         },
-        handler: () => {
-          setStatus(
-            "Payment submitted to Razorpay. Your plan and add-ons will update automatically once the webhook confirms the payment.",
-          );
-          setTimeout(() => {
-            loadAll().catch(() => undefined);
-          }, 2500);
+        handler: async () => {
+          try {
+            const sync = await syncBillingOrder(order.order.id);
+            setStatus(sync.message);
+            await loadAll();
+          } catch (syncError) {
+            if (syncError instanceof ApiError) {
+              setStatus(
+                `${syncError.message} We will keep waiting for the Razorpay webhook and refresh billing again shortly.`,
+              );
+            } else {
+              setStatus("Payment submitted to Razorpay. Billing will refresh after confirmation arrives.");
+            }
+            window.setTimeout(() => {
+              void loadAll();
+            }, 2500);
+          }
         },
         modal: {
           ondismiss: () => {

@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status, Request
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from pydantic import BaseModel, Field
 from sqlalchemy import false
@@ -70,6 +70,16 @@ OCR_VERIFICATION_DIR = PROJECT_ROOT / "exports" / "ocr_verifications"
 _ALLOWED_VERIFICATION_STATUSES = {"draft", "pending", "approved", "rejected"}
 _FILENAME_SAFE_RE = re.compile(r"[^A-Za-z0-9._-]+")
 _OCR_SHARE_MAX_AGE_SECONDS = 7 * 24 * 60 * 60
+_IMAGE_MAGIC_SIGNATURES: tuple[bytes, ...] = (
+    b"\x89PNG\r\n\x1a\n",
+    b"\xff\xd8\xff",
+    b"GIF87a",
+    b"GIF89a",
+    b"BM",
+    b"II*\x00",
+    b"MM\x00*",
+    b"RIFF",
+)
 
 
 class OcrVerificationUpdatePayload(BaseModel):
@@ -107,8 +117,53 @@ def _safe_file_name(filename: str | None, default_stem: str = "ocr-source") -> s
 
 
 def _ocr_share_serializer() -> URLSafeTimedSerializer:
-    secret = os.getenv("AUTH_RESET_SECRET") or os.getenv("JWT_SECRET_KEY") or "dev-secret"
+    secret = os.getenv("AUTH_RESET_SECRET") or os.getenv("JWT_SECRET_KEY")
+    if not secret:
+        raise RuntimeError("AUTH_RESET_SECRET or JWT_SECRET_KEY must be configured for OCR share links.")
     return URLSafeTimedSerializer(secret_key=secret, salt="ocr-share")
+
+
+def _reject_mock_ocr() -> None:
+    app_env = (os.getenv("APP_ENV") or "development").strip().lower()
+    if app_env != "production":
+        return
+    if os.getenv("ALLOW_OCR_MOCK", "").strip().lower() not in {"1", "true", "yes", "on"}:
+        raise HTTPException(status_code=403, detail="Mock OCR mode is disabled.")
+
+
+def _validate_image_bytes(image_bytes: bytes) -> None:
+    if not image_bytes:
+        raise HTTPException(status_code=400, detail="Upload a valid image file.")
+    if image_bytes.startswith(b"RIFF") and image_bytes[8:12] == b"WEBP":
+        return
+    if any(image_bytes.startswith(signature) for signature in _IMAGE_MAGIC_SIGNATURES):
+        return
+    if b"ftypheic" in image_bytes[:32] or b"ftypheif" in image_bytes[:32]:
+        return
+    raise HTTPException(status_code=400, detail="Upload a valid image file.")
+
+
+async def _read_validated_image_upload(file: UploadFile) -> bytes:
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="File is required.")
+    if not (file.content_type or "").startswith("image/"):
+        raise HTTPException(status_code=400, detail="Only image files are supported.")
+    image_bytes = await file.read()
+    if len(image_bytes) > 8_000_000:
+        raise HTTPException(status_code=413, detail="Max 8MB image size exceeded.")
+    _validate_image_bytes(image_bytes)
+    return image_bytes
+
+
+async def _read_image_upload_for_mock(file: UploadFile) -> bytes:
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="File is required.")
+    image_bytes = await file.read()
+    if len(image_bytes) > 8_000_000:
+        raise HTTPException(status_code=413, detail="Max 8MB image size exceeded.")
+    if not image_bytes:
+        raise HTTPException(status_code=400, detail="File is required.")
+    return image_bytes
 
 
 def _build_ocr_share_token(verification: OcrVerification) -> str:
@@ -496,6 +551,13 @@ def _require_ocr_access(current_user: User) -> None:
     require_any_role(
         current_user,
         {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER},
+    )
+
+
+def _image_too_large_response() -> JSONResponse:
+    return JSONResponse(
+        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+        content={"error": "image_too_large", "message": "Image must be under 8 MB"},
     )
 
 
@@ -973,12 +1035,7 @@ async def create_template(
 
     sample_bytes: list[bytes] = []
     for file in samples:
-        if not (file.content_type or "").startswith("image/"):
-            raise HTTPException(status_code=400, detail="Only image files are supported.")
-        image_bytes = await file.read()
-        if len(image_bytes) > 8_000_000:
-            raise HTTPException(status_code=413, detail="Image too large. Max 8MB.")
-        sample_bytes.append(image_bytes)
+        sample_bytes.append(await _read_validated_image_upload(file))
 
     parsed_names = _parse_json_list(column_names)
     parsed_keywords = _parse_json_list(column_keywords)
@@ -1188,11 +1245,7 @@ async def create_verification(
     parsed_reviewed_rows = _normalize_rows(_parse_json_value(reviewed_rows, field_name="reviewed_rows"), field_name="reviewed_rows") or parsed_original_rows
 
     if file is not None and file.filename:
-        if not (file.content_type or "").startswith("image/"):
-            raise HTTPException(status_code=400, detail="Only image files are supported.")
-        image_bytes = await file.read()
-        if len(image_bytes) > 8_000_000:
-            raise HTTPException(status_code=413, detail="Image too large. Max 8MB.")
+        image_bytes = await _read_validated_image_upload(file)
         source_name, image_path = _save_verification_source(file.filename or source_filename, image_bytes)
     else:
         source_name = _safe_file_name(source_filename) if source_filename else None
@@ -1518,13 +1571,7 @@ async def ocr_logbook(
     db: Session = Depends(get_db),
 ) -> dict:
     _require_ocr_access(current_user)
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="File is required.")
-    if not (file.content_type or "").startswith("image/"):
-        raise HTTPException(status_code=400, detail="Only image files are supported.")
-    image_bytes = await file.read()
-    if len(image_bytes) > 8_000_000:
-        raise HTTPException(status_code=413, detail="Image too large. Max 8MB.")
+    image_bytes = await _read_validated_image_upload(file)
 
     template = None
     if template_id is not None:
@@ -1644,13 +1691,7 @@ async def warp_document(
     current_user: User = Depends(get_current_user),
 ) -> Response:
     _require_ocr_access(current_user)
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="File is required.")
-    if not (file.content_type or "").startswith("image/"):
-        raise HTTPException(status_code=400, detail="Only image files are supported.")
-    image_bytes = await file.read()
-    if len(image_bytes) > 8_000_000:
-        raise HTTPException(status_code=413, detail="Image too large. Max 8MB.")
+    image_bytes = await _read_validated_image_upload(file)
 
     parsed = _parse_json_value(corners, field_name="corners")
     used_corners = None
@@ -1689,13 +1730,11 @@ async def ocr_logbook_excel(
     db: Session = Depends(get_db),
 ) -> Response:
     _require_ocr_access(current_user)
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="File is required.")
-    if not (file.content_type or "").startswith("image/"):
-        raise HTTPException(status_code=400, detail="Only image files are supported.")
-    image_bytes = await file.read()
-    if len(image_bytes) > 8_000_000:
-        raise HTTPException(status_code=413, detail="Image too large. Max 8MB.")
+    if mock:
+        _reject_mock_ocr()
+        image_bytes = await _read_image_upload_for_mock(file)
+    else:
+        image_bytes = await _read_validated_image_upload(file)
     org_id = resolve_org_id(current_user)
     plan = get_org_plan_for_usage(db, org_id=org_id, user_id=current_user.id)
     check_rate_limit(current_user.id, plan=plan)
@@ -1779,13 +1818,11 @@ async def ocr_logbook_excel_async(
     db: Session = Depends(get_db),
 ) -> dict:
     _require_ocr_access(current_user)
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="File is required.")
-    if not (file.content_type or "").startswith("image/"):
-        raise HTTPException(status_code=400, detail="Only image files are supported.")
-    image_bytes = await file.read()
-    if len(image_bytes) > 8_000_000:
-        raise HTTPException(status_code=413, detail="Image too large. Max 8MB.")
+    if mock:
+        _reject_mock_ocr()
+        image_bytes = await _read_image_upload_for_mock(file)
+    else:
+        image_bytes = await _read_validated_image_upload(file)
     if not preprocess_profile:
         preprocess_profile = os.getenv("LEDGER_SCAN_PREPROCESS_PROFILE")
     org_id = resolve_org_id(current_user)
@@ -1825,13 +1862,7 @@ async def ocr_table_excel(
     db: Session = Depends(get_db),
 ) -> Response:
     _require_ocr_access(current_user)
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="File is required.")
-    if not (file.content_type or "").startswith("image/"):
-        raise HTTPException(status_code=400, detail="Only image files are supported.")
-    image_bytes = await file.read()
-    if len(image_bytes) > 8_000_000:
-        raise HTTPException(status_code=413, detail="Image too large. Max 8MB.")
+    image_bytes = await _read_validated_image_upload(file)
     org_id = resolve_org_id(current_user)
     plan = get_org_plan_for_usage(db, org_id=org_id, user_id=current_user.id)
     check_rate_limit(current_user.id, plan=plan)
@@ -1905,13 +1936,7 @@ async def ocr_table_excel_async(
     db: Session = Depends(get_db),
 ) -> dict:
     _require_ocr_access(current_user)
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="File is required.")
-    if not (file.content_type or "").startswith("image/"):
-        raise HTTPException(status_code=400, detail="Only image files are supported.")
-    image_bytes = await file.read()
-    if len(image_bytes) > 8_000_000:
-        raise HTTPException(status_code=413, detail="Image too large. Max 8MB.")
+    image_bytes = await _read_validated_image_upload(file)
     org_id = resolve_org_id(current_user)
     plan = get_org_plan_for_usage(db, org_id=org_id, user_id=current_user.id)
     check_rate_limit(current_user.id, plan=plan)

@@ -367,10 +367,10 @@ export async function apiFetch<T>(
     if (!response.ok) {
       const objectPayload =
         payload && typeof payload === "object"
-          ? (payload as { detail?: unknown })
+          ? (payload as { detail?: unknown; message?: unknown })
           : null;
       const detail =
-        objectPayload?.detail ?? "Request failed.";
+        objectPayload?.detail ?? objectPayload ?? "Request failed.";
       const message =
         typeof detail === "string"
           ? detail

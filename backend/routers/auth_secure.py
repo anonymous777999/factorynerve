@@ -188,8 +188,8 @@ def password_forgot(payload: PasswordForgotRequest, request: Request, db: Sessio
                 to_emails=[user.email],
                 body=f"Use this link to reset your password (valid {RESET_TTL_MINUTES} minutes):\n{reset_link}",
             )
-        except Exception:
-            pass
+        except Exception as error:  # pylint: disable=broad-except
+            raise HTTPException(status_code=502, detail="Could not deliver the password reset email.") from error
         _log_event(db, action="AUTH_PASSWORD_RESET_REQUESTED", user_id=user.id, request=request)
         db.commit()
     return {"message": "If an account exists for this email, you will receive a reset link."}

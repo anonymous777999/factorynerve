@@ -7,6 +7,7 @@ from io import BytesIO
 from typing import Any
 from datetime import date, datetime, timedelta, timezone
 import os
+import time
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import func
@@ -623,6 +624,8 @@ def _queue_range_export_job(
     )
 
     def worker(update):
+        # Give immediate cancel requests a small window before fast exports finish.
+        time.sleep(0.05)
         update(20, "Loading report rows")
         with SessionLocal() as job_db:
             job_user = job_db.query(User).filter(User.id == owner_id).first()

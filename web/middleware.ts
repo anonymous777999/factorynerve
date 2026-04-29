@@ -82,7 +82,7 @@ export function middleware(request: NextRequest) {
     const hasAccess = request.cookies.get("dpr_access");
     if (!hasAccess) {
       const url = request.nextUrl.clone();
-      url.pathname = "/login";
+      url.pathname = "/access";
       url.searchParams.set("next", pathname);
       return withBuildVersionHeader(NextResponse.redirect(url));
     }

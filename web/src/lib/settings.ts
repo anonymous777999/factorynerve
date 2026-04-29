@@ -223,10 +223,13 @@ export async function inviteUser(payload: {
   role: string;
   factory_name: string;
 }) {
-  return apiFetch<{ message: string; temp_password?: string; user_code?: number }>("/settings/users/invite", {
+  return apiFetch<{ message: string; user_code?: number; verification_link?: string; reset_link?: string }>(
+    "/settings/users/invite",
+    {
     method: "POST",
     body: payload,
-  });
+    },
+  );
 }
 
 export async function updateUserRole(userId: number, role: string, confirmAction?: string) {

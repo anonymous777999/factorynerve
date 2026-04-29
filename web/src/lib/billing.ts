@@ -94,6 +94,16 @@ export async function createBillingOrder(
   });
 }
 
+export async function syncBillingOrder(orderId: string) {
+  return apiFetch<{ order_id: string; status: string; synced: boolean; message: string }>(
+    `/billing/orders/${encodeURIComponent(orderId)}/sync`,
+    {
+      method: "POST",
+    },
+    { timeoutMs: 20_000 },
+  );
+}
+
 export async function scheduleDowngrade(plan: string) {
   return apiFetch<{
     pending_plan: string;

@@ -1,5 +1,5 @@
 export const OCR_MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
-export const OCR_MAX_SOURCE_BYTES = 20 * 1024 * 1024;
+export const OCR_MAX_SOURCE_BYTES = 8 * 1024 * 1024;
 
 const OCR_SCAN_ROLES = new Set(["operator", "supervisor", "manager", "admin", "owner"]);
 const OCR_WORKSPACE_ROLES = new Set(["supervisor", "manager", "admin", "owner"]);
@@ -42,7 +42,7 @@ export function validateOcrImageFile(
       : `${fieldLabel} must be an image file (JPG, PNG, WEBP).`;
   }
   if (input.size > OCR_MAX_SOURCE_BYTES) {
-    return `${fieldLabel} must be smaller than 20 MB before processing.`;
+    return "Image must be under 8 MB. Try compressing the photo.";
   }
   return "";
 }

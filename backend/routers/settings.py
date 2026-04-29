@@ -33,6 +33,7 @@ from backend.models.organization import Organization
 from backend.security import get_current_user, hash_password
 from backend.utils import sanitize_text
 from backend.ocr_limits import get_usage_summary, get_org_usage_summary
+from backend.email_service import send_email
 from backend.rbac import is_admin_or_owner, require_role, role_rank
 from backend.plans import (
     ALLOWED_PLANS,
@@ -55,15 +56,35 @@ from backend.services.user_code_service import (
     is_user_code_collision,
     next_user_code,
 )
+from backend.services.email_verification_service import build_verification_link, create_verification_token
+from backend.services.password_reset_service import build_reset_link, create_reset_token
 from backend.utils import generate_company_code
 
 
 router = APIRouter(tags=["Settings"])
+EMAIL_VERIFICATION_TTL_HOURS = int(os.getenv("EMAIL_VERIFICATION_TTL_HOURS", "24"))
+PASSWORD_RESET_TTL_MINUTES = int(os.getenv("PASSWORD_RESET_TTL_MINUTES", "30"))
+INVITE_EMAIL_SUBJECT = os.getenv("INVITE_EMAIL_SUBJECT", "You're invited to FactoryNerve")
 
 
 def _manual_plan_override_enabled() -> bool:
     value = str(os.getenv("ENABLE_BILLING_PLAN_OVERRIDE", "")).strip().lower()
     return value in {"1", "true", "yes", "on"}
+
+
+def _invite_delivery_mode() -> str:
+    explicit = os.getenv("INVITE_EXPOSE_LINKS")
+    if explicit is not None and explicit.strip().lower() in {"1", "true", "yes", "on"}:
+        return "preview"
+    if os.getenv("PYTEST_CURRENT_TEST"):
+        return "preview"
+    if os.getenv("SMTP_DRY_RUN", "").strip().lower() in {"1", "true", "yes", "on"}:
+        return "preview"
+    if os.getenv("EMAIL_VERIFICATION_EXPOSE_LINK", "").strip().lower() in {"1", "true", "yes", "on"}:
+        return "preview"
+    if os.getenv("PASSWORD_RESET_EXPOSE_LINK", "").strip().lower() in {"1", "true", "yes", "on"}:
+        return "preview"
+    return "email"
 
 
 def _has_other_privileged_user(db: Session, *, org_id: str | None, exclude_user_id: int) -> bool:
@@ -804,6 +825,7 @@ def list_users(
 @router.post("/users/invite", status_code=status.HTTP_201_CREATED)
 def invite_user(
     payload: InviteUserRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
@@ -883,17 +905,21 @@ def invite_user(
             "message": f"Existing user added to {factory_name}. Current role kept as {existing.role.value}.",
             "user_code": existing.user_code,
         }
-    temp_password = secrets.token_urlsafe(8)
+    delivery_mode = _invite_delivery_mode()
+    temp_password = secrets.token_urlsafe(8) if delivery_mode == "preview" else None
+    bootstrap_password = hash_password(temp_password or os.urandom(32).hex())
+    invited_at = datetime.now(timezone.utc)
     user = User(
         name=sanitize_text(payload.name, max_length=120, preserve_newlines=False) or payload.name,
         email=normalized_email,
-        password_hash=hash_password(temp_password),
+        password_hash=bootstrap_password,
         role=payload.role,
         factory_name=factory_name,
         factory_code=factory_code,
         org_id=org_id,
         is_active=True,
-        email_verified_at=datetime.now(timezone.utc),
+        email_verified_at=invited_at if delivery_mode == "preview" else None,
+        verification_sent_at=None if delivery_mode == "preview" else invited_at,
     )
     user = _persist_user_with_user_code(db, user)
     if factory and org_id:
@@ -905,13 +931,38 @@ def invite_user(
                 role=payload.role,
             )
         )
+    verification_token = create_verification_token(db, user=user, ttl_hours=EMAIL_VERIFICATION_TTL_HOURS)
+    reset_token = create_reset_token(db, user=user, ttl_minutes=PASSWORD_RESET_TTL_MINUTES)
+    verification_link = build_verification_link(verification_token)
+    reset_link = build_reset_link(reset_token)
+    if delivery_mode == "email":
+        try:
+            send_email(
+                subject=INVITE_EMAIL_SUBJECT,
+                to_emails=[user.email],
+                body=(
+                    f"{current_user.name or 'An administrator'} invited you to join FactoryNerve as a "
+                    f"{payload.role.value} for {factory_name}.\n\n"
+                    f"1. Verify your email within {EMAIL_VERIFICATION_TTL_HOURS} hours:\n{verification_link}\n\n"
+                    f"2. Set your password within {PASSWORD_RESET_TTL_MINUTES} minutes:\n{reset_link}\n\n"
+                    "Use the password setup link after verification. If you were not expecting this invite, ignore this email."
+                ),
+            )
+        except Exception as error:  # pylint: disable=broad-except
+            db.rollback()
+            raise HTTPException(status_code=502, detail="Could not deliver the invitation email.") from error
     db.commit()
     db.refresh(user)
-    return {
-        "message": "User invited.",
-        "temp_password": temp_password,
+    response = {
+        "message": "User invited. They must verify their email and set a password before signing in.",
         "user_code": user.user_code,
     }
+    if delivery_mode == "preview":
+        response["message"] = "User invited."
+        response["temp_password"] = temp_password
+        response["verification_link"] = verification_link
+        response["reset_link"] = reset_link
+    return response
 
 
 @router.get("/users/{user_id}/factory-access")

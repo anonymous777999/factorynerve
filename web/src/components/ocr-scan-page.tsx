@@ -15,6 +15,7 @@ import { UploadBox } from "@/components/ocr/upload-box";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatApiErrorMessage } from "@/lib/api";
+import { pushAppToast } from "@/lib/toast";
 import { transferBlob } from "@/lib/blob-transfer";
 import { rasterizeDocumentForOcr } from "@/lib/document-rasterize";
 import { prepareOcrUploadFile } from "@/lib/file-prep";
@@ -608,6 +609,11 @@ export default function OcrScanPage() {
         })
         .catch((error) => {
           console.error("OCR draft autosave failed:", error);
+          pushAppToast({
+            title: "Autosave failed",
+            description: formatApiErrorMessage(error, "Could not autosave your OCR draft. Please try again."),
+            tone: "error",
+          });
         });
     }, 900);
     return () => window.clearTimeout(timer);
@@ -961,8 +967,14 @@ export default function OcrScanPage() {
       setStatusTone("success");
       signalWorkflowRefresh("ocr-export");
     } catch (reason) {
-      setStatus(humanExportError(reason));
+      const msg = humanExportError(reason);
+      setStatus(msg);
       setStatusTone("error");
+      pushAppToast({
+        title: "Excel export failed",
+        description: msg,
+        tone: "error",
+      });
     } finally {
       setExcelBusy(false);
     }

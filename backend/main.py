@@ -9,10 +9,11 @@ import time
 from collections.abc import Callable
 
 from fastapi import FastAPI, HTTPException
+from sqlalchemy import text
 from starlette.requests import Request
 from starlette.responses import Response
 
-from backend.database import init_db
+from backend.database import SessionLocal, init_db
 from backend.routers.analytics import router as analytics_router
 from backend.routers.ai import router as ai_router
 from backend.routers.alerts import router as alerts_router
@@ -92,7 +93,8 @@ if sentry_sdk and os.getenv("SENTRY_DSN"):
 app.include_router(auth_router, prefix="/auth")
 app.include_router(auth_google_router, prefix="/auth")
 app.include_router(phone_auth_router, prefix="/auth")
-app.include_router(auth_secure_router, prefix="/auth-secure")
+if os.getenv("ENABLE_AUTH_SECURE", "").strip().lower() in {"1", "true", "yes", "on"}:
+    app.include_router(auth_secure_router, prefix="/auth-secure")
 app.include_router(jobs_router, prefix="/jobs")
 app.include_router(entries_router, prefix="/entries")
 app.include_router(reports_router, prefix="/reports")
@@ -164,12 +166,16 @@ async def log_requests(request: Request, call_next: Callable) -> Response:
 
 @app.get("/health")
 def health_check() -> dict[str, str]:
+    db = SessionLocal()
     try:
         logger.info("Health check endpoint called.")
+        db.execute(text("SELECT 1"))
         return {"status": "ok", "service": "backend", "app": config.app_name}
     except Exception as error:  # pylint: disable=broad-except
         logger.exception("Health check failed.")
         raise HTTPException(status_code=500, detail="Internal server error.") from error
+    finally:
+        db.close()
 
 
 @app.get("/metrics")

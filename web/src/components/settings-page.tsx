@@ -871,10 +871,12 @@ export default function SettingsPage() {
                           role: inviteRole,
                           factory_name: factory.factory_name || user.factory_name || "",
                         });
+                        const previewLinks =
+                          result.verification_link && result.reset_link
+                            ? ` Verify: ${result.verification_link} Reset: ${result.reset_link}`
+                            : "";
                         setStatus(
-                          result.temp_password
-                            ? `User ${result.user_code ? `#${result.user_code} ` : ""}invited. Temporary password: ${result.temp_password}`
-                            : result.message,
+                          `${result.user_code ? `User #${result.user_code} ` : "User "}${result.message}${previewLinks}`,
                         );
                         setInviteName("");
                         setInviteEmail("");

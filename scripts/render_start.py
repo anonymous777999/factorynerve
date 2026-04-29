@@ -119,7 +119,7 @@ def main() -> None:
     env = _build_runtime_env()
     port = env.get("PORT", "10000")
     run_migrations = env.get("RUN_ALEMBIC_ON_STARTUP", "true").strip().lower() in {"1", "true", "yes", "on"}
-    allow_init_db_fallback = env.get("ALLOW_INIT_DB_FALLBACK", "true").strip().lower() in {"1", "true", "yes", "on"}
+    allow_init_db_fallback = env.get("ALLOW_INIT_DB_FALLBACK", "false").strip().lower() in {"1", "true", "yes", "on"}
 
     database_url = env.get("DATABASE_URL", "").strip()
     if database_url:

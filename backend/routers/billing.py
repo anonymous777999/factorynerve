@@ -15,6 +15,7 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.models.subscription import Subscription
+from backend.models.invoice import Invoice
 from backend.models.payment_order import PaymentOrder
 from backend.models.webhook_event import WebhookEvent
 from backend.models.user import User, UserRole
@@ -228,6 +229,120 @@ def _fetch_order_entity(order_id: str | None) -> dict | None:
         import razorpay  # type: ignore
     except Exception:
         return None
+
+
+def _resolve_period_end(cycle: str | None) -> datetime | None:
+    if cycle == "yearly":
+        return datetime.now(timezone.utc) + timedelta(days=365)
+    if cycle == "monthly":
+        return datetime.now(timezone.utc) + timedelta(days=30)
+    return None
+
+
+def _extract_addon_quantities_from_notes(notes: dict) -> dict[str, int]:
+    raw_quantities = str(notes.get("addon_quantities") or "").strip()
+    if raw_quantities:
+        try:
+            parsed_quantities = json.loads(raw_quantities)
+        except json.JSONDecodeError:
+            parsed_quantities = None
+        if isinstance(parsed_quantities, dict):
+            return normalize_addon_quantities(
+                {str(key): int(value) for key, value in parsed_quantities.items() if value is not None}
+            )
+    raw_addons = str(notes.get("addon_ids") or "").strip()
+    if raw_addons:
+        return normalize_addon_quantities(
+            None,
+            addon_ids=[part.strip() for part in raw_addons.split(",") if part.strip()],
+        )
+    return {}
+
+
+def _activate_paid_order(
+    db: Session,
+    *,
+    user_id: int,
+    plan: str,
+    billing_cycle: str | None,
+    amount_paise: int | None,
+    addon_quantities: dict[str, int],
+    provider: str,
+    provider_order_id: str | None,
+    currency: str,
+    event_type: str,
+) -> None:
+    cycle = billing_cycle or _resolve_billing_cycle(plan, amount_paise)
+    period_end = _resolve_period_end(cycle)
+    detail_parts = [f"plan={plan}", f"event={event_type}"]
+    if cycle:
+        detail_parts.append(f"cycle={cycle}")
+    if amount_paise:
+        detail_parts.append(f"amount_paise={amount_paise}")
+    if addon_quantities:
+        detail_parts.append(
+            "addons="
+            + ",".join(f"{addon_id}:{quantity}" for addon_id, quantity in sorted(addon_quantities.items()))
+        )
+    if provider_order_id:
+        detail_parts.append(f"order_id={provider_order_id}")
+    audit_details = "; ".join(detail_parts)
+    _apply_plan_upgrade(
+        db,
+        user_id=user_id,
+        plan=plan,
+        provider=provider,
+        current_period_end_at=period_end,
+        audit_details=audit_details,
+    )
+    user = db.query(User).filter(User.id == user_id).first()
+    org_id = resolve_org_id(user) if user else None
+    if org_id and addon_quantities:
+        activate_org_addons(
+            db,
+            org_id=org_id,
+            addon_quantities=addon_quantities,
+            purchased_by_user_id=user_id,
+            billing_cycle=cycle or "monthly",
+            provider=provider,
+            provider_order_id=provider_order_id,
+            current_period_end_at=period_end,
+        )
+    try:
+        existing_invoice = None
+        if provider_order_id:
+            existing_invoice = (
+                db.query(Invoice)
+                .filter(
+                    Invoice.user_id == user_id,
+                    Invoice.provider == provider,
+                    Invoice.provider_invoice_id == provider_order_id,
+                )
+                .first()
+            )
+        if not existing_invoice:
+            amount_value = float(amount_paise or 0) / 100.0
+            record_invoice(
+                db,
+                user_id=user_id,
+                plan=plan,
+                provider=provider,
+                provider_invoice_id=provider_order_id,
+                amount=amount_value,
+                currency=currency,
+                status="paid",
+                issued_at=datetime.now(timezone.utc),
+            )
+        else:
+            existing_invoice.status = "paid"
+            existing_invoice.plan = normalize_plan(plan)
+            existing_invoice.currency = currency
+            existing_invoice.amount = float(amount_paise or 0) / 100.0
+            existing_invoice.issued_at = existing_invoice.issued_at or datetime.now(timezone.utc)
+            db.add(existing_invoice)
+    except Exception:
+        pass
+    db.flush()
     try:
         client = razorpay.Client(auth=(key_id, key_secret))
         return client.order.fetch(order_id) or None
@@ -673,6 +788,60 @@ def create_order(
     }
 
 
+@router.post("/orders/{order_id}/sync")
+def sync_order_status(
+    order_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    require_role(current_user, UserRole.OWNER)
+    payment_order = (
+        db.query(PaymentOrder)
+        .filter(
+            PaymentOrder.provider == "razorpay",
+            PaymentOrder.provider_order_id == order_id,
+            PaymentOrder.user_id == current_user.id,
+        )
+        .first()
+    )
+    if not payment_order:
+        raise HTTPException(status_code=404, detail="Billing order not found.")
+    order_entity = _fetch_order_entity(order_id)
+    if not order_entity:
+        raise HTTPException(status_code=502, detail="Could not verify the order with Razorpay.")
+    provider_status = str(order_entity.get("status") or payment_order.status or "created").strip().lower()
+    _mark_payment_order_status(db, order_id=order_id, status=provider_status)
+    synced = provider_status in PAID_ORDER_STATUSES
+    if synced:
+        notes = order_entity.get("notes", {}) or {}
+        plan = normalize_plan(str(notes.get("plan") or payment_order.plan))
+        if not plan:
+            raise HTTPException(status_code=400, detail="The paid order is missing a valid plan code.")
+        billing_cycle = str(notes.get("billing_cycle") or "").strip().lower() or None
+        amount = order_entity.get("amount") if isinstance(order_entity.get("amount"), int) else payment_order.amount
+        addon_quantities = _extract_addon_quantities_from_notes(notes)
+        currency = str(order_entity.get("currency") or payment_order.currency or SUPPORTED_CURRENCY)
+        _activate_paid_order(
+            db,
+            user_id=current_user.id,
+            plan=plan,
+            billing_cycle=billing_cycle,
+            amount_paise=amount,
+            addon_quantities=addon_quantities,
+            provider="razorpay",
+            provider_order_id=order_id,
+            currency=currency,
+            event_type="manual_sync",
+        )
+    db.commit()
+    return {
+        "order_id": order_id,
+        "status": provider_status,
+        "synced": synced,
+        "message": "Payment confirmed and billing updated." if synced else "Payment is still pending provider confirmation.",
+    }
+
+
 @router.post("/webhook/razorpay")
 async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> dict:
     secret = os.getenv("RAZORPAY_WEBHOOK_SECRET")
@@ -712,11 +881,6 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
             amount = _extract_amount(data)
             cycle = _extract_billing_cycle(data) or _resolve_billing_cycle(plan, amount)
             addon_quantities = _extract_addon_quantities(data)
-            period_end = None
-            if cycle == "yearly":
-                period_end = datetime.now(timezone.utc) + timedelta(days=365)
-            elif cycle == "monthly":
-                period_end = datetime.now(timezone.utc) + timedelta(days=30)
             if not plan or not user_id:
                 order_entity = _fetch_order_entity(_extract_order_id(data))
                 if order_entity:
@@ -732,83 +896,22 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
                         cycle = _resolve_billing_cycle(plan, amount)
                     if not addon_quantities:
                         notes = order_entity.get("notes", {}) or {}
-                        raw_quantities = str(notes.get("addon_quantities") or "").strip()
-                        if raw_quantities:
-                            try:
-                                parsed_quantities = json.loads(raw_quantities)
-                            except json.JSONDecodeError:
-                                parsed_quantities = None
-                            if isinstance(parsed_quantities, dict):
-                                addon_quantities = normalize_addon_quantities(
-                                    {str(key): int(value) for key, value in parsed_quantities.items() if value is not None}
-                                )
-                        if not addon_quantities:
-                            raw_addons = str(notes.get("addon_ids") or "").strip()
-                            if raw_addons:
-                                addon_quantities = normalize_addon_quantities(
-                                    None,
-                                    addon_ids=[part.strip() for part in raw_addons.split(",") if part.strip()],
-                                )
-                    if cycle == "yearly":
-                        period_end = datetime.now(timezone.utc) + timedelta(days=365)
-                    elif cycle == "monthly":
-                        period_end = datetime.now(timezone.utc) + timedelta(days=30)
+                        addon_quantities = _extract_addon_quantities_from_notes(notes)
             if plan and user_id:
-                detail_parts = [f"plan={plan}", f"event={event_type}"]
-                if cycle:
-                    detail_parts.append(f"cycle={cycle}")
-                if amount:
-                    detail_parts.append(f"amount_paise={amount}")
-                if addon_quantities:
-                    detail_parts.append(
-                        "addons="
-                        + ",".join(
-                            f"{addon_id}:{quantity}"
-                            for addon_id, quantity in sorted(addon_quantities.items())
-                        )
-                    )
                 order_id = _extract_order_id(data)
-                if order_id:
-                    detail_parts.append(f"order_id={order_id}")
-                audit_details = "; ".join(detail_parts)
-                _apply_plan_upgrade(
+                currency = str((_extract_order_entity(data).get("currency") or "INR"))
+                _activate_paid_order(
                     db,
                     user_id=user_id,
                     plan=plan,
+                    billing_cycle=cycle,
+                    amount_paise=amount,
+                    addon_quantities=addon_quantities,
                     provider="razorpay",
-                    current_period_end_at=period_end,
-                    audit_details=audit_details,
+                    provider_order_id=order_id,
+                    currency=currency,
+                    event_type=event_type,
                 )
-                user = db.query(User).filter(User.id == user_id).first()
-                org_id = resolve_org_id(user) if user else None
-                if org_id and addon_quantities:
-                    activate_org_addons(
-                        db,
-                        org_id=org_id,
-                        addon_quantities=addon_quantities,
-                        purchased_by_user_id=user_id,
-                        billing_cycle=cycle or "monthly",
-                        provider="razorpay",
-                        provider_order_id=order_id,
-                        current_period_end_at=period_end,
-                    )
-                try:
-                    amount_value = float(amount or 0) / 100.0
-                    currency = str((_extract_order_entity(data).get("currency") or "INR"))
-                    record_invoice(
-                        db,
-                        user_id=user_id,
-                        plan=plan,
-                        provider="razorpay",
-                        provider_invoice_id=_extract_order_id(data),
-                        amount=amount_value,
-                        currency=currency,
-                        status="paid",
-                        issued_at=datetime.now(timezone.utc),
-                    )
-                except Exception:
-                    pass
-                db.flush()
         elif _should_downgrade(event_type):
             order_id = _extract_order_id(data)
             payment_entity = _extract_payment_entity(data)

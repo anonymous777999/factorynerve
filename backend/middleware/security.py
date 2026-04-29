@@ -97,11 +97,24 @@ def apply_security(app: FastAPI) -> None:
 
     rate_limit_window = _env_float("RATE_LIMIT_WINDOW_SECONDS", 60.0)
     rate_limit_max = _env_int("RATE_LIMIT_MAX_REQUESTS", 120)
-    max_request_bytes = _env_int("MAX_REQUEST_BYTES", 12_000_000)
+    login_rate_window = _env_float(
+        "LOGIN_RATE_LIMIT_WINDOW_SECONDS",
+        _env_float("AUTH_RATE_LIMIT_WINDOW_SECONDS", 60.0),
+    )
+    login_rate_max = _env_int(
+        "LOGIN_RATE_LIMIT_MAX_REQUESTS",
+        _env_int("AUTH_RATE_LIMIT_MAX_ATTEMPTS", 5),
+    )
+    invite_rate_window = _env_float("INVITE_RATE_LIMIT_WINDOW_SECONDS", 3600.0)
+    invite_rate_max = _env_int("INVITE_RATE_LIMIT_MAX_REQUESTS", 20)
+    ocr_rate_window = _env_float("OCR_RATE_LIMIT_WINDOW_SECONDS", 60.0)
+    ocr_rate_max = _env_int("OCR_RATE_LIMIT_MAX_REQUESTS", 20)
+    max_request_bytes = _env_int("MAX_REQUEST_BYTES", 8_000_000)
     hsts_max_age = _env_int("HSTS_MAX_AGE", 31_536_000)
 
     lock = threading.Lock()
     request_timestamps: dict[str, deque[float]] = defaultdict(deque)
+    endpoint_request_timestamps: dict[str, deque[float]] = defaultdict(deque)
 
     def _rate_key(request: Request) -> str:
         auth = request.headers.get("Authorization") or ""
@@ -133,6 +146,17 @@ def apply_security(app: FastAPI) -> None:
             history.append(now)
             return False
 
+    def _endpoint_limit_exceeded(key: str, *, window_seconds: float, max_requests: int) -> bool:
+        with lock:
+            now = time.time()
+            history = endpoint_request_timestamps[key]
+            while history and now - history[0] > window_seconds:
+                history.popleft()
+            if len(history) >= max_requests:
+                return True
+            history.append(now)
+            return False
+
     @app.middleware("http")
     async def attach_request_id(request: Request, call_next: Callable) -> Response:
         request_id = request.headers.get("X-Request-ID") or str(uuid.uuid4())
@@ -155,6 +179,33 @@ def apply_security(app: FastAPI) -> None:
     async def rate_limit_requests(request: Request, call_next: Callable) -> Response:
         if request.url.path != "/health":
             key = _rate_key(request)
+            endpoint_policies = (
+                ("POST", "/auth/login", login_rate_window, login_rate_max),
+                ("POST", "/settings/users/invite", invite_rate_window, invite_rate_max),
+            )
+            for method, path, window_seconds, max_requests in endpoint_policies:
+                if request.method == method and request.url.path == path:
+                    endpoint_key = f"{method}:{path}:{key}"
+                    if _endpoint_limit_exceeded(
+                        endpoint_key,
+                        window_seconds=window_seconds,
+                        max_requests=max_requests,
+                    ):
+                        return JSONResponse(
+                            status_code=429,
+                            content={"detail": "Too many requests for this action. Please wait and try again."},
+                        )
+            if request.method == "POST" and request.url.path.startswith("/ocr/"):
+                endpoint_key = f"POST:OCR:{key}"
+                if _endpoint_limit_exceeded(
+                    endpoint_key,
+                    window_seconds=ocr_rate_window,
+                    max_requests=ocr_rate_max,
+                ):
+                    return JSONResponse(
+                        status_code=429,
+                        content={"detail": "Too many OCR uploads. Please slow down and retry shortly."},
+                    )
             if _rate_limit_exceeded(key):
                 return JSONResponse(status_code=429, content={"detail": "Too many requests. Please slow down."})
         return await call_next(request)
@@ -166,7 +217,11 @@ def apply_security(app: FastAPI) -> None:
             if content_length:
                 try:
                     if int(content_length) > max_request_bytes:
-                        return JSONResponse(status_code=413, content={"detail": "Request too large."})
+                        max_mb = max_request_bytes / 1_000_000
+                        return JSONResponse(
+                            status_code=413,
+                            content={"detail": f"Max {max_mb:g}MB request size exceeded."},
+                        )
                 except ValueError:
                     return JSONResponse(status_code=400, content={"detail": "Invalid Content-Length header."})
         return await call_next(request)
@@ -174,11 +229,25 @@ def apply_security(app: FastAPI) -> None:
     @app.middleware("http")
     async def security_headers(request: Request, call_next: Callable) -> Response:
         response = await call_next(request)
+        csp = os.getenv("CONTENT_SECURITY_POLICY") or (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://checkout.razorpay.com; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: blob: https:; "
+            "font-src 'self' data: https:; "
+            "connect-src 'self' https: wss:; "
+            "frame-src 'self' https://checkout.razorpay.com; "
+            "object-src 'none'; "
+            "base-uri 'self'; "
+            "form-action 'self'; "
+            "frame-ancestors 'none'"
+        )
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("Referrer-Policy", "no-referrer")
         response.headers.setdefault("Permissions-Policy", "geolocation=(), microphone=(), camera=(self)")
         response.headers.setdefault("Cross-Origin-Resource-Policy", "same-site")
+        response.headers.setdefault("Content-Security-Policy", csp)
         if _env_bool("FORCE_HTTPS", False):
             response.headers.setdefault("Strict-Transport-Security", f"max-age={hsts_max_age}; includeSubDomains")
         return response
