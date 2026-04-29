@@ -151,3 +151,48 @@ def test_run_table_excel_pipeline_builds_excel_from_form_response(monkeypatch):
     assert metadata["total_columns"] == 2
     assert metadata["image_quality_score"] == 90
     assert metadata["model_used"] == ocr_router._TABLE_EXCEL_MODEL_HAIKU
+
+
+def test_run_table_preview_pipeline_returns_structured_rows_and_anthropic_routing(monkeypatch):
+    image_bytes = _make_image_bytes("JPEG", (720, 720))
+
+    class FakeResponse:
+        status_code = 200
+
+        def json(self):
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(
+                            {
+                                "type": "table",
+                                "headers": ["Date", "Amount"],
+                                "rows": [["2026-04-29", "1250"]],
+                            }
+                        ),
+                    }
+                ]
+            }
+
+    monkeypatch.setattr(ocr_router.requests, "post", lambda *args, **kwargs: FakeResponse())
+
+    payload = ocr_router._run_table_preview_pipeline(
+        image_bytes,
+        content_type="image/jpeg",
+        filename="scan.jpg",
+        template=None,
+        doc_type_hint="table",
+        force_model="best",
+        language="auto",
+    )
+
+    assert payload["type"] == "table"
+    assert payload["headers"] == ["Date", "Amount"]
+    assert payload["rows"] == [["2026-04-29", "1250"]]
+    assert payload["routing"]["provider_used"] == "anthropic"
+    assert payload["routing"]["provider_model"] == ocr_router._TABLE_EXCEL_MODEL_OPUS
+    assert payload["routing"]["model_tier"] == "best"
+    assert payload["routing"]["forced"] is True
+    assert payload["routing"]["ai_applied"] is True
+    assert payload["used_language"] == "auto"
