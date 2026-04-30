@@ -7,6 +7,7 @@ export type PreparedOcrFile = {
 };
 
 const HEIC_TYPES = new Set(["image/heic", "image/heif"]);
+const OCR_SOFT_COMPRESSION_THRESHOLD = Math.floor(OCR_MAX_UPLOAD_BYTES * 0.95);
 
 function hasHeicExtension(file: File) {
   return /\.(heic|heif)$/i.test(file.name);
@@ -42,7 +43,13 @@ async function convertHeicToJpeg(file: File) {
   return blobToFile(blob, file.name, "image/jpeg");
 }
 
-async function compressRasterImage(file: File) {
+async function compressRasterImage(
+  file: File,
+  options?: {
+    maxSizeBytes?: number;
+    preservePng?: boolean;
+  },
+) {
   const compressionModule = await import("browser-image-compression");
   const compress = (compressionModule.default ?? compressionModule) as (
     input: File,
@@ -54,12 +61,15 @@ async function compressRasterImage(file: File) {
       initialQuality: number;
     },
   ) => Promise<File>;
+  const preservePng = Boolean(options?.preservePng && file.type === "image/png");
+  const targetBytes = options?.maxSizeBytes ?? OCR_MAX_UPLOAD_BYTES;
+  const targetType = preservePng ? "image/png" : "image/jpeg";
   return compress(file, {
-    maxSizeMB: Math.max(0.5, OCR_MAX_UPLOAD_BYTES / (1024 * 1024) - 0.25),
-    maxWidthOrHeight: 2200,
+    maxSizeMB: Math.max(0.8, targetBytes / (1024 * 1024) - 0.1),
+    maxWidthOrHeight: 3200,
     useWebWorker: true,
-    fileType: "image/jpeg",
-    initialQuality: 0.86,
+    fileType: targetType,
+    initialQuality: preservePng ? 1 : 0.94,
   });
 }
 
@@ -72,8 +82,12 @@ export async function prepareOcrUploadFile(input: File): Promise<PreparedOcrFile
     steps.push("Converted HEIC to JPEG");
   }
 
-  if (workingFile.size > OCR_MAX_UPLOAD_BYTES * 0.72 || workingFile.type === "image/png") {
-    const compressed = await compressRasterImage(workingFile);
+  // Preserve OCR detail unless we are close to the upload cap.
+  if (workingFile.size > OCR_SOFT_COMPRESSION_THRESHOLD) {
+    const compressed = await compressRasterImage(workingFile, {
+      maxSizeBytes: OCR_MAX_UPLOAD_BYTES,
+      preservePng: true,
+    });
     if (compressed.size < workingFile.size) {
       workingFile = compressed;
       steps.push("Compressed upload");
@@ -81,7 +95,10 @@ export async function prepareOcrUploadFile(input: File): Promise<PreparedOcrFile
   }
 
   if (workingFile.size > OCR_MAX_UPLOAD_BYTES) {
-    const compressed = await compressRasterImage(workingFile);
+    const compressed = await compressRasterImage(workingFile, {
+      maxSizeBytes: OCR_MAX_UPLOAD_BYTES,
+      preservePng: true,
+    });
     workingFile = compressed;
     steps.push("Reduced oversized upload");
   }
