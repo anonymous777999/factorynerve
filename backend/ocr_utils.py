@@ -94,6 +94,28 @@ def _order_points(points: np.ndarray) -> np.ndarray:
     return np.array([tl, tr, br, bl], dtype=np.float32)
 
 
+def _quadrilateral_area(points: np.ndarray) -> float:
+    if points.shape != (4, 2):
+        return 0.0
+    x = points[:, 0]
+    y = points[:, 1]
+    return float(abs(np.dot(x, np.roll(y, -1)) - np.dot(y, np.roll(x, -1))) * 0.5)
+
+
+def _corners_cover_enough_image(
+    points: np.ndarray,
+    *,
+    image_width: int,
+    image_height: int,
+) -> bool:
+    if points.shape != (4, 2) or image_width <= 0 or image_height <= 0:
+        return False
+    width_ratio = float(points[:, 0].max() - points[:, 0].min()) / float(image_width)
+    height_ratio = float(points[:, 1].max() - points[:, 1].min()) / float(image_height)
+    area_ratio = _quadrilateral_area(points) / float(image_width * image_height)
+    return width_ratio >= 0.45 and height_ratio >= 0.45 and area_ratio >= 0.2
+
+
 def auto_detect_document_corners(image_bytes: bytes) -> list[list[float]] | None:
     _require_ocr_dependencies()
     if cv2 is None:
@@ -105,12 +127,19 @@ def auto_detect_document_corners(image_bytes: bytes) -> list[list[float]] | None
     edges = cv2.Canny(gray, 60, 180)
     contours, _ = cv2.findContours(edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
     contours = sorted(contours, key=cv2.contourArea, reverse=True)[:8]
+    image_height, image_width = gray.shape[:2]
     for contour in contours:
         peri = cv2.arcLength(contour, True)
         approx = cv2.approxPolyDP(contour, 0.02 * peri, True)
         if len(approx) == 4:
             pts = approx.reshape(4, 2).astype(np.float32)
             ordered = _order_points(pts)
+            if not _corners_cover_enough_image(
+                ordered,
+                image_width=image_width,
+                image_height=image_height,
+            ):
+                continue
             return ordered.tolist()
     return None
 
@@ -133,8 +162,10 @@ def warp_perspective(
     image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
     img = np.array(image)
     used = corners
+    auto_detected = False
     if used is None:
         used = auto_detect_document_corners(image_bytes)
+        auto_detected = True
     if used is None:
         return image_bytes, None
 
@@ -142,6 +173,12 @@ def warp_perspective(
     if pts.shape != (4, 2):
         raise RuntimeError("Corners must be 4 points.")
     pts = _order_points(pts)
+    if auto_detected and not _corners_cover_enough_image(
+        pts,
+        image_width=img.shape[1],
+        image_height=img.shape[0],
+    ):
+        return image_bytes, None
 
     (tl, tr, br, bl) = pts
     width_a = np.linalg.norm(br - bl)
