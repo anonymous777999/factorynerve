@@ -102,6 +102,63 @@ def test_call_table_excel_anthropic_uses_expected_payload(monkeypatch):
     assert extracted == {"type": "table", "headers": ["Name"], "rows": [["Amit"]]}
 
 
+def test_call_table_excel_anthropic_requires_api_key(monkeypatch):
+    image_bytes = _make_image_bytes("PNG", (720, 720))
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+
+    with pytest.raises(ocr_router.TableExcelRouteError) as exc_info:
+        ocr_router._call_table_excel_anthropic(
+            image_bytes,
+            image_mime_type="image/png",
+            selected_model=ocr_router._TABLE_EXCEL_MODEL_SONNET,
+            system_prompt=None,
+            user_message=None,
+        )
+
+    assert exc_info.value.status_code == 500
+    assert "ANTHROPIC_API_KEY is not configured" in exc_info.value.payload["error"]
+
+
+def test_call_table_excel_anthropic_rejects_unknown_model(monkeypatch):
+    image_bytes = _make_image_bytes("PNG", (720, 720))
+
+    with pytest.raises(ocr_router.TableExcelRouteError) as exc_info:
+        ocr_router._call_table_excel_anthropic(
+            image_bytes,
+            image_mime_type="image/png",
+            selected_model="claude-unknown-model",
+            system_prompt=None,
+            user_message=None,
+        )
+
+    assert exc_info.value.status_code == 500
+    assert "Unsupported Anthropic model configured for OCR" in exc_info.value.payload["error"]
+
+
+def test_call_table_excel_anthropic_preserves_upstream_status(monkeypatch):
+    image_bytes = _make_image_bytes("PNG", (720, 720))
+
+    class FakeResponse:
+        status_code = 401
+
+        def json(self):
+            return {"error": {"message": "invalid x-api-key"}}
+
+    monkeypatch.setattr(ocr_router.requests, "post", lambda *args, **kwargs: FakeResponse())
+
+    with pytest.raises(ocr_router.TableExcelRouteError) as exc_info:
+        ocr_router._call_table_excel_anthropic(
+            image_bytes,
+            image_mime_type="image/png",
+            selected_model=ocr_router._TABLE_EXCEL_MODEL_SONNET,
+            system_prompt=None,
+            user_message=None,
+        )
+
+    assert exc_info.value.status_code == 401
+    assert exc_info.value.payload["error"] == "invalid x-api-key"
+
+
 def test_run_table_excel_pipeline_builds_excel_from_form_response(monkeypatch):
     image_bytes = _make_image_bytes("JPEG", (720, 720))
 
@@ -196,3 +253,18 @@ def test_run_table_preview_pipeline_returns_structured_rows_and_anthropic_routin
     assert payload["routing"]["forced"] is True
     assert payload["routing"]["ai_applied"] is True
     assert payload["used_language"] == "auto"
+
+
+def test_run_ocr_with_fallback_requires_explicit_opt_in():
+    with pytest.raises(RuntimeError) as exc_info:
+        ocr_router._run_ocr_with_fallback(
+            b"fake-image",
+            language="eng",
+            columns=3,
+            column_centers=None,
+            column_keywords=None,
+            enable_raw_column=False,
+            allow_fallback=False,
+        )
+
+    assert str(exc_info.value) == "Local OCR fallback is disabled for this request."

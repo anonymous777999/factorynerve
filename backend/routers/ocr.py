@@ -101,9 +101,9 @@ _TABLE_EXCEL_FORMAT_TO_MIME = {
     "WEBP": "image/webp",
     "GIF": "image/gif",
 }
-_TABLE_EXCEL_MODEL_HAIKU = "claude-3-haiku-20240307"
-_TABLE_EXCEL_MODEL_SONNET = "claude-3-5-sonnet-20240620"
-_TABLE_EXCEL_MODEL_OPUS = "claude-3-opus-20240229"
+_TABLE_EXCEL_MODEL_HAIKU = "claude-3-5-haiku-20241022"
+_TABLE_EXCEL_MODEL_SONNET = "claude-sonnet-4-20250514"
+_TABLE_EXCEL_MODEL_OPUS = "claude-opus-4-20250514"
 _TABLE_EXCEL_TIER_TO_MODEL = {
     "fast": _TABLE_EXCEL_MODEL_HAIKU,
     "balanced": _TABLE_EXCEL_MODEL_SONNET,
@@ -128,6 +128,7 @@ Rules:
 - If the image contains plain text/paragraphs: return { "type": "text", "lines": [...] }
 - Preserve all numbers, dates, currencies exactly as they appear
 - Do NOT add commentary, explanations, or markdown - return ONLY valid JSON"""
+_ANTHROPIC_MESSAGES_URL = "https://api.anthropic.com/v1/messages"
 
 
 class TableExcelRouteError(Exception):
@@ -262,6 +263,26 @@ def _table_excel_timeout_seconds() -> float:
     except ValueError:
         value = 45.0
     return max(5.0, min(120.0, value))
+
+
+def _require_anthropic_api_key() -> str:
+    api_key = (os.getenv("ANTHROPIC_API_KEY") or "").strip()
+    if not api_key:
+        logger.error("[OCR] API key: missing")
+        raise _table_excel_error(
+            500,
+            "ANTHROPIC_API_KEY is not configured. Structured OCR requires a valid Anthropic API key.",
+        )
+    logger.info("[OCR] API key: present")
+    return api_key
+
+
+def _validate_table_excel_model_name(selected_model: str) -> str:
+    normalized = sanitize_text(selected_model, max_length=80, preserve_newlines=False) or ""
+    if normalized not in _TABLE_EXCEL_MODEL_TO_TIER:
+        logger.error("[OCR] Error: unsupported Anthropic model %s", selected_model)
+        raise _table_excel_error(500, f"Unsupported Anthropic model configured for OCR: {selected_model}")
+    return normalized
 
 
 def _normalize_table_excel_mime_type(content_type: str | None, filename: str | None) -> str | None:
@@ -429,13 +450,9 @@ def _call_table_excel_anthropic(
     system_prompt: str | None,
     user_message: str | None,
 ) -> dict[str, object]:
-    api_key = (os.getenv("ANTHROPIC_API_KEY") or "").strip()
-    if not api_key:
-        logger.error("[OCR] API key: missing")
-        raise _table_excel_error(502, "ANTHROPIC_API_KEY is not configured. Structured OCR requires a valid Anthropic API key.")
-    
-    logger.info("[OCR] API key: present")
-    logger.info("[OCR] Using AI model=%s", selected_model)
+    api_key = _require_anthropic_api_key()
+    selected_model = _validate_table_excel_model_name(selected_model)
+    logger.info("[OCR] Using AI model=%s endpoint=%s", selected_model, _ANTHROPIC_MESSAGES_URL)
 
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
     payload = {
@@ -463,8 +480,9 @@ def _call_table_excel_anthropic(
     }
 
     try:
+        logger.info("[OCR] Sending Anthropic request bytes=%s mime=%s", len(image_bytes), image_mime_type)
         response = requests.post(
-            "https://api.anthropic.com/v1/messages",
+            _ANTHROPIC_MESSAGES_URL,
             headers={
                 "Content-Type": "application/json",
                 "x-api-key": api_key,
@@ -491,6 +509,12 @@ def _call_table_excel_anthropic(
             if isinstance(api_error, dict):
                 message = str(api_error.get("message") or message)
         logger.error("[OCR] Error: %s", message)
+        if response.status_code == 400:
+            raise _table_excel_error(400, message)
+        if response.status_code in {401, 403}:
+            raise _table_excel_error(401, message)
+        if response.status_code == 429:
+            raise _table_excel_error(429, message)
         raise _table_excel_error(502, message)
 
     extracted_json = _extract_json_candidate(_extract_table_excel_json_text(ai_data))
@@ -679,13 +703,16 @@ def _build_table_excel_workbook(extracted_json: dict[str, object]) -> tuple[byte
         _auto_fit_openpyxl_columns(sheet)
         output = BytesIO()
         workbook.save(output)
+        excel_bytes = output.getvalue()
+        if not excel_bytes:
+            raise RuntimeError("Workbook writer returned empty output.")
     except TableExcelRouteError:
         raise
     except Exception as error:
         logger.error("[OCR] Error: %s", error)
         raise _table_excel_error(500, f"Excel generation failed: {error}") from error
 
-    return output.getvalue(), {
+    return excel_bytes, {
         "total_rows": total_rows,
         "total_columns": total_columns,
         "extracted_type": extracted_type,
@@ -701,6 +728,7 @@ def _run_table_excel_pipeline(
     user_message: str | None,
 ) -> tuple[bytes, dict[str, object]]:
     started_at = time.perf_counter()
+    logger.info("[OCR] Flow: upload -> /ocr/table-excel -> _run_table_excel_pipeline")
     inspection = _inspect_table_excel_image(image_bytes, content_type=content_type, filename=filename)
     image_quality_score = int(inspection["image_quality_score"])
     if image_quality_score < 30:
@@ -758,6 +786,7 @@ def _run_table_preview_pipeline(
     language: str,
 ) -> dict[str, object]:
     started_at = time.perf_counter()
+    logger.info("[OCR] Flow: upload -> /ocr/logbook -> _run_table_preview_pipeline")
     inspection = _inspect_table_excel_image(image_bytes, content_type=content_type, filename=filename)
     image_quality_score = int(inspection["image_quality_score"])
     if image_quality_score < 30:
@@ -1584,11 +1613,9 @@ def _run_ocr_with_fallback(
     allow_fallback: bool = False,
 ) -> tuple:
     if not allow_fallback:
-        logger.error("[OCR] Using fallback but allow_fallback=False")
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Structured OCR provider unavailable (AI required but failed or not configured)."
-        )
+        error = RuntimeError("Local OCR fallback is disabled for this request.")
+        logger.error("[OCR] Error: %s", error)
+        raise error
 
     logger.info("[OCR] Using fallback")
     fallback_used = False
@@ -2337,7 +2364,6 @@ async def ocr_logbook(
             raise HTTPException(status_code=500, detail=f"Structured OCR failed: {error}") from error
     else:
         try:
-            # Only allow fallback for very specific unknown types, otherwise force AI path above
             result, used_language, fallback_used = _run_ocr_with_fallback(
                 image_bytes,
                 columns=template.columns if template else columns,
@@ -2345,14 +2371,14 @@ async def ocr_logbook(
                 column_centers=template.column_centers if template else None,
                 column_keywords=template.column_keywords if template else None,
                 enable_raw_column=bool(template.enable_raw_column) if template else False,
-                allow_fallback=False, # KILL SILENT FALLBACK
+                allow_fallback=True,
             )
         except RuntimeError as error:
             logger.error("OCR extraction failed: %s: %s", type(error).__name__, error, exc_info=True)
             raise HTTPException(status_code=400, detail=str(error)) from error
         except Exception as error:  # pylint: disable=broad-except
             logger.error("OCR extraction failed: %s: %s", type(error).__name__, error, exc_info=True)
-            raise HTTPException(status_code=500, detail="OCR failed unexpectedly.") from error
+            raise HTTPException(status_code=500, detail=f"OCR failed: {error}") from error
 
         try:
             structured = build_structured_ocr_result(
@@ -2624,6 +2650,7 @@ async def ocr_table_excel(
         "Content-Disposition": "attachment; filename=output.xlsx",
         "X-Total-Rows": str(metadata.get("total_rows", 0)),
         "X-Total-Columns": str(metadata.get("total_columns", 0)),
+        "X-Image-Quality-Score": str(metadata.get("image_quality_score", "")),
         "X-Model-Used": str(metadata.get("model_used", "")),
         "Cache-Control": "no-store",
     }

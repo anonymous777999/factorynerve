@@ -176,9 +176,6 @@ function humanExtractError(error: unknown) {
   if (lowered.includes("only image files are supported")) {
     return "This file could not be prepared for OCR. Try PNG, JPG, PDF, or TIFF.";
   }
-  if (lowered.includes("anthropic") || lowered.includes("bytez") || lowered.includes("provider")) {
-    return "The structured OCR provider is unavailable right now. Please retry in a moment.";
-  }
   if (lowered.includes("tesseract") || lowered.includes("pytesseract")) {
     return "The OCR engine is unavailable right now. Please retry shortly.";
   }
@@ -186,8 +183,7 @@ function humanExtractError(error: unknown) {
   if (
     message &&
     message !== "Could not process this image." &&
-    !lowered.includes("failed unexpectedly") &&
-    !lowered.includes("request failed")
+    !lowered.includes("failed unexpectedly")
   ) {
     return message;
   }
