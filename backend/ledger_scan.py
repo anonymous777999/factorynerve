@@ -23,6 +23,10 @@ logger = logging.getLogger(__name__)
 BYTEZ_API_BASE = "https://api.bytez.com/models/v2"
 BYTEZ_DEFAULT_MODEL = "google/gemma-7b"
 
+MAX_RETRY = 1
+MODEL_SONNET = "claude-3-5-sonnet-latest"
+MODEL_OPUS = "claude-3-opus-latest"
+
 SYSTEM_PROMPT = (
     "You are a financial ledger data extraction expert.\n"
     "Your job is to extract all rows from ledger/account images \n"
@@ -50,8 +54,11 @@ USER_MESSAGE = (
 )
 
 RETRY_MESSAGE = (
-    "Your previous response was not valid JSON. "
-    "Return ONLY the JSON array, nothing else."
+    "Fix this JSON based ONLY on the data already extracted.\n"
+    "Do NOT re-interpret the image.\n"
+    "Do NOT invent new values.\n"
+    "Only correct structure and alignment.\n"
+    "Return ONLY valid JSON."
 )
 
 HEADER_FILL = PatternFill("solid", fgColor="1F3864")
@@ -427,35 +434,33 @@ def _call_local_tesseract(base64_image: str) -> list[dict]:
 
 
 def _call_claude(
-    base64_image: str,
+    base64_image: str | None,
     *,
     system_prompt: str,
     user_message: str,
     history: list[dict] | None = None,
+    model_override: str | None = None,
 ) -> tuple[str, list[dict]]:
     client = _get_client()
     if history:
         messages = history
     else:
-        messages = [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": user_message},
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": "image/jpeg",
-                            "data": base64_image,
-                        },
+        content: list[dict[str, Any]] = [{"type": "text", "text": user_message}]
+        if base64_image:
+            content.append(
+                {
+                    "type": "image",
+                    "source": {
+                        "type": "base64",
+                        "media_type": "image/jpeg",
+                        "data": base64_image,
                     },
-                ],
-            }
-        ]
+                }
+            )
+        messages = [{"role": "user", "content": content}]
 
     response = client.messages.create(
-        model=_anthropic_model_name(),
+        model=model_override or _anthropic_model_name(),
         max_tokens=2048,
         temperature=0,
         system=[
@@ -491,8 +496,10 @@ def extract_data_from_image(
     last_error: Exception | None = None
 
     def _run_provider(provider: str) -> list[dict]:
+        # Initial call
         if provider == "tesseract":
             return _call_local_tesseract(base64_image)
+
         if provider == "bytez":
             output = _call_bytez(base64_image, system_prompt=system_prompt, user_message=user_message)
             rows = _maybe_rows_from_output(output)
@@ -501,65 +508,72 @@ def extract_data_from_image(
             raw = _extract_text_from_bytez_output(output)
             if raw is None:
                 raw = output if isinstance(output, str) else json.dumps(output)
+            history = [] # Bytez doesn't support multi-turn history in this helper yet
         else:
             raw, history = _call_claude(base64_image, system_prompt=system_prompt, user_message=user_message)
 
         parsed = _extract_json_candidate(raw)
         rows = _rows_from_parsed(parsed)
 
-        # Logical Loopback: Check for math validation errors
-        if rows is not None:
-            validated = validate_data(rows)
-            warnings = validated.get("metadata", {}).get("validation_warnings", [])
-            if warnings and provider != "bytez":
-                # Trigger a logical correction pass
-                correction_msg = (
-                    "I found some mathematical discrepancies in your extraction:\n" +
-                    "\n".join(warnings) +
-                    "\nPlease re-examine the image carefully and fix the numbers to ensure the math is correct."
-                )
-                logger.info("LedgerScan triggering logical loopback for %s warnings.", len(warnings))
+        # Retry Guard and Smart Routing
+        retry_count = 0
+        while retry_count < MAX_RETRY:
+            needs_retry = False
+            error_msg = ""
+            model_to_use = MODEL_SONNET # Default for minor errors
+
+            if rows is None:
+                # Major Error: JSON parsing failed
+                needs_retry = True
+                model_to_use = MODEL_OPUS
+                error_msg = RETRY_MESSAGE
+                logger.info("LedgerScan: JSON parsing failed. Triggering major retry.")
+            else:
+                # Check validation for math or other errors
+                validated = validate_data(rows)
+                metadata = validated.get("metadata", {})
+                warnings = metadata.get("validation_warnings", [])
+                
+                if metadata.get("major_error"):
+                    needs_retry = True
+                    model_to_use = MODEL_OPUS
+                    error_msg = f"{RETRY_MESSAGE}\n\nValidation Errors:\n" + "\n".join(warnings)
+                    logger.info("LedgerScan: Major validation error (%s). Triggering major retry.", len(warnings))
+                elif metadata.get("minor_error"):
+                    needs_retry = True
+                    model_to_use = MODEL_SONNET
+                    error_msg = f"{RETRY_MESSAGE}\n\nValidation Warnings:\n" + "\n".join(warnings)
+                    logger.info("LedgerScan: Minor validation error (%s). Triggering minor retry.", len(warnings))
+
+            if not needs_retry:
+                break
+
+            # Perform Retry
+            retry_count += 1
+            if provider == "bytez":
+                # Bytez retry not implemented as text-only yet, skip to avoid resending image
+                logger.warning("LedgerScan: Bytez failed validation; skipping retry to avoid resending image.")
+                break
+            else:
+                # Multi-turn retry using Sonnet/Opus (Text-only correction)
                 raw, history = _call_claude(
-                    base64_image,
+                    None, # No image resend
                     system_prompt=system_prompt,
-                    user_message=correction_msg,
-                    history=history + [{"role": "user", "content": correction_msg}],
+                    user_message=error_msg,
+                    history=history + [{"role": "user", "content": error_msg}],
+                    model_override=model_to_use
                 )
-                # Re-parse the corrected result
                 parsed = _extract_json_candidate(raw)
                 rows = _rows_from_parsed(parsed)
 
         if rows is not None:
             return rows
-        if parsed is not None:
-            raise ValueError("AI response JSON did not match ledger schema.")
-        if not (raw or "").strip():
-            logger.warning("LedgerScan received empty response from provider %s.", provider)
 
-        if provider == "bytez":
-            output = _call_bytez(base64_image, system_prompt=system_prompt, user_message=user_message)
-            rows = _maybe_rows_from_output(output)
-            if rows is not None:
-                return rows
-            raw = _extract_text_from_bytez_output(output)
-            if raw is None:
-                raw = output if isinstance(output, str) else json.dumps(output)
-        else:
-            raw, _ = _call_claude(
-                base64_image,
-                system_prompt=system_prompt,
-                user_message=RETRY_MESSAGE,
-                history=history + [{"role": "user", "content": RETRY_MESSAGE}],
-            )
-
-        parsed = _extract_json_candidate(raw)
-        rows = _rows_from_parsed(parsed)
-        if rows is not None:
-            return rows
+        # Final failure state
         if parsed is not None:
             raise ValueError("AI response JSON did not match ledger schema after retry.")
         if not (raw or "").strip():
-            logger.warning("LedgerScan received empty response after retry for %s.", provider)
+            logger.warning("LedgerScan received empty response for %s.", provider)
         raise ValueError("AI response was not valid JSON after retry.")
 
     for provider in providers:
@@ -630,14 +644,45 @@ def validate_data(rows: list[dict]) -> dict:
     low_confidence_rows: list[int] = []
     summary_indices: list[int] = []
 
+    major_error = False
+    minor_error = False
+    validation_warnings: list[str] = []
+    seen_rows = []
+
     for index, row in enumerate(rows or []):
         if not isinstance(row, dict):
             row = {}
+            major_error = True
+            validation_warnings.append(f"Row {index+1} is not a valid object.")
+
         particular = _normalize_particular(row.get("particular"))
-        dr = _normalize_amount(row.get("dr"))
-        cr = _normalize_amount(row.get("cr"))
+        dr_raw = row.get("dr")
+        cr_raw = row.get("cr")
+
+        dr = _normalize_amount(dr_raw)
+        cr = _normalize_amount(cr_raw)
+
+        # Numeric Validation
+        if dr_raw is not None and dr is None and str(dr_raw).strip() not in {"", "null", "None"}:
+            validation_warnings.append(f"Row {index+1}: Non-numeric value in Dr: {dr_raw}")
+            minor_error = True
+        if cr_raw is not None and cr is None and str(cr_raw).strip() not in {"", "null", "None"}:
+            validation_warnings.append(f"Row {index+1}: Non-numeric value in Cr: {cr_raw}")
+            minor_error = True
 
         cleaned = {"particular": particular, "dr": dr, "cr": cr}
+
+        # Duplicate Detection
+        if cleaned in seen_rows and particular and (dr is not None or cr is not None):
+            validation_warnings.append(f"Row {index+1} appears to be a duplicate of a previous row.")
+            minor_error = True
+        seen_rows.append(cleaned)
+
+        # Empty Row Detection
+        if not particular and dr is None and cr is None:
+            validation_warnings.append(f"Row {index+1} is empty.")
+            minor_error = True
+
         cleaned_rows.append(cleaned)
 
         if _is_summary_row(particular):
@@ -648,24 +693,25 @@ def validate_data(rows: list[dict]) -> dict:
 
     # Math Validation logic
     transaction_dr = sum(
-        row["dr"] for idx, row in enumerate(cleaned_rows) 
+        row["dr"] for idx, row in enumerate(cleaned_rows)
         if row["dr"] is not None and idx not in summary_indices
     )
     transaction_cr = sum(
-        row["cr"] for idx, row in enumerate(cleaned_rows) 
+        row["cr"] for idx, row in enumerate(cleaned_rows)
         if row["cr"] is not None and idx not in summary_indices
     )
 
     # Check for discrepancies against extracted totals
-    validation_warnings: list[str] = []
     for idx in summary_indices:
         summary_row = cleaned_rows[idx]
         if summary_row["dr"] is not None and summary_row["dr"] != transaction_dr:
             validation_warnings.append(f"Row {idx+1}: Extracted Dr Total ({summary_row['dr']}) does not match sum of rows ({transaction_dr}).")
             low_confidence_rows.append(idx)
+            major_error = True
         if summary_row["cr"] is not None and summary_row["cr"] != transaction_cr:
             validation_warnings.append(f"Row {idx+1}: Extracted Cr Total ({summary_row['cr']}) does not match sum of rows ({transaction_cr}).")
             low_confidence_rows.append(idx)
+            major_error = True
 
     # If no summary rows were extracted, we use the blind sums
     if not summary_indices:
@@ -690,6 +736,8 @@ def validate_data(rows: list[dict]) -> dict:
             "low_confidence_rows": sorted(list(set(low_confidence_rows))),
             "summary_rows": summary_indices,
             "validation_warnings": validation_warnings,
+            "major_error": major_error,
+            "minor_error": minor_error,
             "total_rows": len(cleaned_rows),
         },
     }
