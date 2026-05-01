@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 
 BYTEZ_API_BASE = "https://api.bytez.com/models/v2"
 BYTEZ_DEFAULT_MODEL = "google/gemma-7b"
-DEFAULT_ANTHROPIC_MODEL_FAST = "claude-haiku-4-5"
-DEFAULT_ANTHROPIC_MODEL_BALANCED = "claude-sonnet-4-5"
-DEFAULT_ANTHROPIC_MODEL_BEST = "claude-opus-4-1"
+DEFAULT_ANTHROPIC_MODEL_FAST = "claude-3-5-haiku-latest"
+DEFAULT_ANTHROPIC_MODEL_BALANCED = "claude-3-5-sonnet-latest"
+DEFAULT_ANTHROPIC_MODEL_BEST = "claude-3-opus-latest"
 
 SYSTEM_PROMPT = (
     "You are a document table extraction expert.\n"
@@ -69,7 +69,11 @@ def _get_client() -> Anthropic:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         raise ValueError("ANTHROPIC_API_KEY is not set. Cannot use Anthropic as table scan provider.")
-    return Anthropic(api_key=api_key, timeout=_provider_timeout_seconds())
+    return Anthropic(
+        api_key=api_key,
+        timeout=_provider_timeout_seconds(),
+        default_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
+    )
 
 
 def _provider_timeout_seconds() -> float:
@@ -327,23 +331,19 @@ def _call_claude(
     system_prompt: str,
     user_message: str,
     model_tier: str | None = None,
-    extra_message: str | None = None,
-) -> str:
+    history: list[dict] | None = None,
+) -> tuple[str, list[dict]]:
     client = _get_client()
-    text_message = user_message
-    if extra_message:
-        text_message = f"{user_message}\n\n{extra_message}"
+    model = _anthropic_model_name(model_tier)
 
-    response = client.messages.create(
-        model=_anthropic_model_name(model_tier),
-        max_tokens=2048,
-        temperature=0,
-        system=system_prompt,
-        messages=[
+    if history:
+        messages = history
+    else:
+        messages = [
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": text_message},
+                    {"type": "text", "text": user_message},
                     {
                         "type": "image",
                         "source": {
@@ -354,10 +354,28 @@ def _call_claude(
                     },
                 ],
             }
+        ]
+
+    response = client.messages.create(
+        model=model,
+        max_tokens=2048,
+        temperature=0,
+        system=[
+            {
+                "type": "text",
+                "text": system_prompt,
+                "cache_control": {"type": "ephemeral"},
+            }
         ],
+        messages=messages,
         timeout=_provider_timeout_seconds(),
     )
-    return _extract_text(response)
+
+    text = _extract_text(response)
+    next_history = messages + [
+        {"role": "assistant", "content": text}
+    ]
+    return text, next_history
 
 
 def _normalize_table(data: Any) -> dict | None:
@@ -457,6 +475,68 @@ def _extract_json_candidate(raw: str) -> Any | None:
     return None
 
 
+def _is_numeric(value: Any) -> bool:
+    if value is None:
+        return False
+    if isinstance(value, (int, float)):
+        return True
+    try:
+        cleaned = re.sub(r"[^0-9\.\-]", "", str(value))
+        float(cleaned)
+        return True
+    except (ValueError, TypeError):
+        return False
+
+
+def _to_float(value: Any) -> float:
+    if value is None:
+        return 0.0
+    if isinstance(value, (int, float)):
+        return float(value)
+    try:
+        cleaned = re.sub(r"[^0-9\.\-]", "", str(value))
+        return float(cleaned)
+    except (ValueError, TypeError):
+        return 0.0
+
+
+def validate_table_data(table: dict) -> dict:
+    headers = table.get("headers", [])
+    rows = table.get("rows", [])
+    if not rows:
+        return table
+
+    num_cols = len(headers)
+    num_rows = len(rows)
+    low_confidence_cells: list[list[int]] = [] # [row_idx, col_idx]
+    validation_warnings: list[str] = []
+
+    # 1. Detect Numeric Columns and perform Vertical Sum Check
+    for col_idx in range(num_cols):
+        # A column is likely numeric if > 60% of its cells (excluding the last one) are numeric
+        numeric_count = sum(1 for r in range(num_rows - 1) if _is_numeric(rows[r][col_idx]))
+        if num_rows > 2 and (numeric_count / (num_rows - 1)) > 0.6:
+            # Possible numeric column. Check if the last row is the sum.
+            column_sum = sum(_to_float(rows[r][col_idx]) for r in range(num_rows - 1))
+            total_value = _to_float(rows[num_rows - 1][col_idx])
+            
+            # Use a small epsilon for float comparison if needed, but here we assume ledger-style integers/decimals
+            if total_value > 0 and abs(column_sum - total_value) > 0.01:
+                # Discrepancy detected in a likely "Total" column
+                header_name = headers[col_idx] or f"Column {col_idx+1}"
+                validation_warnings.append(
+                    f"Column '{header_name}': Last row value ({total_value}) does not match sum of previous rows ({column_sum})."
+                )
+                low_confidence_cells.append([num_rows - 1, col_idx])
+
+    table["metadata"] = {
+        "validation_warnings": validation_warnings,
+        "low_confidence_cells": low_confidence_cells,
+        "is_validated": True
+    }
+    return table
+
+
 def extract_table_from_image(
     image_bytes: bytes,
     *,
@@ -498,7 +578,7 @@ def extract_table_from_image(
             if raw is None:
                 raw = output if isinstance(output, str) else json.dumps(output)
         else:
-            raw = _call_claude(
+            raw, history = _call_claude(
                 image_bytes,
                 base64_image,
                 system_prompt=system_prompt,
@@ -508,6 +588,33 @@ def extract_table_from_image(
 
         parsed = _extract_json_candidate(raw)
         table = _normalize_table(parsed) if parsed is not None else None
+
+        # Logical Loopback: Check for vertical sum errors
+        if table is not None:
+            validated = validate_table_data(table)
+            warnings = validated.get("metadata", {}).get("validation_warnings", [])
+            if warnings and provider != "bytez":
+                # Trigger a logical correction pass
+                correction_msg = (
+                    "I found some mathematical discrepancies in your table extraction:\n" +
+                    "\n".join(warnings) +
+                    "\nPlease re-examine the image carefully and fix the numbers to ensure the vertical sums are correct."
+                )
+                logger.info("TableScan triggering logical loopback for %s warnings.", len(warnings))
+                raw, history = _call_claude(
+                    image_bytes,
+                    base64_image,
+                    system_prompt=system_prompt,
+                    user_message=correction_msg,
+                    model_tier=model_tier,
+                    history=history + [{"role": "user", "content": correction_msg}],
+                )
+                # Re-parse and re-validate the corrected result
+                parsed = _extract_json_candidate(raw)
+                table = _normalize_table(parsed) if parsed is not None else None
+                if table:
+                    table = validate_table_data(table)
+
         if table is not None:
             table["provider_used"] = "anthropic"
             table["provider_model"] = _anthropic_model_name(model_tier)
@@ -526,13 +633,14 @@ def extract_table_from_image(
             if raw is None:
                 raw = output if isinstance(output, str) else json.dumps(output)
         else:
-            raw = _call_claude(
+            # Multi-turn retry: send ONLY the retry message, preserving the image context in 'history'
+            raw, _ = _call_claude(
                 image_bytes,
                 base64_image,
                 system_prompt=system_prompt,
-                user_message=user_message,
+                user_message=RETRY_MESSAGE,
                 model_tier=model_tier,
-                extra_message=RETRY_MESSAGE,
+                history=history + [{"role": "user", "content": RETRY_MESSAGE}],
             )
 
         parsed = _extract_json_candidate(raw)
@@ -546,7 +654,7 @@ def extract_table_from_image(
         table["provider_model"] = _anthropic_model_name(model_tier)
         table["ai_applied"] = True
         table["raw_text"] = raw
-        return table
+        return validate_table_data(table)
 
     for provider in providers:
         if not _has_provider_key(provider):
@@ -557,7 +665,7 @@ def extract_table_from_image(
             table = _run_provider(provider)
             if failures:
                 logger.info("TableScan fallback succeeded with %s after %s", provider, failures)
-            return table
+            return validate_table_data(table)
         except Exception as error:  # pylint: disable=broad-except
             last_error = error
             logger.warning("TableScan provider failed (%s): %s", provider, error, exc_info=True)

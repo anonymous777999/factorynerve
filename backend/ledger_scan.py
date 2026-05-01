@@ -17,8 +17,8 @@ from openpyxl.comments import Comment
 from openpyxl.styles import Alignment, Font, PatternFill
 from PIL import Image, ImageEnhance
 
-MAX_WIDTH = 1000
-DEFAULT_ANTHROPIC_MODEL = "claude-3-5-haiku-20241022"
+MAX_WIDTH = 1568
+DEFAULT_ANTHROPIC_MODEL = "claude-3-5-haiku-latest"
 logger = logging.getLogger(__name__)
 BYTEZ_API_BASE = "https://api.bytez.com/models/v2"
 BYTEZ_DEFAULT_MODEL = "google/gemma-7b"
@@ -109,7 +109,7 @@ def preprocess_image_bytes(image_bytes: bytes, *, profile: str | None = None) ->
             img = ImageEnhance.Sharpness(img).enhance(2.0)
 
         buffer = BytesIO()
-        img.save(buffer, format="JPEG", quality=85, optimize=True)
+        img.save(buffer, format="JPEG", quality=75, optimize=True)
 
     logger.info("Image preprocess profile=%s size=%sx%s", chosen, width, height)
     return base64.b64encode(buffer.getvalue()).decode("utf-8")
@@ -119,7 +119,11 @@ def _get_client() -> Anthropic:
     api_key = os.getenv("ANTHROPIC_API_KEY")
     if not api_key:
         raise ValueError("ANTHROPIC_API_KEY is not set. Cannot use Anthropic as ledger scan provider.")
-    return Anthropic(api_key=api_key, timeout=_provider_timeout_seconds())
+    return Anthropic(
+        api_key=api_key,
+        timeout=_provider_timeout_seconds(),
+        default_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
+    )
 
 
 def _provider_timeout_seconds() -> float:
@@ -427,23 +431,17 @@ def _call_claude(
     *,
     system_prompt: str,
     user_message: str,
-    extra_message: str | None = None,
-) -> str:
+    history: list[dict] | None = None,
+) -> tuple[str, list[dict]]:
     client = _get_client()
-    text_message = user_message
-    if extra_message:
-        text_message = f"{user_message}\n\n{extra_message}"
-
-    response = client.messages.create(
-        model=_anthropic_model_name(),
-        max_tokens=2048,
-        temperature=0,
-        system=system_prompt,
-        messages=[
+    if history:
+        messages = history
+    else:
+        messages = [
             {
                 "role": "user",
                 "content": [
-                    {"type": "text", "text": text_message},
+                    {"type": "text", "text": user_message},
                     {
                         "type": "image",
                         "source": {
@@ -454,10 +452,27 @@ def _call_claude(
                     },
                 ],
             }
+        ]
+
+    response = client.messages.create(
+        model=_anthropic_model_name(),
+        max_tokens=2048,
+        temperature=0,
+        system=[
+            {
+                "type": "text",
+                "text": system_prompt,
+                "cache_control": {"type": "ephemeral"},
+            }
         ],
+        messages=messages,
         timeout=_provider_timeout_seconds(),
     )
-    return _extract_text(response)
+    text = _extract_text(response)
+    next_history = messages + [
+        {"role": "assistant", "content": text}
+    ]
+    return text, next_history
 
 
 def extract_data_from_image(
@@ -487,10 +502,33 @@ def extract_data_from_image(
             if raw is None:
                 raw = output if isinstance(output, str) else json.dumps(output)
         else:
-            raw = _call_claude(base64_image, system_prompt=system_prompt, user_message=user_message)
+            raw, history = _call_claude(base64_image, system_prompt=system_prompt, user_message=user_message)
 
         parsed = _extract_json_candidate(raw)
         rows = _rows_from_parsed(parsed)
+
+        # Logical Loopback: Check for math validation errors
+        if rows is not None:
+            validated = validate_data(rows)
+            warnings = validated.get("metadata", {}).get("validation_warnings", [])
+            if warnings and provider != "bytez":
+                # Trigger a logical correction pass
+                correction_msg = (
+                    "I found some mathematical discrepancies in your extraction:\n" +
+                    "\n".join(warnings) +
+                    "\nPlease re-examine the image carefully and fix the numbers to ensure the math is correct."
+                )
+                logger.info("LedgerScan triggering logical loopback for %s warnings.", len(warnings))
+                raw, history = _call_claude(
+                    base64_image,
+                    system_prompt=system_prompt,
+                    user_message=correction_msg,
+                    history=history + [{"role": "user", "content": correction_msg}],
+                )
+                # Re-parse the corrected result
+                parsed = _extract_json_candidate(raw)
+                rows = _rows_from_parsed(parsed)
+
         if rows is not None:
             return rows
         if parsed is not None:
@@ -507,11 +545,11 @@ def extract_data_from_image(
             if raw is None:
                 raw = output if isinstance(output, str) else json.dumps(output)
         else:
-            raw = _call_claude(
+            raw, _ = _call_claude(
                 base64_image,
                 system_prompt=system_prompt,
-                user_message=user_message,
-                extra_message=RETRY_MESSAGE,
+                user_message=RETRY_MESSAGE,
+                history=history + [{"role": "user", "content": RETRY_MESSAGE}],
             )
 
         parsed = _extract_json_candidate(raw)
@@ -581,9 +619,16 @@ def _is_low_confidence(particular: str, dr: int | None, cr: int | None) -> bool:
     return False
 
 
+def _is_summary_row(particular: str) -> bool:
+    lowered = particular.lower()
+    keywords = {"total", "g.total", "subtotal", "sum", "balance c/f", "balance b/f", "carried forward", "brought forward"}
+    return any(kw in lowered for kw in keywords)
+
+
 def validate_data(rows: list[dict]) -> dict:
     cleaned_rows: list[dict] = []
     low_confidence_rows: list[int] = []
+    summary_indices: list[int] = []
 
     for index, row in enumerate(rows or []):
         if not isinstance(row, dict):
@@ -595,11 +640,43 @@ def validate_data(rows: list[dict]) -> dict:
         cleaned = {"particular": particular, "dr": dr, "cr": cr}
         cleaned_rows.append(cleaned)
 
+        if _is_summary_row(particular):
+            summary_indices.append(index)
+
         if _is_low_confidence(particular, dr, cr):
             low_confidence_rows.append(index)
 
-    total_dr = sum(value for value in (row["dr"] for row in cleaned_rows) if value is not None)
-    total_cr = sum(value for value in (row["cr"] for row in cleaned_rows) if value is not None)
+    # Math Validation logic
+    transaction_dr = sum(
+        row["dr"] for idx, row in enumerate(cleaned_rows) 
+        if row["dr"] is not None and idx not in summary_indices
+    )
+    transaction_cr = sum(
+        row["cr"] for idx, row in enumerate(cleaned_rows) 
+        if row["cr"] is not None and idx not in summary_indices
+    )
+
+    # Check for discrepancies against extracted totals
+    validation_warnings: list[str] = []
+    for idx in summary_indices:
+        summary_row = cleaned_rows[idx]
+        if summary_row["dr"] is not None and summary_row["dr"] != transaction_dr:
+            validation_warnings.append(f"Row {idx+1}: Extracted Dr Total ({summary_row['dr']}) does not match sum of rows ({transaction_dr}).")
+            low_confidence_rows.append(idx)
+        if summary_row["cr"] is not None and summary_row["cr"] != transaction_cr:
+            validation_warnings.append(f"Row {idx+1}: Extracted Cr Total ({summary_row['cr']}) does not match sum of rows ({transaction_cr}).")
+            low_confidence_rows.append(idx)
+
+    # If no summary rows were extracted, we use the blind sums
+    if not summary_indices:
+        total_dr = transaction_dr
+        total_cr = transaction_cr
+    else:
+        # Use the first summary row's values as the "official" total if present
+        first_summary = cleaned_rows[summary_indices[0]]
+        total_dr = first_summary["dr"] if first_summary["dr"] is not None else transaction_dr
+        total_cr = first_summary["cr"] if first_summary["cr"] is not None else transaction_cr
+
     difference = abs(total_dr - total_cr)
     balanced = total_dr == total_cr
 
@@ -610,7 +687,9 @@ def validate_data(rows: list[dict]) -> dict:
             "total_cr": total_cr,
             "balanced": balanced,
             "difference": difference,
-            "low_confidence_rows": low_confidence_rows,
+            "low_confidence_rows": sorted(list(set(low_confidence_rows))),
+            "summary_rows": summary_indices,
+            "validation_warnings": validation_warnings,
             "total_rows": len(cleaned_rows),
         },
     }
