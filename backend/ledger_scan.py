@@ -28,30 +28,16 @@ MODEL_SONNET = "claude-sonnet-5"
 MODEL_OPUS = "claude-opus-4-7"
 
 SYSTEM_PROMPT = (
-    "You are a financial ledger data extraction expert.\n"
-    "Your job is to extract all rows from ledger/account images \n"
-    "into strict JSON format.\n\n"
-    "RULES YOU MUST FOLLOW:\n"
-    "- Return ONLY valid JSON, no explanation, no markdown, no backticks\n"
-    "- Every row must follow this format exactly:\n"
-    "  {\"particular\": \"string\", \"dr\": number_or_null, \"cr\": number_or_null}\n"
-    "- Numbers must be plain integers with NO commas, NO symbols, NO spaces\n"
-    "- Example: 860000 NOT 8,60,000 and NOT ₹860000\n"
-    "- If a cell is empty or blank, use null\n"
-    "- Do NOT skip any row from the image\n"
-    "- Do NOT add rows that don't exist in the image\n"
-    "- Preserve the exact spelling of particulars from the image\n"
-    "- The final JSON must be an array of objects like this:\n\n"
-    "[\n"
-    "  {\"particular\": \"Cash in hand\", \"dr\": 26000, \"cr\": null},\n"
-    "  {\"particular\": \"Sundry Creditors\", \"dr\": null, \"cr\": 430000}\n"
-    "]"
+    "Extract all visible text and tables from the image into strict JSON format.\n\n"
+    "Rules:\n"
+    "- Do NOT guess unclear characters\n"
+    "- If uncertain, return null\n"
+    "- Preserve original text exactly as seen\n"
+    "- If text is non-English (e.g., Hindi), also provide English transliteration\n\n"
+    "Return ONLY valid JSON."
 )
 
-USER_MESSAGE = (
-    "Extract all rows from this ledger image into JSON format "
-    "following the rules exactly."
-)
+USER_MESSAGE = "Extract all rows from this ledger image into JSON format following the rules exactly."
 
 RETRY_MESSAGE = (
     "Fix this JSON based ONLY on the data already extracted.\n"
@@ -439,8 +425,11 @@ def _call_claude(
     user_message: str,
     history: list[dict] | None = None,
     model_override: str | None = None,
-) -> tuple[str, list[dict]]:
+    attempt: int = 1,
+    fallback_used: bool = False,
+) -> dict[str, Any]:
     client = _get_client()
+    model = model_override or _anthropic_model_name()
     if history:
         messages = history
     else:
@@ -459,7 +448,7 @@ def _call_claude(
         messages = [{"role": "user", "content": content}]
 
     response = client.messages.create(
-        model=model_override or _anthropic_model_name(),
+        model=model,
         max_tokens=2048,
         temperature=0,
         system=[
@@ -476,7 +465,13 @@ def _call_claude(
     next_history = messages + [
         {"role": "assistant", "content": text}
     ]
-    return text, next_history
+    return {
+        "text": text,
+        "history": next_history,
+        "model_used": model,
+        "attempt": attempt,
+        "fallback_used": fallback_used,
+    }
 
 
 def extract_data_from_image(
@@ -485,88 +480,88 @@ def extract_data_from_image(
     force_mock: bool = False,
     system_prompt: str | None = None,
     user_message: str | None = None,
-) -> list[dict]:
+) -> tuple[list[dict], dict]:
     if force_mock or _is_mock_enabled():
         logger.info("LedgerScan mock mode enabled; returning sample rows.")
-        return _mock_rows()
+        return _mock_rows(), {"provider_used": "mock", "model_used": "mock", "attempt": 1, "fallback_used": False}
     system_prompt, user_message = _resolve_prompts(system_prompt, user_message)
     providers = _ledger_scan_provider_chain(_ledger_scan_provider())
     failures: list[str] = []
     last_error: Exception | None = None
 
-    def _run_provider(provider: str) -> list[dict]:
+    def _run_provider(provider: str) -> tuple[list[dict] | None, dict]:
+        metadata: dict[str, Any] = {
+            "provider_used": provider,
+            "attempt": 1,
+            "fallback_used": False,
+        }
+
         # Initial call
         if provider == "tesseract":
-            return _call_local_tesseract(base64_image)
+            rows = _call_local_tesseract(base64_image)
+            metadata["model_used"] = "local-tesseract"
+            return rows, metadata
 
         if provider == "bytez":
             output = _call_bytez(base64_image, system_prompt=system_prompt, user_message=user_message)
             rows = _maybe_rows_from_output(output)
             if rows is not None:
-                return rows
+                metadata["model_used"] = os.getenv("BYTEZ_MODEL_ID", BYTEZ_DEFAULT_MODEL)
+                return rows, metadata
             raw = _extract_text_from_bytez_output(output)
             if raw is None:
                 raw = output if isinstance(output, str) else json.dumps(output)
             history = [] # Bytez doesn't support multi-turn history in this helper yet
+            model_used = os.getenv("BYTEZ_MODEL_ID", BYTEZ_DEFAULT_MODEL)
         else:
-            raw, history = _call_claude(base64_image, system_prompt=system_prompt, user_message=user_message)
+            result = _call_claude(base64_image, system_prompt=system_prompt, user_message=user_message)
+            raw, history = result["text"], result["history"]
+            model_used = result["model_used"]
+
+        metadata["model_used"] = model_used
+        metadata["first_model"] = model_used
 
         parsed = _extract_json_candidate(raw)
         rows = _rows_from_parsed(parsed)
 
-        # Retry Guard and Smart Routing
-        retry_count = 0
-        while retry_count < MAX_RETRY:
-            needs_retry = False
-            error_msg = ""
-            model_to_use = MODEL_SONNET # Default for minor errors
-
-            if rows is None:
-                # Major Error: JSON parsing failed
+        # Smart Retry Logic
+        needs_retry = False
+        if rows is None:
+            logger.info("LedgerScan: JSON parsing failed. Triggering Opus retry.")
+            needs_retry = True
+        else:
+            validated = validate_data(rows)
+            if validated.get("metadata", {}).get("major_error"):
+                logger.info("LedgerScan: Major validation error. Triggering Opus retry.")
                 needs_retry = True
-                model_to_use = MODEL_OPUS
-                error_msg = RETRY_MESSAGE
-                logger.info("LedgerScan: JSON parsing failed. Triggering major retry.")
-            else:
-                # Check validation for math or other errors
-                validated = validate_data(rows)
-                metadata = validated.get("metadata", {})
-                warnings = metadata.get("validation_warnings", [])
-                
-                if metadata.get("major_error"):
-                    needs_retry = True
-                    model_to_use = MODEL_OPUS
-                    error_msg = f"{RETRY_MESSAGE}\n\nValidation Errors:\n" + "\n".join(warnings)
-                    logger.info("LedgerScan: Major validation error (%s). Triggering major retry.", len(warnings))
-                elif metadata.get("minor_error"):
-                    needs_retry = True
-                    model_to_use = MODEL_SONNET
-                    error_msg = f"{RETRY_MESSAGE}\n\nValidation Warnings:\n" + "\n".join(warnings)
-                    logger.info("LedgerScan: Minor validation error (%s). Triggering minor retry.", len(warnings))
 
-            if not needs_retry:
-                break
-
-            # Perform Retry
-            retry_count += 1
-            if provider == "bytez":
-                # Bytez retry not implemented as text-only yet, skip to avoid resending image
-                logger.warning("LedgerScan: Bytez failed validation; skipping retry to avoid resending image.")
-                break
-            else:
-                # Multi-turn retry using Sonnet/Opus (Text-only correction)
-                raw, history = _call_claude(
-                    None, # No image resend
-                    system_prompt=system_prompt,
-                    user_message=error_msg,
-                    history=history + [{"role": "user", "content": error_msg}],
-                    model_override=model_to_use
-                )
-                parsed = _extract_json_candidate(raw)
-                rows = _rows_from_parsed(parsed)
+        if needs_retry and provider == "anthropic":
+            metadata["attempt"] = 2
+            metadata["fallback_used"] = True
+            
+            result = _call_claude(
+                base64_image, # Resend image for major recovery
+                system_prompt=system_prompt,
+                user_message=RETRY_MESSAGE,
+                history=history + [{"role": "user", "content": RETRY_MESSAGE}],
+                model_override=MODEL_OPUS,
+                attempt=2,
+                fallback_used=True
+            )
+            raw, _ = result["text"], result["history"]
+            metadata["model_used"] = result["model_used"]
+            
+            parsed = _extract_json_candidate(raw)
+            rows = _rows_from_parsed(parsed)
+            
+            if rows is not None:
+                # Validate Opus result (log only)
+                opus_val = validate_data(rows)
+                if opus_val.get("metadata", {}).get("major_error"):
+                    logger.warning("LedgerScan: Opus retry also failed validation.")
 
         if rows is not None:
-            return rows
+            return rows, metadata
 
         # Final failure state
         if parsed is not None:
@@ -581,10 +576,15 @@ def extract_data_from_image(
             failures.append(f"{provider}:missing_key")
             continue
         try:
-            rows = _run_provider(provider)
-            if failures:
-                logger.info("LedgerScan fallback succeeded with %s after %s", provider, failures)
-            return rows
+            rows, meta = _run_provider(provider)
+            if rows is not None:
+                # We attach metadata to the rows list object for backward compatibility if possible,
+                # but better to return it explicitly to consumers who are ready.
+                # Since we are updating consumers, we will return a tuple.
+                if failures:
+                    logger.info("LedgerScan fallback succeeded with %s after %s", provider, failures)
+                return rows, meta
+            failures.append(provider)
         except Exception as error:  # pylint: disable=broad-except
             last_error = error
             logger.warning("LedgerScan provider failed (%s): %s", provider, error, exc_info=True)
@@ -689,6 +689,13 @@ def validate_data(rows: list[dict]) -> dict:
 
         if _is_low_confidence(particular, dr, cr):
             low_confidence_rows.append(index)
+
+    # Too many nulls check (Validation-driven retry trigger)
+    if cleaned_rows:
+        null_description_count = sum(1 for row in cleaned_rows if not row.get("particular"))
+        if null_description_count / len(cleaned_rows) > 0.5:
+            validation_warnings.append("More than 50% of descriptions are missing/null.")
+            major_error = True
 
     # Math Validation logic
     transaction_dr = sum(

@@ -125,7 +125,7 @@ def _process_ledger(job: OcrJob) -> None:
     params = job.params
     image_bytes = _load_bytes(Path(job.input_path)) if job.input_path else b""
     base64_image = preprocess_image_bytes(image_bytes, profile=params.get("preprocess_profile"))
-    rows = ledger_extract_data(
+    rows, model_meta = ledger_extract_data(
         base64_image,
         force_mock=bool(params.get("mock")),
         system_prompt=params.get("system_prompt"),
@@ -133,7 +133,9 @@ def _process_ledger(job: OcrJob) -> None:
     )
     validated = ledger_validate_data(rows)
     excel_bytes = ledger_build_excel_bytes(validated)
-    metadata = validated.get("metadata", {})
+    metadata = dict(validated.get("metadata", {}))
+    metadata.update(model_meta) # Merge model tracking info
+    
     result_path = JOB_DIR / f"{job.job_id}.xlsx"
     _save_bytes(result_path, excel_bytes)
     job.metadata = metadata
