@@ -101,9 +101,9 @@ _TABLE_EXCEL_FORMAT_TO_MIME = {
     "WEBP": "image/webp",
     "GIF": "image/gif",
 }
-_TABLE_EXCEL_MODEL_HAIKU = "claude-haiku-4-5"
-_TABLE_EXCEL_MODEL_SONNET = "claude-sonnet-4-5"
-_TABLE_EXCEL_MODEL_OPUS = "claude-opus-4-1"
+_TABLE_EXCEL_MODEL_HAIKU = "claude-3-5-haiku-latest"
+_TABLE_EXCEL_MODEL_SONNET = "claude-3-5-sonnet-latest"
+_TABLE_EXCEL_MODEL_OPUS = "claude-3-opus-latest"
 _TABLE_EXCEL_TIER_TO_MODEL = {
     "fast": _TABLE_EXCEL_MODEL_HAIKU,
     "balanced": _TABLE_EXCEL_MODEL_SONNET,
@@ -115,35 +115,27 @@ _TABLE_EXCEL_MODEL_TO_TIER = {
     _TABLE_EXCEL_MODEL_OPUS: "best",
 }
 _TABLE_EXCEL_TIER_COSTS = {
-    "fast": {"actual_cost_usd": 0.0008, "cost_saved_usd": 0.0132},
-    "balanced": {"actual_cost_usd": 0.0035, "cost_saved_usd": 0.0105},
-    "best": {"actual_cost_usd": 0.0140, "cost_saved_usd": 0.0},
+    "fast": {"actual_cost_usd": 0.0003, "cost_saved_usd": 0.0137},
+    "balanced": {"actual_cost_usd": 0.0030, "cost_saved_usd": 0.0110},
+    "best": {"actual_cost_usd": 0.0150, "cost_saved_usd": 0.0},
 }
 _TABLE_EXCEL_MODEL_FALLBACKS = {
     "fast": [
-        "claude-haiku-4-5",
-        "claude-haiku-4-5-20251001",
+        "claude-3-5-haiku-latest",
         "claude-3-5-haiku-20241022",
-        "claude-sonnet-4-5",
-        "claude-sonnet-4-5-20250929",
-        "claude-sonnet-4-20250514",
+        "claude-haiku-4-5",
+        "claude-sonnet-3-5-latest",
     ],
     "balanced": [
-        "claude-sonnet-4-5",
-        "claude-sonnet-4-5-20250929",
-        "claude-sonnet-4-20250514",
-        "claude-3-7-sonnet-latest",
-        "claude-3-7-sonnet-20250219",
         "claude-3-5-sonnet-latest",
         "claude-3-5-sonnet-20241022",
+        "claude-sonnet-4-5",
+        "claude-3-7-sonnet-latest",
     ],
     "best": [
+        "claude-3-opus-latest",
+        "claude-3-5-sonnet-latest",
         "claude-opus-4-1",
-        "claude-opus-4-1-20250805",
-        "claude-opus-4-20250514",
-        "claude-sonnet-4-5",
-        "claude-sonnet-4-5-20250929",
-        "claude-sonnet-4-20250514",
     ],
 }
 _TABLE_EXCEL_PROMPT = """You are a precise data extraction engine. Extract ALL data from this image into a structured JSON format suitable for Excel export.
@@ -529,6 +521,13 @@ def _call_table_excel_anthropic(
         payload = {
             "model": model_name,
             "max_tokens": 4096,
+            "system": [
+                {
+                    "type": "text",
+                    "text": _table_excel_prompt_text(system_prompt, user_message),
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
             "messages": [
                 {
                     "role": "user",
@@ -540,10 +539,6 @@ def _call_table_excel_anthropic(
                                 "media_type": image_mime_type,
                                 "data": image_base64,
                             },
-                        },
-                        {
-                            "type": "text",
-                            "text": _table_excel_prompt_text(system_prompt, user_message),
                         },
                     ],
                 }
@@ -558,6 +553,7 @@ def _call_table_excel_anthropic(
                     "Content-Type": "application/json",
                     "x-api-key": api_key,
                     "anthropic-version": "2023-06-01",
+                    "anthropic-beta": "prompt-caching-2024-07-31",
                 },
                 json=payload,
                 timeout=_table_excel_timeout_seconds(),
