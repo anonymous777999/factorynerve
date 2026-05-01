@@ -1609,7 +1609,7 @@ def _run_ocr_excel_job(progress, *, job_id: str) -> dict[str, object]:
         progress(35, "Preprocessing ledger image")
         base64_image = preprocess_image_bytes(image_bytes, profile=context.get("preprocess_profile"))
         progress(60, "Extracting ledger rows")
-        rows = ledger_extract_data(
+        rows, model_meta = ledger_extract_data(
             base64_image,
             force_mock=bool(context.get("mock")),
             system_prompt=context.get("system_prompt"),
@@ -1619,6 +1619,7 @@ def _run_ocr_excel_job(progress, *, job_id: str) -> dict[str, object]:
         progress(82, "Building ledger Excel workbook")
         excel_bytes = ledger_build_excel_bytes(validated)
         metadata = dict(validated.get("metadata", {}))
+        metadata.update(model_meta) # Merge model tracking info
         output_name = "logbook_ledger_scan.xlsx"
         action = "OCR_LEDGER_EXCEL_ASYNC"
     elif mode == "table":
