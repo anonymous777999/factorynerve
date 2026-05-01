@@ -1,5 +1,5 @@
-export const OCR_MAX_UPLOAD_BYTES = 8 * 1024 * 1024;
-export const OCR_MAX_SOURCE_BYTES = 8 * 1024 * 1024;
+export const OCR_MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+export const OCR_MAX_SOURCE_BYTES = 5 * 1024 * 1024;
 
 const OCR_SCAN_ROLES = new Set(["operator", "supervisor", "manager", "admin", "owner"]);
 const OCR_WORKSPACE_ROLES = new Set(["supervisor", "manager", "admin", "owner"]);

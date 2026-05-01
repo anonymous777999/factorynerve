@@ -101,9 +101,9 @@ _TABLE_EXCEL_FORMAT_TO_MIME = {
     "WEBP": "image/webp",
     "GIF": "image/gif",
 }
-_TABLE_EXCEL_MODEL_HAIKU = "claude-3-5-haiku-20241022"
-_TABLE_EXCEL_MODEL_SONNET = "claude-sonnet-4-20250514"
-_TABLE_EXCEL_MODEL_OPUS = "claude-opus-4-20250514"
+_TABLE_EXCEL_MODEL_HAIKU = "claude-haiku-4-5"
+_TABLE_EXCEL_MODEL_SONNET = "claude-sonnet-4-5"
+_TABLE_EXCEL_MODEL_OPUS = "claude-opus-4-1"
 _TABLE_EXCEL_TIER_TO_MODEL = {
     "fast": _TABLE_EXCEL_MODEL_HAIKU,
     "balanced": _TABLE_EXCEL_MODEL_SONNET,
@@ -118,6 +118,33 @@ _TABLE_EXCEL_TIER_COSTS = {
     "fast": {"actual_cost_usd": 0.0008, "cost_saved_usd": 0.0132},
     "balanced": {"actual_cost_usd": 0.0035, "cost_saved_usd": 0.0105},
     "best": {"actual_cost_usd": 0.0140, "cost_saved_usd": 0.0},
+}
+_TABLE_EXCEL_MODEL_FALLBACKS = {
+    "fast": [
+        "claude-haiku-4-5",
+        "claude-haiku-4-5-20251001",
+        "claude-3-5-haiku-20241022",
+        "claude-sonnet-4-5",
+        "claude-sonnet-4-5-20250929",
+        "claude-sonnet-4-20250514",
+    ],
+    "balanced": [
+        "claude-sonnet-4-5",
+        "claude-sonnet-4-5-20250929",
+        "claude-sonnet-4-20250514",
+        "claude-3-7-sonnet-latest",
+        "claude-3-7-sonnet-20250219",
+        "claude-3-5-sonnet-latest",
+        "claude-3-5-sonnet-20241022",
+    ],
+    "best": [
+        "claude-opus-4-1",
+        "claude-opus-4-1-20250805",
+        "claude-opus-4-20250514",
+        "claude-sonnet-4-5",
+        "claude-sonnet-4-5-20250929",
+        "claude-sonnet-4-20250514",
+    ],
 }
 _TABLE_EXCEL_PROMPT = """You are a precise data extraction engine. Extract ALL data from this image into a structured JSON format suitable for Excel export.
 
@@ -205,8 +232,8 @@ async def _read_validated_image_upload(file: UploadFile) -> bytes:
     if not (file.content_type or "").startswith("image/"):
         raise HTTPException(status_code=400, detail="Only image files are supported.")
     image_bytes = await file.read()
-    if len(image_bytes) > 8_000_000:
-        raise HTTPException(status_code=413, detail="Max 8MB image size exceeded.")
+    if len(image_bytes) > 5_242_880:
+        raise HTTPException(status_code=413, detail="Max 5MB image size exceeded.")
     _validate_image_bytes(image_bytes)
     return image_bytes
 
@@ -215,8 +242,8 @@ async def _read_image_upload_for_mock(file: UploadFile) -> bytes:
     if not file.filename:
         raise HTTPException(status_code=400, detail="File is required.")
     image_bytes = await file.read()
-    if len(image_bytes) > 8_000_000:
-        raise HTTPException(status_code=413, detail="Max 8MB image size exceeded.")
+    if len(image_bytes) > 5_242_880:
+        raise HTTPException(status_code=413, detail="Max 5MB image size exceeded.")
     if not image_bytes:
         raise HTTPException(status_code=400, detail="File is required.")
     return image_bytes
@@ -279,7 +306,12 @@ def _require_anthropic_api_key() -> str:
 
 def _validate_table_excel_model_name(selected_model: str) -> str:
     normalized = sanitize_text(selected_model, max_length=80, preserve_newlines=False) or ""
-    if normalized not in _TABLE_EXCEL_MODEL_TO_TIER:
+    allowed_models = {
+        candidate
+        for candidates in _TABLE_EXCEL_MODEL_FALLBACKS.values()
+        for candidate in candidates
+    }
+    if normalized not in allowed_models:
         logger.error("[OCR] Error: unsupported Anthropic model %s", selected_model)
         raise _table_excel_error(500, f"Unsupported Anthropic model configured for OCR: {selected_model}")
     return normalized
@@ -359,6 +391,43 @@ def _select_table_preview_model(image_quality_score: int, *, force_model: str | 
     if forced_tier:
         return _TABLE_EXCEL_TIER_TO_MODEL[forced_tier], True
     return _select_table_excel_model(image_quality_score), False
+
+
+def _table_excel_model_candidates(selected_model: str) -> list[str]:
+    selected_model = _validate_table_excel_model_name(selected_model)
+    tier = _TABLE_EXCEL_MODEL_TO_TIER.get(selected_model)
+    if tier:
+        candidates = _TABLE_EXCEL_MODEL_FALLBACKS.get(tier, [])
+    else:
+        candidates = []
+        for options in _TABLE_EXCEL_MODEL_FALLBACKS.values():
+            if selected_model in options:
+                candidates = options
+                break
+    ordered = [selected_model, *candidates]
+    seen: set[str] = set()
+    unique: list[str] = []
+    for model_name in ordered:
+        if model_name and model_name not in seen:
+            seen.add(model_name)
+            unique.append(model_name)
+    return unique
+
+
+def _is_model_selection_error(message: str) -> bool:
+    normalized = (message or "").strip().lower()
+    return "model" in normalized and any(
+        token in normalized
+        for token in {
+            "not found",
+            "does not exist",
+            "not available",
+            "not supported",
+            "invalid model",
+            "access",
+            "permission",
+        }
+    )
 
 
 def _table_preview_doc_type(doc_type_hint: str | None) -> str:
@@ -451,77 +520,88 @@ def _call_table_excel_anthropic(
     user_message: str | None,
 ) -> dict[str, object]:
     api_key = _require_anthropic_api_key()
-    selected_model = _validate_table_excel_model_name(selected_model)
-    logger.info("[OCR] Using AI model=%s endpoint=%s", selected_model, _ANTHROPIC_MESSAGES_URL)
+    model_candidates = _table_excel_model_candidates(selected_model)
+    logger.info("[OCR] Using AI model=%s endpoint=%s", model_candidates[0], _ANTHROPIC_MESSAGES_URL)
 
     image_base64 = base64.b64encode(image_bytes).decode("utf-8")
-    payload = {
-        "model": selected_model,
-        "max_tokens": 4096,
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": image_mime_type,
-                            "data": image_base64,
+    last_error: TableExcelRouteError | None = None
+    for model_name in model_candidates:
+        payload = {
+            "model": model_name,
+            "max_tokens": 4096,
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "image",
+                            "source": {
+                                "type": "base64",
+                                "media_type": image_mime_type,
+                                "data": image_base64,
+                            },
                         },
-                    },
-                    {
-                        "type": "text",
-                        "text": _table_excel_prompt_text(system_prompt, user_message),
-                    },
-                ],
-            }
-        ],
-    }
+                        {
+                            "type": "text",
+                            "text": _table_excel_prompt_text(system_prompt, user_message),
+                        },
+                    ],
+                }
+            ],
+        }
 
-    try:
-        logger.info("[OCR] Sending Anthropic request bytes=%s mime=%s", len(image_bytes), image_mime_type)
-        response = requests.post(
-            _ANTHROPIC_MESSAGES_URL,
-            headers={
-                "Content-Type": "application/json",
-                "x-api-key": api_key,
-                "anthropic-version": "2023-06-01",
-            },
-            json=payload,
-            timeout=_table_excel_timeout_seconds(),
-        )
-        logger.info("[OCR] API response received status=%s", response.status_code)
-    except requests.RequestException as error:
-        logger.error("[OCR] Error: %s", error)
-        raise _table_excel_error(502, f"Anthropic API request failed: {error}") from error
+        try:
+            logger.info("[OCR] Sending Anthropic request model=%s bytes=%s mime=%s", model_name, len(image_bytes), image_mime_type)
+            response = requests.post(
+                _ANTHROPIC_MESSAGES_URL,
+                headers={
+                    "Content-Type": "application/json",
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                },
+                json=payload,
+                timeout=_table_excel_timeout_seconds(),
+            )
+            logger.info("[OCR] API response received model=%s status=%s", model_name, response.status_code)
+        except requests.RequestException as error:
+            logger.error("[OCR] Error: %s", error)
+            raise _table_excel_error(502, f"Anthropic API request failed: {error}") from error
 
-    try:
-        ai_data = response.json()
-    except ValueError as error:
-        logger.error("[OCR] Error: Anthropic returned non-JSON")
-        raise _table_excel_error(502, "Anthropic API returned a non-JSON response.") from error
+        try:
+            ai_data = response.json()
+        except ValueError as error:
+            logger.error("[OCR] Error: Anthropic returned non-JSON")
+            raise _table_excel_error(502, "Anthropic API returned a non-JSON response.") from error
 
-    if response.status_code >= 400:
-        message = "Anthropic API request failed."
-        if isinstance(ai_data, dict):
-            api_error = ai_data.get("error")
-            if isinstance(api_error, dict):
-                message = str(api_error.get("message") or message)
-        logger.error("[OCR] Error: %s", message)
-        if response.status_code == 400:
-            raise _table_excel_error(400, message)
-        if response.status_code in {401, 403}:
-            raise _table_excel_error(401, message)
-        if response.status_code == 429:
-            raise _table_excel_error(429, message)
-        raise _table_excel_error(502, message)
+        if response.status_code >= 400:
+            message = "Anthropic API request failed."
+            if isinstance(ai_data, dict):
+                api_error = ai_data.get("error")
+                if isinstance(api_error, dict):
+                    message = str(api_error.get("message") or message)
+            logger.error("[OCR] Error: %s", message)
+            if response.status_code in {400, 401, 403, 404} and _is_model_selection_error(message):
+                last_error = _table_excel_error(response.status_code, message, model=model_name)
+                logger.warning("[OCR] Retrying with alternate model after model-selection error model=%s", model_name)
+                continue
+            if response.status_code == 400:
+                raise _table_excel_error(400, message)
+            if response.status_code in {401, 403}:
+                raise _table_excel_error(401, message)
+            if response.status_code == 429:
+                raise _table_excel_error(429, message)
+            raise _table_excel_error(502, message)
 
-    extracted_json = _extract_json_candidate(_extract_table_excel_json_text(ai_data))
-    if not isinstance(extracted_json, dict):
-        logger.error("[OCR] Error: AI returned invalid JSON format")
-        raise _table_excel_error(502, "Anthropic API returned JSON in an unsupported format.")
-    return extracted_json
+        extracted_json = _extract_json_candidate(_extract_table_excel_json_text(ai_data))
+        if not isinstance(extracted_json, dict):
+            logger.error("[OCR] Error: AI returned invalid JSON format")
+            raise _table_excel_error(502, "Anthropic API returned JSON in an unsupported format.")
+        extracted_json.setdefault("_provider_model", model_name)
+        return extracted_json
+
+    if last_error is not None:
+        raise last_error
+    raise _table_excel_error(502, "Anthropic API request failed for all configured OCR models.")
 
 
 def _normalize_table_excel_value(value: object) -> str:
@@ -755,11 +835,12 @@ def _run_table_excel_pipeline(
         system_prompt=system_prompt,
         user_message=user_message,
     )
+    used_model = str(extracted_json.get("_provider_model") or selected_model)
     excel_bytes, metadata = _build_table_excel_workbook(extracted_json)
     elapsed_ms = int((time.perf_counter() - started_at) * 1000)
     logger.info(
         "Table Excel completed model=%s quality_score=%s elapsed_ms=%s extracted_type=%s",
-        selected_model,
+        used_model,
         image_quality_score,
         elapsed_ms,
         metadata.get("extracted_type"),
@@ -767,7 +848,7 @@ def _run_table_excel_pipeline(
     metadata.update(
         {
             "image_quality_score": image_quality_score,
-            "model_used": selected_model,
+            "model_used": used_model,
             "time_taken_ms": elapsed_ms,
             "image_mime_type": inspection["image_mime_type"],
         }
@@ -814,6 +895,7 @@ def _run_table_preview_pipeline(
         system_prompt=None,
         user_message=None,
     )
+    used_model = str(extracted_json.get("_provider_model") or selected_model)
     structured = _build_table_preview_payload(
         extracted_json,
         template=template,
@@ -826,7 +908,7 @@ def _run_table_preview_pipeline(
     rows = structured.get("rows") or []
     logger.info(
         "Structured table preview completed model=%s quality_score=%s elapsed_ms=%s rows=%s columns=%s",
-        selected_model,
+        used_model,
         image_quality_score,
         elapsed_ms,
         len(rows),
@@ -850,7 +932,7 @@ def _run_table_preview_pipeline(
             "actual_cost_usd": float(cost_meta["actual_cost_usd"]),
             "cost_saved_usd": float(cost_meta["cost_saved_usd"]),
             "provider_used": "anthropic",
-            "provider_model": selected_model,
+            "provider_model": used_model,
             "ai_applied": True,
             "ai_attempted": True,
             "ai_degraded_to_base": False,
