@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 
 BYTEZ_API_BASE = "https://api.bytez.com/models/v2"
 BYTEZ_DEFAULT_MODEL = "google/gemma-7b"
-DEFAULT_ANTHROPIC_MODEL_FAST = "claude-3-5-haiku-20241022"
-DEFAULT_ANTHROPIC_MODEL_BALANCED = "claude-3-5-haiku-20241022"
-DEFAULT_ANTHROPIC_MODEL_BEST = "claude-sonnet-4-20250514"
+DEFAULT_ANTHROPIC_MODEL_FAST = "claude-haiku-4-5"
+DEFAULT_ANTHROPIC_MODEL_BALANCED = "claude-sonnet-4-5"
+DEFAULT_ANTHROPIC_MODEL_BEST = "claude-opus-4-1"
 
 SYSTEM_PROMPT = (
     "You are a document table extraction expert.\n"

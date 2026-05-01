@@ -99,7 +99,10 @@ def test_call_table_excel_anthropic_uses_expected_payload(monkeypatch):
     assert message[0]["source"]["data"] == base64.b64encode(image_bytes).decode("utf-8")
     assert message[1]["type"] == "text"
     assert "return ONLY valid JSON" in message[1]["text"]
-    assert extracted == {"type": "table", "headers": ["Name"], "rows": [["Amit"]]}
+    assert extracted["type"] == "table"
+    assert extracted["headers"] == ["Name"]
+    assert extracted["rows"] == [["Amit"]]
+    assert extracted["_provider_model"] == ocr_router._TABLE_EXCEL_MODEL_SONNET
 
 
 def test_call_table_excel_anthropic_requires_api_key(monkeypatch):
@@ -157,6 +160,53 @@ def test_call_table_excel_anthropic_preserves_upstream_status(monkeypatch):
 
     assert exc_info.value.status_code == 401
     assert exc_info.value.payload["error"] == "invalid x-api-key"
+
+
+def test_call_table_excel_anthropic_retries_with_alternate_model_on_model_error(monkeypatch):
+    image_bytes = _make_image_bytes("PNG", (720, 720))
+    calls: list[str] = []
+
+    class FakeResponse:
+        def __init__(self, status_code, payload):
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self):
+            return self._payload
+
+    responses = [
+        FakeResponse(404, {"error": {"message": "model: claude-haiku-4-5 not found"}}),
+        FakeResponse(
+            200,
+            {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps({"type": "table", "headers": ["Name"], "rows": [["Amit"]]}),
+                    }
+                ]
+            },
+        ),
+    ]
+
+    def fake_post(_url, *, headers=None, json=None, timeout=None):
+        del headers, timeout
+        calls.append(json["model"])
+        return responses[len(calls) - 1]
+
+    monkeypatch.setattr(ocr_router.requests, "post", fake_post)
+
+    extracted = ocr_router._call_table_excel_anthropic(
+        image_bytes,
+        image_mime_type="image/png",
+        selected_model=ocr_router._TABLE_EXCEL_MODEL_HAIKU,
+        system_prompt=None,
+        user_message=None,
+    )
+
+    assert calls == ["claude-haiku-4-5", "claude-haiku-4-5-20251001"]
+    assert extracted["headers"] == ["Name"]
+    assert extracted["_provider_model"] == "claude-haiku-4-5-20251001"
 
 
 def test_run_table_excel_pipeline_builds_excel_from_form_response(monkeypatch):

@@ -178,6 +178,18 @@ def health_check() -> dict[str, str]:
         db.close()
 
 
+@app.get("/")
+def root() -> dict[str, object]:
+    return {
+        "status": "ok",
+        "service": "backend",
+        "app": config.app_name,
+        "version": app.version,
+        "health_url": "/health",
+        "ready_url": "/observability/ready",
+    }
+
+
 @app.get("/metrics")
 def metrics(request: Request) -> dict:
     token = os.getenv("METRICS_TOKEN")
