@@ -18,14 +18,14 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from PIL import Image, ImageEnhance
 
 MAX_WIDTH = 1568
-DEFAULT_ANTHROPIC_MODEL = "claude-3-5-haiku-latest"
+DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5"
 logger = logging.getLogger(__name__)
 BYTEZ_API_BASE = "https://api.bytez.com/models/v2"
 BYTEZ_DEFAULT_MODEL = "google/gemma-7b"
 
 MAX_RETRY = 1
-MODEL_SONNET = "claude-3-5-sonnet-latest"
-MODEL_OPUS = "claude-3-opus-latest"
+MODEL_SONNET = "claude-sonnet-5"
+MODEL_OPUS = "claude-opus-4-7"
 
 SYSTEM_PROMPT = (
     "You are a financial ledger data extraction expert.\n"
@@ -129,7 +129,6 @@ def _get_client() -> Anthropic:
     return Anthropic(
         api_key=api_key,
         timeout=_provider_timeout_seconds(),
-        default_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
     )
 
 
