@@ -20,9 +20,9 @@ logger = logging.getLogger(__name__)
 
 BYTEZ_API_BASE = "https://api.bytez.com/models/v2"
 BYTEZ_DEFAULT_MODEL = "google/gemma-7b"
-DEFAULT_ANTHROPIC_MODEL_FAST = "claude-3-5-haiku-latest"
-DEFAULT_ANTHROPIC_MODEL_BALANCED = "claude-3-5-sonnet-latest"
-DEFAULT_ANTHROPIC_MODEL_BEST = "claude-3-opus-latest"
+DEFAULT_ANTHROPIC_MODEL_FAST = "claude-haiku-4-5"
+DEFAULT_ANTHROPIC_MODEL_BALANCED = "claude-sonnet-5"
+DEFAULT_ANTHROPIC_MODEL_BEST = "claude-opus-4-7"
 
 SYSTEM_PROMPT = (
     "You are a document table extraction expert.\n"
@@ -72,7 +72,6 @@ def _get_client() -> Anthropic:
     return Anthropic(
         api_key=api_key,
         timeout=_provider_timeout_seconds(),
-        default_headers={"anthropic-beta": "prompt-caching-2024-07-31"},
     )
 
 

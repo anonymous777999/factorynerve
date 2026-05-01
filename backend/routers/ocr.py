@@ -101,9 +101,9 @@ _TABLE_EXCEL_FORMAT_TO_MIME = {
     "WEBP": "image/webp",
     "GIF": "image/gif",
 }
-_TABLE_EXCEL_MODEL_HAIKU = "claude-3-5-haiku-latest"
-_TABLE_EXCEL_MODEL_SONNET = "claude-3-5-sonnet-latest"
-_TABLE_EXCEL_MODEL_OPUS = "claude-3-opus-latest"
+_TABLE_EXCEL_MODEL_HAIKU = "claude-haiku-4-5"
+_TABLE_EXCEL_MODEL_SONNET = "claude-sonnet-5"
+_TABLE_EXCEL_MODEL_OPUS = "claude-opus-4-7"
 _TABLE_EXCEL_TIER_TO_MODEL = {
     "fast": _TABLE_EXCEL_MODEL_HAIKU,
     "balanced": _TABLE_EXCEL_MODEL_SONNET,
@@ -121,21 +121,19 @@ _TABLE_EXCEL_TIER_COSTS = {
 }
 _TABLE_EXCEL_MODEL_FALLBACKS = {
     "fast": [
-        "claude-3-5-haiku-latest",
-        "claude-3-5-haiku-20241022",
         "claude-haiku-4-5",
-        "claude-sonnet-3-5-latest",
+        "claude-3-5-haiku-20241022",
+        "claude-sonnet-5",
+        "claude-3-5-sonnet-20241022",
     ],
     "balanced": [
-        "claude-3-5-sonnet-latest",
+        "claude-sonnet-5",
         "claude-3-5-sonnet-20241022",
-        "claude-sonnet-4-5",
-        "claude-3-7-sonnet-latest",
+        "claude-opus-4-7",
     ],
     "best": [
-        "claude-3-opus-latest",
-        "claude-3-5-sonnet-latest",
-        "claude-opus-4-1",
+        "claude-opus-4-7",
+        "claude-sonnet-5",
     ],
 }
 _TABLE_EXCEL_PROMPT = """You are a precise data extraction engine. Extract ALL data from this image into a structured JSON format suitable for Excel export.
@@ -339,8 +337,13 @@ def _inspect_table_excel_image(
     if mime_type not in _TABLE_EXCEL_SUPPORTED_MIME_TYPES:
         raise _table_excel_error(400, "Upload a supported PNG, JPG, JPEG, WEBP, or GIF image.")
 
-    if len(image_bytes) < 20 * 1024:
+    # Relaxed scoring to allow modern compressed formats and small crops
+    if len(image_bytes) < 2 * 1024:
+        score = 5  # Truly invalid or near-empty
+    elif len(image_bytes) < 20 * 1024:
         score = 20
+    elif width < 150 or height < 150:
+        score = 15
     elif width < 200 or height < 200:
         score = 30
     elif width > 600 or height > 600:
@@ -349,8 +352,17 @@ def _inspect_table_excel_image(
         score = 60
 
     if mime_type not in _TABLE_EXCEL_NATIVE_MIME_TYPES:
-        score -= 15
+        score -= 5
+
     score = max(0, min(100, score))
+    logger.info(
+        "[OCR] Image inspection: score=%s size=%s width=%s height=%s mime=%s",
+        score,
+        len(image_bytes),
+        width,
+        height,
+        mime_type,
+    )
 
     return {
         "image_quality_score": score,
@@ -362,11 +374,9 @@ def _inspect_table_excel_image(
 
 
 def _select_table_excel_model(image_quality_score: int) -> str:
-    if image_quality_score >= 80:
+    if image_quality_score >= 60:
         return _TABLE_EXCEL_MODEL_HAIKU
-    if image_quality_score >= 50:
-        return _TABLE_EXCEL_MODEL_SONNET
-    return _TABLE_EXCEL_MODEL_OPUS
+    return _TABLE_EXCEL_MODEL_SONNET
 
 
 def _normalize_force_model_tier(force_model: str | None) -> str | None:
@@ -453,6 +463,36 @@ def _table_excel_prompt_text(system_prompt: str | None, user_message: str | None
     return f"{_TABLE_EXCEL_PROMPT}\n\n" + "\n".join(extras)
 
 
+def _validate_table_excel_json(data: dict | None) -> list[str]:
+    if not isinstance(data, dict):
+        return ["AI response is not a valid JSON object."]
+    
+    extracted_type = data.get("type")
+    if not extracted_type:
+        return ["Missing 'type' field in AI response."]
+    
+    errors = []
+    if extracted_type == "table":
+        headers = data.get("headers")
+        rows = data.get("rows")
+        if not isinstance(headers, list) or not headers:
+            errors.append("Table 'headers' is missing or empty.")
+        if not isinstance(rows, list):
+            errors.append("Table 'rows' is missing.")
+        elif headers:
+            header_len = len(headers)
+            for i, row in enumerate(rows):
+                if not isinstance(row, list) or len(row) != header_len:
+                    errors.append(f"Row {i+1} length mismatch (expected {header_len} columns).")
+    
+    elif extracted_type == "form":
+        fields = data.get("fields")
+        if not isinstance(fields, list) or not fields:
+            errors.append("Form 'fields' is missing or empty.")
+    
+    return errors
+
+
 def _extract_table_excel_json_text(ai_data: object) -> str:
     if not isinstance(ai_data, dict):
         raise _table_excel_error(502, "Anthropic API returned an invalid response.")
@@ -504,7 +544,7 @@ def _extract_json_candidate(raw: str) -> object:
 
 
 def _call_table_excel_anthropic(
-    image_bytes: bytes,
+    image_base64: str,
     *,
     image_mime_type: str,
     selected_model: str,
@@ -513,10 +553,14 @@ def _call_table_excel_anthropic(
 ) -> dict[str, object]:
     api_key = _require_anthropic_api_key()
     model_candidates = _table_excel_model_candidates(selected_model)
-    logger.info("[OCR] Using AI model=%s endpoint=%s", model_candidates[0], _ANTHROPIC_MESSAGES_URL)
+    logger.info("[OCR] Starting extraction model=%s base64_len=%s", model_candidates[0], len(image_base64))
 
-    image_base64 = base64.b64encode(image_bytes).decode("utf-8")
     last_error: TableExcelRouteError | None = None
+    
+    # Pass 1: Extraction with cost-optimized model
+    extraction_json = None
+    first_model_used = None
+    
     for model_name in model_candidates:
         payload = {
             "model": model_name,
@@ -546,58 +590,112 @@ def _call_table_excel_anthropic(
         }
 
         try:
-            logger.info("[OCR] Sending Anthropic request model=%s bytes=%s mime=%s", model_name, len(image_bytes), image_mime_type)
+            logger.info("[OCR] Pass 1: Sending request model=%s", model_name)
             response = requests.post(
                 _ANTHROPIC_MESSAGES_URL,
                 headers={
                     "Content-Type": "application/json",
                     "x-api-key": api_key,
                     "anthropic-version": "2023-06-01",
-                    "anthropic-beta": "prompt-caching-2024-07-31",
                 },
                 json=payload,
                 timeout=_table_excel_timeout_seconds(),
             )
-            logger.info("[OCR] API response received model=%s status=%s", model_name, response.status_code)
         except requests.RequestException as error:
-            logger.error("[OCR] Error: %s", error)
-            raise _table_excel_error(502, f"Anthropic API request failed: {error}") from error
+            logger.error("[OCR] Pass 1 connection error: %s", error)
+            last_error = _table_excel_error(502, f"Anthropic API request failed: {error}")
+            continue
+
+        if response.status_code >= 400:
+            try:
+                error_data = response.json()
+                message = error_data.get("error", {}).get("message") or "Anthropic API request failed."
+            except ValueError:
+                message = f"Anthropic API returned status {response.status_code}."
+            
+            logger.error("[OCR] Pass 1 error status=%s message=%s", response.status_code, message)
+            
+            # Resilient fallback: Retry on any 4xx/5xx that isn't fatal (auth or too large)
+            if response.status_code in {400, 404, 429, 500, 502, 503, 504}:
+                # 413 (Payload Too Large) is NOT retried as subsequent models won't help
+                if response.status_code == 413:
+                    raise _table_excel_error(413, "Image too large for Anthropic API.")
+                
+                last_error = _table_excel_error(response.status_code, message, model=model_name)
+                continue
+            
+            # Non-retryable error (e.g. 401, 403)
+            raise _table_excel_error(response.status_code, message)
 
         try:
             ai_data = response.json()
-        except ValueError as error:
-            logger.error("[OCR] Error: Anthropic returned non-JSON")
-            raise _table_excel_error(502, "Anthropic API returned a non-JSON response.") from error
+            raw_text = _extract_table_excel_json_text(ai_data)
+            extraction_json = _extract_json_candidate(raw_text)
+            first_model_used = model_name
+            break # Success
+        except (ValueError, TableExcelRouteError) as error:
+            logger.error("[OCR] Pass 1 parse error: %s", error)
+            last_error = _table_excel_error(502, f"Failed to parse AI response: {error}")
+            continue
 
-        if response.status_code >= 400:
-            message = "Anthropic API request failed."
-            if isinstance(ai_data, dict):
-                api_error = ai_data.get("error")
-                if isinstance(api_error, dict):
-                    message = str(api_error.get("message") or message)
-            logger.error("[OCR] Error: %s", message)
-            if response.status_code in {400, 401, 403, 404} and _is_model_selection_error(message):
-                last_error = _table_excel_error(response.status_code, message, model=model_name)
-                logger.warning("[OCR] Retrying with alternate model after model-selection error model=%s", model_name)
-                continue
-            if response.status_code == 400:
-                raise _table_excel_error(400, message)
-            if response.status_code in {401, 403}:
-                raise _table_excel_error(401, message)
-            if response.status_code == 429:
-                raise _table_excel_error(429, message)
-            raise _table_excel_error(502, message)
+    if not extraction_json:
+        if last_error:
+            raise last_error
+        raise _table_excel_error(502, "Extraction failed for all configured models.")
 
-        extracted_json = _extract_json_candidate(_extract_table_excel_json_text(ai_data))
-        if not isinstance(extracted_json, dict):
-            logger.error("[OCR] Error: AI returned invalid JSON format")
-            raise _table_excel_error(502, "Anthropic API returned JSON in an unsupported format.")
-        extracted_json.setdefault("_provider_model", model_name)
-        return extracted_json
+    # Validation & Correction Pass (Pass 2)
+    validation_errors = _validate_table_excel_json(extraction_json)
+    if validation_errors:
+        logger.warning("[OCR] Validation failed for %s: %s", first_model_used, validation_errors)
+        
+        # Multi-turn retry using Opus (Text-only correction)
+        correction_prompt = (
+            f"Your previous response had structural inconsistencies:\n"
+            f"- " + "\n- ".join(validation_errors) + "\n\n"
+            "Fix the JSON structure. Do not change values. Only correct formatting and alignment. "
+            "Return ONLY the fixed JSON object."
+        )
+        
+        retry_payload = {
+            "model": _TABLE_EXCEL_MODEL_OPUS,
+            "max_tokens": 4096,
+            "messages": [
+                {"role": "user", "content": "Extract data from an image (provided in previous context)."},
+                {"role": "assistant", "content": json.dumps(extraction_json)},
+                {"role": "user", "content": correction_prompt}
+            ]
+        }
+        
+        try:
+            logger.info("[OCR] Pass 2: Sending correction request model=%s", _TABLE_EXCEL_MODEL_OPUS)
+            response = requests.post(
+                _ANTHROPIC_MESSAGES_URL,
+                headers={
+                    "Content-Type": "application/json",
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                },
+                json=retry_payload,
+                timeout=_table_excel_timeout_seconds(),
+            )
+            if response.status_code == 200:
+                ai_data = response.json()
+                raw_text = _extract_table_excel_json_text(ai_data)
+                corrected_json = _extract_json_candidate(raw_text)
+                if isinstance(corrected_json, dict):
+                    logger.info("[OCR] Correction pass successful model=%s", _TABLE_EXCEL_MODEL_OPUS)
+                    corrected_json.setdefault("_provider_model", _TABLE_EXCEL_MODEL_OPUS)
+                    corrected_json.setdefault("_correction_applied", True)
+                    return corrected_json
+                logger.error("[OCR] Correction pass returned invalid JSON")
+            else:
+                logger.error("[OCR] Correction pass failed status=%s", response.status_code)
+        except Exception as error:
+            logger.error("[OCR] Correction pass failed unexpectedly: %s", error)
 
-    if last_error is not None:
-        raise last_error
-    raise _table_excel_error(502, "Anthropic API request failed for all configured OCR models.")
+    # Return Pass 1 result if correction was not triggered or failed
+    extraction_json.setdefault("_provider_model", first_model_used)
+    return extraction_json
 
 
 def _normalize_table_excel_value(value: object) -> str:
@@ -807,7 +905,7 @@ def _run_table_excel_pipeline(
     logger.info("[OCR] Flow: upload -> /ocr/table-excel -> _run_table_excel_pipeline")
     inspection = _inspect_table_excel_image(image_bytes, content_type=content_type, filename=filename)
     image_quality_score = int(inspection["image_quality_score"])
-    if image_quality_score < 30:
+    if image_quality_score < 10:
         raise _table_excel_error(
             400,
             "Image too vague or low quality to process",
@@ -824,9 +922,12 @@ def _run_table_excel_pipeline(
         inspection["size_bytes"],
     )
 
+    # Harden vision payload with resizing
+    image_base64 = preprocess_image_bytes(image_bytes)
+
     extracted_json = _call_table_excel_anthropic(
-        image_bytes,
-        image_mime_type=str(inspection["image_mime_type"]),
+        image_base64,
+        image_mime_type="image/jpeg", # preprocess_image_bytes always returns JPEG
         selected_model=selected_model,
         system_prompt=system_prompt,
         user_message=user_message,
@@ -866,7 +967,7 @@ def _run_table_preview_pipeline(
     logger.info("[OCR] Flow: upload -> /ocr/logbook -> _run_table_preview_pipeline")
     inspection = _inspect_table_excel_image(image_bytes, content_type=content_type, filename=filename)
     image_quality_score = int(inspection["image_quality_score"])
-    if image_quality_score < 30:
+    if image_quality_score < 10:
         raise _table_excel_error(
             400,
             "Image too vague or low quality to process",
@@ -884,9 +985,12 @@ def _run_table_preview_pipeline(
         inspection["size_bytes"],
     )
 
+    # Harden vision payload with resizing
+    image_base64 = preprocess_image_bytes(image_bytes)
+
     extracted_json = _call_table_excel_anthropic(
-        image_bytes,
-        image_mime_type=str(inspection["image_mime_type"]),
+        image_base64,
+        image_mime_type="image/jpeg", # preprocess_image_bytes always returns JPEG
         selected_model=selected_model,
         system_prompt=None,
         user_message=None,

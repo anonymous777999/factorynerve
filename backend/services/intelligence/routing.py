@@ -64,9 +64,9 @@ def resolve_model_name(provider: str, tier: str) -> str:
     key = provider.strip().lower()
     if key == "anthropic":
         return os.getenv(f"INTELLIGENCE_{tier.upper()}_MODEL", {
-            "haiku": "claude-3-5-haiku-latest",
-            "sonnet": "claude-3-5-sonnet-latest",
-            "opus": "claude-3-opus-latest",
+            "haiku": "claude-haiku-4-5",
+            "sonnet": "claude-sonnet-5",
+            "opus": "claude-opus-4-7",
         }[tier])
     if key == "openai":
         return os.getenv(f"INTELLIGENCE_OPENAI_{tier.upper()}_MODEL", {
