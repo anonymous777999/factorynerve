@@ -2572,6 +2572,7 @@ async def ocr_logbook(
                 template=template,
                 doc_type_hint=requested_doc_type,
                 force_model=force_model,
+                user_id=current_user.id,
             )
         except RuntimeError as error:
             logger.error("Structured OCR build failed: %s: %s", type(error).__name__, error, exc_info=True)

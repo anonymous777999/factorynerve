@@ -1,326 +1,346 @@
 from __future__ import annotations
 
+from io import BytesIO
+
+from PIL import Image
+
 from backend.ocr_utils import OcrResult
-from backend.routers import ocr as ocr_router
-from backend.services import ocr_routing
-from backend.services.ocr_document_pipeline import (
-    _reuse_has_remote_ai,
-    build_structured_ocr_result,
-)
-from backend import table_scan
+from backend.services import ocr_document_pipeline as pipeline
 
 
-def test_choose_ocr_route_defaults_fast_when_quality_analysis_fails(monkeypatch):
-    def boom(_image_bytes: bytes):
-        raise RuntimeError("quality crash")
-
-    monkeypatch.setattr(ocr_routing, "analyze_image_quality", boom)
-
-    route = ocr_routing.choose_ocr_route(b"fake-image")
-
-    assert route["model_tier"] == "fast"
-    assert route["scorer_used"] is False
+def _png_bytes(*, width: int = 180, height: int = 120, color: tuple[int, int, int] = (255, 255, 255)) -> bytes:
+    image = Image.new("RGB", (width, height), color=color)
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    return buffer.getvalue()
 
 
-def test_choose_ocr_route_promotes_generic_table_to_balanced(monkeypatch):
-    class Quality:
-        blur_variance = 180.0
-        brightness_mean = 128.0
-        glare_ratio = 0.0
-        warnings: list[str] = []
-
-    monkeypatch.setattr(ocr_routing, "analyze_image_quality", lambda _image_bytes: Quality())
-
-    route = ocr_routing.choose_ocr_route(b"fake-image", doc_type_hint="table")
-
-    assert route["model_tier"] == "balanced"
-    assert "structured table extraction requested" in route["score_reason"]
-
-
-def test_table_scan_defaults_to_tesseract_without_ai_keys(monkeypatch):
-    monkeypatch.delenv("TABLE_SCAN_PROVIDER", raising=False)
-    monkeypatch.delenv("LEDGER_SCAN_PROVIDER", raising=False)
-    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-    monkeypatch.delenv("BYTEZ_API_KEY", raising=False)
-
-    assert table_scan._table_scan_provider() == "tesseract"
-    assert table_scan._table_scan_provider_chain(None)[0] == "tesseract"
-
-
-def test_table_scan_tesseract_provider_returns_table(monkeypatch):
-    monkeypatch.setenv("TABLE_SCAN_PROVIDER", "tesseract")
-    monkeypatch.setenv("TABLE_SCAN_PROVIDER_CHAIN", "tesseract")
-    monkeypatch.setattr(table_scan, "preprocess_image_bytes", lambda *_args, **_kwargs: "ZmFrZQ==")
-    monkeypatch.setattr(
-        table_scan,
-        "_call_local_tesseract",
-        lambda _image_bytes: {"headers": ["Date", "Qty"], "rows": [["2026-04-28", "12"]]},
+def test_compute_confidence_caps_when_text_sanity_is_catastrophic():
+    orchestrator = pipeline.OCROrchestrator()
+    confidence = orchestrator.compute_confidence(
+        {
+            "ocr_text": "!!!!!!!!!!!!",
+            "average_confidence": 0.99,
+            "low_confidence_ratio": 0.0,
+        },
+        {"document_type": "invoice"},
+        {},
     )
 
-    result = table_scan.extract_table_from_image(b"fake-image")
-
-    assert result["headers"] == ["Date", "Qty"]
-    assert result["rows"] == [["2026-04-28", "12"]]
+    assert confidence["overall"] <= 0.5
+    assert confidence["level"] == "LOW"
 
 
-def test_build_structured_ocr_result_survives_routing_failure(monkeypatch):
+def test_process_high_confidence_skips_ai(monkeypatch):
+    orchestrator = pipeline.OCROrchestrator()
+    events: list[str] = []
+
     monkeypatch.setattr(
-        "backend.services.ocr_document_pipeline.choose_ocr_route",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("routing broke")),
+        pipeline.OCROrchestrator,
+        "ingest",
+        lambda self, image_bytes, request_context, caller_config: {
+            "ok": True,
+            "image_bytes": image_bytes,
+            "metadata": {"document_hash": "abc"},
+        },
     )
     monkeypatch.setattr(
-        "backend.services.ocr_document_pipeline.extract_table_from_image",
-        lambda *_args, **_kwargs: {
+        pipeline.OCROrchestrator,
+        "classify",
+        lambda self, ingest_result, request_context, caller_config: {
+            "document_type": "invoice",
+            "language": "eng",
+            "columns": 3,
+            "column_centers": None,
+            "column_keywords": None,
+            "enable_raw_column": False,
+        },
+    )
+    monkeypatch.setattr(
+        pipeline.OCROrchestrator,
+        "extract_ocr",
+        lambda self, ingest_result, classification, request_context, caller_config: {
+            "ocr_text": "Invoice 123 Date 2026-05-01 Total 450.00",
+            "average_confidence": 0.96,
+            "rows": [["Invoice", "123"], ["Date", "2026-05-01"], ["Total", "450.00"]],
             "headers": ["Column 1", "Column 2"],
-            "rows": [["A", "B"]],
-            "provider_used": "anthropic",
-            "provider_model": "claude-3-5-haiku-20241022",
-            "ai_applied": True,
+            "cell_confidence": [],
+            "cell_boxes": [],
+            "warnings": [],
+            "used_language": "eng",
+            "fallback_used": False,
+            "raw_column_added": False,
+        },
+    )
+    monkeypatch.setattr(
+        pipeline.OCROrchestrator,
+        "compute_confidence",
+        lambda self, ocr_result, classification, request_context: {"overall": 0.95, "level": "HIGH", "signals": {}},
+    )
+
+    def fail_sonnet(self, image_bytes, ocr_text, classification, request_context, current_result):
+        events.append("sonnet")
+        raise AssertionError("Sonnet should not be called for HIGH confidence.")
+
+    monkeypatch.setattr(pipeline.OCROrchestrator, "call_sonnet", fail_sonnet)
+
+    result = orchestrator.process(_png_bytes())
+
+    assert events == []
+    assert result["output"]["status"] == "complete"
+    assert result["output"]["processing"]["model_used"] == pipeline.MODEL_TESSERACT
+    assert result["request_context"]["model_calls"] == 0
+
+
+def test_process_low_route_runs_sonnet_retry_then_opus_in_order(monkeypatch):
+    orchestrator = pipeline.OCROrchestrator()
+    events: list[str] = []
+
+    monkeypatch.setattr(
+        pipeline.OCROrchestrator,
+        "ingest",
+        lambda self, image_bytes, request_context, caller_config: {
+            "ok": True,
+            "image_bytes": image_bytes,
+            "metadata": {"document_hash": "abc"},
+        },
+    )
+    monkeypatch.setattr(
+        pipeline.OCROrchestrator,
+        "classify",
+        lambda self, ingest_result, request_context, caller_config: {
+            "document_type": "invoice",
+            "language": "eng",
+            "columns": 3,
+            "column_centers": None,
+            "column_keywords": None,
+            "enable_raw_column": False,
+        },
+    )
+    monkeypatch.setattr(
+        pipeline.OCROrchestrator,
+        "extract_ocr",
+        lambda self, ingest_result, classification, request_context, caller_config: {
+            "ocr_text": "Invoice blurry text",
+            "average_confidence": 0.32,
+            "rows": [["Invoice blurry text"]],
+            "headers": ["Column 1"],
+            "cell_confidence": [],
+            "cell_boxes": [],
+            "warnings": [],
+            "used_language": "eng",
+            "fallback_used": False,
+            "raw_column_added": False,
+        },
+    )
+    monkeypatch.setattr(
+        pipeline.OCROrchestrator,
+        "compute_confidence",
+        lambda self, ocr_result, classification, request_context: {"overall": 0.42, "level": "LOW", "signals": {}},
+    )
+
+    def fake_sonnet(self, image_bytes, ocr_text, classification, request_context, current_result):
+        events.append("sonnet")
+        request_context["model_calls"] += 1
+        return {
+            "status": "partial",
+            "tier": "sonnet",
+            "model_used": pipeline.MODEL_SONNET,
+            "extracted_data": {"invoice_number": "INV-1", "date": None, "total": "100"},
+            "field_confidence": {"invoice_number": 0.88, "date": 0.41, "total": 0.62},
+            "overall_confidence": 0.63,
+        }
+
+    def fake_retry(self, current_result, image_bytes, ocr_text, classification, request_context):
+        events.append("retry")
+        request_context["model_calls"] += 1
+        return {
+            **current_result,
+            "field_confidence": {"invoice_number": 0.88, "date": 0.55, "total": 0.68},
+            "overall_confidence": 0.67,
+        }
+
+    def fake_opus(self, current_result, image_bytes, ocr_text, classification, request_context):
+        events.append("opus")
+        request_context["model_calls"] += 1
+        return {
+            "status": "complete",
+            "tier": "opus",
+            "model_used": pipeline.MODEL_OPUS,
+            "extracted_data": {"invoice_number": "INV-1", "date": "2026-05-01", "total": "100"},
+            "field_confidence": {"invoice_number": 0.92, "date": 0.9, "total": 0.93},
+            "overall_confidence": 0.9167,
+        }
+
+    monkeypatch.setattr(pipeline.OCROrchestrator, "call_sonnet", fake_sonnet)
+    monkeypatch.setattr(pipeline.OCROrchestrator, "retry_logic", fake_retry)
+    monkeypatch.setattr(pipeline.OCROrchestrator, "call_opus", fake_opus)
+
+    result = orchestrator.process(_png_bytes())
+
+    assert events == ["sonnet", "retry", "opus"]
+    assert result["output"]["processing"]["model_used"] == pipeline.MODEL_OPUS
+    assert result["output"]["status"] == "complete"
+
+
+def test_call_sonnet_respects_cost_limit_before_model_call(monkeypatch):
+    orchestrator = pipeline.OCROrchestrator()
+    request_context = {
+        "model_calls": 0,
+        "total_cost": pipeline.MAX_COST_PER_REQUEST,
+        "latency": 0,
+        "user_id": "user-1",
+        "user_budget_limit": 1.0,
+    }
+    current_result = {
+        "status": "complete",
+        "tier": "ocr",
+        "model_used": pipeline.MODEL_TESSERACT,
+        "extracted_data": {"total": "100"},
+        "field_confidence": {"total": 0.5},
+    }
+
+    def fail_call(*args, **kwargs):
+        raise AssertionError("Model call should be blocked before execution.")
+
+    monkeypatch.setattr(pipeline, "_call_anthropic_vision", fail_call)
+
+    result = orchestrator.call_sonnet(
+        _png_bytes(),
+        "Total 100",
+        {"document_type": "receipt"},
+        request_context,
+        current_result,
+    )
+
+    assert result["model_used"] == pipeline.MODEL_TESSERACT
+    assert request_context["model_calls"] == 0
+    assert request_context["model_blocked_reason"] == "MAX_COST_PER_REQUEST_EXCEEDED"
+
+
+def test_retry_logic_only_merges_higher_confidence_fields(monkeypatch):
+    orchestrator = pipeline.OCROrchestrator()
+    request_context = {
+        "model_calls": 1,
+        "total_cost": 0.0,
+        "latency": 0,
+        "user_id": "user-2",
+        "user_budget_limit": 1.0,
+        "retries": 0,
+    }
+    current_result = {
+        "status": "partial",
+        "tier": "sonnet",
+        "model_used": pipeline.MODEL_SONNET,
+        "extracted_data": {"invoice_number": "INV-1", "date": None, "total": "99"},
+        "field_confidence": {"invoice_number": 0.91, "date": 0.42, "total": 0.8},
+        "overall_confidence": 0.676,
+    }
+
+    monkeypatch.setattr(
+        pipeline,
+        "_call_anthropic_vision",
+        lambda image_bytes, prompt_text, model_name: (
+            {
+                "document_type": "invoice",
+                "extracted_data": {"date": "2026-05-02", "total": "98"},
+                "field_confidence": {"date": 0.89, "total": 0.4},
+            },
+            '{"document_type":"invoice"}',
+        ),
+    )
+
+    result = orchestrator.retry_logic(
+        current_result,
+        _png_bytes(),
+        "Invoice INV-1 Date 2026-05-02 Total 99",
+        {"document_type": "invoice"},
+        request_context,
+    )
+
+    assert result["extracted_data"]["date"] == "2026-05-02"
+    assert result["extracted_data"]["total"] == "99"
+    assert result["field_confidence"]["date"] == 0.89
+    assert result["field_confidence"]["total"] == 0.8
+    assert request_context["retries"] == 1
+
+
+def test_validate_flags_structural_and_semantic_issues():
+    orchestrator = pipeline.OCROrchestrator()
+
+    validation = orchestrator.validate(
+        {
+            "extracted_data": {"invoice_number": "INV-9", "date": "99/99/9999", "total": "-1"},
+            "field_confidence": {"invoice_number": 0.92, "date": 0.4, "total": 0.5},
+        },
+        {"document_type": "invoice"},
+        {},
+    )
+
+    assert validation["structural_passed"] is True
+    assert validation["semantic_passed"] is False
+    assert "date" in validation["fields_needing_review"]
+    assert "total" in validation["fields_needing_review"]
+
+
+def test_build_structured_ocr_result_returns_legacy_and_strict_payload(monkeypatch):
+    base_result = OcrResult(rows=[["Invoice", "INV-1"]], avg_confidence=88.0, warnings=[])
+
+    monkeypatch.setattr(
+        pipeline.OCROrchestrator,
+        "process",
+        lambda self, image_bytes, caller_config=None: {
+            "output": {
+                "status": "complete",
+                "document_type": "invoice",
+                "extracted_data": {"invoice_number": "INV-1", "date": "2026-05-01", "total": "100"},
+                "confidence": {"overall": 0.91, "level": "HIGH", "fields_needing_review": []},
+                "processing": {"tier": "sonnet", "model_used": pipeline.MODEL_SONNET, "cost": 0.004, "latency": 1200},
+            },
+            "request_context": {
+                "composite_confidence": {"overall": 0.91},
+                "model_calls": 1,
+                "retries": 0,
+            },
+            "classification": {"document_type": "invoice"},
+            "ocr_result": {
+                "ocr_text": "Invoice INV-1 Date 2026-05-01 Total 100",
+                "rows": [["Invoice", "INV-1"]],
+                "cell_confidence": [],
+                "cell_boxes": [],
+                "used_language": "eng",
+                "fallback_used": False,
+                "raw_column_added": False,
+                "warnings": [],
+                "average_confidence": 0.88,
+            },
+            "current_result": {
+                "tier": "sonnet",
+                "model_used": pipeline.MODEL_SONNET,
+                "extracted_data": {"invoice_number": "INV-1", "date": "2026-05-01", "total": "100"},
+            },
+            "validation": {"issues": []},
         },
     )
 
-    base_result = OcrResult(rows=[["A", "B"]], avg_confidence=48.0, warnings=["low confidence"])
-    result = build_structured_ocr_result(
-        b"fake-image",
+    result = pipeline.build_structured_ocr_result(
+        _png_bytes(),
         base_result=base_result,
         used_language="eng",
         fallback_used=False,
-        doc_type_hint="table",
+        doc_type_hint="invoice",
+        user_id=123,
     )
 
-    assert result["rows"] == [["A", "B"]]
-    assert result["routing"]["model_tier"] == "balanced"
-    assert result["routing"]["provider_used"] == "anthropic"
-
-
-def test_structured_ocr_result_uses_ai_enhancement_for_balanced_table_route(monkeypatch):
-    monkeypatch.setattr(
-        "backend.services.ocr_document_pipeline.choose_ocr_route",
-        lambda *_args, **_kwargs: {
-            "clarity_score": 52.0,
-            "score_reason": "blur lowered clarity",
-            "model_tier": "balanced",
-            "forced": False,
-            "scorer_used": True,
-            "actual_cost_usd": 0.0035,
-            "cost_saved_usd": 0.0105,
-        },
-    )
-
-    calls = {"count": 0}
-
-    def fake_ai_extract(_image_bytes: bytes, **_kwargs):
-        calls["count"] += 1
-        return {"headers": ["Date", "Qty"], "rows": [["2026-04-28", "12"]]}
-
-    monkeypatch.setattr(
-        "backend.services.ocr_document_pipeline.extract_table_from_image",
-        fake_ai_extract,
-    )
-
-    base_result = OcrResult(
-        rows=[["Date", "Qty"], ["2026-04-28", "12"]],
-        avg_confidence=42.0,
-        warnings=["low confidence"],
-    )
-    result = build_structured_ocr_result(
-        b"fake-image",
-        base_result=base_result,
-        used_language="eng",
-        fallback_used=False,
-        doc_type_hint="table",
-    )
-
-    assert calls["count"] == 1
-    assert result["rows"] == [["2026-04-28", "12"]]
-
-
-def test_structured_ocr_result_skips_ai_enhancement_for_fast_route(monkeypatch):
-    monkeypatch.setattr(
-        "backend.services.ocr_document_pipeline.choose_ocr_route",
-        lambda *_args, **_kwargs: {
-            "clarity_score": 96.0,
-            "score_reason": "very clear image",
-            "model_tier": "fast",
-            "forced": False,
-            "scorer_used": True,
-            "actual_cost_usd": 0.0008,
-            "cost_saved_usd": 0.0132,
-        },
-    )
-
-    calls = {"count": 0}
-
-    def fake_ai_extract(_image_bytes: bytes, **_kwargs):
-        calls["count"] += 1
-        return {"headers": ["Date", "Qty"], "rows": [["2026-04-28", "12"]]}
-
-    monkeypatch.setattr(
-        "backend.services.ocr_document_pipeline.extract_table_from_image",
-        fake_ai_extract,
-    )
-
-    base_result = OcrResult(
-        rows=[["Date", "Qty"], ["2026-04-28", "12"]],
-        avg_confidence=84.0,
-        warnings=[],
-    )
-    result = build_structured_ocr_result(
-        b"fake-image",
-        base_result=base_result,
-        used_language="eng",
-        fallback_used=False,
-        doc_type_hint="register",
-    )
-
-    assert calls["count"] == 0
-    assert result["rows"] == [["Date", "Qty"], ["2026-04-28", "12"]]
-
-
-def test_structured_ocr_result_uses_ai_enhancement_when_base_result_is_sparse(monkeypatch):
-    monkeypatch.setattr(
-        "backend.services.ocr_document_pipeline.choose_ocr_route",
-        lambda *_args, **_kwargs: {
-            "clarity_score": 38.0,
-            "score_reason": "blur lowered clarity",
-            "model_tier": "best",
-            "forced": False,
-            "scorer_used": True,
-            "actual_cost_usd": 0.014,
-            "cost_saved_usd": 0.0,
-        },
-    )
-
-    calls = {"count": 0}
-
-    def fake_ai_extract(_image_bytes: bytes, **_kwargs):
-        calls["count"] += 1
-        return {"headers": ["Date", "Qty"], "rows": [["2026-04-28", "12"]]}
-
-    monkeypatch.setattr(
-        "backend.services.ocr_document_pipeline.extract_table_from_image",
-        fake_ai_extract,
-    )
-
-    base_result = OcrResult(
-        rows=[[""]],
-        avg_confidence=11.0,
-        warnings=["low confidence"],
-    )
-    result = build_structured_ocr_result(
-        b"fake-image",
-        base_result=base_result,
-        used_language="eng",
-        fallback_used=False,
-        doc_type_hint="table",
-    )
-
-    assert calls["count"] == 1
-    assert result["rows"] == [["2026-04-28", "12"]]
-
-
-def test_structured_ocr_result_marks_anthropic_provider(monkeypatch):
-    monkeypatch.setattr(
-        "backend.services.ocr_document_pipeline.choose_ocr_route",
-        lambda *_args, **_kwargs: {
-            "clarity_score": 61.0,
-            "score_reason": "structured table extraction requested",
-            "model_tier": "balanced",
-            "forced": False,
-            "scorer_used": True,
-            "actual_cost_usd": 0.0035,
-            "cost_saved_usd": 0.0105,
-        },
-    )
-    monkeypatch.setattr(
-        "backend.services.ocr_document_pipeline.extract_table_from_image",
-        lambda *_args, **_kwargs: {
-            "headers": ["Date", "Qty"],
-            "rows": [["2026-04-28", "12"]],
-            "raw_text": "Date Qty",
-            "provider_used": "anthropic",
-            "provider_model": "claude-3-5-haiku-20241022",
-            "ai_applied": True,
-        },
-    )
-
-    result = build_structured_ocr_result(
-        b"fake-image",
-        base_result=OcrResult(rows=[["A"]], avg_confidence=41.0, warnings=[]),
-        used_language="eng",
-        fallback_used=False,
-        doc_type_hint="table",
-    )
-
-    assert result["routing"]["provider_used"] == "anthropic"
-    assert result["routing"]["ai_applied"] is True
-    assert result["rows"] == [["2026-04-28", "12"]]
-
-
-def test_structured_ocr_result_falls_back_to_local_result_when_remote_ai_fails(monkeypatch):
-    monkeypatch.setattr(
-        "backend.services.ocr_document_pipeline.choose_ocr_route",
-        lambda *_args, **_kwargs: {
-            "clarity_score": 61.0,
-            "score_reason": "structured table extraction requested",
-            "model_tier": "balanced",
-            "forced": False,
-            "scorer_used": True,
-            "actual_cost_usd": 0.0035,
-            "cost_saved_usd": 0.0105,
-        },
-    )
-    monkeypatch.setattr(
-        "backend.services.ocr_document_pipeline.extract_table_from_image",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("anthropic failed")),
-    )
-
-    result = build_structured_ocr_result(
-        b"fake-image",
-        base_result=OcrResult(rows=[["Date", "Qty"], ["2026-04-28", "12"]], avg_confidence=41.0, warnings=[]),
-        used_language="eng",
-        fallback_used=False,
-        doc_type_hint="table",
-    )
-
-    assert result["rows"] == [["Date", "Qty"], ["2026-04-28", "12"]]
-    assert result["routing"]["provider_used"] == "tesseract"
-    assert result["routing"]["ai_applied"] is False
-    assert result["routing"]["ai_attempted"] is True
-    assert result["routing"]["ai_degraded_to_base"] is True
-    assert "AI enhancement unavailable; using local OCR result." in result["warnings"]
-
-
-def test_structured_ocr_result_still_raises_when_remote_ai_fails_and_local_result_is_empty(monkeypatch):
-    monkeypatch.setattr(
-        "backend.services.ocr_document_pipeline.choose_ocr_route",
-        lambda *_args, **_kwargs: {
-            "clarity_score": 61.0,
-            "score_reason": "structured table extraction requested",
-            "model_tier": "balanced",
-            "forced": False,
-            "scorer_used": True,
-            "actual_cost_usd": 0.0035,
-            "cost_saved_usd": 0.0105,
-        },
-    )
-    monkeypatch.setattr(
-        "backend.services.ocr_document_pipeline.extract_table_from_image",
-        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("anthropic failed")),
-    )
-
-    try:
-        build_structured_ocr_result(
-            b"fake-image",
-            base_result=OcrResult(rows=[], avg_confidence=0.0, warnings=[]),
-            used_language="eng",
-            fallback_used=False,
-            doc_type_hint="table",
-        )
-    except RuntimeError as error:
-        assert "AI table extraction failed" in str(error)
-    else:
-        raise AssertionError("Expected remote AI requirement to raise when both AI and local OCR are unusable.")
+    assert result["status"] == "complete"
+    assert result["processing"]["model_used"] == pipeline.MODEL_SONNET
+    assert result["document_type"] == "invoice"
+    assert result["orchestrator_result"]["confidence"]["level"] == "HIGH"
+    assert result["rows"] == [
+        ["invoice_number", "INV-1"],
+        ["date", "2026-05-01"],
+        ["total", "100"],
+    ]
 
 
 def test_reuse_has_remote_ai_accepts_only_ai_backed_records():
@@ -328,26 +348,6 @@ def test_reuse_has_remote_ai_accepts_only_ai_backed_records():
         def __init__(self, routing_meta):
             self.routing_meta = routing_meta
 
-    remote = VerificationStub({"provider_used": "anthropic", "ai_applied": True})
-    local = VerificationStub({"provider_used": "tesseract", "ai_applied": False})
-    missing = VerificationStub(None)
-
-    assert _reuse_has_remote_ai(remote) is True
-    assert _reuse_has_remote_ai(local) is False
-    assert _reuse_has_remote_ai(missing) is False
-
-
-def test_language_fallback_only_retries_when_primary_result_is_truly_sparse():
-    usable = OcrResult(
-        rows=[["Date", "Qty"], ["2026-04-28", "12"]],
-        avg_confidence=24.0,
-        warnings=["low confidence"],
-    )
-    sparse = OcrResult(
-        rows=[[""]],
-        avg_confidence=12.0,
-        warnings=["low confidence"],
-    )
-
-    assert ocr_router._should_retry_with_fallback_language(usable) is False
-    assert ocr_router._should_retry_with_fallback_language(sparse) is True
+    assert pipeline._reuse_has_remote_ai(VerificationStub({"provider_used": "anthropic", "ai_applied": True})) is True
+    assert pipeline._reuse_has_remote_ai(VerificationStub({"provider_used": "tesseract", "ai_applied": False})) is False
+    assert pipeline._reuse_has_remote_ai(VerificationStub(None)) is False
