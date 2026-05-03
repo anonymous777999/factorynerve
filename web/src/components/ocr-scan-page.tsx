@@ -14,6 +14,7 @@ import { ShareLinkGenerator } from "@/components/ocr/share-link-generator";
 import { UploadBox } from "@/components/ocr/upload-box";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select } from "@/components/ui/select";
 import { formatApiErrorMessage } from "@/lib/api";
 import { pushAppToast } from "@/lib/toast";
 import { transferBlob } from "@/lib/blob-transfer";
@@ -77,6 +78,7 @@ type OcrFlowStep = "upload" | "processing" | "preview" | "export";
 type ProcessingStage = "uploaded" | "preprocess" | "detect" | "extract" | "confidence";
 type OcrColumnType = "text" | "number" | "date";
 type ActiveCell = { row: number; column: number } | null;
+type ModelTierOption = "auto" | "fast" | "balanced" | "best";
 
 type ResultPreview = {
   type: string;
@@ -106,6 +108,13 @@ const STEP_LABELS: Array<{ key: OcrFlowStep; label: string }> = [
   { key: "preview", label: "Preview & Edit" },
   { key: "export", label: "Export" },
 ];
+
+const MODEL_TIER_LABELS: Record<ModelTierOption, string> = {
+  auto: "Auto",
+  fast: "Fast",
+  balanced: "Balanced",
+  best: "Best",
+};
 
 function cloneRows(rows: string[][]) {
   return rows.map((row) => [...row]);
@@ -141,6 +150,14 @@ function formatExtractionSource(routing?: OcrRoutingMeta | null, confidence?: nu
   if (routing?.provider_used === "tesseract") return "Local OCR";
   if (routing?.ai_applied) return "AI extraction";
   return formatConfidence(confidence ?? null);
+}
+
+function formatModelUsed(routing?: OcrRoutingMeta | null) {
+  if (routing?.provider_model) return routing.provider_model;
+  if (routing?.provider_used === "tesseract") return "local-tesseract";
+  if (routing?.provider_used === "anthropic") return "anthropic-default";
+  if (routing?.provider_used === "bytez") return "bytez-default";
+  return "Not reported";
 }
 
 function lowConfidenceCount(matrix: number[][], visible: boolean) {
@@ -309,6 +326,7 @@ export default function OcrScanPage() {
   const [draftDirty, setDraftDirty] = useState(false);
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [shareExpiresAt, setShareExpiresAt] = useState<string | null>(null);
+  const [selectedModelTier, setSelectedModelTier] = useState<ModelTierOption>("auto");
   const [restored, setRestored] = useState(false);
 
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
@@ -318,6 +336,8 @@ export default function OcrScanPage() {
 
   const canUseOcr = canUseOcrScan(user?.role);
   const displayPreviewUrl = preparedPreviewUrl || originalUrl;
+  const rerunSourceFile = originalFile || preparedPreviewFile || finalUploadFile;
+  const canRerunWithSelectedModel = Boolean(rerunSourceFile);
   const correctionCount = useMemo(
     () => countCorrections(resultPreview?.rows || [], editableRows),
     [editableRows, resultPreview?.rows],
@@ -538,6 +558,7 @@ export default function OcrScanPage() {
     setDocumentHash(null);
     setSavedId(null);
     setDraftDirty(false);
+    setSelectedModelTier("auto");
     setShareLink(null);
     setShareExpiresAt(null);
     historyRef.current = [];
@@ -615,7 +636,7 @@ export default function OcrScanPage() {
     return () => window.clearTimeout(timer);
   }, [draftDirty, persistStructuredDraft, resultPreview]);
 
-  const processFile = useCallback(async (file: File, sourceName: string) => {
+  const processFile = useCallback(async (file: File, sourceName: string, forceModel: ModelTierOption = "auto") => {
     setBusy(true);
     setStatus("");
     setShareLink(null);
@@ -664,7 +685,7 @@ export default function OcrScanPage() {
           columns: 5,
           language: "auto",
           docTypeHint: "table",
-          forceModel: "auto",
+          forceModel,
           documentHash: prepared.sha256,
         });
       } finally {
@@ -803,8 +824,17 @@ export default function OcrScanPage() {
     setResultPreview(null);
     setConfidenceMatrix([]);
     setDraftDirty(false);
-    void processFile(workingFile, file.name);
-  }, [originalUrl, preparedPreviewUrl, processFile]);
+    void processFile(workingFile, file.name, selectedModelTier);
+  }, [originalUrl, preparedPreviewUrl, processFile, selectedModelTier]);
+
+  const handleRerunWithSelectedModel = useCallback(() => {
+    if (!rerunSourceFile) {
+      setStatus("Re-run needs the original uploaded file.");
+      setStatusTone("warning");
+      return;
+    }
+    void processFile(rerunSourceFile, sourceFilename || rerunSourceFile.name, selectedModelTier);
+  }, [processFile, rerunSourceFile, selectedModelTier, sourceFilename]);
 
   const openRecentRecord = useCallback(async (verificationId: number) => {
     try {
@@ -834,6 +864,7 @@ export default function OcrScanPage() {
         routingLabel: record.routing_meta?.model_tier ?? null,
         reused: true,
       });
+      setSelectedModelTier(record.routing_meta?.model_tier ?? "auto");
       resetHistory({
         headers,
         rows,
@@ -1260,6 +1291,15 @@ export default function OcrScanPage() {
                       <div className="mt-1 text-sm text-[#667085]">
                         {formatExtractionSource(resultPreview.routingMeta, resultPreview.avgConfidence)}
                       </div>
+                      <div className="mt-1 text-xs text-[#667085]">
+                        Model used: <span className="font-semibold text-[#101828]">{formatModelUsed(resultPreview.routingMeta)}</span>
+                        {resultPreview.routingMeta?.model_tier ? (
+                          <span className="ml-2 rounded-full border border-[#d9e1e8] bg-[#f8fafc] px-2 py-0.5 text-[11px] font-medium text-[#344054]">
+                            {MODEL_TIER_LABELS[resultPreview.routingMeta.model_tier]}
+                            {resultPreview.routingMeta.forced ? " forced" : ""}
+                          </span>
+                        ) : null}
+                      </div>
                     </div>
                     <div className="flex items-center gap-2">
                       <button
@@ -1330,6 +1370,50 @@ export default function OcrScanPage() {
                   />
 
                   <KeyboardShortcutStrip lowConfidenceCount={visibleLowConfidenceCount} />
+
+                  <div className="rounded-[24px] border border-[#dbe3eb] bg-[#f8fbff] p-4">
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                      <div className="max-w-2xl">
+                        <div className="text-sm font-semibold text-[#101828]">Need a cleaner Excel report?</div>
+                        <p className="mt-1 text-sm leading-6 text-[#667085]">
+                          If the extracted sheet still looks wrong, choose a stronger model and re-run this scan before exporting again.
+                        </p>
+                        <div className="mt-2 text-xs text-[#667085]">
+                          Current result: <span className="font-medium text-[#344054]">{formatModelUsed(resultPreview.routingMeta)}</span>
+                        </div>
+                      </div>
+                      <div className="w-full max-w-sm">
+                        <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]" htmlFor="ocr-model-tier">
+                          Extraction model
+                        </label>
+                        <Select
+                          id="ocr-model-tier"
+                          value={selectedModelTier}
+                          onChange={(event) => setSelectedModelTier(event.target.value as ModelTierOption)}
+                          disabled={busy}
+                          className="mt-2"
+                        >
+                          <option value="auto">Auto</option>
+                          <option value="fast">Fast</option>
+                          <option value="balanced">Balanced</option>
+                          <option value="best">Best</option>
+                        </Select>
+                        <button
+                          type="button"
+                          className="mt-3 w-full rounded-full bg-[#185FA5] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(24,95,165,0.16)] transition hover:bg-[#164f8a] disabled:cursor-not-allowed disabled:bg-[#98a2b3] disabled:shadow-none"
+                          disabled={busy || !canRerunWithSelectedModel}
+                          onClick={handleRerunWithSelectedModel}
+                        >
+                          Re-run with {MODEL_TIER_LABELS[selectedModelTier]}
+                        </button>
+                        {!canRerunWithSelectedModel ? (
+                          <p className="mt-2 text-xs text-[#667085]">
+                            Re-run is only available while the uploaded source file is still in this session.
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
 
                   {step === "preview" ? (
                     <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-[#e3e8ef] bg-white p-4">
