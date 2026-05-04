@@ -66,7 +66,21 @@ from backend.services.ocr_document_pipeline import (
     find_reusable_verification,
     serialize_reused_ocr_result,
 )
+from backend.services.anthropic_usage import (
+    ANTHROPIC_MODEL_HAIKU,
+    ANTHROPIC_MODEL_OPUS,
+    ANTHROPIC_MODEL_SONNET,
+    build_anthropic_usage_summary,
+    calculate_anthropic_cost,
+    get_next_anthropic_model_upgrade,
+    merge_anthropic_usage_summaries,
+    normalize_anthropic_model_name,
+    resolve_anthropic_model_tier,
+    serialize_anthropic_response_debug,
+    verify_anthropic_response_model,
+)
 from backend.services.ocr_normalization import normalize_structured_payload
+from backend.services.ocr_confidence import calculate_structural_confidence
 from backend.tenancy import resolve_factory_id, resolve_org_id
 
 
@@ -101,9 +115,9 @@ _TABLE_EXCEL_FORMAT_TO_MIME = {
     "WEBP": "image/webp",
     "GIF": "image/gif",
 }
-_TABLE_EXCEL_MODEL_HAIKU = "claude-haiku-4-5"
-_TABLE_EXCEL_MODEL_SONNET = "claude-sonnet-5"
-_TABLE_EXCEL_MODEL_OPUS = "claude-opus-4-7"
+_TABLE_EXCEL_MODEL_HAIKU = ANTHROPIC_MODEL_HAIKU
+_TABLE_EXCEL_MODEL_SONNET = ANTHROPIC_MODEL_SONNET
+_TABLE_EXCEL_MODEL_OPUS = ANTHROPIC_MODEL_OPUS
 _TABLE_EXCEL_TIER_TO_MODEL = {
     "fast": _TABLE_EXCEL_MODEL_HAIKU,
     "balanced": _TABLE_EXCEL_MODEL_SONNET,
@@ -121,19 +135,24 @@ _TABLE_EXCEL_TIER_COSTS = {
 }
 _TABLE_EXCEL_MODEL_FALLBACKS = {
     "fast": [
+        "claude-haiku-4-5-20251001",
         "claude-haiku-4-5",
-        "claude-3-5-haiku-20241022",
-        "claude-sonnet-5",
+        "claude-sonnet-4-6",
+        "claude-sonnet-4-5-20250929",
         "claude-3-5-sonnet-20241022",
     ],
     "balanced": [
-        "claude-sonnet-5",
+        "claude-sonnet-4-6",
+        "claude-sonnet-4-5-20250929",
+        "claude-sonnet-4-20250514",
         "claude-3-5-sonnet-20241022",
         "claude-opus-4-7",
     ],
     "best": [
         "claude-opus-4-7",
-        "claude-sonnet-5",
+        "claude-opus-4-6",
+        "claude-opus-4-5-20251101",
+        "claude-sonnet-4-6",
     ],
 }
 _TABLE_EXCEL_PROMPT = """You are a precise data extraction engine. Extract ALL data from this image into a structured JSON format suitable for Excel export.
@@ -374,25 +393,28 @@ def _inspect_table_excel_image(
 
 
 def _select_table_excel_model(image_quality_score: int) -> str:
-    if image_quality_score >= 60:
+    if image_quality_score >= 82:
         return _TABLE_EXCEL_MODEL_HAIKU
-    return _TABLE_EXCEL_MODEL_SONNET
+    if image_quality_score >= 58:
+        return _TABLE_EXCEL_MODEL_SONNET
+    return _TABLE_EXCEL_MODEL_OPUS
 
 
-def _normalize_force_model_tier(force_model: str | None) -> str | None:
-    normalized = sanitize_text(force_model, max_length=20, preserve_newlines=False)
-    if normalized:
-        normalized = normalized.lower()
-    if normalized in {"fast", "balanced", "best"}:
-        return normalized
-    return None
+def _normalize_requested_model(force_model: str | None) -> str | None:
+    normalized = sanitize_text(force_model, max_length=80, preserve_newlines=False)
+    return normalize_anthropic_model_name(normalized)
 
 
-def _select_table_preview_model(image_quality_score: int, *, force_model: str | None) -> tuple[str, bool]:
-    forced_tier = _normalize_force_model_tier(force_model)
-    if forced_tier:
-        return _TABLE_EXCEL_TIER_TO_MODEL[forced_tier], True
-    return _select_table_excel_model(image_quality_score), False
+def _select_table_preview_model(
+    image_quality_score: int,
+    *,
+    requested_model: str | None,
+) -> tuple[str, bool, str | None]:
+    normalized_model = _normalize_requested_model(requested_model)
+    if normalized_model:
+        return normalized_model, True, normalized_model
+    auto_selected = _select_table_excel_model(image_quality_score)
+    return auto_selected, False, None
 
 
 def _table_excel_model_candidates(selected_model: str) -> list[str]:
@@ -544,23 +566,37 @@ def _extract_json_candidate(raw: str) -> object:
 
 
 def _call_table_excel_anthropic(
-    image_base64: str,
+    image_base64: str | bytes,
     *,
     image_mime_type: str,
     selected_model: str,
+    requested_model: str | None = None,
     system_prompt: str | None,
     user_message: str | None,
 ) -> dict[str, object]:
     api_key = _require_anthropic_api_key()
-    model_candidates = _table_excel_model_candidates(selected_model)
-    logger.info("[OCR] Starting extraction model=%s base64_len=%s", model_candidates[0], len(image_base64))
+    encoded_image = (
+        image_base64
+        if isinstance(image_base64, str)
+        else base64.b64encode(image_base64).decode("utf-8")
+    )
+    explicit_model = _normalize_requested_model(requested_model)
+    model_candidates = [selected_model] if explicit_model else _table_excel_model_candidates(selected_model)
+    logger.info(
+        "[OCR] Starting extraction requested_model=%s selected_model=%s candidate_model=%s base64_len=%s",
+        explicit_model or "auto",
+        selected_model,
+        model_candidates[0],
+        len(encoded_image),
+    )
 
     last_error: TableExcelRouteError | None = None
-    
-    # Pass 1: Extraction with cost-optimized model
     extraction_json = None
     first_model_used = None
-    
+    usage_summaries: list[dict[str, Any]] = []
+    model_attempts: list[dict[str, Any]] = []
+    last_response_debug: dict[str, Any] | None = None
+
     for model_name in model_candidates:
         payload = {
             "model": model_name,
@@ -581,8 +617,12 @@ def _call_table_excel_anthropic(
                             "source": {
                                 "type": "base64",
                                 "media_type": image_mime_type,
-                                "data": image_base64,
+                                "data": encoded_image,
                             },
+                        },
+                        {
+                            "type": "text",
+                            "text": user_message or "Extract the structured data from this image and return ONLY valid JSON.",
                         },
                     ],
                 }
@@ -590,7 +630,12 @@ def _call_table_excel_anthropic(
         }
 
         try:
-            logger.info("[OCR] Pass 1: Sending request model=%s", model_name)
+            logger.info(
+                "[OCR] Pass 1 request requested_model=%s selected_model=%s model=%s",
+                explicit_model or "auto",
+                selected_model,
+                model_name,
+            )
             response = requests.post(
                 _ANTHROPIC_MESSAGES_URL,
                 headers={
@@ -604,6 +649,13 @@ def _call_table_excel_anthropic(
         except requests.RequestException as error:
             logger.error("[OCR] Pass 1 connection error: %s", error)
             last_error = _table_excel_error(502, f"Anthropic API request failed: {error}")
+            model_attempts.append(
+                {
+                    "model": model_name,
+                    "status": "connection_error",
+                    "error": str(error),
+                }
+            )
             continue
 
         if response.status_code >= 400:
@@ -612,30 +664,70 @@ def _call_table_excel_anthropic(
                 message = error_data.get("error", {}).get("message") or "Anthropic API request failed."
             except ValueError:
                 message = f"Anthropic API returned status {response.status_code}."
-            
+
             logger.error("[OCR] Pass 1 error status=%s message=%s", response.status_code, message)
-            
-            # Resilient fallback: Retry on any 4xx/5xx that isn't fatal (auth or too large)
+            model_attempts.append(
+                {
+                    "model": model_name,
+                    "status": "upstream_error",
+                    "status_code": response.status_code,
+                    "error": message,
+                }
+            )
+
             if response.status_code in {400, 404, 429, 500, 502, 503, 504}:
-                # 413 (Payload Too Large) is NOT retried as subsequent models won't help
                 if response.status_code == 413:
                     raise _table_excel_error(413, "Image too large for Anthropic API.")
-                
+
                 last_error = _table_excel_error(response.status_code, message, model=model_name)
+                if explicit_model:
+                    raise last_error
                 continue
-            
-            # Non-retryable error (e.g. 401, 403)
+
             raise _table_excel_error(response.status_code, message)
 
         try:
             ai_data = response.json()
+            actual_model = verify_anthropic_response_model(
+                model_name,
+                ai_data,
+                context="OCR route table extraction",
+            )
+            usage_summary = build_anthropic_usage_summary(actual_model, ai_data)
+            usage_summaries.append(usage_summary)
+            last_response_debug = serialize_anthropic_response_debug(ai_data)
+            model_attempts.append(
+                {
+                    "model": actual_model,
+                    "status": "success",
+                    "usage": usage_summary,
+                    "response": last_response_debug,
+                }
+            )
+            logger.info(
+                "[OCR] Pass 1 response model=%s input_tokens=%s output_tokens=%s total_tokens=%s estimated_cost=%s",
+                actual_model,
+                usage_summary["input_tokens"],
+                usage_summary["output_tokens"],
+                usage_summary["total_tokens"],
+                usage_summary["estimated_cost"],
+            )
             raw_text = _extract_table_excel_json_text(ai_data)
             extraction_json = _extract_json_candidate(raw_text)
-            first_model_used = model_name
-            break # Success
+            first_model_used = actual_model
+            break
         except (ValueError, TableExcelRouteError) as error:
             logger.error("[OCR] Pass 1 parse error: %s", error)
             last_error = _table_excel_error(502, f"Failed to parse AI response: {error}")
+            model_attempts.append(
+                {
+                    "model": model_name,
+                    "status": "parse_error",
+                    "error": str(error),
+                }
+            )
+            if explicit_model:
+                raise last_error
             continue
 
     if not extraction_json:
@@ -643,31 +735,29 @@ def _call_table_excel_anthropic(
             raise last_error
         raise _table_excel_error(502, "Extraction failed for all configured models.")
 
-    # Validation & Correction Pass (Pass 2)
     validation_errors = _validate_table_excel_json(extraction_json)
     if validation_errors:
         logger.warning("[OCR] Validation failed for %s: %s", first_model_used, validation_errors)
-        
-        # Multi-turn retry using Opus (Text-only correction)
+        correction_model = explicit_model or get_next_anthropic_model_upgrade(first_model_used) or _TABLE_EXCEL_MODEL_OPUS
         correction_prompt = (
             f"Your previous response had structural inconsistencies:\n"
             f"- " + "\n- ".join(validation_errors) + "\n\n"
             "Fix the JSON structure. Do not change values. Only correct formatting and alignment. "
             "Return ONLY the fixed JSON object."
         )
-        
+
         retry_payload = {
-            "model": _TABLE_EXCEL_MODEL_OPUS,
+            "model": correction_model,
             "max_tokens": 4096,
             "messages": [
                 {"role": "user", "content": "Extract data from an image (provided in previous context)."},
                 {"role": "assistant", "content": json.dumps(extraction_json)},
-                {"role": "user", "content": correction_prompt}
-            ]
+                {"role": "user", "content": correction_prompt},
+            ],
         }
-        
+
         try:
-            logger.info("[OCR] Pass 2: Sending correction request model=%s", _TABLE_EXCEL_MODEL_OPUS)
+            logger.info("[OCR] Pass 2 request correction_model=%s", correction_model)
             response = requests.post(
                 _ANTHROPIC_MESSAGES_URL,
                 headers={
@@ -680,21 +770,81 @@ def _call_table_excel_anthropic(
             )
             if response.status_code == 200:
                 ai_data = response.json()
+                actual_model = verify_anthropic_response_model(
+                    correction_model,
+                    ai_data,
+                    context="OCR route correction pass",
+                )
+                usage_summary = build_anthropic_usage_summary(actual_model, ai_data)
+                usage_summaries.append(usage_summary)
+                last_response_debug = serialize_anthropic_response_debug(ai_data)
+                model_attempts.append(
+                    {
+                        "model": actual_model,
+                        "status": "correction_success",
+                        "usage": usage_summary,
+                        "response": last_response_debug,
+                    }
+                )
+                logger.info(
+                    "[OCR] Pass 2 response model=%s input_tokens=%s output_tokens=%s total_tokens=%s estimated_cost=%s",
+                    actual_model,
+                    usage_summary["input_tokens"],
+                    usage_summary["output_tokens"],
+                    usage_summary["total_tokens"],
+                    usage_summary["estimated_cost"],
+                )
                 raw_text = _extract_table_excel_json_text(ai_data)
                 corrected_json = _extract_json_candidate(raw_text)
                 if isinstance(corrected_json, dict):
-                    logger.info("[OCR] Correction pass successful model=%s", _TABLE_EXCEL_MODEL_OPUS)
-                    corrected_json.setdefault("_provider_model", _TABLE_EXCEL_MODEL_OPUS)
+                    logger.info("[OCR] Correction pass successful model=%s", actual_model)
+                    corrected_json.setdefault("_provider_model", actual_model)
                     corrected_json.setdefault("_correction_applied", True)
+                    corrected_json["_usage_summary"] = merge_anthropic_usage_summaries(
+                        actual_model,
+                        usage_summaries,
+                    )
+                    corrected_json["_model_attempts"] = model_attempts
+                    corrected_json["_debug_response"] = last_response_debug
+                    corrected_json["_requested_model"] = explicit_model
+                    corrected_json["_selected_model"] = selected_model
                     return corrected_json
                 logger.error("[OCR] Correction pass returned invalid JSON")
             else:
                 logger.error("[OCR] Correction pass failed status=%s", response.status_code)
+                try:
+                    error_payload = response.json()
+                except ValueError:
+                    error_payload = {"error": {"message": f"Anthropic API returned status {response.status_code}."}}
+                model_attempts.append(
+                    {
+                        "model": correction_model,
+                        "status": "correction_error",
+                        "status_code": response.status_code,
+                        "error": (error_payload.get("error") or {}).get("message")
+                        if isinstance(error_payload, dict)
+                        else str(error_payload),
+                    }
+                )
         except Exception as error:
             logger.error("[OCR] Correction pass failed unexpectedly: %s", error)
+            model_attempts.append(
+                {
+                    "model": correction_model,
+                    "status": "correction_exception",
+                    "error": str(error),
+                }
+            )
 
-    # Return Pass 1 result if correction was not triggered or failed
     extraction_json.setdefault("_provider_model", first_model_used)
+    extraction_json["_usage_summary"] = merge_anthropic_usage_summaries(
+        first_model_used,
+        usage_summaries,
+    )
+    extraction_json["_model_attempts"] = model_attempts
+    extraction_json["_debug_response"] = last_response_debug
+    extraction_json["_requested_model"] = explicit_model
+    extraction_json["_selected_model"] = selected_model
     return extraction_json
 
 
@@ -898,6 +1048,7 @@ def _run_table_excel_pipeline(
     *,
     content_type: str | None,
     filename: str | None,
+    requested_model: str | None = None,
     system_prompt: str | None,
     user_message: str | None,
 ) -> tuple[bytes, dict[str, object]]:
@@ -905,17 +1056,19 @@ def _run_table_excel_pipeline(
     logger.info("[OCR] Flow: upload -> /ocr/table-excel -> _run_table_excel_pipeline")
     inspection = _inspect_table_excel_image(image_bytes, content_type=content_type, filename=filename)
     image_quality_score = int(inspection["image_quality_score"])
-    if image_quality_score < 10:
+    if image_quality_score < 30:
         raise _table_excel_error(
             400,
             "Image too vague or low quality to process",
             imageQualityScore=image_quality_score,
         )
 
-    selected_model = _select_table_excel_model(image_quality_score)
+    explicit_model = _normalize_requested_model(requested_model)
+    selected_model = explicit_model or _select_table_excel_model(image_quality_score)
     logger.info("[OCR] Using AI")
     logger.info(
-        "Table Excel model selected model=%s quality_score=%s mime=%s size_bytes=%s",
+        "Table Excel model selected requested_model=%s model=%s quality_score=%s mime=%s size_bytes=%s",
+        explicit_model or "auto",
         selected_model,
         image_quality_score,
         inspection["image_mime_type"],
@@ -929,23 +1082,34 @@ def _run_table_excel_pipeline(
         image_base64,
         image_mime_type="image/jpeg", # preprocess_image_bytes always returns JPEG
         selected_model=selected_model,
+        requested_model=requested_model,
         system_prompt=system_prompt,
         user_message=user_message,
     )
     used_model = str(extracted_json.get("_provider_model") or selected_model)
     excel_bytes, metadata = _build_table_excel_workbook(extracted_json)
     elapsed_ms = int((time.perf_counter() - started_at) * 1000)
+    usage_summary = extracted_json.get("_usage_summary") or {}
+    if isinstance(usage_summary, dict):
+        usage_summary = dict(usage_summary)
+        usage_summary["processing_time_ms"] = elapsed_ms
     logger.info(
-        "Table Excel completed model=%s quality_score=%s elapsed_ms=%s extracted_type=%s",
+        "Table Excel completed requested_model=%s model=%s quality_score=%s elapsed_ms=%s extracted_type=%s total_tokens=%s estimated_cost=%s",
+        explicit_model or "auto",
         used_model,
         image_quality_score,
         elapsed_ms,
         metadata.get("extracted_type"),
+        usage_summary.get("total_tokens", 0),
+        usage_summary.get("estimated_cost", 0),
     )
     metadata.update(
         {
             "image_quality_score": image_quality_score,
             "model_used": used_model,
+            "requested_model": explicit_model or None,
+            "selected_model": selected_model,
+            "token_usage": usage_summary or None,
             "time_taken_ms": elapsed_ms,
             "image_mime_type": inspection["image_mime_type"],
         }
@@ -960,7 +1124,8 @@ def _run_table_preview_pipeline(
     filename: str | None,
     template: OcrTemplate | None,
     doc_type_hint: str | None,
-    force_model: str | None,
+    requested_model: str | None = None,
+    force_model: str | None = None,
     language: str,
 ) -> dict[str, object]:
     started_at = time.perf_counter()
@@ -974,11 +1139,15 @@ def _run_table_preview_pipeline(
             imageQualityScore=image_quality_score,
         )
 
-    selected_model, forced = _select_table_preview_model(image_quality_score, force_model=force_model)
+    selected_model, forced, explicit_model = _select_table_preview_model(
+        image_quality_score,
+        requested_model=requested_model or force_model,
+    )
     logger.info("[OCR] Using AI")
-    model_tier = _TABLE_EXCEL_MODEL_TO_TIER.get(selected_model, "balanced")
+    model_tier = resolve_anthropic_model_tier(selected_model)
     logger.info(
-        "Structured table preview model selected model=%s quality_score=%s mime=%s size_bytes=%s",
+        "Structured table preview model selected requested_model=%s model=%s quality_score=%s mime=%s size_bytes=%s",
+        explicit_model or "auto",
         selected_model,
         image_quality_score,
         inspection["image_mime_type"],
@@ -992,6 +1161,7 @@ def _run_table_preview_pipeline(
         image_base64,
         image_mime_type="image/jpeg", # preprocess_image_bytes always returns JPEG
         selected_model=selected_model,
+        requested_model=requested_model or force_model,
         system_prompt=None,
         user_message=None,
     )
@@ -1003,17 +1173,48 @@ def _run_table_preview_pipeline(
     )
 
     elapsed_ms = int((time.perf_counter() - started_at) * 1000)
-    cost_meta = _TABLE_EXCEL_TIER_COSTS.get(model_tier, {"actual_cost_usd": 0.0, "cost_saved_usd": 0.0})
+    usage_summary = extracted_json.get("_usage_summary") or {}
+    if isinstance(usage_summary, dict):
+        usage_summary = dict(usage_summary)
+        usage_summary["processing_time_ms"] = elapsed_ms
+    else:
+        usage_summary = {}
+    estimated_cost = float(usage_summary.get("estimated_cost") or 0.0)
+    opus_cost = calculate_anthropic_cost(
+        _TABLE_EXCEL_MODEL_OPUS,
+        input_tokens=int(usage_summary.get("input_tokens") or 0),
+        output_tokens=int(usage_summary.get("output_tokens") or 0),
+    )
+    cost_saved_usd = round(max(0.0, float(opus_cost["estimated_cost"]) - estimated_cost), 6)
     headers = structured.get("headers") or []
     rows = structured.get("rows") or []
+    confidence_payload = calculate_structural_confidence(
+        {
+            "headers": headers,
+            "rows": rows,
+        }
+    )
+    confidence_score = float(confidence_payload.get("score") or 0.0)
     logger.info(
-        "Structured table preview completed model=%s quality_score=%s elapsed_ms=%s rows=%s columns=%s",
+        "Structured table preview completed requested_model=%s model=%s quality_score=%s elapsed_ms=%s rows=%s columns=%s total_tokens=%s estimated_cost=%s",
+        explicit_model or "auto",
         used_model,
         image_quality_score,
         elapsed_ms,
         len(rows),
         len(headers),
+        usage_summary.get("total_tokens", 0),
+        estimated_cost,
     )
+    debug_payload = {
+        "requested_model": explicit_model or None,
+        "selected_model": selected_model,
+        "final_model_used": used_model,
+        "processing_time_ms": elapsed_ms,
+        "token_usage": usage_summary or None,
+        "model_attempts": extracted_json.get("_model_attempts") or [],
+        "raw_api_response": extracted_json.get("_debug_response"),
+    }
     return {
         "type": structured.get("type") or _table_preview_doc_type(doc_type_hint),
         "title": structured.get("title") or _table_preview_title(doc_type_hint, template),
@@ -1021,7 +1222,7 @@ def _run_table_preview_pipeline(
         "rows": rows,
         "raw_text": structured.get("raw_text"),
         "language": language,
-        "confidence": float(image_quality_score),
+        "confidence": confidence_score,
         "warnings": structured.get("warnings") or [],
         "routing": {
             "clarity_score": float(image_quality_score),
@@ -1029,16 +1230,22 @@ def _run_table_preview_pipeline(
             "model_tier": model_tier,
             "forced": forced,
             "scorer_used": True,
-            "actual_cost_usd": float(cost_meta["actual_cost_usd"]),
-            "cost_saved_usd": float(cost_meta["cost_saved_usd"]),
+            "actual_cost_usd": estimated_cost,
+            "cost_saved_usd": cost_saved_usd,
             "provider_used": "anthropic",
             "provider_model": used_model,
+            "requested_model": explicit_model or None,
+            "selected_model": selected_model,
             "ai_applied": True,
             "ai_attempted": True,
             "ai_degraded_to_base": False,
+            "processing_time_ms": elapsed_ms,
+            "usage": usage_summary or None,
         },
+        "token_usage": usage_summary or None,
+        "debug": debug_payload,
         "columns": max(len(headers), max((len(row) for row in rows), default=0), 1),
-        "avg_confidence": float(image_quality_score),
+        "avg_confidence": confidence_score,
         "cell_confidence": [],
         "cell_boxes": [],
         "used_language": language,
@@ -1050,6 +1257,7 @@ def _run_table_preview_pipeline(
 
 
 def _table_excel_response_headers(metadata: dict[str, object], *, filename: str) -> dict[str, str]:
+    usage = metadata.get("token_usage") if isinstance(metadata.get("token_usage"), dict) else {}
     return {
         "Content-Disposition": f'attachment; filename="{filename}"',
         "Cache-Control": "no-store",
@@ -1057,7 +1265,12 @@ def _table_excel_response_headers(metadata: dict[str, object], *, filename: str)
         "X-Total-Rows": str(metadata.get("total_rows", 0)),
         "X-Total-Columns": str(metadata.get("total_columns", 0)),
         "X-Image-Quality-Score": str(metadata.get("image_quality_score", "")),
+        "X-Requested-Model": str(metadata.get("requested_model", "")),
         "X-Model-Used": str(metadata.get("model_used", "")),
+        "X-Input-Tokens": str(usage.get("input_tokens", 0)),
+        "X-Output-Tokens": str(usage.get("output_tokens", 0)),
+        "X-Total-Tokens": str(usage.get("total_tokens", 0)),
+        "X-Estimated-Cost": str(usage.get("estimated_cost", 0)),
     }
 
 
@@ -1218,6 +1431,8 @@ def _normalize_routing_meta(values: dict | None, *, field_name: str) -> dict | N
     score_reason = sanitize_text(str(values.get("score_reason") or ""), max_length=500, preserve_newlines=False) or None
     provider_used = sanitize_text(str(values.get("provider_used") or ""), max_length=40, preserve_newlines=False) or None
     provider_model = sanitize_text(str(values.get("provider_model") or ""), max_length=120, preserve_newlines=False) or None
+    requested_model = sanitize_text(str(values.get("requested_model") or ""), max_length=120, preserve_newlines=False) or None
+    selected_model = sanitize_text(str(values.get("selected_model") or ""), max_length=120, preserve_newlines=False) or None
     ai_failure_reason = sanitize_text(
         str(values.get("ai_failure_reason") or ""),
         max_length=80,
@@ -1232,6 +1447,33 @@ def _normalize_routing_meta(values: dict | None, *, field_name: str) -> dict | N
             return default
         return max(minimum, min(maximum, parsed))
 
+    def _safe_nested_float(source: dict, key: str, default: float = 0.0, minimum: float = 0.0, maximum: float = 100.0) -> float:
+        raw = source.get(key)
+        try:
+            parsed = float(raw)
+        except (TypeError, ValueError):
+            return default
+        return max(minimum, min(maximum, parsed))
+
+    usage = values.get("usage")
+    normalized_usage = None
+    if isinstance(usage, dict):
+        normalized_usage = {
+            "model": sanitize_text(str(usage.get("model") or ""), max_length=120, preserve_newlines=False) or None,
+            "display_name": sanitize_text(str(usage.get("display_name") or ""), max_length=120, preserve_newlines=False) or None,
+            "input_tokens": int(_safe_nested_float(usage, "input_tokens", default=0.0, maximum=1_000_000_000.0)),
+            "output_tokens": int(_safe_nested_float(usage, "output_tokens", default=0.0, maximum=1_000_000_000.0)),
+            "cache_creation_input_tokens": int(_safe_nested_float(usage, "cache_creation_input_tokens", default=0.0, maximum=1_000_000_000.0)),
+            "cache_read_input_tokens": int(_safe_nested_float(usage, "cache_read_input_tokens", default=0.0, maximum=1_000_000_000.0)),
+            "total_tokens": int(_safe_nested_float(usage, "total_tokens", default=0.0, maximum=1_000_000_000.0)),
+            "input_cost": _safe_nested_float(usage, "input_cost", default=0.0, maximum=1000.0),
+            "output_cost": _safe_nested_float(usage, "output_cost", default=0.0, maximum=1000.0),
+            "estimated_cost": _safe_nested_float(usage, "estimated_cost", default=0.0, maximum=1000.0),
+            "currency": sanitize_text(str(usage.get("currency") or "USD"), max_length=10, preserve_newlines=False) or "USD",
+            "request_count": int(_safe_nested_float(usage, "request_count", default=0.0, maximum=1000.0)),
+            "processing_time_ms": int(_safe_nested_float(usage, "processing_time_ms", default=0.0, maximum=3_600_000.0)),
+        }
+
     return {
         "clarity_score": _safe_float("clarity_score"),
         "score_reason": score_reason,
@@ -1242,10 +1484,14 @@ def _normalize_routing_meta(values: dict | None, *, field_name: str) -> dict | N
         "cost_saved_usd": _safe_float("cost_saved_usd", maximum=1000.0),
         "provider_used": provider_used,
         "provider_model": provider_model,
+        "requested_model": requested_model,
+        "selected_model": selected_model,
         "ai_applied": bool(values.get("ai_applied")),
         "ai_attempted": bool(values.get("ai_attempted")),
         "ai_degraded_to_base": bool(values.get("ai_degraded_to_base")),
         "ai_failure_reason": ai_failure_reason,
+        "processing_time_ms": max(0, int(_safe_float("processing_time_ms", default=0.0, maximum=3_600_000.0))),
+        "usage": normalized_usage,
     }
 
 
@@ -1612,6 +1858,7 @@ def _run_ocr_excel_job(progress, *, job_id: str) -> dict[str, object]:
         rows, model_meta = ledger_extract_data(
             base64_image,
             force_mock=bool(context.get("mock")),
+            model=context.get("requested_model"),
             system_prompt=context.get("system_prompt"),
             user_message=context.get("user_message"),
         )
@@ -1629,6 +1876,7 @@ def _run_ocr_excel_job(progress, *, job_id: str) -> dict[str, object]:
             image_bytes,
             content_type=str(input_file.get("media_type") or context.get("content_type") or ""),
             filename=str(context.get("source_filename") or "table-ocr-input.png"),
+            requested_model=str(context.get("requested_model")) if context.get("requested_model") is not None else None,
             system_prompt=context.get("system_prompt"),
             user_message=context.get("user_message"),
         )
@@ -1669,6 +1917,7 @@ def _queue_ocr_excel_job(
     content_type: str | None,
     size_bytes: int,
     mock: bool = False,
+    requested_model: str | None = None,
     system_prompt: str | None = None,
     user_message: str | None = None,
     preprocess_profile: str | None = None,
@@ -1686,6 +1935,7 @@ def _queue_ocr_excel_job(
             "factory_id": factory_id,
             "source_filename": source_filename,
             "mock": bool(mock),
+            "requested_model": requested_model,
             "system_prompt": system_prompt,
             "user_message": user_message,
             "preprocess_profile": preprocess_profile,
@@ -1699,6 +1949,7 @@ def _queue_ocr_excel_job(
             "source_filename": source_filename,
             "size_bytes": size_bytes,
             "mock": bool(mock),
+            "requested_model": requested_model,
             "system_prompt": system_prompt,
             "user_message": user_message,
             "preprocess_profile": preprocess_profile,
@@ -1724,6 +1975,7 @@ def _queue_ocr_excel_job(
         "source_filename": source_filename,
         "size_bytes": size_bytes,
         "mock": bool(mock),
+        "requested_model": requested_model,
         "system_prompt": system_prompt,
         "user_message": user_message,
         "preprocess_profile": preprocess_profile,
@@ -1748,6 +2000,7 @@ def _retry_ocr_job(payload: dict[str, object], _source_job: object) -> dict[str,
         content_type=str(input_file.get("media_type") or "application/octet-stream"),
         size_bytes=int(payload.get("size_bytes") or 0),
         mock=bool(payload.get("mock")),
+        requested_model=str(payload.get("requested_model")) if payload.get("requested_model") is not None else None,
         system_prompt=str(payload.get("system_prompt")) if payload.get("system_prompt") is not None else None,
         user_message=str(payload.get("user_message")) if payload.get("user_message") is not None else None,
         preprocess_profile=str(payload.get("preprocess_profile")) if payload.get("preprocess_profile") is not None else None,
@@ -2480,6 +2733,7 @@ async def ocr_logbook(
     language: str = Form(default="eng"),
     template_id: int | None = Form(default=None),
     doc_type_hint: str | None = Form(default=None),
+    model: str | None = Form(default=None),
     force_model: str | None = Form(default=None),
     document_hash: str | None = Form(default=None),
     current_user: User = Depends(get_current_user),
@@ -2488,6 +2742,13 @@ async def ocr_logbook(
     _require_ocr_access(current_user)
     image_bytes = await _read_validated_image_upload(file)
     requested_doc_type = _normalize_doc_type_hint(doc_type_hint) or "table"
+    requested_model = sanitize_text(model or force_model, max_length=80, preserve_newlines=False) or None
+    logger.info(
+        "[OCR] /ocr/logbook received filename=%s requested_model=%s document_hash=%s",
+        file.filename or "unknown",
+        requested_model or "auto",
+        _normalize_document_hash(document_hash) or "none",
+    )
 
     template = None
     if template_id is not None:
@@ -2505,8 +2766,15 @@ async def ocr_logbook(
         document_hash=_normalize_document_hash(document_hash),
         template_id=template.id if template else template_id,
         doc_type_hint=requested_doc_type,
+        requested_model=requested_model,
     )
     if reusable is not None:
+        logger.info(
+            "[OCR] Reusing cached verification id=%s requested_model=%s provider_model=%s",
+            reusable.id,
+            requested_model or "auto",
+            (reusable.routing_meta or {}).get("provider_model"),
+        )
         reused_payload = {
             **serialize_reused_ocr_result(reusable, template=template),
             "template": {
@@ -2536,7 +2804,7 @@ async def ocr_logbook(
                 filename=file.filename,
                 template=template,
                 doc_type_hint=requested_doc_type,
-                force_model=force_model,
+                requested_model=requested_model,
                 language=requested_language,
             )
         except TableExcelRouteError as error:
@@ -2571,7 +2839,7 @@ async def ocr_logbook(
                 fallback_used=fallback_used,
                 template=template,
                 doc_type_hint=requested_doc_type,
-                force_model=force_model,
+                force_model=requested_model,
             )
         except RuntimeError as error:
             logger.error("Structured OCR build failed: %s: %s", type(error).__name__, error, exc_info=True)
@@ -2660,6 +2928,7 @@ async def warp_document(
 async def ocr_logbook_excel(
     file: UploadFile = File(...),
     mock: bool = Form(default=False),
+    model: str | None = Form(default=None),
     system_prompt: str | None = Form(default=None),
     user_message: str | None = Form(default=None),
     preprocess_profile: str | None = Form(default=None),
@@ -2668,6 +2937,7 @@ async def ocr_logbook_excel(
     db: Session = Depends(get_db),
 ) -> Response:
     _require_ocr_access(current_user)
+    requested_model = sanitize_text(model, max_length=80, preserve_newlines=False) or None
     if mock:
         _reject_mock_ocr()
         image_bytes = await _read_image_upload_for_mock(file)
@@ -2685,9 +2955,10 @@ async def ocr_logbook_excel(
         if not preprocess_profile:
             preprocess_profile = os.getenv("LEDGER_SCAN_PREPROCESS_PROFILE")
         base64_image = preprocess_image_bytes(image_bytes, profile=preprocess_profile)
-        rows = ledger_extract_data(
+        rows, model_meta = ledger_extract_data(
             base64_image,
             force_mock=mock,
+            model=requested_model,
             system_prompt=system_prompt,
             user_message=user_message,
         )
@@ -2713,6 +2984,8 @@ async def ocr_logbook_excel(
         raise HTTPException(status_code=500, detail="LedgerScan OCR failed unexpectedly.") from error
 
     metadata = validated.get("metadata", {})
+    metadata = dict(metadata)
+    metadata.update(model_meta)
     headers = {
         "Content-Disposition": "attachment; filename=logbook_ledger_scan.xlsx",
         "Cache-Control": "no-store",
@@ -2723,6 +2996,12 @@ async def ocr_logbook_excel(
         "X-Balanced": str(bool(metadata.get("balanced"))).lower(),
         "X-Difference": str(metadata.get("difference", 0)),
         "X-Low-Confidence-Rows": json.dumps(metadata.get("low_confidence_rows", [])),
+        "X-Requested-Model": str(metadata.get("requested_model", requested_model or "")),
+        "X-Model-Used": str(metadata.get("model_used", "")),
+        "X-Input-Tokens": str((metadata.get("token_usage") or {}).get("input_tokens", 0)),
+        "X-Output-Tokens": str((metadata.get("token_usage") or {}).get("output_tokens", 0)),
+        "X-Total-Tokens": str((metadata.get("token_usage") or {}).get("total_tokens", 0)),
+        "X-Estimated-Cost": str((metadata.get("token_usage") or {}).get("estimated_cost", 0)),
     }
     if request is not None:
         safe_name = sanitize_text(file.filename, max_length=200, preserve_newlines=False) or "unknown"
@@ -2749,6 +3028,7 @@ async def ocr_logbook_excel(
 async def ocr_logbook_excel_async(
     file: UploadFile = File(...),
     mock: bool = Form(default=False),
+    model: str | None = Form(default=None),
     system_prompt: str | None = Form(default=None),
     user_message: str | None = Form(default=None),
     preprocess_profile: str | None = Form(default=None),
@@ -2756,6 +3036,7 @@ async def ocr_logbook_excel_async(
     db: Session = Depends(get_db),
 ) -> dict:
     _require_ocr_access(current_user)
+    requested_model = sanitize_text(model, max_length=80, preserve_newlines=False) or None
     if mock:
         _reject_mock_ocr()
         image_bytes = await _read_image_upload_for_mock(file)
@@ -2779,6 +3060,7 @@ async def ocr_logbook_excel_async(
         content_type=file.content_type,
         size_bytes=len(image_bytes),
         mock=mock,
+        requested_model=requested_model,
         system_prompt=system_prompt,
         user_message=user_message,
         preprocess_profile=preprocess_profile,
@@ -2793,6 +3075,7 @@ async def ocr_logbook_excel_async(
 async def ocr_table_excel(
     file: UploadFile | None = File(default=None),
     image: UploadFile | None = File(default=None),
+    model: str | None = Form(default=None),
     system_prompt: str | None = Form(default=None),
     user_message: str | None = Form(default=None),
     preprocess_profile: str | None = Form(default=None),
@@ -2802,6 +3085,7 @@ async def ocr_table_excel(
 ) -> Response:
     _require_ocr_access(current_user)
     del preprocess_profile
+    requested_model = sanitize_text(model, max_length=80, preserve_newlines=False) or None
     try:
         upload, image_bytes = await _read_table_excel_upload(file, image)
     except TableExcelRouteError as error:
@@ -2819,6 +3103,7 @@ async def ocr_table_excel(
             image_bytes,
             content_type=upload.content_type,
             filename=upload.filename,
+            requested_model=requested_model,
             system_prompt=system_prompt,
             user_message=user_message,
         )
@@ -2829,14 +3114,7 @@ async def ocr_table_excel(
         logger.exception("[OCR] Error: Table Excel OCR failed unexpectedly")
         return JSONResponse(status_code=500, content={"error": f"Table Excel OCR failed: {error}"})
 
-    headers = {
-        "Content-Disposition": "attachment; filename=output.xlsx",
-        "X-Total-Rows": str(metadata.get("total_rows", 0)),
-        "X-Total-Columns": str(metadata.get("total_columns", 0)),
-        "X-Image-Quality-Score": str(metadata.get("image_quality_score", "")),
-        "X-Model-Used": str(metadata.get("model_used", "")),
-        "Cache-Control": "no-store",
-    }
+    headers = _table_excel_response_headers(metadata, filename="output.xlsx")
     if request is not None:
         safe_name = sanitize_text(upload.filename, max_length=200, preserve_newlines=False) or "unknown"
         org_id = resolve_org_id(current_user)
@@ -2863,6 +3141,7 @@ async def ocr_table_excel(
 async def ocr_table_excel_async(
     file: UploadFile | None = File(default=None),
     image: UploadFile | None = File(default=None),
+    model: str | None = Form(default=None),
     system_prompt: str | None = Form(default=None),
     user_message: str | None = Form(default=None),
     preprocess_profile: str | None = Form(default=None),
@@ -2871,6 +3150,7 @@ async def ocr_table_excel_async(
 ) -> dict:
     _require_ocr_access(current_user)
     del preprocess_profile
+    requested_model = sanitize_text(model, max_length=80, preserve_newlines=False) or None
     try:
         upload, image_bytes = await _read_table_excel_upload(file, image)
         inspection = _inspect_table_excel_image(
@@ -2903,6 +3183,7 @@ async def ocr_table_excel_async(
         source_filename=_safe_file_name(upload.filename, "table-ocr-input.png"),
         content_type=upload.content_type,
         size_bytes=len(image_bytes),
+        requested_model=requested_model,
         system_prompt=system_prompt,
         user_message=user_message,
         image_bytes=image_bytes,

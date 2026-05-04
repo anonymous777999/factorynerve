@@ -1,5 +1,7 @@
 "use client";
 
+import type { OcrDebugPayload, OcrRoutingMeta, OcrScanQuality, OcrTokenUsage } from "@/lib/ocr";
+
 const OCR_UI_STORAGE_KEY = "dpr:ocr-ui-state";
 const MAX_STORED_IMAGE_BYTES = 1_400_000;
 
@@ -15,11 +17,18 @@ export type PersistedOcrUiState = {
   columnTypes?: Array<"text" | "number" | "date">;
   title?: string;
   resultType?: string;
+  rawText?: string | null;
+  language?: string | null;
   confidence?: number | null;
   warnings?: string[];
+  scanQuality?: OcrScanQuality | null;
+  routingMeta?: OcrRoutingMeta | null;
+  tokenUsage?: OcrTokenUsage | null;
+  debug?: OcrDebugPayload | null;
   documentHash?: string | null;
   savedId?: number | null;
   status?: string;
+  selectedModel?: string | null;
   showLowConfidence?: boolean;
   headerRowEnabled?: boolean;
 };

@@ -54,7 +54,40 @@ export type OcrRoutingMeta = {
   cost_saved_usd: number;
   provider_used?: string | null;
   provider_model?: string | null;
+  requested_model?: string | null;
+  selected_model?: string | null;
   ai_applied?: boolean;
+  ai_attempted?: boolean;
+  ai_degraded_to_base?: boolean;
+  ai_failure_reason?: string | null;
+  processing_time_ms?: number | null;
+  usage?: OcrTokenUsage | null;
+};
+
+export type OcrTokenUsage = {
+  model?: string | null;
+  display_name?: string | null;
+  input_tokens: number;
+  output_tokens: number;
+  cache_creation_input_tokens?: number;
+  cache_read_input_tokens?: number;
+  total_tokens: number;
+  input_cost?: number;
+  output_cost?: number;
+  estimated_cost: number;
+  currency?: string | null;
+  request_count?: number;
+  processing_time_ms?: number | null;
+};
+
+export type OcrDebugPayload = {
+  requested_model?: string | null;
+  selected_model?: string | null;
+  final_model_used?: string | null;
+  processing_time_ms?: number | null;
+  token_usage?: OcrTokenUsage | null;
+  model_attempts?: Array<Record<string, unknown>>;
+  raw_api_response?: Record<string, unknown> | null;
 };
 
 export type OcrScanQuality = {
@@ -82,6 +115,8 @@ export type OcrPreviewResult = {
   language?: string | null;
   confidence?: number | null;
   routing?: OcrRoutingMeta | null;
+  token_usage?: OcrTokenUsage | null;
+  debug?: OcrDebugPayload | null;
   reused?: boolean;
   reused_verification_id?: number | null;
   columns: number;
@@ -314,7 +349,7 @@ export async function previewOcrLogbook(payload: {
   language: string;
   templateId?: number | null;
   docTypeHint?: string | null;
-  forceModel?: "auto" | "fast" | "balanced" | "best";
+  model?: string | null;
   documentHash?: string | null;
 }) {
   const formData = new FormData();
@@ -327,12 +362,18 @@ export async function previewOcrLogbook(payload: {
   if (payload.docTypeHint) {
     formData.set("doc_type_hint", payload.docTypeHint);
   }
-  if (payload.forceModel && payload.forceModel !== "auto") {
-    formData.set("force_model", payload.forceModel);
+  if (payload.model && payload.model !== "auto") {
+    formData.set("model", payload.model);
   }
   if (payload.documentHash) {
     formData.set("document_hash", payload.documentHash);
   }
+  console.info("[OCR] /ocr/logbook payload", {
+    model: payload.model || "auto",
+    columns: payload.columns,
+    language: payload.language,
+    docTypeHint: payload.docTypeHint || "table",
+  });
   return withOcrWakeRetry(
     () =>
       apiFetch<OcrPreviewResult>("/ocr/logbook", {

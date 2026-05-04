@@ -204,9 +204,41 @@ def test_call_table_excel_anthropic_retries_with_alternate_model_on_model_error(
         user_message=None,
     )
 
-    assert calls == ["claude-haiku-4-5", "claude-haiku-4-5-20251001"]
+    assert calls == ["claude-haiku-4-5-20251001", "claude-haiku-4-5"]
     assert extracted["headers"] == ["Name"]
-    assert extracted["_provider_model"] == "claude-haiku-4-5-20251001"
+    assert extracted["_provider_model"] == ocr_router._TABLE_EXCEL_MODEL_HAIKU
+
+
+def test_call_table_excel_anthropic_respects_explicit_requested_model_without_fallback(monkeypatch):
+    image_bytes = _make_image_bytes("PNG", (720, 720))
+    calls: list[str] = []
+
+    class FakeResponse:
+        status_code = 404
+
+        def json(self):
+            return {"error": {"message": "model not available"}}
+
+    def fake_post(_url, *, headers=None, json=None, timeout=None):
+        del headers, timeout
+        calls.append(json["model"])
+        return FakeResponse()
+
+    monkeypatch.setattr(ocr_router.requests, "post", fake_post)
+
+    with pytest.raises(ocr_router.TableExcelRouteError) as exc_info:
+        ocr_router._call_table_excel_anthropic(
+            image_bytes,
+            image_mime_type="image/png",
+            selected_model=ocr_router._TABLE_EXCEL_MODEL_SONNET,
+            requested_model=ocr_router._TABLE_EXCEL_MODEL_SONNET,
+            system_prompt=None,
+            user_message=None,
+        )
+
+    assert calls == [ocr_router._TABLE_EXCEL_MODEL_SONNET]
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.payload["error"] == "model not available"
 
 
 def test_run_table_excel_pipeline_builds_excel_from_form_response(monkeypatch):
@@ -258,6 +290,60 @@ def test_run_table_excel_pipeline_builds_excel_from_form_response(monkeypatch):
     assert metadata["total_columns"] == 2
     assert metadata["image_quality_score"] == 90
     assert metadata["model_used"] == ocr_router._TABLE_EXCEL_MODEL_HAIKU
+
+
+def test_run_table_preview_pipeline_reports_requested_model_and_token_usage(monkeypatch):
+    image_bytes = _make_image_bytes("JPEG", (720, 720))
+
+    class FakeResponse:
+        status_code = 200
+
+        def json(self):
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(
+                            {
+                                "type": "table",
+                                "headers": ["Date", "Amount"],
+                                "rows": [["2026-04-29", "1250"]],
+                            }
+                        ),
+                    }
+                ],
+                "usage": {
+                    "input_tokens": 1200,
+                    "output_tokens": 345,
+                },
+            }
+
+    monkeypatch.setattr(ocr_router.requests, "post", lambda *args, **kwargs: FakeResponse())
+
+    payload = ocr_router._run_table_preview_pipeline(
+        image_bytes,
+        content_type="image/jpeg",
+        filename="scan.jpg",
+        template=None,
+        doc_type_hint="table",
+        requested_model=ocr_router._TABLE_EXCEL_MODEL_SONNET,
+        language="auto",
+    )
+
+    assert payload["routing"]["requested_model"] == ocr_router._TABLE_EXCEL_MODEL_SONNET
+    assert payload["routing"]["selected_model"] == ocr_router._TABLE_EXCEL_MODEL_SONNET
+    assert payload["routing"]["provider_model"] == ocr_router._TABLE_EXCEL_MODEL_SONNET
+    assert payload["routing"]["model_tier"] == "balanced"
+    assert payload["routing"]["forced"] is True
+    assert payload["token_usage"]["model"] == ocr_router._TABLE_EXCEL_MODEL_SONNET
+    assert payload["token_usage"]["input_tokens"] == 1200
+    assert payload["token_usage"]["output_tokens"] == 345
+    assert payload["token_usage"]["total_tokens"] == 1545
+    assert payload["token_usage"]["estimated_cost"] == pytest.approx(0.008775)
+    assert payload["debug"]["requested_model"] == ocr_router._TABLE_EXCEL_MODEL_SONNET
+    assert payload["debug"]["selected_model"] == ocr_router._TABLE_EXCEL_MODEL_SONNET
+    assert payload["debug"]["final_model_used"] == ocr_router._TABLE_EXCEL_MODEL_SONNET
+    assert payload["debug"]["raw_api_response"]["usage"]["total_tokens"] == 1545
 
 
 def test_run_table_preview_pipeline_returns_structured_rows_and_anthropic_routing(monkeypatch):
