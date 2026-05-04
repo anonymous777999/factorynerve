@@ -6,6 +6,7 @@ import logging
 from typing import Literal
 
 from backend.ocr_utils import analyze_image_quality
+from backend.services.anthropic_usage import normalize_anthropic_model_name, resolve_anthropic_model_tier
 
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,9 @@ def _forced_route(force_model: str | None) -> OcrModelTier | None:
     normalized = (force_model or "").strip().lower()
     if normalized in {"fast", "balanced", "best"}:
         return normalized  # type: ignore[return-value]
+    normalized_model = normalize_anthropic_model_name(force_model)
+    if normalized_model:
+        return resolve_anthropic_model_tier(normalized_model)  # type: ignore[return-value]
     return None
 
 

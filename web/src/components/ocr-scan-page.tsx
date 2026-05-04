@@ -34,6 +34,8 @@ import {
   type OcrPreviewResult,
   type OcrRoutingMeta,
   type OcrScanQuality,
+  type OcrTokenUsage,
+  type OcrDebugPayload,
   type OcrVerificationRecord,
 } from "@/lib/ocr";
 import {
@@ -78,7 +80,7 @@ type OcrFlowStep = "upload" | "processing" | "preview" | "export";
 type ProcessingStage = "uploaded" | "preprocess" | "detect" | "extract" | "confidence";
 type OcrColumnType = "text" | "number" | "date";
 type ActiveCell = { row: number; column: number } | null;
-type ModelTierOption = "auto" | "fast" | "balanced" | "best";
+type ModelOption = "auto" | "claude-haiku-4-5-20251001" | "claude-sonnet-4-6" | "claude-opus-4-7";
 
 type ResultPreview = {
   type: string;
@@ -92,6 +94,8 @@ type ResultPreview = {
   scanQuality?: OcrScanQuality | null;
   routingMeta?: OcrRoutingMeta | null;
   routingLabel?: string | null;
+  tokenUsage?: OcrTokenUsage | null;
+  debug?: OcrDebugPayload | null;
   reused?: boolean;
 };
 
@@ -109,12 +113,25 @@ const STEP_LABELS: Array<{ key: OcrFlowStep; label: string }> = [
   { key: "export", label: "Export" },
 ];
 
-const MODEL_TIER_LABELS: Record<ModelTierOption, string> = {
+const MODEL_LABELS: Record<ModelOption, string> = {
   auto: "Auto",
-  fast: "Fast",
-  balanced: "Balanced",
-  best: "Best",
+  "claude-haiku-4-5-20251001": "Claude Haiku 4.5",
+  "claude-sonnet-4-6": "Claude Sonnet 4.6",
+  "claude-opus-4-7": "Claude Opus 4.7",
 };
+
+function toModelOption(value: string | null | undefined): ModelOption {
+  if (value === "claude-haiku-4-5") {
+    return "claude-haiku-4-5-20251001";
+  }
+  if (value === "claude-sonnet-5" || value === "claude-sonnet-4-20250514" || value === "claude-sonnet-4-5-20250929") {
+    return "claude-sonnet-4-6";
+  }
+  if (value && value in MODEL_LABELS) {
+    return value as ModelOption;
+  }
+  return "auto";
+}
 
 function cloneRows(rows: string[][]) {
   return rows.map((row) => [...row]);
@@ -152,12 +169,61 @@ function formatExtractionSource(routing?: OcrRoutingMeta | null, confidence?: nu
   return formatConfidence(confidence ?? null);
 }
 
-function formatModelUsed(routing?: OcrRoutingMeta | null) {
+function formatModelUsed(
+  routing?: OcrRoutingMeta | null,
+  usage?: OcrTokenUsage | null,
+  debug?: OcrDebugPayload | null,
+) {
   if (routing?.provider_model) return routing.provider_model;
+  if (routing?.selected_model) return routing.selected_model;
+  if (debug?.final_model_used) return debug.final_model_used;
+  if (usage?.model) return usage.model;
   if (routing?.provider_used === "tesseract") return "local-tesseract";
   if (routing?.provider_used === "anthropic") return "anthropic-default";
   if (routing?.provider_used === "bytez") return "bytez-default";
   return "Not reported";
+}
+
+function formatTokenCount(value: number | null | undefined) {
+  if (value == null || Number.isNaN(value)) return "0";
+  return value.toLocaleString();
+}
+
+function formatUsd(value: number | null | undefined) {
+  if (value == null || Number.isNaN(value)) return "$0.000000";
+  return `$${value.toFixed(6)}`;
+}
+
+function formatDurationMs(value: number | null | undefined) {
+  if (!value || Number.isNaN(value)) return "Not reported";
+  if (value < 1000) return `${value} ms`;
+  return `${(value / 1000).toFixed(2)} s`;
+}
+
+function formatSelectedModelLabel(routing?: OcrRoutingMeta | null, usage?: OcrTokenUsage | null) {
+  if (usage?.display_name) return usage.display_name;
+  const selected = routing?.selected_model || routing?.provider_model;
+  if (selected) {
+    const option = toModelOption(selected);
+    return option === "auto" ? selected : MODEL_LABELS[option];
+  }
+  return routing?.model_tier || "Auto";
+}
+
+function buildDebugPayloadFromRouting(
+  routing?: OcrRoutingMeta | null,
+  usage?: OcrTokenUsage | null,
+): OcrDebugPayload | null {
+  if (!routing && !usage) return null;
+  return {
+    requested_model: routing?.requested_model ?? null,
+    selected_model: routing?.selected_model ?? null,
+    final_model_used: routing?.provider_model ?? usage?.model ?? null,
+    processing_time_ms: routing?.processing_time_ms ?? usage?.processing_time_ms ?? null,
+    token_usage: usage ?? routing?.usage ?? null,
+    model_attempts: [],
+    raw_api_response: null,
+  };
 }
 
 function lowConfidenceCount(matrix: number[][], visible: boolean) {
@@ -326,7 +392,7 @@ export default function OcrScanPage() {
   const [draftDirty, setDraftDirty] = useState(false);
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [shareExpiresAt, setShareExpiresAt] = useState<string | null>(null);
-  const [selectedModelTier, setSelectedModelTier] = useState<ModelTierOption>("auto");
+  const [selectedModel, setSelectedModel] = useState<ModelOption>("auto");
   const [restored, setRestored] = useState(false);
 
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
@@ -390,6 +456,10 @@ export default function OcrScanPage() {
   const canUndo = historyIndexRef.current > 0;
   const canRedo = historyIndexRef.current >= 0 && historyIndexRef.current < historyRef.current.length - 1;
 
+  useEffect(() => {
+    console.info("[OCR] Model selection changed", selectedModel);
+  }, [selectedModel]);
+
   const loadRecentRecords = useCallback(async () => {
     try {
       const records = await listOcrVerifications();
@@ -450,6 +520,7 @@ export default function OcrScanPage() {
       setStatus(snapshot.status || "");
       setDocumentHash(snapshot.documentHash || null);
       setSavedId(snapshot.savedId ?? null);
+      setSelectedModel(toModelOption(snapshot.selectedModel));
       setShowLowConfidence(snapshot.showLowConfidence ?? true);
       setHeaderRowEnabled(snapshot.headerRowEnabled ?? false);
       if (snapshot.title || snapshot.headers?.length || snapshot.rows?.length) {
@@ -461,11 +532,15 @@ export default function OcrScanPage() {
           title: snapshot.title || "OCR Extraction",
           headers,
           rows,
-          language: "auto",
+          rawText: snapshot.rawText ?? null,
+          language: snapshot.language || "auto",
           avgConfidence: snapshot.confidence ?? null,
           warnings: snapshot.warnings || [],
-          routingMeta: null,
-          routingLabel: null,
+          scanQuality: snapshot.scanQuality ?? null,
+          routingMeta: snapshot.routingMeta ?? null,
+          routingLabel: snapshot.routingMeta?.model_tier ?? null,
+          tokenUsage: snapshot.tokenUsage ?? snapshot.routingMeta?.usage ?? null,
+          debug: snapshot.debug ?? buildDebugPayloadFromRouting(snapshot.routingMeta, snapshot.tokenUsage ?? snapshot.routingMeta?.usage ?? null),
         });
         resetHistory({
           headers,
@@ -500,11 +575,18 @@ export default function OcrScanPage() {
         columnTypes,
         title: resultPreview?.title,
         resultType: resultPreview?.type,
+        rawText: resultPreview?.rawText ?? null,
+        language: resultPreview?.language ?? "auto",
         confidence: resultPreview?.avgConfidence ?? null,
         warnings: resultPreview?.warnings ?? [],
+        scanQuality: resultPreview?.scanQuality ?? null,
+        routingMeta: resultPreview?.routingMeta ?? null,
+        tokenUsage: resultPreview?.tokenUsage ?? null,
+        debug: resultPreview?.debug ?? null,
         documentHash,
         savedId,
         status,
+        selectedModel,
         showLowConfidence,
         headerRowEnabled,
       });
@@ -522,10 +604,17 @@ export default function OcrScanPage() {
     preparedPreviewFile,
     restored,
     resultPreview?.avgConfidence,
+    resultPreview?.debug,
+    resultPreview?.language,
+    resultPreview?.rawText,
+    resultPreview?.routingMeta,
+    resultPreview?.scanQuality,
+    resultPreview?.tokenUsage,
     resultPreview?.title,
     resultPreview?.type,
     resultPreview?.warnings,
     savedId,
+    selectedModel,
     showLowConfidence,
     sourceFilename,
     status,
@@ -558,7 +647,7 @@ export default function OcrScanPage() {
     setDocumentHash(null);
     setSavedId(null);
     setDraftDirty(false);
-    setSelectedModelTier("auto");
+    setSelectedModel("auto");
     setShareLink(null);
     setShareExpiresAt(null);
     historyRef.current = [];
@@ -636,7 +725,7 @@ export default function OcrScanPage() {
     return () => window.clearTimeout(timer);
   }, [draftDirty, persistStructuredDraft, resultPreview]);
 
-  const processFile = useCallback(async (file: File, sourceName: string, forceModel: ModelTierOption = "auto") => {
+  const processFile = useCallback(async (file: File, sourceName: string, model: ModelOption = "auto") => {
     setBusy(true);
     setStatus("");
     setShareLink(null);
@@ -678,6 +767,7 @@ export default function OcrScanPage() {
       const extractTimer = window.setTimeout(() => setProcessingStage("extract"), 500);
       const confidenceTimer = window.setTimeout(() => setProcessingStage("confidence"), 1300);
 
+      console.info("[OCR] Selected model", model);
       let result: OcrPreviewResult;
       try {
         result = await previewOcrLogbook({
@@ -685,7 +775,7 @@ export default function OcrScanPage() {
           columns: 5,
           language: "auto",
           docTypeHint: "table",
-          forceModel,
+          model,
           documentHash: prepared.sha256,
         });
       } finally {
@@ -714,8 +804,16 @@ export default function OcrScanPage() {
         scanQuality: result.scan_quality ?? null,
         routingMeta: result.routing ?? null,
         routingLabel: result.routing?.model_tier ?? null,
+        tokenUsage: result.token_usage ?? result.routing?.usage ?? null,
+        debug: result.debug ?? null,
         reused: result.reused ?? false,
       };
+
+      console.info("[OCR] OCR response", {
+        requestedModel: model,
+        finalModel: result.routing?.provider_model || result.routing?.selected_model || "unknown",
+        tokenUsage: result.token_usage ?? result.routing?.usage ?? null,
+      });
 
       setResultPreview(nextPreview);
       setConfidenceMatrix(result.cell_confidence || []);
@@ -824,8 +922,8 @@ export default function OcrScanPage() {
     setResultPreview(null);
     setConfidenceMatrix([]);
     setDraftDirty(false);
-    void processFile(workingFile, file.name, selectedModelTier);
-  }, [originalUrl, preparedPreviewUrl, processFile, selectedModelTier]);
+    void processFile(workingFile, file.name, selectedModel);
+  }, [originalUrl, preparedPreviewUrl, processFile, selectedModel]);
 
   const handleRerunWithSelectedModel = useCallback(() => {
     if (!rerunSourceFile) {
@@ -833,8 +931,8 @@ export default function OcrScanPage() {
       setStatusTone("warning");
       return;
     }
-    void processFile(rerunSourceFile, sourceFilename || rerunSourceFile.name, selectedModelTier);
-  }, [processFile, rerunSourceFile, selectedModelTier, sourceFilename]);
+    void processFile(rerunSourceFile, sourceFilename || rerunSourceFile.name, selectedModel);
+  }, [processFile, rerunSourceFile, selectedModel, sourceFilename]);
 
   const openRecentRecord = useCallback(async (verificationId: number) => {
     try {
@@ -862,9 +960,17 @@ export default function OcrScanPage() {
         scanQuality: record.scan_quality ?? null,
         routingMeta: record.routing_meta ?? null,
         routingLabel: record.routing_meta?.model_tier ?? null,
+        tokenUsage: record.routing_meta?.usage ?? null,
+        debug: buildDebugPayloadFromRouting(record.routing_meta ?? null, record.routing_meta?.usage ?? null),
         reused: true,
       });
-      setSelectedModelTier(record.routing_meta?.model_tier ?? "auto");
+      setSelectedModel(
+        toModelOption(
+          record.routing_meta?.requested_model
+            || record.routing_meta?.selected_model
+            || record.routing_meta?.provider_model,
+        ),
+      );
       resetHistory({
         headers,
         rows,
@@ -1292,10 +1398,10 @@ export default function OcrScanPage() {
                         {formatExtractionSource(resultPreview.routingMeta, resultPreview.avgConfidence)}
                       </div>
                       <div className="mt-1 text-xs text-[#667085]">
-                        Model used: <span className="font-semibold text-[#101828]">{formatModelUsed(resultPreview.routingMeta)}</span>
+                        Model used: <span className="font-semibold text-[#101828]">{formatModelUsed(resultPreview.routingMeta, resultPreview.tokenUsage, resultPreview.debug)}</span>
                         {resultPreview.routingMeta?.model_tier ? (
                           <span className="ml-2 rounded-full border border-[#d9e1e8] bg-[#f8fafc] px-2 py-0.5 text-[11px] font-medium text-[#344054]">
-                            {MODEL_TIER_LABELS[resultPreview.routingMeta.model_tier]}
+                            {formatSelectedModelLabel(resultPreview.routingMeta, resultPreview.tokenUsage)}
                             {resultPreview.routingMeta.forced ? " forced" : ""}
                           </span>
                         ) : null}
@@ -1371,6 +1477,77 @@ export default function OcrScanPage() {
 
                   <KeyboardShortcutStrip lowConfidenceCount={visibleLowConfidenceCount} />
 
+                  {resultPreview.tokenUsage ? (
+                    <div className="rounded-[24px] border border-[#e3e8ef] bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
+                      <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]">Token usage</div>
+                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
+                          <div className="text-xs text-[#667085]">Model</div>
+                          <div className="mt-1 text-sm font-semibold text-[#101828]">
+                            {formatSelectedModelLabel(resultPreview.routingMeta, resultPreview.tokenUsage)}
+                          </div>
+                        </div>
+                        <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
+                          <div className="text-xs text-[#667085]">Estimated cost</div>
+                          <div className="mt-1 text-sm font-semibold text-[#101828]">
+                            {formatUsd(resultPreview.tokenUsage.estimated_cost)}
+                          </div>
+                        </div>
+                        <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
+                          <div className="text-xs text-[#667085]">Input tokens</div>
+                          <div className="mt-1 text-sm font-semibold text-[#101828]">
+                            {formatTokenCount(resultPreview.tokenUsage.input_tokens)}
+                          </div>
+                        </div>
+                        <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
+                          <div className="text-xs text-[#667085]">Output tokens</div>
+                          <div className="mt-1 text-sm font-semibold text-[#101828]">
+                            {formatTokenCount(resultPreview.tokenUsage.output_tokens)}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
+                        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                          <span className="text-[#667085]">Total tokens</span>
+                          <span className="font-semibold text-[#101828]">
+                            {formatTokenCount(resultPreview.tokenUsage.total_tokens)}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+                          <span className="text-[#667085]">Processing time</span>
+                          <span className="font-medium text-[#101828]">
+                            {formatDurationMs(
+                              resultPreview.debug?.processing_time_ms
+                                ?? resultPreview.tokenUsage.processing_time_ms
+                                ?? resultPreview.routingMeta?.processing_time_ms,
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                      {resultPreview.debug ? (
+                        <details className="mt-3 rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
+                          <summary className="cursor-pointer text-sm font-medium text-[#344054]">Debug details</summary>
+                          <div className="mt-3 space-y-3 text-xs text-[#475467]">
+                            <div>Requested model: {resultPreview.debug.requested_model || "auto"}</div>
+                            <div>Selected model: {resultPreview.debug.selected_model || "Not reported"}</div>
+                            <div>Final model used: {resultPreview.debug.final_model_used || formatModelUsed(resultPreview.routingMeta, resultPreview.tokenUsage, resultPreview.debug)}</div>
+                            <pre className="overflow-auto rounded-[16px] bg-[#101828] p-3 text-[11px] text-[#f8fafc]">
+                              {JSON.stringify(
+                                {
+                                  token_usage: resultPreview.debug.token_usage,
+                                  model_attempts: resultPreview.debug.model_attempts,
+                                  raw_api_response: resultPreview.debug.raw_api_response,
+                                },
+                                null,
+                                2,
+                              )}
+                            </pre>
+                          </div>
+                        </details>
+                      ) : null}
+                    </div>
+                  ) : null}
+
                   <div className="rounded-[24px] border border-[#dbe3eb] bg-[#f8fbff] p-4">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                       <div className="max-w-2xl">
@@ -1379,24 +1556,24 @@ export default function OcrScanPage() {
                           If the extracted sheet still looks wrong, choose a stronger model and re-run this scan before exporting again.
                         </p>
                         <div className="mt-2 text-xs text-[#667085]">
-                          Current result: <span className="font-medium text-[#344054]">{formatModelUsed(resultPreview.routingMeta)}</span>
+                          Current result: <span className="font-medium text-[#344054]">{formatModelUsed(resultPreview.routingMeta, resultPreview.tokenUsage, resultPreview.debug)}</span>
                         </div>
                       </div>
                       <div className="w-full max-w-sm">
-                        <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]" htmlFor="ocr-model-tier">
+                        <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]" htmlFor="ocr-model">
                           Extraction model
                         </label>
                         <Select
-                          id="ocr-model-tier"
-                          value={selectedModelTier}
-                          onChange={(event) => setSelectedModelTier(event.target.value as ModelTierOption)}
+                          id="ocr-model"
+                          value={selectedModel}
+                          onChange={(event) => setSelectedModel(toModelOption(event.target.value))}
                           disabled={busy}
                           className="mt-2"
                         >
                           <option value="auto">Auto</option>
-                          <option value="fast">Fast</option>
-                          <option value="balanced">Balanced</option>
-                          <option value="best">Best</option>
+                          <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+                          <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
+                          <option value="claude-opus-4-7">Claude Opus 4.7</option>
                         </Select>
                         <button
                           type="button"
@@ -1404,7 +1581,7 @@ export default function OcrScanPage() {
                           disabled={busy || !canRerunWithSelectedModel}
                           onClick={handleRerunWithSelectedModel}
                         >
-                          Re-run with {MODEL_TIER_LABELS[selectedModelTier]}
+                          Re-run with {MODEL_LABELS[selectedModel]}
                         </button>
                         {!canRerunWithSelectedModel ? (
                           <p className="mt-2 text-xs text-[#667085]">

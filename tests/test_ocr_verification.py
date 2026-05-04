@@ -6,7 +6,10 @@ from openpyxl import load_workbook
 from PIL import Image
 
 from backend.database import SessionLocal
+from backend.models.ocr_verification import OcrVerification
 from backend.models.report import AuditLog
+from backend.models.user import User
+from backend.services.ocr_document_pipeline import find_reusable_verification
 from tests.utils import register_user
 
 
@@ -218,6 +221,61 @@ def test_ocr_verification_create_persists_source_image_and_ai_routing_meta(http_
     source = http_client.get(payload["source_image_url"], headers=headers)
     assert source.status_code == HTTPStatus.OK, source.text
     assert source.headers["content-type"] == "image/png"
+
+
+def test_find_reusable_verification_respects_requested_model(http_client):
+    user = register_user(http_client, role="admin")
+
+    with SessionLocal() as db:
+        db_user = db.query(User).filter(User.id == user["user_id"]).first()
+        assert db_user is not None
+
+        verification = OcrVerification(
+            org_id=db_user.org_id,
+            factory_id=None,
+            user_id=db_user.id,
+            source_filename="ocr-check.png",
+            columns=2,
+            language="eng",
+            document_hash="hash-model-switch",
+            doc_type_hint="table",
+            routing_meta={
+                "provider_used": "anthropic",
+                "provider_model": "claude-haiku-4-5",
+                "requested_model": "claude-haiku-4-5",
+                "selected_model": "claude-haiku-4-5",
+                "ai_applied": True,
+                "ai_attempted": True,
+                "ai_degraded_to_base": False,
+            },
+            headers=["Date", "Amount"],
+            original_rows=[["2026-03-29", "125"]],
+            reviewed_rows=[["2026-03-29", "125"]],
+        )
+        db.add(verification)
+        db.commit()
+        db.refresh(verification)
+
+        same_model = find_reusable_verification(
+            db,
+            org_id=db_user.org_id,
+            document_hash="hash-model-switch",
+            template_id=None,
+            doc_type_hint="table",
+            requested_model="claude-haiku-4-5",
+        )
+        different_model = find_reusable_verification(
+            db,
+            org_id=db_user.org_id,
+            document_hash="hash-model-switch",
+            template_id=None,
+            doc_type_hint="table",
+            requested_model="claude-sonnet-4-6",
+        )
+
+    assert same_model is not None
+    assert same_model.id == verification.id
+    assert different_model is None
 
 
 def test_approved_ocr_verification_export_is_marked_trusted(http_client):

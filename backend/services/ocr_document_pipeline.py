@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 from backend.models.ocr_template import OcrTemplate
 from backend.models.ocr_verification import OcrVerification
 from backend.ocr_utils import OcrResult
+from backend.services.anthropic_usage import normalize_anthropic_model_name
+from backend.services.ocr_confidence import calculate_structural_confidence
 from backend.services.ocr_normalization import normalize_structured_payload
 from backend.services.ocr_routing import choose_ocr_route
 from backend.table_scan import extract_table_from_image
@@ -104,6 +106,19 @@ def _reuse_has_remote_ai(candidate: OcrVerification) -> bool:
     }
 
 
+def _reuse_matches_requested_model(candidate: OcrVerification, requested_model: str | None) -> bool:
+    normalized_requested = normalize_anthropic_model_name(requested_model)
+    if not normalized_requested:
+        return True
+    routing = candidate.routing_meta or {}
+    if not isinstance(routing, dict):
+        return False
+    provider_model = normalize_anthropic_model_name(str(routing.get("provider_model") or ""))
+    selected_model = normalize_anthropic_model_name(str(routing.get("selected_model") or ""))
+    requested_meta_model = normalize_anthropic_model_name(str(routing.get("requested_model") or ""))
+    return normalized_requested in {provider_model, selected_model, requested_meta_model}
+
+
 def _flatten_rows(rows: list[list[str]]) -> str | None:
     parts = [" | ".join(cell for cell in row if cell) for row in rows]
     joined = "\n".join(part for part in parts if part.strip())
@@ -144,6 +159,7 @@ def find_reusable_verification(
     document_hash: str | None,
     template_id: int | None,
     doc_type_hint: str | None,
+    requested_model: str | None = None,
 ) -> OcrVerification | None:
     if not org_id or not document_hash:
         return None
@@ -165,6 +181,8 @@ def find_reusable_verification(
             continue
         if normalized_hint in _AI_REQUIRED_DOC_TYPES and not _reuse_has_remote_ai(candidate):
             continue
+        if not _reuse_matches_requested_model(candidate, requested_model):
+            continue
         if candidate.reviewed_rows or candidate.original_rows:
             return candidate
     return None
@@ -180,6 +198,7 @@ def build_structured_ocr_result(
     doc_type_hint: str | None = None,
     force_model: str | None = None,
 ) -> dict[str, Any]:
+    requested_model = normalize_anthropic_model_name(force_model)
     try:
         route = choose_ocr_route(
             image_bytes,
@@ -201,9 +220,12 @@ def build_structured_ocr_result(
     route_meta = dict(route or _DEFAULT_ROUTE)
     route_meta.setdefault("provider_used", "tesseract")
     route_meta.setdefault("provider_model", "local-tesseract")
+    route_meta.setdefault("requested_model", requested_model)
+    route_meta.setdefault("selected_model", requested_model)
     route_meta.setdefault("ai_applied", False)
     route_meta.setdefault("ai_attempted", False)
     route_meta.setdefault("ai_degraded_to_base", False)
+    ai_debug_response: dict[str, Any] | None = None
     ai_required = _requires_remote_table_ai(doc_type_hint)
     extra_warnings: list[str] = []
     if ai_required and str(route_meta.get("model_tier") or "fast") == "fast":
@@ -229,6 +251,7 @@ def build_structured_ocr_result(
                 provider_preference="anthropic",
                 allow_local_fallback=False,
                 model_tier=str(route.get("model_tier") or "balanced"),
+                requested_model=requested_model,
             )
             candidate = normalize_structured_payload(
                 ai_table,
@@ -246,7 +269,13 @@ def build_structured_ocr_result(
                 normalized = candidate
                 route_meta["provider_used"] = ai_table.get("provider_used") or "anthropic"
                 route_meta["provider_model"] = ai_table.get("provider_model") or route_meta.get("provider_model")
+                route_meta["requested_model"] = ai_table.get("requested_model") or route_meta.get("requested_model")
+                route_meta["selected_model"] = ai_table.get("selected_model") or route_meta.get("selected_model")
                 route_meta["ai_applied"] = bool(ai_table.get("ai_applied", True))
+                if isinstance(ai_table.get("token_usage"), dict):
+                    route_meta["usage"] = ai_table.get("token_usage")
+                if isinstance(ai_table.get("debug_response"), dict):
+                    ai_debug_response = ai_table.get("debug_response")
             else:
                 logger.info("Structured OCR AI enhancement returned no rows; keeping base OCR result.")
         except Exception as error:  # pylint: disable=broad-except
@@ -284,7 +313,13 @@ def build_structured_ocr_result(
     )
     normalized_headers = normalized.get("headers") or []
     normalized_rows = normalized.get("rows") or []
-    avg_confidence = float(base_result.avg_confidence or 0)
+    confidence_payload = calculate_structural_confidence(
+        {
+            "headers": normalized_headers,
+            "rows": normalized_rows,
+        }
+    )
+    avg_confidence = float(confidence_payload.get("score") or 0.0)
     return {
         "type": normalized.get("type") or _doc_type(doc_type_hint),
         "title": normalized.get("title") or _title_from_hint(doc_type_hint, template),
@@ -302,6 +337,20 @@ def build_structured_ocr_result(
         "used_language": used_language,
         "fallback_used": fallback_used,
         "raw_column_added": bool(base_result.raw_column_added),
+        "token_usage": route_meta.get("usage") if isinstance(route_meta.get("usage"), dict) else None,
+        "debug": {
+            "requested_model": route_meta.get("requested_model"),
+            "selected_model": route_meta.get("selected_model"),
+            "final_model_used": route_meta.get("provider_model"),
+            "processing_time_ms": (route_meta.get("usage") or {}).get("processing_time_ms")
+            if isinstance(route_meta.get("usage"), dict)
+            else None,
+            "token_usage": route_meta.get("usage") if isinstance(route_meta.get("usage"), dict) else None,
+            "model_attempts": [],
+            "raw_api_response": ai_debug_response,
+        }
+        if route_meta.get("provider_used") == "anthropic"
+        else None,
         "reused": False,
         "reused_verification_id": None,
     }

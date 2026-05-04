@@ -47,7 +47,7 @@ def test_run_provider_enforces_max_retry_and_no_image_resend(mock_claude):
     valid_json = '[{"particular": "Entry 1", "dr": 100, "cr": null}]'
     mock_claude.side_effect = [
         {"text": "malformed", "history": [], "model_used": "haiku", "attempt": 1, "fallback_used": False},
-        {"text": valid_json, "history": [], "model_used": ledger_scan.MODEL_OPUS, "attempt": 2, "fallback_used": True}
+        {"text": valid_json, "history": [], "model_used": ledger_scan.MODEL_SONNET, "attempt": 2, "fallback_used": True}
     ]
     
     with patch("backend.ledger_scan.MAX_RETRY", 1):
@@ -68,19 +68,18 @@ def test_run_provider_enforces_max_retry_and_no_image_resend(mock_claude):
     # Check second call (retry)
     args, kwargs = mock_claude.call_args_list[1]
     assert args[0] is not None  # image IS resent for major recovery in this version
-    assert kwargs["model_override"] == ledger_scan.MODEL_OPUS # Major error -> Opus
+    assert kwargs["model_override"] == ledger_scan.MODEL_SONNET # Sequential upgrade starts with Sonnet
     assert "Fix this JSON" in kwargs["user_message"]
     assert len(rows) == 1
     assert meta["fallback_used"] is True
     assert meta["attempt"] == 2
 
 def test_run_provider_minor_error_uses_sonnet(mock_claude):
-    # NOTE: In the refactored version, minor errors do NOT trigger retry by default
-    # only JSON failure or major_error (validation) does.
-    # So we mock a major validation error to test Opus retry.
+    # Major validation failures should escalate sequentially from Haiku -> Sonnet -> Opus.
     valid_json = json.dumps([{"particular": "Entry 1", "dr": 100, "cr": None}])
     mock_claude.side_effect = [
         {"text": valid_json, "history": [], "model_used": "haiku", "attempt": 1, "fallback_used": False},
+        {"text": valid_json, "history": [], "model_used": ledger_scan.MODEL_SONNET, "attempt": 2, "fallback_used": True},
         {"text": valid_json, "history": [], "model_used": ledger_scan.MODEL_OPUS, "attempt": 2, "fallback_used": True}
     ]
     
@@ -95,7 +94,7 @@ def test_run_provider_minor_error_uses_sonnet(mock_claude):
             with patch("backend.ledger_scan._has_provider_key", return_value=True):
                  rows, meta = ledger_scan.extract_data_from_image("fake_base64")
 
-    # Check second call (retry)
+    assert mock_claude.call_count == 3
     assert meta["model_used"] == ledger_scan.MODEL_OPUS
     assert meta["fallback_used"] is True
 

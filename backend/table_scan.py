@@ -4,6 +4,7 @@ import ast
 import json
 import logging
 import os
+import re
 from datetime import datetime
 from io import BytesIO
 from typing import Any
@@ -15,14 +16,30 @@ from openpyxl.styles import Alignment, Font, PatternFill
 from openpyxl.utils import get_column_letter
 
 from backend.ledger_scan import preprocess_image_bytes
+from backend.services.anthropic_usage import (
+    ANTHROPIC_MODEL_HAIKU,
+    ANTHROPIC_MODEL_OPUS,
+    ANTHROPIC_MODEL_SONNET,
+    build_anthropic_usage_summary,
+    get_next_anthropic_model_upgrade,
+    get_ocr_confidence_threshold,
+    get_ocr_max_retries,
+    merge_anthropic_usage_summaries,
+    normalize_anthropic_model_name,
+    serialize_anthropic_response_debug,
+    verify_anthropic_response_model,
+    would_exceed_cost_limit,
+)
+from backend.services.ocr_confidence import calculate_structural_confidence
 
 logger = logging.getLogger(__name__)
 
 BYTEZ_API_BASE = "https://api.bytez.com/models/v2"
 BYTEZ_DEFAULT_MODEL = "google/gemma-7b"
-DEFAULT_ANTHROPIC_MODEL_FAST = "claude-haiku-4-5"
-DEFAULT_ANTHROPIC_MODEL_BALANCED = "claude-sonnet-5"
-DEFAULT_ANTHROPIC_MODEL_BEST = "claude-opus-4-7"
+DEFAULT_ANTHROPIC_MODEL_FAST = ANTHROPIC_MODEL_HAIKU
+DEFAULT_ANTHROPIC_MODEL_BALANCED = ANTHROPIC_MODEL_SONNET
+DEFAULT_ANTHROPIC_MODEL_BEST = ANTHROPIC_MODEL_OPUS
+MAX_RETRY = max(0, get_ocr_max_retries() - 1)
 
 SYSTEM_PROMPT = (
     "You are a document table extraction expert.\n"
@@ -148,7 +165,10 @@ def _has_provider_key(provider: str) -> bool:
     return False
 
 
-def _anthropic_model_name(model_tier: str | None = None) -> str:
+def _anthropic_model_name(model_tier: str | None = None, requested_model: str | None = None) -> str:
+    normalized_requested = normalize_anthropic_model_name(requested_model)
+    if normalized_requested:
+        return normalized_requested
     normalized_tier = (model_tier or "").strip().lower()
     if normalized_tier == "best":
         return (
@@ -330,10 +350,11 @@ def _call_claude(
     system_prompt: str,
     user_message: str,
     model_tier: str | None = None,
+    requested_model: str | None = None,
     history: list[dict] | None = None,
-) -> tuple[str, list[dict]]:
+) -> dict[str, Any]:
     client = _get_client()
-    model = _anthropic_model_name(model_tier)
+    model = _anthropic_model_name(model_tier, requested_model)
 
     if history:
         messages = history
@@ -374,7 +395,27 @@ def _call_claude(
     next_history = messages + [
         {"role": "assistant", "content": text}
     ]
-    return text, next_history
+    actual_model = verify_anthropic_response_model(
+        model,
+        response,
+        context="TableScan",
+    )
+    usage_summary = build_anthropic_usage_summary(actual_model, response)
+    logger.info(
+        "TableScan Claude response model=%s input_tokens=%s output_tokens=%s total_tokens=%s estimated_cost=%s",
+        actual_model,
+        usage_summary["input_tokens"],
+        usage_summary["output_tokens"],
+        usage_summary["total_tokens"],
+        usage_summary["estimated_cost"],
+    )
+    return {
+        "text": text,
+        "history": next_history,
+        "model_used": actual_model,
+        "usage_summary": usage_summary,
+        "debug_response": serialize_anthropic_response_debug(response),
+    }
 
 
 def _normalize_table(data: Any) -> dict | None:
@@ -503,6 +544,17 @@ def validate_table_data(table: dict) -> dict:
     headers = table.get("headers", [])
     rows = table.get("rows", [])
     if not rows:
+        table["metadata"] = {
+            "validation_warnings": [],
+            "low_confidence_cells": [],
+            "is_validated": True,
+            "confidence": calculate_structural_confidence(
+                {
+                    "headers": headers if isinstance(headers, list) else [],
+                    "rows": rows if isinstance(rows, list) else [],
+                }
+            ),
+        }
         return table
 
     num_cols = len(headers)
@@ -531,7 +583,13 @@ def validate_table_data(table: dict) -> dict:
     table["metadata"] = {
         "validation_warnings": validation_warnings,
         "low_confidence_cells": low_confidence_cells,
-        "is_validated": True
+        "is_validated": True,
+        "confidence": calculate_structural_confidence(
+            {
+                "headers": headers if isinstance(headers, list) else [],
+                "rows": rows if isinstance(rows, list) else [],
+            }
+        ),
     }
     return table
 
@@ -545,6 +603,7 @@ def extract_table_from_image(
     provider_preference: str | None = None,
     allow_local_fallback: bool = True,
     model_tier: str | None = None,
+    requested_model: str | None = None,
 ) -> dict:
     profile = (
         preprocess_profile
@@ -558,6 +617,9 @@ def extract_table_from_image(
     last_error: Exception | None = None
 
     def _run_provider(provider: str) -> dict:
+        usage_summaries: list[dict[str, Any]] = []
+        last_debug_response: dict[str, Any] | None = None
+        model_used: str | None = None
         if provider == "tesseract":
             table = _call_local_tesseract(image_bytes)
             table["provider_used"] = "tesseract"
@@ -577,83 +639,107 @@ def extract_table_from_image(
             if raw is None:
                 raw = output if isinstance(output, str) else json.dumps(output)
         else:
-            raw, history = _call_claude(
-                image_bytes,
-                base64_image,
-                system_prompt=system_prompt,
-                user_message=user_message,
-                model_tier=model_tier,
-            )
+            selected_model = _anthropic_model_name(model_tier, requested_model)
+            current_model = selected_model
+            confidence_threshold = get_ocr_confidence_threshold()
+            accumulated_cost = 0.0
+            best_table: dict[str, Any] | None = None
+            best_score = -1.0
+            last_parsed: Any = None
+            last_raw = ""
+            last_history: list[dict] | None = None
 
-        parsed = _extract_json_candidate(raw)
-        table = _normalize_table(parsed) if parsed is not None else None
+            for attempt_index in range(MAX_RETRY + 1):
+                if attempt_index > 0 and would_exceed_cost_limit(accumulated_cost, current_model):
+                    logger.warning(
+                        "TableScan retry stopped before attempt %s because model=%s would exceed cost limit.",
+                        attempt_index + 1,
+                        current_model,
+                    )
+                    break
 
-        # Logical Loopback: Check for vertical sum errors
-        if table is not None:
-            validated = validate_table_data(table)
-            warnings = validated.get("metadata", {}).get("validation_warnings", [])
-            if warnings and provider != "bytez":
-                # Trigger a logical correction pass
-                correction_msg = (
-                    "I found some mathematical discrepancies in your table extraction:\n" +
-                    "\n".join(warnings) +
-                    "\nPlease re-examine the image carefully and fix the numbers to ensure the vertical sums are correct."
-                )
-                logger.info("TableScan triggering logical loopback for %s warnings.", len(warnings))
-                raw, history = _call_claude(
+                if attempt_index == 0:
+                    prompt_text = user_message
+                    prompt_history = None
+                else:
+                    prompt_text = RETRY_MESSAGE
+                    prompt_history = last_history + [{"role": "user", "content": RETRY_MESSAGE}] if last_history is not None else None
+                result = _call_claude(
                     image_bytes,
                     base64_image,
                     system_prompt=system_prompt,
-                    user_message=correction_msg,
+                    user_message=prompt_text,
                     model_tier=model_tier,
-                    history=history + [{"role": "user", "content": correction_msg}],
+                    requested_model=current_model,
+                    history=prompt_history,
                 )
-                # Re-parse and re-validate the corrected result
+                raw = result["text"]
+                history = result["history"]
+                model_used = str(result.get("model_used") or current_model or "")
+                last_raw = raw
+                last_history = history
+                if result.get("usage_summary"):
+                    usage_summaries.append(result["usage_summary"])
+                    accumulated_cost += float(result["usage_summary"].get("estimated_cost") or 0.0)
+                if result.get("debug_response"):
+                    last_debug_response = result["debug_response"]
+
                 parsed = _extract_json_candidate(raw)
+                last_parsed = parsed
                 table = _normalize_table(parsed) if parsed is not None else None
-                if table:
-                    table = validate_table_data(table)
+                if table is None:
+                    logger.info("TableScan attempt %s produced invalid JSON table.", attempt_index + 1)
+                else:
+                    validated = validate_table_data(table)
+                    confidence_payload = validated.get("metadata", {}).get("confidence") or {}
+                    confidence_score = float(confidence_payload.get("score") or 0.0)
+                    warnings = validated.get("metadata", {}).get("validation_warnings", [])
+                    validated["provider_used"] = "anthropic"
+                    validated["provider_model"] = model_used or current_model
+                    validated["requested_model"] = normalize_anthropic_model_name(requested_model)
+                    validated["selected_model"] = normalize_anthropic_model_name(requested_model) or selected_model
+                    validated["ai_applied"] = True
+                    validated["raw_text"] = raw
+                    if confidence_score >= best_score:
+                        best_score = confidence_score
+                        best_table = dict(validated)
+                    if not warnings and confidence_score >= confidence_threshold:
+                        table = validated
+                        break
+                    logger.info(
+                        "TableScan attempt %s confidence=%s warnings=%s model=%s",
+                        attempt_index + 1,
+                        confidence_score,
+                        len(warnings),
+                        model_used,
+                    )
 
-        if table is not None:
-            table["provider_used"] = "anthropic"
-            table["provider_model"] = _anthropic_model_name(model_tier)
-            table["ai_applied"] = True
-            table["raw_text"] = raw
-            return table
-        if parsed is not None:
-            raise ValueError("AI response JSON did not match the expected table schema.")
+                next_model = get_next_anthropic_model_upgrade(current_model)
+                if next_model is None:
+                    break
+                current_model = next_model
 
-        if provider == "bytez":
-            output = _call_bytez(base64_image, system_prompt=system_prompt, user_message=user_message)
-            table = _normalize_table(output)
-            if table is not None:
-                return table
-            raw = _extract_text_from_bytez_output(output)
-            if raw is None:
-                raw = output if isinstance(output, str) else json.dumps(output)
-        else:
-            # Multi-turn retry: send ONLY the retry message, preserving the image context in 'history'
-            raw, _ = _call_claude(
-                image_bytes,
-                base64_image,
-                system_prompt=system_prompt,
-                user_message=RETRY_MESSAGE,
-                model_tier=model_tier,
-                history=history + [{"role": "user", "content": RETRY_MESSAGE}],
-            )
+            if best_table is None:
+                if last_parsed is not None:
+                    raise ValueError("AI response JSON did not match the expected table schema after retry.")
+                raise ValueError("AI response was not valid JSON after retry.")
+
+            if usage_summaries:
+                best_table["token_usage"] = merge_anthropic_usage_summaries(
+                    best_table.get("provider_model"),
+                    usage_summaries,
+                )
+            if last_debug_response:
+                best_table["debug_response"] = last_debug_response
+            return validate_table_data(best_table)
 
         parsed = _extract_json_candidate(raw)
         table = _normalize_table(parsed) if parsed is not None else None
-        if table is None:
-            if parsed is not None:
-                raise ValueError("AI response JSON did not match the expected table schema after retry.")
-            raise ValueError("AI response was not valid JSON after retry.")
-
-        table["provider_used"] = "anthropic"
-        table["provider_model"] = _anthropic_model_name(model_tier)
-        table["ai_applied"] = True
-        table["raw_text"] = raw
-        return validate_table_data(table)
+        if table is not None:
+            return validate_table_data(table)
+        if parsed is not None:
+            raise ValueError("AI response JSON did not match the expected table schema.")
+        raise ValueError("AI response was not valid JSON after retry.")
 
     for provider in providers:
         if not _has_provider_key(provider):

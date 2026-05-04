@@ -257,6 +257,75 @@ def test_structured_ocr_result_marks_anthropic_provider(monkeypatch):
     assert result["rows"] == [["2026-04-28", "12"]]
 
 
+def test_structured_ocr_result_preserves_explicit_requested_model_and_usage(monkeypatch):
+    monkeypatch.setattr(
+        "backend.services.ocr_document_pipeline.choose_ocr_route",
+        lambda *_args, **_kwargs: {
+            "clarity_score": 61.0,
+            "score_reason": "structured table extraction requested",
+            "model_tier": "balanced",
+            "forced": True,
+            "scorer_used": True,
+            "actual_cost_usd": 0.0035,
+            "cost_saved_usd": 0.0105,
+        },
+    )
+
+    captured: dict[str, object] = {}
+
+    def fake_ai_extract(_image_bytes: bytes, **kwargs):
+        captured.update(kwargs)
+        return {
+            "headers": ["Date", "Qty"],
+            "rows": [["2026-04-28", "12"]],
+            "raw_text": "Date Qty",
+            "provider_used": "anthropic",
+            "provider_model": "claude-sonnet-4-6",
+            "requested_model": "claude-sonnet-4-6",
+            "selected_model": "claude-sonnet-4-6",
+            "ai_applied": True,
+            "token_usage": {
+                "model": "claude-sonnet-4-6",
+                "display_name": "Claude Sonnet 4.6",
+                "input_tokens": 100,
+                "output_tokens": 20,
+                "total_tokens": 120,
+                "estimated_cost": 0.0006,
+                "processing_time_ms": 321,
+            },
+            "debug_response": {
+                "model": "claude-sonnet-4-6",
+                "usage": {
+                    "input_tokens": 100,
+                    "output_tokens": 20,
+                    "total_tokens": 120,
+                },
+            },
+        }
+
+    monkeypatch.setattr(
+        "backend.services.ocr_document_pipeline.extract_table_from_image",
+        fake_ai_extract,
+    )
+
+    result = build_structured_ocr_result(
+        b"fake-image",
+        base_result=OcrResult(rows=[["A"]], avg_confidence=41.0, warnings=[]),
+        used_language="eng",
+        fallback_used=False,
+        doc_type_hint="table",
+        force_model="claude-sonnet-4-6",
+    )
+
+    assert captured["requested_model"] == "claude-sonnet-4-6"
+    assert result["routing"]["requested_model"] == "claude-sonnet-4-6"
+    assert result["routing"]["selected_model"] == "claude-sonnet-4-6"
+    assert result["routing"]["provider_model"] == "claude-sonnet-4-6"
+    assert result["routing"]["usage"]["total_tokens"] == 120
+    assert result["token_usage"]["estimated_cost"] == 0.0006
+    assert result["debug"]["final_model_used"] == "claude-sonnet-4-6"
+
+
 def test_structured_ocr_result_falls_back_to_local_result_when_remote_ai_fails(monkeypatch):
     monkeypatch.setattr(
         "backend.services.ocr_document_pipeline.choose_ocr_route",

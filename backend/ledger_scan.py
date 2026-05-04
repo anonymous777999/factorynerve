@@ -16,16 +16,31 @@ from openpyxl import Workbook
 from openpyxl.comments import Comment
 from openpyxl.styles import Alignment, Font, PatternFill
 from PIL import Image, ImageEnhance
+from backend.services.anthropic_usage import (
+    ANTHROPIC_MODEL_HAIKU,
+    ANTHROPIC_MODEL_OPUS,
+    ANTHROPIC_MODEL_SONNET,
+    build_anthropic_usage_summary,
+    get_next_anthropic_model_upgrade,
+    get_ocr_confidence_threshold,
+    get_ocr_max_retries,
+    merge_anthropic_usage_summaries,
+    normalize_anthropic_model_name,
+    serialize_anthropic_response_debug,
+    verify_anthropic_response_model,
+    would_exceed_cost_limit,
+)
+from backend.services.ocr_confidence import calculate_ledger_confidence
 
 MAX_WIDTH = 1568
-DEFAULT_ANTHROPIC_MODEL = "claude-haiku-4-5"
+DEFAULT_ANTHROPIC_MODEL = ANTHROPIC_MODEL_HAIKU
 logger = logging.getLogger(__name__)
 BYTEZ_API_BASE = "https://api.bytez.com/models/v2"
 BYTEZ_DEFAULT_MODEL = "google/gemma-7b"
 
-MAX_RETRY = 1
-MODEL_SONNET = "claude-sonnet-5"
-MODEL_OPUS = "claude-opus-4-7"
+MAX_RETRY = max(0, get_ocr_max_retries() - 1)
+MODEL_SONNET = ANTHROPIC_MODEL_SONNET
+MODEL_OPUS = ANTHROPIC_MODEL_OPUS
 
 SYSTEM_PROMPT = (
     "Extract all visible text and tables from the image into strict JSON format.\n\n"
@@ -203,7 +218,10 @@ def _has_provider_key(provider: str) -> bool:
     return False
 
 
-def _anthropic_model_name() -> str:
+def _anthropic_model_name(requested_model: str | None = None) -> str:
+    normalized_requested = normalize_anthropic_model_name(requested_model)
+    if normalized_requested:
+        return normalized_requested
     return (
         os.getenv("LEDGER_SCAN_ANTHROPIC_MODEL")
         or os.getenv("OCR_ANTHROPIC_MODEL")
@@ -425,11 +443,12 @@ def _call_claude(
     user_message: str,
     history: list[dict] | None = None,
     model_override: str | None = None,
+    requested_model: str | None = None,
     attempt: int = 1,
     fallback_used: bool = False,
 ) -> dict[str, Any]:
     client = _get_client()
-    model = model_override or _anthropic_model_name()
+    requested_target_model = normalize_anthropic_model_name(model_override) or _anthropic_model_name(requested_model)
     if history:
         messages = history
     else:
@@ -448,7 +467,7 @@ def _call_claude(
         messages = [{"role": "user", "content": content}]
 
     response = client.messages.create(
-        model=model,
+        model=requested_target_model,
         max_tokens=2048,
         temperature=0,
         system=[
@@ -465,12 +484,28 @@ def _call_claude(
     next_history = messages + [
         {"role": "assistant", "content": text}
     ]
+    actual_model = verify_anthropic_response_model(
+        requested_target_model,
+        response,
+        context="LedgerScan",
+    )
+    usage_summary = build_anthropic_usage_summary(actual_model, response)
+    logger.info(
+        "LedgerScan Claude response model=%s input_tokens=%s output_tokens=%s total_tokens=%s estimated_cost=%s",
+        actual_model,
+        usage_summary["input_tokens"],
+        usage_summary["output_tokens"],
+        usage_summary["total_tokens"],
+        usage_summary["estimated_cost"],
+    )
     return {
         "text": text,
         "history": next_history,
-        "model_used": model,
+        "model_used": actual_model,
         "attempt": attempt,
         "fallback_used": fallback_used,
+        "usage_summary": usage_summary,
+        "debug_response": serialize_anthropic_response_debug(response),
     }
 
 
@@ -478,6 +513,7 @@ def extract_data_from_image(
     base64_image: str,
     *,
     force_mock: bool = False,
+    model: str | None = None,
     system_prompt: str | None = None,
     user_message: str | None = None,
 ) -> tuple[list[dict], dict]:
@@ -495,6 +531,7 @@ def extract_data_from_image(
             "attempt": 1,
             "fallback_used": False,
         }
+        usage_summaries: list[dict[str, Any]] = []
 
         # Initial call
         if provider == "tesseract":
@@ -507,6 +544,8 @@ def extract_data_from_image(
             rows = _maybe_rows_from_output(output)
             if rows is not None:
                 metadata["model_used"] = os.getenv("BYTEZ_MODEL_ID", BYTEZ_DEFAULT_MODEL)
+                validated_rows = validate_data(rows)
+                metadata["confidence"] = validated_rows.get("metadata", {}).get("confidence")
                 return rows, metadata
             raw = _extract_text_from_bytez_output(output)
             if raw is None:
@@ -514,56 +553,124 @@ def extract_data_from_image(
             history = [] # Bytez doesn't support multi-turn history in this helper yet
             model_used = os.getenv("BYTEZ_MODEL_ID", BYTEZ_DEFAULT_MODEL)
         else:
-            result = _call_claude(base64_image, system_prompt=system_prompt, user_message=user_message)
-            raw, history = result["text"], result["history"]
-            model_used = result["model_used"]
+            requested_model = normalize_anthropic_model_name(model)
+            current_model = requested_model or _anthropic_model_name(model)
+            confidence_threshold = get_ocr_confidence_threshold()
+            accumulated_cost = 0.0
+            best_rows: list[dict] | None = None
+            best_metadata: dict[str, Any] | None = None
+            last_parsed: Any = None
+            last_raw = ""
+            last_history: list[dict[str, Any]] | None = None
+
+            for attempt_index in range(MAX_RETRY + 1):
+                if attempt_index > 0 and would_exceed_cost_limit(accumulated_cost, current_model):
+                    logger.warning(
+                        "LedgerScan retry stopped before attempt %s because model=%s would exceed cost limit.",
+                        attempt_index + 1,
+                        current_model,
+                    )
+                    break
+
+                prompt_text = user_message if attempt_index == 0 else RETRY_MESSAGE
+                prompt_history = None
+                if attempt_index > 0 and last_history is not None:
+                    prompt_history = last_history + [{"role": "user", "content": RETRY_MESSAGE}]
+
+                result = _call_claude(
+                    base64_image,
+                    system_prompt=system_prompt,
+                    user_message=prompt_text,
+                    history=prompt_history,
+                    model_override=current_model,
+                    requested_model=model,
+                    attempt=attempt_index + 1,
+                    fallback_used=attempt_index > 0,
+                )
+                raw = str(result["text"])
+                history = result["history"]
+                model_used = result["model_used"]
+                last_raw = raw
+                last_history = history
+                metadata["attempt"] = attempt_index + 1
+                metadata["fallback_used"] = attempt_index > 0
+                metadata["model_used"] = model_used
+                metadata.setdefault("first_model", model_used)
+                metadata["requested_model"] = requested_model
+                if result.get("usage_summary"):
+                    usage_summaries.append(result["usage_summary"])
+                    accumulated_cost += float(result["usage_summary"].get("estimated_cost") or 0.0)
+                if result.get("debug_response"):
+                    metadata["debug_response"] = result["debug_response"]
+
+                parsed = _extract_json_candidate(raw)
+                last_parsed = parsed
+                rows = _rows_from_parsed(parsed)
+                if rows is None:
+                    logger.info("LedgerScan attempt %s produced invalid JSON rows.", attempt_index + 1)
+                else:
+                    validated = validate_data(rows)
+                    confidence_payload = validated.get("metadata", {}).get("confidence") or {}
+                    confidence_score = float(confidence_payload.get("score") or 0.0)
+                    metadata["confidence"] = confidence_payload
+                    metadata["validation_warnings"] = validated.get("metadata", {}).get("validation_warnings", [])
+                    if best_metadata is None or confidence_score >= float((best_metadata.get("confidence") or {}).get("score") or 0.0):
+                        best_rows = rows
+                        best_metadata = {
+                            **metadata,
+                            "confidence": confidence_payload,
+                            "validation_warnings": validated.get("metadata", {}).get("validation_warnings", []),
+                        }
+                    if not validated.get("metadata", {}).get("major_error") and confidence_score >= confidence_threshold:
+                        metadata = best_metadata
+                        break
+                    logger.info(
+                        "LedgerScan attempt %s confidence=%s major_error=%s model=%s",
+                        attempt_index + 1,
+                        confidence_score,
+                        validated.get("metadata", {}).get("major_error"),
+                        model_used,
+                    )
+
+                next_model = get_next_anthropic_model_upgrade(current_model)
+                if next_model is None:
+                    break
+                current_model = next_model
+
+            if usage_summaries:
+                metadata["token_usage"] = merge_anthropic_usage_summaries(
+                    metadata.get("model_used"),
+                    usage_summaries,
+                )
+            if best_rows is not None:
+                if best_metadata is not None:
+                    metadata.update(best_metadata)
+                return best_rows, metadata
+
+            if last_parsed is not None:
+                raise ValueError("AI response JSON did not match ledger schema after retry.")
+            if not last_raw.strip():
+                logger.warning("LedgerScan received empty response for %s.", provider)
+            raise ValueError("AI response was not valid JSON after retry.")
 
         metadata["model_used"] = model_used
         metadata["first_model"] = model_used
+        metadata["requested_model"] = normalize_anthropic_model_name(model)
 
         parsed = _extract_json_candidate(raw)
         rows = _rows_from_parsed(parsed)
 
-        # Smart Retry Logic
-        needs_retry = False
-        if rows is None:
-            logger.info("LedgerScan: JSON parsing failed. Triggering Opus retry.")
-            needs_retry = True
-        else:
-            validated = validate_data(rows)
-            if validated.get("metadata", {}).get("major_error"):
-                logger.info("LedgerScan: Major validation error. Triggering Opus retry.")
-                needs_retry = True
-
-        if needs_retry and provider == "anthropic":
-            metadata["attempt"] = 2
-            metadata["fallback_used"] = True
-            
-            result = _call_claude(
-                base64_image, # Resend image for major recovery
-                system_prompt=system_prompt,
-                user_message=RETRY_MESSAGE,
-                history=history + [{"role": "user", "content": RETRY_MESSAGE}],
-                model_override=MODEL_OPUS,
-                attempt=2,
-                fallback_used=True
+        if usage_summaries:
+            metadata["token_usage"] = merge_anthropic_usage_summaries(
+                metadata.get("model_used"),
+                usage_summaries,
             )
-            raw, _ = result["text"], result["history"]
-            metadata["model_used"] = result["model_used"]
-            
-            parsed = _extract_json_candidate(raw)
-            rows = _rows_from_parsed(parsed)
-            
-            if rows is not None:
-                # Validate Opus result (log only)
-                opus_val = validate_data(rows)
-                if opus_val.get("metadata", {}).get("major_error"):
-                    logger.warning("LedgerScan: Opus retry also failed validation.")
 
         if rows is not None:
+            validated_rows = validate_data(rows)
+            metadata["confidence"] = validated_rows.get("metadata", {}).get("confidence")
             return rows, metadata
 
-        # Final failure state
         if parsed is not None:
             raise ValueError("AI response JSON did not match ledger schema after retry.")
         if not (raw or "").strip():
@@ -731,6 +838,7 @@ def validate_data(rows: list[dict]) -> dict:
 
     difference = abs(total_dr - total_cr)
     balanced = total_dr == total_cr
+    confidence = calculate_ledger_confidence(cleaned_rows)
 
     return {
         "rows": cleaned_rows,
@@ -745,6 +853,7 @@ def validate_data(rows: list[dict]) -> dict:
             "major_error": major_error,
             "minor_error": minor_error,
             "total_rows": len(cleaned_rows),
+            "confidence": confidence,
         },
     }
 
