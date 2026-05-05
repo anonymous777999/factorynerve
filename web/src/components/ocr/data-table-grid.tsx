@@ -7,9 +7,13 @@ import { cn } from "@/lib/utils";
 export type OcrColumnType = "text" | "number" | "date";
 export type ActiveGridCell = { row: number; column: number } | null;
 
+// Phase 2: Support both string and object cell formats
+type RawCell = string | { value: string; confidence: number };
+type CellObject = { value: string; confidence: number };
+
 type DataTableGridProps = {
   headers: string[];
-  rows: string[][];
+  rows: RawCell[][];  // Now accepts both formats
   columnTypes: OcrColumnType[];
   confidenceMatrix?: number[][];
   originalRows?: string[][];
@@ -18,18 +22,28 @@ type DataTableGridProps = {
   activeCell?: ActiveGridCell;
   onActiveCellChange?: (cell: ActiveGridCell) => void;
   onChangeHeaders: (headers: string[]) => void;
-  onChangeRows: (rows: string[][]) => void;
+  onChangeRows: (rows: RawCell[][]) => void;
   onChangeColumnTypes: (types: OcrColumnType[]) => void;
 };
 
 type CellTarget = { row: number; column: number } | null;
 
-function normalizeLength(row: string[], columns: number) {
+// Phase 2: Helper to normalize any cell format to CellObject
+function normalizeCell(cell: RawCell): CellObject {
+  if (typeof cell === "string") {
+    return { value: cell, confidence: 1.0 };
+  }
+  return { value: cell.value, confidence: cell.confidence };
+}
+
+function normalizeLength(row: RawCell[], columns: number): RawCell[] {
   return Array.from({ length: columns }, (_, index) => row[index] || "");
 }
 
-function inferColumnType(values: string[]): OcrColumnType {
-  const filled = values.map((value) => value.trim()).filter(Boolean);
+function inferColumnType(values: RawCell[]): OcrColumnType {
+  const filled = values
+    .map((cell) => normalizeCell(cell).value.trim())
+    .filter(Boolean);
   if (!filled.length) return "text";
   const numberLike = filled.every((value) => /^-?\d[\d,]*(?:\.\d+)?$/.test(value));
   if (numberLike) return "number";
@@ -38,10 +52,10 @@ function inferColumnType(values: string[]): OcrColumnType {
   return "text";
 }
 
-function cellTone(confidence?: number, visible?: boolean) {
-  if (!visible || typeof confidence !== "number") return "";
-  if (confidence < 60) return "border-amber-300 bg-amber-50";
-  if (confidence < 85) return "border-[#e8d8b0] bg-[#fff8e8]";
+// Phase 2: Updated confidence color mapping (uses 0-1.0 scale)
+function getConfidenceClass(confidence: number): string {
+  if (confidence < 0.75) return "bg-red-100 border border-red-300";
+  if (confidence < 0.90) return "bg-yellow-100 border border-yellow-300";
   return "";
 }
 
@@ -115,11 +129,16 @@ export function DataTableGrid({
     return next;
   };
 
+  // Phase 2: Updated to return cell objects when edited
   const commitCell = (target: CellTarget, value: string) => {
     if (!target) return;
     const nextRows = normalizedRows.map((row, rowIndex) =>
       rowIndex === target.row
-        ? row.map((cell, columnIndex) => (columnIndex === target.column ? value : cell))
+        ? row.map((cell, columnIndex) =>
+          columnIndex === target.column
+            ? { value, confidence: 1.0 }  // User-edited = full confidence
+            : cell
+        )
         : row,
     );
     onChangeRows(nextRows);
@@ -129,7 +148,8 @@ export function DataTableGrid({
     if (!target || readOnly) return;
     onActiveCellChange?.(target);
     setEditingCell(target);
-    setDraftValue(normalizedRows[target.row]?.[target.column] || "");
+    const cellData = normalizedRows[target.row]?.[target.column];
+    setDraftValue(normalizeCell(cellData).value);
   };
 
   const finishEdit = (mode: "commit" | "cancel", nextTarget?: CellTarget) => {
@@ -219,21 +239,32 @@ export function DataTableGrid({
           <tbody>
             {normalizedRows.map((row, rowIndex) => (
               <tr key={`row-${rowIndex}`}>
-                {row.map((cell, columnIndex) => {
+                {row.map((rawCell, columnIndex) => {
+                  // Phase 2: Normalize cell to handle both formats
+                  const cellData = normalizeCell(rawCell);
                   const isSelected =
                     selectedCell?.row === rowIndex && selectedCell?.column === columnIndex;
                   const isEditing =
                     editingCell?.row === rowIndex && editingCell?.column === columnIndex;
-                  const confidence = confidenceMatrix?.[rowIndex]?.[columnIndex];
                   const raw = originalRows?.[rowIndex]?.[columnIndex] || "";
-                  const title =
-                    typeof confidence === "number" && confidence < 85
-                      ? `Detected: ${raw || "-"} | Current: ${cell || "-"}`
-                      : undefined;
+
+                  // Phase 2: Use cell object confidence if available, otherwise use legacy matrix
+                  const confidence = typeof rawCell === "object"
+                    ? rawCell.confidence
+                    : confidenceMatrix?.[rowIndex]?.[columnIndex]
+                      ? confidenceMatrix[rowIndex][columnIndex] / 100  // Convert 0-100 to 0-1.0
+                      : 1.0;
+
+                  const confidencePercent = Math.round(confidence * 100);
+                  const title = `Confidence: ${confidencePercent}%${raw && raw !== cellData.value ? ` | Original: ${raw}` : ""}`;
+
                   return (
                     <td
                       key={`cell-${rowIndex}-${columnIndex}`}
-                      className="border-b border-[#f0f3f7] px-3 py-3 align-top"
+                      className={cn(
+                        "border-b border-[#f0f3f7] px-3 py-3 align-top",
+                        getConfidenceClass(confidence),  // Phase 2: Apply to td so visible in both view and edit modes
+                      )}
                     >
                       {isEditing ? (
                         <input
@@ -269,7 +300,6 @@ export function DataTableGrid({
                           className={cn(
                             "flex h-10 w-full items-center rounded-[14px] border px-3 text-sm text-[#101828] outline-none transition duration-150",
                             alignForColumn(normalizedTypes[columnIndex], normalizedHeaders[columnIndex] || ""),
-                            cellTone(confidence, showLowConfidence),
                             isSelected
                               ? "border-[#185FA5] bg-[#f4f9ff] shadow-[inset_0_0_0_1px_rgba(24,95,165,0.12)]"
                               : "border-[#eef2f6] bg-[#fbfcfd] hover:border-[#d8e1ea] hover:bg-white",
@@ -280,7 +310,7 @@ export function DataTableGrid({
                           }}
                           onDoubleClick={() => beginEdit({ row: rowIndex, column: columnIndex })}
                         >
-                          <span className="truncate">{cell || "\u00A0"}</span>
+                          <span className="truncate">{cellData.value || "\u00A0"}</span>
                         </button>
                       )}
                     </td>
