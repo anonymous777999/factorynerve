@@ -31,7 +31,7 @@ function normalizeLength(row: string[], columns: number) {
 function inferColumnType(values: string[]): OcrColumnType {
   const filled = values.map((value) => value.trim()).filter(Boolean);
   if (!filled.length) return "text";
-  const numberLike = filled.every((value) => /^-?\d+(?:[.,]\d+)?$/.test(value));
+  const numberLike = filled.every((value) => /^-?\d[\d,]*(?:\.\d+)?$/.test(value));
   if (numberLike) return "number";
   const dateLike = filled.every((value) => !Number.isNaN(Date.parse(value)));
   if (dateLike) return "date";
@@ -45,8 +45,19 @@ function cellTone(confidence?: number, visible?: boolean) {
   return "";
 }
 
-function alignForType(type: OcrColumnType) {
-  if (type === "number") return "text-right";
+function isAmountHeader(header: string) {
+  const normalized = header.trim().toLowerCase();
+  return normalized.includes("amount")
+    || normalized.includes("amt")
+    || normalized.includes("total")
+    || normalized.includes("balance")
+    || normalized.includes("inr")
+    || normalized.includes("rs")
+    || normalized.includes("\u20b9");
+}
+
+function alignForColumn(type: OcrColumnType, header: string) {
+  if (type === "number" || isAmountHeader(header)) return "text-right";
   return "text-left";
 }
 
@@ -248,7 +259,7 @@ export function DataTableGrid({
                           }}
                           className={cn(
                             "h-10 w-full rounded-[14px] border border-[#185FA5] bg-white px-3 text-sm text-[#101828] outline-none",
-                            alignForType(normalizedTypes[columnIndex]),
+                            alignForColumn(normalizedTypes[columnIndex], normalizedHeaders[columnIndex] || ""),
                           )}
                         />
                       ) : (
@@ -257,7 +268,7 @@ export function DataTableGrid({
                           title={title}
                           className={cn(
                             "flex h-10 w-full items-center rounded-[14px] border px-3 text-sm text-[#101828] outline-none transition duration-150",
-                            alignForType(normalizedTypes[columnIndex]),
+                            alignForColumn(normalizedTypes[columnIndex], normalizedHeaders[columnIndex] || ""),
                             cellTone(confidence, showLowConfidence),
                             isSelected
                               ? "border-[#185FA5] bg-[#f4f9ff] shadow-[inset_0_0_0_1px_rgba(24,95,165,0.12)]"

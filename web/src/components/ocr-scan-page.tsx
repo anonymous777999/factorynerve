@@ -99,6 +99,15 @@ type ResultPreview = {
   reused?: boolean;
 };
 
+type StructuredSheet = {
+  columns?: unknown[];
+  rows?: unknown[][];
+};
+
+type StructuredPreviewResult = OcrPreviewResult & {
+  sheets?: StructuredSheet[];
+};
+
 type TableSnapshot = {
   headers: string[];
   rows: string[][];
@@ -145,10 +154,45 @@ function inferColumnTypes(rows: string[][], headerCount: number): OcrColumnType[
   return Array.from({ length: Math.max(headerCount, 1) }, (_, index) => {
     const values = rows.map((row) => (row[index] || "").trim()).filter(Boolean);
     if (!values.length) return "text";
-    if (values.every((value) => /^-?\d+(?:[.,]\d+)?$/.test(value))) return "number";
+    if (values.every((value) => /^-?\d[\d,]*(?:\.\d+)?$/.test(value))) return "number";
     if (values.every((value) => !Number.isNaN(Date.parse(value)))) return "date";
     return "text";
   });
+}
+
+function stringifySheetCell(value: unknown) {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function extractPreviewTable(result: OcrPreviewResult) {
+  const sheet = (result as StructuredPreviewResult).sheets?.[0];
+  const sheetHeaders = Array.isArray(sheet?.columns)
+    ? sheet.columns.map((column, index) => stringifySheetCell(column).trim() || `Column ${index + 1}`)
+    : [];
+  const sheetRows = Array.isArray(sheet?.rows)
+    ? sheet.rows.map((row) =>
+      Array.isArray(row) ? row.map((cell) => stringifySheetCell(cell)) : [stringifySheetCell(row)],
+    )
+    : [];
+  const fallbackHeaders = result.headers?.length
+    ? result.headers
+    : defaultHeaders(Math.max(result.columns || 0, ...(result.rows || []).map((row) => row.length), 1));
+  const headers = sheetHeaders.length ? sheetHeaders : fallbackHeaders;
+  const sourceRows = sheetRows.length ? sheetRows : result.rows || [];
+  const columnCount = Math.max(headers.length, ...sourceRows.map((row) => row.length), 1);
+  return {
+    headers: Array.from({ length: columnCount }, (_, index) => headers[index] || `Column ${index + 1}`),
+    rows: sourceRows.map((row) =>
+      Array.from({ length: columnCount }, (_, index) => stringifySheetCell(row[index])),
+    ),
+  };
 }
 
 function buildWarpedFile(blob: Blob, originalName: string) {
@@ -783,13 +827,7 @@ export default function OcrScanPage() {
         window.clearTimeout(confidenceTimer);
       }
 
-      const headers =
-        result.headers?.length
-          ? result.headers
-          : defaultHeaders(Math.max(result.columns || 0, ...(result.rows || []).map((row) => row.length), 1));
-      const rows = (result.rows || []).map((row) =>
-        Array.from({ length: headers.length }, (_, index) => String(row[index] ?? "")),
-      );
+      const { headers, rows } = extractPreviewTable(result);
       const nextPreview: ResultPreview = {
         type: result.type || "table",
         title: result.title || "OCR Extraction",
