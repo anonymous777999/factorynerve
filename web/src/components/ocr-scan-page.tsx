@@ -87,6 +87,10 @@ type ResultPreview = {
   title: string;
   headers: string[];
   rows: string[][];
+  sheets?: Array<{
+    columns: string[];
+    rows: string[][];
+  }>;
   rawText?: string | null;
   language: string;
   avgConfidence: number | null;
@@ -187,11 +191,16 @@ function extractPreviewTable(result: OcrPreviewResult) {
   const headers = sheetHeaders.length ? sheetHeaders : fallbackHeaders;
   const sourceRows = sheetRows.length ? sheetRows : result.rows || [];
   const columnCount = Math.max(headers.length, ...sourceRows.map((row) => row.length), 1);
+  const normalizedHeaders = Array.from({ length: columnCount }, (_, index) => headers[index] || `Column ${index + 1}`);
+  const normalizedRows = sourceRows.map((row) =>
+    Array.from({ length: columnCount }, (_, index) => stringifySheetCell(row[index])),
+  );
   return {
-    headers: Array.from({ length: columnCount }, (_, index) => headers[index] || `Column ${index + 1}`),
-    rows: sourceRows.map((row) =>
-      Array.from({ length: columnCount }, (_, index) => stringifySheetCell(row[index])),
-    ),
+    sheets: sheetHeaders.length || sheetRows.length
+      ? [{ columns: normalizedHeaders, rows: normalizedRows }]
+      : undefined,
+    headers: normalizedHeaders,
+    rows: normalizedRows,
   };
 }
 
@@ -448,6 +457,7 @@ export default function OcrScanPage() {
   const displayPreviewUrl = preparedPreviewUrl || originalUrl;
   const rerunSourceFile = originalFile || preparedPreviewFile || finalUploadFile;
   const canRerunWithSelectedModel = Boolean(rerunSourceFile);
+  const sheet = resultPreview?.sheets?.[0];
   const correctionCount = useMemo(
     () => countCorrections(resultPreview?.rows || [], editableRows),
     [editableRows, resultPreview?.rows],
@@ -827,12 +837,13 @@ export default function OcrScanPage() {
         window.clearTimeout(confidenceTimer);
       }
 
-      const { headers, rows } = extractPreviewTable(result);
+      const { headers, rows, sheets } = extractPreviewTable(result);
       const nextPreview: ResultPreview = {
         type: result.type || "table",
         title: result.title || "OCR Extraction",
         headers,
         rows,
+        sheets,
         rawText: result.raw_text ?? null,
         language: result.used_language || "auto",
         avgConfidence: result.avg_confidence ?? result.confidence ?? null,
@@ -1499,19 +1510,58 @@ export default function OcrScanPage() {
                     onToggleConfidence={() => setShowLowConfidence((value) => !value)}
                   />
 
-                  <DataTableGrid
-                    headers={editableHeaders}
-                    rows={editableRows}
-                    columnTypes={columnTypes}
-                    confidenceMatrix={confidenceMatrix}
-                    originalRows={resultPreview.rows}
-                    showLowConfidence={showLowConfidence}
-                    activeCell={activeCell}
-                    onActiveCellChange={setActiveCell}
-                    onChangeHeaders={(headers) => applyTableChange({ headers })}
-                    onChangeRows={(rows) => applyTableChange({ rows })}
-                    onChangeColumnTypes={(types) => applyTableChange({ columnTypes: types })}
-                  />
+                  {sheet?.columns?.length && sheet.rows ? (
+                    <div className="overflow-hidden rounded-[28px] border border-[#e3e8ef] bg-white shadow-[0_18px_54px_rgba(15,23,42,0.05)]">
+                      <div className="overflow-auto">
+                        <table className="min-w-full border-collapse">
+                          <thead>
+                            <tr className="bg-[#f8fafc]">
+                              {sheet.columns.map((column, columnIndex) => (
+                                <th
+                                  key={`sheet-header-${columnIndex}`}
+                                  className={`border border-[#e3e8ef] px-4 py-3 text-sm font-semibold text-[#101828] ${
+                                    columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
+                                  }`}
+                                >
+                                  {column}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {sheet.rows.map((row, rowIndex) => (
+                              <tr key={`sheet-row-${rowIndex}`}>
+                                {row.map((cell, columnIndex) => (
+                                  <td
+                                    key={`sheet-cell-${rowIndex}-${columnIndex}`}
+                                    className={`border border-[#e3e8ef] px-4 py-3 text-sm text-[#344054] ${
+                                      columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
+                                    }`}
+                                  >
+                                    {cell || ""}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  ) : (
+                    <DataTableGrid
+                      headers={editableHeaders}
+                      rows={editableRows}
+                      columnTypes={columnTypes}
+                      confidenceMatrix={confidenceMatrix}
+                      originalRows={resultPreview.rows}
+                      showLowConfidence={showLowConfidence}
+                      activeCell={activeCell}
+                      onActiveCellChange={setActiveCell}
+                      onChangeHeaders={(headers) => applyTableChange({ headers })}
+                      onChangeRows={(rows) => applyTableChange({ rows })}
+                      onChangeColumnTypes={(types) => applyTableChange({ columnTypes: types })}
+                    />
+                  )}
 
                   <KeyboardShortcutStrip lowConfidenceCount={visibleLowConfidenceCount} />
 
