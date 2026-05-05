@@ -849,7 +849,11 @@ def _call_table_excel_anthropic(
 
 
 def _normalize_table_excel_value(value: object) -> str:
-    return "" if value is None else str(value)
+    if value is None:
+        return ""
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False, default=str)
+    return str(value).strip()
 
 
 def _normalize_table_excel_extracted_json(extracted_json: dict[str, object]) -> dict[str, object]:
@@ -877,6 +881,9 @@ def _normalize_table_excel_extracted_json(extracted_json: dict[str, object]) -> 
             raise _table_excel_error(502, "Anthropic API did not return any extractable table data.")
         if not headers:
             headers = [f"Column {index}" for index in range(1, max_columns + 1)]
+        elif len(headers) < max_columns:
+            headers.extend([f"Column {index}" for index in range(len(headers) + 1, max_columns + 1)])
+        headers = [header or f"Column {index}" for index, header in enumerate(headers, start=1)]
         for row in rows:
             if len(row) < len(headers):
                 row.extend([""] * (len(headers) - len(row)))
@@ -975,59 +982,61 @@ def _auto_fit_openpyxl_columns(sheet) -> None:
 
 def _build_table_excel_workbook(extracted_json: dict[str, object]) -> tuple[bytes, dict[str, object]]:
     normalized = _normalize_table_excel_extracted_json(extracted_json)
-    workbook = Workbook()
-    sheet = workbook.active
-    sheet.title = "Extracted Data"
-
     extracted_type = str(normalized["type"])
     total_rows = 0
     total_columns = 0
 
     try:
         if extracted_type == "table":
-            headers = [str(value) for value in normalized.get("headers", [])]
-            rows = [[str(cell) for cell in row] for row in normalized.get("rows", [])]
-            sheet.append(headers)
-            sheet[1][0].font = Font(bold=True)
-            for cell in sheet[1]:
-                cell.font = Font(bold=True)
-            for row in rows:
-                sheet.append(row)
+            headers = list(normalized.get("headers", []))
+            rows = list(normalized.get("rows", []))
             total_rows = len(rows)
             total_columns = len(headers)
+            excel_payload = {"headers": headers, "rows": rows}
+            include_totals = True
         elif extracted_type == "form":
-            sheet.append(["Field", "Value"])
-            for cell in sheet[1]:
-                cell.font = Font(bold=True)
             fields = normalized.get("fields", [])
-            for field in fields:
-                label = str(field.get("label") or "") if isinstance(field, dict) else ""
-                value = str(field.get("value") or "") if isinstance(field, dict) else ""
-                sheet.append([label, value])
+            rows = [
+                [
+                    str(field.get("label") or "") if isinstance(field, dict) else "",
+                    str(field.get("value") or "") if isinstance(field, dict) else "",
+                ]
+                for field in fields
+            ]
             total_rows = len(fields)
             total_columns = 2
+            excel_payload = {"headers": ["Field", "Value"], "rows": rows}
+            include_totals = False
         elif extracted_type == "text":
             lines = [str(line) for line in normalized.get("lines", [])]
-            for line in lines:
-                sheet.append([line])
             total_rows = len(lines)
             total_columns = 1
+            excel_payload = {"headers": ["Text"], "rows": [[line] for line in lines]}
+            include_totals = False
         else:
             sections = normalized.get("sections", [])
-            for section in sections:
-                sheet.append([json.dumps(section, ensure_ascii=False)])
             total_rows = len(sections)
             total_columns = 1
+            excel_payload = {
+                "headers": ["Section"],
+                "rows": [[json.dumps(section, ensure_ascii=False)] for section in sections],
+            }
+            include_totals = False
 
-        if sheet.max_row == 1 and sheet.max_column == 1 and sheet["A1"].value is None:
-            sheet["A1"] = "No extractable data found"
-            total_rows = 0
+        if total_columns == 0:
+            excel_payload = {"headers": ["Result"], "rows": [["No extractable data found"]]}
             total_columns = 1
+            total_rows = 0
 
-        _auto_fit_openpyxl_columns(sheet)
-        output = BytesIO()
-        workbook.save(output)
-        excel_bytes = output.getvalue()
+        excel_bytes = build_table_excel_bytes(
+            excel_payload,
+            sheet_name="Extracted Data",
+            metadata={
+                "Extracted Type": extracted_type.title(),
+                "Has Data": "Yes" if total_rows else "No",
+            },
+            include_totals=include_totals,
+        )
         if not excel_bytes:
             raise RuntimeError("Workbook writer returned empty output.")
     except TableExcelRouteError:
@@ -1622,10 +1631,19 @@ def _verification_export_response(verification: OcrVerification) -> Response:
     if not rows:
         raise HTTPException(status_code=409, detail="Verification record has no rows to export.")
     headers = _verification_export_headers(verification, rows)
-    excel_bytes = build_table_excel_bytes({"headers": headers, "rows": rows})
     trusted_export = verification.status == "approved"
     export_source = _verification_export_source(verification)
     filename = _verification_export_filename(verification)
+    excel_bytes = build_table_excel_bytes(
+        {"headers": headers, "rows": rows},
+        sheet_name="Verification Export",
+        metadata={
+            "Verification Id": verification.id,
+            "Verification Status": verification.status,
+            "Export Source": export_source,
+            "Trusted Export": "Yes" if trusted_export else "No",
+        },
+    )
     return Response(
         content=excel_bytes,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

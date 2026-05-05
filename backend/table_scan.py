@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ast
+from collections import OrderedDict
 import json
 import logging
 import os
@@ -12,7 +13,7 @@ from typing import Any
 from anthropic import Anthropic
 import requests
 from openpyxl import Workbook
-from openpyxl.styles import Alignment, Font, PatternFill
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from backend.ledger_scan import preprocess_image_bytes
@@ -79,6 +80,26 @@ HEADER_ALIGN = Alignment(horizontal="center", vertical="center")
 
 TEXT_FONT = Font(name="Arial", size=10)
 TEXT_ALIGN = Alignment(horizontal="left", vertical="center", wrap_text=True)
+NUMBER_ALIGN = Alignment(horizontal="right", vertical="center", wrap_text=True)
+FOOTER_LABEL_FONT = Font(name="Arial", size=10, bold=True)
+FOOTER_VALUE_FONT = Font(name="Arial", size=10)
+TOTAL_FILL = PatternFill("solid", fgColor="E2F0D9")
+TOTAL_FONT = Font(name="Arial", size=10, bold=True)
+THIN_BORDER = Border(
+    left=Side(style="thin", color="D9D9D9"),
+    right=Side(style="thin", color="D9D9D9"),
+    top=Side(style="thin", color="D9D9D9"),
+    bottom=Side(style="thin", color="D9D9D9"),
+)
+
+_FORMULA_PREFIXES = ("=", "+", "-", "@")
+_COLUMN_PRIORITY_GROUPS = (
+    ("date", "day", "time", "timestamp"),
+    ("invoice", "bill", "receipt", "voucher", "reference", "ref", "number", "no", "id"),
+    ("item", "name", "description", "product", "material"),
+    ("qty", "quantity", "unit", "units"),
+    ("rate", "price", "amount", "debit", "credit", "balance", "total"),
+)
 
 
 
@@ -540,6 +561,158 @@ def _to_float(value: Any) -> float:
         return 0.0
 
 
+def _clean_excel_header(value: Any, index: int) -> str:
+    text = "" if value is None else str(value).strip()
+    return text or f"Column {index}"
+
+
+def _normalize_column_name(value: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", value.lower()).strip()
+
+
+def _column_priority(value: str) -> tuple[int, str]:
+    normalized = _normalize_column_name(value)
+    for priority, aliases in enumerate(_COLUMN_PRIORITY_GROUPS):
+        if normalized in aliases or any(alias in normalized for alias in aliases):
+            return priority, normalized
+    return len(_COLUMN_PRIORITY_GROUPS), normalized
+
+
+def _make_unique_headers(headers: list[str], required_count: int) -> list[str]:
+    unique_headers: list[str] = []
+    seen: dict[str, int] = {}
+    for index in range(max(required_count, len(headers))):
+        base = _clean_excel_header(headers[index] if index < len(headers) else "", index + 1)
+        count = seen.get(base, 0)
+        seen[base] = count + 1
+        unique_headers.append(base if count == 0 else f"{base} ({count + 1})")
+    return unique_headers
+
+
+def _numeric_text_parts(value: Any) -> tuple[bool, str]:
+    if value is None or isinstance(value, bool):
+        return False, ""
+    if isinstance(value, (int, float)):
+        return True, str(value)
+    text = str(value).strip()
+    if not text:
+        return False, ""
+    compact = re.sub(r"[\s,₹$€£]", "", text)
+    if compact.endswith("%"):
+        compact = compact[:-1]
+    if re.fullmatch(r"[+-]?\d+(\.\d+)?", compact):
+        return True, compact
+    return False, compact
+
+
+def _is_display_numeric(value: Any) -> bool:
+    matched, _ = _numeric_text_parts(value)
+    return matched
+
+
+def _is_summable_numeric(value: Any) -> bool:
+    if isinstance(value, str) and "%" in value:
+        return False
+    matched, _ = _numeric_text_parts(value)
+    return matched
+
+
+def _excel_safe_value(value: Any) -> Any:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return str(value)
+    if isinstance(value, (int, float)):
+        return value
+    if isinstance(value, (dict, list)):
+        value = json.dumps(value, ensure_ascii=False, default=str)
+    text = str(value).strip()
+    if not text:
+        return ""
+    if text[0] in _FORMULA_PREFIXES and not _is_display_numeric(text):
+        return f"'{text}"
+    return text
+
+
+def _normalize_excel_table(table: dict[str, Any]) -> tuple[list[str], list[list[Any]]]:
+    raw_headers = table.get("headers")
+    raw_rows = table.get("rows")
+    explicit_headers = [
+        _clean_excel_header(header, index + 1)
+        for index, header in enumerate(raw_headers)
+    ] if isinstance(raw_headers, list) else []
+
+    if not isinstance(raw_rows, list):
+        return _make_unique_headers(explicit_headers, len(explicit_headers)), []
+
+    dict_rows = [row for row in raw_rows if isinstance(row, dict)]
+    if dict_rows:
+        discovered = OrderedDict()
+        for header in explicit_headers:
+            discovered[header] = None
+        for row in dict_rows:
+            for key in row:
+                header = _clean_excel_header(key, len(discovered) + 1)
+                if header not in discovered:
+                    discovered[header] = None
+        extra_headers = [header for header in discovered if header not in explicit_headers]
+        if explicit_headers:
+            headers = explicit_headers + sorted(extra_headers, key=_column_priority)
+        else:
+            headers = sorted(list(discovered.keys()), key=_column_priority)
+        headers = _make_unique_headers(headers, len(headers))
+        normalized_rows = [
+            [_excel_safe_value(row.get(header, "")) for header in headers]
+            for row in dict_rows
+        ]
+        return headers, normalized_rows
+
+    normalized_rows: list[list[Any]] = []
+    max_columns = len(explicit_headers)
+    for row in raw_rows:
+        row_values = row if isinstance(row, list) else [row]
+        normalized_row = [_excel_safe_value(cell) for cell in row_values]
+        normalized_rows.append(normalized_row)
+        max_columns = max(max_columns, len(normalized_row))
+    headers = _make_unique_headers(explicit_headers, max_columns)
+    for row in normalized_rows:
+        if len(row) < len(headers):
+            row.extend([""] * (len(headers) - len(row)))
+        elif len(row) > len(headers):
+            row[:] = row[: len(headers)]
+    return headers, normalized_rows
+
+
+def _build_totals_row(headers: list[str], rows: list[list[Any]]) -> list[Any] | None:
+    if not headers or not rows:
+        return None
+    totals: list[Any] = [""] * len(headers)
+    numeric_columns: list[int] = []
+    for column_index in range(len(headers)):
+        values = [row[column_index] for row in rows if column_index < len(row) and row[column_index] not in {"", None}]
+        if values and all(_is_summable_numeric(value) for value in values):
+            totals[column_index] = round(sum(_to_float(value) for value in values), 2)
+            numeric_columns.append(column_index)
+    if not numeric_columns:
+        return None
+    label_index = next((index for index in range(len(headers)) if index not in numeric_columns), None)
+    if label_index is None and len(headers) > 1:
+        label_index = 0
+        totals[label_index] = "Total"
+    elif label_index is not None:
+        totals[label_index] = "Total"
+    return totals
+
+
+def _apply_widths(ws) -> None:
+    for column_cells in ws.columns:
+        max_len = 10
+        for cell in column_cells:
+            if cell.value is not None:
+                max_len = max(max_len, len(str(cell.value)) + 2)
+        ws.column_dimensions[column_cells[0].column_letter].width = min(max_len, 50)
+
+
 def validate_table_data(table: dict) -> dict:
     headers = table.get("headers", [])
     rows = table.get("rows", [])
@@ -761,49 +934,71 @@ def extract_table_from_image(
     raise ValueError("TableScan failed: no available providers.")
 
 
-def build_table_excel_bytes(table: dict) -> bytes:
-    headers = table.get("headers", [])
-    rows = table.get("rows", [])
+def build_table_excel_bytes(
+    table: dict[str, Any],
+    *,
+    sheet_name: str = "Table",
+    metadata: dict[str, Any] | None = None,
+    include_totals: bool = True,
+) -> bytes:
+    headers, rows = _normalize_excel_table(table)
+    footer_metadata = OrderedDict(
+        [
+            ("Generated At", datetime.now().isoformat(timespec="seconds")),
+            ("Total Rows", len(rows)),
+            ("Total Columns", len(headers)),
+        ]
+    )
+    if metadata:
+        for key, value in metadata.items():
+            footer_metadata[str(key)] = value
 
     wb = Workbook()
     ws = wb.active
-    ws.title = "Table"
+    ws.title = sheet_name
 
+    current_row = 1
     for col_index, header in enumerate(headers, start=1):
-        cell = ws.cell(row=1, column=col_index, value=header)
+        cell = ws.cell(row=current_row, column=col_index, value=header)
         cell.fill = HEADER_FILL
         cell.font = HEADER_FONT
         cell.alignment = HEADER_ALIGN
+        cell.border = THIN_BORDER
 
-    for row_index, row in enumerate(rows, start=2):
-        for col_index, value in enumerate(row, start=1):
-            cell = ws.cell(row=row_index, column=col_index, value=value if value is not None else "")
-            cell.font = TEXT_FONT
-            cell.alignment = TEXT_ALIGN
-
-    column_widths = [len(str(header)) for header in headers]
+    current_row += 1
     for row in rows:
-        for index, value in enumerate(row):
-            text = "" if value is None else str(value)
-            column_widths[index] = max(column_widths[index], len(text))
+        for col_index, value in enumerate(row, start=1):
+            cell = ws.cell(row=current_row, column=col_index, value=value if value != "" else None)
+            cell.font = TEXT_FONT
+            cell.alignment = NUMBER_ALIGN if _is_display_numeric(value) else TEXT_ALIGN
+            cell.border = THIN_BORDER
+        current_row += 1
 
-    for index, width in enumerate(column_widths, start=1):
-        ws.column_dimensions[get_column_letter(index)].width = min(max(width + 2, 10), 60)
+    totals_row = _build_totals_row(headers, rows) if include_totals else None
+    if totals_row:
+        for col_index, value in enumerate(totals_row, start=1):
+            cell = ws.cell(row=current_row, column=col_index, value=value if value != "" else None)
+            cell.fill = TOTAL_FILL
+            cell.font = TOTAL_FONT
+            cell.alignment = NUMBER_ALIGN if isinstance(value, (int, float)) else TEXT_ALIGN
+            cell.border = THIN_BORDER
+        current_row += 1
 
-    summary = wb.create_sheet("Summary")
-    summary["A1"] = "Extraction timestamp"
-    summary["B1"] = datetime.now().isoformat(timespec="seconds")
-    summary["A2"] = "Total rows extracted"
-    summary["B2"] = len(rows)
-    summary["A3"] = "Total columns"
-    summary["B3"] = len(headers)
+    if footer_metadata:
+        current_row += 1
+        for key, value in footer_metadata.items():
+            label_cell = ws.cell(row=current_row, column=1, value=str(key))
+            label_cell.font = FOOTER_LABEL_FONT
+            label_cell.alignment = TEXT_ALIGN
+            value_cell = ws.cell(row=current_row, column=2, value=_excel_safe_value(value))
+            value_cell.font = FOOTER_VALUE_FONT
+            value_cell.alignment = NUMBER_ALIGN if _is_display_numeric(value) else TEXT_ALIGN
+            current_row += 1
 
-    for row in range(1, 4):
-        summary[f"A{row}"].font = Font(name="Arial", size=10, bold=True)
-        summary[f"B{row}"].font = Font(name="Arial", size=10)
-
-    summary.column_dimensions["A"].width = 28
-    summary.column_dimensions["B"].width = 32
+    ws.freeze_panes = "A2"
+    _apply_widths(ws)
+    if len(headers) >= 2:
+        ws.column_dimensions[get_column_letter(2)].width = max(ws.column_dimensions[get_column_letter(2)].width or 10, 18)
 
     buffer = BytesIO()
     wb.save(buffer)
