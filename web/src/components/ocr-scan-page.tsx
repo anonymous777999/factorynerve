@@ -195,8 +195,17 @@ function extractPreviewTable(result: OcrPreviewResult) {
   const normalizedRows = sourceRows.map((row) =>
     Array.from({ length: columnCount }, (_, index) => stringifySheetCell(row[index])),
   );
+
+  console.log("EXTRACT OUTPUT:", {
+    sheetHeaders,
+    sheetRows,
+    normalizedHeaders,
+    normalizedRows,
+    willCreateSheets: normalizedRows.length > 0
+  });
+
   return {
-    sheets: sheetHeaders.length || sheetRows.length
+    sheets: normalizedRows.length
       ? [{ columns: normalizedHeaders, rows: normalizedRows }]
       : undefined,
     headers: normalizedHeaders,
@@ -737,9 +746,9 @@ export default function OcrScanPage() {
       const record = savedId
         ? await updateOcrVerification(savedId, payload)
         : await createOcrVerification({
-            ...payload,
-            file: finalUploadFile || preparedPreviewFile || originalFile,
-          });
+          ...payload,
+          file: finalUploadFile || preparedPreviewFile || originalFile,
+        });
       setSavedId(record.id);
       setDraftDirty(false);
       return record;
@@ -1016,8 +1025,8 @@ export default function OcrScanPage() {
       setSelectedModel(
         toModelOption(
           record.routing_meta?.requested_model
-            || record.routing_meta?.selected_model
-            || record.routing_meta?.provider_model,
+          || record.routing_meta?.selected_model
+          || record.routing_meta?.provider_model,
         ),
       );
       resetHistory({
@@ -1510,7 +1519,20 @@ export default function OcrScanPage() {
                     onToggleConfidence={() => setShowLowConfidence((value) => !value)}
                   />
 
-                  {sheet?.columns?.length && sheet.rows ? (
+                  {(() => {
+                    console.log("DEBUG resultPreview:", resultPreview);
+                    console.log("DEBUG sheets:", resultPreview?.sheets);
+                    console.log("DEBUG sheet:", resultPreview?.sheets?.[0]);
+                    console.log("DEBUG condition check:", {
+                      hasSheet: !!sheet,
+                      hasRows: !!sheet?.rows,
+                      rowCount: sheet?.rows?.length,
+                      willRenderNewTable: !!(sheet && sheet.rows && sheet.rows.length > 0)
+                    });
+                    return null;
+                  })()}
+
+                  {sheet && sheet.rows && sheet.rows.length > 0 ? (
                     <div className="overflow-hidden rounded-[28px] border border-[#e3e8ef] bg-white shadow-[0_18px_54px_rgba(15,23,42,0.05)]">
                       <div className="overflow-auto">
                         <table className="min-w-full border-collapse">
@@ -1519,9 +1541,8 @@ export default function OcrScanPage() {
                               {sheet.columns.map((column, columnIndex) => (
                                 <th
                                   key={`sheet-header-${columnIndex}`}
-                                  className={`border border-[#e3e8ef] px-4 py-3 text-sm font-semibold text-[#101828] ${
-                                    columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
-                                  }`}
+                                  className={`border border-[#e3e8ef] px-4 py-3 text-sm font-semibold text-[#101828] ${columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
+                                    }`}
                                 >
                                   {column}
                                 </th>
@@ -1534,9 +1555,8 @@ export default function OcrScanPage() {
                                 {row.map((cell, columnIndex) => (
                                   <td
                                     key={`sheet-cell-${rowIndex}-${columnIndex}`}
-                                    className={`border border-[#e3e8ef] px-4 py-3 text-sm text-[#344054] ${
-                                      columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
-                                    }`}
+                                    className={`border border-[#e3e8ef] px-4 py-3 text-sm text-[#344054] ${columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
+                                      }`}
                                   >
                                     {cell || ""}
                                   </td>
@@ -1606,8 +1626,8 @@ export default function OcrScanPage() {
                           <span className="font-medium text-[#101828]">
                             {formatDurationMs(
                               resultPreview.debug?.processing_time_ms
-                                ?? resultPreview.tokenUsage.processing_time_ms
-                                ?? resultPreview.routingMeta?.processing_time_ms,
+                              ?? resultPreview.tokenUsage.processing_time_ms
+                              ?? resultPreview.routingMeta?.processing_time_ms,
                             )}
                           </span>
                         </div>
