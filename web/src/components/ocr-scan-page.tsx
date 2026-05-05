@@ -168,6 +168,13 @@ function stringifySheetCell(value: unknown) {
   if (value == null) return "";
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
+
+  // Handle cell objects from backend (Phase 1 cell structure)
+  if (typeof value === "object" && value !== null && "value" in value) {
+    const cellObj = value as { value: unknown };
+    return stringifySheetCell(cellObj.value); // Recursively stringify the value
+  }
+
   try {
     return JSON.stringify(value);
   } catch {

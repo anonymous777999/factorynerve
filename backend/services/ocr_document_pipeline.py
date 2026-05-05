@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -32,6 +33,71 @@ _DEFAULT_ROUTE = {
     "cost_saved_usd": 0.0132,
 }
 _AI_REQUIRED_DOC_TYPES = {"table", "sheet", "spreadsheet"}
+
+# Feature flag for cell object structure (Phase 1)
+_ENABLE_CELL_FORMAT_V2 = os.getenv("CELL_FORMAT_V2", "false").lower() == "true"
+
+
+def _upgrade_rows_to_cell_objects(
+    rows: list[list[str]],
+    cell_confidence_matrix: list[list[float]] | None = None,
+) -> list[list[dict[str, Any]]]:
+    """
+    Minimal cell object upgrade (Phase 1).
+    
+    Converts string rows to structured cell objects with:
+    - value: str
+    - confidence: float
+    
+    Args:
+        rows: List of string rows
+        cell_confidence_matrix: Optional OCR confidence matrix
+    
+    Returns:
+        List of rows with cell objects
+    """
+    # Import here to avoid circular dependencies
+    from backend.services.ocr_cell_adapter import (
+        normalize_cell,
+        infer_column_types,
+        estimate_confidence_simple,
+    )
+    
+    if not rows:
+        return []
+    
+    # Infer column types
+    column_types = infer_column_types(rows)
+    
+    # Upgrade each cell
+    upgraded_rows = []
+    for row_idx, row in enumerate(rows):
+        upgraded_row = []
+        for col_idx, cell in enumerate(row):
+            # Get column type
+            column_type = column_types[col_idx] if col_idx < len(column_types) else "text"
+            
+            # Get OCR confidence if available
+            ocr_conf = None
+            if cell_confidence_matrix and row_idx < len(cell_confidence_matrix):
+                if col_idx < len(cell_confidence_matrix[row_idx]):
+                    ocr_conf = cell_confidence_matrix[row_idx][col_idx]
+            
+            # Normalize to cell object
+            cell_obj = normalize_cell(cell, confidence=ocr_conf)
+            
+            # Enhance confidence with context
+            cell_obj["confidence"] = estimate_confidence_simple(
+                cell_obj["value"],
+                column_type,
+                cell_obj["confidence"]
+            )
+            
+            upgraded_row.append(cell_obj)
+        
+        upgraded_rows.append(upgraded_row)
+    
+    return upgraded_rows
 
 
 def _populated_cell_count(rows: list[list[str]] | None) -> int:
@@ -595,11 +661,25 @@ def build_structured_ocr_result(
         }
     )
     avg_confidence = float(confidence_payload.get("score") or 0.0)
+    
+    # Phase 1: Optionally upgrade rows to cell objects (feature flag controlled)
+    final_rows = normalized_rows
+    if _ENABLE_CELL_FORMAT_V2:
+        try:
+            final_rows = _upgrade_rows_to_cell_objects(
+                normalized_rows,
+                base_result.cell_confidence
+            )
+            logger.info("Cell format V2 enabled: upgraded %d rows to cell objects", len(final_rows))
+        except Exception as error:  # pylint: disable=broad-except
+            logger.warning("Cell object upgrade failed; using string rows: %s", error, exc_info=True)
+            final_rows = normalized_rows
+    
     return {
         "type": normalized.get("type") or _doc_type(doc_type_hint),
         "title": normalized.get("title") or _title_from_hint(doc_type_hint, template),
         "headers": normalized_headers,
-        "rows": normalized_rows,
+        "rows": final_rows,
         "raw_text": raw_text,
         "language": used_language,
         "confidence": avg_confidence,
