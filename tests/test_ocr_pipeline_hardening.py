@@ -392,6 +392,70 @@ def test_structured_ocr_result_still_raises_when_remote_ai_fails_and_local_resul
         raise AssertionError("Expected remote AI requirement to raise when both AI and local OCR are unusable.")
 
 
+def test_structured_ocr_result_applies_document_understanding_for_ledger_rows(monkeypatch):
+    monkeypatch.setattr(
+        "backend.services.ocr_document_pipeline.choose_ocr_route",
+        lambda *_args, **_kwargs: {
+            "clarity_score": 91.0,
+            "score_reason": "clear image",
+            "model_tier": "fast",
+            "forced": False,
+            "scorer_used": True,
+            "actual_cost_usd": 0.0008,
+            "cost_saved_usd": 0.0132,
+        },
+    )
+
+    result = build_structured_ocr_result(
+        b"fake-image",
+        base_result=OcrResult(
+            rows=[["To Opening Stock", "5000", "By Sales", "8000"], ["To Purchases", "3000"]],
+            avg_confidence=82.0,
+            warnings=[],
+        ),
+        used_language="eng",
+        fallback_used=False,
+        doc_type_hint="ledger",
+    )
+
+    assert result["headers"] == ["Dr", "Amount", "Cr", "Amount"]
+    assert result["rows"][0] == ["Opening Stock", "5000", "Sales", "8000"]
+    assert result["rows"][1] == ["Purchases", "3000", "", ""]
+    assert result["understanding"]["doc_type"] == "ledger"
+    assert result["sheets"][0]["columns"] == ["Dr", "Amount", "Cr", "Amount"]
+
+
+def test_structured_ocr_result_falls_back_when_document_understanding_breaks(monkeypatch):
+    monkeypatch.setattr(
+        "backend.services.ocr_document_pipeline.choose_ocr_route",
+        lambda *_args, **_kwargs: {
+            "clarity_score": 91.0,
+            "score_reason": "clear image",
+            "model_tier": "fast",
+            "forced": False,
+            "scorer_used": True,
+            "actual_cost_usd": 0.0008,
+            "cost_saved_usd": 0.0132,
+        },
+    )
+    monkeypatch.setattr(
+        "backend.services.ocr_document_pipeline.classify_document",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(RuntimeError("classifier broke")),
+    )
+
+    result = build_structured_ocr_result(
+        b"fake-image",
+        base_result=OcrResult(rows=[["To Opening Stock", "5000"]], avg_confidence=82.0, warnings=[]),
+        used_language="eng",
+        fallback_used=False,
+        doc_type_hint="ledger",
+    )
+
+    assert result["headers"] == ["Column 1", "Column 2"]
+    assert result["rows"] == [["To Opening Stock", "5000"]]
+    assert result["understanding"] is None
+
+
 def test_reuse_has_remote_ai_accepts_only_ai_backed_records():
     class VerificationStub:
         def __init__(self, routing_meta):

@@ -11,6 +11,9 @@ from sqlalchemy.orm import Session
 from backend.models.ocr_template import OcrTemplate
 from backend.models.ocr_verification import OcrVerification
 from backend.ocr_utils import OcrResult
+from backend.understanding.classifier import classify as classify_document
+from backend.understanding.normalizer import normalize as normalize_understanding
+from backend.understanding.parser_registry import parse_document
 from backend.services.anthropic_usage import normalize_anthropic_model_name
 from backend.services.ocr_confidence import calculate_structural_confidence
 from backend.services.ocr_normalization import normalize_structured_payload
@@ -124,6 +127,29 @@ def _flatten_rows(rows: list[list[str]]) -> str | None:
     parts = [" | ".join(cell for cell in row if cell) for row in rows]
     joined = "\n".join(part for part in parts if part.strip())
     return joined or None
+
+
+def _apply_document_understanding(payload: dict[str, Any]) -> dict[str, Any]:
+    try:
+        rows = payload.get("rows") or []
+        text = str(payload.get("raw_text") or _flatten_rows(rows) or "")
+        classified = classify_document(text)
+        parsed = parse_document(str(classified.get("doc_type") or "generic"), rows)
+        normalized = normalize_understanding(parsed)
+        sheets = normalized.get("sheets") if isinstance(normalized, dict) else []
+        if not sheets or not isinstance(sheets[0], dict):
+            return payload
+        first_sheet = sheets[0]
+        return {
+            **payload,
+            "headers": [str(value) for value in first_sheet.get("columns") or []],
+            "rows": [[str(cell) for cell in row] for row in first_sheet.get("rows") or []],
+            "sheets": sheets,
+            "understanding": classified,
+        }
+    except Exception as error:  # pylint: disable=broad-except
+        logger.warning("Document understanding failed; using original OCR rows: %s", error, exc_info=True)
+        return payload
 
 
 def _stringify_report_value(value: Any) -> str:
@@ -550,8 +576,18 @@ def build_structured_ocr_result(
             ]
         )
     )
+    normalized = _apply_document_understanding(
+        {
+            "type": normalized.get("type") or _doc_type(doc_type_hint),
+            "title": normalized.get("title") or _title_from_hint(doc_type_hint, template),
+            "headers": normalized.get("headers") or [],
+            "rows": normalized.get("rows") or [],
+            "raw_text": raw_text,
+        }
+    )
     normalized_headers = normalized.get("headers") or []
     normalized_rows = normalized.get("rows") or []
+    raw_text = normalized.get("raw_text") or _flatten_rows(normalized_rows)
     confidence_payload = calculate_structural_confidence(
         {
             "headers": normalized_headers,
@@ -577,6 +613,8 @@ def build_structured_ocr_result(
         "fallback_used": fallback_used,
         "raw_column_added": bool(base_result.raw_column_added),
         "token_usage": route_meta.get("usage") if isinstance(route_meta.get("usage"), dict) else None,
+        "sheets": normalized.get("sheets") if isinstance(normalized.get("sheets"), list) else None,
+        "understanding": normalized.get("understanding") if isinstance(normalized.get("understanding"), dict) else None,
         "debug": {
             "requested_model": route_meta.get("requested_model"),
             "selected_model": route_meta.get("selected_model"),
