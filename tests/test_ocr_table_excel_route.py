@@ -9,6 +9,7 @@ from openpyxl import load_workbook
 from PIL import Image
 
 from backend.routers import ocr as ocr_router
+from backend.table_scan import build_table_excel_bytes
 
 
 def _make_image_bytes(fmt: str, size: tuple[int, int]) -> bytes:
@@ -290,6 +291,80 @@ def test_run_table_excel_pipeline_builds_excel_from_form_response(monkeypatch):
     assert metadata["total_columns"] == 2
     assert metadata["image_quality_score"] == 90
     assert metadata["model_used"] == ocr_router._TABLE_EXCEL_MODEL_HAIKU
+
+
+def test_build_table_excel_bytes_orders_dict_columns_and_adds_totals_footer():
+    excel_bytes = build_table_excel_bytes(
+        {
+            "rows": [
+                {"amount": "10.5", "item": "Widget A", "date": "2026-04-29"},
+                {"amount": "+20", "item": "=cmd|' /C calc'!A0", "date": "2026-04-30"},
+            ]
+        },
+        metadata={"Source": "OCR"},
+    )
+
+    workbook = load_workbook(BytesIO(excel_bytes))
+    sheet = workbook.active
+
+    assert [sheet["A1"].value, sheet["B1"].value, sheet["C1"].value] == ["date", "item", "amount"]
+    assert sheet["A2"].alignment.horizontal == "left"
+    assert sheet["C2"].alignment.horizontal == "right"
+    assert sheet["B3"].data_type == "s"
+    assert str(sheet["B3"].value).endswith("=cmd|' /C calc'!A0")
+    assert sheet["A4"].value == "Total"
+    assert float(sheet["C4"].value) == 30.5
+    assert sheet["A6"].value == "Generated At"
+    assert sheet["A9"].value == "Source"
+    assert sheet["B9"].value == "OCR"
+
+
+def test_run_table_excel_pipeline_extends_short_headers_and_adds_totals(monkeypatch):
+    image_bytes = _make_image_bytes("PNG", (720, 720))
+
+    class FakeResponse:
+        status_code = 200
+
+        def json(self):
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(
+                            {
+                                "type": "table",
+                                "headers": ["Date"],
+                                "rows": [
+                                    ["2026-04-29", "1250"],
+                                    ["2026-04-30", "900"],
+                                ],
+                            }
+                        ),
+                    }
+                ]
+            }
+
+    monkeypatch.setattr(ocr_router.requests, "post", lambda *args, **kwargs: FakeResponse())
+
+    excel_bytes, metadata = ocr_router._run_table_excel_pipeline(
+        image_bytes,
+        content_type="image/png",
+        filename="table.png",
+        system_prompt=None,
+        user_message=None,
+    )
+
+    workbook = load_workbook(BytesIO(excel_bytes))
+    sheet = workbook.active
+
+    assert sheet["A1"].value == "Date"
+    assert sheet["B1"].value == "Column 2"
+    assert sheet["A4"].value == "Total"
+    assert float(sheet["B4"].value) == 2150.0
+    assert sheet["A9"].value == "Extracted Type"
+    assert sheet["B9"].value == "Table"
+    assert metadata["total_rows"] == 2
+    assert metadata["total_columns"] == 2
 
 
 def test_run_table_preview_pipeline_reports_requested_model_and_token_usage(monkeypatch):
