@@ -41,3 +41,5 @@ web/devserver.err
 web/devserver.out
 backend/uvicorn.err
 backend/uvicorn.out
+# Added by code-review-graph
+.code-review-graph/
