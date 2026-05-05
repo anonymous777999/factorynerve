@@ -35,7 +35,7 @@ from backend.ledger_scan import (
     preprocess_image_bytes,
     validate_data as ledger_validate_data,
 )
-from backend.table_scan import build_table_excel_bytes
+from backend.table_scan import build_table_excel_bytes, generate_excel_from_sections
 from backend.models.report import AuditLog
 from backend.models.ocr_template import OcrTemplate
 from backend.models.ocr_verification import OcrVerification
@@ -64,6 +64,7 @@ from backend.services.background_jobs import (
 from backend.services.ocr_document_pipeline import (
     build_structured_ocr_result,
     find_reusable_verification,
+    format_for_ui,
     serialize_reused_ocr_result,
 )
 from backend.services.anthropic_usage import (
@@ -940,11 +941,24 @@ def _build_table_preview_payload(
         headers = ["Text"]
         rows = [[str(line)] for line in normalized.get("lines", [])]
     else:
-        headers = ["Section"]
-        rows = [
-            [json.dumps(section, ensure_ascii=True)]
-            for section in normalized.get("sections", [])
-        ]
+        structured = format_for_ui(
+            {
+                "title": _table_preview_title(doc_type_hint, template),
+                "metadata": {"Extracted Type": extracted_type},
+                "sections": normalized.get("sections", []),
+            }
+        )
+        structured["type"] = _table_preview_doc_type(doc_type_hint)
+        structured["warnings"] = [
+            str(value).strip()
+            for value in extracted_json.get("warnings", [])
+            if str(value).strip()
+        ] if isinstance(extracted_json.get("warnings"), list) else []
+        if not structured.get("rows"):
+            raise _table_excel_error(502, "Anthropic API did not return any extractable data for this scan.")
+        if not structured.get("raw_text"):
+            structured["raw_text"] = _flatten_preview_rows(structured.get("rows") or [])
+        return structured
 
     fallback_headers = list(template.column_names or []) if template and template.column_names else headers
     structured = normalize_structured_payload(
@@ -1015,13 +1029,24 @@ def _build_table_excel_workbook(extracted_json: dict[str, object]) -> tuple[byte
             include_totals = False
         else:
             sections = normalized.get("sections", [])
-            total_rows = len(sections)
-            total_columns = 1
-            excel_payload = {
-                "headers": ["Section"],
-                "rows": [[json.dumps(section, ensure_ascii=False)] for section in sections],
+            excel_bytes, report_input = generate_excel_from_sections(
+                {
+                    "title": "Extracted Data",
+                    "metadata": {"Extracted Type": extracted_type},
+                    "sections": sections,
+                },
+                sheet_name="Extracted Data",
+            )
+            totals = report_input.get("totals") if isinstance(report_input.get("totals"), dict) else {}
+            total_rows = int(totals.get("row_count") or 0)
+            total_columns = int(totals.get("column_count") or 0)
+            if not excel_bytes:
+                raise RuntimeError("Workbook writer returned empty output.")
+            return excel_bytes, {
+                "total_rows": total_rows,
+                "total_columns": total_columns,
+                "extracted_type": extracted_type,
             }
-            include_totals = False
 
         if total_columns == 0:
             excel_payload = {"headers": ["Result"], "rows": [["No extractable data found"]]}

@@ -9,6 +9,7 @@ from openpyxl import load_workbook
 from PIL import Image
 
 from backend.routers import ocr as ocr_router
+from backend.services.ocr_document_pipeline import format_for_ui, transform_sections_to_report_input
 from backend.table_scan import build_table_excel_bytes
 
 
@@ -363,6 +364,127 @@ def test_run_table_excel_pipeline_extends_short_headers_and_adds_totals(monkeypa
     assert float(sheet["B4"].value) == 2150.0
     assert sheet["A9"].value == "Extracted Type"
     assert sheet["B9"].value == "Table"
+    assert metadata["total_rows"] == 2
+    assert metadata["total_columns"] == 2
+
+
+def test_transform_sections_to_report_input_creates_dynamic_report_tables():
+    report = transform_sections_to_report_input(
+        {
+            "title": "Invoice OCR",
+            "metadata": {"source": {"model": "opus"}},
+            "sections": [
+                {
+                    "title": "Vendor",
+                    "type": "form",
+                    "fields": [{"label": "Name", "value": "ACME"}],
+                },
+                {
+                    "title": "Items",
+                    "type": "table",
+                    "headers": ["Item", "Qty"],
+                    "rows": [["Bolt", "5"]],
+                },
+            ],
+        }
+    )
+
+    assert report["title"] == "Invoice OCR"
+    assert report["metadata"]["source.model"] == "opus"
+    assert report["totals"]["table_count"] == 2
+    assert report["totals"]["row_count"] == 2
+    assert report["tables"][0]["headers"] == ["Field", "Value"]
+    assert report["tables"][1]["headers"] == ["Item", "Qty"]
+
+
+def test_format_for_ui_flattens_multi_table_sections_without_losing_report_data():
+    payload = format_for_ui(
+        {
+            "title": "Mixed OCR",
+            "metadata": {"scan": {"page": 1}},
+            "tables": [
+                {"title": "Header", "headers": ["Field", "Value"], "rows": [["Invoice", "INV-1"]]},
+                {"title": "Items", "headers": ["Item", "Qty"], "rows": [["Bolt", "5"]]},
+            ],
+            "totals": {"table_count": 2, "row_count": 2, "column_count": 2},
+        }
+    )
+
+    assert payload["metadata"]["scan.page"] == "1"
+    assert payload["headers"] == ["Section", "Field", "Value", "Item", "Qty"]
+    assert payload["rows"][0] == ["Header", "Invoice", "INV-1", "", ""]
+    assert payload["rows"][1] == ["Items", "", "", "Bolt", "5"]
+    assert len(payload["tables"]) == 2
+
+
+def test_build_table_preview_payload_keeps_ui_flat_for_mixed_sections():
+    payload = ocr_router._build_table_preview_payload(
+        {
+            "type": "mixed",
+            "sections": [
+                {"title": "Header", "type": "form", "fields": [{"label": "Invoice", "value": "INV-1001"}]},
+                {"title": "Items", "type": "table", "headers": ["Item", "Qty"], "rows": [["Bolt", "5"]]},
+            ],
+        },
+        template=None,
+        doc_type_hint="table",
+    )
+
+    assert payload["title"] == "Table"
+    assert payload["headers"] == ["Section", "Field", "Value", "Item", "Qty"]
+    assert payload["rows"][0] == ["Header", "Invoice", "INV-1001", "", ""]
+    assert payload["rows"][1] == ["Items", "", "", "Bolt", "5"]
+    assert payload["tables"][0]["title"] == "Header"
+    assert payload["totals"]["table_count"] == 2
+
+
+def test_run_table_excel_pipeline_builds_excel_from_mixed_sections(monkeypatch):
+    image_bytes = _make_image_bytes("PNG", (720, 720))
+
+    class FakeResponse:
+        status_code = 200
+
+        def json(self):
+            return {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(
+                            {
+                                "type": "mixed",
+                                "sections": [
+                                    {"title": "Header", "type": "form", "fields": [{"label": "Invoice", "value": "INV-1001"}]},
+                                    {"title": "Items", "type": "table", "headers": ["Item", "Qty"], "rows": [["Bolt", "5"]]},
+                                ],
+                            }
+                        ),
+                    }
+                ]
+            }
+
+    monkeypatch.setattr(ocr_router.requests, "post", lambda *args, **kwargs: FakeResponse())
+
+    excel_bytes, metadata = ocr_router._run_table_excel_pipeline(
+        image_bytes,
+        content_type="image/png",
+        filename="mixed.png",
+        system_prompt=None,
+        user_message=None,
+    )
+
+    workbook = load_workbook(BytesIO(excel_bytes))
+    sheet = workbook.active
+
+    assert sheet["A1"].value == "Extracted Data"
+    assert sheet["A3"].value == "Header"
+    assert sheet["A4"].value == "Field"
+    assert sheet["A5"].value == "Invoice"
+    assert sheet["B5"].value == "INV-1001"
+    assert sheet["A7"].value == "Items"
+    assert sheet["A8"].value == "Item"
+    assert sheet["A9"].value == "Bolt"
+    assert sheet["B9"].value == "5"
+    assert metadata["extracted_type"] == "mixed"
     assert metadata["total_rows"] == 2
     assert metadata["total_columns"] == 2
 
