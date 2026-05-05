@@ -1003,3 +1003,115 @@ def build_table_excel_bytes(
     buffer = BytesIO()
     wb.save(buffer)
     return buffer.getvalue()
+
+
+def build_report_excel_bytes(
+    report_input: dict[str, Any],
+    *,
+    sheet_name: str = "Report",
+) -> bytes:
+    title = str(report_input.get("title") or "OCR Extraction")
+    metadata = report_input.get("metadata") if isinstance(report_input.get("metadata"), dict) else {}
+    totals = report_input.get("totals") if isinstance(report_input.get("totals"), dict) else {}
+    raw_tables = report_input.get("tables") if isinstance(report_input.get("tables"), list) else []
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = sheet_name
+
+    current_row = 1
+    ws.cell(row=current_row, column=1, value=title).font = Font(name="Arial", size=14, bold=True)
+    ws.cell(row=current_row, column=1).alignment = TEXT_ALIGN
+    current_row += 2
+
+    max_width_by_column: dict[int, int] = {}
+    table_count = 0
+    row_count = 0
+    max_columns = 0
+    footer_metadata = OrderedDict()
+    for key, value in metadata.items():
+        footer_metadata[str(key)] = _excel_safe_value(value)
+
+    for index, raw_table in enumerate(raw_tables, start=1):
+        if not isinstance(raw_table, dict):
+            continue
+        headers, rows = _normalize_excel_table(raw_table)
+        table_title = str(raw_table.get("title") or f"Section {index}")
+        if not headers and not rows:
+            continue
+        table_count += 1
+        row_count += len(rows)
+        max_columns = max(max_columns, len(headers))
+
+        title_cell = ws.cell(row=current_row, column=1, value=table_title)
+        title_cell.font = Font(name="Arial", size=12, bold=True)
+        title_cell.alignment = TEXT_ALIGN
+        current_row += 1
+
+        for col_index, header in enumerate(headers, start=1):
+            cell = ws.cell(row=current_row, column=col_index, value=header)
+            cell.fill = HEADER_FILL
+            cell.font = HEADER_FONT
+            cell.alignment = HEADER_ALIGN
+            cell.border = THIN_BORDER
+            max_width_by_column[col_index] = max(max_width_by_column.get(col_index, 10), len(str(header)) + 2)
+        current_row += 1
+
+        for row in rows:
+            for col_index, value in enumerate(row, start=1):
+                cell = ws.cell(row=current_row, column=col_index, value=value if value != "" else None)
+                cell.font = TEXT_FONT
+                cell.alignment = NUMBER_ALIGN if _is_display_numeric(value) else TEXT_ALIGN
+                cell.border = THIN_BORDER
+                if value not in {"", None}:
+                    max_width_by_column[col_index] = max(max_width_by_column.get(col_index, 10), len(str(value)) + 2)
+            current_row += 1
+
+        totals_row = _build_totals_row(headers, rows)
+        if totals_row:
+            for col_index, value in enumerate(totals_row, start=1):
+                cell = ws.cell(row=current_row, column=col_index, value=value if value != "" else None)
+                cell.fill = TOTAL_FILL
+                cell.font = TOTAL_FONT
+                cell.alignment = NUMBER_ALIGN if isinstance(value, (int, float)) else TEXT_ALIGN
+                cell.border = THIN_BORDER
+            current_row += 1
+
+        current_row += 1
+
+    footer_metadata.setdefault("Table Count", table_count or int(totals.get("table_count") or 0))
+    footer_metadata.setdefault("Row Count", row_count or int(totals.get("row_count") or 0))
+    footer_metadata.setdefault("Column Count", max_columns or int(totals.get("column_count") or 0))
+    for key, value in totals.items():
+        label = str(key).replace("_", " ").title()
+        footer_metadata.setdefault(label, _excel_safe_value(value))
+
+    for key, value in footer_metadata.items():
+        label_cell = ws.cell(row=current_row, column=1, value=str(key))
+        label_cell.font = FOOTER_LABEL_FONT
+        label_cell.alignment = TEXT_ALIGN
+        value_cell = ws.cell(row=current_row, column=2, value=value if value != "" else None)
+        value_cell.font = FOOTER_VALUE_FONT
+        value_cell.alignment = NUMBER_ALIGN if _is_display_numeric(value) else TEXT_ALIGN
+        current_row += 1
+
+    ws.freeze_panes = "A3"
+    for col_index, width in max_width_by_column.items():
+        ws.column_dimensions[get_column_letter(col_index)].width = min(max(width, 10), 50)
+    ws.column_dimensions["A"].width = max(ws.column_dimensions["A"].width or 10, 16)
+    ws.column_dimensions["B"].width = max(ws.column_dimensions["B"].width or 10, 18)
+
+    buffer = BytesIO()
+    wb.save(buffer)
+    return buffer.getvalue()
+
+
+def generate_excel_from_sections(
+    payload: dict[str, Any],
+    *,
+    sheet_name: str = "Report",
+) -> tuple[bytes, dict[str, Any]]:
+    from backend.services.ocr_document_pipeline import transform_sections_to_report_input
+
+    report_input = transform_sections_to_report_input(payload)
+    return build_report_excel_bytes(report_input, sheet_name=sheet_name), report_input

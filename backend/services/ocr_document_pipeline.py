@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any
 
@@ -123,6 +124,244 @@ def _flatten_rows(rows: list[list[str]]) -> str | None:
     parts = [" | ".join(cell for cell in row if cell) for row in rows]
     joined = "\n".join(part for part in parts if part.strip())
     return joined or None
+
+
+def _stringify_report_value(value: Any) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, str):
+        return value.strip()
+    if isinstance(value, (int, float, bool)):
+        return str(value)
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=True, default=str)
+    return str(value).strip()
+
+
+def _section_title(section: Any, index: int) -> str:
+    if isinstance(section, dict):
+        for key in ("title", "name", "label", "heading", "section_title"):
+            value = _stringify_report_value(section.get(key))
+            if value:
+                return value
+        section_type = _stringify_report_value(section.get("type") or section.get("kind"))
+        if section_type:
+            return section_type.replace("_", " ").replace("-", " ").title()
+    return f"Section {index}"
+
+
+def _flatten_metadata_map(metadata: dict[str, Any] | None, *, prefix: str = "") -> dict[str, str]:
+    flattened: dict[str, str] = {}
+    for key, value in (metadata or {}).items():
+        normalized_key = _stringify_report_value(key) or "metadata"
+        composed_key = f"{prefix}.{normalized_key}" if prefix else normalized_key
+        if isinstance(value, dict):
+            nested = _flatten_metadata_map(value, prefix=composed_key)
+            if nested:
+                flattened.update(nested)
+            else:
+                flattened[composed_key] = "{}"
+        elif isinstance(value, list):
+            flattened[composed_key] = json.dumps(value, ensure_ascii=True, default=str)
+        else:
+            flattened[composed_key] = _stringify_report_value(value)
+    return flattened
+
+
+def _section_to_table(section: Any, index: int) -> dict[str, Any]:
+    title = _section_title(section, index)
+    if isinstance(section, dict):
+        section_type = _stringify_report_value(section.get("type") or section.get("kind")).lower() or "section"
+        if section_type == "form" and isinstance(section.get("fields"), list):
+            rows = [
+                [
+                    _stringify_report_value(field.get("label") if isinstance(field, dict) else ""),
+                    _stringify_report_value(field.get("value") if isinstance(field, dict) else field),
+                ]
+                for field in section.get("fields") or []
+            ]
+            return {"title": title, "type": "form", "headers": ["Field", "Value"], "rows": rows}
+        if section_type == "text" and isinstance(section.get("lines"), list):
+            rows = [[_stringify_report_value(line)] for line in section.get("lines") or []]
+            return {"title": title, "type": "text", "headers": ["Text"], "rows": rows}
+        if isinstance(section.get("table"), dict):
+            normalized = normalize_structured_payload(
+                section.get("table"),
+                fallback_type="table",
+                fallback_title=title,
+            )
+            return {
+                "title": title,
+                "type": section_type or normalized.get("type") or "table",
+                "headers": normalized.get("headers") or [],
+                "rows": normalized.get("rows") or [],
+            }
+        normalized = normalize_structured_payload(
+            section,
+            fallback_type=section_type or "table",
+            fallback_title=title,
+        )
+        if normalized.get("rows"):
+            return {
+                "title": title,
+                "type": section_type or normalized.get("type") or "table",
+                "headers": normalized.get("headers") or [],
+                "rows": normalized.get("rows") or [],
+            }
+        scalar_pairs = [
+            [str(key), _stringify_report_value(value)]
+            for key, value in section.items()
+            if key not in {"title", "name", "label", "heading", "section_title", "type", "kind"}
+            and not isinstance(value, (dict, list))
+        ]
+        if scalar_pairs:
+            return {"title": title, "type": section_type or "form", "headers": ["Field", "Value"], "rows": scalar_pairs}
+        return {
+            "title": title,
+            "type": section_type or "section",
+            "headers": ["Section"],
+            "rows": [[json.dumps(section, ensure_ascii=True, default=str)]],
+        }
+
+    normalized = normalize_structured_payload(
+        section,
+        fallback_type="table",
+        fallback_title=title,
+    )
+    return {
+        "title": title,
+        "type": normalized.get("type") or "table",
+        "headers": normalized.get("headers") or [],
+        "rows": normalized.get("rows") or [],
+    }
+
+
+def transform_sections_to_report_input(
+    payload: Any,
+    *,
+    title: str | None = None,
+    metadata: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    source = payload if isinstance(payload, dict) else {}
+    sections = source.get("sections") if isinstance(source.get("sections"), list) else payload if isinstance(payload, list) else None
+    report_title = title or _stringify_report_value(source.get("title")) or "OCR Extraction"
+    report_metadata = {
+        **_flatten_metadata_map(source.get("metadata") if isinstance(source.get("metadata"), dict) else {}),
+        **_flatten_metadata_map(metadata),
+    }
+    if isinstance(source, dict):
+        for key, value in source.items():
+            if key in {"sections", "tables", "metadata", "title"}:
+                continue
+            if not isinstance(value, (dict, list)):
+                report_metadata.setdefault(str(key), _stringify_report_value(value))
+
+    if sections is None:
+        normalized = normalize_structured_payload(
+            payload,
+            fallback_title=report_title,
+        )
+        tables = [
+            {
+                "title": report_title,
+                "type": normalized.get("type") or "table",
+                "headers": normalized.get("headers") or [],
+                "rows": normalized.get("rows") or [],
+            }
+        ]
+    else:
+        tables = [_section_to_table(section, index + 1) for index, section in enumerate(sections)]
+
+    totals = {
+        "table_count": len(tables),
+        "row_count": sum(len(table.get("rows") or []) for table in tables),
+        "column_count": max((len(table.get("headers") or []) for table in tables), default=0),
+        "section_count": len(sections or tables),
+    }
+    return {
+        "title": report_title,
+        "metadata": report_metadata,
+        "tables": tables,
+        "totals": totals,
+    }
+
+
+def format_for_ui(response: Any) -> dict[str, Any]:
+    if not isinstance(response, dict):
+        normalized = normalize_structured_payload(response)
+        return {
+            **normalized,
+            "metadata": {},
+            "tables": [
+                {
+                    "title": normalized.get("title") or "OCR Extraction",
+                    "type": normalized.get("type") or "table",
+                    "headers": normalized.get("headers") or [],
+                    "rows": normalized.get("rows") or [],
+                }
+            ],
+            "totals": {
+                "table_count": 1,
+                "row_count": len(normalized.get("rows") or []),
+                "column_count": len(normalized.get("headers") or []),
+                "section_count": 1,
+            },
+        }
+
+    if isinstance(response.get("tables"), list):
+        report = dict(response)
+    else:
+        report = transform_sections_to_report_input(response)
+
+    tables = [table for table in report.get("tables", []) if isinstance(table, dict)]
+    flat_metadata = _flatten_metadata_map(report.get("metadata") if isinstance(report.get("metadata"), dict) else {})
+    if len(tables) <= 1:
+        table = tables[0] if tables else {"title": report.get("title") or "OCR Extraction", "headers": [], "rows": [], "type": "table"}
+        headers = [str(value) for value in table.get("headers") or []]
+        rows = [[str(cell) for cell in row] for row in table.get("rows") or []]
+    else:
+        headers = ["Section"]
+        for table in tables:
+            for header in table.get("headers") or []:
+                normalized_header = _stringify_report_value(header)
+                if normalized_header and normalized_header not in headers:
+                    headers.append(normalized_header)
+        rows = []
+        for table in tables:
+            table_headers = [_stringify_report_value(header) for header in table.get("headers") or []]
+            for row in table.get("rows") or []:
+                mapped = {
+                    table_headers[index]: _stringify_report_value(cell)
+                    for index, cell in enumerate(row)
+                    if index < len(table_headers)
+                }
+                rows.append([_stringify_report_value(table.get("title"))] + [mapped.get(header, "") for header in headers[1:]])
+
+    normalized = normalize_structured_payload(
+        {
+            "type": "table",
+            "title": report.get("title") or "OCR Extraction",
+            "headers": headers,
+            "rows": rows,
+            "raw_text": report.get("raw_text"),
+        },
+        fallback_title=report.get("title") or "OCR Extraction",
+    )
+    if not normalized.get("raw_text"):
+        metadata_lines = [f"{key}: {value}" for key, value in flat_metadata.items() if value]
+        row_text = _flatten_rows(normalized.get("rows") or [])
+        normalized["raw_text"] = "\n".join(line for line in [*metadata_lines, row_text or ""] if line).strip() or None
+    return {
+        **report,
+        "type": report.get("type") or "table",
+        "title": report.get("title") or normalized.get("title") or "OCR Extraction",
+        "metadata": flat_metadata,
+        "headers": normalized.get("headers") or [],
+        "rows": normalized.get("rows") or [],
+        "raw_text": normalized.get("raw_text"),
+        "warnings": report.get("warnings") or [],
+        "columns": max(len(normalized.get("headers") or []), max((len(row) for row in normalized.get("rows") or []), default=0), 1),
+    }
 
 
 def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrTemplate | None = None) -> dict[str, Any]:
