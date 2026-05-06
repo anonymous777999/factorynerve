@@ -102,6 +102,14 @@ type ResultPreview = {
   tokenUsage?: OcrTokenUsage | null;
   debug?: OcrDebugPayload | null;
   reused?: boolean;
+  reusedVerificationId?: number | null;
+  cached?: boolean;
+  cacheCreatedAt?: string | null;
+  cacheAgeHours?: number | null;
+  cacheTrust?: "high" | "low" | null;
+  reprocessCount?: number | null;
+  userCorrected?: boolean | null;
+  reviewRequired?: boolean | null;
 };
 
 type StructuredSheet = {
@@ -885,7 +893,7 @@ export default function OcrScanPage() {
     return () => window.clearTimeout(timer);
   }, [draftDirty, persistStructuredDraft, resultPreview]);
 
-  const processFile = useCallback(async (file: File, sourceName: string, model: ModelOption = "auto") => {
+  const processFile = useCallback(async (file: File, sourceName: string, model: ModelOption = "auto", forceRefresh = false) => {
     setBusy(true);
     setStatus("");
     setShareLink(null);
@@ -927,7 +935,7 @@ export default function OcrScanPage() {
       const extractTimer = window.setTimeout(() => setProcessingStage("extract"), 500);
       const confidenceTimer = window.setTimeout(() => setProcessingStage("confidence"), 1300);
 
-      console.info("[OCR] Selected model", model);
+      console.info("[OCR] Selected model", model, "forceRefresh", forceRefresh);
       let result: OcrPreviewResult;
       try {
         result = await previewOcrLogbook({
@@ -937,6 +945,7 @@ export default function OcrScanPage() {
           docTypeHint: "table",
           model,
           documentHash: prepared.sha256,
+          forceRefresh,
         });
       } finally {
         window.clearTimeout(extractTimer);
@@ -962,6 +971,14 @@ export default function OcrScanPage() {
         tokenUsage: result.token_usage ?? result.routing?.usage ?? null,
         debug: result.debug ?? null,
         reused: result.reused ?? false,
+        reusedVerificationId: result.reused_verification_id ?? null,
+        cached: result.cached ?? false,
+        cacheCreatedAt: result.cache_created_at ?? null,
+        cacheAgeHours: result.cache_age_hours ?? null,
+        cacheTrust: result.cache_trust ?? null,
+        reprocessCount: result.reprocess_count ?? null,
+        userCorrected: result.user_corrected ?? null,
+        reviewRequired: result.review_required ?? null,
       };
 
       console.info("[OCR] OCR response", {
@@ -987,6 +1004,26 @@ export default function OcrScanPage() {
       if (result.reused_verification_id) {
         setSavedId(result.reused_verification_id);
       } else {
+        // If this was a fresh scan after a cached one, check confidence delta
+        if (forceRefresh && result.previous_confidence != null) {
+          const oldConf = Math.round(result.previous_confidence);
+          const newConf = Math.round(result.avg_confidence ?? result.confidence ?? 0);
+
+          if (result.confidence_dropped) {
+            const keepOriginal = !window.confirm(
+              `Fresh scan returned lower confidence (${newConf}% vs ${oldConf}%). \n\nDo you want to use the new result anyway? Click Cancel to keep your previous result.`
+            );
+            if (keepOriginal) {
+              // Re-run without force_refresh to get the cached one back
+              void processFile(file, sourceName, model, false);
+              return;
+            }
+          } else if (result.confidence_improved) {
+            setStatus(`Scan updated. Confidence: ${newConf}% (was ${oldConf}%)`);
+            setStatusTone("success");
+          }
+        }
+
         try {
           const saved = await createOcrVerification({
             templateId: null,
@@ -1016,7 +1053,7 @@ export default function OcrScanPage() {
         }
       }
 
-      if (!draftSaveFailed) {
+      if (!draftSaveFailed && !status) {
         if (warpSkipped) {
           setStatus("Sheet ready to review. Perspective correction was skipped for this image.");
           setStatusTone("warning");
@@ -1541,6 +1578,37 @@ export default function OcrScanPage() {
               warning={processingWarning}
             />
           ) : null}
+
+          {step === "preview" && resultPreview?.cached && (
+            <div className={`rounded-[22px] border px-4 py-3 text-sm ${resultPreview.cacheTrust === "low" ? statusBannerClass("warning") : "border-[#cfe0f0] bg-[#f7fbff] text-[#185FA5]"}`}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-2 w-2 rounded-full bg-current opacity-75" />
+                  <span>
+                    {resultPreview.cacheTrust === "low"
+                      ? "This cached result has low confidence. Fresh scan recommended."
+                      : `This result was loaded from a previous scan (${resultPreview.cacheAgeHours}h ago).`}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="rounded-full border border-current/20 px-3 py-1.5 text-xs font-medium transition hover:bg-current/5"
+                  onClick={() => {
+                    if (resultPreview.userCorrected) {
+                      if (window.confirm("You have manually edited this result. Rescanning will replace your edits. Continue?")) {
+                        handleRerunWithSelectedModel(true);
+                      }
+                    } else {
+                      handleRerunWithSelectedModel(true);
+                    }
+                  }}
+                  disabled={busy}
+                >
+                  Scan Fresh
+                </button>
+              </div>
+            </div>
+          )}
 
           {(step === "preview" || step === "export") && resultPreview ? (
             <div className="space-y-5">

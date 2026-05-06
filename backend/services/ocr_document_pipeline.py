@@ -464,6 +464,35 @@ def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrT
     title = _title_from_hint(verification.doc_type_hint, template)
     rows = verification.reviewed_rows or verification.original_rows or []
     columns = max(len(verification.headers or []), max((len(row) for row in rows), default=0), 1)
+
+    # Calculate cache age
+    now = datetime.now(timezone.utc)
+    created_at = verification.created_at
+    if created_at.tzinfo is None:
+        created_at = created_at.replace(tzinfo=timezone.utc)
+    age_seconds = (now - created_at).total_seconds()
+    age_hours = int(age_seconds // 3600)
+
+    # Determine cache trust
+    confidence = float(verification.avg_confidence or 0)
+    warnings = verification.warnings or []
+    review_required = (confidence < 60) or bool(warnings)
+    
+    # Smart trust policy: low if low confidence + warnings OR explicit review_required
+    cache_trust = "high"
+    if (confidence < 0.60 and len(warnings) > 0) or review_required:
+        cache_trust = "low"
+
+    # user_corrected if reviewed_rows differs from original_rows
+    # (Checking if reviewed_rows is not just a copy of original_rows)
+    user_corrected = False
+    if verification.reviewed_rows and verification.original_rows:
+        if json.dumps(verification.reviewed_rows, sort_keys=True) != json.dumps(verification.original_rows, sort_keys=True):
+            user_corrected = True
+
+    routing = verification.routing_meta or {}
+    reprocess_count = int(routing.get("reprocess_count", 0))
+
     return {
         "type": _doc_type(verification.doc_type_hint),
         "title": title,
@@ -471,12 +500,12 @@ def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrT
         "rows": rows,
         "raw_text": verification.raw_text,
         "language": verification.language,
-        "confidence": float(verification.avg_confidence or 0),
-        "warnings": verification.warnings or [],
+        "confidence": confidence,
+        "warnings": warnings,
         "scan_quality": verification.scan_quality or None,
-        "routing": verification.routing_meta or None,
+        "routing": routing,
         "columns": columns,
-        "avg_confidence": float(verification.avg_confidence or 0),
+        "avg_confidence": confidence,
         "cell_confidence": None,
         "cell_boxes": (verification.scan_quality or {}).get("cell_boxes"),
         "used_language": verification.language,
@@ -484,6 +513,18 @@ def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrT
         "raw_column_added": bool(verification.raw_column_added),
         "reused": True,
         "reused_verification_id": verification.id,
+        "cached": True,
+        "cache_created_at": created_at.isoformat(),
+        "cache_age_hours": age_hours,
+        "cache_trust": cache_trust,
+        "ttl_hours": 24 if cache_trust == "low" else 168,
+        "reprocess_count": reprocess_count,
+        "reprocess_limit": 3,
+        "user_corrected": user_corrected,
+        "review_required": review_required,
+        "last_reprocessed_at": routing.get("last_reprocessed_at"),
+        "previous_confidence": routing.get("previous_confidence"),
+        "model": routing.get("provider_model") or routing.get("selected_model") or "local-tesseract",
     }
 
 

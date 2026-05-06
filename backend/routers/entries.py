@@ -33,7 +33,14 @@ from backend.rbac import require_role
 from backend.plans import normalize_plan, plan_rank, get_org_plan
 from backend.feature_limits import check_and_record_org_feature_usage
 from backend.ai_rate_limit import check_rate_limit, RateLimitError
-from backend.utils import check_entry_alerts, parse_whatsapp_export, sanitize_text, save_failed_payload
+from backend.utils import (
+    LOW_CONFIDENCE_THRESHOLD,
+    check_entry_alerts,
+    normalize_confidence,
+    parse_whatsapp_export,
+    sanitize_text,
+    save_failed_payload,
+)
 from backend.services import ai_router
 from backend.services.background_jobs import create_job, register_retry_handler, start_job
 from backend.services.whatsapp import notify_entry_alerts
@@ -416,10 +423,12 @@ async def parse_smart_input(
 
     cleaned_text = parse_whatsapp_export(text_data) or text_data
     extracted, meta = parse_unstructured_input_with_confidence(cleaned_text)
-    confidence = float(meta.get("confidence") or 0)
+    # Normalize confidence to 0-100 standard
+    confidence = normalize_confidence(meta.get("confidence")) or 0.0
     missing_fields = list(meta.get("missing_fields") or [])
 
-    threshold = float(os.getenv("SMART_INPUT_CONFIDENCE_THRESHOLD", "0.6"))
+    # Standardized threshold (0-100)
+    threshold = float(os.getenv("SMART_INPUT_CONFIDENCE_THRESHOLD", str(LOW_CONFIDENCE_THRESHOLD)))
     ai_used = False
     ai_error: str | None = None
     if confidence < threshold and os.getenv("SMART_INPUT_AI_FALLBACK", "1") == "1":
@@ -428,7 +437,8 @@ async def parse_smart_input(
             for key, value in ai_extracted.items():
                 if value not in (None, ""):
                     extracted[key] = value
-            confidence, missing_fields = compute_confidence(extracted)
+            new_conf, missing_fields = compute_confidence(extracted)
+            confidence = normalize_confidence(new_conf) or 0.0
             ai_used = True
             ai_error = None
 

@@ -69,9 +69,9 @@ function fallbackHeaders(
   for (let index = 0; index < columnCount; index += 1) {
     headers.push(
       provided[index] ||
-        (rawColumnAdded && index === columnCount - 1
-          ? template?.raw_column_label || "Raw"
-          : `Column ${index + 1}`),
+      (rawColumnAdded && index === columnCount - 1
+        ? template?.raw_column_label || "Raw"
+        : `Column ${index + 1}`),
     );
   }
   return headers;
@@ -205,7 +205,7 @@ function inferIssueImpact(label: string, detail = ""): ReviewIssue["impact"] {
 }
 
 function cellInputClass(value: string, confidence?: number | null) {
-  const conf = typeof confidence === "number" ? (confidence > 1 ? confidence / 100 : confidence) : 1.0;
+  const conf = typeof confidence === "number" ? confidence / 100 : 1.0;
   if (conf < 0.5) {
     return "border-red-400/50 bg-[rgba(239,68,68,0.15)] text-red-50";
   }
@@ -492,66 +492,66 @@ function ReviewWorkspace({
   const trustState =
     activeStatus === "approved"
       ? {
-          title: "Trusted export",
-          detail: "Owner-facing reports can use this approved review as the trusted OCR source.",
-          className: "border-emerald-400/30 bg-[rgba(34,197,94,0.1)] text-emerald-100",
-        }
+        title: "Trusted export",
+        detail: "Owner-facing reports can use this approved review as the trusted OCR source.",
+        className: "border-emerald-400/30 bg-[rgba(34,197,94,0.1)] text-emerald-100",
+      }
       : activeStatus === "pending"
         ? {
-            title: "Waiting for approval",
-            detail: "Reviewed rows are ready, but they should stay out of trusted reporting until approval.",
-            className: "border-amber-400/30 bg-[rgba(245,158,11,0.1)] text-amber-100",
-          }
+          title: "Waiting for approval",
+          detail: "Reviewed rows are ready, but they should stay out of trusted reporting until approval.",
+          className: "border-amber-400/30 bg-[rgba(245,158,11,0.1)] text-amber-100",
+        }
         : activeStatus === "rejected"
           ? {
-              title: "Sent back",
-              detail: "This document needs correction before the reviewed rows can be trusted again.",
-              className: "border-red-400/30 bg-[rgba(239,68,68,0.1)] text-red-100",
-            }
+            title: "Sent back",
+            detail: "This document needs correction before the reviewed rows can be trusted again.",
+            className: "border-red-400/30 bg-[rgba(239,68,68,0.1)] text-red-100",
+          }
           : {
-              title: "Draft only",
-              detail: "This export uses reviewed rows, but it is still a working draft until approval.",
-              className: "border-cyan-400/30 bg-[rgba(34,211,238,0.1)] text-cyan-100",
-            };
+            title: "Draft only",
+            detail: "This export uses reviewed rows, but it is still a working draft until approval.",
+            className: "border-cyan-400/30 bg-[rgba(34,211,238,0.1)] text-cyan-100",
+          };
   const auditEvents = [
     activeVerification?.created_at
       ? {
-          label: "Created",
-          detail: `${formatTimestamp(activeVerification.created_at)} by ${actorDisplayName(
-            activeVerification.created_by_name,
-            activeVerification.user_id,
-          )}`,
-        }
+        label: "Created",
+        detail: `${formatTimestamp(activeVerification.created_at)} by ${actorDisplayName(
+          activeVerification.created_by_name,
+          activeVerification.user_id,
+        )}`,
+      }
       : null,
     activeVerification?.submitted_at
       ? {
-          label: "Submitted",
-          detail: `Queued for approval on ${formatTimestamp(activeVerification.submitted_at)}`,
-        }
+        label: "Submitted",
+        detail: `Queued for approval on ${formatTimestamp(activeVerification.submitted_at)}`,
+      }
       : null,
     activeVerification?.approved_at
       ? {
-          label: "Approved",
-          detail: `${formatTimestamp(activeVerification.approved_at)} by ${actorDisplayName(
-            activeVerification.approved_by_name,
-            activeVerification.approved_by,
-          )}`,
-        }
+        label: "Approved",
+        detail: `${formatTimestamp(activeVerification.approved_at)} by ${actorDisplayName(
+          activeVerification.approved_by_name,
+          activeVerification.approved_by,
+        )}`,
+      }
       : null,
     activeVerification?.rejected_at
       ? {
-          label: "Sent back",
-          detail: `${formatTimestamp(activeVerification.rejected_at)} by ${actorDisplayName(
-            activeVerification.rejected_by_name,
-            activeVerification.rejected_by,
-          )}`,
-        }
+        label: "Sent back",
+        detail: `${formatTimestamp(activeVerification.rejected_at)} by ${actorDisplayName(
+          activeVerification.rejected_by_name,
+          activeVerification.rejected_by,
+        )}`,
+      }
       : null,
     activeVerification?.updated_at
       ? {
-          label: "Last saved",
-          detail: formatTimestamp(activeVerification.updated_at),
-        }
+        label: "Last saved",
+        detail: formatTimestamp(activeVerification.updated_at),
+      }
       : null,
   ].filter((item): item is { label: string; detail: string } => Boolean(item));
 
@@ -990,21 +990,21 @@ function ReviewWorkspace({
                       </Button>
                     </div>
                   </div>
-                    <div className="mt-3">
-                      <div className="relative group">
-                        <Input
-                          id={`ocr-cell-${issue.rowIndex}-${issue.columnIndex}`}
-                          value={value}
-                          title={`Confidence: ${Math.round(conf * 100)}%`}
-                          onChange={(event) => onUpdateCell(issue.rowIndex, issue.columnIndex, event.target.value)}
-                          className={cn(cellInputClass(value, confidence), activeIssue?.key === issue.key && "border-cyan-400/60 ring-2 ring-cyan-400/30", "pr-7")}
-                          disabled={readOnly}
-                        />
-                        {conf < 0.5 && value && (
-                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 pointer-events-none" title="Very low confidence - review required">⚠️</span>
-                        )}
-                      </div>
+                  <div className="mt-3">
+                    <div className="relative group">
+                      <Input
+                        id={`ocr-cell-${issue.rowIndex}-${issue.columnIndex}`}
+                        value={value}
+                        title={`Confidence: ${Math.round(conf * 100)}%`}
+                        onChange={(event) => onUpdateCell(issue.rowIndex, issue.columnIndex, event.target.value)}
+                        className={cn(cellInputClass(value, confidence), activeIssue?.key === issue.key && "border-cyan-400/60 ring-2 ring-cyan-400/30", "pr-7")}
+                        disabled={readOnly}
+                      />
+                      {conf < 0.5 && value && (
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 pointer-events-none" title="Very low confidence - review required">⚠️</span>
+                      )}
                     </div>
+                  </div>
                 </div>
               );
             })}
@@ -1418,24 +1418,24 @@ export default function OcrVerificationPage() {
       listOcrTemplates(),
       loadVerifications(requestedVerificationId ?? undefined),
     ]).then(([templateResult, verificationResult]) => {
-        if (templateResult.status === "fulfilled") {
-          setTemplates(templateResult.value);
-          setTemplateGate("");
-        } else if (
-          templateResult.reason instanceof ApiError &&
-          templateResult.reason.status === 403
-        ) {
-          setTemplateGate(formatApiErrorMessage(templateResult.reason, templateResult.reason.message));
-        } else {
-          setError(formatApiErrorMessage(templateResult.reason, "Could not load OCR templates."));
-        }
+      if (templateResult.status === "fulfilled") {
+        setTemplates(templateResult.value);
+        setTemplateGate("");
+      } else if (
+        templateResult.reason instanceof ApiError &&
+        templateResult.reason.status === 403
+      ) {
+        setTemplateGate(formatApiErrorMessage(templateResult.reason, templateResult.reason.message));
+      } else {
+        setError(formatApiErrorMessage(templateResult.reason, "Could not load OCR templates."));
+      }
 
-        if (verificationResult.status === "rejected") {
-          setError(formatApiErrorMessage(verificationResult.reason, "Could not load verification queue."));
-        } else if (requestedVerificationId != null) {
-          setStatus(`Opened document #${requestedVerificationId} in Review Documents.`);
-        }
-      });
+      if (verificationResult.status === "rejected") {
+        setError(formatApiErrorMessage(verificationResult.reason, "Could not load verification queue."));
+      } else if (requestedVerificationId != null) {
+        setStatus(`Opened document #${requestedVerificationId} in Review Documents.`);
+      }
+    });
   }, [canVerify, loadVerifications, requestedVerificationId]);
 
   useEffect(() => {
@@ -1498,10 +1498,10 @@ export default function OcrVerificationPage() {
       current.map((row, index) =>
         index === rowIndex
           ? row.map((cell, cellIndex) => {
-              if (cellIndex !== columnIndex) return cell;
-              const cellData = typeof cell === "object" ? cell : { value: String(cell), confidence: 1.0 };
-              return { ...cellData, value, confidence: 1.0, source: "corrected" as const };
-            })
+            if (cellIndex !== columnIndex) return cell;
+            const cellData = typeof cell === "object" ? cell : { value: String(cell), confidence: 1.0 };
+            return { ...cellData, value, confidence: 1.0, source: "corrected" as const };
+          })
           : row,
       ),
     );

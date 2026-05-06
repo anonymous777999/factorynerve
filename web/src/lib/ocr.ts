@@ -130,6 +130,13 @@ export type OcrPreviewResult = {
   debug?: OcrDebugPayload | null;
   reused?: boolean;
   reused_verification_id?: number | null;
+  cached?: boolean;
+  cache_created_at?: string | null;
+  cache_age_hours?: number | null;
+  cache_trust?: "high" | "low" | null;
+  reprocess_count?: number | null;
+  user_corrected?: boolean | null;
+  review_required?: boolean | null;
   columns: number;
   avg_confidence: number;
   warnings: string[];
@@ -362,6 +369,7 @@ export async function previewOcrLogbook(payload: {
   docTypeHint?: string | null;
   model?: string | null;
   documentHash?: string | null;
+  forceRefresh?: boolean;
 }) {
   const formData = new FormData();
   formData.set("file", payload.file);
@@ -379,11 +387,15 @@ export async function previewOcrLogbook(payload: {
   if (payload.documentHash) {
     formData.set("document_hash", payload.documentHash);
   }
+  if (payload.forceRefresh) {
+    formData.set("force_refresh", "true");
+  }
   console.info("[OCR] /ocr/logbook payload", {
     model: payload.model || "auto",
     columns: payload.columns,
     language: payload.language,
     docTypeHint: payload.docTypeHint || "table",
+    forceRefresh: !!payload.forceRefresh,
   });
   return withOcrWakeRetry(
     () =>
