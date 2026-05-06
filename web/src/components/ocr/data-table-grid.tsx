@@ -140,7 +140,7 @@ export function DataTableGrid({
       rowIndex === target.row
         ? row.map((cell, columnIndex) =>
           columnIndex === target.column
-            ? { value, confidence: 1.0, source: "corrected" }  // User-edited = full confidence + source tag
+            ? { value, confidence: 100, source: "corrected" as const }  // User-edited = full confidence (0-100 scale) + source tag
             : cell
         )
         : row,

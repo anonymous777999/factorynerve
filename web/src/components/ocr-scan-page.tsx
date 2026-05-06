@@ -1005,11 +1005,12 @@ export default function OcrScanPage() {
         setSavedId(result.reused_verification_id);
       } else {
         // If this was a fresh scan after a cached one, check confidence delta
-        if (forceRefresh && result.previous_confidence != null) {
-          const oldConf = Math.round(result.previous_confidence);
+        const previousConf = (result as any).previous_confidence;
+        if (forceRefresh && previousConf != null) {
+          const oldConf = Math.round(previousConf);
           const newConf = Math.round(result.avg_confidence ?? result.confidence ?? 0);
 
-          if (result.confidence_dropped) {
+          if ((result as any).confidence_dropped) {
             const keepOriginal = !window.confirm(
               `Fresh scan returned lower confidence (${newConf}% vs ${oldConf}%). \n\nDo you want to use the new result anyway? Click Cancel to keep your previous result.`
             );
@@ -1018,7 +1019,7 @@ export default function OcrScanPage() {
               void processFile(file, sourceName, model, false);
               return;
             }
-          } else if (result.confidence_improved) {
+          } else if ((result as any).confidence_improved) {
             setStatus(`Scan updated. Confidence: ${newConf}% (was ${oldConf}%)`);
             setStatusTone("success");
           }
