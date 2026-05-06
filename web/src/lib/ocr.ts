@@ -109,13 +109,13 @@ export type OcrScanQuality = {
 export type OcrCell =
   | string
   | {
-      value: string;
-      confidence: number;
-      bbox?: { x: number; y: number; width: number; height: number } | null;
-      source?: "ocr" | "ai" | "corrected" | "manual" | "unknown" | null;
-      normalized?: number | null;
-      reviewRequired?: boolean;
-    };
+    value: string;
+    confidence: number;
+    bbox?: { x: number; y: number; width: number; height: number } | null;
+    source?: "ocr" | "ai" | "corrected" | "manual" | "unknown" | null;
+    normalized?: number | null;
+    reviewRequired?: boolean;
+  };
 
 export type OcrPreviewResult = {
   type: string;
@@ -395,6 +395,7 @@ export async function previewOcrLogbook(payload: {
     columns: payload.columns,
     language: payload.language,
     docTypeHint: payload.docTypeHint || "table",
+    documentHash: payload.documentHash || "none",
     forceRefresh: !!payload.forceRefresh,
   });
   return withOcrWakeRetry(

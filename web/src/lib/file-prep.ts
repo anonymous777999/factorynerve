@@ -75,6 +75,19 @@ async function compressRasterImage(
 
 export async function prepareOcrUploadFile(input: File): Promise<PreparedOcrFile> {
   const steps: string[] = [];
+
+  // CRITICAL: Hash the RAW original file BEFORE any transformations
+  // This ensures the same source image always produces the same hash,
+  // regardless of HEIC conversion, compression, or other processing
+  const sha256 = await computeSha256(input);
+  steps.push("Hashed original file");
+  console.log(
+    "[CACHE-DEBUG] Original file hash | hash=%s | size=%d | type=%s",
+    sha256,
+    input.size,
+    input.type,
+  );
+
   let workingFile = input;
 
   if (HEIC_TYPES.has(input.type) || hasHeicExtension(input)) {
@@ -103,7 +116,5 @@ export async function prepareOcrUploadFile(input: File): Promise<PreparedOcrFile
     steps.push("Reduced oversized upload");
   }
 
-  const sha256 = await computeSha256(workingFile);
-  steps.push("Hashed final upload");
   return { file: workingFile, sha256, steps };
 }
