@@ -1551,7 +1551,7 @@ export default function OcrScanPage() {
                                   className={`border border-[#e3e8ef] px-4 py-3 text-sm font-semibold text-[#101828] ${columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
                                     }`}
                                 >
-                                  {column}
+                                  {stringifySheetCell(column)}
                                 </th>
                               ))}
                             </tr>
@@ -1565,7 +1565,7 @@ export default function OcrScanPage() {
                                     className={`border border-[#e3e8ef] px-4 py-3 text-sm text-[#344054] ${columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
                                       }`}
                                   >
-                                    {cell || ""}
+                                    {stringifySheetCell(cell)}
                                   </td>
                                 ))}
                               </tr>
