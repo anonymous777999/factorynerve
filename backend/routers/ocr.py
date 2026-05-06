@@ -119,6 +119,37 @@ _TABLE_EXCEL_FORMAT_TO_MIME = {
 _TABLE_EXCEL_MODEL_HAIKU = ANTHROPIC_MODEL_HAIKU
 _TABLE_EXCEL_MODEL_SONNET = ANTHROPIC_MODEL_SONNET
 _TABLE_EXCEL_MODEL_OPUS = ANTHROPIC_MODEL_OPUS
+_TABLE_EXCEL_SCALAR_KEYS = ("value", "text", "content", "label", "amount")
+_TABLE_EXCEL_METADATA_KEYS = {
+    "bbox",
+    "bounding_box",
+    "bounds",
+    "box",
+    "column",
+    "column_index",
+    "confidence",
+    "confidence_score",
+    "coordinates",
+    "currency",
+    "height",
+    "index",
+    "left",
+    "metadata",
+    "page",
+    "polygon",
+    "position",
+    "right",
+    "row",
+    "row_index",
+    "score",
+    "source",
+    "top",
+    "type",
+    "width",
+    "x",
+    "y",
+}
+_TABLE_EXCEL_MAX_NORMALIZE_DEPTH = 4
 _TABLE_EXCEL_TIER_TO_MODEL = {
     "fast": _TABLE_EXCEL_MODEL_HAIKU,
     "balanced": _TABLE_EXCEL_MODEL_SONNET,
@@ -849,11 +880,54 @@ def _call_table_excel_anthropic(
     return extraction_json
 
 
+def _extract_table_excel_scalar(
+    value: object,
+    *,
+    depth: int = 0,
+    max_depth: int = _TABLE_EXCEL_MAX_NORMALIZE_DEPTH,
+) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, (str, int, float, bool)):
+        return str(value).strip()
+    if depth >= max_depth:
+        return ""
+    if isinstance(value, dict):
+        for key in _TABLE_EXCEL_SCALAR_KEYS:
+            if key in value:
+                extracted = _extract_table_excel_scalar(
+                    value.get(key),
+                    depth=depth + 1,
+                    max_depth=max_depth,
+                )
+                if extracted:
+                    return extracted
+        for key, nested in value.items():
+            normalized_key = str(key).strip().lower()
+            if normalized_key in _TABLE_EXCEL_METADATA_KEYS:
+                continue
+            extracted = _extract_table_excel_scalar(
+                nested,
+                depth=depth + 1,
+                max_depth=max_depth,
+            )
+            if extracted:
+                return extracted
+        return ""
+    if isinstance(value, (list, tuple)):
+        parts = [
+            _extract_table_excel_scalar(item, depth=depth + 1, max_depth=max_depth)
+            for item in value
+        ]
+        return ", ".join(part for part in parts if part)
+    return str(value).strip()
+
+
 def _normalize_table_excel_value(value: object) -> str:
     if value is None:
         return ""
-    if isinstance(value, (dict, list)):
-        return json.dumps(value, ensure_ascii=False, default=str)
+    if isinstance(value, (dict, list, tuple)):
+        return _extract_table_excel_scalar(value)
     return str(value).strip()
 
 
