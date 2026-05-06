@@ -1374,7 +1374,7 @@ export default function OcrVerificationPage() {
     setRows(
       baseRows.map((row) =>
         Array.from({ length: Math.max(record.columns || row.length || 1, row.length) }, (_, index) =>
-          row[index] || "",
+          stringifyOcrCell(row[index]),
         ),
       ),
     );
@@ -1464,7 +1464,7 @@ export default function OcrVerificationPage() {
       });
       const nextColumnCount = Math.max(result.columns || 0, ...result.rows.map((row) => row.length), 1);
       const normalizedRows = result.rows.map((row) =>
-        Array.from({ length: nextColumnCount }, (_, index) => row[index] || ""),
+        Array.from({ length: nextColumnCount }, (_, index) => stringifyOcrCell(row[index])),
       );
       setPreview(result);
       setRows(normalizedRows);
@@ -1497,11 +1497,7 @@ export default function OcrVerificationPage() {
     setRows((current) =>
       current.map((row, index) =>
         index === rowIndex
-          ? row.map((cell, cellIndex) => {
-            if (cellIndex !== columnIndex) return cell;
-            const cellData = typeof cell === "object" ? cell : { value: String(cell), confidence: 1.0 };
-            return { ...cellData, value, confidence: 1.0, source: "corrected" as const };
-          })
+          ? row.map((cell, cellIndex) => (cellIndex === columnIndex ? value : cell))
           : row,
       ),
     );
