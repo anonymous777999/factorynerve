@@ -15,7 +15,6 @@ import { UploadBox } from "@/components/ocr/upload-box";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
-import type { RawCell } from "@/components/ocr/data-table-grid";
 import { formatApiErrorMessage } from "@/lib/api";
 import { pushAppToast } from "@/lib/toast";
 import { transferBlob } from "@/lib/blob-transfer";
@@ -32,6 +31,7 @@ import {
   previewOcrLogbook,
   updateOcrVerification,
   warpOcrImage,
+  type OcrCell,
   type OcrPreviewResult,
   type OcrRoutingMeta,
   type OcrScanQuality,
@@ -87,10 +87,10 @@ type ResultPreview = {
   type: string;
   title: string;
   headers: string[];
-  rows: RawCell[][];
+  rows: OcrCell[][];
   sheets?: Array<{
     columns: string[];
-    rows: RawCell[][];
+    rows: OcrCell[][];
   }>;
   rawText?: string | null;
   language: string;
@@ -123,7 +123,7 @@ type StructuredPreviewResult = OcrPreviewResult & {
 
 type TableSnapshot = {
   headers: string[];
-  rows: RawCell[][];
+  rows: OcrCell[][];
   columnTypes: OcrColumnType[];
   headerRowEnabled: boolean;
 };
@@ -155,7 +155,7 @@ function toModelOption(value: string | null | undefined): ModelOption {
   return "auto";
 }
 
-function cloneRows(rows: RawCell[][]): RawCell[][] {
+function cloneRows(rows: OcrCell[][]): OcrCell[][] {
   return rows.map((row) => [...row]);
 }
 
@@ -172,7 +172,7 @@ function isCellObject(value: unknown): value is { value: string; confidence: num
 }
 
 // Normalize RawCell to string
-function normalizeToString(cell: RawCell): string {
+function normalizeToString(cell: OcrCell): string {
   if (typeof cell === "string") {
     return cell;
   }
@@ -182,8 +182,8 @@ function normalizeToString(cell: RawCell): string {
   return "";
 }
 
-// Normalize RawCell[][] to string[][]
-function normalizeRowsToStrings(rows: RawCell[][]): string[][] {
+// Normalize OcrCell[][] to string[][]
+function normalizeRowsToStrings(rows: OcrCell[][]): string[][] {
   return rows.map((row) => row.map((cell) => normalizeToString(cell)));
 }
 
@@ -191,7 +191,7 @@ function defaultHeaders(columnCount: number) {
   return Array.from({ length: Math.max(columnCount, 1) }, (_, index) => `Column ${index + 1}`);
 }
 
-function inferColumnTypes(rows: RawCell[][], headerCount: number): OcrColumnType[] {
+function inferColumnTypes(rows: OcrCell[][], headerCount: number): OcrColumnType[] {
   return Array.from({ length: Math.max(headerCount, 1) }, (_, index) => {
     const values = rows
       .map((row) => normalizeToString(row[index] || "").trim())
@@ -399,7 +399,7 @@ function lowConfidenceCount(matrix: number[][], visible: boolean) {
   );
 }
 
-function countCorrections(originalRows: RawCell[][], reviewedRows: RawCell[][]): number {
+function countCorrections(originalRows: OcrCell[][], reviewedRows: OcrCell[][]): number {
   const rowCount = Math.max(originalRows.length, reviewedRows.length);
   let changes = 0;
   for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
@@ -548,7 +548,7 @@ export default function OcrScanPage() {
   const [resultPreview, setResultPreview] = useState<ResultPreview | null>(null);
   const [confidenceMatrix, setConfidenceMatrix] = useState<number[][]>([]);
   const [editableHeaders, setEditableHeaders] = useState<string[]>([]);
-  const [editableRows, setEditableRows] = useState<RawCell[][]>([]);
+  const [editableRows, setEditableRows] = useState<OcrCell[][]>([]);
   const [columnTypes, setColumnTypes] = useState<OcrColumnType[]>([]);
   const [headerRowEnabled, setHeaderRowEnabled] = useState(false);
   const [showLowConfidence, setShowLowConfidence] = useState(true);
@@ -840,7 +840,7 @@ export default function OcrScanPage() {
       routingMeta: resultPreview.routingMeta ?? null,
       rawText: resultPreview.rawText ?? null,
       headers: editableHeaders,
-      originalRows: normalizeRowsToStrings(resultPreview.rows as RawCell[][]),
+      originalRows: normalizeRowsToStrings(resultPreview.rows as OcrCell[][]),
       reviewedRows: normalizeRowsToStrings(editableRows),
       rawColumnAdded: false,
       reviewerNotes: "",
@@ -1039,7 +1039,7 @@ export default function OcrScanPage() {
             routingMeta: result.routing ?? null,
             rawText: nextPreview.rawText ?? null,
             headers,
-            originalRows: normalizeRowsToStrings(nextPreview.rows as RawCell[][]),
+            originalRows: normalizeRowsToStrings(nextPreview.rows as OcrCell[][]),
             reviewedRows: normalizeRowsToStrings(rows),
             rawColumnAdded: false,
             reviewerNotes: "",
@@ -1125,13 +1125,13 @@ export default function OcrScanPage() {
     void processFile(workingFile, file.name, selectedModel);
   }, [originalUrl, preparedPreviewUrl, processFile, selectedModel]);
 
-  const handleRerunWithSelectedModel = useCallback(() => {
+  const handleRerunWithSelectedModel = useCallback((forceRefresh?: boolean) => {
     if (!rerunSourceFile) {
       setStatus("Re-run needs the original uploaded file.");
       setStatusTone("warning");
       return;
     }
-    void processFile(rerunSourceFile, sourceFilename || rerunSourceFile.name, selectedModel);
+    void processFile(rerunSourceFile, sourceFilename || rerunSourceFile.name, selectedModel, forceRefresh);
   }, [processFile, rerunSourceFile, selectedModel, sourceFilename]);
 
   const openRecentRecord = useCallback(async (verificationId: number) => {
@@ -1283,7 +1283,7 @@ export default function OcrScanPage() {
     const nextHeaders = defaultHeaders(columnCount);
     applyTableChange({
       headers: nextHeaders,
-      rows: [editableHeaders as RawCell[], ...editableRows],
+      rows: [editableHeaders as OcrCell[], ...editableRows],
       headerRowEnabled: false,
     });
   }, [applyTableChange, editableHeaders, editableRows, headerRowEnabled]);
