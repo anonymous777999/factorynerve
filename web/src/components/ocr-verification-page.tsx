@@ -205,14 +205,18 @@ function inferIssueImpact(label: string, detail = ""): ReviewIssue["impact"] {
 }
 
 function cellInputClass(value: string, confidence?: number | null) {
-  if (typeof confidence === "number" && confidence < 60) {
-    return "border-red-400/40 bg-[rgba(239,68,68,0.12)]";
+  const conf = typeof confidence === "number" ? (confidence > 1 ? confidence / 100 : confidence) : 1.0;
+  if (conf < 0.5) {
+    return "border-red-400/50 bg-[rgba(239,68,68,0.15)] text-red-50";
   }
-  if (typeof confidence === "number" && confidence < 80) {
-    return "border-amber-400/40 bg-[rgba(245,158,11,0.1)]";
+  if (conf < 0.7) {
+    return "border-orange-400/40 bg-[rgba(245,158,11,0.12)] text-orange-50";
+  }
+  if (conf < 0.9) {
+    return "border-amber-400/40 bg-[rgba(245,158,11,0.08)] text-amber-50";
   }
   if (!value.trim()) {
-    return "border-amber-400/30 bg-[rgba(245,158,11,0.08)]";
+    return "border-amber-400/20 bg-[rgba(245,158,11,0.05)]";
   }
   return "";
 }
@@ -460,7 +464,10 @@ function ReviewWorkspace({
     rows.reduce(
       (sum, row) =>
         sum +
-        row.filter((cell) => cell.trim() !== cell || /\s{2,}/.test(cell)).length,
+        row.filter((cell) => {
+          const val = stringifyOcrCell(cell);
+          return val.trim() !== val || /\s{2,}/.test(val);
+        }).length,
       0,
     );
   const editableIssues = reviewIssues.flatMap((issue) =>
@@ -944,7 +951,8 @@ function ReviewWorkspace({
           <div className="space-y-3">
             {editableIssues.slice(0, showAllRows ? editableIssues.length : 6).map((issue) => {
               const confidence = preview?.cell_confidence?.[issue.rowIndex]?.[issue.columnIndex];
-              const value = rows[issue.rowIndex]?.[issue.columnIndex] || "";
+              const conf = typeof confidence === "number" ? (confidence > 1 ? confidence / 100 : confidence) : 1.0;
+              const value = stringifyOcrCell(rows[issue.rowIndex]?.[issue.columnIndex]);
               const resolved = resolvedIssueKeys.includes(issue.key);
               return (
                 <div
@@ -982,15 +990,21 @@ function ReviewWorkspace({
                       </Button>
                     </div>
                   </div>
-                  <div className="mt-3">
-                    <Input
-                      id={`ocr-cell-${issue.rowIndex}-${issue.columnIndex}`}
-                      value={value}
-                      onChange={(event) => onUpdateCell(issue.rowIndex, issue.columnIndex, event.target.value)}
-                      className={cn(cellInputClass(value, confidence), activeIssue?.key === issue.key && "border-cyan-400/60 ring-2 ring-cyan-400/30")}
-                      disabled={readOnly}
-                    />
-                  </div>
+                    <div className="mt-3">
+                      <div className="relative group">
+                        <Input
+                          id={`ocr-cell-${issue.rowIndex}-${issue.columnIndex}`}
+                          value={value}
+                          title={`Confidence: ${Math.round(conf * 100)}%`}
+                          onChange={(event) => onUpdateCell(issue.rowIndex, issue.columnIndex, event.target.value)}
+                          className={cn(cellInputClass(value, confidence), activeIssue?.key === issue.key && "border-cyan-400/60 ring-2 ring-cyan-400/30", "pr-7")}
+                          disabled={readOnly}
+                        />
+                        {conf < 0.5 && value && (
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 pointer-events-none" title="Very low confidence - review required">⚠️</span>
+                        )}
+                      </div>
+                    </div>
                 </div>
               );
             })}
@@ -1020,16 +1034,23 @@ function ReviewWorkspace({
                     <td className="px-3 py-3 align-top font-semibold text-[var(--muted)]">{rowIndex + 1}</td>
                     {headers.map((header, columnIndex) => {
                       const confidence = preview?.cell_confidence?.[rowIndex]?.[columnIndex];
+                      const conf = typeof confidence === "number" ? (confidence > 1 ? confidence / 100 : confidence) : 1.0;
                       const isActiveCell = activeIssue?.rowIndex === rowIndex && (activeIssue.columnIndex ?? columnIndex) === columnIndex;
                       return (
                         <td key={`${header}-${rowIndex}-${columnIndex}`} className="px-3 py-3 align-top">
-                          <Input
-                            id={`ocr-cell-${rowIndex}-${columnIndex}`}
-                            value={row[columnIndex] || ""}
-                            onChange={(event) => onUpdateCell(rowIndex, columnIndex, event.target.value)}
-                            className={cn(cellInputClass(row[columnIndex] || "", confidence), isActiveCell && "border-cyan-400/60 ring-2 ring-cyan-400/30")}
-                            disabled={readOnly}
-                          />
+                          <div className="relative group">
+                            <Input
+                              id={`ocr-cell-${rowIndex}-${columnIndex}`}
+                              value={stringifyOcrCell(row[columnIndex])}
+                              title={`Confidence: ${Math.round(conf * 100)}%`}
+                              onChange={(event) => onUpdateCell(rowIndex, columnIndex, event.target.value)}
+                              className={cn(cellInputClass(stringifyOcrCell(row[columnIndex]), confidence), isActiveCell && "border-cyan-400/60 ring-2 ring-cyan-400/30", "pr-7")}
+                              disabled={readOnly}
+                            />
+                            {conf < 0.5 && stringifyOcrCell(row[columnIndex]) && (
+                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 pointer-events-none" title="Very low confidence - review required">⚠️</span>
+                            )}
+                          </div>
                         </td>
                       );
                     })}
@@ -1082,7 +1103,19 @@ function ReviewWorkspace({
           This is still a working draft. Save your corrections here, then send the document for approval when the risky values are checked.
         </div>
       ) : null}
+
+      {Number(averageConfidence) < 60 && (
+        <div className="rounded-[1.35rem] border border-orange-400/30 bg-[rgba(245,158,11,0.08)] px-4 py-3 text-sm text-orange-100 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+          <span className="text-xl">⚠️</span>
+          <div>
+            <div className="font-semibold">Low confidence document detected</div>
+            <div>The OCR extraction quality is lower than usual ({averageConfidence}%). Review all rows carefully before export. If the image is blurry, consider re-uploading for better results.</div>
+          </div>
+        </div>
+      )}
+
       {trustSection}
+
       <Card className="overflow-hidden border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(14,22,34,0.98),rgba(10,16,28,0.98))]">
         <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="space-y-3">
@@ -1341,7 +1374,7 @@ export default function OcrVerificationPage() {
     setRows(
       baseRows.map((row) =>
         Array.from({ length: Math.max(record.columns || row.length || 1, row.length) }, (_, index) =>
-          stringifyOcrCell(row[index]),
+          row[index] || "",
         ),
       ),
     );
@@ -1431,10 +1464,11 @@ export default function OcrVerificationPage() {
       });
       const nextColumnCount = Math.max(result.columns || 0, ...result.rows.map((row) => row.length), 1);
       const normalizedRows = result.rows.map((row) =>
-        Array.from({ length: nextColumnCount }, (_, index) => stringifyOcrCell(row[index])),
+        Array.from({ length: nextColumnCount }, (_, index) => row[index] || ""),
       );
       setPreview(result);
       setRows(normalizedRows);
+
       setHeadersState(
         fallbackHeaders(nextColumnCount, activeTemplate, Boolean(result.raw_column_added)),
       );
@@ -1463,7 +1497,11 @@ export default function OcrVerificationPage() {
     setRows((current) =>
       current.map((row, index) =>
         index === rowIndex
-          ? row.map((cell, cellIndex) => (cellIndex === columnIndex ? value : cell))
+          ? row.map((cell, cellIndex) => {
+              if (cellIndex !== columnIndex) return cell;
+              const cellData = typeof cell === "object" ? cell : { value: String(cell), confidence: 1.0 };
+              return { ...cellData, value, confidence: 1.0, source: "corrected" as const };
+            })
           : row,
       ),
     );

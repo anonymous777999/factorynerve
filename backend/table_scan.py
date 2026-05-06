@@ -13,6 +13,7 @@ from typing import Any
 from anthropic import Anthropic
 import requests
 from openpyxl import Workbook
+from openpyxl.comments import Comment
 from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
@@ -85,6 +86,10 @@ FOOTER_LABEL_FONT = Font(name="Arial", size=10, bold=True)
 FOOTER_VALUE_FONT = Font(name="Arial", size=10)
 TOTAL_FILL = PatternFill("solid", fgColor="E2F0D9")
 TOTAL_FONT = Font(name="Arial", size=10, bold=True)
+LOW_CONF_FILL = PatternFill("solid", fgColor="FFF2CC")  # Light yellow
+ORANGE_CONF_FILL = PatternFill("solid", fgColor="FDE9D9") # Orange
+VERY_LOW_CONF_FILL = PatternFill("solid", fgColor="F4CCCC") # Light red
+CORRECTED_FILL = PatternFill("solid", fgColor="D9EAF7") # Light blue
 THIN_BORDER = Border(
     left=Side(style="thin", color="D9D9D9"),
     right=Side(style="thin", color="D9D9D9"),
@@ -640,10 +645,17 @@ def _excel_safe_value(value: Any) -> Any:
                 return float(value["normalized"])
             except (ValueError, TypeError):
                 pass  # Fall through to use display value
-        
+
         # If it's a cell object with display value, extract it
         if "value" in value:
-            value = value["value"]
+            display_value = value["value"]
+            matched, compact = _numeric_text_parts(display_value)
+            if matched:
+                try:
+                    return float(compact)
+                except (ValueError, TypeError):
+                    pass
+            value = display_value
         else:
             # Other dict/list -> serialize
             value = json.dumps(value, ensure_ascii=False, default=str)
@@ -735,6 +747,64 @@ def _apply_widths(ws) -> None:
             if cell.value is not None:
                 max_len = max(max_len, len(str(cell.value)) + 2)
         ws.column_dimensions[column_cells[0].column_letter].width = min(max_len, 50)
+
+
+def _cell_review_metadata(value: Any) -> tuple[float | None, str | None]:
+    if not isinstance(value, dict):
+        return None, None
+    raw_confidence = value.get("confidence")
+    confidence: float | None
+    try:
+        confidence = float(raw_confidence)
+    except (TypeError, ValueError):
+        confidence = None
+    if confidence is not None and confidence > 1:
+        confidence = confidence / 100.0
+    if confidence is not None:
+        confidence = max(0.0, min(1.0, confidence))
+    source = str(value.get("source") or "").strip().lower() or None
+    return confidence, source
+
+
+def _apply_review_style(cell, value: Any) -> tuple[float | None, str | None]:
+    confidence, source = _cell_review_metadata(value)
+    if source == "corrected":
+        cell.fill = CORRECTED_FILL
+    elif confidence is not None and confidence < 0.5:
+        cell.fill = VERY_LOW_CONF_FILL
+    elif confidence is not None and confidence < 0.7:
+        cell.fill = ORANGE_CONF_FILL
+    elif confidence is not None and confidence < 0.9:
+        cell.fill = LOW_CONF_FILL
+
+    if confidence is not None or source:
+        parts: list[str] = []
+        if confidence is not None:
+            parts.append(f"Confidence: {round(confidence * 100)}%")
+        if source:
+            parts.append(f"Source: {source}")
+        cell.comment = Comment("\n".join(parts), "DPR OCR")
+    return confidence, source
+
+
+def _append_metadata_sheet(wb: Workbook, metadata_rows: list[tuple[int, int, str, float | None, str | None]]) -> None:
+    if not metadata_rows:
+        return
+    ws = wb.create_sheet("OCR Metadata")
+    headers = ["Row", "Column", "Value", "Confidence", "Source"]
+    for column_index, header in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=column_index, value=header)
+        cell.fill = HEADER_FILL
+        cell.font = HEADER_FONT
+        cell.alignment = HEADER_ALIGN
+        cell.border = THIN_BORDER
+    for row_index, (sheet_row, sheet_col, value, confidence, source) in enumerate(metadata_rows, start=2):
+        ws.cell(row=row_index, column=1, value=sheet_row).border = THIN_BORDER
+        ws.cell(row=row_index, column=2, value=sheet_col).border = THIN_BORDER
+        ws.cell(row=row_index, column=3, value=value).border = THIN_BORDER
+        ws.cell(row=row_index, column=4, value=round(confidence * 100, 2) if confidence is not None else None).border = THIN_BORDER
+        ws.cell(row=row_index, column=5, value=source).border = THIN_BORDER
+    _apply_widths(ws)
 
 
 def validate_table_data(table: dict) -> dict:
@@ -966,6 +1036,14 @@ def build_table_excel_bytes(
     include_totals: bool = True,
 ) -> bytes:
     headers, rows = _normalize_excel_table(table)
+    raw_rows = table.get("rows") if isinstance(table.get("rows"), list) else []
+    metadata_rows: list[list[Any]] = []
+    for raw_row in raw_rows:
+        row_values = raw_row if isinstance(raw_row, list) else [raw_row]
+        next_row = list(row_values[: len(headers)])
+        if len(next_row) < len(headers):
+            next_row.extend([None] * (len(headers) - len(next_row)))
+        metadata_rows.append(next_row)
     footer_metadata = OrderedDict(
         [
             ("Generated At", datetime.now().isoformat(timespec="seconds")),
@@ -980,6 +1058,7 @@ def build_table_excel_bytes(
     wb = Workbook()
     ws = wb.active
     ws.title = sheet_name
+    review_metadata_rows: list[tuple[int, int, str, float | None, str | None]] = []
 
     current_row = 1
     for col_index, header in enumerate(headers, start=1):
@@ -990,12 +1069,24 @@ def build_table_excel_bytes(
         cell.border = THIN_BORDER
 
     current_row += 1
-    for row in rows:
+    for row_index, row in enumerate(rows):
         for col_index, value in enumerate(row, start=1):
             cell = ws.cell(row=current_row, column=col_index, value=value if value != "" else None)
             cell.font = TEXT_FONT
             cell.alignment = NUMBER_ALIGN if _is_display_numeric(value) else TEXT_ALIGN
             cell.border = THIN_BORDER
+            metadata_value = metadata_rows[row_index][col_index - 1] if row_index < len(metadata_rows) else None
+            confidence, source = _apply_review_style(cell, metadata_value)
+            if confidence is not None or source:
+                review_metadata_rows.append(
+                    (
+                        current_row,
+                        col_index,
+                        str(value or ""),
+                        confidence,
+                        source,
+                    )
+                )
         current_row += 1
 
     totals_row = _build_totals_row(headers, rows) if include_totals else None
@@ -1023,6 +1114,7 @@ def build_table_excel_bytes(
     _apply_widths(ws)
     if len(headers) >= 2:
         ws.column_dimensions[get_column_letter(2)].width = max(ws.column_dimensions[get_column_letter(2)].width or 10, 18)
+    _append_metadata_sheet(wb, review_metadata_rows)
 
     buffer = BytesIO()
     wb.save(buffer)

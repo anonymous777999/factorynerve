@@ -35,7 +35,7 @@ _DEFAULT_ROUTE = {
 _AI_REQUIRED_DOC_TYPES = {"table", "sheet", "spreadsheet"}
 
 # Feature flag for cell object structure (Phase 1)
-_ENABLE_CELL_FORMAT_V2 = os.getenv("CELL_FORMAT_V2", "false").lower() == "true"
+_ENABLE_CELL_FORMAT_V2 = os.getenv("CELL_FORMAT_V2", "true").lower() == "true"
 
 
 def _upgrade_rows_to_cell_objects(

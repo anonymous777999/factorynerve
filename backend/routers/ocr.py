@@ -15,6 +15,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 from io import BytesIO
 from pathlib import Path
+from typing import Any
 
 import requests
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status, Request
@@ -60,6 +61,13 @@ from backend.services.background_jobs import (
     start_job,
     update_job,
     write_job_file,
+)
+from backend.services.ocr_review_cells import (
+    build_bbox_matrix,
+    build_confidence_matrix,
+    build_source_matrix,
+    cell_display_value,
+    normalize_review_rows,
 )
 from backend.services.ocr_document_pipeline import (
     build_structured_ocr_result,
@@ -219,8 +227,8 @@ class OcrVerificationUpdatePayload(BaseModel):
     routing_meta: dict | None = None
     raw_text: str | None = Field(default=None, max_length=50000)
     headers: list[str] | None = None
-    original_rows: list[list[str]] | None = None
-    reviewed_rows: list[list[str]] | None = None
+    original_rows: list[list[Any]] | None = None
+    reviewed_rows: list[list[Any]] | None = None
     raw_column_added: bool | None = None
     reviewer_notes: str | None = Field(default=None, max_length=5000)
 
@@ -1422,26 +1430,11 @@ def _normalize_string_list(values: list | None, *, field_name: str) -> list[str]
     return cleaned
 
 
-def _normalize_rows(values: list | None, *, field_name: str) -> list[list[str]] | None:
-    if values is None:
-        return None
-    if not isinstance(values, list):
-        raise HTTPException(status_code=400, detail=f"{field_name} must be a list of rows.")
-    normalized: list[list[str]] = []
-    max_columns = 0
-    for row in values:
-        if not isinstance(row, list):
-            raise HTTPException(status_code=400, detail=f"{field_name} must be a list of rows.")
-        cleaned_row = [
-            sanitize_text(str(cell) if cell is not None else "", max_length=2000, preserve_newlines=False) or ""
-            for cell in row
-        ]
-        normalized.append(cleaned_row)
-        max_columns = max(max_columns, len(cleaned_row))
-    for row in normalized:
-        if len(row) < max_columns:
-            row.extend([""] * (max_columns - len(row)))
-    return normalized
+def _normalize_rows(values: list | None, *, field_name: str) -> list[list[str | dict[str, Any]]] | None:
+    try:
+        return normalize_review_rows(values, field_name=field_name)
+    except TypeError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
 
 
 def _normalize_scan_quality(values: dict | None, *, field_name: str) -> dict | None:
@@ -1500,6 +1493,37 @@ def _normalize_scan_quality(values: dict | None, *, field_name: str) -> dict | N
                 )
             cell_boxes.append(normalized_row)
 
+    raw_confidence = values.get("cell_confidence")
+    cell_confidence: list[list[float | None]] = []
+    if isinstance(raw_confidence, list):
+        for row in raw_confidence:
+            if not isinstance(row, list):
+                continue
+            normalized_row: list[float | None] = []
+            for item in row:
+                try:
+                    confidence = float(item)
+                except (TypeError, ValueError):
+                    normalized_row.append(None)
+                    continue
+                if confidence > 1:
+                    confidence = confidence / 100.0
+                normalized_row.append(max(0.0, min(1.0, confidence)))
+            cell_confidence.append(normalized_row)
+
+    raw_sources = values.get("cell_sources")
+    cell_sources: list[list[str | None]] = []
+    if isinstance(raw_sources, list):
+        for row in raw_sources:
+            if not isinstance(row, list):
+                continue
+            normalized_row: list[str | None] = []
+            for item in row:
+                source = sanitize_text(str(item or ""), max_length=20, preserve_newlines=False) or ""
+                lowered = source.lower()
+                normalized_row.append(lowered if lowered in {"ocr", "ai", "corrected", "manual", "unknown"} else None)
+            cell_sources.append(normalized_row)
+
     return {
         "confidence_band": band,
         "quality_signals": quality_signals,
@@ -1510,10 +1534,13 @@ def _normalize_scan_quality(values: dict | None, *, field_name: str) -> dict | N
         "adjustment_count": _safe_int("adjustment_count"),
         "retake_count": _safe_int("retake_count"),
         "manual_review_recommended": bool(values.get("manual_review_recommended")),
+        "review_required": bool(values.get("review_required")),
         "outcome": outcome,
         "next_action": next_action,
         "notes": notes,
+        "cell_confidence": cell_confidence or None,
         "cell_boxes": cell_boxes or None,
+        "cell_sources": cell_sources or None,
     }
 
 
@@ -1689,6 +1716,7 @@ def _serialize_verification(db: Session, verification: OcrVerification) -> dict:
         "trusted_export": trusted_export,
         "export_source": export_source,
         "export_url": f"/ocr/verifications/{verification.id}/export",
+        "review_required": (float(verification.avg_confidence or 0) < 60) or bool(verification.warnings),
         "created_at": verification.created_at.isoformat() if verification.created_at else None,
         "updated_at": verification.updated_at.isoformat() if verification.updated_at else None,
     }
@@ -1701,18 +1729,117 @@ def _get_verification_or_404(db: Session, verification_id: int, current_user: Us
     return verification
 
 
-def _verification_export_rows(verification: OcrVerification) -> list[list[str]]:
+def _verification_export_rows(verification: OcrVerification) -> list[list[str | dict[str, Any]]]:
     rows = verification.reviewed_rows or verification.original_rows or []
     return _normalize_rows(rows, field_name="verification_export_rows") or []
 
 
-def _verification_export_headers(verification: OcrVerification, rows: list[list[str]]) -> list[str]:
+def _verification_export_headers(verification: OcrVerification, rows: list[list[str | dict[str, Any]]]) -> list[str]:
     column_count = max((len(row) for row in rows), default=0, )
     column_count = max(column_count, verification.columns or 0, 1)
     normalized_headers = _normalize_string_list(verification.headers or [], field_name="verification_headers") or []
     if len(normalized_headers) < column_count:
         normalized_headers.extend([f"Column {index}" for index in range(len(normalized_headers) + 1, column_count + 1)])
     return normalized_headers[:column_count]
+
+
+def _verification_export_plain_rows(rows: list[list[str | dict[str, Any]]]) -> list[list[str]]:
+    return [[cell_display_value(cell) for cell in row] for row in rows]
+
+
+def _verification_export_validation(
+    verification: OcrVerification,
+    headers: list[str],
+    rows: list[list[str | dict[str, Any]]],
+) -> tuple[list[str], list[str]]:
+    blockers: list[str] = []
+    warnings: list[str] = []
+    plain_rows = _verification_export_plain_rows(rows)
+    normalized_headers = [header.strip().lower() for header in headers]
+
+    # 1. Column consistency (shifted columns)
+    expected_columns = len(headers)
+    for row_index, row in enumerate(plain_rows, start=1):
+        if len(row) != expected_columns and any(cell.strip() for cell in row):
+            blockers.append(f"Row {row_index} has {len(row)} columns, expected {expected_columns}. Data might be shifted.")
+
+    # 2. Duplicate rows
+    seen_rows: set[tuple[str, ...]] = set()
+    duplicate_count = 0
+    for row in plain_rows:
+        signature = tuple(cell.strip() for cell in row)
+        if not any(signature):
+            continue
+        if signature in seen_rows:
+            duplicate_count += 1
+        seen_rows.add(signature)
+    if duplicate_count:
+        warnings.append(f"{duplicate_count} duplicate row(s) detected in the reviewed export.")
+
+    # 3. Critical blank cells
+    critical_keywords = ("date", "amount", "qty", "quantity", "particular", "description", "debit", "credit", "dr", "cr")
+    for column_index, header in enumerate(normalized_headers):
+        if not header or not any(keyword in header for keyword in critical_keywords):
+            continue
+        blank_count = sum(
+            1
+            for row in plain_rows
+            if column_index < len(row) and not str(row[column_index] or "").strip()
+        )
+        if blank_count > len(plain_rows) * 0.5 and len(plain_rows) > 5:
+            warnings.append(f"Column '{headers[column_index]}' is more than 50% blank. Is this the correct column mapping?")
+        elif blank_count:
+            # We don't block anymore if it's just one or two, but we warn
+            warnings.append(f"Column '{headers[column_index]}' has {blank_count} blank critical cell(s).")
+
+    # 4. Ledger-specific checks
+    is_ledger_like = (
+        (verification.doc_type_hint or "").strip().lower() in {"ledger", "logbook", "register"}
+        or {"dr", "cr"}.issubset(set(normalized_headers))
+        or any("debit" in header for header in normalized_headers)
+        or any("credit" in header for header in normalized_headers)
+    )
+    if is_ledger_like:
+        dr_index = next((index for index, header in enumerate(normalized_headers) if header in {"dr", "debit"} or "debit" in header), None)
+        cr_index = next((index for index, header in enumerate(normalized_headers) if header in {"cr", "credit"} or "credit" in header), None)
+        for row_index, row in enumerate(plain_rows, start=1):
+            dr_value = row[dr_index].strip() if dr_index is not None and dr_index < len(row) else ""
+            cr_value = row[cr_index].strip() if cr_index is not None and cr_index < len(row) else ""
+            if dr_value and cr_value:
+                blockers.append(f"Row {row_index} contains both debit and credit values.")
+            
+            row_text_lower = [str(cell).strip().lower() for cell in row]
+            if any(token in {"total", "balance", "sum", "grand total"} for token in row_text_lower):
+                if not (dr_value or cr_value):
+                    warnings.append(f"Summary row {row_index} ('{row[0] if row else ''}') is missing a numeric total.")
+    
+    # 5. Impossible totals check (basic)
+    # If we have an amount column and a total row, check if the total is roughly the sum
+    amount_indices = [i for i, h in enumerate(normalized_headers) if any(kw in h for kw in ("amount", "total", "value", "net", "gross"))]
+    if amount_indices and len(plain_rows) > 2:
+        for idx in amount_indices:
+            try:
+                values = []
+                total_val = 0.0
+                has_total = False
+                for row in plain_rows:
+                    val_str = row[idx].replace(",", "").replace(" ", "").strip()
+                    if not val_str: continue
+                    if any(kw in str(row).lower() for kw in ("total", "sum", "balance")):
+                        try:
+                            total_val = float(val_str)
+                            has_total = True
+                        except ValueError: pass
+                    else:
+                        try:
+                            values.append(float(val_str))
+                        except ValueError: pass
+                
+                if has_total and values and abs(sum(values) - total_val) > 1.0:
+                    warnings.append(f"Total in column '{headers[idx]}' ({total_val}) does not match the sum of individual rows ({sum(values):.2f}).")
+            except Exception: pass
+
+    return list(dict.fromkeys(blockers)), list(dict.fromkeys(warnings))
 
 
 def _verification_export_source(verification: OcrVerification) -> str:
@@ -1730,6 +1857,12 @@ def _verification_export_response(verification: OcrVerification) -> Response:
     if not rows:
         raise HTTPException(status_code=409, detail="Verification record has no rows to export.")
     headers = _verification_export_headers(verification, rows)
+    blockers, validation_warnings = _verification_export_validation(verification, headers, rows)
+    if blockers:
+        raise HTTPException(
+            status_code=409,
+            detail="Reviewed sheet has blocking validation issues and must be corrected before export.",
+        )
     trusted_export = verification.status == "approved"
     export_source = _verification_export_source(verification)
     filename = _verification_export_filename(verification)
@@ -1741,6 +1874,7 @@ def _verification_export_response(verification: OcrVerification) -> Response:
             "Verification Status": verification.status,
             "Export Source": export_source,
             "Trusted Export": "Yes" if trusted_export else "No",
+            "Review Required": "Yes" if validation_warnings or (verification.scan_quality or {}).get("review_required") else "No",
         },
     )
     return Response(
@@ -1753,6 +1887,7 @@ def _verification_export_response(verification: OcrVerification) -> Response:
             "X-Ocr-Verification-Id": str(verification.id),
             "X-Ocr-Export-Source": export_source,
             "X-Ocr-Trusted-Export": str(trusted_export).lower(),
+            "X-Ocr-Review-Required": str(bool(validation_warnings or (verification.scan_quality or {}).get("review_required"))).lower(),
             "X-Total-Rows": str(len(rows)),
             "X-Total-Columns": str(len(headers)),
         },
@@ -1778,8 +1913,8 @@ def _apply_verification_payload(
     routing_meta: dict | None = None,
     raw_text: str | None = None,
     headers: list[str] | None = None,
-    original_rows: list[list[str]] | None = None,
-    reviewed_rows: list[list[str]] | None = None,
+    original_rows: list[list[Any]] | None = None,
+    reviewed_rows: list[list[Any]] | None = None,
     raw_column_added: bool | None = None,
     reviewer_notes: str | None = None,
 ) -> None:

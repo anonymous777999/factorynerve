@@ -106,11 +106,22 @@ export type OcrScanQuality = {
   cell_boxes?: Array<Array<{ x: number; y: number; width: number; height: number } | null>> | null;
 };
 
+export type OcrCell =
+  | string
+  | {
+      value: string;
+      confidence: number;
+      bbox?: { x: number; y: number; width: number; height: number } | null;
+      source?: "ocr" | "ai" | "corrected" | "manual" | "unknown" | null;
+      normalized?: number | null;
+      reviewRequired?: boolean;
+    };
+
 export type OcrPreviewResult = {
   type: string;
   title: string;
   headers: string[];
-  rows: string[][];
+  rows: OcrCell[][];
   raw_text?: string | null;
   language?: string | null;
   confidence?: number | null;
@@ -192,8 +203,8 @@ export type OcrVerificationRecord = {
   routing_meta?: OcrRoutingMeta | null;
   raw_text?: string | null;
   headers: string[];
-  original_rows: string[][];
-  reviewed_rows: string[][];
+  original_rows: OcrCell[][];
+  reviewed_rows: OcrCell[][];
   raw_column_added: boolean;
   status: "draft" | "pending" | "approved" | "rejected";
   reviewer_notes?: string | null;
@@ -225,8 +236,8 @@ export type OcrVerificationSavePayload = {
   routingMeta?: OcrRoutingMeta | null;
   rawText?: string | null;
   headers?: string[];
-  originalRows?: string[][];
-  reviewedRows?: string[][];
+  originalRows?: OcrCell[][];
+  reviewedRows?: OcrCell[][];
   rawColumnAdded?: boolean;
   reviewerNotes?: string | null;
   file?: File | null;
