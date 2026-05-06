@@ -386,3 +386,55 @@ def check_entry_alerts(entry: Any) -> list[dict[str, str]]:
             {"type": "MANPOWER_SHORTAGE", "message": f"Absenteeism at {percent_absent}% (above 20%).", "severity": "high"}
         )
     return alerts
+
+
+LOW_CONFIDENCE_THRESHOLD = 60
+HIGH_CONFIDENCE_THRESHOLD = 90
+
+
+def normalize_confidence(value: float | int | None) -> float | None:
+    """
+    Standardize confidence value to [0.0, 100.0] scale.
+    Standardized scale is 0-100.
+    Input might be 0.0-1.0 (legacy cell format) or 0-100.
+    """
+    if value is None:
+        return None
+
+    try:
+        val = float(value)
+    except (ValueError, TypeError):
+        logging.getLogger(__name__).warning("Corrupt confidence value detected: %s", value)
+        return None
+
+    # value < 0 -> clamp to 0.0 + log warning
+    if val < 0:
+        logging.getLogger(__name__).warning("Confidence value below zero: %s. Clamping to 0.0", val)
+        return 0.0
+
+    # value <= 1.0 (and not None) -> multiply by 100 (cell adapter format)
+    if val <= 1.0:
+        return val * 100.0
+
+    # 1.0 < value < 2.0 -> ambiguous/corrupt, return None + log warning
+    if 1.0 < val < 2.0:
+        logging.getLogger(__name__).warning(
+            "Ambiguous confidence value detected: %s (between 1 and 2)", val
+        )
+        return None
+
+    # value > 100 -> clamp to 100.0 + log warning
+    if val > 100:
+        logging.getLogger(__name__).warning("Confidence value above 100: %s. Clamping to 100.0", val)
+        return 100.0
+
+    # 1 < value <= 100 -> preserve as-is
+    return val
+
+
+def format_confidence_percent(value: float | int | None) -> str:
+    """Display string only: "82%" format."""
+    normalized = normalize_confidence(value)
+    if normalized is None:
+        return "—"
+    return f"{int(round(normalized))}%"

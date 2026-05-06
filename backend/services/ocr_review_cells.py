@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from backend.utils import sanitize_text
+from backend.utils import normalize_confidence, sanitize_text
 
 _ALLOWED_CELL_SOURCES = {"ocr", "ai", "corrected", "manual", "unknown"}
 
@@ -23,14 +23,7 @@ def cell_display_value(value: Any) -> str:
 def cell_confidence(value: Any) -> float | None:
     if not is_review_cell(value):
         return None
-    raw = value.get("confidence")
-    try:
-        confidence = float(raw)
-    except (TypeError, ValueError):
-        return None
-    if confidence > 1:
-        confidence = confidence / 100.0
-    return max(0.0, min(1.0, confidence))
+    return normalize_confidence(value.get("confidence"))
 
 
 def cell_source(value: Any) -> str | None:

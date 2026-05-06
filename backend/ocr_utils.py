@@ -12,6 +12,8 @@ from typing import Iterable
 import numpy as np
 from PIL import Image
 
+from backend.utils import LOW_CONFIDENCE_THRESHOLD, normalize_confidence
+
 
 try:
     import cv2  # type: ignore
@@ -390,8 +392,9 @@ def detect_column_centers(
         return [], 0.0, warnings
     centers = _kmeans_1d(all_centers, columns)
     avg_conf = float(sum(confidences) / len(confidences)) if confidences else 0.0
-    if avg_conf and avg_conf < 55:
+    if (normalize_confidence(avg_conf) or 0.0) < LOW_CONFIDENCE_THRESHOLD:
         warnings.append("Low OCR confidence in samples. Please review.")
+
     return centers, avg_conf, warnings
 
 
@@ -541,8 +544,9 @@ def extract_table_from_image(
         )
 
     avg_conf = float(sum(confidences) / len(confidences)) if confidences else 0.0
-    if avg_conf and avg_conf < 55:
+    if (normalize_confidence(avg_conf) or 0.0) < LOW_CONFIDENCE_THRESHOLD:
         warnings.append("Low OCR confidence. Please review carefully.")
+
 
     return OcrResult(
         rows=table_rows,

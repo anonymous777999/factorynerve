@@ -254,13 +254,13 @@ export function DataTableGrid({
                   const raw = originalCell ? normalizeCell(originalCell).value : "";
 
                   // Phase 2: Use cell object confidence if available, otherwise use legacy matrix
-                  const confidence = typeof currentCell === "object"
+                  // Both sources now use 0-100 scale
+                  const confidenceRaw = typeof currentCell === "object"
                     ? currentCell.confidence
-                    : confidenceMatrix?.[rowIndex]?.[columnIndex]
-                      ? confidenceMatrix[rowIndex][columnIndex] / 100  // Convert 0-100 to 0-1.0
-                      : 1.0;
+                    : confidenceMatrix?.[rowIndex]?.[columnIndex];
 
-                  const confidencePercent = Math.round(confidence * 100);
+                  const confidence = (confidenceRaw ?? 100) / 100;  // Normalize to 0-1.0 for CSS classes
+                  const confidencePercent = Math.round(confidenceRaw ?? 100);
                   const title = `Confidence: ${confidencePercent}%${raw && raw !== cellData.value ? ` | Original: ${raw}` : ""}`;
 
                   return (

@@ -50,7 +50,13 @@ from backend.ocr_utils import (
 from backend.security import get_current_user
 from backend.rbac import is_manager_or_admin, require_any_role
 from backend.models.user import User, UserRole
-from backend.utils import PROJECT_ROOT, sanitize_text
+from backend.utils import (
+    HIGH_CONFIDENCE_THRESHOLD,
+    LOW_CONFIDENCE_THRESHOLD,
+    PROJECT_ROOT,
+    normalize_confidence,
+    sanitize_text,
+)
 from backend.ocr_limits import check_rate_limit, check_and_record_usage, check_and_record_org_usage, get_org_plan_for_usage
 from backend.plans import has_plan_feature, min_plan_for_feature, org_has_ocr_access
 from backend.services.background_jobs import (
@@ -1502,13 +1508,11 @@ def _normalize_scan_quality(values: dict | None, *, field_name: str) -> dict | N
             normalized_row: list[float | None] = []
             for item in row:
                 try:
-                    confidence = float(item)
+                    confidence = normalize_confidence(item)
                 except (TypeError, ValueError):
                     normalized_row.append(None)
                     continue
-                if confidence > 1:
-                    confidence = confidence / 100.0
-                normalized_row.append(max(0.0, min(1.0, confidence)))
+                normalized_row.append(confidence)
             cell_confidence.append(normalized_row)
 
     raw_sources = values.get("cell_sources")
@@ -1692,7 +1696,7 @@ def _serialize_verification(db: Session, verification: OcrVerification) -> dict:
         "source_image_url": f"/ocr/verifications/{verification.id}/source-image" if verification.source_image_path else None,
         "columns": verification.columns,
         "language": verification.language,
-        "avg_confidence": float(verification.avg_confidence or 0),
+        "avg_confidence": normalize_confidence(verification.avg_confidence) or 0.0,
         "warnings": verification.warnings or [],
         "scan_quality": verification.scan_quality or None,
         "document_hash": verification.document_hash,
@@ -1716,7 +1720,9 @@ def _serialize_verification(db: Session, verification: OcrVerification) -> dict:
         "trusted_export": trusted_export,
         "export_source": export_source,
         "export_url": f"/ocr/verifications/{verification.id}/export",
-        "review_required": (float(verification.avg_confidence or 0) < 60) or bool(verification.warnings),
+        "review_required": (normalize_confidence(verification.avg_confidence) or 0.0)
+        < LOW_CONFIDENCE_THRESHOLD
+        or bool(verification.warnings),
         "created_at": verification.created_at.isoformat() if verification.created_at else None,
         "updated_at": verification.updated_at.isoformat() if verification.updated_at else None,
     }
@@ -1927,7 +1933,7 @@ def _apply_verification_payload(
     if language is not None:
         verification.language = sanitize_text(language, max_length=20, preserve_newlines=False) or verification.language
     if avg_confidence is not None:
-        verification.avg_confidence = max(0.0, min(float(avg_confidence), 100.0))
+        verification.avg_confidence = normalize_confidence(avg_confidence)
     if warnings is not None:
         verification.warnings = warnings
     if scan_quality is not None:
@@ -2988,6 +2994,7 @@ async def ocr_logbook(
     model: str | None = Form(default=None),
     force_model: str | None = Form(default=None),
     document_hash: str | None = Form(default=None),
+    force_refresh: bool = Form(default=False),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -2996,10 +3003,11 @@ async def ocr_logbook(
     requested_doc_type = _normalize_doc_type_hint(doc_type_hint) or "table"
     requested_model = sanitize_text(model or force_model, max_length=80, preserve_newlines=False) or None
     logger.info(
-        "[OCR] /ocr/logbook received filename=%s requested_model=%s document_hash=%s",
+        "[OCR] /ocr/logbook received filename=%s requested_model=%s document_hash=%s force_refresh=%s",
         file.filename or "unknown",
         requested_model or "auto",
         _normalize_document_hash(document_hash) or "none",
+        force_refresh,
     )
 
     template = None
@@ -3012,14 +3020,16 @@ async def ocr_logbook(
         if not template:
             raise HTTPException(status_code=404, detail="Template not found.")
 
-    reusable = find_reusable_verification(
-        db,
-        org_id=resolve_org_id(current_user),
-        document_hash=_normalize_document_hash(document_hash),
-        template_id=template.id if template else template_id,
-        doc_type_hint=requested_doc_type,
-        requested_model=requested_model,
-    )
+    reusable = None
+    if not force_refresh:
+        reusable = find_reusable_verification(
+            db,
+            org_id=resolve_org_id(current_user),
+            document_hash=_normalize_document_hash(document_hash),
+            template_id=template.id if template else template_id,
+            doc_type_hint=requested_doc_type,
+            requested_model=requested_model,
+        )
     if reusable is not None:
         logger.info(
             "[OCR] Reusing cached verification id=%s requested_model=%s provider_model=%s",
@@ -3044,6 +3054,37 @@ async def ocr_logbook(
             else None,
         }
         return reused_payload
+
+    # Handle force_refresh and rate limiting
+    previous_record = None
+    if force_refresh:
+        previous_record = find_reusable_verification(
+            db,
+            org_id=resolve_org_id(current_user),
+            document_hash=_normalize_document_hash(document_hash),
+            template_id=template.id if template else template_id,
+            doc_type_hint=requested_doc_type,
+            requested_model=requested_model,
+        )
+        if previous_record:
+            # Check rate limit (3 per hour)
+            routing = previous_record.routing_meta or {}
+            reprocess_count = int(routing.get("reprocess_count", 0))
+            last_reprocessed = routing.get("last_reprocessed_at")
+            
+            if last_reprocessed:
+                try:
+                    last_dt = datetime.fromisoformat(last_reprocessed)
+                    if last_dt.tzinfo is None:
+                        last_dt = last_dt.replace(tzinfo=timezone.utc)
+                    if (datetime.now(timezone.utc) - last_dt).total_seconds() < 3600:
+                        if reprocess_count >= 3:
+                            raise HTTPException(
+                                status_code=429, 
+                                detail="Reprocess limit reached. Try again later."
+                            )
+                except (ValueError, TypeError):
+                    pass
 
     requested_language = template.language if template else language
 
@@ -3123,7 +3164,7 @@ async def ocr_logbook(
         logger.warning("OCR scan quality analysis failed: %s", error, exc_info=True)
         scan_quality_payload = None
 
-    return {
+    final_payload = {
         **structured,
         "scan_quality": scan_quality_payload,
         "template": {
@@ -3139,7 +3180,43 @@ async def ocr_logbook(
         }
         if template
         else None,
+        "reused": False,
+        "cached": False,
+        "reprocess_count": 0,
+        "reprocess_limit": 3,
+        "cache_trust": "high"
+        if (normalize_confidence(structured.get("avg_confidence")) or 0.0)
+        >= LOW_CONFIDENCE_THRESHOLD
+        else "low",
     }
+
+    if previous_record:
+        # Comparison logic
+        old_conf = normalize_confidence(previous_record.avg_confidence)
+        new_conf = normalize_confidence(structured.get("avg_confidence"))
+
+        routing = previous_record.routing_meta or {}
+        new_reprocess_count = int(routing.get("reprocess_count", 0)) + 1
+
+        # Add reprocess metadata
+        final_payload["reprocess_count"] = new_reprocess_count
+        final_payload["previous_confidence"] = old_conf
+        final_payload["last_reprocessed_at"] = datetime.now(timezone.utc).isoformat()
+
+        if "routing" in final_payload:
+            final_payload["routing"]["reprocess_count"] = new_reprocess_count
+            final_payload["routing"][
+                "last_reprocessed_at"
+            ] = final_payload["last_reprocessed_at"]
+            final_payload["routing"]["previous_confidence"] = old_conf
+
+        if old_conf is not None and new_conf is not None:
+            if new_conf < old_conf:
+                final_payload["confidence_dropped"] = True
+            else:
+                final_payload["confidence_improved"] = True
+
+    return final_payload
 
 
 @router.post("/warp", status_code=status.HTTP_200_OK)

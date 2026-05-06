@@ -6,6 +6,7 @@ Phase 3: Adds safe numeric normalization.
 
 from typing import Any
 import re
+from backend.utils import normalize_confidence
 
 
 def normalize_cell(
@@ -18,7 +19,7 @@ def normalize_cell(
     
     Fields:
     - value: str (display value - always preserved)
-    - confidence: float (0.0-1.0)
+    - confidence: float (0-100)
     - normalized: float | None (Phase 3: safe numeric value)
     
     Args:
@@ -33,7 +34,7 @@ def normalize_cell(
     if isinstance(cell, dict):
         result = {
             "value": str(cell.get("value", "")),
-            "confidence": float(cell.get("confidence", confidence or 0.5)),
+            "confidence": normalize_confidence(cell.get("confidence", confidence or 0.5)),
         }
         # Preserve existing normalized value
         if "normalized" in cell and cell["normalized"] is not None:
@@ -48,7 +49,7 @@ def normalize_cell(
     # Legacy string - upgrade to minimal object
     result = {
         "value": str(cell),
-        "confidence": confidence if confidence is not None else 0.5,
+        "confidence": normalize_confidence(confidence if confidence is not None else 0.5),
     }
     
     # Phase 3: Add safe numeric normalization if requested
@@ -208,24 +209,25 @@ def estimate_confidence_simple(
         base_confidence: Base OCR confidence (if available)
     
     Returns:
-        Adjusted confidence (0.0 to 1.0)
+        Adjusted confidence (0.0 to 100.0)
     """
-    # Default base confidence
+    # Standardize base confidence to 0-100
+    base_confidence = normalize_confidence(base_confidence)
     if base_confidence is None:
-        base_confidence = 0.7
+        base_confidence = 70.0
     
     # Empty cell is certain
     if not cell_value.strip():
-        return 0.99
+        return 99.0
     
     confidence = base_confidence
     
     # Column type adjustment
     if column_type == "numeric":
         if _is_numeric_simple(cell_value):
-            confidence += 0.1  # Boost for consistent numeric
+            confidence += 10.0  # Boost for consistent numeric
         else:
-            confidence -= 0.2  # Penalize non-numeric in numeric column
+            confidence -= 20.0  # Penalize non-numeric in numeric column
     
-    # Clamp to 0.0-1.0
-    return max(0.0, min(1.0, confidence))
+    # Clamp to 0.0-100.0
+    return max(0.0, min(100.0, confidence))
