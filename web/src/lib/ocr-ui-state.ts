@@ -5,6 +5,8 @@ import type { OcrDebugPayload, OcrRoutingMeta, OcrScanQuality, OcrTokenUsage } f
 const OCR_UI_STORAGE_KEY = "dpr:ocr-ui-state";
 const MAX_STORED_IMAGE_BYTES = 1_400_000;
 
+export type RawCell = string | { value: string; confidence: number };
+
 export type PersistedOcrUiState = {
   step: "entry" | "prepare" | "processing" | "result" | "upload" | "preview" | "export";
   fileName?: string;
@@ -13,7 +15,7 @@ export type PersistedOcrUiState = {
   preparedImageDataUrl?: string | null;
   selectedFilter?: "original" | "clean" | "contrast";
   headers?: string[];
-  rows?: string[][];
+  rows?: RawCell[][];
   columnTypes?: Array<"text" | "number" | "date">;
   title?: string;
   resultType?: string;
