@@ -1869,7 +1869,7 @@ export default function OcrScanPage() {
                           type="button"
                           className="mt-3 w-full rounded-full bg-[#185FA5] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(24,95,165,0.16)] transition hover:bg-[#164f8a] disabled:cursor-not-allowed disabled:bg-[#98a2b3] disabled:shadow-none"
                           disabled={busy || !canRerunWithSelectedModel}
-                          onClick={handleRerunWithSelectedModel}
+                          onClick={() => handleRerunWithSelectedModel()}
                         >
                           Re-run with {MODEL_LABELS[selectedModel]}
                         </button>
