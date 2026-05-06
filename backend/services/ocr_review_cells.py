@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from backend.security import sanitize_text
+from backend.utils import sanitize_text
 
 _ALLOWED_CELL_SOURCES = {"ocr", "ai", "corrected", "manual", "unknown"}
 
