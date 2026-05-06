@@ -205,6 +205,64 @@ function stringifySheetCell(value: unknown): string {
     return stringifySheetCell(value.value); // Recursively stringify the value
   }
 
+  // Handle structured section objects (header, table, total, form)
+  if (typeof value === "object" && value !== null) {
+    const obj = value as Record<string, unknown>;
+
+    // Extract human-readable content from structured sections
+    if ("type" in obj) {
+      const sectionType = String(obj.type || "").toLowerCase();
+
+      // Header section: extract title/label/text
+      if (sectionType === "header" || sectionType === "heading") {
+        return String(obj.title || obj.label || obj.text || obj.value || "");
+      }
+
+      // Total/summary section: extract label and amount
+      if (sectionType === "total" || sectionType === "summary" || sectionType === "subtotal") {
+        const label = String(obj.label || obj.title || "");
+        const amount = obj.amount || obj.value || "";
+        return label && amount ? `${label}: ${amount}` : String(amount || label || "");
+      }
+
+      // Form field: extract label and value
+      if (sectionType === "field" || sectionType === "form" || sectionType === "input") {
+        const label = String(obj.label || obj.name || "");
+        const fieldValue = obj.value || obj.content || "";
+        return label && fieldValue ? `${label}: ${fieldValue}` : String(fieldValue || label || "");
+      }
+
+      // Table section: extract first cell or dimensions
+      if (sectionType === "table" || sectionType === "grid") {
+        if (Array.isArray(obj.rows) && obj.rows.length > 0) {
+          const firstRow = obj.rows[0];
+          if (Array.isArray(firstRow) && firstRow.length > 0) {
+            return stringifySheetCell(firstRow[0]);
+          }
+        }
+        const rows = Array.isArray(obj.rows) ? obj.rows.length : 0;
+        const firstRow = Array.isArray(obj.rows) && obj.rows.length > 0 ? obj.rows[0] : null;
+        const cols = obj.columns || (Array.isArray(firstRow) ? firstRow.length : 0);
+        return rows && cols ? `Table (${rows}×${cols})` : "Table";
+      }
+    }
+
+    // Extract common value/text/content fields
+    if ("value" in obj && obj.value != null) {
+      return stringifySheetCell(obj.value);
+    }
+    if ("text" in obj && obj.text != null) {
+      return String(obj.text);
+    }
+    if ("content" in obj && obj.content != null) {
+      return String(obj.content);
+    }
+    if ("label" in obj && obj.label != null) {
+      return String(obj.label);
+    }
+  }
+
+  // Fallback: stringify as JSON (last resort)
   try {
     return JSON.stringify(value);
   } catch {
