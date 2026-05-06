@@ -8,7 +8,7 @@ export type OcrColumnType = "text" | "number" | "date";
 export type ActiveGridCell = { row: number; column: number } | null;
 
 // Phase 2: Support both string and object cell formats
-type RawCell = string | { value: string; confidence: number };
+export type RawCell = string | { value: string; confidence: number };
 type CellObject = { value: string; confidence: number };
 
 type DataTableGridProps = {
@@ -16,7 +16,7 @@ type DataTableGridProps = {
   rows: RawCell[][];  // Now accepts both formats
   columnTypes: OcrColumnType[];
   confidenceMatrix?: number[][];
-  originalRows?: string[][];
+  originalRows?: RawCell[][];
   showLowConfidence?: boolean;
   readOnly?: boolean;
   activeCell?: ActiveGridCell;
@@ -239,18 +239,19 @@ export function DataTableGrid({
           <tbody>
             {normalizedRows.map((row, rowIndex) => (
               <tr key={`row-${rowIndex}`}>
-                {row.map((rawCell, columnIndex) => {
+                {row.map((currentCell, columnIndex) => {
                   // Phase 2: Normalize cell to handle both formats
-                  const cellData = normalizeCell(rawCell);
+                  const cellData = normalizeCell(currentCell);
                   const isSelected =
                     selectedCell?.row === rowIndex && selectedCell?.column === columnIndex;
                   const isEditing =
                     editingCell?.row === rowIndex && editingCell?.column === columnIndex;
-                  const raw = originalRows?.[rowIndex]?.[columnIndex] || "";
+                  const originalCell = originalRows?.[rowIndex]?.[columnIndex];
+                  const raw = originalCell ? normalizeCell(originalCell).value : "";
 
                   // Phase 2: Use cell object confidence if available, otherwise use legacy matrix
-                  const confidence = typeof rawCell === "object"
-                    ? rawCell.confidence
+                  const confidence = typeof currentCell === "object"
+                    ? currentCell.confidence
                     : confidenceMatrix?.[rowIndex]?.[columnIndex]
                       ? confidenceMatrix[rowIndex][columnIndex] / 100  // Convert 0-100 to 0-1.0
                       : 1.0;

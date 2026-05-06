@@ -15,6 +15,7 @@ import { UploadBox } from "@/components/ocr/upload-box";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
+import type { RawCell } from "@/components/ocr/data-table-grid";
 import { formatApiErrorMessage } from "@/lib/api";
 import { pushAppToast } from "@/lib/toast";
 import { transferBlob } from "@/lib/blob-transfer";
@@ -56,7 +57,7 @@ import { useSession } from "@/lib/use-session";
 import { signalWorkflowRefresh } from "@/lib/workflow-sync";
 
 const DataTableGrid = dynamic(
-  () => import("@/components/ocr/data-table-grid").then((module) => module.DataTableGrid),
+  () => import("@/components/ocr/data-table-grid").then((module) => ({ default: module.DataTableGrid })),
   {
     ssr: false,
     loading: () => (
@@ -86,10 +87,10 @@ type ResultPreview = {
   type: string;
   title: string;
   headers: string[];
-  rows: string[][];
+  rows: RawCell[][];
   sheets?: Array<{
     columns: string[];
-    rows: string[][];
+    rows: RawCell[][];
   }>;
   rawText?: string | null;
   language: string;
@@ -114,7 +115,7 @@ type StructuredPreviewResult = OcrPreviewResult & {
 
 type TableSnapshot = {
   headers: string[];
-  rows: string[][];
+  rows: RawCell[][];
   columnTypes: OcrColumnType[];
   headerRowEnabled: boolean;
 };
@@ -146,17 +147,47 @@ function toModelOption(value: string | null | undefined): ModelOption {
   return "auto";
 }
 
-function cloneRows(rows: string[][]) {
+function cloneRows(rows: RawCell[][]): RawCell[][] {
   return rows.map((row) => [...row]);
+}
+
+// Type guard for cell objects
+function isCellObject(value: unknown): value is { value: string; confidence: number } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    "value" in value &&
+    "confidence" in value &&
+    typeof (value as { value: unknown }).value === "string" &&
+    typeof (value as { confidence: unknown }).confidence === "number"
+  );
+}
+
+// Normalize RawCell to string
+function normalizeToString(cell: RawCell): string {
+  if (typeof cell === "string") {
+    return cell;
+  }
+  if (isCellObject(cell)) {
+    return cell.value;
+  }
+  return "";
+}
+
+// Normalize RawCell[][] to string[][]
+function normalizeRowsToStrings(rows: RawCell[][]): string[][] {
+  return rows.map((row) => row.map((cell) => normalizeToString(cell)));
 }
 
 function defaultHeaders(columnCount: number) {
   return Array.from({ length: Math.max(columnCount, 1) }, (_, index) => `Column ${index + 1}`);
 }
 
-function inferColumnTypes(rows: string[][], headerCount: number): OcrColumnType[] {
+function inferColumnTypes(rows: RawCell[][], headerCount: number): OcrColumnType[] {
   return Array.from({ length: Math.max(headerCount, 1) }, (_, index) => {
-    const values = rows.map((row) => (row[index] || "").trim()).filter(Boolean);
+    const values = rows
+      .map((row) => normalizeToString(row[index] || "").trim())
+      .filter(Boolean);
     if (!values.length) return "text";
     if (values.every((value) => /^-?\d[\d,]*(?:\.\d+)?$/.test(value))) return "number";
     if (values.every((value) => !Number.isNaN(Date.parse(value)))) return "date";
@@ -164,15 +195,14 @@ function inferColumnTypes(rows: string[][], headerCount: number): OcrColumnType[
   });
 }
 
-function stringifySheetCell(value: unknown) {
+function stringifySheetCell(value: unknown): string {
   if (value == null) return "";
   if (typeof value === "string") return value;
   if (typeof value === "number" || typeof value === "boolean") return String(value);
 
   // Handle cell objects from backend (Phase 1 cell structure)
-  if (typeof value === "object" && value !== null && "value" in value) {
-    const cellObj = value as { value: unknown };
-    return stringifySheetCell(cellObj.value); // Recursively stringify the value
+  if (isCellObject(value)) {
+    return stringifySheetCell(value.value); // Recursively stringify the value
   }
 
   try {
@@ -303,7 +333,7 @@ function lowConfidenceCount(matrix: number[][], visible: boolean) {
   );
 }
 
-function countCorrections(originalRows: string[][], reviewedRows: string[][]) {
+function countCorrections(originalRows: RawCell[][], reviewedRows: RawCell[][]): number {
   const rowCount = Math.max(originalRows.length, reviewedRows.length);
   let changes = 0;
   for (let rowIndex = 0; rowIndex < rowCount; rowIndex += 1) {
@@ -311,7 +341,9 @@ function countCorrections(originalRows: string[][], reviewedRows: string[][]) {
     const reviewed = reviewedRows[rowIndex] || [];
     const columnCount = Math.max(original.length, reviewed.length);
     for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
-      if ((original[columnIndex] || "") !== (reviewed[columnIndex] || "")) {
+      const originalValue = normalizeToString(original[columnIndex] || "");
+      const reviewedValue = normalizeToString(reviewed[columnIndex] || "");
+      if (originalValue !== reviewedValue) {
         changes += 1;
       }
     }
@@ -450,7 +482,7 @@ export default function OcrScanPage() {
   const [resultPreview, setResultPreview] = useState<ResultPreview | null>(null);
   const [confidenceMatrix, setConfidenceMatrix] = useState<number[][]>([]);
   const [editableHeaders, setEditableHeaders] = useState<string[]>([]);
-  const [editableRows, setEditableRows] = useState<string[][]>([]);
+  const [editableRows, setEditableRows] = useState<RawCell[][]>([]);
   const [columnTypes, setColumnTypes] = useState<OcrColumnType[]>([]);
   const [headerRowEnabled, setHeaderRowEnabled] = useState(false);
   const [showLowConfidence, setShowLowConfidence] = useState(true);
@@ -742,8 +774,8 @@ export default function OcrScanPage() {
       routingMeta: resultPreview.routingMeta ?? null,
       rawText: resultPreview.rawText ?? null,
       headers: editableHeaders,
-      originalRows: resultPreview.rows,
-      reviewedRows: editableRows,
+      originalRows: normalizeRowsToStrings(resultPreview.rows as RawCell[][]),
+      reviewedRows: normalizeRowsToStrings(editableRows),
       rawColumnAdded: false,
       reviewerNotes: "",
     };
@@ -911,8 +943,8 @@ export default function OcrScanPage() {
             routingMeta: result.routing ?? null,
             rawText: nextPreview.rawText ?? null,
             headers,
-            originalRows: nextPreview.rows,
-            reviewedRows: rows,
+            originalRows: normalizeRowsToStrings(nextPreview.rows as RawCell[][]),
+            reviewedRows: normalizeRowsToStrings(rows),
             rawColumnAdded: false,
             reviewerNotes: "",
             file: prepared.file,
@@ -1135,7 +1167,9 @@ export default function OcrScanPage() {
   const handleToggleHeaderRow = useCallback(() => {
     const columnCount = Math.max(editableHeaders.length, ...editableRows.map((row) => row.length), 1);
     if (!headerRowEnabled && editableRows.length) {
-      const firstRow = Array.from({ length: columnCount }, (_, index) => editableRows[0]?.[index] || editableHeaders[index] || `Column ${index + 1}`);
+      const firstRow = Array.from({ length: columnCount }, (_, index) =>
+        normalizeToString(editableRows[0]?.[index]) || editableHeaders[index] || `Column ${index + 1}`
+      );
       applyTableChange({
         headers: firstRow,
         rows: editableRows.slice(1),
@@ -1146,7 +1180,7 @@ export default function OcrScanPage() {
     const nextHeaders = defaultHeaders(columnCount);
     applyTableChange({
       headers: nextHeaders,
-      rows: [editableHeaders, ...editableRows],
+      rows: [editableHeaders as RawCell[], ...editableRows],
       headerRowEnabled: false,
     });
   }, [applyTableChange, editableHeaders, editableRows, headerRowEnabled]);
@@ -1337,7 +1371,7 @@ export default function OcrScanPage() {
         }}
       />
 
-      <main className="min-h-screen bg-[#f4f7fb] px-4 py-4 md:px-6 md:py-6">
+      <main className="bg-[#f4f7fb] px-4 py-4 md:px-6 md:py-6">
         <div className="mx-auto max-w-7xl space-y-5">
           <div className="rounded-[28px] border border-[#e3e8ef] bg-white px-5 py-5 shadow-[0_24px_64px_rgba(15,23,42,0.06)] md:px-7">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
@@ -1452,7 +1486,7 @@ export default function OcrScanPage() {
 
           {(step === "preview" || step === "export") && resultPreview ? (
             <div className="space-y-5">
-              <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+              <div className="grid gap-5 xl:grid-cols-2 xl:items-start">
                 <div className="overflow-hidden rounded-[28px] border border-[#e3e8ef] bg-white shadow-[0_20px_54px_rgba(15,23,42,0.05)]">
                   <div className="flex items-center justify-between border-b border-[#edf1f5] px-5 py-4">
                     <div>
@@ -1489,7 +1523,7 @@ export default function OcrScanPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="relative grid min-h-[28rem] place-items-center overflow-auto bg-[#f7f9fb] p-4">
+                  <div className="relative grid place-items-center overflow-auto bg-[#f7f9fb] p-4">
                     {displayPreviewUrl ? (
                       <div className="relative">
                         {/* eslint-disable-next-line @next/next/no-img-element */}

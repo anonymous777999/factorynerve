@@ -1,40 +1,52 @@
-export function exportRowsToCsv(headers: string[], rows: string[][]) {
+export type RawCell = string | { value: string; confidence: number };
+
+// Normalize RawCell to string for export
+function normalizeCell(cell: RawCell | undefined): string {
+  if (cell == null) return "";
+  if (typeof cell === "string") return cell;
+  if (typeof cell === "object" && "value" in cell) {
+    return cell.value;
+  }
+  return "";
+}
+
+export function exportRowsToCsv(headers: string[], rows: RawCell[][]) {
   const escape = (value: string) => `"${String(value || "").replaceAll('"', '""')}"`;
   return [
     headers.map(escape).join(","),
-    ...rows.map((row) => headers.map((_, index) => escape(row[index] || "")).join(",")),
+    ...rows.map((row) => headers.map((_, index) => escape(normalizeCell(row[index]))).join(",")),
   ].join("\n");
 }
 
-export function exportRowsToMarkdown(headers: string[], rows: string[][]) {
+export function exportRowsToMarkdown(headers: string[], rows: RawCell[][]) {
   const sanitize = (value: string) => String(value || "").replaceAll("|", "\\|").replaceAll("\n", " ");
   const headerLine = `| ${headers.map(sanitize).join(" | ")} |`;
   const dividerLine = `| ${headers.map(() => "---").join(" | ")} |`;
-  const body = rows.map((row) => `| ${headers.map((_, index) => sanitize(row[index] || "")).join(" | ")} |`);
+  const body = rows.map((row) => `| ${headers.map((_, index) => sanitize(normalizeCell(row[index]))).join(" | ")} |`);
   return [headerLine, dividerLine, ...body].join("\n");
 }
 
-export function exportRowsToJson(headers: string[], rows: string[][]) {
+export function exportRowsToJson(headers: string[], rows: RawCell[][]) {
   return JSON.stringify(
     rows.map((row) =>
-      Object.fromEntries(headers.map((header, index) => [header || `column_${index + 1}`, row[index] || ""])),
+      Object.fromEntries(headers.map((header, index) => [header || `column_${index + 1}`, normalizeCell(row[index])])),
     ),
     null,
     2,
   );
 }
 
-export function exportRowsToClipboardText(headers: string[], rows: string[][]) {
+export function exportRowsToClipboardText(headers: string[], rows: RawCell[][]) {
   return [
     headers.join("\t"),
-    ...rows.map((row) => headers.map((_, index) => row[index] || "").join("\t")),
+    ...rows.map((row) => headers.map((_, index) => normalizeCell(row[index])).join("\t")),
   ].join("\n");
 }
 
 export async function buildStructuredPdfBlob(options: {
   title: string;
   headers: string[];
-  rows: string[][];
+  rows: RawCell[][];
 }) {
   const [{ jsPDF }, autoTableModule] = await Promise.all([
     import("jspdf"),
@@ -54,7 +66,7 @@ export async function buildStructuredPdfBlob(options: {
   autoTable(doc, {
     startY: 56,
     head: [options.headers],
-    body: options.rows.map((row) => options.headers.map((_, index) => row[index] || "")),
+    body: options.rows.map((row) => options.headers.map((_, index) => normalizeCell(row[index]))),
     styles: {
       fontSize: 9,
       cellPadding: 5,
