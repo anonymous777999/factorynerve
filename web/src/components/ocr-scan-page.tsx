@@ -1061,8 +1061,15 @@ export default function OcrScanPage() {
         } else if (result.scan_quality?.confidence_band === "low") {
           setStatus("Image quality may affect accuracy.");
           setStatusTone("warning");
+        } else if (result.cached) {
+          const ageText = result.cache_age_hours ? ` (${Math.round(result.cache_age_hours)}h ago)` : "";
+          setStatus(`⚡ Instant result from cache${ageText} — no AI cost incurred.`);
+          setStatusTone("success");
+        } else if (result.reused) {
+          setStatus("Existing OCR draft reopened.");
+          setStatusTone("success");
         } else {
-          setStatus(result.reused ? "Existing OCR draft reopened." : "Sheet ready to review.");
+          setStatus("Sheet ready to review.");
           setStatusTone("success");
         }
       }
@@ -1581,19 +1588,26 @@ export default function OcrScanPage() {
           ) : null}
 
           {step === "preview" && resultPreview?.cached && (
-            <div className={`rounded-[22px] border px-4 py-3 text-sm ${resultPreview.cacheTrust === "low" ? statusBannerClass("warning") : "border-[#cfe0f0] bg-[#f7fbff] text-[#185FA5]"}`}>
+            <div className={`rounded-[22px] border-2 px-5 py-4 text-sm shadow-sm ${resultPreview.cacheTrust === "low" ? "border-amber-400/60 bg-amber-50/80 text-amber-900" : "border-cyan-400/60 bg-cyan-50/80 text-cyan-900"}`}>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="flex h-2 w-2 rounded-full bg-current opacity-75" />
-                  <span>
-                    {resultPreview.cacheTrust === "low"
-                      ? "This cached result has low confidence. Fresh scan recommended."
-                      : `This result was loaded from a previous scan (${resultPreview.cacheAgeHours}h ago).`}
-                  </span>
+                <div className="flex items-center gap-3">
+                  <span className="text-xl">{resultPreview.cacheTrust === "low" ? "⚠️" : "⚡"}</span>
+                  <div>
+                    <div className="font-semibold">
+                      {resultPreview.cacheTrust === "low"
+                        ? "Cached Result • Low Confidence"
+                        : `Instant Result From Cache`}
+                    </div>
+                    <div className="mt-0.5 text-xs opacity-90">
+                      {resultPreview.cacheTrust === "low"
+                        ? "Fresh scan recommended for better accuracy"
+                        : `Processed ${Math.round(resultPreview.cacheAgeHours || 0)}h ago • No AI cost incurred`}
+                    </div>
+                  </div>
                 </div>
                 <button
                   type="button"
-                  className="rounded-full border border-current/20 px-3 py-1.5 text-xs font-medium transition hover:bg-current/5"
+                  className="rounded-full border-2 border-current/30 bg-white/60 px-4 py-2 text-xs font-semibold transition hover:bg-white hover:shadow-sm"
                   onClick={() => {
                     if (resultPreview.userCorrected) {
                       if (window.confirm("You have manually edited this result. Rescanning will replace your edits. Continue?")) {
@@ -1605,7 +1619,7 @@ export default function OcrScanPage() {
                   }}
                   disabled={busy}
                 >
-                  Scan Fresh
+                  🔄 Scan Fresh
                 </button>
               </div>
             </div>

@@ -3022,10 +3022,19 @@ async def ocr_logbook(
 
     reusable = None
     if not force_refresh:
+        normalized_hash = _normalize_document_hash(document_hash)
+        org_id_for_lookup = resolve_org_id(current_user)
+        logger.info(
+            "[OCR-CACHE-DEBUG] Lookup | hash=%s | org=%s | template=%s | doc_type=%s",
+            normalized_hash,
+            org_id_for_lookup,
+            template.id if template else template_id,
+            requested_doc_type,
+        )
         reusable = find_reusable_verification(
             db,
-            org_id=resolve_org_id(current_user),
-            document_hash=_normalize_document_hash(document_hash),
+            org_id=org_id_for_lookup,
+            document_hash=normalized_hash,
             template_id=template.id if template else template_id,
             doc_type_hint=requested_doc_type,
             requested_model=requested_model,
