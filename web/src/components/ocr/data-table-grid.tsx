@@ -3,44 +3,47 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
+import { type OcrCell } from "@/lib/ocr";
 
 export type OcrColumnType = "text" | "number" | "date";
 export type ActiveGridCell = { row: number; column: number } | null;
 
-// Phase 2: Support both string and object cell formats
-export type RawCell = string | { value: string; confidence: number };
-type CellObject = { value: string; confidence: number };
+type CellObject = { value: string; confidence: number; source?: string | null };
 
 type DataTableGridProps = {
   headers: string[];
-  rows: RawCell[][];  // Now accepts both formats
+  rows: OcrCell[][];  // Use the shared type
   columnTypes: OcrColumnType[];
   confidenceMatrix?: number[][];
-  originalRows?: RawCell[][];
+  originalRows?: OcrCell[][];
   showLowConfidence?: boolean;
   readOnly?: boolean;
   activeCell?: ActiveGridCell;
   onActiveCellChange?: (cell: ActiveGridCell) => void;
   onChangeHeaders: (headers: string[]) => void;
-  onChangeRows: (rows: RawCell[][]) => void;
+  onChangeRows: (rows: OcrCell[][]) => void;
   onChangeColumnTypes: (types: OcrColumnType[]) => void;
 };
 
 type CellTarget = { row: number; column: number } | null;
 
 // Phase 2: Helper to normalize any cell format to CellObject
-function normalizeCell(cell: RawCell): CellObject {
+function normalizeCell(cell: OcrCell): CellObject {
   if (typeof cell === "string") {
-    return { value: cell, confidence: 1.0 };
+    return { value: cell, confidence: 1.0, source: null };
   }
-  return { value: cell.value, confidence: cell.confidence };
+  return {
+    value: cell.value,
+    confidence: cell.confidence,
+    source: cell.source,
+  };
 }
 
-function normalizeLength(row: RawCell[], columns: number): RawCell[] {
+function normalizeLength(row: OcrCell[], columns: number): OcrCell[] {
   return Array.from({ length: columns }, (_, index) => row[index] || "");
 }
 
-function inferColumnType(values: RawCell[]): OcrColumnType {
+function inferColumnType(values: OcrCell[]): OcrColumnType {
   const filled = values
     .map((cell) => normalizeCell(cell).value.trim())
     .filter(Boolean);
@@ -54,8 +57,9 @@ function inferColumnType(values: RawCell[]): OcrColumnType {
 
 // Phase 2: Updated confidence color mapping (uses 0-1.0 scale)
 function getConfidenceClass(confidence: number): string {
-  if (confidence < 0.75) return "bg-red-100 border border-red-300";
-  if (confidence < 0.90) return "bg-yellow-100 border border-yellow-300";
+  if (confidence < 0.5) return "bg-red-50 border-red-200 text-red-900";
+  if (confidence < 0.7) return "bg-orange-50 border-orange-200 text-orange-900";
+  if (confidence < 0.9) return "bg-yellow-50 border-yellow-200 text-yellow-900";
   return "";
 }
 
@@ -136,7 +140,7 @@ export function DataTableGrid({
       rowIndex === target.row
         ? row.map((cell, columnIndex) =>
           columnIndex === target.column
-            ? { value, confidence: 1.0 }  // User-edited = full confidence
+            ? { value, confidence: 1.0, source: "corrected" }  // User-edited = full confidence + source tag
             : cell
         )
         : row,
@@ -312,6 +316,9 @@ export function DataTableGrid({
                           onDoubleClick={() => beginEdit({ row: rowIndex, column: columnIndex })}
                         >
                           <span className="truncate">{cellData.value || "\u00A0"}</span>
+                          {confidence < 0.5 && cellData.value && (
+                            <span className="ml-auto pl-1 text-red-600" title="Very low confidence - review required">⚠️</span>
+                          )}
                         </button>
                       )}
                     </td>
