@@ -43,18 +43,19 @@ def _upgrade_rows_to_cell_objects(
     cell_confidence_matrix: list[list[float]] | None = None,
 ) -> list[list[dict[str, Any]]]:
     """
-    Minimal cell object upgrade (Phase 1).
+    Phase 1 & 3: Minimal cell object upgrade with numeric normalization.
     
     Converts string rows to structured cell objects with:
-    - value: str
-    - confidence: float
+    - value: str (display value - preserved)
+    - confidence: float (0.0-1.0)
+    - normalized: float | None (Phase 3: safe numeric value for calculations)
     
     Args:
         rows: List of string rows
         cell_confidence_matrix: Optional OCR confidence matrix
     
     Returns:
-        List of rows with cell objects
+        List of rows with cell objects (including normalized where applicable)
     """
     # Import here to avoid circular dependencies
     from backend.services.ocr_cell_adapter import (
@@ -83,8 +84,11 @@ def _upgrade_rows_to_cell_objects(
                 if col_idx < len(cell_confidence_matrix[row_idx]):
                     ocr_conf = cell_confidence_matrix[row_idx][col_idx]
             
-            # Normalize to cell object
-            cell_obj = normalize_cell(cell, confidence=ocr_conf)
+            # Phase 3: Enable numeric normalization for numeric columns
+            add_normalized = (column_type == "numeric")
+            
+            # Normalize to cell object (with optional numeric normalization)
+            cell_obj = normalize_cell(cell, confidence=ocr_conf, add_normalized=add_normalized)
             
             # Enhance confidence with context
             cell_obj["confidence"] = estimate_confidence_simple(

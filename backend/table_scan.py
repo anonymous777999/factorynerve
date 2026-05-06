@@ -618,14 +618,38 @@ def _is_summable_numeric(value: Any) -> bool:
 
 
 def _excel_safe_value(value: Any) -> Any:
+    """
+    Phase 3: Enhanced to use normalized numeric values for Excel cells.
+    
+    If value is a Phase 3 cell object with 'normalized' field,
+    use the numeric value to create true Excel numeric cells.
+    Otherwise preserve display value as string.
+    """
     if value is None:
         return ""
     if isinstance(value, bool):
         return str(value)
     if isinstance(value, (int, float)):
         return value
-    if isinstance(value, (dict, list)):
+    
+    # Phase 3: Check if this is a cell object with normalized numeric value
+    if isinstance(value, dict):
+        # If cell has normalized value, use it for Excel (true numeric cell)
+        if "normalized" in value and value["normalized"] is not None:
+            try:
+                return float(value["normalized"])
+            except (ValueError, TypeError):
+                pass  # Fall through to use display value
+        
+        # If it's a cell object with display value, extract it
+        if "value" in value:
+            value = value["value"]
+        else:
+            # Other dict/list -> serialize
+            value = json.dumps(value, ensure_ascii=False, default=str)
+    elif isinstance(value, list):
         value = json.dumps(value, ensure_ascii=False, default=str)
+    
     text = str(value).strip()
     if not text:
         return ""
