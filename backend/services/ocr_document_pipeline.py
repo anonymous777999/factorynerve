@@ -8,7 +8,7 @@ import os
 from typing import Any
 
 from sqlalchemy.orm import Session
-
+from datetime import datetime, timezone
 from backend.models.ocr_template import OcrTemplate
 from backend.models.ocr_verification import OcrVerification
 from backend.ocr_utils import OcrResult
