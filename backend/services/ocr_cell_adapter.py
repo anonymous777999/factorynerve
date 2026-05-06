@@ -1,41 +1,108 @@
-"""Minimal cell adapter for OCR cell structure upgrade (Phase 1).
+"""Minimal cell adapter for OCR cell structure upgrade (Phase 1 & 3).
 
 Converts legacy string cells to structured objects with backward compatibility.
+Phase 3: Adds safe numeric normalization.
 """
 
 from typing import Any
+import re
 
 
 def normalize_cell(
     cell: str | dict,
-    confidence: float | None = None
+    confidence: float | None = None,
+    add_normalized: bool = False
 ) -> dict[str, Any]:
     """
-    Convert legacy string OR structured dict to minimal CellObject.
+    Convert legacy string OR structured dict to CellObject with optional normalization.
     
-    Minimal fields:
-    - value: str (display value)
+    Fields:
+    - value: str (display value - always preserved)
     - confidence: float (0.0-1.0)
+    - normalized: float | None (Phase 3: safe numeric value)
     
     Args:
         cell: String (legacy) or dict (already structured)
         confidence: Optional confidence override
+        add_normalized: If True, attempt to add normalized numeric value
     
     Returns:
-        Dictionary with value and confidence
+        Dictionary with value, confidence, and optionally normalized
     """
-    # Already structured - return as-is
+    # Already structured - return as-is (preserve normalized if exists)
     if isinstance(cell, dict):
-        return {
+        result = {
             "value": str(cell.get("value", "")),
             "confidence": float(cell.get("confidence", confidence or 0.5)),
         }
+        # Preserve existing normalized value
+        if "normalized" in cell and cell["normalized"] is not None:
+            result["normalized"] = cell["normalized"]
+        elif add_normalized:
+            # Try to add normalization
+            normalized_value = _safe_normalize_numeric(result["value"])
+            if normalized_value is not None:
+                result["normalized"] = normalized_value
+        return result
     
     # Legacy string - upgrade to minimal object
-    return {
+    result = {
         "value": str(cell),
         "confidence": confidence if confidence is not None else 0.5,
     }
+    
+    # Phase 3: Add safe numeric normalization if requested
+    if add_normalized:
+        normalized_value = _safe_normalize_numeric(result["value"])
+        if normalized_value is not None:
+            result["normalized"] = normalized_value
+    
+    return result
+
+
+def _safe_normalize_numeric(value: str) -> float | None:
+    """
+    Phase 3: Safely parse numeric value from string.
+    
+    Reuses proven logic from table_scan.py:
+    - Removes currency symbols (₹, $, €, £)
+    - Removes commas and spaces
+    - Handles decimal points
+    - Handles negative numbers
+    
+    Rules:
+    - If ambiguous → return None
+    - If clearly numeric → return float
+    - Preserve original display value always
+    
+    Args:
+        value: String cell value
+    
+    Returns:
+        Normalized float or None if not confidently numeric
+    """
+    if not value or not isinstance(value, str):
+        return None
+    
+    text = value.strip()
+    if not text:
+        return None
+    
+    # Remove currency symbols, commas, and spaces (reuses table_scan logic)
+    cleaned = re.sub(r"[\s,₹$€£]", "", text)
+    
+    # Skip percentage values (ambiguous for normalization)
+    if "%" in cleaned:
+        return None
+    
+    # Check if it matches numeric pattern: optional sign, digits, optional decimal
+    if re.fullmatch(r"[+-]?\d+(\.\d+)?", cleaned):
+        try:
+            return float(cleaned)
+        except (ValueError, TypeError):
+            return None
+    
+    return None
 
 
 def infer_column_types(rows: list[list[str]]) -> list[str]:

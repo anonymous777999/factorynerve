@@ -43,3 +43,7 @@ backend/uvicorn.err
 backend/uvicorn.out
 # Added by code-review-graph
 .code-review-graph/
+.claude/
+.mcp.json
+CLAUDE.md
+.code-review-graph/
