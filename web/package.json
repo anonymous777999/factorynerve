@@ -12,6 +12,8 @@
     "openapi:generate": "node scripts/generate-openapi.mjs"
   },
   "dependencies": {
+    "ag-grid-community": "^31.3.2",
+    "ag-grid-react": "^31.3.2",
     "apexcharts": "^5.10.4",
     "browser-image-compression": "^2.0.2",
     "heic2any": "^0.0.4",
