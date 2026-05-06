@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
-import { USE_TANSTACK_TABLE } from "@/config/featureFlags";
-import { OcrSpreadsheetGrid } from "@/components/ocr/OcrSpreadsheetGrid";
 import { ApiError, formatApiErrorMessage } from "@/lib/api";
 import {
   canApproveOcrVerification,
@@ -1014,74 +1012,58 @@ function ReviewWorkspace({
         )}
 
         {showAllRows ? (
-          USE_TANSTACK_TABLE ? (
-            <OcrSpreadsheetGrid
-              rows={rows}
-              headers={headers}
-              onCellEdit={(rowId, field, value) => {
-                // Convert back to original signature
-                const rowIndex = parseInt(rowId, 10);
-                const columnIndex = headers.indexOf(field);
-                if (!isNaN(rowIndex) && columnIndex >= 0) {
-                  onUpdateCell(rowIndex, columnIndex, value);
-                }
-              }}
-              isReadOnly={readOnly}
-            />
-          ) : (
-            <ResponsiveScrollArea
-              debugLabel="ocr-verification-table"
-              className="rounded-[1.45rem] border border-[var(--border)] bg-[rgba(8,12,20,0.82)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
-            >
-              <table className="min-w-full text-left text-sm">
-                <thead className="text-[var(--muted)]">
-                  <tr className="border-b border-[var(--border)]">
-                    <th className="px-3 py-3 font-medium">Row</th>
-                    {headers.map((header, columnIndex) => (
-                      <th key={`${header}-${columnIndex}`} className="px-3 py-3 font-medium">
-                        <Input value={header} onChange={(event) => onUpdateHeader(columnIndex, event.target.value)} disabled={readOnly} />
-                      </th>
-                    ))}
-                    <th className="px-3 py-3 font-medium">Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {displayRows.map(({ row, rowIndex }) => (
-                    <tr key={`row-${rowIndex}`} className={cn("border-b border-[var(--border)]/60", activeIssue?.rowIndex === rowIndex && "bg-[rgba(62,166,255,0.05)]")}>
-                      <td className="px-3 py-3 align-top font-semibold text-[var(--muted)]">{rowIndex + 1}</td>
-                      {headers.map((header, columnIndex) => {
-                        const confidence = preview?.cell_confidence?.[rowIndex]?.[columnIndex];
-                        const conf = typeof confidence === "number" ? (confidence > 1 ? confidence / 100 : confidence) : 1.0;
-                        const isActiveCell = activeIssue?.rowIndex === rowIndex && (activeIssue.columnIndex ?? columnIndex) === columnIndex;
-                        return (
-                          <td key={`${header}-${rowIndex}-${columnIndex}`} className="px-3 py-3 align-top">
-                            <div className="relative group">
-                              <Input
-                                id={`ocr-cell-${rowIndex}-${columnIndex}`}
-                                value={stringifyOcrCell(row[columnIndex])}
-                                title={`Confidence: ${Math.round(conf * 100)}%`}
-                                onChange={(event) => onUpdateCell(rowIndex, columnIndex, event.target.value)}
-                                className={cn(cellInputClass(stringifyOcrCell(row[columnIndex]), confidence), isActiveCell && "border-cyan-400/60 ring-2 ring-cyan-400/30", "pr-7")}
-                                disabled={readOnly}
-                              />
-                              {conf < 0.5 && stringifyOcrCell(row[columnIndex]) && (
-                                <span className="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 pointer-events-none" title="Very low confidence - review required">⚠️</span>
-                              )}
-                            </div>
-                          </td>
-                        );
-                      })}
-                      <td className="px-3 py-3 align-top">
-                        <Button variant="ghost" onClick={() => onRemoveRow(rowIndex)} disabled={readOnly}>
-                          Remove
-                        </Button>
-                      </td>
-                    </tr>
+          <ResponsiveScrollArea
+            debugLabel="ocr-verification-table"
+            className="rounded-[1.45rem] border border-[var(--border)] bg-[rgba(8,12,20,0.82)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+          >
+            <table className="min-w-full text-left text-sm">
+              <thead className="text-[var(--muted)]">
+                <tr className="border-b border-[var(--border)]">
+                  <th className="px-3 py-3 font-medium">Row</th>
+                  {headers.map((header, columnIndex) => (
+                    <th key={`${header}-${columnIndex}`} className="px-3 py-3 font-medium">
+                      <Input value={header} onChange={(event) => onUpdateHeader(columnIndex, event.target.value)} disabled={readOnly} />
+                    </th>
                   ))}
-                </tbody>
-              </table>
-            </ResponsiveScrollArea>
-          )
+                  <th className="px-3 py-3 font-medium">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {displayRows.map(({ row, rowIndex }) => (
+                  <tr key={`row-${rowIndex}`} className={cn("border-b border-[var(--border)]/60", activeIssue?.rowIndex === rowIndex && "bg-[rgba(62,166,255,0.05)]")}>
+                    <td className="px-3 py-3 align-top font-semibold text-[var(--muted)]">{rowIndex + 1}</td>
+                    {headers.map((header, columnIndex) => {
+                      const confidence = preview?.cell_confidence?.[rowIndex]?.[columnIndex];
+                      const conf = typeof confidence === "number" ? (confidence > 1 ? confidence / 100 : confidence) : 1.0;
+                      const isActiveCell = activeIssue?.rowIndex === rowIndex && (activeIssue.columnIndex ?? columnIndex) === columnIndex;
+                      return (
+                        <td key={`${header}-${rowIndex}-${columnIndex}`} className="px-3 py-3 align-top">
+                          <div className="relative group">
+                            <Input
+                              id={`ocr-cell-${rowIndex}-${columnIndex}`}
+                              value={stringifyOcrCell(row[columnIndex])}
+                              title={`Confidence: ${Math.round(conf * 100)}%`}
+                              onChange={(event) => onUpdateCell(rowIndex, columnIndex, event.target.value)}
+                              className={cn(cellInputClass(stringifyOcrCell(row[columnIndex]), confidence), isActiveCell && "border-cyan-400/60 ring-2 ring-cyan-400/30", "pr-7")}
+                              disabled={readOnly}
+                            />
+                            {conf < 0.5 && stringifyOcrCell(row[columnIndex]) && (
+                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 pointer-events-none" title="Very low confidence - review required">⚠️</span>
+                            )}
+                          </div>
+                        </td>
+                      );
+                    })}
+                    <td className="px-3 py-3 align-top">
+                      <Button variant="ghost" onClick={() => onRemoveRow(rowIndex)} disabled={readOnly}>
+                        Remove
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </ResponsiveScrollArea>
         ) : null}
 
         <div className="flex flex-wrap gap-3">
