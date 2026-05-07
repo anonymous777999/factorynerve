@@ -29,12 +29,20 @@ function normalizeCell(cell: OcrCell): { value: string; confidence: number } {
     return { value: cell.value, confidence: cell.confidence };
 }
 
-// Get confidence class for styling
+// Get confidence class for styling - using subtle left border indicators
 function getConfidenceClass(confidence: number): string {
-    if (confidence < 50) return "bg-red-50 border-red-200";
-    if (confidence < 70) return "bg-orange-50 border-orange-200";
-    if (confidence < 90) return "bg-yellow-50 border-yellow-200";
+    if (confidence < 50) return "border-l-4 border-l-red-400";
+    if (confidence < 70) return "border-l-4 border-l-amber-400";
+    if (confidence < 90) return "border-l-4 border-l-yellow-400";
     return "";
+}
+
+// Detect if a value is numeric for right-alignment
+function isNumericValue(value: string): boolean {
+    if (!value || typeof value !== "string") return false;
+    const trimmed = value.trim();
+    // Match numbers, currency symbols, percentages
+    return /^[₹$€£¥]?\s*-?\d[\d,]*(?:\.\d+)?%?$/.test(trimmed);
 }
 
 export function OcrSpreadsheetGrid({ rows, headers, onCellEdit, isReadOnly }: OcrSpreadsheetGridProps) {
@@ -59,12 +67,13 @@ export function OcrSpreadsheetGrid({ rows, headers, onCellEdit, isReadOnly }: Oc
         return headers.map((header, columnIndex) => ({
             id: `col_${columnIndex}`,
             accessorKey: `col_${columnIndex}`,
-            header: () => <div className="font-semibold text-sm truncate">{header}</div>,
+            header: () => <div className="font-semibold text-sm truncate text-white">{header}</div>,
             cell: (info) => {
                 const rowIndex = info.row.index;
                 const cell = info.getValue() as OcrCell;
                 const { value, confidence } = normalizeCell(cell);
                 const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.columnIndex === columnIndex;
+                const isNumeric = isNumericValue(value);
 
                 if (isEditing) {
                     return (
@@ -87,16 +96,19 @@ export function OcrSpreadsheetGrid({ rows, headers, onCellEdit, isReadOnly }: Oc
                                 } else if (e.key === "Escape") {
                                     setEditingCell(null);
                                     setDraftValue("");
+                                } else if (e.key === "Tab") {
+                                    // Allow default tab behavior for now
                                 }
                             }}
-                            className="w-full h-full px-2 py-1 border border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full h-full px-3 py-2 border-2 border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-[#1a1a1a]"
+                            style={{ fontFamily: 'Inter, "Noto Sans Devanagari", sans-serif' }}
                         />
                     );
                 }
 
                 return (
                     <div
-                        className={`w-full h-full px-2 py-1 cursor-text truncate ${getConfidenceClass(confidence)}`}
+                        className={`w-full h-full px-3 py-2 cursor-text truncate text-[#1a1a1a] ${getConfidenceClass(confidence)} ${isNumeric ? 'text-right font-variant-numeric-tabular' : ''}`}
                         onClick={() => {
                             if (!isReadOnly) {
                                 setEditingCell({ rowIndex, columnIndex });
@@ -104,6 +116,12 @@ export function OcrSpreadsheetGrid({ rows, headers, onCellEdit, isReadOnly }: Oc
                             }
                         }}
                         title={`Confidence: ${confidence}%${value ? `\nValue: ${value}` : ""}`}
+                        style={{
+                            fontFamily: 'Inter, "Noto Sans Devanagari", sans-serif',
+                            fontSize: '14px',
+                            lineHeight: '1.5',
+                            fontVariantNumeric: isNumeric ? 'tabular-nums' : 'normal'
+                        }}
                     >
                         {value || "\u00A0"}
                     </div>
@@ -142,34 +160,32 @@ export function OcrSpreadsheetGrid({ rows, headers, onCellEdit, isReadOnly }: Oc
             : 0;
 
     return (
-        <div className="w-full h-full flex flex-col border border-gray-200 rounded-lg overflow-hidden bg-white">
-            <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                <h3 className="text-sm font-semibold text-gray-700">OCR Spreadsheet Grid</h3>
-                <p className="text-xs text-gray-500 mt-1">
-                    Click any cell to edit. Press Enter to save, Escape to cancel.
-                </p>
-            </div>
-
+        <div className="w-full h-full flex flex-col border border-[#d0d0d0] rounded-lg overflow-hidden bg-white shadow-sm">
             <div
                 ref={containerRef}
                 className="flex-1 overflow-auto"
                 style={{ height: "600px" }}
             >
                 <table className="w-full border-collapse">
-                    <thead className="sticky top-0 z-10 bg-white shadow-sm">
+                    <thead className="sticky top-0 z-10 shadow-md">
                         {table.getHeaderGroups().map((headerGroup) => (
                             <tr key={headerGroup.id}>
                                 {headerGroup.headers.map((header) => (
                                     <th
                                         key={header.id}
-                                        className="border-b border-r border-gray-300 bg-gray-100 px-2 py-2 text-left relative"
-                                        style={{ width: header.getSize() }}
+                                        className="border border-[#d0d0d0] bg-[#1e3a5f] px-3 py-3 text-left relative"
+                                        style={{
+                                            width: header.getSize(),
+                                            fontWeight: 600,
+                                            fontFamily: 'Inter, "Noto Sans Devanagari", sans-serif',
+                                            fontSize: '14px'
+                                        }}
                                     >
                                         {flexRender(header.column.columnDef.header, header.getContext())}
                                         <div
                                             onMouseDown={header.getResizeHandler()}
                                             onTouchStart={header.getResizeHandler()}
-                                            className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none ${header.column.getIsResizing() ? "bg-blue-500" : "bg-gray-300 hover:bg-gray-400"
+                                            className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none ${header.column.getIsResizing() ? "bg-blue-400" : "bg-[#d0d0d0] hover:bg-blue-300"
                                                 }`}
                                         />
                                     </th>
@@ -185,13 +201,17 @@ export function OcrSpreadsheetGrid({ rows, headers, onCellEdit, isReadOnly }: Oc
                         )}
                         {virtualRows.map((virtualRow) => {
                             const row = table.getRowModel().rows[virtualRow.index];
+                            const isEvenRow = virtualRow.index % 2 === 0;
                             return (
-                                <tr key={row.id} className="hover:bg-gray-50">
+                                <tr
+                                    key={row.id}
+                                    className={`hover:bg-[#e8f0fe] transition-colors ${isEvenRow ? 'bg-white' : 'bg-[#f8f9fa]'}`}
+                                >
                                     {row.getVisibleCells().map((cell) => (
                                         <td
                                             key={cell.id}
-                                            className="border-b border-r border-gray-200"
-                                            style={{ width: cell.column.getSize(), height: "36px" }}
+                                            className="border border-[#d0d0d0]"
+                                            style={{ width: cell.column.getSize(), height: "40px" }}
                                         >
                                             {flexRender(cell.column.columnDef.cell, cell.getContext())}
                                         </td>

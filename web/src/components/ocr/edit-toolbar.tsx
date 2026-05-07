@@ -43,7 +43,7 @@ function ToolbarButton({
 
 export function EditToolbar(props: EditToolbarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-[24px] border border-[#e3e8ef] bg-white p-3">
+    <div className="flex flex-wrap items-center gap-2 rounded-[20px] border border-[#e3e8ef] bg-white px-3 py-2.5 shadow-sm">
       <ToolbarButton label="+ Row" onClick={props.onAddRow} />
       <ToolbarButton label="+ Col" onClick={props.onAddColumn} />
       <ToolbarButton label="Undo" onClick={props.onUndo} disabled={!props.canUndo} />
@@ -52,11 +52,6 @@ export function EditToolbar(props: EditToolbarProps) {
         label="Header row"
         onClick={props.onToggleHeaderRow}
         active={props.headerRowEnabled}
-      />
-      <ToolbarButton
-        label="Low confidence"
-        onClick={props.onToggleConfidence}
-        active={props.showLowConfidence}
       />
     </div>
   );
