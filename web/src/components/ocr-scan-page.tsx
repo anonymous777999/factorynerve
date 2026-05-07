@@ -1310,6 +1310,41 @@ export default function OcrScanPage() {
     });
   }, [applyTableChange, editableHeaders, editableRows, headerRowEnabled]);
 
+  // Global keyboard shortcuts
+  useEffect(() => {
+    if (step !== "preview" && step !== "export") return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+Z for undo
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        if (canUndo) {
+          undo();
+        }
+      }
+      // Ctrl+Y or Ctrl+Shift+Z for redo
+      else if (
+        ((e.ctrlKey || e.metaKey) && e.key === "y") ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "z")
+      ) {
+        e.preventDefault();
+        if (canRedo) {
+          redo();
+        }
+      }
+      // Ctrl+S for save
+      else if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+        e.preventDefault();
+        if (draftDirty && resultPreview) {
+          void persistStructuredDraft();
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [step, canUndo, canRedo, undo, redo, draftDirty, resultPreview, persistStructuredDraft]);
+
   const handleDownloadExcel = useCallback(async () => {
     setExcelBusy(true);
     try {
@@ -1497,19 +1532,16 @@ export default function OcrScanPage() {
       />
 
       <main className="bg-[#f4f7fb] px-4 py-4 md:px-6 md:py-6">
-        <div className="mx-auto max-w-7xl space-y-5">
-          <div className="rounded-[28px] border border-[#e3e8ef] bg-white px-5 py-5 shadow-[0_24px_64px_rgba(15,23,42,0.06)] md:px-7">
+        <div className="mx-auto max-w-[1800px] space-y-5">
+          <div className="rounded-[28px] border border-[#e3e8ef] bg-white px-4 py-4 shadow-[0_24px_64px_rgba(15,23,42,0.06)] md:px-5">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div className="max-w-3xl">
                 <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#667085]">
-                  OCR Workspace
+                  Document Scan
                 </div>
                 <h1 className="mt-2 text-[2rem] font-semibold tracking-tight text-[#101828] md:text-[2.35rem]">
-                  Image to structured data extraction
+                  Scan & Review
                 </h1>
-                <p className="mt-2 text-sm leading-6 text-[#667085]">
-                  Upload, process, review, and export without the rest of the product getting in your way.
-                </p>
               </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {STEP_LABELS.map((item, index) => {
@@ -1649,12 +1681,12 @@ export default function OcrScanPage() {
 
           {(step === "preview" || step === "export") && resultPreview ? (
             <div className="space-y-5">
-              <div className="grid gap-5 xl:grid-cols-2 xl:items-start">
-                <div className="overflow-hidden rounded-[28px] border border-[#e3e8ef] bg-white shadow-[0_20px_54px_rgba(15,23,42,0.05)]">
-                  <div className="flex items-center justify-between border-b border-[#edf1f5] px-5 py-4">
+              <div className="grid gap-5 xl:grid-cols-[35%_65%] xl:items-start">
+                <div className="overflow-hidden rounded-[28px] border border-[#e3e8ef] bg-white shadow-[0_20px_54px_rgba(15,23,42,0.05)] xl:max-h-[85vh]">
+                  <div className="flex items-center justify-between border-b border-[#edf1f5] px-4 py-3">
                     <div>
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#667085]">
-                        Source image
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#667085]">
+                        Source
                       </div>
                       <div className="mt-1 text-sm text-[#667085]">
                         {formatExtractionSource(resultPreview.routingMeta, resultPreview.avgConfidence)}
@@ -1686,14 +1718,14 @@ export default function OcrScanPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="relative grid place-items-center overflow-auto bg-[#f7f9fb] p-4">
+                  <div className="relative grid place-items-center overflow-auto bg-[#f7f9fb] p-3 max-h-[70vh]">
                     {displayPreviewUrl ? (
                       <div className="relative">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
                           src={displayPreviewUrl}
-                          alt="OCR source preview"
-                          className="max-h-[72vh] w-auto rounded-[20px] object-contain shadow-[0_16px_36px_rgba(15,23,42,0.08)] transition duration-200"
+                          alt="Source document"
+                          className="max-h-full w-auto rounded-[16px] object-contain shadow-[0_12px_28px_rgba(15,23,42,0.08)] transition duration-200"
                           style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }}
                         />
                         {boundingBox ? (
@@ -1802,7 +1834,11 @@ export default function OcrScanPage() {
                     />
                   )}
 
-                  <KeyboardShortcutStrip lowConfidenceCount={visibleLowConfidenceCount} />
+                  <KeyboardShortcutStrip
+                    lowConfidenceCount={visibleLowConfidenceCount}
+                    totalCells={editableRows.length * editableHeaders.length}
+                    editedCount={correctionCount}
+                  />
 
                   {resultPreview.tokenUsage ? (
                     <div className="rounded-[24px] border border-[#e3e8ef] bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
