@@ -9,7 +9,9 @@ import { EditToolbar } from "@/components/ocr/edit-toolbar";
 import { ExportPanel } from "@/components/ocr/export-panel";
 import { KeyboardShortcutStrip } from "@/components/ocr/keyboard-shortcut-strip";
 import { MobileEntry } from "@/components/ocr/mobile-entry";
+import { OcrErrorBoundary } from "@/components/ocr/OcrErrorBoundary";
 import { ProgressIndicator } from "@/components/ocr/progress-indicator";
+import { RawDataView } from "@/components/ocr/RawDataView";
 import { ShareLinkGenerator } from "@/components/ocr/share-link-generator";
 import { UploadBox } from "@/components/ocr/upload-box";
 import { Button } from "@/components/ui/button";
@@ -104,6 +106,7 @@ type ProcessingStage = "uploaded" | "preprocess" | "detect" | "extract" | "confi
 type OcrColumnType = "text" | "number" | "date";
 type ActiveCell = { row: number; column: number } | null;
 type ModelOption = "auto" | "claude-haiku-4-5-20251001" | "claude-sonnet-4-6" | "claude-opus-4-7";
+type ViewMode = "spreadsheet" | "raw";
 
 type ResultPreview = {
   type: string;
@@ -583,10 +586,14 @@ export default function OcrScanPage() {
   const [shareExpiresAt, setShareExpiresAt] = useState<string | null>(null);
   const [selectedModel, setSelectedModel] = useState<ModelOption>("auto");
   const [restored, setRestored] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("spreadsheet");
+  const [imageLoadError, setImageLoadError] = useState(false);
+  const [imageRetryCount, setImageRetryCount] = useState(0);
 
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
   const historyRef = useRef<TableSnapshot[]>([]);
   const historyIndexRef = useRef(-1);
+  const imageRetryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [, setHistoryVersion] = useState(0);
 
   const canUseOcr = canUseOcrScan(user?.role);
@@ -975,6 +982,19 @@ export default function OcrScanPage() {
       }
 
       const { headers, rows, sheets } = extractPreviewTable(result);
+
+      // P0: Row/column safety valve - prevent browser hangs
+      const rowCount = rows.length;
+      const colCount = headers.length;
+      const isLargeDataset = rowCount > 500 || colCount > 50;
+
+      if (isLargeDataset) {
+        console.warn(`Large dataset detected: ${rowCount} rows × ${colCount} columns`);
+        setProcessingWarning(
+          `Large document (${rowCount} rows × ${colCount} columns). Performance may be affected.`
+        );
+      }
+
       const nextPreview: ResultPreview = {
         type: result.type || "table",
         title: result.title || "OCR Extraction",
@@ -1309,6 +1329,15 @@ export default function OcrScanPage() {
       headerRowEnabled: false,
     });
   }, [applyTableChange, editableHeaders, editableRows, headerRowEnabled]);
+
+  // Cleanup image retry timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (imageRetryTimeoutRef.current) {
+        clearTimeout(imageRetryTimeoutRef.current);
+      }
+    };
+  }, []);
 
   // Global keyboard shortcuts
   useEffect(() => {
@@ -1727,6 +1756,29 @@ export default function OcrScanPage() {
                           alt="Source document"
                           className="max-h-full w-auto rounded-[16px] object-contain shadow-[0_12px_28px_rgba(15,23,42,0.08)] transition duration-200"
                           style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }}
+                          onError={() => {
+                            console.error("Image load failed, retrying...");
+                            setImageLoadError(true);
+                            if (imageRetryTimeoutRef.current) {
+                              clearTimeout(imageRetryTimeoutRef.current);
+                            }
+                            setImageRetryCount((count) => {
+                              if (count < 3) {
+                                imageRetryTimeoutRef.current = setTimeout(() => {
+                                  setImageRetryCount(count + 1);
+                                  setImageLoadError(false);
+                                }, 1000 * Math.pow(2, count));
+                              }
+                              return count;
+                            });
+                          }}
+                          onLoad={() => {
+                            if (imageRetryTimeoutRef.current) {
+                              clearTimeout(imageRetryTimeoutRef.current);
+                            }
+                            setImageLoadError(false);
+                            setImageRetryCount(0);
+                          }}
                         />
                         {boundingBox ? (
                           <div
@@ -1742,18 +1794,45 @@ export default function OcrScanPage() {
                 </div>
 
                 <div className="space-y-4">
-                  <EditToolbar
-                    canUndo={canUndo}
-                    canRedo={canRedo}
-                    headerRowEnabled={headerRowEnabled}
-                    showLowConfidence={showLowConfidence}
-                    onAddRow={handleAddRow}
-                    onAddColumn={handleAddColumn}
-                    onUndo={undo}
-                    onRedo={redo}
-                    onToggleHeaderRow={handleToggleHeaderRow}
-                    onToggleConfidence={() => setShowLowConfidence((value) => !value)}
-                  />
+                  <div className="flex items-center justify-between gap-3">
+                    <EditToolbar
+                      canUndo={canUndo}
+                      canRedo={canRedo}
+                      headerRowEnabled={headerRowEnabled}
+                      showLowConfidence={showLowConfidence}
+                      onAddRow={handleAddRow}
+                      onAddColumn={handleAddColumn}
+                      onUndo={undo}
+                      onRedo={redo}
+                      onToggleHeaderRow={handleToggleHeaderRow}
+                      onToggleConfidence={() => setShowLowConfidence((value) => !value)}
+                    />
+
+                    {/* View mode toggle */}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${viewMode === "spreadsheet"
+                          ? "bg-[#185FA5] text-white"
+                          : "border border-[#d9e1e8] bg-white text-[#344054] hover:bg-[#f8fafc]"
+                          }`}
+                        onClick={() => setViewMode("spreadsheet")}
+                      >
+                        Spreadsheet
+                      </button>
+                      <button
+                        type="button"
+                        className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${viewMode === "raw"
+                          ? "bg-[#185FA5] text-white"
+                          : "border border-[#d9e1e8] bg-white text-[#344054] hover:bg-[#f8fafc]"
+                          }`}
+                        onClick={() => setViewMode("raw")}
+                        title="Show raw OCR data for debugging"
+                      >
+                        Raw
+                      </button>
+                    </div>
+                  </div>
 
                   {(() => {
                     console.log("DEBUG resultPreview:", resultPreview);
@@ -1768,238 +1847,285 @@ export default function OcrScanPage() {
                     return null;
                   })()}
 
-                  {sheet && sheet.rows && sheet.rows.length > 0 ? (
-                    <div className="overflow-hidden rounded-[28px] border border-[#e3e8ef] bg-white shadow-[0_18px_54px_rgba(15,23,42,0.05)]">
-                      <div className="overflow-auto">
-                        <table className="min-w-full border-collapse">
-                          <thead>
-                            <tr className="bg-[#f8fafc]">
-                              {sheet.columns.map((column, columnIndex) => (
-                                <th
-                                  key={`sheet-header-${columnIndex}`}
-                                  className={`border border-[#e3e8ef] px-4 py-3 text-sm font-semibold text-[#101828] ${columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
-                                    }`}
-                                >
-                                  {stringifySheetCell(column)}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {sheet.rows.map((row, rowIndex) => (
-                              <tr key={`sheet-row-${rowIndex}`}>
-                                {row.map((cell, columnIndex) => (
-                                  <td
-                                    key={`sheet-cell-${rowIndex}-${columnIndex}`}
-                                    className={`border border-[#e3e8ef] px-4 py-3 text-sm text-[#344054] ${columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
-                                      }`}
-                                  >
-                                    {stringifySheetCell(cell)}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  ) : USE_TANSTACK_TABLE ? (
-                    <OcrSpreadsheetGrid
-                      rows={editableRows}
-                      headers={editableHeaders}
-                      onCellEdit={(rowIndex, columnIndex, value) => {
-                        const updatedRows = cloneRows(editableRows);
-                        updatedRows[rowIndex][columnIndex] = {
-                          value,
-                          confidence: 100,
-                          source: "corrected"
-                        };
-                        applyTableChange({ rows: updatedRows });
+                  {viewMode === "raw" ? (
+                    <RawDataView
+                      data={{
+                        resultPreview,
+                        headers: editableHeaders,
+                        rows: editableRows,
+                        confidenceMatrix,
+                        metadata: {
+                          savedId,
+                          documentHash,
+                          sourceFilename,
+                          step,
+                          correctionCount,
+                        },
                       }}
-                      isReadOnly={false}
+                      title="Raw OCR Debug View"
                     />
                   ) : (
-                    <DataTableGrid
-                      headers={editableHeaders}
-                      rows={editableRows}
-                      columnTypes={columnTypes}
-                      confidenceMatrix={confidenceMatrix}
-                      originalRows={resultPreview.rows}
-                      showLowConfidence={showLowConfidence}
-                      activeCell={activeCell}
-                      onActiveCellChange={setActiveCell}
-                      onChangeHeaders={(headers) => applyTableChange({ headers })}
-                      onChangeRows={(rows) => applyTableChange({ rows })}
-                      onChangeColumnTypes={(types) => applyTableChange({ columnTypes: types })}
-                    />
-                  )}
-
-                  <KeyboardShortcutStrip
-                    lowConfidenceCount={visibleLowConfidenceCount}
-                    totalCells={editableRows.length * editableHeaders.length}
-                    editedCount={correctionCount}
-                  />
-
-                  {resultPreview.tokenUsage ? (
-                    <div className="rounded-[24px] border border-[#e3e8ef] bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
-                      <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]">Token usage</div>
-                      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
-                          <div className="text-xs text-[#667085]">Model</div>
-                          <div className="mt-1 text-sm font-semibold text-[#101828]">
-                            {formatSelectedModelLabel(resultPreview.routingMeta, resultPreview.tokenUsage)}
-                          </div>
-                        </div>
-                        <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
-                          <div className="text-xs text-[#667085]">Estimated cost</div>
-                          <div className="mt-1 text-sm font-semibold text-[#101828]">
-                            {formatUsd(resultPreview.tokenUsage.estimated_cost)}
-                          </div>
-                        </div>
-                        <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
-                          <div className="text-xs text-[#667085]">Input tokens</div>
-                          <div className="mt-1 text-sm font-semibold text-[#101828]">
-                            {formatTokenCount(resultPreview.tokenUsage.input_tokens)}
-                          </div>
-                        </div>
-                        <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
-                          <div className="text-xs text-[#667085]">Output tokens</div>
-                          <div className="mt-1 text-sm font-semibold text-[#101828]">
-                            {formatTokenCount(resultPreview.tokenUsage.output_tokens)}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-3 rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
-                        <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                          <span className="text-[#667085]">Total tokens</span>
-                          <span className="font-semibold text-[#101828]">
-                            {formatTokenCount(resultPreview.tokenUsage.total_tokens)}
-                          </span>
-                        </div>
-                        <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
-                          <span className="text-[#667085]">Processing time</span>
-                          <span className="font-medium text-[#101828]">
-                            {formatDurationMs(
-                              resultPreview.debug?.processing_time_ms
-                              ?? resultPreview.tokenUsage.processing_time_ms
-                              ?? resultPreview.routingMeta?.processing_time_ms,
-                            )}
-                          </span>
-                        </div>
-                      </div>
-                      {resultPreview.debug ? (
-                        <details className="mt-3 rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
-                          <summary className="cursor-pointer text-sm font-medium text-[#344054]">Debug details</summary>
-                          <div className="mt-3 space-y-3 text-xs text-[#475467]">
-                            <div>Requested model: {resultPreview.debug.requested_model || "auto"}</div>
-                            <div>Selected model: {resultPreview.debug.selected_model || "Not reported"}</div>
-                            <div>Final model used: {resultPreview.debug.final_model_used || formatModelUsed(resultPreview.routingMeta, resultPreview.tokenUsage, resultPreview.debug)}</div>
-                            <pre className="overflow-auto rounded-[16px] bg-[#101828] p-3 text-[11px] text-[#f8fafc]">
-                              {JSON.stringify(
-                                {
-                                  token_usage: resultPreview.debug.token_usage,
-                                  model_attempts: resultPreview.debug.model_attempts,
-                                  raw_api_response: resultPreview.debug.raw_api_response,
-                                },
-                                null,
-                                2,
-                              )}
-                            </pre>
-                          </div>
-                        </details>
-                      ) : null}
-                    </div>
-                  ) : null}
-
-                  <div className="rounded-[24px] border border-[#dbe3eb] bg-[#f8fbff] p-4">
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-                      <div className="max-w-2xl">
-                        <div className="text-sm font-semibold text-[#101828]">Need a cleaner Excel report?</div>
-                        <p className="mt-1 text-sm leading-6 text-[#667085]">
-                          If the extracted sheet still looks wrong, choose a stronger model and re-run this scan before exporting again.
-                        </p>
-                        <div className="mt-2 text-xs text-[#667085]">
-                          Current result: <span className="font-medium text-[#344054]">{formatModelUsed(resultPreview.routingMeta, resultPreview.tokenUsage, resultPreview.debug)}</span>
-                        </div>
-                      </div>
-                      <div className="w-full max-w-sm">
-                        <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]" htmlFor="ocr-model">
-                          Extraction model
-                        </label>
-                        <Select
-                          id="ocr-model"
-                          value={selectedModel}
-                          onChange={(event) => setSelectedModel(toModelOption(event.target.value))}
-                          disabled={busy}
-                          className="mt-2"
-                        >
-                          <option value="auto">Auto</option>
-                          <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
-                          <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
-                          <option value="claude-opus-4-7">Claude Opus 4.7</option>
-                        </Select>
-                        <button
-                          type="button"
-                          className="mt-3 w-full rounded-full bg-[#185FA5] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(24,95,165,0.16)] transition hover:bg-[#164f8a] disabled:cursor-not-allowed disabled:bg-[#98a2b3] disabled:shadow-none"
-                          disabled={busy || !canRerunWithSelectedModel}
-                          onClick={() => handleRerunWithSelectedModel()}
-                        >
-                          Re-run with {MODEL_LABELS[selectedModel]}
-                        </button>
-                        {!canRerunWithSelectedModel ? (
-                          <p className="mt-2 text-xs text-[#667085]">
-                            Re-run is only available while the uploaded source file is still in this session.
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-
-                  {step === "preview" ? (
-                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-[#e3e8ef] bg-white p-4">
-                      <div className="flex flex-wrap items-center gap-2 text-sm text-[#667085]">
-                        {resultPreview.scanQuality?.confidence_band === "low" ? (
-                          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-800">
-                            Low quality
-                          </span>
-                        ) : null}
-                        {resultPreview.warnings.map((warning) => (
-                          <span key={warning} className="rounded-full border border-[#e4eaf0] bg-[#f8fafc] px-3 py-1">
-                            {warning.replaceAll("_", " ")}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="button"
-                          className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
-                          disabled={!activeCell}
-                          onClick={handleDeleteSelectedRow}
-                        >
-                          Delete row
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
-                          onClick={resetFlow}
-                        >
-                          Try another image
-                        </button>
-                        <button
-                          type="button"
-                          className="rounded-full bg-[#185FA5] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(24,95,165,0.2)] transition hover:bg-[#164f8a]"
-                          onClick={async () => {
-                            if (draftDirty) {
-                              await persistStructuredDraft();
-                            }
-                            setStep("export");
+                    <>
+                      {sheet && sheet.rows && sheet.rows.length > 0 ? (
+                        <OcrErrorBoundary
+                          fallbackMessage="The structured view could not be displayed. Switch to Raw view to see the data."
+                          onError={(error) => {
+                            console.error("Structured view error:", error);
+                            pushAppToast({
+                              title: "Display error",
+                              description: "Switched to raw view due to rendering error",
+                              tone: "error",
+                            });
+                            setViewMode("raw");
                           }}
                         >
-                          Continue to export
-                        </button>
+                          <div className="overflow-hidden rounded-[28px] border border-[#e3e8ef] bg-white shadow-[0_18px_54px_rgba(15,23,42,0.05)]">
+                            <div className="overflow-auto">
+                              <table className="min-w-full border-collapse">
+                                <thead>
+                                  <tr className="bg-[#f8fafc]">
+                                    {sheet.columns.map((column, columnIndex) => (
+                                      <th
+                                        key={`sheet-header-${columnIndex}`}
+                                        className={`border border-[#e3e8ef] px-4 py-3 text-sm font-semibold text-[#101828] ${columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
+                                          }`}
+                                      >
+                                        {stringifySheetCell(column)}
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {sheet.rows.map((row, rowIndex) => (
+                                    <tr key={`sheet-row-${rowIndex}`}>
+                                      {row.map((cell, columnIndex) => (
+                                        <td
+                                          key={`sheet-cell-${rowIndex}-${columnIndex}`}
+                                          className={`border border-[#e3e8ef] px-4 py-3 text-sm text-[#344054] ${columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
+                                            }`}
+                                        >
+                                          {stringifySheetCell(cell)}
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </OcrErrorBoundary>
+                      ) : USE_TANSTACK_TABLE ? (
+                        <OcrErrorBoundary
+                          fallbackMessage="The spreadsheet could not be displayed. Switch to Raw view to see the data."
+                          onError={(error) => {
+                            console.error("Spreadsheet error:", error);
+                            pushAppToast({
+                              title: "Display error",
+                              description: "Switched to raw view due to rendering error",
+                              tone: "error",
+                            });
+                            setViewMode("raw");
+                          }}
+                        >
+                          <OcrSpreadsheetGrid
+                            rows={editableRows}
+                            headers={editableHeaders}
+                            onCellEdit={(rowIndex, columnIndex, value) => {
+                              const updatedRows = cloneRows(editableRows);
+                              updatedRows[rowIndex][columnIndex] = {
+                                value,
+                                confidence: 100,
+                                source: "corrected"
+                              };
+                              applyTableChange({ rows: updatedRows });
+                            }}
+                            isReadOnly={false}
+                          />
+                        </OcrErrorBoundary>
+                      ) : (
+                        <DataTableGrid
+                          headers={editableHeaders}
+                          rows={editableRows}
+                          columnTypes={columnTypes}
+                          confidenceMatrix={confidenceMatrix}
+                          originalRows={resultPreview.rows}
+                          showLowConfidence={showLowConfidence}
+                          activeCell={activeCell}
+                          onActiveCellChange={setActiveCell}
+                          onChangeHeaders={(headers) => applyTableChange({ headers })}
+                          onChangeRows={(rows) => applyTableChange({ rows })}
+                          onChangeColumnTypes={(types) => applyTableChange({ columnTypes: types })}
+                        />
+                      )}
+
+                      <KeyboardShortcutStrip
+                        lowConfidenceCount={visibleLowConfidenceCount}
+                        totalCells={editableRows.length * editableHeaders.length}
+                        editedCount={correctionCount}
+                      />
+
+                      {resultPreview.tokenUsage ? (
+                        <div className="rounded-[24px] border border-[#e3e8ef] bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
+                          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]">Token usage</div>
+                          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                            <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
+                              <div className="text-xs text-[#667085]">Model</div>
+                              <div className="mt-1 text-sm font-semibold text-[#101828]">
+                                {formatSelectedModelLabel(resultPreview.routingMeta, resultPreview.tokenUsage)}
+                              </div>
+                            </div>
+                            <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
+                              <div className="text-xs text-[#667085]">Estimated cost</div>
+                              <div className="mt-1 text-sm font-semibold text-[#101828]">
+                                {formatUsd(resultPreview.tokenUsage.estimated_cost)}
+                              </div>
+                            </div>
+                            <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
+                              <div className="text-xs text-[#667085]">Input tokens</div>
+                              <div className="mt-1 text-sm font-semibold text-[#101828]">
+                                {formatTokenCount(resultPreview.tokenUsage.input_tokens)}
+                              </div>
+                            </div>
+                            <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
+                              <div className="text-xs text-[#667085]">Output tokens</div>
+                              <div className="mt-1 text-sm font-semibold text-[#101828]">
+                                {formatTokenCount(resultPreview.tokenUsage.output_tokens)}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mt-3 rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                              <span className="text-[#667085]">Total tokens</span>
+                              <span className="font-semibold text-[#101828]">
+                                {formatTokenCount(resultPreview.tokenUsage.total_tokens)}
+                              </span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+                              <span className="text-[#667085]">Processing time</span>
+                              <span className="font-medium text-[#101828]">
+                                {formatDurationMs(
+                                  resultPreview.debug?.processing_time_ms
+                                  ?? resultPreview.tokenUsage.processing_time_ms
+                                  ?? resultPreview.routingMeta?.processing_time_ms,
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                          {resultPreview.debug ? (
+                            <details className="mt-3 rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
+                              <summary className="cursor-pointer text-sm font-medium text-[#344054]">Debug details</summary>
+                              <div className="mt-3 space-y-3 text-xs text-[#475467]">
+                                <div>Requested model: {resultPreview.debug.requested_model || "auto"}</div>
+                                <div>Selected model: {resultPreview.debug.selected_model || "Not reported"}</div>
+                                <div>Final model used: {resultPreview.debug.final_model_used || formatModelUsed(resultPreview.routingMeta, resultPreview.tokenUsage, resultPreview.debug)}</div>
+                                <pre className="overflow-auto rounded-[16px] bg-[#101828] p-3 text-[11px] text-[#f8fafc]">
+                                  {JSON.stringify(
+                                    {
+                                      token_usage: resultPreview.debug.token_usage,
+                                      model_attempts: resultPreview.debug.model_attempts,
+                                      raw_api_response: resultPreview.debug.raw_api_response,
+                                    },
+                                    null,
+                                    2,
+                                  )}
+                                </pre>
+                              </div>
+                            </details>
+                          ) : null}
+                        </div>
+                      ) : null}
+
+                      <div className="rounded-[24px] border border-[#dbe3eb] bg-[#f8fbff] p-4">
+                        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                          <div className="max-w-2xl">
+                            <div className="text-sm font-semibold text-[#101828]">Need a cleaner Excel report?</div>
+                            <p className="mt-1 text-sm leading-6 text-[#667085]">
+                              If the extracted sheet still looks wrong, choose a stronger model and re-run this scan before exporting again.
+                            </p>
+                            <div className="mt-2 text-xs text-[#667085]">
+                              Current result: <span className="font-medium text-[#344054]">{formatModelUsed(resultPreview.routingMeta, resultPreview.tokenUsage, resultPreview.debug)}</span>
+                            </div>
+                          </div>
+                          <div className="w-full max-w-sm">
+                            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]" htmlFor="ocr-model">
+                              Extraction model
+                            </label>
+                            <Select
+                              id="ocr-model"
+                              value={selectedModel}
+                              onChange={(event) => setSelectedModel(toModelOption(event.target.value))}
+                              disabled={busy}
+                              className="mt-2"
+                            >
+                              <option value="auto">Auto</option>
+                              <option value="claude-haiku-4-5-20251001">Claude Haiku 4.5</option>
+                              <option value="claude-sonnet-4-6">Claude Sonnet 4.6</option>
+                              <option value="claude-opus-4-7">Claude Opus 4.7</option>
+                            </Select>
+                            <button
+                              type="button"
+                              className="mt-3 w-full rounded-full bg-[#185FA5] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(24,95,165,0.16)] transition hover:bg-[#164f8a] disabled:cursor-not-allowed disabled:bg-[#98a2b3] disabled:shadow-none"
+                              disabled={busy || !canRerunWithSelectedModel}
+                              onClick={() => handleRerunWithSelectedModel()}
+                            >
+                              Re-run with {MODEL_LABELS[selectedModel]}
+                            </button>
+                            {!canRerunWithSelectedModel ? (
+                              <p className="mt-2 text-xs text-[#667085]">
+                                Re-run is only available while the uploaded source file is still in this session.
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  ) : null}
+
+                      {step === "preview" ? (
+                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-[#e3e8ef] bg-white p-4">
+                          <div className="flex flex-wrap items-center gap-2 text-sm text-[#667085]">
+                            {resultPreview.scanQuality?.confidence_band === "low" ? (
+                              <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-800">
+                                Low quality
+                              </span>
+                            ) : null}
+                            {resultPreview.warnings.map((warning) => (
+                              <span key={warning} className="rounded-full border border-[#e4eaf0] bg-[#f8fafc] px-3 py-1">
+                                {warning.replaceAll("_", " ")}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
+                              disabled={!activeCell}
+                              onClick={handleDeleteSelectedRow}
+                            >
+                              Delete row
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
+                              onClick={resetFlow}
+                            >
+                              Try another image
+                            </button>
+                            <button
+                              type="button"
+                              className="rounded-full bg-[#185FA5] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(24,95,165,0.2)] transition hover:bg-[#164f8a]"
+                              onClick={async () => {
+                                if (draftDirty) {
+                                  await persistStructuredDraft();
+                                }
+                                setStep("export");
+                              }}
+                            >
+                              Continue to export
+                            </button>
+                          </div>
+                        </div>
+                      ) : null}
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -2064,3 +2190,4 @@ export default function OcrScanPage() {
     </>
   );
 }
+
