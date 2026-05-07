@@ -15,6 +15,7 @@ import { UploadBox } from "@/components/ocr/upload-box";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
+import { USE_TANSTACK_TABLE } from "@/config/featureFlags";
 import { formatApiErrorMessage } from "@/lib/api";
 import { pushAppToast } from "@/lib/toast";
 import { transferBlob } from "@/lib/blob-transfer";
@@ -58,6 +59,27 @@ import { signalWorkflowRefresh } from "@/lib/workflow-sync";
 
 const DataTableGrid = dynamic(
   () => import("@/components/ocr/data-table-grid").then((module) => ({ default: module.DataTableGrid })),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="rounded-[28px] border border-[#e3e8ef] bg-white p-6">
+        <div className="h-5 w-36 animate-pulse rounded-full bg-[#e6ebf1]" />
+        <div className="mt-5 grid gap-2">
+          {Array.from({ length: 5 }, (_, rowIndex) => (
+            <div key={rowIndex} className="grid grid-cols-4 gap-2">
+              {Array.from({ length: 4 }, (_, columnIndex) => (
+                <div key={`${rowIndex}-${columnIndex}`} className="h-10 animate-pulse rounded-[14px] bg-[#f4f6f8]" />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+    ),
+  },
+);
+
+const OcrSpreadsheetGrid = dynamic(
+  () => import("@/components/ocr/OcrSpreadsheetGrid").then((module) => ({ default: module.OcrSpreadsheetGrid })),
   {
     ssr: false,
     loading: () => (
@@ -1749,6 +1771,21 @@ export default function OcrScanPage() {
                         </table>
                       </div>
                     </div>
+                  ) : USE_TANSTACK_TABLE ? (
+                    <OcrSpreadsheetGrid
+                      rows={editableRows}
+                      headers={editableHeaders}
+                      onCellEdit={(rowIndex, columnIndex, value) => {
+                        const updatedRows = cloneRows(editableRows);
+                        updatedRows[rowIndex][columnIndex] = {
+                          value,
+                          confidence: 100,
+                          source: "corrected"
+                        };
+                        applyTableChange({ rows: updatedRows });
+                      }}
+                      isReadOnly={false}
+                    />
                   ) : (
                     <DataTableGrid
                       headers={editableHeaders}
