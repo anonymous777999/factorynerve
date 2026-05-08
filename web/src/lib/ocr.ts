@@ -147,6 +147,13 @@ export type OcrPreviewResult = {
   fallback_used: boolean;
   raw_column_added: boolean;
   template?: OcrTemplate | null;
+  layout_confidence?: number;  // NEW: Layout understanding confidence (0.0-1.0)
+  layout_type?: string;  // NEW: Detected layout type
+  layout_analysis?: {  // NEW: Layout analysis metadata
+    processing_time_ms?: number;
+    heuristics_applied?: string[];
+    grouping_strategy?: string;
+  };
 };
 
 export type OcrJobPayload = {
