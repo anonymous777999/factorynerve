@@ -1693,6 +1693,14 @@ def _serialize_verification(db: Session, verification: OcrVerification) -> dict:
         }
     trusted_export = verification.status == "approved"
     export_source = "approved_review" if trusted_export else f"{verification.status}_review"
+    
+    # REVIEW METADATA LAYER: Extract confidence/bbox/source matrices from rows
+    # This preserves metadata through save/load cycles without modifying runtime row structure
+    rows = verification.reviewed_rows or verification.original_rows or []
+    cell_confidence = build_confidence_matrix(rows)
+    cell_boxes = build_bbox_matrix(rows)
+    cell_sources = build_source_matrix(rows)
+    
     return {
         "id": verification.id,
         "org_id": verification.org_id,
@@ -1717,6 +1725,9 @@ def _serialize_verification(db: Session, verification: OcrVerification) -> dict:
         "original_rows": verification.original_rows or [],
         "reviewed_rows": verification.reviewed_rows or [],
         "raw_column_added": bool(verification.raw_column_added),
+        "cell_confidence": cell_confidence,  # NEW: Review metadata layer
+        "cell_boxes": cell_boxes,            # NEW: Review metadata layer
+        "cell_sources": cell_sources,        # NEW: Review metadata layer
         "status": verification.status,
         "reviewer_notes": verification.reviewer_notes,
         "rejection_reason": verification.rejection_reason,
