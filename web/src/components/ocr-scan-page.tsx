@@ -242,9 +242,42 @@ function stringifySheetCell(value: unknown): string {
   if (typeof value === "object" && value !== null) {
     const obj = value as Record<string, unknown>;
 
-    // Extract human-readable content from structured sections
+    // PRIORITY 1: Try common scalar fields first (covers most cell types)
+    // This handles both explicit cell objects and generic structured responses
+    if ("value" in obj && obj.value != null) {
+      // Recursively handle nested structures
+      if (typeof obj.value === "object") {
+        return stringifySheetCell(obj.value);
+      }
+      return String(obj.value);
+    }
+    if ("content" in obj && obj.content != null && typeof obj.content !== "object") {
+      return String(obj.content);
+    }
+    if ("text" in obj && obj.text != null && typeof obj.text !== "object") {
+      return String(obj.text);
+    }
+    if ("data" in obj && obj.data != null && typeof obj.data !== "object") {
+      return String(obj.data);
+    }
+
+    // PRIORITY 2: Handle typed section objects
     if ("type" in obj) {
       const sectionType = String(obj.type || "").toLowerCase();
+
+      // Generic cell type (Sonnet/Opus may use this)
+      if (sectionType === "cell" || sectionType === "data") {
+        // Try value/content/text fields
+        if ("value" in obj && obj.value != null) {
+          return stringifySheetCell(obj.value);
+        }
+        if ("content" in obj && obj.content != null) {
+          return String(obj.content);
+        }
+        if ("text" in obj && obj.text != null) {
+          return String(obj.text);
+        }
+      }
 
       // Header section: extract title/label/text
       if (sectionType === "header" || sectionType === "heading") {
@@ -280,27 +313,22 @@ function stringifySheetCell(value: unknown): string {
       }
     }
 
-    // Extract common value/text/content fields
-    if ("value" in obj && obj.value != null) {
-      return stringifySheetCell(obj.value);
+    // PRIORITY 3: Try additional common field names
+    const scalarKeys = ["label", "title", "amount", "name", "id"];
+    for (const key of scalarKeys) {
+      if (key in obj && obj[key] != null && typeof obj[key] !== "object") {
+        return String(obj[key]);
+      }
     }
-    if ("text" in obj && obj.text != null) {
-      return String(obj.text);
-    }
-    if ("content" in obj && obj.content != null) {
-      return String(obj.content);
-    }
-    if ("label" in obj && obj.label != null) {
-      return String(obj.label);
-    }
+
+    // LAST RESORT: Warn and stringify as JSON
+    // This indicates an unhandled response structure that may need attention
+    console.warn("[OCR] Unhandled cell structure, using JSON fallback:", obj);
+    return JSON.stringify(value);
   }
 
-  // Fallback: stringify as JSON (last resort)
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
+  // Fallback for non-object types
+  return String(value);
 }
 
 function extractPreviewTable(result: OcrPreviewResult) {
