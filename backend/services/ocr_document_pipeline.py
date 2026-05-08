@@ -19,6 +19,16 @@ from backend.services.anthropic_usage import normalize_anthropic_model_name
 from backend.services.ocr_confidence import calculate_structural_confidence
 from backend.services.ocr_normalization import normalize_structured_payload
 from backend.services.ocr_routing import choose_ocr_route
+from backend.services.ocr_layout_analysis import (
+    suppress_repeated_headers,
+    prune_empty_columns,
+    analyze_layout,
+    calculate_layout_confidence,
+)
+from backend.services.ocr_structural_grouping import (
+    analyze_and_group,
+    apply_selector_bridge,
+)
 from backend.table_scan import extract_table_from_image
 
 
@@ -492,6 +502,10 @@ def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrT
 
     routing = verification.routing_meta or {}
     reprocess_count = int(routing.get("reprocess_count", 0))
+    
+    # Get layout confidence from scan_quality if available (NEW)
+    scan_quality = verification.scan_quality or {}
+    layout_confidence = scan_quality.get("layout_confidence", 0.5)
 
     return {
         "type": _doc_type(verification.doc_type_hint),
@@ -502,12 +516,14 @@ def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrT
         "language": verification.language,
         "confidence": confidence,
         "warnings": warnings,
-        "scan_quality": verification.scan_quality or None,
+        "scan_quality": scan_quality,
         "routing": routing,
         "columns": columns,
         "avg_confidence": confidence,
+        "layout_confidence": layout_confidence,  # NEW: Layout confidence from cache
+        "layout_type": scan_quality.get("layout_type", "unknown"),  # NEW: Cached layout type
         "cell_confidence": None,
-        "cell_boxes": (verification.scan_quality or {}).get("cell_boxes"),
+        "cell_boxes": scan_quality.get("cell_boxes"),
         "used_language": verification.language,
         "fallback_used": False,
         "raw_column_added": bool(verification.raw_column_added),
@@ -698,6 +714,66 @@ def build_structured_ocr_result(
     )
     normalized_headers = normalized.get("headers") or []
     normalized_rows = normalized.get("rows") or []
+    
+    # ==================================================================
+    # PHASE 1-5: NEW LAYOUT & STRUCTURAL ANALYSIS PIPELINE
+    # ==================================================================
+    
+    # Phase 1: Safe immediate fixes
+    phase1_warnings = []
+    
+    # 1. Repeated header suppression
+    try:
+        normalized_rows, suppression_warnings = suppress_repeated_headers(
+            normalized_rows,
+            base_result.cell_boxes
+        )
+        phase1_warnings.extend(suppression_warnings)
+    except Exception as error:  # pylint: disable=broad-except
+        logger.warning("Repeated header suppression failed: %s", error, exc_info=True)
+    
+    # 2. Empty column pruning
+    try:
+        normalized_headers, normalized_rows, pruning_warnings = prune_empty_columns(
+            normalized_headers,
+            normalized_rows,
+            threshold=0.8
+        )
+        phase1_warnings.extend(pruning_warnings)
+    except Exception as error:  # pylint: disable=broad-except
+        logger.warning("Empty column pruning failed: %s", error, exc_info=True)
+    
+    # Phase 2-3: Layout analysis (with bounding box canonicalization built-in)
+    layout_analysis_result = analyze_layout(
+        normalized_headers,
+        normalized_rows,
+        base_result.cell_boxes
+    )
+    
+    # Phase 4-5: Structural grouping and selector bridge
+    structural_grouping = analyze_and_group(
+        normalized_headers,
+        normalized_rows,
+        layout_analysis_result,
+        title=normalized.get("title") or _title_from_hint(doc_type_hint, template)
+    )
+    
+    # Apply selector bridge to get generic contract
+    if structural_grouping["primary_group"]:
+        bridge_output = apply_selector_bridge(structural_grouping["primary_group"])
+        # Update normalized data with bridge output
+        normalized_headers = bridge_output.get("headers", normalized_headers)
+        normalized_rows = bridge_output.get("rows", normalized_rows)
+    
+    # Collect all warnings
+    warnings.extend(phase1_warnings)
+    warnings.extend(layout_analysis_result.get("warnings", []))
+    warnings.extend(structural_grouping.get("warnings", []))
+    
+    # ==================================================================
+    # END NEW PIPELINE - Continue with existing confidence calculation
+    # ==================================================================
+    
     raw_text = normalized.get("raw_text") or _flatten_rows(normalized_rows)
     confidence_payload = calculate_structural_confidence(
         {
@@ -706,6 +782,9 @@ def build_structured_ocr_result(
         }
     )
     avg_confidence = float(confidence_payload.get("score") or 0.0)
+    
+    # Get layout confidence from analysis
+    layout_confidence = layout_analysis_result.get("layout_confidence", 0.5)
     
     # Phase 1: Optionally upgrade rows to cell objects (feature flag controlled)
     final_rows = normalized_rows
@@ -732,6 +811,8 @@ def build_structured_ocr_result(
         "routing": route_meta,
         "columns": max(len(normalized_headers), max((len(row) for row in normalized_rows), default=0), 1),
         "avg_confidence": avg_confidence,
+        "layout_confidence": layout_confidence,  # NEW: Layout understanding confidence
+        "layout_type": layout_analysis_result.get("layout_type", "unknown"),  # NEW: Detected layout type
         "cell_confidence": base_result.cell_confidence or [],
         "cell_boxes": base_result.cell_boxes or [],
         "used_language": used_language,
@@ -740,6 +821,11 @@ def build_structured_ocr_result(
         "token_usage": route_meta.get("usage") if isinstance(route_meta.get("usage"), dict) else None,
         "sheets": normalized.get("sheets") if isinstance(normalized.get("sheets"), list) else None,
         "understanding": normalized.get("understanding") if isinstance(normalized.get("understanding"), dict) else None,
+        "layout_analysis": {  # NEW: Layout analysis metadata
+            "processing_time_ms": layout_analysis_result.get("processing_time_ms", 0.0),
+            "heuristics_applied": layout_analysis_result.get("heuristics_applied", []),
+            "grouping_strategy": structural_grouping.get("grouping_strategy", "unknown"),
+        },
         "debug": {
             "requested_model": route_meta.get("requested_model"),
             "selected_model": route_meta.get("selected_model"),
