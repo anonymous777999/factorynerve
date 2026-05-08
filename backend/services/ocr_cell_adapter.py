@@ -19,22 +19,24 @@ def normalize_cell(
     
     Fields:
     - value: str (display value - always preserved)
-    - confidence: float (0-100)
+    - confidence: float (0.0-1.0 scale - internal representation)
     - normalized: float | None (Phase 3: safe numeric value)
     
     Args:
         cell: String (legacy) or dict (already structured)
-        confidence: Optional confidence override
+        confidence: Optional confidence override (0.0-1.0)
         add_normalized: If True, attempt to add normalized numeric value
     
     Returns:
-        Dictionary with value, confidence, and optionally normalized
+        Dictionary with value, confidence (0.0-1.0), and optionally normalized
     """
     # Already structured - return as-is (preserve normalized if exists)
     if isinstance(cell, dict):
+        # Get confidence and normalize to 0.0-1.0
+        conf = cell.get("confidence", confidence or 0.5)
         result = {
             "value": str(cell.get("value", "")),
-            "confidence": normalize_confidence(cell.get("confidence", confidence or 0.5)),
+            "confidence": normalize_confidence(conf),
         }
         # Preserve existing normalized value
         if "normalized" in cell and cell["normalized"] is not None:
@@ -47,9 +49,10 @@ def normalize_cell(
         return result
     
     # Legacy string - upgrade to minimal object
+    conf = confidence if confidence is not None else 0.5
     result = {
         "value": str(cell),
-        "confidence": normalize_confidence(confidence if confidence is not None else 0.5),
+        "confidence": normalize_confidence(conf),
     }
     
     # Phase 3: Add safe numeric normalization if requested
@@ -206,28 +209,29 @@ def estimate_confidence_simple(
     Args:
         cell_value: Cell text content
         column_type: "numeric" or "text"
-        base_confidence: Base OCR confidence (if available)
+        base_confidence: Base OCR confidence (0.0-1.0 scale)
     
     Returns:
-        Adjusted confidence (0.0 to 100.0)
+        Adjusted confidence (0.0 to 1.0)
     """
-    # Standardize base confidence to 0-100
+    # Normalize confidence to 0.0-1.0 scale
     base_confidence = normalize_confidence(base_confidence)
     if base_confidence is None:
-        base_confidence = 70.0
+        base_confidence = 0.7  # Default 70%
     
     # Empty cell is certain
     if not cell_value.strip():
-        return 99.0
+        return 0.99
     
     confidence = base_confidence
     
     # Column type adjustment
     if column_type == "numeric":
         if _is_numeric_simple(cell_value):
-            confidence += 10.0  # Boost for consistent numeric
+            confidence += 0.1  # Boost for consistent numeric
         else:
-            confidence -= 20.0  # Penalize non-numeric in numeric column
+            confidence -= 0.2  # Penalize non-numeric in numeric column
     
-    # Clamp to 0.0-100.0
-    return max(0.0, min(100.0, confidence))
+    # Clamp to 0.0-1.0 and round to avoid floating point precision issues
+    confidence = max(0.0, min(1.0, confidence))
+    return round(confidence, 10)  # Round to 10 decimal places to handle precision

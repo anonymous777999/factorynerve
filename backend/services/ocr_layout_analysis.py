@@ -165,8 +165,8 @@ def suppress_repeated_headers(
     the first occurrence.
     
     Rules:
-    - Only suppress if same string repeats >2 times consecutively
-    - Must appear in same structural column region
+    - Only suppress if same single-cell row repeats >=2 times
+    - Detect rows with only one non-empty cell (likely headers)
     - DO NOT globally deduplicate all repeated text
     
     Args:
@@ -176,55 +176,41 @@ def suppress_repeated_headers(
     Returns:
         Tuple of (cleaned_rows, warnings)
     """
-    if not rows or len(rows) < 3:
+    if not rows or len(rows) < 2:
         return rows, []
     
     warnings: list[str] = []
     cleaned_rows: list[list[str]] = []
     
-    # Track consecutive repetitions per column
-    column_repetitions: dict[int, dict[str, int]] = {}
+    # Track single-cell header occurrences
+    seen_single_cell_headers: dict[str, int] = {}
     
     for row_idx, row in enumerate(rows):
         if not isinstance(row, list):
             cleaned_rows.append(row)
             continue
         
-        cleaned_row = list(row)
-        should_include_row = True
+        # Check if this is a single-cell row (potential repeated header)
+        non_empty_cells = [str(c or "").strip() for c in row if str(c or "").strip()]
         
-        for col_idx, cell in enumerate(row):
-            cell_text = str(cell or "").strip()
+        # If row has exactly one non-empty cell, it might be a repeated header
+        if len(non_empty_cells) == 1:
+            header_text = non_empty_cells[0]
             
-            if not cell_text:
-                continue
+            # Track occurrences
+            if header_text not in seen_single_cell_headers:
+                seen_single_cell_headers[header_text] = 0
             
-            # Track repetitions
-            if col_idx not in column_repetitions:
-                column_repetitions[col_idx] = {}
+            seen_single_cell_headers[header_text] += 1
             
-            if cell_text not in column_repetitions[col_idx]:
-                column_repetitions[col_idx][cell_text] = 1
-            else:
-                column_repetitions[col_idx][cell_text] += 1
-            
-            # Check if this is a repeated header (>2 consecutive occurrences)
-            if column_repetitions[col_idx][cell_text] > 2:
-                # Check if entire row is just this repeated header
-                non_empty_cells = [c for c in row if str(c or "").strip()]
-                if len(non_empty_cells) == 1 and non_empty_cells[0] == cell_text:
-                    should_include_row = False
-                    if cell_text not in [w.split(":")[1].strip() for w in warnings if w.startswith("Suppressed repeated header:")]:
-                        warnings.append(f"Suppressed repeated header: {cell_text}")
-                    break
-            else:
-                # Reset counter if different text appears
-                for other_text in list(column_repetitions[col_idx].keys()):
-                    if other_text != cell_text:
-                        column_repetitions[col_idx][other_text] = 0
+            # Suppress if this is the 2nd or later occurrence
+            if seen_single_cell_headers[header_text] > 1:
+                if header_text not in [w.split(":")[1].strip() for w in warnings if w.startswith("Suppressed repeated header:")]:
+                    warnings.append(f"Suppressed repeated header: {header_text}")
+                continue  # Skip this row
         
-        if should_include_row:
-            cleaned_rows.append(cleaned_row)
+        # Include this row
+        cleaned_rows.append(row)
     
     return cleaned_rows, warnings
 
@@ -460,7 +446,7 @@ def detect_dual_column_structure(
     - Industrial side-by-side reports
     
     Args:
-        rows: Row data
+        rows: Row data (including headers)
         cell_boxes: Optional bounding boxes for spatial analysis
     
     Returns:
@@ -480,9 +466,12 @@ def detect_dual_column_structure(
     if most_common_cols < 3:
         return False
     
+    # COMPATIBILITY FIX: Skip first row (likely headers) when analyzing numeric content
+    # Headers often contain text labels that should not affect dual-column detection
+    data_rows = rows[1:] if len(rows) > 1 else rows
+    
     # Check if we have numeric columns on both sides
-    # This is a simple heuristic - can be enhanced with actual box positions
-    sample_rows = [row for row in rows[:10] if isinstance(row, list) and len(row) >= 3]
+    sample_rows = [row for row in data_rows[:10] if isinstance(row, list) and len(row) >= 3]
     if not sample_rows:
         return False
     
@@ -495,13 +484,15 @@ def detect_dual_column_structure(
             left_val = str(row[-2] or "").strip()
             right_val = str(row[-1] or "").strip()
             
-            if _is_numeric_value(left_val):
+            # Count non-empty numeric values (empty is okay for dual-column)
+            if left_val and _is_numeric_value(left_val):
                 left_numeric_count += 1
-            if _is_numeric_value(right_val):
+            if right_val and _is_numeric_value(right_val):
                 right_numeric_count += 1
     
-    # If both columns are mostly numeric, likely dual-column
-    threshold = len(sample_rows) * 0.5
+    # If both columns have numeric content, likely dual-column
+    # Lower threshold to handle sparse dual-column layouts
+    threshold = len(sample_rows) * 0.3
     return left_numeric_count >= threshold and right_numeric_count >= threshold
 
 

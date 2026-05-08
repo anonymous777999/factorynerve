@@ -1528,7 +1528,9 @@ def _normalize_scan_quality(values: dict | None, *, field_name: str) -> dict | N
                 normalized_row.append(lowered if lowered in {"ocr", "ai", "corrected", "manual", "unknown"} else None)
             cell_sources.append(normalized_row)
 
-    return {
+    # COMPATIBILITY FIX: Only include optional fields if explicitly provided
+    # Do NOT inject default values that would break payload equality expectations
+    result = {
         "confidence_band": band,
         "quality_signals": quality_signals,
         "auto_processing": auto_processing,
@@ -1538,14 +1540,22 @@ def _normalize_scan_quality(values: dict | None, *, field_name: str) -> dict | N
         "adjustment_count": _safe_int("adjustment_count"),
         "retake_count": _safe_int("retake_count"),
         "manual_review_recommended": bool(values.get("manual_review_recommended")),
-        "review_required": bool(values.get("review_required")),
         "outcome": outcome,
         "next_action": next_action,
         "notes": notes,
-        "cell_confidence": cell_confidence or None,
-        "cell_boxes": cell_boxes or None,
-        "cell_sources": cell_sources or None,
     }
+    
+    # Only include these fields if they were explicitly provided in input
+    if "review_required" in values:
+        result["review_required"] = bool(values.get("review_required"))
+    if cell_confidence:
+        result["cell_confidence"] = cell_confidence
+    if cell_boxes:
+        result["cell_boxes"] = cell_boxes
+    if cell_sources:
+        result["cell_sources"] = cell_sources
+    
+    return result
 
 
 def _normalize_document_hash(value: str | None) -> str | None:
