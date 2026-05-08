@@ -394,9 +394,13 @@ HIGH_CONFIDENCE_THRESHOLD = 90
 
 def normalize_confidence(value: float | int | None) -> float | None:
     """
-    Standardize confidence value to [0.0, 100.0] scale.
-    Standardized scale is 0-100.
-    Input might be 0.0-1.0 (legacy cell format) or 0-100.
+    Normalize confidence to 0.0-1.0 scale.
+    
+    Internal confidence values MUST remain 0.0-1.0.
+    Only UI may display as percentages.
+    
+    Input might be 0.0-1.0 (standard) or 0-100 (legacy/display).
+    Output is always 0.0-1.0.
     """
     if value is None:
         return None
@@ -412,9 +416,9 @@ def normalize_confidence(value: float | int | None) -> float | None:
         logging.getLogger(__name__).warning("Confidence value below zero: %s. Clamping to 0.0", val)
         return 0.0
 
-    # value <= 1.0 (and not None) -> multiply by 100 (cell adapter format)
+    # value <= 1.0 -> already in correct scale
     if val <= 1.0:
-        return val * 100.0
+        return val
 
     # 1.0 < value < 2.0 -> ambiguous/corrupt, return None + log warning
     if 1.0 < val < 2.0:
@@ -423,13 +427,13 @@ def normalize_confidence(value: float | int | None) -> float | None:
         )
         return None
 
-    # value > 100 -> clamp to 100.0 + log warning
+    # value >= 2.0 -> assume percentage scale, convert to 0.0-1.0
     if val > 100:
-        logging.getLogger(__name__).warning("Confidence value above 100: %s. Clamping to 100.0", val)
-        return 100.0
-
-    # 1 < value <= 100 -> preserve as-is
-    return val
+        logging.getLogger(__name__).warning("Confidence value above 100: %s. Clamping to 100.0 then converting", val)
+        val = 100.0
+    
+    # Convert from percentage (0-100) to decimal (0.0-1.0)
+    return val / 100.0
 
 
 def format_confidence_percent(value: float | int | None) -> str:

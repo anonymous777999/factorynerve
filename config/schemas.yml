@@ -1,0 +1,71 @@
+# DPR.ai OCR Schema Definitions
+# Runtime-loaded schema system for document type normalization
+# Version: 2.0 - Initial release of generalized schema system
+
+schema_version: "2.0"
+
+schemas:
+  ledger:
+    version: "1.0"
+    columns:
+      - date
+      - particulars
+      - calculation
+      - debit
+      - credit
+      - folio_ref
+    optional_columns:
+      - narration
+      - voucher_no
+    description: "Accounting ledger with debit/credit entries"
+
+  invoice:
+    version: "1.0"
+    columns:
+      - item
+      - description
+      - qty
+      - rate
+      - tax_pct
+      - tax_amount
+      - amount
+    optional_columns:
+      - hsn_code
+      - discount
+    description: "Sales invoice with line items"
+
+  receipt:
+    version: "1.0"
+    columns:
+      - description
+      - qty
+      - price
+      - total
+    optional_columns:
+      - category
+    description: "Receipt with purchased items"
+
+  bank_statement:
+    version: "1.0"
+    columns:
+      - date
+      - description
+      - debit
+      - credit
+      - balance
+    optional_columns:
+      - reference_no
+      - value_date
+    description: "Bank account statement"
+
+  generic_table:
+    version: "1.0"
+    columns: []
+    optional_columns: []
+    description: "Generic table - columns inferred from first row"
+
+  unknown_document:
+    version: "1.0"
+    columns: []
+    optional_columns: []
+    description: "Unknown document type - preserve raw structure"

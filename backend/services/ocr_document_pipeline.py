@@ -45,7 +45,9 @@ _DEFAULT_ROUTE = {
 _AI_REQUIRED_DOC_TYPES = {"table", "sheet", "spreadsheet"}
 
 # Feature flag for cell object structure (Phase 1)
-_ENABLE_CELL_FORMAT_V2 = os.getenv("CELL_FORMAT_V2", "true").lower() == "true"
+# IMPORTANT: Cell objects should ONLY exist in export/metadata layers
+# DO NOT enable in main runtime to preserve backward compatibility
+_ENABLE_CELL_FORMAT_V2 = os.getenv("CELL_FORMAT_V2", "false").lower() == "true"
 
 
 def _upgrade_rows_to_cell_objects(
@@ -786,8 +788,13 @@ def build_structured_ocr_result(
     # Get layout confidence from analysis
     layout_confidence = layout_analysis_result.get("layout_confidence", 0.5)
     
-    # Phase 1: Optionally upgrade rows to cell objects (feature flag controlled)
+    # COMPATIBILITY FIX: Do NOT upgrade rows to cell objects in main runtime
+    # Cell objects should ONLY exist in export/metadata layers
+    # Existing OCR runtime functions MUST continue returning plain strings
     final_rows = normalized_rows
+    
+    # Cell object upgrade is disabled by default to preserve compatibility
+    # Only enable in export layer when explicitly needed
     if _ENABLE_CELL_FORMAT_V2:
         try:
             final_rows = _upgrade_rows_to_cell_objects(

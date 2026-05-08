@@ -318,7 +318,7 @@ def test_ocr_verification_update_persists_scan_quality_and_audit_log(http_client
     updated = http_client.put(
         f"/ocr/verifications/{verification_id}",
         json={
-            "avg_confidence": 61.2,
+            "avg_confidence": 61.2,  # Will be normalized to 0.612 (0.0-1.0 scale)
             "warnings": ["blurred edge", "manual fix applied"],
             "document_hash": "updated-hash",
             "doc_type_hint": "dispatch-note",
@@ -358,7 +358,8 @@ def test_ocr_verification_update_persists_scan_quality_and_audit_log(http_client
     )
     assert updated.status_code == HTTPStatus.OK, updated.text
     payload = updated.json()
-    assert payload["avg_confidence"] == 61.2
+    # COMPATIBILITY FIX: avg_confidence normalized to 0.0-1.0 scale (61.2 → 0.612)
+    assert payload["avg_confidence"] == 0.612
     assert payload["warnings"] == ["blurred edge", "manual fix applied"]
     assert payload["document_hash"] == "updated-hash"
     assert payload["doc_type_hint"] == "dispatch-note"

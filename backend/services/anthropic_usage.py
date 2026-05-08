@@ -38,6 +38,7 @@ _MODEL_SELECTION_ALIASES: dict[str, str] = {
     "claude-sonnet-4-5-20250929": ANTHROPIC_MODEL_SONNET,
     "best": ANTHROPIC_MODEL_OPUS,
     "opus": ANTHROPIC_MODEL_OPUS,
+    "oppus": ANTHROPIC_MODEL_OPUS,  # Fix Bug #17: common typo
     ANTHROPIC_MODEL_OPUS: ANTHROPIC_MODEL_OPUS,
     "claude-3-5-haiku-20241022": "claude-3-5-haiku-20241022",
     "claude-haiku-4-5-20251001": ANTHROPIC_MODEL_HAIKU,
