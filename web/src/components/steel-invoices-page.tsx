@@ -428,6 +428,21 @@ export function SteelInvoicesPage() {
                               </option>
                             ))}
                           </Select>
+                          {!finishedItems.length ? (
+                            <div className="mt-3 rounded-2xl border border-amber-400/35 bg-amber-500/10 px-3 py-3 text-sm text-amber-100">
+                              <div className="font-semibold text-white">No finished goods available for invoicing</div>
+                              <div className="mt-1">Invoice lines only support inventory items categorized as finished goods.</div>
+                              <div className="mt-1 text-xs uppercase tracking-[0.16em] text-amber-200">
+                                Workflow: Production Batch -&gt; Finished Goods -&gt; Invoice
+                              </div>
+                              <div className="mt-2">Record a Production Batch or create a finished goods inventory item first.</div>
+                              <Link href="/steel" className="mt-3 inline-flex">
+                                <Button type="button" variant="ghost" className="px-2 py-1 text-xs text-amber-100 hover:text-white">
+                                  Open Steel Module
+                                </Button>
+                              </Link>
+                            </div>
+                          ) : null}
                         </div>
                         <div>
                           <label className="text-sm text-[var(--muted)]">Batch (optional)</label>
