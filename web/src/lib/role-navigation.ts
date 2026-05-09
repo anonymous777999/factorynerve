@@ -55,11 +55,11 @@ export function getRolePrimaryHrefs(role?: string | null) {
     case "accountant":
       return ["/reports", "/attendance/reports", "/email-summary", "/steel/customers", "/steel/invoices"];
     case "manager":
-      return ["/dashboard", "/approvals", "/reports", "/steel", "/analytics", "/work-queue"];
+      return ["/dashboard", "/approvals", "/reports", "/steel", "/steel/dispatches", "/analytics", "/work-queue"];
     case "admin":
       return ["/settings", "/settings/attendance", "/reports", "/approvals", "/analytics", "/dashboard"];
     case "owner":
-      return ["/premium/dashboard", "/control-tower", "/reports", "/ai", "/email-summary", "/steel/charts"];
+      return ["/premium/dashboard", "/control-tower", "/reports", "/ai", "/email-summary", "/steel/charts", "/steel/dispatches"];
     default:
       return ["/dashboard", "/work-queue", "/profile"];
   }
@@ -76,11 +76,11 @@ export function getRoleDefaultFavoriteHrefs(role?: string | null) {
     case "accountant":
       return ["/reports", "/attendance/reports", "/email-summary", "/steel/customers", "/steel/invoices"];
     case "manager":
-      return ["/dashboard", "/approvals", "/reports", "/steel", "/analytics"];
+      return ["/dashboard", "/approvals", "/reports", "/steel", "/steel/dispatches", "/analytics"];
     case "admin":
       return ["/settings", "/settings/attendance", "/reports", "/approvals", "/analytics"];
     case "owner":
-      return ["/premium/dashboard", "/control-tower", "/reports", "/email-summary", "/ai"];
+      return ["/premium/dashboard", "/control-tower", "/reports", "/email-summary", "/ai", "/steel/dispatches"];
     default:
       return ["/dashboard", "/work-queue", "/profile"];
   }
@@ -97,11 +97,11 @@ export function getRoleMobileNavHrefs(role?: string | null) {
     case "accountant":
       return ["/reports", "/attendance/reports", "/email-summary", "/steel/customers", "/profile"];
     case "manager":
-      return ["/dashboard", "/approvals", "/reports", "/steel", "/analytics"];
+      return ["/dashboard", "/approvals", "/reports", "/steel", "/steel/dispatches", "/analytics"];
     case "admin":
       return ["/settings", "/reports", "/approvals", "/analytics", "/profile"];
     case "owner":
-      return ["/premium/dashboard", "/reports", "/control-tower", "/ai", "/email-summary"];
+      return ["/premium/dashboard", "/reports", "/control-tower", "/ai", "/email-summary", "/steel/dispatches"];
     default:
       return ["/dashboard", "/work-queue", "/ocr/scan", "/attendance", "/profile"];
   }
