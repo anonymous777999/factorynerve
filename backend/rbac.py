@@ -17,6 +17,8 @@ ROLE_ORDER = {
     UserRole.OWNER: 6,
 }
 
+STOCK_VARIANCE_APPROVAL_THRESHOLD = 5.0  # percent
+
 
 def role_rank(role: UserRole) -> int:
     return ROLE_ORDER.get(role, 0)
@@ -38,3 +40,7 @@ def is_admin_or_owner(user: User) -> bool:
 
 def is_manager_or_admin(user: User) -> bool:
     return user.role in {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER}
+
+
+def is_supervisor_or_higher(user: User) -> bool:
+    return role_rank(user.role) >= role_rank(UserRole.SUPERVISOR)
