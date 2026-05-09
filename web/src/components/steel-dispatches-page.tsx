@@ -166,6 +166,12 @@ export function SteelDispatchesPage() {
     };
   }, [selectedInvoice]);
 
+  const isSelectedInvoiceFullyAllocated = useMemo(() => {
+    if (!selectedInvoice) return false;
+    const lines = selectedInvoice.invoice.lines || [];
+    return lines.length > 0 && lines.every((line) => Number(line.remaining_weight_kg || 0) <= 0);
+  }, [selectedInvoice]);
+
   const capacityWarning = useMemo(() => {
     const parsedCapacity = Number(truckCapacityKg || 0);
     if (!Number.isFinite(parsedCapacity) || parsedCapacity <= 0) return "";
@@ -578,6 +584,21 @@ export function SteelDispatchesPage() {
                   ))}
                 </Select>
               </div>
+              {!invoices.length ? (
+                <div className="rounded-2xl border border-amber-400/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                  <div className="font-semibold text-white">No invoices available for dispatch</div>
+                  <div className="mt-1">Dispatch selection is populated from Steel Sales Invoices.</div>
+                  <div className="mt-1 text-xs uppercase tracking-[0.16em] text-amber-200">
+                    Workflow: Production Batch -&gt; Invoice -&gt; Dispatch
+                  </div>
+                  <div className="mt-2">Create an invoice with at least one finished-goods line before creating a dispatch.</div>
+                  <Link href="/steel/invoices" className="mt-3 inline-flex">
+                    <Button type="button" variant="ghost" className="px-2 py-1 text-xs text-amber-100 hover:text-white">
+                      Open Invoices
+                    </Button>
+                  </Link>
+                </div>
+              ) : null}
 
               {selectedInvoice && selectedInvoiceSummary ? (
                 <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4 text-sm">
@@ -676,6 +697,21 @@ export function SteelDispatchesPage() {
                 <label className="text-sm text-[var(--muted)]">Dispatch Notes</label>
                 <Textarea value={notes} onChange={(event) => setNotes(event.target.value)} placeholder="Optional gate pass notes" />
               </div>
+
+              {isSelectedInvoiceFullyAllocated && selectedInvoice ? (
+                <div className="rounded-2xl border border-amber-400/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                  <div className="font-semibold text-white">Dispatch blocked - invoice fully allocated</div>
+                  <div className="mt-1">
+                    This invoice has no remaining dispatchable quantity because all material has already been allocated across previous dispatches.
+                  </div>
+                  <div className="mt-1">Choose another invoice or review the invoice dispatch history.</div>
+                  <Link href={`/steel/invoices/${selectedInvoice.invoice.id}`} className="mt-3 inline-flex">
+                    <Button type="button" variant="ghost" className="px-2 py-1 text-xs text-amber-100 hover:text-white">
+                      Open Invoice Detail
+                    </Button>
+                  </Link>
+                </div>
+              ) : null}
 
               {selectedInvoice ? (
                 <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
