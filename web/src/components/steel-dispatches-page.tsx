@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { DispatchDebugPanel } from "@/components/steel-dispatches-debug";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -527,6 +528,15 @@ export function SteelDispatchesPage() {
           </div>
         </section>
 
+        {/* DEBUG PANEL - Remove after diagnosing invoice selection issue */}
+        <DispatchDebugPanel
+          invoices={invoices}
+          selectedInvoiceId={selectedInvoiceId}
+          selectedInvoice={selectedInvoice}
+          lineDrafts={lineDrafts}
+          error={error}
+        />
+
         {/* AUDIT: FLOW_BROKEN - add a short sequence so the screen points from invoice selection to truck release. */}
         <section className="grid gap-4 md:grid-cols-4">
           <Card>
@@ -756,8 +766,8 @@ export function SteelDispatchesPage() {
                     </div>
                     <div
                       className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${canSubmitDispatch
-                          ? "border-emerald-400/35 bg-emerald-500/12 text-emerald-200"
-                          : "border-amber-400/35 bg-amber-500/12 text-amber-100"
+                        ? "border-emerald-400/35 bg-emerald-500/12 text-emerald-200"
+                        : "border-amber-400/35 bg-amber-500/12 text-amber-100"
                         }`}
                     >
                       {canSubmitDispatch ? "Ready to create" : `${dispatchValidationBlockers.length} blocker${dispatchValidationBlockers.length === 1 ? "" : "s"}`}
@@ -768,8 +778,8 @@ export function SteelDispatchesPage() {
                       <div key={item.id} className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[rgba(20,24,36,0.72)] px-3 py-3">
                         <div
                           className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${item.ready
-                              ? "bg-emerald-500/20 text-emerald-200"
-                              : "bg-rose-500/18 text-rose-200"
+                            ? "bg-emerald-500/20 text-emerald-200"
+                            : "bg-rose-500/18 text-rose-200"
                             }`}
                         >
                           {item.ready ? "OK" : "!"}
@@ -785,8 +795,8 @@ export function SteelDispatchesPage() {
 
                 <div
                   className={`rounded-3xl border p-4 ${dispatchValidationBlockers.length
-                      ? "border-rose-400/35 bg-rose-500/8"
-                      : "border-emerald-400/35 bg-emerald-500/8"
+                    ? "border-rose-400/35 bg-rose-500/8"
+                    : "border-emerald-400/35 bg-emerald-500/8"
                     }`}
                 >
                   <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Decision guardrail</div>
