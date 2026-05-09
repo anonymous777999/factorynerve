@@ -180,7 +180,10 @@ export function SteelCommandCenterPage() {
   });
 
   const isSteelFactory = (activeFactory?.industry_type || "").toLowerCase() === "steel";
-  const canAccessSteelControl = user?.role === "owner" || user?.role === "manager";
+  const canAccessSteelControl =
+    user?.role === "owner" ||
+    user?.role === "manager" ||
+    user?.role === "supervisor";
   const canManage = canAccessSteelControl;
   const canRecordBatch = canAccessSteelControl;
   const [activeTab, setActiveTab] = useState<SteelControlTab>(() => {
@@ -385,11 +388,11 @@ export function SteelCommandCenterPage() {
   const topPriority = deriveSteelTopPriority(overview);
   const criticalKpis = summaryRange
     ? [
-        summaryRange.kpis.todayLoss,
-        summaryRange.kpis.totalStock,
-        summaryRange.kpis.todayProduction,
-        ...(canSeeFinancials ? [summaryRange.kpis.todayRevenue] : []),
-      ]
+      summaryRange.kpis.todayLoss,
+      summaryRange.kpis.totalStock,
+      summaryRange.kpis.todayProduction,
+      ...(canSeeFinancials ? [summaryRange.kpis.todayRevenue] : []),
+    ]
     : [];
   const quickActions = [
     topPriority.primaryAction,
@@ -674,157 +677,731 @@ export function SteelCommandCenterPage() {
         </section>
 
         {activeTab === "overview" ? (
-        <section>
-          <IndustrialFactoryDashboard
-            loading={pageLoading}
-            industryType="steel"
-            dataByRange={steelDashboardData}
-          />
-        </section>
+          <section>
+            <IndustrialFactoryDashboard
+              loading={pageLoading}
+              industryType="steel"
+              dataByRange={steelDashboardData}
+            />
+          </section>
         ) : null}
 
         {activeTab === "sales" ? (
-        <>
-        <section id="sales-lane" className="grid gap-4 md:grid-cols-3">
-          <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
-            <CardHeader>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">Sales Lane</div>
-              <CardTitle className="text-xl">Invoices</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-sm text-[var(--muted)]">
-                {profitSummary?.invoice_count || 0} invoice{(profitSummary?.invoice_count || 0) === 1 ? "" : "s"} recorded for the active steel factory.
-              </div>
-              <Link href="/steel/invoices">
-                <Button variant="outline">Open Invoices</Button>
-              </Link>
-            </CardContent>
-          </Card>
-          <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
-            <CardHeader>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">Sales Lane</div>
-              <CardTitle className="text-xl">Dispatch</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-sm text-[var(--muted)]">
-                {profitSummary?.dispatch_count || 0} dispatch{(profitSummary?.dispatch_count || 0) === 1 ? "" : "es"} linked to steel movement and gate pass control.
-              </div>
-              <Link href="/steel/dispatches">
-                <Button variant="outline">Open Dispatch</Button>
-              </Link>
-            </CardContent>
-          </Card>
-          <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
-            <CardHeader>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">Sales Lane</div>
-              <CardTitle className="text-xl">Customers & Collections</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="text-sm text-[var(--muted)]">
-                {canSeeFinancials
-                  ? `${formatCurrency(profitSummary?.outstanding_invoice_amount_inr || 0)} still outstanding across current invoice exposure.`
-                  : "Open customer ledger, invoice history, and payment tracking from one place."}
-              </div>
-              <Link href="/steel/customers">
-                <Button variant="outline">Open Customers</Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </section>
+          <>
+            <section id="sales-lane" className="grid gap-4 md:grid-cols-3">
+              <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
+                <CardHeader>
+                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">Sales Lane</div>
+                  <CardTitle className="text-xl">Invoices</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="text-sm text-[var(--muted)]">
+                    {profitSummary?.invoice_count || 0} invoice{(profitSummary?.invoice_count || 0) === 1 ? "" : "s"} recorded for the active steel factory.
+                  </div>
+                  <Link href="/steel/invoices">
+                    <Button variant="outline">Open Invoices</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+              <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
+                <CardHeader>
+                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">Sales Lane</div>
+                  <CardTitle className="text-xl">Dispatch</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="text-sm text-[var(--muted)]">
+                    {profitSummary?.dispatch_count || 0} dispatch{(profitSummary?.dispatch_count || 0) === 1 ? "" : "es"} linked to steel movement and gate pass control.
+                  </div>
+                  <Link href="/steel/dispatches">
+                    <Button variant="outline">Open Dispatch</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+              <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
+                <CardHeader>
+                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">Sales Lane</div>
+                  <CardTitle className="text-xl">Customers & Collections</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="text-sm text-[var(--muted)]">
+                    {canSeeFinancials
+                      ? `${formatCurrency(profitSummary?.outstanding_invoice_amount_inr || 0)} still outstanding across current invoice exposure.`
+                      : "Open customer ledger, invoice history, and payment tracking from one place."}
+                  </div>
+                  <Link href="/steel/customers">
+                    <Button variant="outline">Open Customers</Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            </section>
 
-        {canSeeFinancials ? (
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Card>
-            <CardHeader><CardTitle className="text-base">Realized Dispatch Revenue</CardTitle></CardHeader>
-            <CardContent className="text-2xl font-semibold text-white">
-              {formatCurrency(profitSummary?.realized_dispatched_revenue_inr || 0)}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Realized Gross Profit</CardTitle></CardHeader>
-            <CardContent className="text-2xl font-semibold text-white">
-              {formatCurrency(profitSummary?.realized_dispatched_profit_inr || 0)}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Leakage Exposure</CardTitle></CardHeader>
-            <CardContent className="space-y-1">
-              <div className="text-2xl font-semibold text-white">
-                {formatCurrency(anomalySummary?.total_estimated_leakage_value_inr || 0)}
-              </div>
-              <div className="text-xs text-[var(--muted)]">
-                {formatKg(anomalySummary?.total_variance_kg || 0)} KG across {anomalySummary?.ranked_batch_count || 0} ranked batches
-              </div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader><CardTitle className="text-base">Outstanding Invoice Value</CardTitle></CardHeader>
-            <CardContent className="space-y-1">
-              <div className="text-2xl font-semibold text-white">
-                {formatCurrency(profitSummary?.outstanding_invoice_amount_inr || 0)}
-              </div>
-              <div className="text-xs text-[var(--muted)]">
-                {formatKg(profitSummary?.outstanding_invoice_weight_kg || 0)} KG still invoiced but not dispatched
-              </div>
-            </CardContent>
-          </Card>
-          </section>
-        ) : null}
-        </>
+            {canSeeFinancials ? (
+              <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+                <Card>
+                  <CardHeader><CardTitle className="text-base">Realized Dispatch Revenue</CardTitle></CardHeader>
+                  <CardContent className="text-2xl font-semibold text-white">
+                    {formatCurrency(profitSummary?.realized_dispatched_revenue_inr || 0)}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader><CardTitle className="text-base">Realized Gross Profit</CardTitle></CardHeader>
+                  <CardContent className="text-2xl font-semibold text-white">
+                    {formatCurrency(profitSummary?.realized_dispatched_profit_inr || 0)}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader><CardTitle className="text-base">Leakage Exposure</CardTitle></CardHeader>
+                  <CardContent className="space-y-1">
+                    <div className="text-2xl font-semibold text-white">
+                      {formatCurrency(anomalySummary?.total_estimated_leakage_value_inr || 0)}
+                    </div>
+                    <div className="text-xs text-[var(--muted)]">
+                      {formatKg(anomalySummary?.total_variance_kg || 0)} KG across {anomalySummary?.ranked_batch_count || 0} ranked batches
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader><CardTitle className="text-base">Outstanding Invoice Value</CardTitle></CardHeader>
+                  <CardContent className="space-y-1">
+                    <div className="text-2xl font-semibold text-white">
+                      {formatCurrency(profitSummary?.outstanding_invoice_amount_inr || 0)}
+                    </div>
+                    <div className="text-xs text-[var(--muted)]">
+                      {formatKg(profitSummary?.outstanding_invoice_weight_kg || 0)} KG still invoiced but not dispatched
+                    </div>
+                  </CardContent>
+                </Card>
+              </section>
+            ) : null}
+          </>
         ) : null}
 
         {activeTab === "inventory" ? (
-        <section id="stock-lane" className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <div className="space-y-6">
+          <section id="stock-lane" className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+            <div className="space-y-6">
+              <Card>
+                <CardHeader><CardTitle>Live Stock Trust Board</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div className={`rounded-2xl px-4 py-3 text-sm ${badgeTone("green")}`}>Green<div className="mt-1 text-2xl font-semibold text-white">{overview?.confidence_counts.green || 0}</div></div>
+                    <div className={`rounded-2xl px-4 py-3 text-sm ${badgeTone("yellow")}`}>Review<div className="mt-1 text-2xl font-semibold text-white">{overview?.confidence_counts.yellow || 0}</div></div>
+                    <div className={`rounded-2xl px-4 py-3 text-sm ${badgeTone("red")}`}>Mismatch<div className="mt-1 text-2xl font-semibold text-white">{overview?.confidence_counts.red || 0}</div></div>
+                  </div>
+                  <ResponsiveScrollArea
+                    className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]"
+                    debugLabel="steel-command-center-batches"
+                  >
+                    <table className="min-w-full text-left text-sm">
+                      <thead className="text-[var(--muted)]">
+                        <tr className="border-b border-[var(--border)]">
+                          <th className="px-3 py-3 font-medium">Item</th>
+                          <th className="px-3 py-3 font-medium">Zone</th>
+                          <th className="px-3 py-3 font-medium">KG</th>
+                          <th className="px-3 py-3 font-medium">TON</th>
+                          <th className="px-3 py-3 font-medium">Last Variance</th>
+                          <th className="px-3 py-3 font-medium">Confidence</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {stock.map((row) => (
+                          <tr key={row.item_id} className="border-b border-[var(--border)]/60 last:border-none">
+                            <td className="px-3 py-3">
+                              <div className="font-semibold text-white">{row.name}</div>
+                              <div className="text-xs text-[var(--muted)]">{row.item_code} / {row.category.replace("_", " ")}</div>
+                            </td>
+                            <td className="px-3 py-3">
+                              <div className="font-medium text-white">{deriveOperationalZone(row.category)}</div>
+                              <div className="text-xs text-[var(--muted)]">Derived from material stage</div>
+                            </td>
+                            <td className="px-3 py-3">{formatKg(row.stock_balance_kg)}</td>
+                            <td className="px-3 py-3">{formatKg(row.stock_balance_ton)}</td>
+                            <td className="px-3 py-3">
+                              <div className="font-medium text-white">
+                                {row.last_variance_kg != null ? `${formatKg(row.last_variance_kg)} KG` : "No count yet"}
+                              </div>
+                              <div className="text-xs text-[var(--muted)]">
+                                {row.last_variance_percent != null ? formatPercent(row.last_variance_percent) : "Variance pending"}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3">
+                              <span className={`inline-flex rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${badgeTone(row.confidence_status)}`}>
+                                {row.confidence_status}
+                              </span>
+                              <div className="mt-2 max-w-[18rem] text-xs text-[var(--muted)]">{row.confidence_reason}</div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </ResponsiveScrollArea>
+                </CardContent>
+              </Card>
+
+              <div className="grid gap-6 lg:grid-cols-2">
+                <Card>
+                  <CardHeader><CardTitle>Add Steel Material</CardTitle></CardHeader>
+                  <CardContent className="space-y-3">
+                    <Input value={itemForm.item_code} onChange={(event) => setItemForm((current) => ({ ...current, item_code: event.target.value }))} placeholder="Item code" />
+                    <Input value={itemForm.name} onChange={(event) => setItemForm((current) => ({ ...current, name: event.target.value }))} placeholder="Item name" />
+                    <Select value={itemForm.category} onChange={(event) => setItemForm((current) => ({ ...current, category: event.target.value }))}>
+                      <option value="raw_material">Raw Material</option>
+                      <option value="wip">WIP</option>
+                      <option value="finished_goods">Finished Goods</option>
+                    </Select>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Select value={itemForm.display_unit} onChange={(event) => setItemForm((current) => ({ ...current, display_unit: event.target.value }))}>
+                        <option value="kg">KG</option>
+                        <option value="ton">TON</option>
+                      </Select>
+                      <Input type="number" min="0" step="0.01" value={itemForm.current_rate_per_kg} onChange={(event) => setItemForm((current) => ({ ...current, current_rate_per_kg: event.target.value }))} placeholder="Rate / KG" />
+                    </div>
+                    <Button
+                      disabled={busy || !canManage}
+                      onClick={() =>
+                        runAction(async () => {
+                          const itemCodeError = validateIdentifierCode(itemForm.item_code, "Item code", 40);
+                          if (itemCodeError) {
+                            throw new Error(itemCodeError);
+                          }
+                          await createSteelItem({
+                            item_code: itemForm.item_code,
+                            name: itemForm.name,
+                            category: itemForm.category,
+                            display_unit: itemForm.display_unit,
+                            current_rate_per_kg: itemForm.current_rate_per_kg ? Number(itemForm.current_rate_per_kg) : undefined,
+                          });
+                          setItemForm({ item_code: "", name: "", category: "raw_material", display_unit: "kg", current_rate_per_kg: "" });
+                        }, "Steel inventory item created.")
+                      }
+                    >
+                      {canManage ? "Create Item" : "Manager access required"}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader><CardTitle>Ledger Movement</CardTitle></CardHeader>
+                  <CardContent className="space-y-3">
+                    <Select value={moveForm.item_id} onChange={(event) => setMoveForm((current) => ({ ...current, item_id: event.target.value }))}>
+                      <option value="">Select item</option>
+                      {items.map((item) => (
+                        <option key={item.id} value={item.id}>{item.item_code} - {item.name}</option>
+                      ))}
+                    </Select>
+                    <Select value={moveForm.transaction_type} onChange={(event) => setMoveForm((current) => ({ ...current, transaction_type: event.target.value }))}>
+                      <option value="inward">Raw inward</option>
+                      <option value="dispatch_out">Dispatch out</option>
+                      <option value="adjustment">Adjustment</option>
+                    </Select>
+                    {moveForm.transaction_type === "adjustment" ? (
+                      <Select value={moveForm.direction} onChange={(event) => setMoveForm((current) => ({ ...current, direction: event.target.value }))}>
+                        <option value="increase">Increase</option>
+                        <option value="decrease">Decrease</option>
+                      </Select>
+                    ) : null}
+                    <Input type="number" min="0" step="0.01" value={moveForm.quantity_kg} onChange={(event) => setMoveForm((current) => ({ ...current, quantity_kg: event.target.value }))} placeholder="Quantity KG" />
+                    <Textarea value={moveForm.notes} onChange={(event) => setMoveForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Movement reason" />
+                    <Button
+                      disabled={busy || !canManage}
+                      onClick={() =>
+                        runAction(async () => {
+                          await createSteelTransaction({
+                            item_id: Number(moveForm.item_id),
+                            transaction_type: moveForm.transaction_type,
+                            quantity_kg: Number(moveForm.quantity_kg),
+                            direction: moveForm.transaction_type === "adjustment" ? moveForm.direction : undefined,
+                            notes: moveForm.notes || undefined,
+                          });
+                          setMoveForm({ item_id: "", transaction_type: "inward", quantity_kg: "", direction: "increase", notes: "" });
+                        }, "Ledger transaction recorded.")
+                      }
+                    >
+                      {canManage ? "Record Movement" : "Manager access required"}
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              {canSeeFinancials ? (
+                <Card>
+                  <CardHeader><CardTitle>Owner Control Board</CardTitle></CardHeader>
+                  <CardContent className="space-y-4 text-sm">
+                    <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
+                      <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Top loss batch</div>
+                      {overview?.top_loss_batch ? (
+                        <div className="mt-3 space-y-2">
+                          <div className="text-lg font-semibold text-white">{overview.top_loss_batch.batch_code}</div>
+                          <div className={`inline-flex rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${badgeTone(overview.top_loss_batch.severity)}`}>
+                            {overview.top_loss_batch.severity}
+                          </div>
+                          <div className="text-[var(--muted)]">
+                            Variance {formatKg(overview.top_loss_batch.variance_kg)} KG / {formatCurrency(overview.top_loss_batch.variance_value_inr)}
+                          </div>
+                          <div className="text-[var(--muted)]">
+                            Estimated gross profit {formatCurrency(overview.top_loss_batch.estimated_gross_profit_inr)}
+                          </div>
+                          <Link href={`/steel/batches/${overview.top_loss_batch.id}`}>
+                            <Button variant="outline">Open Trace</Button>
+                          </Link>
+                        </div>
+                      ) : (
+                        <div className="mt-3 text-[var(--muted)]">No batch data yet.</div>
+                      )}
+                    </div>
+                    <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
+                      <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Highest risk operator</div>
+                      <div className="mt-3 space-y-2">
+                        {highestRiskOperator ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <div className="font-semibold text-white">{highestRiskOperator.name}</div>
+                                <div className="text-xs text-[var(--muted)]">
+                                  {highestRiskOperator.batch_count} batches / {highestRiskOperator.high_risk_batches} high risk
+                                </div>
+                              </div>
+                              <div className="text-right text-white">
+                                {formatCurrency(highestRiskOperator.total_variance_value_inr)}
+                              </div>
+                            </div>
+                            <div className="text-xs text-[var(--muted)]">
+                              {formatKg(highestRiskOperator.total_variance_kg)} KG at {formatPercent(highestRiskOperator.average_loss_percent)} avg loss.
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-[var(--muted)]">Operator-level loss signals appear once batches are recorded.</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
+                      <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Highest loss day</div>
+                      {highestLossDay ? (
+                        <div className="mt-3 space-y-2">
+                          <div className="text-lg font-semibold text-white">{highestLossDay.date}</div>
+                          <div className="text-[var(--muted)]">
+                            {formatCurrency(highestLossDay.total_variance_value_inr)} / {formatKg(highestLossDay.total_variance_kg)} KG
+                          </div>
+                          <div className="text-xs text-[var(--muted)]">
+                            {highestLossDay.batch_count} batches / {highestLossDay.high_risk_batches} high-risk / avg loss {formatPercent(highestLossDay.average_loss_percent)}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-3 text-[var(--muted)]">Daily responsibility trends appear once batches are recorded.</div>
+                      )}
+                    </div>
+                    <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
+                      <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Best gross-profit batch</div>
+                      {bestProfitBatch ? (
+                        <div className="mt-3 space-y-2">
+                          <div className="text-lg font-semibold text-white">{bestProfitBatch.batch_code}</div>
+                          <div className="text-[var(--muted)]">
+                            {formatCurrency(bestProfitBatch.estimated_gross_profit_inr)} / {formatCurrency(bestProfitBatch.estimated_output_value_inr)} output
+                          </div>
+                          <div className="text-xs text-[var(--muted)]">
+                            {formatKg(bestProfitBatch.actual_output_kg)} KG actual / profit per KG {formatCurrency(bestProfitBatch.profit_per_kg_inr)}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-3 text-[var(--muted)]">Profit visibility appears once output and rates are recorded.</div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
+
+              <Card>
+                <CardHeader><CardTitle>Stock Reconciliation</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4 text-sm">
+                    <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Operational zones</div>
+                    <div className="mt-3 grid gap-3">
+                      {Object.entries(inventoryZones).map(([zone, quantity]) => (
+                        <div key={zone} className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-3 py-3">
+                          <div>
+                            <div className="font-semibold text-white">{zone}</div>
+                            <div className="text-xs text-[var(--muted)]">Derived from material category until exact yard/bin tracking is modeled.</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-semibold text-white">{formatKg(quantity)} KG</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <Select value={reconcileForm.item_id} onChange={(event) => setReconcileForm((current) => ({ ...current, item_id: event.target.value }))}>
+                    <option value="">Select item</option>
+                    {stock.map((item) => (
+                      <option key={item.item_id} value={item.item_id}>{item.item_code} - {item.name}</option>
+                    ))}
+                  </Select>
+                  <Input type="number" min="0" step="0.01" value={reconcileForm.physical_qty_kg} onChange={(event) => setReconcileForm((current) => ({ ...current, physical_qty_kg: event.target.value }))} placeholder="Physical KG" />
+                  <Select
+                    value={reconcileForm.mismatch_cause}
+                    onChange={(event) => setReconcileForm((current) => ({ ...current, mismatch_cause: event.target.value }))}
+                  >
+                    <option value="">Mismatch root cause</option>
+                    {STEEL_MISMATCH_CAUSE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </Select>
+                  <Textarea value={reconcileForm.notes} onChange={(event) => setReconcileForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Count notes" />
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm">
+                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Mismatch preview</div>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <div className="text-[var(--muted)]">System stock</div>
+                        <div className="mt-1 font-semibold text-white">{formatKg(reconcileSystemQty)} KG</div>
+                      </div>
+                      <div>
+                        <div className="text-[var(--muted)]">Operational zone</div>
+                        <div className="mt-1 font-semibold text-white">{selectedReconcileItem ? deriveOperationalZone(selectedReconcileItem.category) : "Select item first"}</div>
+                      </div>
+                      <div>
+                        <div className="text-[var(--muted)]">Physical stock</div>
+                        <div className="mt-1 font-semibold text-white">{formatKg(reconcilePhysicalQty || 0)} KG</div>
+                      </div>
+                      <div>
+                        <div className="text-[var(--muted)]">Variance</div>
+                        <div className="mt-1 font-semibold text-white">
+                          {formatKg(reconcileVarianceKg)} KG / {formatPercent(reconcileVariancePercent)}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="mt-3 text-xs text-[var(--muted)]">
+                      {reconcileNeedsCause
+                        ? `Root cause required before saving. Current tag: ${formatMismatchCause(reconcileForm.mismatch_cause || null)}.`
+                        : "No mismatch detected. Cause can stay blank for matched stock."}
+                    </div>
+                  </div>
+                  {reconciliationValidationMessage ? (
+                    <div className="text-xs text-amber-200">{reconciliationValidationMessage}</div>
+                  ) : (
+                    <div className="text-xs text-[var(--muted)]">Ready to save this reconciliation into the stock review loop.</div>
+                  )}
+                  <Button
+                    disabled={busy || !canManage || Boolean(reconciliationValidationMessage)}
+                    onClick={() =>
+                      runAction(async () => {
+                        await reconcileSteelStock({
+                          item_id: Number(reconcileForm.item_id),
+                          physical_qty_kg: Number(reconcilePhysicalQty),
+                          notes: reconcileForm.notes || undefined,
+                          mismatch_cause: (reconcileForm.mismatch_cause || undefined) as SteelStockMismatchCause | undefined,
+                        });
+                        setReconcileForm({ item_id: "", physical_qty_kg: "", notes: "", mismatch_cause: "" });
+                      }, "Stock reconciliation saved.")
+                    }
+                  >
+                    {canManage ? "Save Reconciliation" : "Manager access required"}
+                  </Button>
+                </CardContent>
+              </Card>
+
+            </div>
+          </section>
+        ) : null}
+
+        {activeTab === "risk" ? (
+          <section id="risk-lane" className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
             <Card>
-              <CardHeader><CardTitle>Live Stock Trust Board</CardTitle></CardHeader>
+              <CardHeader><CardTitle>Leakage Alert Ladder</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <div className={`rounded-2xl px-4 py-3 text-sm ${badgeTone("green")}`}>Green<div className="mt-1 text-2xl font-semibold text-white">{overview?.confidence_counts.green || 0}</div></div>
-                  <div className={`rounded-2xl px-4 py-3 text-sm ${badgeTone("yellow")}`}>Review<div className="mt-1 text-2xl font-semibold text-white">{overview?.confidence_counts.yellow || 0}</div></div>
-                  <div className={`rounded-2xl px-4 py-3 text-sm ${badgeTone("red")}`}>Mismatch<div className="mt-1 text-2xl font-semibold text-white">{overview?.confidence_counts.red || 0}</div></div>
+                {rankedAnomalies.length ? (
+                  rankedAnomalies.map((entry) => (
+                    <div key={entry.batch.id} className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Rank #{entry.rank}</div>
+                          <div className="mt-1 text-lg font-semibold text-white">{entry.batch.batch_code}</div>
+                          <div className="mt-1 text-xs text-[var(--muted)]">
+                            {entry.batch.production_date} / {entry.batch.operator_name || "Operator not tagged"}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className={`inline-flex rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${badgeTone(entry.batch.severity)}`}>
+                            {entry.batch.severity}
+                          </div>
+                          <div className="mt-2 text-sm font-semibold text-white">Score {entry.anomaly_score.toFixed(2)}</div>
+                        </div>
+                      </div>
+                      <div className="mt-3 grid gap-3 md:grid-cols-3">
+                        <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
+                          <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Variance</div>
+                          <div className="mt-1 text-sm font-semibold text-white">{formatKg(entry.batch.variance_kg)} KG</div>
+                          <div className="text-xs text-[var(--muted)]">{formatPercent(entry.batch.variance_percent)}</div>
+                        </div>
+                        {canSeeFinancials ? (
+                          <>
+                            <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
+                              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Leakage Value</div>
+                              <div className="mt-1 text-sm font-semibold text-white">{formatCurrency(entry.estimated_leakage_value_inr || 0)}</div>
+                              <div className="text-xs text-[var(--muted)]">Potential margin erosion</div>
+                            </div>
+                            <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
+                              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Gross Profit</div>
+                              <div className="mt-1 text-sm font-semibold text-white">{formatCurrency(entry.batch.estimated_gross_profit_inr || 0)}</div>
+                              <div className="text-xs text-[var(--muted)]">Profit after input cost snapshot</div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
+                              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Loss</div>
+                              <div className="mt-1 text-sm font-semibold text-white">{formatPercent(entry.batch.loss_percent)}</div>
+                              <div className="text-xs text-[var(--muted)]">Operational deviation</div>
+                            </div>
+                            <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
+                              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Signal</div>
+                              <div className="mt-1 text-sm font-semibold text-white">{entry.batch.severity}</div>
+                              <div className="text-xs text-[var(--muted)]">Investigate process drift</div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                        <div className="max-w-2xl text-sm text-[var(--muted)]">{entry.reason}</div>
+                        <Link href={`/steel/batches/${entry.batch.id}`}>
+                          <Button variant="outline">Open batch trace</Button>
+                        </Link>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="rounded-3xl border border-dashed border-[var(--border)] px-4 py-10 text-center text-sm text-[var(--muted)]">
+                    Ranked leakage alerts appear after watch/high/critical steel batches are recorded.
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle>Responsibility Analytics</CardTitle></CardHeader>
+              <CardContent className="space-y-5">
+                <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
+                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Loss by operator</div>
+                  <div className="mt-3 space-y-3">
+                    {responsibility?.by_operator?.length ? (
+                      responsibility.by_operator.map((row) => (
+                        <div key={row.user_id} className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="font-semibold text-white">{row.name}</div>
+                            <div className="text-xs text-[var(--muted)]">
+                              {row.batch_count} batches / {row.high_risk_batches} high risk / avg loss {formatPercent(row.average_loss_percent)}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-semibold text-white">
+                              {canSeeFinancials ? formatCurrency(row.total_variance_value_inr || 0) : `${formatKg(row.total_variance_kg)} KG`}
+                            </div>
+                            <div className="text-xs text-[var(--muted)]">
+                              {canSeeFinancials ? `${formatKg(row.total_variance_kg)} KG` : `${row.critical_batches} critical batches`}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-[var(--muted)]">Operator responsibility signals appear once batches are recorded.</div>
+                    )}
+                  </div>
                 </div>
+
+                <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
+                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Highest loss days</div>
+                  <div className="mt-3 space-y-3">
+                    {responsibility?.by_day?.length ? (
+                      responsibility.by_day.slice(0, 4).map((row) => (
+                        <div key={row.date} className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="font-semibold text-white">{row.date}</div>
+                            <div className="text-xs text-[var(--muted)]">
+                              {row.batch_count} batches / {row.high_risk_batches} high risk
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-semibold text-white">
+                              {canSeeFinancials ? formatCurrency(row.total_variance_value_inr || 0) : `${formatKg(row.total_variance_kg)} KG`}
+                            </div>
+                            <div className="text-xs text-[var(--muted)]">{formatPercent(row.average_loss_percent)} avg loss</div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-[var(--muted)]">Day-level responsibility trends appear once batches are recorded.</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
+                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Loss by batch</div>
+                  <div className="mt-3 space-y-3">
+                    {responsibility?.by_batch?.length ? (
+                      responsibility.by_batch.slice(0, 4).map((row) => (
+                        <div key={row.id} className="flex items-center justify-between gap-3">
+                          <div>
+                            <div className="font-semibold text-white">{row.batch_code}</div>
+                            <div className="text-xs text-[var(--muted)]">
+                              {row.production_date} / {row.operator_name || "Operator not tagged"}
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="font-semibold text-white">
+                              {canSeeFinancials ? formatCurrency(row.variance_value_inr || 0) : `${formatKg(row.variance_kg)} KG`}
+                            </div>
+                            <div className="text-xs text-[var(--muted)]">
+                              {canSeeFinancials ? `Score ${row.anomaly_score.toFixed(2)}` : formatPercent(row.loss_percent)}
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-[var(--muted)]">Batch responsibility signals appear once batches are recorded.</div>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </section>
+        ) : null}
+
+        {activeTab === "production" ? (
+          <>
+            <section id="production-lane" className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+              <Card>
+                <CardHeader><CardTitle>Record Production Batch</CardTitle></CardHeader>
+                <CardContent className="space-y-3">
+                  {!hasInputMaterials || !hasOutputMaterials ? (
+                    <div className="rounded-2xl border border-amber-400/35 bg-[rgba(245,158,11,0.12)] px-3 py-2 text-xs text-amber-100">
+                      Material setup is incomplete for this factory. Add inventory items first, then record production.
+                      <Button variant="ghost" className="ml-2 px-2 py-1 text-xs" onClick={() => navigateTab("inventory")}>
+                        Open Inventory
+                      </Button>
+                    </div>
+                  ) : null}
+                  <Input value={batchForm.batch_code} onChange={(event) => setBatchForm((current) => ({ ...current, batch_code: event.target.value }))} placeholder="Batch code (optional)" />
+                  <Input type="date" value={batchForm.production_date} onChange={(event) => setBatchForm((current) => ({ ...current, production_date: event.target.value }))} />
+                  <Select value={batchForm.input_item_id} onChange={(event) => setBatchForm((current) => ({ ...current, input_item_id: event.target.value }))}>
+                    <option value="">Input material</option>
+                    {inputItems.map((item) => (
+                      <option key={item.id} value={item.id}>{item.item_code} - {item.name}</option>
+                    ))}
+                  </Select>
+                  <Select value={batchForm.output_item_id} onChange={(event) => setBatchForm((current) => ({ ...current, output_item_id: event.target.value }))}>
+                    <option value="">Output material</option>
+                    {outputItems.map((item) => (
+                      <option key={item.id} value={item.id}>{item.item_code} - {item.name}</option>
+                    ))}
+                  </Select>
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <Input type="number" min="0" step="0.01" value={batchForm.input_quantity_kg} onChange={(event) => setBatchForm((current) => ({ ...current, input_quantity_kg: event.target.value }))} placeholder="Input KG" />
+                    <Input type="number" min="0" step="0.01" value={batchForm.expected_output_kg} onChange={(event) => setBatchForm((current) => ({ ...current, expected_output_kg: event.target.value }))} placeholder="Expected KG" />
+                    <Input type="number" min="0" step="0.01" value={batchForm.actual_output_kg} onChange={(event) => setBatchForm((current) => ({ ...current, actual_output_kg: event.target.value }))} placeholder="Actual KG" />
+                  </div>
+                  <Textarea value={batchForm.notes} onChange={(event) => setBatchForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Heat, operator, or loss notes" />
+                  {productionValidationMessage ? (
+                    <div className="text-xs text-amber-200">{productionValidationMessage}</div>
+                  ) : (
+                    <div className="text-xs text-[var(--muted)]">Ready to post this batch directly to the steel ledger.</div>
+                  )}
+                  <Button
+                    disabled={!canSubmitBatch}
+                    onClick={() =>
+                      runAction(async () => {
+                        if (!batchInputItemId || !batchOutputItemId || !batchInputQuantity || !batchExpectedOutput || !batchActualOutput) {
+                          throw new Error(productionValidationMessage || "Complete all required batch fields.");
+                        }
+                        const batchCodeError = validateIdentifierCode(batchForm.batch_code, "Batch code", 40);
+                        if (batchCodeError) {
+                          throw new Error(batchCodeError);
+                        }
+                        await createSteelBatch({
+                          batch_code: batchForm.batch_code || undefined,
+                          production_date: batchForm.production_date,
+                          input_item_id: batchInputItemId,
+                          output_item_id: batchOutputItemId,
+                          input_quantity_kg: batchInputQuantity,
+                          expected_output_kg: batchExpectedOutput,
+                          actual_output_kg: batchActualOutput,
+                          notes: batchForm.notes || undefined,
+                        });
+                        setBatchForm({
+                          batch_code: "",
+                          production_date: todayValue(),
+                          input_item_id: "",
+                          output_item_id: "",
+                          input_quantity_kg: "",
+                          expected_output_kg: "",
+                          actual_output_kg: "",
+                          notes: "",
+                        });
+                      }, "Steel batch recorded and posted to the ledger.")
+                    }
+                  >
+                    {canRecordBatch ? "Record Batch" : "Manager access required"}
+                  </Button>
+                </CardContent>
+              </Card>
+              <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
+                <CardHeader>
+                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">Production Snapshot</div>
+                  <CardTitle className="text-xl">Latest batch signals</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3 text-sm text-[var(--muted)]">
+                  <div>{overview?.batch_metrics.total_batches || 0} batches recorded in the active steel context.</div>
+                  <div>Average loss is currently {formatPercent(overview?.batch_metrics.average_loss_percent || 0)}.</div>
+                  <div>{overview?.batch_metrics.high_severity_batches || 0} high severity batches need follow-up.</div>
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Link href="/steel/reconciliations">
+                      <Button variant="outline">Open Reconciliations</Button>
+                    </Link>
+                    <Button variant="ghost" onClick={() => navigateTab("risk")}>Open Risk Lane</Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
+            <Card>
+              <CardHeader><CardTitle>Recent Batches and Variance Signals</CardTitle></CardHeader>
+              <CardContent>
                 <ResponsiveScrollArea
                   className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]"
-                  debugLabel="steel-command-center-batches"
+                  debugLabel="steel-command-center-ledger"
                 >
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">
-                        <th className="px-3 py-3 font-medium">Item</th>
-                        <th className="px-3 py-3 font-medium">Zone</th>
-                        <th className="px-3 py-3 font-medium">KG</th>
-                        <th className="px-3 py-3 font-medium">TON</th>
-                        <th className="px-3 py-3 font-medium">Last Variance</th>
-                        <th className="px-3 py-3 font-medium">Confidence</th>
+                        <th className="px-3 py-3 font-medium">Batch</th>
+                        <th className="px-3 py-3 font-medium">Expected</th>
+                        <th className="px-3 py-3 font-medium">Actual</th>
+                        <th className="px-3 py-3 font-medium">Variance</th>
+                        <th className="px-3 py-3 font-medium">Severity</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {stock.map((row) => (
-                        <tr key={row.item_id} className="border-b border-[var(--border)]/60 last:border-none">
+                      {batches.map((batch) => (
+                        <tr key={batch.id} className="border-b border-[var(--border)]/60 last:border-none">
                           <td className="px-3 py-3">
-                            <div className="font-semibold text-white">{row.name}</div>
-                            <div className="text-xs text-[var(--muted)]">{row.item_code} / {row.category.replace("_", " ")}</div>
+                            <div className="font-semibold text-white">{batch.batch_code}</div>
+                            <div className="text-xs text-[var(--muted)]">{batch.production_date}</div>
                           </td>
+                          <td className="px-3 py-3">{formatKg(batch.expected_output_kg)} KG</td>
+                          <td className="px-3 py-3">{formatKg(batch.actual_output_kg)} KG</td>
                           <td className="px-3 py-3">
-                            <div className="font-medium text-white">{deriveOperationalZone(row.category)}</div>
-                            <div className="text-xs text-[var(--muted)]">Derived from material stage</div>
-                          </td>
-                          <td className="px-3 py-3">{formatKg(row.stock_balance_kg)}</td>
-                          <td className="px-3 py-3">{formatKg(row.stock_balance_ton)}</td>
-                          <td className="px-3 py-3">
-                            <div className="font-medium text-white">
-                              {row.last_variance_kg != null ? `${formatKg(row.last_variance_kg)} KG` : "No count yet"}
-                            </div>
+                            <div>{formatKg(batch.variance_kg)} KG</div>
                             <div className="text-xs text-[var(--muted)]">
-                              {row.last_variance_percent != null ? formatPercent(row.last_variance_percent) : "Variance pending"}
+                              {canSeeFinancials ? formatCurrency(batch.variance_value_inr || 0) : formatPercent(batch.variance_percent)}
                             </div>
                           </td>
                           <td className="px-3 py-3">
-                            <span className={`inline-flex rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${badgeTone(row.confidence_status)}`}>
-                              {row.confidence_status}
+                            <span className={`inline-flex rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${badgeTone(batch.severity)}`}>
+                              {batch.severity}
                             </span>
-                            <div className="mt-2 max-w-[18rem] text-xs text-[var(--muted)]">{row.confidence_reason}</div>
+                            <div className="mt-2">
+                              <Link href={`/steel/batches/${batch.id}`} className="text-xs font-medium text-[var(--accent)] hover:underline">
+                                Open traceability
+                              </Link>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -833,581 +1410,7 @@ export function SteelCommandCenterPage() {
                 </ResponsiveScrollArea>
               </CardContent>
             </Card>
-
-            <div className="grid gap-6 lg:grid-cols-2">
-              <Card>
-                <CardHeader><CardTitle>Add Steel Material</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
-                  <Input value={itemForm.item_code} onChange={(event) => setItemForm((current) => ({ ...current, item_code: event.target.value }))} placeholder="Item code" />
-                  <Input value={itemForm.name} onChange={(event) => setItemForm((current) => ({ ...current, name: event.target.value }))} placeholder="Item name" />
-                  <Select value={itemForm.category} onChange={(event) => setItemForm((current) => ({ ...current, category: event.target.value }))}>
-                    <option value="raw_material">Raw Material</option>
-                    <option value="wip">WIP</option>
-                    <option value="finished_goods">Finished Goods</option>
-                  </Select>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Select value={itemForm.display_unit} onChange={(event) => setItemForm((current) => ({ ...current, display_unit: event.target.value }))}>
-                      <option value="kg">KG</option>
-                      <option value="ton">TON</option>
-                    </Select>
-                    <Input type="number" min="0" step="0.01" value={itemForm.current_rate_per_kg} onChange={(event) => setItemForm((current) => ({ ...current, current_rate_per_kg: event.target.value }))} placeholder="Rate / KG" />
-                  </div>
-                  <Button
-                    disabled={busy || !canManage}
-                    onClick={() =>
-                      runAction(async () => {
-                        const itemCodeError = validateIdentifierCode(itemForm.item_code, "Item code", 40);
-                        if (itemCodeError) {
-                          throw new Error(itemCodeError);
-                        }
-                        await createSteelItem({
-                          item_code: itemForm.item_code,
-                          name: itemForm.name,
-                          category: itemForm.category,
-                          display_unit: itemForm.display_unit,
-                          current_rate_per_kg: itemForm.current_rate_per_kg ? Number(itemForm.current_rate_per_kg) : undefined,
-                        });
-                        setItemForm({ item_code: "", name: "", category: "raw_material", display_unit: "kg", current_rate_per_kg: "" });
-                      }, "Steel inventory item created.")
-                    }
-                  >
-                    {canManage ? "Create Item" : "Manager access required"}
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader><CardTitle>Ledger Movement</CardTitle></CardHeader>
-                <CardContent className="space-y-3">
-                  <Select value={moveForm.item_id} onChange={(event) => setMoveForm((current) => ({ ...current, item_id: event.target.value }))}>
-                    <option value="">Select item</option>
-                    {items.map((item) => (
-                      <option key={item.id} value={item.id}>{item.item_code} - {item.name}</option>
-                    ))}
-                  </Select>
-                  <Select value={moveForm.transaction_type} onChange={(event) => setMoveForm((current) => ({ ...current, transaction_type: event.target.value }))}>
-                    <option value="inward">Raw inward</option>
-                    <option value="dispatch_out">Dispatch out</option>
-                    <option value="adjustment">Adjustment</option>
-                  </Select>
-                  {moveForm.transaction_type === "adjustment" ? (
-                    <Select value={moveForm.direction} onChange={(event) => setMoveForm((current) => ({ ...current, direction: event.target.value }))}>
-                      <option value="increase">Increase</option>
-                      <option value="decrease">Decrease</option>
-                    </Select>
-                  ) : null}
-                  <Input type="number" min="0" step="0.01" value={moveForm.quantity_kg} onChange={(event) => setMoveForm((current) => ({ ...current, quantity_kg: event.target.value }))} placeholder="Quantity KG" />
-                  <Textarea value={moveForm.notes} onChange={(event) => setMoveForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Movement reason" />
-                  <Button
-                    disabled={busy || !canManage}
-                    onClick={() =>
-                      runAction(async () => {
-                        await createSteelTransaction({
-                          item_id: Number(moveForm.item_id),
-                          transaction_type: moveForm.transaction_type,
-                          quantity_kg: Number(moveForm.quantity_kg),
-                          direction: moveForm.transaction_type === "adjustment" ? moveForm.direction : undefined,
-                          notes: moveForm.notes || undefined,
-                        });
-                        setMoveForm({ item_id: "", transaction_type: "inward", quantity_kg: "", direction: "increase", notes: "" });
-                      }, "Ledger transaction recorded.")
-                    }
-                  >
-                    {canManage ? "Record Movement" : "Manager access required"}
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-
-          <div className="space-y-6">
-            {canSeeFinancials ? (
-            <Card>
-              <CardHeader><CardTitle>Owner Control Board</CardTitle></CardHeader>
-              <CardContent className="space-y-4 text-sm">
-                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Top loss batch</div>
-                  {overview?.top_loss_batch ? (
-                    <div className="mt-3 space-y-2">
-                      <div className="text-lg font-semibold text-white">{overview.top_loss_batch.batch_code}</div>
-                      <div className={`inline-flex rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${badgeTone(overview.top_loss_batch.severity)}`}>
-                        {overview.top_loss_batch.severity}
-                      </div>
-                      <div className="text-[var(--muted)]">
-                        Variance {formatKg(overview.top_loss_batch.variance_kg)} KG / {formatCurrency(overview.top_loss_batch.variance_value_inr)}
-                      </div>
-                      <div className="text-[var(--muted)]">
-                        Estimated gross profit {formatCurrency(overview.top_loss_batch.estimated_gross_profit_inr)}
-                      </div>
-                      <Link href={`/steel/batches/${overview.top_loss_batch.id}`}>
-                        <Button variant="outline">Open Trace</Button>
-                      </Link>
-                    </div>
-                  ) : (
-                    <div className="mt-3 text-[var(--muted)]">No batch data yet.</div>
-                  )}
-                </div>
-                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Highest risk operator</div>
-                  <div className="mt-3 space-y-2">
-                    {highestRiskOperator ? (
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between gap-3">
-                          <div>
-                            <div className="font-semibold text-white">{highestRiskOperator.name}</div>
-                            <div className="text-xs text-[var(--muted)]">
-                              {highestRiskOperator.batch_count} batches / {highestRiskOperator.high_risk_batches} high risk
-                            </div>
-                          </div>
-                          <div className="text-right text-white">
-                            {formatCurrency(highestRiskOperator.total_variance_value_inr)}
-                          </div>
-                        </div>
-                        <div className="text-xs text-[var(--muted)]">
-                          {formatKg(highestRiskOperator.total_variance_kg)} KG at {formatPercent(highestRiskOperator.average_loss_percent)} avg loss.
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-[var(--muted)]">Operator-level loss signals appear once batches are recorded.</div>
-                    )}
-                  </div>
-                </div>
-                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Highest loss day</div>
-                  {highestLossDay ? (
-                    <div className="mt-3 space-y-2">
-                      <div className="text-lg font-semibold text-white">{highestLossDay.date}</div>
-                      <div className="text-[var(--muted)]">
-                        {formatCurrency(highestLossDay.total_variance_value_inr)} / {formatKg(highestLossDay.total_variance_kg)} KG
-                      </div>
-                      <div className="text-xs text-[var(--muted)]">
-                        {highestLossDay.batch_count} batches / {highestLossDay.high_risk_batches} high-risk / avg loss {formatPercent(highestLossDay.average_loss_percent)}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mt-3 text-[var(--muted)]">Daily responsibility trends appear once batches are recorded.</div>
-                  )}
-                </div>
-                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Best gross-profit batch</div>
-                  {bestProfitBatch ? (
-                    <div className="mt-3 space-y-2">
-                      <div className="text-lg font-semibold text-white">{bestProfitBatch.batch_code}</div>
-                      <div className="text-[var(--muted)]">
-                        {formatCurrency(bestProfitBatch.estimated_gross_profit_inr)} / {formatCurrency(bestProfitBatch.estimated_output_value_inr)} output
-                      </div>
-                      <div className="text-xs text-[var(--muted)]">
-                        {formatKg(bestProfitBatch.actual_output_kg)} KG actual / profit per KG {formatCurrency(bestProfitBatch.profit_per_kg_inr)}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="mt-3 text-[var(--muted)]">Profit visibility appears once output and rates are recorded.</div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-            ) : null}
-
-            <Card>
-              <CardHeader><CardTitle>Stock Reconciliation</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4 text-sm">
-                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Operational zones</div>
-                  <div className="mt-3 grid gap-3">
-                    {Object.entries(inventoryZones).map(([zone, quantity]) => (
-                      <div key={zone} className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-3 py-3">
-                        <div>
-                          <div className="font-semibold text-white">{zone}</div>
-                          <div className="text-xs text-[var(--muted)]">Derived from material category until exact yard/bin tracking is modeled.</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-semibold text-white">{formatKg(quantity)} KG</div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <Select value={reconcileForm.item_id} onChange={(event) => setReconcileForm((current) => ({ ...current, item_id: event.target.value }))}>
-                  <option value="">Select item</option>
-                  {stock.map((item) => (
-                    <option key={item.item_id} value={item.item_id}>{item.item_code} - {item.name}</option>
-                  ))}
-                </Select>
-                <Input type="number" min="0" step="0.01" value={reconcileForm.physical_qty_kg} onChange={(event) => setReconcileForm((current) => ({ ...current, physical_qty_kg: event.target.value }))} placeholder="Physical KG" />
-                <Select
-                  value={reconcileForm.mismatch_cause}
-                  onChange={(event) => setReconcileForm((current) => ({ ...current, mismatch_cause: event.target.value }))}
-                >
-                  <option value="">Mismatch root cause</option>
-                  {STEEL_MISMATCH_CAUSE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>{option.label}</option>
-                  ))}
-                </Select>
-                <Textarea value={reconcileForm.notes} onChange={(event) => setReconcileForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Count notes" />
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Mismatch preview</div>
-                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <div className="text-[var(--muted)]">System stock</div>
-                      <div className="mt-1 font-semibold text-white">{formatKg(reconcileSystemQty)} KG</div>
-                    </div>
-                    <div>
-                      <div className="text-[var(--muted)]">Operational zone</div>
-                      <div className="mt-1 font-semibold text-white">{selectedReconcileItem ? deriveOperationalZone(selectedReconcileItem.category) : "Select item first"}</div>
-                    </div>
-                    <div>
-                      <div className="text-[var(--muted)]">Physical stock</div>
-                      <div className="mt-1 font-semibold text-white">{formatKg(reconcilePhysicalQty || 0)} KG</div>
-                    </div>
-                    <div>
-                      <div className="text-[var(--muted)]">Variance</div>
-                      <div className="mt-1 font-semibold text-white">
-                        {formatKg(reconcileVarianceKg)} KG / {formatPercent(reconcileVariancePercent)}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-3 text-xs text-[var(--muted)]">
-                    {reconcileNeedsCause
-                      ? `Root cause required before saving. Current tag: ${formatMismatchCause(reconcileForm.mismatch_cause || null)}.`
-                      : "No mismatch detected. Cause can stay blank for matched stock."}
-                  </div>
-                </div>
-                {reconciliationValidationMessage ? (
-                  <div className="text-xs text-amber-200">{reconciliationValidationMessage}</div>
-                ) : (
-                  <div className="text-xs text-[var(--muted)]">Ready to save this reconciliation into the stock review loop.</div>
-                )}
-                <Button
-                  disabled={busy || !canManage || Boolean(reconciliationValidationMessage)}
-                  onClick={() =>
-                    runAction(async () => {
-                      await reconcileSteelStock({
-                        item_id: Number(reconcileForm.item_id),
-                        physical_qty_kg: Number(reconcilePhysicalQty),
-                        notes: reconcileForm.notes || undefined,
-                        mismatch_cause: (reconcileForm.mismatch_cause || undefined) as SteelStockMismatchCause | undefined,
-                      });
-                      setReconcileForm({ item_id: "", physical_qty_kg: "", notes: "", mismatch_cause: "" });
-                    }, "Stock reconciliation saved.")
-                  }
-                >
-                  {canManage ? "Save Reconciliation" : "Manager access required"}
-                </Button>
-              </CardContent>
-            </Card>
-
-          </div>
-        </section>
-        ) : null}
-
-        {activeTab === "risk" ? (
-        <section id="risk-lane" className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <Card>
-            <CardHeader><CardTitle>Leakage Alert Ladder</CardTitle></CardHeader>
-            <CardContent className="space-y-4">
-              {rankedAnomalies.length ? (
-                rankedAnomalies.map((entry) => (
-                  <div key={entry.batch.id} className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Rank #{entry.rank}</div>
-                        <div className="mt-1 text-lg font-semibold text-white">{entry.batch.batch_code}</div>
-                        <div className="mt-1 text-xs text-[var(--muted)]">
-                          {entry.batch.production_date} / {entry.batch.operator_name || "Operator not tagged"}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <div className={`inline-flex rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${badgeTone(entry.batch.severity)}`}>
-                          {entry.batch.severity}
-                        </div>
-                        <div className="mt-2 text-sm font-semibold text-white">Score {entry.anomaly_score.toFixed(2)}</div>
-                      </div>
-                    </div>
-                    <div className="mt-3 grid gap-3 md:grid-cols-3">
-                      <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
-                        <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Variance</div>
-                        <div className="mt-1 text-sm font-semibold text-white">{formatKg(entry.batch.variance_kg)} KG</div>
-                        <div className="text-xs text-[var(--muted)]">{formatPercent(entry.batch.variance_percent)}</div>
-                      </div>
-                      {canSeeFinancials ? (
-                        <>
-                          <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
-                            <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Leakage Value</div>
-                            <div className="mt-1 text-sm font-semibold text-white">{formatCurrency(entry.estimated_leakage_value_inr || 0)}</div>
-                            <div className="text-xs text-[var(--muted)]">Potential margin erosion</div>
-                          </div>
-                          <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
-                            <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Gross Profit</div>
-                            <div className="mt-1 text-sm font-semibold text-white">{formatCurrency(entry.batch.estimated_gross_profit_inr || 0)}</div>
-                            <div className="text-xs text-[var(--muted)]">Profit after input cost snapshot</div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
-                            <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Loss</div>
-                            <div className="mt-1 text-sm font-semibold text-white">{formatPercent(entry.batch.loss_percent)}</div>
-                            <div className="text-xs text-[var(--muted)]">Operational deviation</div>
-                          </div>
-                          <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
-                            <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Signal</div>
-                            <div className="mt-1 text-sm font-semibold text-white">{entry.batch.severity}</div>
-                            <div className="text-xs text-[var(--muted)]">Investigate process drift</div>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                      <div className="max-w-2xl text-sm text-[var(--muted)]">{entry.reason}</div>
-                      <Link href={`/steel/batches/${entry.batch.id}`}>
-                        <Button variant="outline">Open batch trace</Button>
-                      </Link>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-3xl border border-dashed border-[var(--border)] px-4 py-10 text-center text-sm text-[var(--muted)]">
-                  Ranked leakage alerts appear after watch/high/critical steel batches are recorded.
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader><CardTitle>Responsibility Analytics</CardTitle></CardHeader>
-            <CardContent className="space-y-5">
-              <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Loss by operator</div>
-                <div className="mt-3 space-y-3">
-                  {responsibility?.by_operator?.length ? (
-                    responsibility.by_operator.map((row) => (
-                      <div key={row.user_id} className="flex items-center justify-between gap-3">
-                        <div>
-                          <div className="font-semibold text-white">{row.name}</div>
-                          <div className="text-xs text-[var(--muted)]">
-                            {row.batch_count} batches / {row.high_risk_batches} high risk / avg loss {formatPercent(row.average_loss_percent)}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-semibold text-white">
-                            {canSeeFinancials ? formatCurrency(row.total_variance_value_inr || 0) : `${formatKg(row.total_variance_kg)} KG`}
-                          </div>
-                          <div className="text-xs text-[var(--muted)]">
-                            {canSeeFinancials ? `${formatKg(row.total_variance_kg)} KG` : `${row.critical_batches} critical batches`}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-sm text-[var(--muted)]">Operator responsibility signals appear once batches are recorded.</div>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Highest loss days</div>
-                <div className="mt-3 space-y-3">
-                  {responsibility?.by_day?.length ? (
-                    responsibility.by_day.slice(0, 4).map((row) => (
-                      <div key={row.date} className="flex items-center justify-between gap-3">
-                        <div>
-                          <div className="font-semibold text-white">{row.date}</div>
-                          <div className="text-xs text-[var(--muted)]">
-                            {row.batch_count} batches / {row.high_risk_batches} high risk
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-semibold text-white">
-                            {canSeeFinancials ? formatCurrency(row.total_variance_value_inr || 0) : `${formatKg(row.total_variance_kg)} KG`}
-                          </div>
-                          <div className="text-xs text-[var(--muted)]">{formatPercent(row.average_loss_percent)} avg loss</div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-sm text-[var(--muted)]">Day-level responsibility trends appear once batches are recorded.</div>
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Loss by batch</div>
-                <div className="mt-3 space-y-3">
-                  {responsibility?.by_batch?.length ? (
-                    responsibility.by_batch.slice(0, 4).map((row) => (
-                      <div key={row.id} className="flex items-center justify-between gap-3">
-                        <div>
-                          <div className="font-semibold text-white">{row.batch_code}</div>
-                          <div className="text-xs text-[var(--muted)]">
-                            {row.production_date} / {row.operator_name || "Operator not tagged"}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="font-semibold text-white">
-                            {canSeeFinancials ? formatCurrency(row.variance_value_inr || 0) : `${formatKg(row.variance_kg)} KG`}
-                          </div>
-                          <div className="text-xs text-[var(--muted)]">
-                            {canSeeFinancials ? `Score ${row.anomaly_score.toFixed(2)}` : formatPercent(row.loss_percent)}
-                          </div>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="text-sm text-[var(--muted)]">Batch responsibility signals appear once batches are recorded.</div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-        ) : null}
-
-        {activeTab === "production" ? (
-        <>
-          <section id="production-lane" className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-            <Card>
-              <CardHeader><CardTitle>Record Production Batch</CardTitle></CardHeader>
-              <CardContent className="space-y-3">
-                {!hasInputMaterials || !hasOutputMaterials ? (
-                  <div className="rounded-2xl border border-amber-400/35 bg-[rgba(245,158,11,0.12)] px-3 py-2 text-xs text-amber-100">
-                    Material setup is incomplete for this factory. Add inventory items first, then record production.
-                    <Button variant="ghost" className="ml-2 px-2 py-1 text-xs" onClick={() => navigateTab("inventory")}>
-                      Open Inventory
-                    </Button>
-                  </div>
-                ) : null}
-                <Input value={batchForm.batch_code} onChange={(event) => setBatchForm((current) => ({ ...current, batch_code: event.target.value }))} placeholder="Batch code (optional)" />
-                <Input type="date" value={batchForm.production_date} onChange={(event) => setBatchForm((current) => ({ ...current, production_date: event.target.value }))} />
-                <Select value={batchForm.input_item_id} onChange={(event) => setBatchForm((current) => ({ ...current, input_item_id: event.target.value }))}>
-                  <option value="">Input material</option>
-                  {inputItems.map((item) => (
-                    <option key={item.id} value={item.id}>{item.item_code} - {item.name}</option>
-                  ))}
-                </Select>
-                <Select value={batchForm.output_item_id} onChange={(event) => setBatchForm((current) => ({ ...current, output_item_id: event.target.value }))}>
-                  <option value="">Output material</option>
-                  {outputItems.map((item) => (
-                    <option key={item.id} value={item.id}>{item.item_code} - {item.name}</option>
-                  ))}
-                </Select>
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <Input type="number" min="0" step="0.01" value={batchForm.input_quantity_kg} onChange={(event) => setBatchForm((current) => ({ ...current, input_quantity_kg: event.target.value }))} placeholder="Input KG" />
-                  <Input type="number" min="0" step="0.01" value={batchForm.expected_output_kg} onChange={(event) => setBatchForm((current) => ({ ...current, expected_output_kg: event.target.value }))} placeholder="Expected KG" />
-                  <Input type="number" min="0" step="0.01" value={batchForm.actual_output_kg} onChange={(event) => setBatchForm((current) => ({ ...current, actual_output_kg: event.target.value }))} placeholder="Actual KG" />
-                </div>
-                <Textarea value={batchForm.notes} onChange={(event) => setBatchForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Heat, operator, or loss notes" />
-                {productionValidationMessage ? (
-                  <div className="text-xs text-amber-200">{productionValidationMessage}</div>
-                ) : (
-                  <div className="text-xs text-[var(--muted)]">Ready to post this batch directly to the steel ledger.</div>
-                )}
-                <Button
-                  disabled={!canSubmitBatch}
-                  onClick={() =>
-                    runAction(async () => {
-                      if (!batchInputItemId || !batchOutputItemId || !batchInputQuantity || !batchExpectedOutput || !batchActualOutput) {
-                        throw new Error(productionValidationMessage || "Complete all required batch fields.");
-                      }
-                      const batchCodeError = validateIdentifierCode(batchForm.batch_code, "Batch code", 40);
-                      if (batchCodeError) {
-                        throw new Error(batchCodeError);
-                      }
-                      await createSteelBatch({
-                        batch_code: batchForm.batch_code || undefined,
-                        production_date: batchForm.production_date,
-                        input_item_id: batchInputItemId,
-                        output_item_id: batchOutputItemId,
-                        input_quantity_kg: batchInputQuantity,
-                        expected_output_kg: batchExpectedOutput,
-                        actual_output_kg: batchActualOutput,
-                        notes: batchForm.notes || undefined,
-                      });
-                      setBatchForm({
-                        batch_code: "",
-                        production_date: todayValue(),
-                        input_item_id: "",
-                        output_item_id: "",
-                        input_quantity_kg: "",
-                        expected_output_kg: "",
-                        actual_output_kg: "",
-                        notes: "",
-                      });
-                    }, "Steel batch recorded and posted to the ledger.")
-                  }
-                >
-                  {canRecordBatch ? "Record Batch" : "Manager access required"}
-                </Button>
-              </CardContent>
-            </Card>
-            <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
-              <CardHeader>
-                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">Production Snapshot</div>
-                <CardTitle className="text-xl">Latest batch signals</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-                <div>{overview?.batch_metrics.total_batches || 0} batches recorded in the active steel context.</div>
-                <div>Average loss is currently {formatPercent(overview?.batch_metrics.average_loss_percent || 0)}.</div>
-                <div>{overview?.batch_metrics.high_severity_batches || 0} high severity batches need follow-up.</div>
-                <div className="flex flex-wrap gap-2 pt-1">
-                  <Link href="/steel/reconciliations">
-                    <Button variant="outline">Open Reconciliations</Button>
-                  </Link>
-                  <Button variant="ghost" onClick={() => navigateTab("risk")}>Open Risk Lane</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-
-          <Card>
-            <CardHeader><CardTitle>Recent Batches and Variance Signals</CardTitle></CardHeader>
-            <CardContent>
-              <ResponsiveScrollArea
-                className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]"
-                debugLabel="steel-command-center-ledger"
-              >
-                <table className="min-w-full text-left text-sm">
-                  <thead className="text-[var(--muted)]">
-                    <tr className="border-b border-[var(--border)]">
-                      <th className="px-3 py-3 font-medium">Batch</th>
-                      <th className="px-3 py-3 font-medium">Expected</th>
-                      <th className="px-3 py-3 font-medium">Actual</th>
-                      <th className="px-3 py-3 font-medium">Variance</th>
-                      <th className="px-3 py-3 font-medium">Severity</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {batches.map((batch) => (
-                      <tr key={batch.id} className="border-b border-[var(--border)]/60 last:border-none">
-                        <td className="px-3 py-3">
-                          <div className="font-semibold text-white">{batch.batch_code}</div>
-                          <div className="text-xs text-[var(--muted)]">{batch.production_date}</div>
-                        </td>
-                        <td className="px-3 py-3">{formatKg(batch.expected_output_kg)} KG</td>
-                        <td className="px-3 py-3">{formatKg(batch.actual_output_kg)} KG</td>
-                        <td className="px-3 py-3">
-                          <div>{formatKg(batch.variance_kg)} KG</div>
-                          <div className="text-xs text-[var(--muted)]">
-                            {canSeeFinancials ? formatCurrency(batch.variance_value_inr || 0) : formatPercent(batch.variance_percent)}
-                          </div>
-                        </td>
-                        <td className="px-3 py-3">
-                          <span className={`inline-flex rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${badgeTone(batch.severity)}`}>
-                            {batch.severity}
-                          </span>
-                          <div className="mt-2">
-                            <Link href={`/steel/batches/${batch.id}`} className="text-xs font-medium text-[var(--accent)] hover:underline">
-                              Open traceability
-                            </Link>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </ResponsiveScrollArea>
-            </CardContent>
-          </Card>
-        </>
+          </>
         ) : null}
 
         {status ? <div className="text-sm text-green-400">{status}</div> : null}

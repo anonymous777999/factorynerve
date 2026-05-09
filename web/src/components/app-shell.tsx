@@ -44,7 +44,7 @@ const DOCUMENT_CAPTURE_ROLES = ["operator"] as const;
 const STEEL_CONTROL_ROLES = ["manager"] as const;
 const STEEL_CHART_ROLES = ["manager", "owner"] as const;
 const STEEL_COMMERCIAL_ROLES = ["accountant", "manager"] as const;
-const DISPATCH_WORK_ROLES = ["manager"] as const;
+const DISPATCH_WORK_ROLES = ["supervisor", "manager"] as const;
 const ATTENDANCE_REVIEW_NAV_ROLES = ["supervisor"] as const;
 const REVIEW_QUEUE_NAV_ROLES = ["supervisor", "manager", "admin"] as const;
 const OCR_VERIFY_NAV_ROLES = ["supervisor"] as const;
@@ -583,13 +583,20 @@ function localizedItemText(item: NavItem, translate?: TranslateFn) {
 
 function roleLabel(role?: string | null, translate?: TranslateFn) {
   if (!role) return translate ? translate("role.team_member", "Team member") : "Team member";
-  if (role.toLowerCase() === "attendance") {
+  const normalized = role.toLowerCase();
+  if (normalized === "attendance") {
     return translate ? translate("role.attendance", "Attendance user") : "Attendance user";
+  }
+  if (normalized === "supervisor") {
+    return translate ? translate("role.supervisor", "Shift Lead") : "Shift Lead";
+  }
+  if (normalized === "manager") {
+    return translate ? translate("role.manager", "Plant Manager") : "Plant Manager";
   }
   if (!translate) {
     return role.charAt(0).toUpperCase() + role.slice(1);
   }
-  return translate(`role.${role.toLowerCase()}`, role.charAt(0).toUpperCase() + role.slice(1));
+  return translate(`role.${normalized}`, role.charAt(0).toUpperCase() + role.slice(1));
 }
 
 function getVisibleNavSections(role?: string | null, industryType?: string | null) {
@@ -964,63 +971,63 @@ function NavContent({
                 const translatedItem = localizedItemText(item, translate);
                 return (
                   <div key={item.href} className="group/navitem flex items-center gap-2">
-                  <Link
-                    href={item.href}
-                    prefetch
-                    className={cn(navLinkClasses(active), "min-w-0 flex-1")}
-                    aria-current={active ? "page" : undefined}
-                    onMouseEnter={() => onWarm(item.href)}
-                    onFocus={() => onWarm(item.href)}
-                    onClick={onNavigate}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={cn(
-                          "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition",
-                          active
-                            ? "border-[rgba(62,166,255,0.34)] bg-[rgba(62,166,255,0.16)]"
-                            : "border-[var(--border)] bg-[rgba(8,12,20,0.56)]",
-                        )}
-                      >
-                        <NavIcon href={item.href} active={active} />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div
-                            className={cn(
-                              "text-sm font-semibold",
-                              active ? "text-[var(--text)]" : "text-[var(--text)]/90",
-                            )}
-                          >
-                            {translatedItem.label}
-                          </div>
-                          {item.badgeKey && badgeCounts[item.badgeKey] > 0 ? (
-                            <div className="inline-flex rounded-full border border-[rgba(62,166,255,0.28)] bg-[rgba(62,166,255,0.12)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text)]">
-                              {formatBadgeCount(badgeCounts[item.badgeKey])}
-                            </div>
-                          ) : null}
-                        </div>
-                        {/* AUDIT: TEXT_NOISE — The sidebar now stays label-first and leaves route explanation to the workspace rail instead of repeating it under each active item. */}
-                      </div>
-                    </div>
-                  </Link>
-                  {onToggleFavorite ? (
-                    <button
-                      type="button"
-                      aria-label={favorited ? `Unpin ${translatedItem.label}` : `Pin ${translatedItem.label}`}
-                      aria-pressed={favorited}
-                      className={cn(
-                        "ui-no-select ui-no-callout mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition",
-                        favorited
-                          ? "border-[rgba(255,218,102,0.3)] bg-[rgba(255,218,102,0.12)] text-amber-200 opacity-100"
-                          : "border-[var(--border)] bg-[rgba(8,12,20,0.56)] text-[var(--muted)] opacity-0 group-hover/navitem:opacity-100 group-focus-within/navitem:opacity-100 hover:border-[rgba(62,166,255,0.28)] hover:text-[var(--text)]",
-                      )}
-                      onClick={() => onToggleFavorite(item.href)}
+                    <Link
+                      href={item.href}
+                      prefetch
+                      className={cn(navLinkClasses(active), "min-w-0 flex-1")}
+                      aria-current={active ? "page" : undefined}
+                      onMouseEnter={() => onWarm(item.href)}
+                      onFocus={() => onWarm(item.href)}
+                      onClick={onNavigate}
                     >
-                      <FavoriteIcon filled={favorited} />
-                    </button>
-                  ) : null}
-                </div>
+                      <div className="flex items-start gap-3">
+                        <div
+                          className={cn(
+                            "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition",
+                            active
+                              ? "border-[rgba(62,166,255,0.34)] bg-[rgba(62,166,255,0.16)]"
+                              : "border-[var(--border)] bg-[rgba(8,12,20,0.56)]",
+                          )}
+                        >
+                          <NavIcon href={item.href} active={active} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div
+                              className={cn(
+                                "text-sm font-semibold",
+                                active ? "text-[var(--text)]" : "text-[var(--text)]/90",
+                              )}
+                            >
+                              {translatedItem.label}
+                            </div>
+                            {item.badgeKey && badgeCounts[item.badgeKey] > 0 ? (
+                              <div className="inline-flex rounded-full border border-[rgba(62,166,255,0.28)] bg-[rgba(62,166,255,0.12)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text)]">
+                                {formatBadgeCount(badgeCounts[item.badgeKey])}
+                              </div>
+                            ) : null}
+                          </div>
+                          {/* AUDIT: TEXT_NOISE — The sidebar now stays label-first and leaves route explanation to the workspace rail instead of repeating it under each active item. */}
+                        </div>
+                      </div>
+                    </Link>
+                    {onToggleFavorite ? (
+                      <button
+                        type="button"
+                        aria-label={favorited ? `Unpin ${translatedItem.label}` : `Pin ${translatedItem.label}`}
+                        aria-pressed={favorited}
+                        className={cn(
+                          "ui-no-select ui-no-callout mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition",
+                          favorited
+                            ? "border-[rgba(255,218,102,0.3)] bg-[rgba(255,218,102,0.12)] text-amber-200 opacity-100"
+                            : "border-[var(--border)] bg-[rgba(8,12,20,0.56)] text-[var(--muted)] opacity-0 group-hover/navitem:opacity-100 group-focus-within/navitem:opacity-100 hover:border-[rgba(62,166,255,0.28)] hover:text-[var(--text)]",
+                        )}
+                        onClick={() => onToggleFavorite(item.href)}
+                      >
+                        <FavoriteIcon filled={favorited} />
+                      </button>
+                    ) : null}
+                  </div>
                 );
               })}
             </div>
@@ -1065,15 +1072,15 @@ function DesktopContextRail({
               </div>
               <div className="mt-3 text-lg font-semibold text-[var(--text)]">{currentItem.label}</div>
             </div>
-              <button
-                type="button"
-                aria-label={translate ? translate("shell.hide_workspace", "Hide workspace") : "Hide workspace"}
-                title={translate ? translate("shell.hide_workspace", "Hide workspace") : "Hide workspace"}
-                className="ui-no-select ui-no-callout inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(8,12,20,0.62)] px-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)] hover:bg-[rgba(20,24,36,0.85)]"
-                onClick={onHide}
-              >
-                Hide
-              </button>
+            <button
+              type="button"
+              aria-label={translate ? translate("shell.hide_workspace", "Hide workspace") : "Hide workspace"}
+              title={translate ? translate("shell.hide_workspace", "Hide workspace") : "Hide workspace"}
+              className="ui-no-select ui-no-callout inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(8,12,20,0.62)] px-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)] hover:bg-[rgba(20,24,36,0.85)]"
+              onClick={onHide}
+            >
+              Hide
+            </button>
           </div>
           <div className="mt-2 text-sm leading-6 text-[var(--muted)]">{currentItem.description}</div>
         </div>
@@ -1190,11 +1197,11 @@ function MobileBottomNav({
                   scanAction
                     ? "mb-1 h-14 w-14 -translate-y-4 rounded-[1.35rem] bg-[linear-gradient(135deg,#22d3ee,#60a5fa)] text-[#08101D] shadow-[0_18px_36px_rgba(34,211,238,0.28)]"
                     : cn(
-                        "h-10 w-10 rounded-2xl border",
-                        active
-                          ? "border-[rgba(62,166,255,0.34)] bg-[rgba(62,166,255,0.14)]"
-                          : "border-[var(--border)] bg-[rgba(20,24,36,0.86)]",
-                      ),
+                      "h-10 w-10 rounded-2xl border",
+                      active
+                        ? "border-[rgba(62,166,255,0.34)] bg-[rgba(62,166,255,0.14)]"
+                        : "border-[var(--border)] bg-[rgba(20,24,36,0.86)]",
+                    ),
                 )}
               >
                 <NavIcon href={item.href} active={scanAction || active} />
@@ -1326,7 +1333,7 @@ function AppShellFrame({
       }
       next.push(item);
     });
-      return next.slice(0, 3);
+    return next.slice(0, 3);
   }, [pathname, resolvedRole, visibleNavMap]);
   const resolvedExpandedSections = useMemo(() => {
     const next: Record<string, boolean> = {};

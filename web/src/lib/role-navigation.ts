@@ -51,7 +51,7 @@ export function getRolePrimaryHrefs(role?: string | null) {
     case "operator":
       return ["/dashboard", "/work-queue", "/entry", "/ocr/scan", "/attendance"];
     case "supervisor":
-      return ["/approvals", "/work-queue", "/ocr/verify", "/attendance/review", "/steel/reconciliations", "/reports"];
+      return ["/approvals", "/work-queue", "/ocr/verify", "/attendance/review", "/steel/reconciliations", "/steel/dispatches", "/reports"];
     case "accountant":
       return ["/reports", "/attendance/reports", "/email-summary", "/steel/customers", "/steel/invoices"];
     case "manager":
@@ -72,7 +72,7 @@ export function getRoleDefaultFavoriteHrefs(role?: string | null) {
     case "operator":
       return ["/dashboard", "/entry", "/ocr/scan", "/attendance", "/work-queue"];
     case "supervisor":
-      return ["/approvals", "/ocr/verify", "/attendance/review", "/reports", "/steel/reconciliations"];
+      return ["/approvals", "/ocr/verify", "/attendance/review", "/steel/dispatches", "/steel/reconciliations", "/reports"];
     case "accountant":
       return ["/reports", "/attendance/reports", "/email-summary", "/steel/customers", "/steel/invoices"];
     case "manager":
@@ -93,7 +93,7 @@ export function getRoleMobileNavHrefs(role?: string | null) {
     case "operator":
       return ["/dashboard", "/work-queue", "/ocr/scan", "/entry", "/attendance"];
     case "supervisor":
-      return ["/approvals", "/work-queue", "/ocr/verify", "/steel/reconciliations", "/reports"];
+      return ["/approvals", "/work-queue", "/ocr/verify", "/steel/dispatches", "/steel/reconciliations", "/reports"];
     case "accountant":
       return ["/reports", "/attendance/reports", "/email-summary", "/steel/customers", "/profile"];
     case "manager":
