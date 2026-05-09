@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,7 @@ function dispatchStatusBadgeClass(status: SteelDispatchStatus) {
 }
 
 export function SteelDispatchesPage() {
+  const router = useRouter();
   const { user, activeFactory, loading, error: sessionError } = useSession();
   const [invoices, setInvoices] = useState<SteelInvoice[]>([]);
   const [dispatches, setDispatches] = useState<SteelDispatch[]>([]);
@@ -414,6 +416,7 @@ export function SteelDispatchesPage() {
       setExitTime("");
       setNotes("");
       await loadBase();
+      router.push(`/steel/dispatches/${created.dispatch.id}`);
     } catch (reason) {
       if (reason instanceof ApiError || reason instanceof Error) {
         setError(reason.message);
@@ -679,56 +682,56 @@ export function SteelDispatchesPage() {
                     </div>
                   </div>
                   <ResponsiveScrollArea debugLabel="steel-dispatch-allocation">
-                  <table className="min-w-full text-left text-sm">
-                    <thead className="text-[var(--muted)]">
-                      <tr className="border-b border-[var(--border)]">
-                        <th className="px-3 py-3 font-medium">Material</th>
-                        <th className="px-3 py-3 font-medium">Ordered</th>
-                        <th className="px-3 py-3 font-medium">Dispatched</th>
-                        <th className="px-3 py-3 font-medium">Remaining</th>
-                        <th className="px-3 py-3 font-medium">Dispatch Now</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {(selectedInvoice.invoice.lines || []).map((line) => {
-                        const draft = lineById.get(line.id);
-                        const enteredWeight = Number(draft?.weight_kg || 0);
-                        const remainingWeight = Number(line.remaining_weight_kg || 0);
-                        const exceedsRemaining = enteredWeight > remainingWeight + 0.0001;
-                        return (
-                          <tr key={line.id} className="border-b border-[var(--border)]/60 last:border-none">
-                            <td className="px-3 py-3">
-                              <div className="font-semibold text-white">{line.item_code} - {line.item_name}</div>
-                              <div className="text-xs text-[var(--muted)]">{line.description || line.batch_code || "Direct invoice line"}</div>
-                            </td>
-                            <td className="px-3 py-3">{formatKg(line.weight_kg)} KG</td>
-                            <td className="px-3 py-3">{formatKg(line.dispatched_weight_kg)} KG</td>
-                            <td className="px-3 py-3">{formatKg(line.remaining_weight_kg)} KG</td>
-                            <td className="px-3 py-3">
-                              <Input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={draft?.weight_kg || ""}
-                                onChange={(event) =>
-                                  setLineDrafts((current) =>
-                                    current.map((row) =>
-                                      row.invoice_line_id === line.id ? { ...row, weight_kg: event.target.value } : row,
-                                    ),
-                                  )
-                                }
-                              />
-                              {exceedsRemaining ? (
-                                <div className="mt-2 text-xs text-rose-300">
-                                  Entered weight is above remaining invoice quantity by {formatKg(enteredWeight - remainingWeight)} KG.
-                                </div>
-                              ) : null}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                    <table className="min-w-full text-left text-sm">
+                      <thead className="text-[var(--muted)]">
+                        <tr className="border-b border-[var(--border)]">
+                          <th className="px-3 py-3 font-medium">Material</th>
+                          <th className="px-3 py-3 font-medium">Ordered</th>
+                          <th className="px-3 py-3 font-medium">Dispatched</th>
+                          <th className="px-3 py-3 font-medium">Remaining</th>
+                          <th className="px-3 py-3 font-medium">Dispatch Now</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(selectedInvoice.invoice.lines || []).map((line) => {
+                          const draft = lineById.get(line.id);
+                          const enteredWeight = Number(draft?.weight_kg || 0);
+                          const remainingWeight = Number(line.remaining_weight_kg || 0);
+                          const exceedsRemaining = enteredWeight > remainingWeight + 0.0001;
+                          return (
+                            <tr key={line.id} className="border-b border-[var(--border)]/60 last:border-none">
+                              <td className="px-3 py-3">
+                                <div className="font-semibold text-white">{line.item_code} - {line.item_name}</div>
+                                <div className="text-xs text-[var(--muted)]">{line.description || line.batch_code || "Direct invoice line"}</div>
+                              </td>
+                              <td className="px-3 py-3">{formatKg(line.weight_kg)} KG</td>
+                              <td className="px-3 py-3">{formatKg(line.dispatched_weight_kg)} KG</td>
+                              <td className="px-3 py-3">{formatKg(line.remaining_weight_kg)} KG</td>
+                              <td className="px-3 py-3">
+                                <Input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={draft?.weight_kg || ""}
+                                  onChange={(event) =>
+                                    setLineDrafts((current) =>
+                                      current.map((row) =>
+                                        row.invoice_line_id === line.id ? { ...row, weight_kg: event.target.value } : row,
+                                      ),
+                                    )
+                                  }
+                                />
+                                {exceedsRemaining ? (
+                                  <div className="mt-2 text-xs text-rose-300">
+                                    Entered weight is above remaining invoice quantity by {formatKg(enteredWeight - remainingWeight)} KG.
+                                  </div>
+                                ) : null}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </ResponsiveScrollArea>
                 </div>
               ) : (
@@ -752,11 +755,10 @@ export function SteelDispatchesPage() {
                       <div className="mt-1 text-xs text-[var(--muted)]">{primaryDispatchHint}</div>
                     </div>
                     <div
-                      className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${
-                        canSubmitDispatch
+                      className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${canSubmitDispatch
                           ? "border-emerald-400/35 bg-emerald-500/12 text-emerald-200"
                           : "border-amber-400/35 bg-amber-500/12 text-amber-100"
-                      }`}
+                        }`}
                     >
                       {canSubmitDispatch ? "Ready to create" : `${dispatchValidationBlockers.length} blocker${dispatchValidationBlockers.length === 1 ? "" : "s"}`}
                     </div>
@@ -765,11 +767,10 @@ export function SteelDispatchesPage() {
                     {dispatchChecklist.map((item) => (
                       <div key={item.id} className="flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[rgba(20,24,36,0.72)] px-3 py-3">
                         <div
-                          className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${
-                            item.ready
+                          className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${item.ready
                               ? "bg-emerald-500/20 text-emerald-200"
                               : "bg-rose-500/18 text-rose-200"
-                          }`}
+                            }`}
                         >
                           {item.ready ? "OK" : "!"}
                         </div>
@@ -783,11 +784,10 @@ export function SteelDispatchesPage() {
                 </div>
 
                 <div
-                  className={`rounded-3xl border p-4 ${
-                    dispatchValidationBlockers.length
+                  className={`rounded-3xl border p-4 ${dispatchValidationBlockers.length
                       ? "border-rose-400/35 bg-rose-500/8"
                       : "border-emerald-400/35 bg-emerald-500/8"
-                  }`}
+                    }`}
                 >
                   <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Decision guardrail</div>
                   <div className="mt-2 text-lg font-semibold text-white">
@@ -840,19 +840,19 @@ export function SteelDispatchesPage() {
                   </div>
                 </div>
 
-              <div className="mt-4 flex flex-wrap gap-3">
-                <Button variant="outline" disabled={!canSubmitDispatch} onClick={() => void submitDispatch("pending")}>
-                  {busy ? "Saving..." : "Save draft"}
-                </Button>
-                <Button disabled={!canSubmitDispatch} onClick={() => void submitDispatch("dispatched")}>
-                  {canCreate ? (busy ? "Creating..." : "Create dispatch") : "Owner / supervisor / manager / admin access required"}
-                </Button>
-              </div>
-              {!canSubmitDispatch ? (
-                <div className="mt-3 text-xs text-[var(--muted)]">
-                  Resolve the blockers above to enable dispatch creation.
+                <div className="mt-4 flex flex-wrap gap-3">
+                  <Button variant="outline" disabled={!canSubmitDispatch} onClick={() => void submitDispatch("pending")}>
+                    {busy ? "Saving..." : "Save draft"}
+                  </Button>
+                  <Button disabled={!canSubmitDispatch} onClick={() => void submitDispatch("dispatched")}>
+                    {canCreate ? (busy ? "Creating..." : "Create dispatch") : "Owner / supervisor / manager / admin access required"}
+                  </Button>
                 </div>
-              ) : null}
+                {!canSubmitDispatch ? (
+                  <div className="mt-3 text-xs text-[var(--muted)]">
+                    Resolve the blockers above to enable dispatch creation.
+                  </div>
+                ) : null}
               </div>
             </CardContent>
           </Card>
