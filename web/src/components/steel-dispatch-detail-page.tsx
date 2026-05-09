@@ -60,6 +60,31 @@ function timelineTone(completed: boolean) {
     : "border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)]";
 }
 
+function movementState(entryTime?: string | null, exitTime?: string | null) {
+  if (exitTime) return "Truck exit recorded";
+  if (entryTime) return "Truck entry recorded";
+  return "Yard movement waiting";
+}
+
+function formatStatusLabel(status: SteelDispatchStatus) {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
+type DispatchAction = {
+  label: string;
+  status: SteelDispatchStatus;
+  title: string;
+  description: string;
+};
+
+type MovementTimelineEntry = {
+  id: string;
+  label: string;
+  value?: string | null;
+  detail: string;
+  pendingDetail?: string;
+};
+
 export function SteelDispatchDetailPage() {
   const params = useParams<{ id: string }>();
   const { user, loading: sessionLoading, error: sessionError } = useSession();
@@ -103,11 +128,11 @@ export function SteelDispatchDetailPage() {
 
   useEffect(() => {
     if (sessionLoading) return;
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-    void loadDetail();
+    if (!user) return;
+    const timeoutId = window.setTimeout(() => {
+      void loadDetail();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
   }, [loadDetail, sessionLoading, user]);
 
   const updateStatus = async (nextStatus: SteelDispatchStatus) => {
@@ -136,7 +161,9 @@ export function SteelDispatchDetailPage() {
     }
   };
 
-  if (sessionLoading || loading) {
+  const pageLoading = sessionLoading || (Boolean(user) && loading);
+
+  if (pageLoading) {
     return (
       <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
         Loading steel dispatch detail...
@@ -180,6 +207,9 @@ export function SteelDispatchDetailPage() {
     !busy &&
     !detail.dispatch.inventory_posted_at &&
     (dispatchStatus === "pending" || dispatchStatus === "loaded");
+  const inventoryPosted = Boolean(detail.dispatch.inventory_posted_at);
+  const deliveryConfirmed = Boolean(detail.dispatch.delivered_at);
+  const truckExitRecorded = Boolean(detail.dispatch.exit_time);
   const invoiceReferenceWeight = (detail.dispatch.lines || []).reduce(
     (sum, line) => sum + Number(line.invoice_line_weight_kg || 0),
     0,
@@ -188,6 +218,48 @@ export function SteelDispatchDetailPage() {
     invoiceReferenceWeight > 0
       ? (Number(detail.dispatch.total_weight_kg || 0) / invoiceReferenceWeight) * 100
       : 0;
+  const workflowSummary = (() => {
+    if (dispatchStatus === "cancelled") {
+      return {
+        heading: "Dispatch cancelled",
+        body:
+          "This dispatch has been closed without further movement. Inventory posting and delivery confirmation will remain stopped for this record.",
+      };
+    }
+    if (deliveryConfirmed) {
+      return {
+        heading: "Dispatch delivered — workflow complete",
+        body:
+          "Customer delivery confirmation has been recorded and this dispatch is operationally complete. Use the audit and notes sections below for traceability review.",
+      };
+    }
+    if (truckExitRecorded && !inventoryPosted) {
+      return {
+        heading: "Truck exit recorded — inventory posting pending",
+        body:
+          "The vehicle already has an exit timestamp, but stock has not yet been posted out of inventory. Inventory will reduce only after the dispatch reaches the required operational status.",
+      };
+    }
+    if (dispatchStatus === "loaded" && !inventoryPosted) {
+      return {
+        heading: "Dispatch loaded — inventory posting pending",
+        body:
+          "The truck has been prepared for movement, but stock has not yet been posted out of inventory. Inventory will reduce only after the dispatch reaches the required operational status.",
+      };
+    }
+    if (inventoryPosted && !deliveryConfirmed) {
+      return {
+        heading: "Dispatch in transit — delivery confirmation pending",
+        body:
+          "Stock has already been posted out of inventory for this dispatch. Record receiver details and POD notes after the customer accepts the material.",
+      };
+    }
+    return {
+      heading: "Dispatch pending — loading not confirmed",
+      body:
+        "This dispatch has been created, but loading and truck movement are still in progress. Inventory remains unchanged until the dispatch reaches an inventory-posting status.",
+    };
+  })();
   const movementTimeline = [
     {
       id: "created",
@@ -202,6 +274,8 @@ export function SteelDispatchDetailPage() {
       label: "Truck entry",
       value: detail.dispatch.entry_time,
       detail: "Vehicle entered the yard/loading area",
+      pendingDetail:
+        "Truck entry is still pending. Record entry time when the vehicle arrives for loading.",
     },
     {
       id: "inventory-posted",
@@ -210,12 +284,16 @@ export function SteelDispatchDetailPage() {
       detail: detail.ledger_movements.length
         ? `${detail.ledger_movements.length} stock movement(s) recorded`
         : "Stock movement not posted yet",
+      pendingDetail:
+        "Inventory posting pending. Stock movement will occur after dispatch reaches the required operational state.",
     },
     {
       id: "yard-exit",
       label: "Truck exit",
       value: detail.dispatch.exit_time,
       detail: "Truck left the plant gate",
+      pendingDetail:
+        "Truck exit is still pending. Record exit time when the vehicle leaves the plant gate.",
     },
     {
       id: "delivered",
@@ -224,6 +302,8 @@ export function SteelDispatchDetailPage() {
       detail: detail.dispatch.delivered_by_name
         ? `Closed by ${detail.dispatch.delivered_by_name}`
         : "Customer receipt pending",
+      pendingDetail:
+        "Customer delivery confirmation is still pending. Record receiver details and POD notes after material delivery.",
     },
   ];
   const nextAction = canMarkLoaded
@@ -248,6 +328,179 @@ export function SteelDispatchDetailPage() {
             description: "Capture the receiver details and close the dispatch once the customer accepts it.",
           }
         : null;
+  const nextActionGuidance = (() => {
+    if (dispatchStatus === "cancelled") {
+      return {
+        title: "Dispatch cancelled",
+        description:
+          "No further operational action is available on this dispatch. Review the invoice if material still needs to move.",
+      };
+    }
+    if (deliveryConfirmed) {
+      return {
+        title: "Dispatch workflow complete",
+        description:
+          "Delivery confirmation is already recorded. Use the evidence panels below for audit or customer follow-up only.",
+      };
+    }
+    if (inventoryPosted && !deliveryConfirmed) {
+      return {
+        title: "Record delivery confirmation",
+        description:
+          "Capture the receiver name and POD notes after the customer accepts the material to close this dispatch cleanly.",
+      };
+    }
+    if (truckExitRecorded && !inventoryPosted) {
+      return {
+        title: "Move dispatch to inventory posting",
+        description:
+          "Truck exit is already recorded, but stock is still waiting to post. Advance the dispatch to the next valid operational state so inventory can reduce.",
+      };
+    }
+    if (nextAction) {
+      return {
+        title: nextAction.title,
+        description: nextAction.description,
+      };
+    }
+    return {
+      title: "No new dispatch action required",
+      description:
+        "This dispatch is already at its furthest valid state. Use the evidence panels below for review only.",
+    };
+  })();
+  const dispatchTransitionAction: DispatchAction | null = canMarkDispatched
+    ? {
+        label: "Mark dispatched",
+        status: "dispatched",
+        title: "Release the truck",
+        description: "Confirm the truck has left the plant and post stock out of inventory.",
+      }
+    : null;
+  const deliveryTransitionAction: DispatchAction | null = canMarkDelivered
+    ? {
+        label: "Mark delivered",
+        status: "delivered",
+        title: "Close delivery",
+        description: "Capture the receiver details and close the dispatch once the customer accepts it.",
+      }
+    : null;
+  const recommendedAction =
+    (inventoryPosted && !deliveryConfirmed ? deliveryTransitionAction : null) ||
+    (truckExitRecorded && !inventoryPosted ? dispatchTransitionAction : null) ||
+    (dispatchStatus === "loaded" && !inventoryPosted ? dispatchTransitionAction : null) ||
+    nextAction;
+  const workflowSummaryCard = (() => {
+    if (dispatchStatus === "cancelled") {
+      return workflowSummary;
+    }
+    if (deliveryConfirmed) {
+      return {
+        heading: "Dispatch delivered - workflow complete",
+        body:
+          "Customer delivery confirmation has been recorded and this dispatch is operationally complete. Use the audit and notes sections below for traceability review.",
+      };
+    }
+    if (inventoryPosted && !deliveryConfirmed) {
+      return {
+        heading:
+          dispatchStatus === "dispatched"
+            ? "Dispatch dispatched - delivery confirmation pending"
+            : "Inventory posted - delivery confirmation pending",
+        body:
+          "Stock has already been posted out of inventory for this dispatch. Record the receiver name and POD notes after the customer accepts the material.",
+      };
+    }
+    if (truckExitRecorded && !inventoryPosted) {
+      return {
+        heading: "Truck exit recorded - inventory posting pending",
+        body:
+          "The vehicle already has an exit timestamp, but stock has not yet been posted out of inventory. Inventory will reduce when the dispatch is marked dispatched or delivered.",
+      };
+    }
+    if (dispatchStatus === "loaded" && !inventoryPosted) {
+      return {
+        heading: "Dispatch loaded - inventory posting pending",
+        body:
+          "Loading is confirmed, but stock still remains in inventory. Inventory will reduce when the dispatch is marked dispatched or delivered.",
+      };
+    }
+    return {
+      heading: "Dispatch pending - loading not confirmed",
+      body:
+        "This dispatch has been created, but loading and truck movement are still in progress. Inventory remains unchanged until the dispatch is marked dispatched or delivered.",
+    };
+  })();
+  const dispatchStatusLabel = formatStatusLabel(dispatchStatus);
+  const dispatchStatusDetail = (() => {
+    if (dispatchStatus === "cancelled") {
+      return "This dispatch is closed and will not move further.";
+    }
+    if (dispatchStatus === "delivered") {
+      return "Customer receipt is already confirmed for this dispatch.";
+    }
+    if (dispatchStatus === "dispatched") {
+      return "The truck is in transit and inventory should already be posted.";
+    }
+    if (dispatchStatus === "loaded") {
+      return "Material is loaded, but the dispatch still needs to be released.";
+    }
+    return "The dispatch exists, but loading and release are not yet confirmed.";
+  })();
+  const movementStateLabel = movementState(detail.dispatch.entry_time, detail.dispatch.exit_time);
+  const movementStateDetail = truckExitRecorded
+    ? "Truck departure from the plant gate has already been recorded."
+    : detail.dispatch.entry_time
+      ? "The truck has entered the yard and is still waiting for final gate release."
+      : "Truck entry is still pending for this dispatch.";
+  const inventoryStateLabel = inventoryPosted ? "Posted out of stock" : "Posting still pending";
+  const inventoryStateDetail = inventoryPosted
+    ? "Stock reduction has already been finalized for this dispatch."
+    : "Stock will reduce when the dispatch is marked dispatched or delivered.";
+  const deliveryStateLabel = deliveryConfirmed ? "Customer receipt recorded" : "Customer receipt pending";
+  const deliveryStateDetail = deliveryConfirmed
+    ? "Receiver confirmation is already recorded for this dispatch."
+    : "Record receiver details and POD notes after material delivery.";
+  const interpretedTimeline: MovementTimelineEntry[] = movementTimeline.map((entry) =>
+    entry.id === "inventory-posted" && !entry.value
+      ? {
+          ...entry,
+          pendingDetail:
+            "Inventory posting pending. Stock movement will occur when the dispatch is marked dispatched or delivered.",
+        }
+      : entry,
+  );
+  const recommendedGuidance =
+    dispatchStatus === "cancelled"
+      ? {
+          title: "Dispatch cancelled",
+          description:
+            "No further operational action is available on this dispatch. Review the invoice if material still needs to move.",
+        }
+      : deliveryConfirmed
+        ? {
+            title: "Dispatch workflow complete",
+            description:
+              "Delivery confirmation is already recorded. Use the evidence panels below for audit or customer follow-up only.",
+          }
+        : inventoryPosted && !deliveryConfirmed
+          ? {
+              title: "Record delivery confirmation",
+              description:
+                "Capture the receiver name and POD notes after the customer accepts the material to close this dispatch cleanly.",
+            }
+          : truckExitRecorded && !inventoryPosted && dispatchTransitionAction
+            ? {
+                title: "Mark dispatch as dispatched",
+                description:
+                  "Truck exit is already recorded, but stock is still waiting to post. Mark this dispatch as dispatched so inventory can reduce.",
+              }
+            : recommendedAction
+              ? {
+                  title: recommendedAction.title,
+                  description: recommendedAction.description,
+                }
+              : nextActionGuidance;
 
   return (
     <main className="min-h-screen px-4 py-8 md:px-8">
@@ -290,25 +543,49 @@ export function SteelDispatchDetailPage() {
           </div>
         </section>
 
-        {/* AUDIT: FLOW_BROKEN - add a short progression strip so the dispatch screen clearly points from manifest to closure. */}
-        {/* AUDIT: FLOW_BROKEN - surface the next valid status change before lower-signal audit context so the page has one obvious action. */}
+        <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
+          <CardHeader>
+            <div className="text-sm text-[var(--muted)]">Workflow summary</div>
+            <CardTitle className="text-xl">{workflowSummaryCard.heading}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <div className="text-[var(--muted)]">{workflowSummaryCard.body}</div>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-3">
+                <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Dispatch status</div>
+                <div className="mt-2 font-semibold text-white">{dispatchStatusLabel}</div>
+                <div className="mt-1 text-xs text-[var(--muted)]">{dispatchStatusDetail}</div>
+              </div>
+              <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-3">
+                <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Truck movement</div>
+                <div className="mt-2 font-semibold text-white">{movementStateLabel}</div>
+                <div className="mt-1 text-xs text-[var(--muted)]">{movementStateDetail}</div>
+              </div>
+              <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-3">
+                <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Inventory</div>
+                <div className="mt-2 font-semibold text-white">{inventoryStateLabel}</div>
+                <div className="mt-1 text-xs text-[var(--muted)]">{inventoryStateDetail}</div>
+              </div>
+              <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-3">
+                <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Delivery</div>
+                <div className="mt-2 font-semibold text-white">{deliveryStateLabel}</div>
+                <div className="mt-1 text-xs text-[var(--muted)]">{deliveryStateDetail}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         <section className="grid gap-4 lg:grid-cols-[1.12fr_0.88fr]">
           <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
             <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Next move</div>
-              <CardTitle className="text-xl">
-                {nextAction ? nextAction.title : "No new dispatch action required"}
-              </CardTitle>
+              <div className="text-sm text-[var(--muted)]">Next recommended action</div>
+              <CardTitle className="text-xl">{recommendedGuidance.title}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="text-sm text-[var(--muted)]">
-                {nextAction
-                  ? nextAction.description
-                  : "This dispatch is already at its furthest valid state. Use the evidence panels below for review only."}
-              </div>
-              {nextAction ? (
-                <Button disabled={busy} onClick={() => void updateStatus(nextAction.status)}>
-                  {nextAction.label}
+              <div className="text-sm text-[var(--muted)]">{recommendedGuidance.description}</div>
+              {recommendedAction ? (
+                <Button disabled={busy} onClick={() => void updateStatus(recommendedAction.status)}>
+                  {recommendedAction.label}
                 </Button>
               ) : (
                 <Button disabled>Status complete</Button>
@@ -464,6 +741,11 @@ export function SteelDispatchDetailPage() {
                 <div className="mt-1 font-semibold text-white">
                   {formatDateTime(detail.dispatch.inventory_posted_at)}
                 </div>
+                <div className="mt-1 text-xs text-[var(--muted)]">
+                  {inventoryPosted
+                    ? "Stock reduction has already been finalized for this dispatch."
+                    : "Stock reduction has not been finalized yet. It will post when this dispatch is marked dispatched or delivered."}
+                </div>
                 <div className="mt-2 text-[var(--muted)]">Delivered</div>
                 <div className="mt-1 font-semibold text-white">
                   {formatDateTime(detail.dispatch.delivered_at)}{" "}
@@ -471,6 +753,11 @@ export function SteelDispatchDetailPage() {
                     ? `by ${detail.dispatch.delivered_by_name}`
                     : ""}
                 </div>
+                {!deliveryConfirmed ? (
+                  <div className="mt-1 text-xs text-[var(--muted)]">
+                    Customer receipt is still pending for this dispatch.
+                  </div>
+                ) : null}
               </div>
 
               {/* AUDIT: DENSITY_OVERLOAD - keep the editable status form as the primary lane and move lesser status actions behind a secondary reveal. */}
@@ -506,6 +793,9 @@ export function SteelDispatchDetailPage() {
                     onChange={(event) => setReceiverName(event.target.value)}
                     placeholder="Person receiving the dispatch"
                   />
+                  <div className="mt-1 text-xs text-[var(--muted)]">
+                    The person who accepted the material delivery.
+                  </div>
                 </div>
                 <div>
                   <label className="text-sm text-[var(--muted)]">POD Notes</label>
@@ -514,10 +804,13 @@ export function SteelDispatchDetailPage() {
                     onChange={(event) => setPodNotes(event.target.value)}
                     placeholder="Delivery note / proof details"
                   />
+                  <div className="mt-1 text-xs text-[var(--muted)]">
+                    Record delivery proof, unloading notes, or customer confirmation details.
+                  </div>
                 </div>
-                {nextAction ? (
-                  <Button disabled={busy} onClick={() => void updateStatus(nextAction.status)}>
-                    {nextAction.label}
+                {recommendedAction ? (
+                  <Button disabled={busy} onClick={() => void updateStatus(recommendedAction.status)}>
+                    {recommendedAction.label}
                   </Button>
                 ) : (
                   <Button disabled>Status complete</Button>
@@ -573,7 +866,7 @@ export function SteelDispatchDetailPage() {
                   <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
                 </summary>
                 <div className="space-y-3 border-t border-[var(--border)] px-4 py-4">
-                  {movementTimeline.map((entry, index) => {
+                  {interpretedTimeline.map((entry, index) => {
                     const completed = Boolean(entry.value);
                     return (
                       <div
@@ -585,7 +878,9 @@ export function SteelDispatchDetailPage() {
                             <div className="font-semibold text-white">
                               {index + 1}. {entry.label}
                             </div>
-                            <div className="mt-1 text-xs">{entry.detail}</div>
+                            <div className="mt-1 text-xs">
+                              {completed ? entry.detail : entry.pendingDetail}
+                            </div>
                           </div>
                           <div className="text-right text-xs">
                             {completed ? formatDateTime(entry.value) : "Waiting"}
@@ -646,7 +941,7 @@ export function SteelDispatchDetailPage() {
                   ))}
                   {!detail.ledger_movements.length ? (
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3 text-sm text-[var(--muted)]">
-                      No inventory movement has been posted yet. This usually means the dispatch is still a draft.
+                      No inventory movement has been posted yet. Stock will post when the dispatch is marked dispatched or delivered.
                     </div>
                   ) : null}
                 </div>
