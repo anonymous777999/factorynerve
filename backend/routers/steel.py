@@ -3511,6 +3511,10 @@ def create_steel_invoice(
         db.add(row)
         line_rows.append(row)
 
+    # Explicit flush to ensure all invoice lines are persisted before commit
+    # This guarantees lines are available for subsequent queries and dispatch operations
+    db.flush()
+
     _write_steel_audit(
         db,
         actor=current_user,
