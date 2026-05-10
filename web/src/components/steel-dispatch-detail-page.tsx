@@ -73,7 +73,8 @@ function formatStatusLabel(status: SteelDispatchStatus) {
 
 type DispatchAction = {
   label: string;
-  status: SteelDispatchStatus;
+  status?: SteelDispatchStatus;
+  href?: string;
   title: string;
   description: string;
 };
@@ -309,7 +310,7 @@ export function SteelDispatchDetailPage() {
         "Customer delivery confirmation is still pending. Record receiver details and POD notes after material delivery.",
     },
   ];
-  const nextAction = canMarkLoaded
+  const nextAction: DispatchAction | null = canMarkLoaded
     ? {
         label: "Mark loaded",
         status: "loaded" as SteelDispatchStatus,
@@ -395,9 +396,17 @@ export function SteelDispatchDetailPage() {
         description: "Capture the receiver details and close the dispatch once the customer accepts it.",
       }
     : null;
-  const recommendedAction =
+  const recommendedAction: DispatchAction | null =
     (inventoryPosted && !deliveryConfirmed ? deliveryTransitionAction : null) ||
-    (truckExitRecorded && !inventoryPosted ? { label: "Mark exited", status: "exited" as SteelDispatchStatus } : null) ||
+    (truckExitRecorded && !inventoryPosted
+      ? {
+          label: "Mark exited",
+          status: "exited" as SteelDispatchStatus,
+          title: "Record truck exit",
+          description:
+            "Truck exit is already recorded, but stock is still waiting to post. Move the dispatch to the next operational step so inventory can reduce.",
+        }
+      : null) ||
     nextAction;
   const workflowSummaryCard = (() => {
     if (dispatchStatus === "cancelled") {
@@ -849,9 +858,15 @@ export function SteelDispatchDetailPage() {
                   </div>
                 </div>
                 {recommendedAction ? (
-                  <Button disabled={busy} onClick={() => void updateStatus(recommendedAction.status)}>
-                    {recommendedAction.label}
-                  </Button>
+                  recommendedAction.href ? (
+                    <Link href={recommendedAction.href}>
+                      <Button className="w-full sm:w-auto">{recommendedAction.label}</Button>
+                    </Link>
+                  ) : (
+                    <Button disabled={busy} onClick={() => void updateStatus(recommendedAction.status!)}>
+                      {recommendedAction.label}
+                    </Button>
+                  )
                 ) : (
                   <Button disabled>Status complete</Button>
                 )}
