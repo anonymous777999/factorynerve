@@ -200,7 +200,7 @@ export function SteelChartsPage() {
   const quickActions = [
     topPriority.primaryAction,
     ...(topPriority.secondaryAction ? [topPriority.secondaryAction] : []),
-    { href: "/steel/dispatches", label: "Dispatches", variant: "secondary" as const },
+    { href: "/steel/dispatches", label: "View Dispatch Queue", variant: "secondary" as const },
     { href: "/steel/invoices", label: "Invoices", variant: "secondary" as const },
   ];
 
@@ -255,7 +255,7 @@ export function SteelChartsPage() {
                     <Button variant="ghost" className="!border-[#d6d3d1] !bg-none !bg-[#f5f5f4] !text-[#111111] hover:!border-[#a8a29e] hover:!bg-none hover:!bg-[#e7e5e4]">Reports</Button>
                   </Link>
                   <Link href="/steel/customers">
-                    <Button variant="ghost" className="!border-[#d6d3d1] !bg-none !bg-[#f5f5f4] !text-[#111111] hover:!border-[#a8a29e] hover:!bg-none hover:!bg-[#e7e5e4]">Customers</Button>
+                    <Button variant="ghost" className="!border-[#d6d3d1] !bg-none !bg-[#f5f5f4] !text-[#111111] hover:!border-[#a8a29e] hover:!bg-none hover:!bg-[#e7e5e4]">Customer Context</Button>
                   </Link>
                 </div>
               </details>
@@ -283,7 +283,7 @@ export function SteelChartsPage() {
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
               <div className="text-xs uppercase tracking-[0.22em] text-[#78716c]">Quick Actions</div>
-              <h2 className="mt-2 text-2xl font-semibold text-[#111111]">Move from insight to action without losing context</h2>
+              <h2 className="mt-2 text-2xl font-semibold text-[#111111]">Signals requiring attention</h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-[#57534e]">
                 What is happening: the board is highlighting the strongest risk and KPI signals first. Is it good or bad: check the status badge and comparison row. What should you do next: use the nearest workflow action below.
               </p>
@@ -296,7 +296,7 @@ export function SteelChartsPage() {
           <Card className="rounded-[1.6rem] !border-[#e7e5e4] !bg-none !bg-white shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
             <CardHeader>
               <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Action Lane</div>
-              <CardTitle className="text-xl text-[#111111]">Resolve stock mismatch</CardTitle>
+              <CardTitle className="text-xl text-[#111111]">Review stock mismatch</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-[#57534e]">
               {topLowConfidenceItem ? (
@@ -326,7 +326,7 @@ export function SteelChartsPage() {
           <Card className="rounded-[1.6rem] !border-[#e7e5e4] !bg-none !bg-white shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
             <CardHeader>
               <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Action Lane</div>
-              <CardTitle className="text-xl text-[#111111]">Trace batch loss</CardTitle>
+              <CardTitle className="text-xl text-[#111111]">Investigate batch loss</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm text-[#57534e]">
               {topLossBatch ? (
@@ -379,7 +379,7 @@ export function SteelChartsPage() {
                   <Button variant="outline" className="!border-[#111111] !bg-none !bg-[#111111] !text-white hover:!border-[#2f2f2f] hover:!bg-none hover:!bg-[#2f2f2f]">Invoices</Button>
                 </Link>
                 <Link href="/steel/dispatches">
-                  <Button variant="ghost" className="!border-[#d6d3d1] !bg-none !bg-[#f5f5f4] !text-[#111111] hover:!border-[#a8a29e] hover:!bg-none hover:!bg-[#e7e5e4]">Dispatches</Button>
+                  <Button variant="ghost" className="!border-[#d6d3d1] !bg-none !bg-[#f5f5f4] !text-[#111111] hover:!border-[#a8a29e] hover:!bg-none hover:!bg-[#e7e5e4]">View Dispatch Queue</Button>
                 </Link>
               </div>
             </CardContent>

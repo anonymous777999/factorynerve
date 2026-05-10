@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link from "next/link"; import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { ProductionLossChart } from "@/components/charts/production-loss-chart";
@@ -139,6 +139,47 @@ function resolveDrilldownAction(meta: DrillDownMeta): DrilldownAction {
   return { href: "/steel", label: "Open Steel Hub", context: "Steel control workflow" };
 }
 
+function formatDrilldownDate(value: Date) {
+  const localDate = new Date(value.getFullYear(), value.getMonth(), value.getDate());
+  return localDate.toISOString().slice(0, 10);
+}
+
+function resolveDrilldownDate(meta: DrillDownMeta, selectedRange: DashboardRangeKey) {
+  const today = new Date();
+  const monthSequence = [3, 2, 1, 0].map((offset) => new Date(today.getFullYear(), today.getMonth() - offset, 1));
+
+  if (meta.chartId === "dispatch-trend") {
+    const [dayValue, monthValue] = meta.label.split(" ");
+    const matchedMonth = monthSequence.find(
+      (candidate) => candidate.toLocaleDateString("en-IN", { month: "short" }) === monthValue,
+    );
+    if (matchedMonth && Number(dayValue)) {
+      return formatDrilldownDate(new Date(matchedMonth.getFullYear(), matchedMonth.getMonth(), Number(dayValue)));
+    }
+    return null;
+  }
+
+  if (meta.chartId === "revenue-chart") {
+    const matchedMonth = monthSequence.find(
+      (candidate) => candidate.toLocaleDateString("en-IN", { month: "short" }) === meta.label,
+    );
+    return matchedMonth ? formatDrilldownDate(matchedMonth) : null;
+  }
+
+  if (meta.chartId === "production-vs-loss") {
+    if (selectedRange === "30d") return null;
+    const visibleDays = selectedRange === "today" ? 5 : 7;
+    for (let index = visibleDays - 1; index >= 0; index -= 1) {
+      const candidate = new Date(today.getFullYear(), today.getMonth(), today.getDate() - index);
+      if (candidate.toLocaleDateString("en-IN", { weekday: "short" }) === meta.label) {
+        return formatDrilldownDate(candidate);
+      }
+    }
+  }
+
+  return null;
+}
+
 export function IndustrialFactoryDashboard({
   loading = false,
   industryType = "steel",
@@ -185,9 +226,34 @@ export function IndustrialFactoryDashboard({
     [lastDrillDown],
   );
   const viewConfig = useMemo(() => resolveViewConfig(selectedFilters), [selectedFilters]);
+  const router = useRouter();
 
   const handleDrillDown = (meta: DrillDownMeta) => {
     setLastDrillDown(meta);
+    const params = new URLSearchParams({ source: "charts" });
+    const activeFilter = selectedFilters.process || selectedFilters.plant || selectedFilters.loss;
+    const resolvedDate = resolveDrilldownDate(meta, selectedRange);
+
+    if (activeFilter) {
+      params.set("filter", activeFilter);
+    }
+    if (resolvedDate) {
+      params.set("date", resolvedDate);
+    }
+
+    let targetPath = "/steel/reconciliations";
+    if (meta.chartId === "top-loss-batches") {
+      targetPath = "/steel/batches";
+      params.set("highlight", meta.label);
+    } else if (meta.chartId === "production-vs-loss") {
+      targetPath = "/steel/batches";
+    } else if (meta.chartId === "dispatch-trend") {
+      targetPath = "/steel/dispatches";
+    } else if (meta.chartId === "revenue-chart") {
+      targetPath = "/steel/invoices";
+    }
+
+    router.push(`${targetPath}?${params.toString()}`);
   };
 
   const handleFilterSelect = (panelId: string, option: string) => {
@@ -294,7 +360,7 @@ export function IndustrialFactoryDashboard({
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
                 <div className="text-xs uppercase tracking-[0.28em] text-[#78716c]">Steel Control System</div>
-                <CardTitle className="mt-3 text-2xl text-[#111111] md:text-3xl">Steel Operations Dashboard</CardTitle>
+                <CardTitle className="mt-3 text-2xl text-[#111111] md:text-3xl">Steel performance overview</CardTitle>
                 <p className="mt-3 max-w-3xl text-sm leading-7 text-[#57534e]">
                   Steel plant signals designed for managers and owners. The focus stays on stock trust, output, batch loss,
                   dispatch movement, and invoiced steel value instead of generic admin widgets.
