@@ -49,6 +49,7 @@ function formatDateTime(value?: string | null) {
 function dispatchStatusBadgeClass(status: string | null | undefined) {
   if (status === "delivered") return "border-emerald-400/35 bg-emerald-500/12 text-emerald-200";
   if (status === "dispatched") return "border-cyan-400/35 bg-cyan-500/12 text-cyan-200";
+  if (status === "exited") return "border-cyan-400/35 bg-cyan-500/12 text-cyan-200";
   if (status === "loaded") return "border-amber-400/35 bg-amber-500/12 text-amber-200";
   if (status === "cancelled") return "border-rose-400/35 bg-rose-500/12 text-rose-200";
   return "border-slate-400/35 bg-slate-500/12 text-slate-200";

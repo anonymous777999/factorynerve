@@ -1,7 +1,7 @@
 import { API_BASE_URL, apiFetch } from "@/lib/api";
 
 export type SteelPaymentMode = "bank_transfer" | "cash" | "cheque" | "upi";
-export type SteelDispatchStatus = "pending" | "loaded" | "dispatched" | "delivered" | "cancelled";
+export type SteelDispatchStatus = "pending" | "loaded" | "exited" | "dispatched" | "delivered" | "cancelled";
 export type SteelVehicleType = "truck" | "trailer" | "pickup" | "other";
 export type SteelStockMismatchCause =
   | "counting_error"
