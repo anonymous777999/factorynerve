@@ -69,7 +69,7 @@ from backend.utils import normalize_identifier_code, normalize_phone_number, nor
 router = APIRouter(tags=["Steel"])
 SteelPaymentMode = Literal["bank_transfer", "cash", "cheque", "upi"]
 SteelCustomerStatus = Literal["active", "on_hold", "blocked"]
-SteelDispatchStatus = Literal["pending", "loaded", "dispatched", "delivered", "cancelled"]
+SteelDispatchStatus = Literal["pending", "loaded", "exited", "dispatched", "delivered", "cancelled"]
 SteelVehicleType = Literal["truck", "trailer", "pickup", "other"]
 SteelStockMismatchCause = Literal[
     "counting_error",
@@ -533,7 +533,7 @@ def _dispatch_has_posted_inventory(dispatch: SteelDispatch) -> bool:
 
 def _dispatch_status_posts_inventory(status: str | None) -> bool:
     normalized = _normalize_dispatch_status(status, allow_cancelled=False)
-    return normalized in {"dispatched", "delivered"}
+    return normalized in {"exited", "dispatched", "delivered"}
 
 
 def _serialize_steel_dispatch(
@@ -709,7 +709,7 @@ def _normalize_customer_status(value: str | None) -> str:
 
 def _normalize_dispatch_status(value: str | None, *, allow_cancelled: bool = True) -> str:
     normalized = (sanitize_text(value, max_length=24, preserve_newlines=False) or "dispatched").lower()
-    allowed = {"pending", "loaded", "dispatched", "delivered"}
+    allowed = {"pending", "loaded", "exited", "dispatched", "delivered"}
     if allow_cancelled:
         allowed.add("cancelled")
     if normalized not in allowed:
@@ -1903,6 +1903,23 @@ def create_steel_stock_reconciliation(
         approved_at=now if auto_approved else None,
     )
     db.add(row)
+    db.flush()
+
+    if auto_approved and abs(variance_kg) > 0.0001:
+        db.add(
+            SteelInventoryTransaction(
+                org_id=factory.org_id,
+                factory_id=factory.factory_id,
+                item_id=item.id,
+                transaction_type="adjustment",
+                quantity_kg=variance_kg,
+                reference_type="steel_reconciliation",
+                reference_id=str(row.id),
+                notes=f"Auto-correction from reconciliation #{row.id} ({mismatch_cause or 'other'})",
+                created_by_user_id=current_user.id,
+            )
+        )
+
     _write_steel_audit(
         db,
         actor=current_user,
@@ -2050,6 +2067,22 @@ def approve_steel_stock_reconciliation(
     row.rejected_by_user_id = None
     row.approved_at = datetime.now(timezone.utc)
     row.rejected_at = None
+    
+    if abs(float(row.variance_kg or 0.0)) > 0.0001:
+        db.add(
+            SteelInventoryTransaction(
+                org_id=factory.org_id,
+                factory_id=factory.factory_id,
+                item_id=row.item_id,
+                transaction_type="adjustment",
+                quantity_kg=float(row.variance_kg),
+                reference_type="steel_reconciliation",
+                reference_id=str(row.id),
+                notes=f"Ledger correction from reconciliation #{row.id} ({mismatch_cause or 'other'})",
+                created_by_user_id=current_user.id,
+            )
+        )
+
     item = _get_item_or_404(db, factory_id=factory.factory_id, item_id=row.item_id)
     _write_steel_audit(
         db,
@@ -3966,7 +3999,7 @@ def update_steel_dispatch_status(
         .order_by(SteelDispatchLine.id.asc())
         .all()
     )
-    if next_status in {"dispatched", "delivered"} and not _dispatch_has_posted_inventory(dispatch):
+    if _dispatch_status_posts_inventory(next_status) and not _dispatch_has_posted_inventory(dispatch):
         requested_by_item: dict[int, float] = {}
         for row in line_rows:
             requested_by_item[row.item_id] = float(requested_by_item.get(row.item_id, 0.0)) + float(row.weight_kg or 0.0)

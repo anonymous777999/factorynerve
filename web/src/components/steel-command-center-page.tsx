@@ -568,6 +568,48 @@ export function SteelCommandCenterPage() {
           timeContext={summaryRange?.rangeComparisonLabel || "vs yesterday"}
         />
 
+        <section className="grid gap-4 md:grid-cols-3">
+          <Card className="border border-[#e7e5e4] bg-white shadow-sm">
+            <CardHeader className="pb-2">
+              <div className="text-xs uppercase tracking-wider text-[#78716c]">Step 1: Production</div>
+              <CardTitle className="text-lg">Batches</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-[#111111]">{overview?.batch_metrics.total_batches || 0}</div>
+              <div className="mt-1 text-xs text-[#57534e]">Total batches recorded</div>
+              <Link href="/steel?tab=production" className="mt-3 inline-flex items-center text-xs font-medium text-[#78716c] hover:underline">
+                Record new batch →
+              </Link>
+            </CardContent>
+          </Card>
+          <Card className="border border-[#e7e5e4] bg-white shadow-sm">
+            <CardHeader className="pb-2">
+              <div className="text-xs uppercase tracking-wider text-[#78716c]">Step 2: Commercial</div>
+              <CardTitle className="text-lg">Open Invoices</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-[#111111]">{profitSummary?.invoice_count || 0}</div>
+              <div className="mt-1 text-xs text-[#57534e]">Active sales invoices</div>
+              <Link href="/steel/invoices" className="mt-3 inline-flex items-center text-xs font-medium text-[#78716c] hover:underline">
+                Create invoice →
+              </Link>
+            </CardContent>
+          </Card>
+          <Card className="border border-[#e7e5e4] bg-white shadow-sm">
+            <CardHeader className="pb-2">
+              <div className="text-xs uppercase tracking-wider text-[#78716c]">Step 3: Logistics</div>
+              <CardTitle className="text-lg">Dispatches</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold text-[#111111]">{profitSummary?.dispatch_count || 0}</div>
+              <div className="mt-1 text-xs text-[#57534e]">Truck movements tracked</div>
+              <Link href="/steel/dispatches" className="mt-3 inline-flex items-center text-xs font-medium text-[#78716c] hover:underline">
+                Start dispatch →
+              </Link>
+            </CardContent>
+          </Card>
+        </section>
+
         <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
           <SteelTopPriorityCard priority={topPriority} />
           <div className="grid gap-4 sm:grid-cols-2">
