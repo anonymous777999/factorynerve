@@ -49,6 +49,7 @@ function formatDateTime(value?: string | null) {
 function statusBadgeClass(status: SteelDispatchStatus) {
   if (status === "delivered") return "border-emerald-400/35 bg-emerald-500/12 text-emerald-200";
   if (status === "dispatched") return "border-cyan-400/35 bg-cyan-500/12 text-cyan-200";
+  if (status === "exited") return "border-cyan-400/35 bg-cyan-500/12 text-cyan-200";
   if (status === "loaded") return "border-amber-400/35 bg-amber-500/12 text-amber-200";
   if (status === "cancelled") return "border-rose-400/35 bg-rose-500/12 text-rose-200";
   return "border-slate-400/35 bg-slate-500/12 text-slate-200";
@@ -198,10 +199,12 @@ export function SteelDispatchDetailPage() {
 
   const dispatchStatus = detail.dispatch.status;
   const canMarkLoaded = canManage && !busy && dispatchStatus === "pending";
-  const canMarkDispatched =
+  const canMarkExited =
     canManage && !busy && (dispatchStatus === "pending" || dispatchStatus === "loaded");
+  const canMarkDispatched =
+    canManage && !busy && (dispatchStatus === "pending" || dispatchStatus === "loaded" || dispatchStatus === "exited");
   const canMarkDelivered =
-    canManage && !busy && (dispatchStatus === "loaded" || dispatchStatus === "dispatched");
+    canManage && !busy && (dispatchStatus === "loaded" || dispatchStatus === "dispatched" || dispatchStatus === "exited");
   const canCancelDraft =
     canManage &&
     !busy &&
@@ -313,12 +316,12 @@ export function SteelDispatchDetailPage() {
         title: "Confirm loading",
         description: "Use this when the truck has been loaded and the gate process can continue.",
       }
-    : canMarkDispatched
+    : canMarkExited
       ? {
-          label: "Mark dispatched",
-          status: "dispatched" as SteelDispatchStatus,
+          label: "Mark exited",
+          status: "exited" as SteelDispatchStatus,
           title: "Release the truck",
-          description: "Confirm the truck has left the plant and the dispatch is in transit.",
+          description: "Confirm the truck has left the plant and post stock out of inventory.",
         }
       : canMarkDelivered
         ? {
@@ -327,7 +330,14 @@ export function SteelDispatchDetailPage() {
             title: "Close delivery",
             description: "Capture the receiver details and close the dispatch once the customer accepts it.",
           }
-        : null;
+        : dispatchStatus === "delivered"
+          ? {
+              label: "Open Reconciliation",
+              href: "/steel/reconciliations",
+              title: "Cycle count pending",
+              description: "Delivery is complete. Perform a cycle count to ensure the ledger matches physical yard stock.",
+            }
+          : null;
   const nextActionGuidance = (() => {
     if (dispatchStatus === "cancelled") {
       return {
@@ -387,8 +397,7 @@ export function SteelDispatchDetailPage() {
     : null;
   const recommendedAction =
     (inventoryPosted && !deliveryConfirmed ? deliveryTransitionAction : null) ||
-    (truckExitRecorded && !inventoryPosted ? dispatchTransitionAction : null) ||
-    (dispatchStatus === "loaded" && !inventoryPosted ? dispatchTransitionAction : null) ||
+    (truckExitRecorded && !inventoryPosted ? { label: "Mark exited", status: "exited" as SteelDispatchStatus } : null) ||
     nextAction;
   const workflowSummaryCard = (() => {
     if (dispatchStatus === "cancelled") {
@@ -508,6 +517,15 @@ export function SteelDispatchDetailPage() {
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)] mb-4">
+                <span>Production</span>
+                <span>→</span>
+                <span>Invoice</span>
+                <span>→</span>
+                <span className="text-[var(--accent)] font-bold">Dispatch</span>
+                <span>→</span>
+                <span>Reconciliation</span>
+              </div>
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Dispatch</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{detail.dispatch.dispatch_number}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
@@ -549,7 +567,20 @@ export function SteelDispatchDetailPage() {
             <CardTitle className="text-xl">{workflowSummaryCard.heading}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4 text-sm">
-            <div className="text-[var(--muted)]">{workflowSummaryCard.body}</div>
+            <div className="text-[var(--muted)]">
+              {workflowSummaryCard.body}
+              {detail.dispatch.lines && detail.dispatch.lines.length > 0 && detail.dispatch.lines[0].batch_code && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-xs uppercase tracking-wider text-[var(--muted)]">Upstream Origin:</span>
+                  <Link
+                    href={`/steel/batches/${detail.dispatch.lines[0].batch_id}`}
+                    className="font-medium text-[var(--accent)] hover:underline"
+                  >
+                    Batch {detail.dispatch.lines[0].batch_code}
+                  </Link>
+                </div>
+              )}
+            </div>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-3">
                 <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Dispatch status</div>
@@ -584,9 +615,18 @@ export function SteelDispatchDetailPage() {
             <CardContent className="space-y-4">
               <div className="text-sm text-[var(--muted)]">{recommendedGuidance.description}</div>
               {recommendedAction ? (
-                <Button disabled={busy} onClick={() => void updateStatus(recommendedAction.status)}>
-                  {recommendedAction.label}
-                </Button>
+                recommendedAction.href ? (
+                  <Link href={recommendedAction.href}>
+                    <Button className="w-full sm:w-auto">{recommendedAction.label}</Button>
+                  </Link>
+                ) : (
+                  <Button
+                    disabled={busy}
+                    onClick={() => void updateStatus(recommendedAction.status!)}
+                  >
+                    {recommendedAction.label}
+                  </Button>
+                )
               ) : (
                 <Button disabled>Status complete</Button>
               )}
@@ -830,6 +870,13 @@ export function SteelDispatchDetailPage() {
                       onClick={() => void updateStatus("loaded")}
                     >
                       Mark loaded
+                    </Button>
+                    <Button
+                      variant="outline"
+                      disabled={!canMarkExited}
+                      onClick={() => void updateStatus("exited")}
+                    >
+                      Mark exited
                     </Button>
                     <Button
                       variant="outline"

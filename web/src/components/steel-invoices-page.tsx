@@ -369,6 +369,26 @@ export function SteelInvoicesPage() {
               <CardTitle className="text-xl">Issue a steel sales invoice</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {finishedItems.length > 0 && (
+                <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
+                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Stock availability</div>
+                  <div className="mt-3 flex flex-wrap gap-4">
+                    {finishedItems.slice(0, 4).map((item) => (
+                      <div key={item.id} className="text-sm">
+                        <div className="font-semibold text-white">{item.item_code}</div>
+                        <div className="text-xs text-[var(--muted)]">
+                          {formatKg(items.find(i => i.id === item.id)?.stock_balance_kg)} KG available
+                        </div>
+                      </div>
+                    ))}
+                    {finishedItems.length > 4 && (
+                      <div className="text-xs self-center text-[var(--muted)]">
+                        + {finishedItems.length - 4} more items
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="text-sm text-[var(--muted)]">Invoice Date</label>

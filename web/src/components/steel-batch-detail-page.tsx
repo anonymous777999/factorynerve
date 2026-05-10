@@ -146,6 +146,15 @@ export function SteelBatchDetailPage() {
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)] mb-4">
+                <span className="text-[var(--accent)] font-bold">Production</span>
+                <span>→</span>
+                <span>Invoice</span>
+                <span>→</span>
+                <span>Dispatch</span>
+                <span>→</span>
+                <span>Reconciliation</span>
+              </div>
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Batch Traceability</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{detail.batch.batch_code}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
@@ -161,12 +170,34 @@ export function SteelBatchDetailPage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
+              <Link href="/steel/invoices">
+                <Button>Create Invoice</Button>
+              </Link>
               <Link href="/steel">
                 <Button variant="outline">Back to Steel</Button>
               </Link>
             </div>
           </div>
         </section>
+
+        <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
+          <CardHeader>
+            <div className="text-sm text-[var(--muted)]">Production Impact</div>
+            <CardTitle className="text-xl">Inventory Transformation</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm">
+            <div className="text-[var(--muted)] leading-relaxed">
+              This batch consumed <span className="font-semibold text-white">{formatKg(detail.batch.input_quantity_kg)} KG</span> of {detail.traceability.input_item.name} to produce <span className="font-semibold text-white">{formatKg(detail.batch.actual_output_kg)} KG</span> of {detail.traceability.output_item.name}.
+              The resulting finished goods are now available in inventory for customer invoicing.
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs uppercase tracking-wider text-[var(--muted)]">Next Step:</span>
+              <Link href="/steel/invoices" className="font-medium text-[var(--accent)] hover:underline">
+                Issue a sales invoice for these goods →
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <Card>

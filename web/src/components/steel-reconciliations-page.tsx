@@ -221,10 +221,20 @@ export function SteelReconciliationsPage() {
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)] mb-4">
+                <span>Production</span>
+                <span>→</span>
+                <span>Invoice</span>
+                <span>→</span>
+                <span>Dispatch</span>
+                <span>→</span>
+                <span className="text-[var(--accent)] font-bold">Reconciliation</span>
+              </div>
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Reconciliations</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Stock mismatches</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Review pending counts and resolve the mismatch.
+                Reconciliation compares your physical stock count against the system ledger. 
+                Variances indicate unrecorded movements or counting errors.
               </p>
             </div>
             {/* AUDIT: BUTTON_CLUTTER - move route jumps into a secondary tray so reconciliation review stays primary. */}
@@ -367,6 +377,22 @@ export function SteelReconciliationsPage() {
                       <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Variance %</div>
                       <div className="mt-1 text-sm font-semibold text-white">{row.variance_percent.toFixed(2)}%</div>
                     </div>
+                  </div>
+
+                  <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.4)] p-3 text-sm text-[var(--muted)]">
+                    <div className="font-semibold text-white">Analysis & Correction</div>
+                    <div className="mt-1">
+                      {row.variance_kg > 0 
+                        ? `System shows ${formatKg(Math.abs(row.variance_kg))} KG LESS than physical count. Likely cause: Unrecorded production or inward material.`
+                        : row.variance_kg < 0
+                        ? `System shows ${formatKg(Math.abs(row.variance_kg))} KG MORE than physical count. Likely cause: Unrecorded dispatch, process loss, or theft.`
+                        : "System and physical count match perfectly."}
+                    </div>
+                    {row.status === "approved" && Math.abs(row.variance_kg) > 0.001 && (
+                      <div className="mt-2 text-emerald-300 font-medium">
+                        ✓ Ledger has been automatically adjusted by {formatKg(row.variance_kg)} KG.
+                      </div>
+                    )}
                   </div>
 
                   {row.notes ? <div className="mt-3 text-sm text-[var(--muted)]">Count note: {row.notes}</div> : null}

@@ -161,6 +161,15 @@ export function SteelInvoiceDetailPage() {
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)] mb-4">
+                <span>Production</span>
+                <span>→</span>
+                <span className="text-[var(--accent)] font-bold">Invoice</span>
+                <span>→</span>
+                <span>Dispatch</span>
+                <span>→</span>
+                <span>Reconciliation</span>
+              </div>
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Invoice</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{detail.invoice.invoice_number}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
@@ -275,7 +284,13 @@ export function SteelInvoiceDetailPage() {
             </CardHeader>
             <CardContent className="space-y-1">
               <div className="text-xl font-semibold text-white">{formatKg(dispatchedWeight)} KG</div>
-              <div className="text-xs text-[var(--muted)]">
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
+                <div
+                  className="h-full bg-[var(--accent)] transition-all"
+                  style={{ width: `${Math.min(100, dispatchCompletionPercent)}%` }}
+                />
+              </div>
+              <div className="mt-2 text-xs text-[var(--muted)]">
                 {fullyDispatchedCount}/{invoiceLines.length} lines closed | {formatKg(remainingWeight)} KG remaining
               </div>
               <div className="text-xs text-[var(--muted)]">

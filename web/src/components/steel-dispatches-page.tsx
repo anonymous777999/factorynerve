@@ -591,7 +591,7 @@ export function SteelDispatchesPage() {
                   <div className="mt-1 text-xs uppercase tracking-[0.16em] text-amber-200">
                     Workflow: Production Batch -&gt; Invoice -&gt; Dispatch
                   </div>
-                  <div className="mt-2">Create an invoice with at least one finished-goods line before creating a dispatch.</div>
+                  <div className="mt-2">Create an invoice with at least one finished-goods line and remaining quantity before creating a dispatch.</div>
                   <Link href="/steel/invoices" className="mt-3 inline-flex">
                     <Button type="button" variant="ghost" className="px-2 py-1 text-xs text-amber-100 hover:text-white">
                       Open Invoices
