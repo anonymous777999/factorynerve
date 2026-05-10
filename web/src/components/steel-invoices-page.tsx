@@ -16,10 +16,12 @@ import {
   listSteelCustomers,
   listSteelInvoices,
   listSteelItems,
+  listSteelStock,
   type SteelBatch,
   type SteelCustomer,
   type SteelInvoice,
   type SteelItem,
+  type SteelStockItem,
 } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
 
@@ -100,6 +102,7 @@ function parseRequiredNumber(
 export function SteelInvoicesPage() {
   const { user, activeFactory, loading, error: sessionError } = useSession();
   const [items, setItems] = useState<SteelItem[]>([]);
+  const [stockItems, setStockItems] = useState<SteelStockItem[]>([]);
   const [batches, setBatches] = useState<SteelBatch[]>([]);
   const [customers, setCustomers] = useState<SteelCustomer[]>([]);
   const [invoices, setInvoices] = useState<SteelInvoice[]>([]);
@@ -125,13 +128,15 @@ export function SteelInvoicesPage() {
     }
     setPageLoading(true);
     try {
-      const [itemsPayload, batchesPayload, customersPayload, invoicesPayload] = await Promise.all([
+      const [itemsPayload, stockPayload, batchesPayload, customersPayload, invoicesPayload] = await Promise.all([
         listSteelItems(),
+        listSteelStock(),
         listSteelBatches(50),
         listSteelCustomers(100),
         listSteelInvoices(20),
       ]);
       setItems(itemsPayload.items || []);
+      setStockItems(stockPayload.items || []);
       setBatches(batchesPayload.items || []);
       setCustomers(customersPayload.items || []);
       setInvoices(invoicesPayload.items || []);
@@ -377,7 +382,7 @@ export function SteelInvoicesPage() {
                       <div key={item.id} className="text-sm">
                         <div className="font-semibold text-white">{item.item_code}</div>
                         <div className="text-xs text-[var(--muted)]">
-                          {formatKg(items.find(i => i.id === item.id)?.stock_balance_kg)} KG available
+                          {formatKg(stockItems.find((stockItem) => stockItem.item_id === item.id)?.stock_balance_kg)} KG available
                         </div>
                       </div>
                     ))}
