@@ -200,6 +200,8 @@ export default function MyTasksPage() {
   );
   const quickTasks = useMemo(() => {
     const items = [] as Array<{ title: string; detail: string; href: string; tone: "good" | "watch" | "action" }>;
+    const draftAlreadySubmitted = draft && submittedShifts.has(draft.shift);
+
     if (pendingShifts > 0) {
       items.push({
         title: t("tasks.task.complete_shift", "Complete the {{shift}} shift entry", { shift: shiftLabel(nextShift) }),
@@ -211,7 +213,7 @@ export default function MyTasksPage() {
         tone: "action",
       });
     }
-    if (draft) {
+    if (draft && !draftAlreadySubmitted) {
       items.push({
         title: t("tasks.task.continue_draft", "Continue your saved draft"),
         detail: t("tasks.task.continue_draft_detail", "{{shift}} shift draft saved for {{date}}.", {

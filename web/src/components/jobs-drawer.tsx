@@ -115,6 +115,7 @@ function buildToastForTransition(job: JobRecord) {
 export function JobsDrawer() {
   const [open, setOpen] = useState(false);
   const [jobs, setJobs] = useState<JobRecord[]>([]);
+  const [dismissedJobIds, setDismissedJobIds] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [actionKey, setActionKey] = useState<string | null>(null);
@@ -132,11 +133,41 @@ export function JobsDrawer() {
     }
   }, []);
 
+  const visibleJobs = useMemo(
+    () => jobs.filter((job) => !dismissedJobIds.has(job.job_id)),
+    [dismissedJobIds, jobs],
+  );
+
   const activeCount = useMemo(
     () => jobs.filter((job) => ACTIVE_STATUSES.has(job.status)).length,
     [jobs],
   );
   const shouldPoll = open || activeCount > 0;
+
+  const handleDismiss = useCallback((jobId: string) => {
+    setDismissedJobIds((current) => {
+      const next = new Set(current);
+      next.add(jobId);
+      return next;
+    });
+  }, []);
+
+  const handleClearCompleted = useCallback(() => {
+    setDismissedJobIds((current) => {
+      const next = new Set(current);
+      jobs.forEach((job) => {
+        if (!ACTIVE_STATUSES.has(job.status)) {
+          next.add(job.job_id);
+        }
+      });
+      return next;
+    });
+  }, [jobs]);
+
+  const canClear = useMemo(
+    () => visibleJobs.some((job) => !ACTIVE_STATUSES.has(job.status)),
+    [visibleJobs],
+  );
 
   useEffect(() => {
     loadJobs().catch(() => undefined);
@@ -265,6 +296,15 @@ export function JobsDrawer() {
                 <p className="mt-2 text-sm text-[var(--muted)]">
                   You can leave the current page and still watch reports, summaries, and OCR jobs finish here.
                 </p>
+                {canClear ? (
+                  <Button
+                    variant="ghost"
+                    className="mt-4 h-8 px-3 text-xs text-[var(--muted)] hover:text-[var(--text)]"
+                    onClick={handleClearCompleted}
+                  >
+                    Clear Completed
+                  </Button>
+                ) : null}
               </div>
               <Button variant="ghost" onClick={() => setOpen(false)}>
                 Close
@@ -278,15 +318,17 @@ export function JobsDrawer() {
                 </div>
               ) : null}
 
-              {!loading && !jobs.length ? (
+              {!loading && !visibleJobs.length ? (
                 <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                   No background jobs yet. Exports, OCR runs, and AI summaries will appear here automatically.
                 </div>
               ) : null}
 
-              {jobs.map((job) => {
+              {visibleJobs.map((job) => {
                 const isCanceling = actionKey === `${job.job_id}:cancel`;
                 const isRetrying = actionKey === `${job.job_id}:retry`;
+                const isActive = ACTIVE_STATUSES.has(job.status);
+
                 return (
                   <div
                     key={job.job_id}
@@ -299,11 +341,22 @@ export function JobsDrawer() {
                           {job.status}
                         </div>
                       </div>
-                      <div className="text-xs text-[var(--muted)]">
-                        {new Date(job.updated_at).toLocaleTimeString("en-IN", {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
+                      <div className="text-right">
+                        <div className="text-xs text-[var(--muted)]">
+                          {new Date(job.updated_at).toLocaleTimeString("en-IN", {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </div>
+                        {!isActive ? (
+                          <button
+                            type="button"
+                            className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--text)]"
+                            onClick={() => handleDismiss(job.job_id)}
+                          >
+                            Dismiss
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                     <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
