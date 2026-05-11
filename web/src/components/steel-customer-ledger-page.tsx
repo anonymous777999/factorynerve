@@ -154,9 +154,10 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
   });
 
   const isSteelFactory = (activeFactory?.industry_type || "").toLowerCase() === "steel";
-  const canRecordPayment = Boolean(user && ["owner", "admin", "manager", "accountant"].includes(user.role));
-  const canManageVerification = canRecordPayment;
-  const canManageTasks = canRecordPayment;
+  const canManage = Boolean(user && ["owner", "manager"].includes(user.role));
+  const canRecordPayment = canManage;
+  const canManageVerification = canManage;
+  const canManageTasks = canManage;
 
   const loadLedger = useCallback(async () => {
     if (!isSteelFactory) {
@@ -434,6 +435,29 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
             </CardContent>
           </Card>
         </div>
+      </main>
+    );
+  }
+
+  if (!canManage) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-4">
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Customer Ledger</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-sm text-[var(--muted)]">The customer ledger and detailed commercial exposure tracking are available to managers and owners.</div>
+            <div className="flex gap-3">
+              <Link href="/steel">
+                <Button>Back to Steel Hub</Button>
+              </Link>
+              <Link href="/dashboard">
+                <Button variant="outline">Dashboard</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       </main>
     );
   }
@@ -819,143 +843,149 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                         placeholder="Use this when rejecting or documenting a mismatch"
                       />
                     </div>
-                    <div className="flex flex-wrap gap-3">
-                      <Button disabled={verificationBusy} onClick={() => void submitVerificationReview("approve")}>
-                        {verificationBusy ? "Saving..." : "Approve Verification"}
-                      </Button>
-                      <Button variant="outline" disabled={verificationBusy} onClick={() => void submitVerificationReview("reject")}>
-                        Reject Verification
-                      </Button>
-                    </div>
+                    {canManageVerification && (
+                      <div className="flex flex-wrap gap-3">
+                        <Button disabled={verificationBusy} onClick={() => void submitVerificationReview("approve")}>
+                          {verificationBusy ? "Saving..." : "Approve Verification"}
+                        </Button>
+                        <Button variant="outline" disabled={verificationBusy} onClick={() => void submitVerificationReview("reject")}>
+                          Reject Verification
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ) : null}
               </div>
 
-              <div className="space-y-4 rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                <div className="text-sm font-semibold text-white">Record payment</div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Payment Date</label>
-                    <Input type="date" value={paymentForm.payment_date} onChange={(event) => setPaymentForm((current) => ({ ...current, payment_date: event.target.value }))} />
-                  </div>
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Invoice (optional)</label>
-                    <Select value={paymentForm.invoice_id} onChange={(event) => setPaymentForm((current) => ({ ...current, invoice_id: event.target.value }))}>
-                      <option value="">Auto allocate oldest outstanding</option>
-                      {openInvoices.map((invoice) => (
-                        <option key={invoice.id} value={invoice.id}>
-                          {invoice.invoice_number} - {formatCurrency(invoice.outstanding_amount_inr)}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                </div>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Amount</label>
-                    <Input type="number" min="0.01" step="0.01" value={paymentForm.amount} onChange={(event) => setPaymentForm((current) => ({ ...current, amount: event.target.value }))} />
-                  </div>
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Payment Mode</label>
-                    <Select value={paymentForm.payment_mode} onChange={(event) => setPaymentForm((current) => ({ ...current, payment_mode: event.target.value as SteelPaymentMode }))}>
-                      {PAYMENT_MODE_OPTIONS.map((mode) => (
-                        <option key={mode} value={mode}>
-                          {mode === "bank_transfer"
-                            ? "Bank Transfer"
-                            : mode === "cash"
-                              ? "Cash"
-                              : mode === "cheque"
-                                ? "Cheque"
-                                : "UPI"}
-                        </option>
-                      ))}
-                    </Select>
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm text-[var(--muted)]">Reference Number</label>
-                  <Input value={paymentForm.reference_number} onChange={(event) => setPaymentForm((current) => ({ ...current, reference_number: event.target.value }))} placeholder="UTR / cheque / receipt number" />
-                </div>
-                <div>
-                  <label className="text-sm text-[var(--muted)]">Notes</label>
-                  <Textarea value={paymentForm.notes} onChange={(event) => setPaymentForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Optional payment note" />
-                </div>
-                <Button disabled={paymentBusy || !canRecordPayment} onClick={() => void submitPayment()}>
-                  {canRecordPayment ? (paymentBusy ? "Recording Payment..." : "Record Customer Payment") : "Owner / manager / admin / accountant access required"}
-                </Button>
-              </div>
-
-              <div className="space-y-4 rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-white">Create follow-up</div>
-                    <div className="text-xs text-[var(--muted)]">
-                      Add the next recovery or account-check step without leaving the customer ledger.
+              {canRecordPayment && (
+                <div className="space-y-4 rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
+                  <div className="text-sm font-semibold text-white">Record payment</div>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="text-sm text-[var(--muted)]">Payment Date</label>
+                      <Input type="date" value={paymentForm.payment_date} onChange={(event) => setPaymentForm((current) => ({ ...current, payment_date: event.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="text-sm text-[var(--muted)]">Invoice (optional)</label>
+                      <Select value={paymentForm.invoice_id} onChange={(event) => setPaymentForm((current) => ({ ...current, invoice_id: event.target.value }))}>
+                        <option value="">Auto allocate oldest outstanding</option>
+                        {openInvoices.map((invoice) => (
+                          <option key={invoice.id} value={invoice.id}>
+                            {invoice.invoice_number} - {formatCurrency(invoice.outstanding_amount_inr)}
+                          </option>
+                        ))}
+                      </Select>
                     </div>
                   </div>
-                  <div className="rounded-full border border-[var(--border)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                    {openTaskCount} open
-                  </div>
-                </div>
-                <div>
-                  <label className="text-sm text-[var(--muted)]">Task title</label>
-                  <Input
-                    value={taskForm.title}
-                    onChange={(event) => setTaskForm((current) => ({ ...current, title: event.target.value }))}
-                    placeholder="Call customer for overdue payment"
-                  />
-                </div>
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Priority</label>
-                    <Select
-                      value={taskForm.priority}
-                      onChange={(event) =>
-                        setTaskForm((current) => ({ ...current, priority: event.target.value as SteelFollowUpTaskPriority }))
-                      }
-                    >
-                      {FOLLOW_UP_PRIORITY_OPTIONS.map((priority) => (
-                        <option key={priority} value={priority}>
-                          {formatTaskLabel(priority)}
-                        </option>
-                      ))}
-                    </Select>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="text-sm text-[var(--muted)]">Amount</label>
+                      <Input type="number" min="0.01" step="0.01" value={paymentForm.amount} onChange={(event) => setPaymentForm((current) => ({ ...current, amount: event.target.value }))} />
+                    </div>
+                    <div>
+                      <label className="text-sm text-[var(--muted)]">Payment Mode</label>
+                      <Select value={paymentForm.payment_mode} onChange={(event) => setPaymentForm((current) => ({ ...current, payment_mode: event.target.value as SteelPaymentMode }))}>
+                        {PAYMENT_MODE_OPTIONS.map((mode) => (
+                          <option key={mode} value={mode}>
+                            {mode === "bank_transfer"
+                              ? "Bank Transfer"
+                              : mode === "cash"
+                                ? "Cash"
+                                : mode === "cheque"
+                                  ? "Cheque"
+                                  : "UPI"}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
                   </div>
                   <div>
-                    <label className="text-sm text-[var(--muted)]">Due date</label>
+                    <label className="text-sm text-[var(--muted)]">Reference Number</label>
+                    <Input value={paymentForm.reference_number} onChange={(event) => setPaymentForm((current) => ({ ...current, reference_number: event.target.value }))} placeholder="UTR / cheque / receipt number" />
+                  </div>
+                  <div>
+                    <label className="text-sm text-[var(--muted)]">Notes</label>
+                    <Textarea value={paymentForm.notes} onChange={(event) => setPaymentForm((current) => ({ ...current, notes: event.target.value }))} placeholder="Optional payment note" />
+                  </div>
+                  <Button disabled={paymentBusy} onClick={() => void submitPayment()}>
+                    {paymentBusy ? "Recording Payment..." : "Record Customer Payment"}
+                  </Button>
+                </div>
+              )}
+
+              {canManageTasks && (
+                <div className="space-y-4 rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <div className="text-sm font-semibold text-white">Create follow-up</div>
+                      <div className="text-xs text-[var(--muted)]">
+                        Add the next recovery or account-check step without leaving the customer ledger.
+                      </div>
+                    </div>
+                    <div className="rounded-full border border-[var(--border)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                      {openTaskCount} open
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-sm text-[var(--muted)]">Task title</label>
                     <Input
-                      type="date"
-                      value={taskForm.due_date}
-                      onChange={(event) => setTaskForm((current) => ({ ...current, due_date: event.target.value }))}
+                      value={taskForm.title}
+                      onChange={(event) => setTaskForm((current) => ({ ...current, title: event.target.value }))}
+                      placeholder="Call customer for overdue payment"
                     />
                   </div>
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Invoice (optional)</label>
-                    <Select
-                      value={taskForm.invoice_id}
-                      onChange={(event) => setTaskForm((current) => ({ ...current, invoice_id: event.target.value }))}
-                    >
-                      <option value="">General customer task</option>
-                      {openInvoices.map((invoice) => (
-                        <option key={invoice.id} value={invoice.id}>
-                          {invoice.invoice_number} - {formatCurrency(invoice.outstanding_amount_inr)}
-                        </option>
-                      ))}
-                    </Select>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div>
+                      <label className="text-sm text-[var(--muted)]">Priority</label>
+                      <Select
+                        value={taskForm.priority}
+                        onChange={(event) =>
+                          setTaskForm((current) => ({ ...current, priority: event.target.value as SteelFollowUpTaskPriority }))
+                        }
+                      >
+                        {FOLLOW_UP_PRIORITY_OPTIONS.map((priority) => (
+                          <option key={priority} value={priority}>
+                            {formatTaskLabel(priority)}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
+                    <div>
+                      <label className="text-sm text-[var(--muted)]">Due date</label>
+                      <Input
+                        type="date"
+                        value={taskForm.due_date}
+                        onChange={(event) => setTaskForm((current) => ({ ...current, due_date: event.target.value }))}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm text-[var(--muted)]">Invoice (optional)</label>
+                      <Select
+                        value={taskForm.invoice_id}
+                        onChange={(event) => setTaskForm((current) => ({ ...current, invoice_id: event.target.value }))}
+                      >
+                        <option value="">General customer task</option>
+                        {openInvoices.map((invoice) => (
+                          <option key={invoice.id} value={invoice.id}>
+                            {invoice.invoice_number} - {formatCurrency(invoice.outstanding_amount_inr)}
+                          </option>
+                        ))}
+                      </Select>
+                    </div>
                   </div>
+                  <div>
+                    <label className="text-sm text-[var(--muted)]">Notes</label>
+                    <Textarea
+                      value={taskForm.note}
+                      onChange={(event) => setTaskForm((current) => ({ ...current, note: event.target.value }))}
+                      placeholder="What should the team check or collect?"
+                    />
+                  </div>
+                  <Button disabled={taskBusy} onClick={() => void submitFollowUpTask()}>
+                    {taskBusy ? "Saving Task..." : "Add Follow-up Task"}
+                  </Button>
                 </div>
-                <div>
-                  <label className="text-sm text-[var(--muted)]">Notes</label>
-                  <Textarea
-                    value={taskForm.note}
-                    onChange={(event) => setTaskForm((current) => ({ ...current, note: event.target.value }))}
-                    placeholder="What should the team check or collect?"
-                  />
-                </div>
-                <Button disabled={taskBusy || !canManageTasks} onClick={() => void submitFollowUpTask()}>
-                  {canManageTasks ? (taskBusy ? "Saving Task..." : "Add Follow-up Task") : "Owner / manager / admin / accountant access required"}
-                </Button>
-              </div>
+              )}
             </CardContent>
           </Card>
 
@@ -992,29 +1022,31 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                         {task.created_by_name ? ` by ${task.created_by_name}` : ""}
                         {task.completed_at ? ` · closed ${formatDate(task.completed_at)}` : ""}
                       </div>
+                    {canManageTasks && (
                       <div className="flex flex-wrap gap-2">
                         <Button
                           variant="outline"
-                          disabled={taskBusy || !canManageTasks || task.status !== "open"}
+                          disabled={taskBusy || task.status !== "open"}
                           onClick={() => void setTaskStatus(task.id, "in_progress")}
                         >
                           Start
                         </Button>
                         <Button
                           variant="outline"
-                          disabled={taskBusy || !canManageTasks || task.status === "done" || task.status === "cancelled"}
+                          disabled={taskBusy || task.status === "done" || task.status === "cancelled"}
                           onClick={() => void setTaskStatus(task.id, "done")}
                         >
                           Mark Done
                         </Button>
                         <Button
                           variant="ghost"
-                          disabled={taskBusy || !canManageTasks || task.status === "cancelled" || task.status === "done"}
+                          disabled={taskBusy || task.status === "cancelled" || task.status === "done"}
                           onClick={() => void setTaskStatus(task.id, "cancelled")}
                         >
                           Cancel
                         </Button>
                       </div>
+                    )}
                     </div>
                   </div>
                 ))}

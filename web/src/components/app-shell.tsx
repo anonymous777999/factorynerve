@@ -229,7 +229,7 @@ const navSections: NavSection[] = [
         label: "Customers",
         href: "/steel/customers",
         description: "Track customer ledger, payments, and outstanding exposure",
-        roles: STEEL_COMMERCIAL_ROLES,
+        roles: ["manager", "owner"],
         industryTypes: ["steel"],
         match: (pathname) => pathname === "/steel/customers" || pathname.startsWith("/steel/customers/"),
       },

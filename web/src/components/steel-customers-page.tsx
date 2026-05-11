@@ -73,7 +73,7 @@ export function SteelCustomersPage() {
   });
 
   const isSteelFactory = (activeFactory?.industry_type || "").toLowerCase() === "steel";
-  const canManage = Boolean(user && ["owner", "admin", "manager", "accountant"].includes(user.role));
+  const canManage = Boolean(user && ["owner", "manager"].includes(user.role));
 
   const loadData = useCallback(async () => {
     if (!isSteelFactory) {
@@ -249,6 +249,29 @@ export function SteelCustomersPage() {
             </CardContent>
           </Card>
         </div>
+      </main>
+    );
+  }
+
+  if (!canManage) {
+    return (
+      <main className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-4">
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Customer Ledger</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-sm text-[var(--muted)]">The customer ledger and commercial exposure tracking are available to managers and owners.</div>
+            <div className="flex gap-3">
+              <Link href="/steel">
+                <Button>Back to Steel Hub</Button>
+              </Link>
+              <Link href="/dashboard">
+                <Button variant="outline">Dashboard</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
       </main>
     );
   }
