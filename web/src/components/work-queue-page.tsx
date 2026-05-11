@@ -625,7 +625,7 @@ export default function WorkQueuePage() {
         });
       });
 
-      if (state.draft) {
+      if (state.draft && !submittedShifts.has(state.draft.shift)) {
         items.push({
           id: "saved-draft",
           section: "today",
@@ -875,7 +875,7 @@ export default function WorkQueuePage() {
 
     const items: QueueItem[] = [];
 
-    if (state.draft) {
+    if (state.draft && !submittedShifts.has(state.draft.shift)) {
       items.push({
         id: "worker-draft",
         section: "today",
