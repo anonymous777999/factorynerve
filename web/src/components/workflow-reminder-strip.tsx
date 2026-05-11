@@ -262,6 +262,8 @@ export function WorkflowReminderStrip({ className }: { className?: string }) {
 
   const reminders = useMemo(() => {
     const next: ReminderItem[] = [];
+    const submittedShifts = new Set(state.todayEntries.map((entry) => entry.shift));
+    const draftAlreadySubmitted = state.draft && submittedShifts.has(state.draft.shift);
 
     if (needsPunchReminder && state.attendanceToday?.can_punch_in) {
       next.push({
@@ -287,7 +289,7 @@ export function WorkflowReminderStrip({ className }: { className?: string }) {
       });
     }
 
-    if (needsShiftEntryReminder && state.draft) {
+    if (needsShiftEntryReminder && state.draft && !draftAlreadySubmitted) {
       next.push({
         id: "saved-draft",
         title: "Saved shift draft is waiting",
@@ -312,9 +314,8 @@ export function WorkflowReminderStrip({ className }: { className?: string }) {
     }
 
     if (needsShiftEntryReminder) {
-      const submitted = new Set(state.todayEntries.map((entry) => entry.shift));
-      const nextShift = ALL_SHIFTS.find((shift) => !submitted.has(shift));
-      if (nextShift && !state.draft && !state.attendanceToday?.can_punch_in) {
+      const nextShift = ALL_SHIFTS.find((shift) => !submittedShifts.has(shift));
+      if (nextShift && (!state.draft || draftAlreadySubmitted) && !state.attendanceToday?.can_punch_in) {
         next.push({
           id: "pending-shift-entry",
           title: "Shift entry is still pending",
