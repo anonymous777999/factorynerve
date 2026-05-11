@@ -106,6 +106,7 @@ class AttendanceTodayResponse(BaseModel):
     worked_minutes: int
     late_minutes: int
     overtime_minutes: int
+    late_warning: str | None = None
     can_punch_in: bool
     can_punch_out: bool
 
@@ -303,7 +304,29 @@ def _active_org_or_400(current_user: User) -> str:
     return org_id
 
 
-def _infer_shift(local_now: datetime) -> str:
+def _infer_shift(db: Session, *, factory_id: str, local_now: datetime) -> str:
+    templates = (
+        db.query(ShiftTemplate)
+        .filter(
+            ShiftTemplate.factory_id == factory_id,
+            ShiftTemplate.is_active.is_(True),
+        )
+        .order_by(ShiftTemplate.is_default.desc(), ShiftTemplate.start_time.asc(), ShiftTemplate.id.asc())
+        .all()
+    )
+    closest_template: ShiftTemplate | None = None
+    closest_delta_minutes: float | None = None
+    for template in templates:
+        buffer_minutes = max(int(template.grace_minutes or 0), 0)
+        candidate_start = datetime.combine(local_now.date(), template.start_time, local_now.tzinfo)
+        delta_minutes = abs((local_now - candidate_start).total_seconds()) / 60
+        if delta_minutes <= buffer_minutes and (
+            closest_delta_minutes is None or delta_minutes < closest_delta_minutes
+        ):
+            closest_template = template
+            closest_delta_minutes = delta_minutes
+    if closest_template:
+        return closest_template.shift_name
     hour = local_now.hour
     if 6 <= hour < 14:
         return "morning"
@@ -550,6 +573,27 @@ def _record_for_local_day(
     )
 
 
+def _open_record_for_local_day(
+    db: Session,
+    *,
+    user_id: int,
+    factory_id: str,
+    attendance_date: date,
+) -> AttendanceRecord | None:
+    return (
+        db.query(AttendanceRecord)
+        .filter(
+            AttendanceRecord.user_id == user_id,
+            AttendanceRecord.factory_id == factory_id,
+            AttendanceRecord.attendance_date == attendance_date,
+            AttendanceRecord.punch_in_at.is_not(None),
+            AttendanceRecord.punch_out_at.is_(None),
+        )
+        .order_by(AttendanceRecord.created_at.desc())
+        .first()
+    )
+
+
 def _record_for_today_view(
     db: Session,
     *,
@@ -637,6 +681,7 @@ def _serialize_today_response(
     *,
     db: Session,
     factory: Factory,
+    user_id: int,
     attendance_date: date,
     record: AttendanceRecord | None,
     inferred_shift: str,
@@ -659,6 +704,29 @@ def _serialize_today_response(
     if record and record.punch_out_at is None and record.attendance_date < attendance_date:
         status_value = "missed_punch"
     shift_value = record.shift if record and record.shift else inferred_shift
+    month_start = attendance_date.replace(day=1)
+    next_month_start = (
+        month_start.replace(year=month_start.year + 1, month=1)
+        if month_start.month == 12
+        else month_start.replace(month=month_start.month + 1)
+    )
+    late_mark_count = (
+        db.query(AttendanceRecord)
+        .filter(
+            AttendanceRecord.user_id == user_id,
+            AttendanceRecord.factory_id == factory.factory_id,
+            AttendanceRecord.attendance_date >= month_start,
+            AttendanceRecord.attendance_date < next_month_start,
+            AttendanceRecord.late_minutes > 0,
+        )
+        .count()
+    )
+    remaining_late_marks = max(3 - late_mark_count, 0)
+    late_warning = (
+        f"You have {late_mark_count} late marks this month. {remaining_late_marks} more will result in a half-day deduction."
+        if late_mark_count >= 2 and template is not None
+        else None
+    )
     return AttendanceTodayResponse(
         attendance_id=record.id if record else None,
         attendance_date=record.attendance_date if record else attendance_date,
@@ -676,6 +744,7 @@ def _serialize_today_response(
         worked_minutes=worked_minutes,
         late_minutes=record.late_minutes if record else 0,
         overtime_minutes=overtime_minutes if record else 0,
+        late_warning=late_warning,
         can_punch_in=record is None,
         can_punch_out=bool(record and record.punch_in_at and record.punch_out_at is None),
     )
@@ -711,9 +780,10 @@ def get_my_attendance_today(
     return _serialize_today_response(
         db=db,
         factory=factory,
+        user_id=current_user.id,
         attendance_date=local_now.date(),
         record=record,
-        inferred_shift=_infer_shift(local_now),
+        inferred_shift=_infer_shift(db, factory_id=factory.factory_id, local_now=local_now),
     )
 
 
@@ -749,15 +819,20 @@ def punch_attendance(
             return _serialize_today_response(
                 db=db,
                 factory=factory,
+                user_id=current_user.id,
                 attendance_date=current_date,
                 record=open_record,
-                inferred_shift=open_record.shift or _infer_shift(local_now),
+                inferred_shift=open_record.shift or _infer_shift(db, factory_id=factory.factory_id, local_now=local_now),
             )
         if today_record and today_record.punch_out_at is not None:
             raise HTTPException(status_code=409, detail="Attendance is already closed for today.")
 
         profile_shift = profile.default_shift if profile else None
-        shift_value = (payload.shift.value if payload.shift else None) or profile_shift or _infer_shift(local_now)
+        shift_value = (payload.shift.value if payload.shift else None) or profile_shift or _infer_shift(
+            db,
+            factory_id=factory.factory_id,
+            local_now=local_now,
+        )
         template = _shift_template_for_shift(
             db,
             org_id=org_id,
@@ -815,21 +890,47 @@ def punch_attendance(
         return _serialize_today_response(
             db=db,
             factory=factory,
+            user_id=current_user.id,
             attendance_date=current_date,
             record=record,
             inferred_shift=shift_value,
         )
 
-    record = open_record or today_record
+    record = _open_record_for_local_day(
+        db,
+        user_id=current_user.id,
+        factory_id=factory.factory_id,
+        attendance_date=current_date,
+    )
+    if record is None:
+        yesterday_record = _open_record_for_local_day(
+            db,
+            user_id=current_user.id,
+            factory_id=factory.factory_id,
+            attendance_date=current_date - timedelta(days=1),
+        )
+        if yesterday_record:
+            yesterday_template = _shift_template_for_shift(
+                db,
+                org_id=org_id,
+                factory_id=factory.factory_id,
+                shift_name=yesterday_record.shift,
+                shift_template_id=yesterday_record.shift_template_id,
+            )
+            if yesterday_template and yesterday_template.cross_midnight:
+                record = yesterday_record
+    if record is None:
+        record = open_record or today_record
     if not record or not record.punch_in_at:
         raise HTTPException(status_code=409, detail="Punch in first to close attendance.")
     if record.punch_out_at is not None:
         return _serialize_today_response(
             db=db,
             factory=factory,
+            user_id=current_user.id,
             attendance_date=current_date,
             record=record,
-            inferred_shift=record.shift or _infer_shift(local_now),
+            inferred_shift=record.shift or _infer_shift(db, factory_id=factory.factory_id, local_now=local_now),
         )
 
     punch_time = datetime.now(timezone.utc)
@@ -871,9 +972,10 @@ def punch_attendance(
     return _serialize_today_response(
         db=db,
         factory=factory,
+        user_id=current_user.id,
         attendance_date=current_date,
         record=record,
-        inferred_shift=record.shift or _infer_shift(local_now),
+        inferred_shift=record.shift or _infer_shift(db, factory_id=factory.factory_id, local_now=local_now),
     )
 
 
