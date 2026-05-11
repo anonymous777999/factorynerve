@@ -209,10 +209,10 @@ export function SteelCommandCenterPage() {
     : [];
   const quickActions = [
     topPriority.primaryAction,
-    ...(topPriority.secondaryAction ? [topPriority.secondaryAction] : []),
+    { href: "/steel/production/record", label: "Record Batch", variant: "primary" as const },
+    { href: "/steel/inventory", label: "Inventory Desk", variant: "secondary" as const },
     { href: "/steel/invoices", label: "Invoices", variant: "secondary" as const },
     { href: "/steel/dispatches", label: "Dispatches", variant: "secondary" as const },
-    { href: "/steel/customers", label: "Customers", variant: "secondary" as const },
   ];
   const steelHubSections = useMemo(
     () => [
