@@ -39,7 +39,7 @@ const LEADERSHIP_ROLES = ["admin", "owner"] as const;
 const CORE_WORK_ROLES = ["operator", "supervisor", "manager"] as const;
 const REPORTING_ROLES = ["accountant", "supervisor", "manager", "admin", "owner"] as const;
 const ATTENDANCE_VIEW_ROLES = ["attendance", "operator"] as const;
-const ENTRY_WORK_ROLES = ["operator"] as const;
+const ENTRY_WORK_ROLES = ["operator", "supervisor", "manager", "admin"] as const;
 const DOCUMENT_CAPTURE_ROLES = ["operator"] as const;
 const STEEL_CONTROL_ROLES = ["manager"] as const;
 const STEEL_CHART_ROLES = ["manager", "owner"] as const;
@@ -159,13 +159,6 @@ const navSections: NavSection[] = [
         match: (pathname) => pathname === "/tasks" || pathname.startsWith("/tasks/"),
       },
       {
-        label: "Shift Entry",
-        href: "/entry",
-        description: "Capture shift production without hunting through screens",
-        roles: ENTRY_WORK_ROLES,
-        match: (pathname) => pathname === "/entry" || pathname.startsWith("/entry/"),
-      },
-      {
         label: "Document Desk",
         href: "/ocr/scan",
         description: "Bring paper registers and plant documents into the workflow fast",
@@ -177,6 +170,13 @@ const navSections: NavSection[] = [
   {
     title: "Operations",
     items: [
+      {
+        label: "Shift Entry",
+        href: "/entry",
+        description: "Capture shift production without hunting through screens",
+        roles: ENTRY_WORK_ROLES,
+        match: (pathname) => pathname === "/entry" || pathname.startsWith("/entry/"),
+      },
       {
         label: "Steel Hub",
         href: "/steel",
@@ -262,7 +262,7 @@ const navSections: NavSection[] = [
         match: (pathname) => pathname === "/attendance/review" || pathname.startsWith("/attendance/review/"),
       },
       {
-        label: "Review Queue",
+        label: "Approvals",
         href: "/approvals",
         description: "One place for pending review, verification, and stock trust work",
         roles: REVIEW_QUEUE_NAV_ROLES,
@@ -521,8 +521,8 @@ const ITEM_TRANSLATION_KEY: Record<string, { label: string; description: string 
     description: "nav.attendance_review.description",
   },
   "/approvals": {
-    label: "nav.review_queue.label",
-    description: "nav.review_queue.description",
+    label: "nav.approvals.label",
+    description: "nav.approvals.description",
   },
   "/ocr/verify": {
     label: "nav.review_documents.label",
