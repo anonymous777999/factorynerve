@@ -1,11 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
 
 import { ApiError } from "@/lib/api";
 import {
   approveAttendanceReview,
+  formatAttendanceReviewStatusLabel,
+  formatAttendanceStatusLabel,
   listAttendanceReview,
   rejectAttendanceReview,
   type AttendanceReviewFinalStatus,
@@ -436,7 +439,8 @@ function ReviewDetailPanel({
             <div className="grid gap-3 sm:grid-cols-2">
               {[
                 { label: "Attendance date", value: formatDate(item.attendance_date) },
-                { label: "Review status", value: item.review_status.replaceAll("_", " ") },
+                { label: "Review status", value: formatAttendanceReviewStatusLabel(item.review_status) },
+                { label: "Attendance status", value: formatAttendanceStatusLabel(item.status) },
                 { label: "Punch in", value: formatDateTime(item.punch_in_at) },
                 { label: "Punch out", value: formatDateTime(item.punch_out_at) },
                 { label: "Worked time", value: formatMinutes(item.worked_minutes) },
@@ -502,7 +506,7 @@ function ReviewDetailPanel({
               >
                 {FINAL_STATUS_OPTIONS.map((statusOption) => (
                   <option key={statusOption} value={statusOption}>
-                    {statusOption.replaceAll("_", " ")}
+                    {formatAttendanceStatusLabel(statusOption)}
                   </option>
                 ))}
               </Select>
@@ -553,8 +557,13 @@ function ReviewDetailPanel({
 }
 
 export default function AttendanceReviewPage() {
+  const searchParams = useSearchParams();
+  const initialAttendanceDate = searchParams.get("attendance_date") || searchParams.get("date") || todayValue();
+  const initialDetailTab = ((searchParams.get("tab") || "").trim().toLowerCase() as ReviewTab) || "details";
+  const initialFocusParam = searchParams.get("focus") || searchParams.get("attendance_id") || "";
+  const initialFocusValue = initialFocusParam ? Number(initialFocusParam) : Number.NaN;
   const { user, activeFactory, loading, error: sessionError } = useSession();
-  const [attendanceDate, setAttendanceDate] = useState(todayValue());
+  const [attendanceDate, setAttendanceDate] = useState(initialAttendanceDate);
   const [payload, setPayload] = useState<AttendanceReviewPayload | null>(null);
   const [forms, setForms] = useState<Record<number, DecisionForm>>({});
   const [pageLoading, setPageLoading] = useState(true);
@@ -570,11 +579,14 @@ export default function AttendanceReviewPage() {
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [selectedAttendanceId, setSelectedAttendanceId] = useState<number | null>(null);
   const [mobileDetailOpen, setMobileDetailOpen] = useState(false);
-  const [detailTab, setDetailTab] = useState<ReviewTab>("details");
+  const [detailTab, setDetailTab] = useState<ReviewTab>(
+    initialDetailTab === "fix" || initialDetailTab === "history" ? initialDetailTab : "details",
+  );
 
   const deferredSearch = useDeferredValue(search);
   const canReview = canReviewAttendance(user?.role);
   const canManage = canManageAttendance(user?.role);
+  const focusedAttendanceId = Number.isFinite(initialFocusValue) ? initialFocusValue : null;
 
   const loadReview = useCallback(
     async (options?: { background?: boolean }) => {
@@ -674,6 +686,8 @@ export default function AttendanceReviewPage() {
     return items
       .map((item) => buildDerivedReviewItem(item))
       .sort((left, right) => {
+        if (left.issueType === "missed_punch" && right.issueType !== "missed_punch") return -1;
+        if (right.issueType === "missed_punch" && left.issueType !== "missed_punch") return 1;
         const severityDifference = severityRank[left.severity] - severityRank[right.severity];
         if (severityDifference !== 0) return severityDifference;
         if (Boolean(left.item.regularization) !== Boolean(right.item.regularization)) {
@@ -737,10 +751,19 @@ export default function AttendanceReviewPage() {
       setMobileDetailOpen(false);
       return;
     }
-    setSelectedAttendanceId((current) =>
-      filteredItems.some((review) => review.item.attendance_id === current) ? current : filteredItems[0].item.attendance_id,
-    );
-  }, [filteredItems]);
+    setSelectedAttendanceId((current) => {
+      if (filteredItems.some((review) => review.item.attendance_id === current)) {
+        return current;
+      }
+      if (
+        focusedAttendanceId !== null &&
+        filteredItems.some((review) => review.item.attendance_id === focusedAttendanceId)
+      ) {
+        return focusedAttendanceId;
+      }
+      return filteredItems[0].item.attendance_id;
+    });
+  }, [filteredItems, focusedAttendanceId]);
 
   function updateForm(attendanceId: number, patch: Partial<DecisionForm>) {
     setForms((current) => ({
@@ -752,9 +775,9 @@ export default function AttendanceReviewPage() {
     }));
   }
 
-  function openReview(attendanceId: number, mobile = false) {
+  function openReview(attendanceId: number, mobile = false, tab: ReviewTab = "details") {
     setSelectedAttendanceId(attendanceId);
-    setDetailTab("details");
+    setDetailTab(tab);
     if (mobile) {
       setMobileDetailOpen(true);
     }
@@ -909,7 +932,16 @@ export default function AttendanceReviewPage() {
 
             <div className="flex flex-wrap items-center gap-3">
               {nextReview ? (
-                <Button className="px-4 py-2 text-xs" onClick={() => openReview(nextReview.item.attendance_id, typeof window !== "undefined" && window.innerWidth < 1024)}>
+                <Button
+                  className="px-4 py-2 text-xs"
+                  onClick={() =>
+                    openReview(
+                      nextReview.item.attendance_id,
+                      typeof window !== "undefined" && window.innerWidth < 1024,
+                      nextReview.item.regularization || nextReview.issueType === "missed_punch" ? "fix" : "details",
+                    )
+                  }
+                >
                   Review next
                 </Button>
               ) : null}
@@ -1120,13 +1152,28 @@ export default function AttendanceReviewPage() {
                           </div>
                           <div className="max-w-3xl text-sm leading-6 text-[var(--text)]">{nextReview.headline}</div>
                           <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
-                            <span className="rounded-full border border-[var(--border)] px-3 py-1">Status {nextReview.item.review_status.replaceAll("_", " ")}</span>
+                            <span className="rounded-full border border-[var(--border)] px-3 py-1">Attendance {formatAttendanceStatusLabel(nextReview.item.status)}</span>
+                            <span className="rounded-full border border-[var(--border)] px-3 py-1">Review {formatAttendanceReviewStatusLabel(nextReview.item.review_status)}</span>
+                            {nextReview.issueType === "missed_punch" ? (
+                              <span className={cn("rounded-full px-3 py-1 font-semibold uppercase tracking-[0.14em]", severityClasses("critical"))}>
+                                Missed punch
+                              </span>
+                            ) : null}
                             <span className="rounded-full border border-[var(--border)] px-3 py-1">Punch in {formatDateTime(nextReview.item.punch_in_at)}</span>
                             <span className="rounded-full border border-[var(--border)] px-3 py-1">Punch out {formatDateTime(nextReview.item.punch_out_at)}</span>
                           </div>
                         </div>
                         <div className="flex flex-col items-start gap-3 sm:items-end">
-                          <Button className="px-4 py-2 text-xs" onClick={() => openReview(nextReview.item.attendance_id, typeof window !== "undefined" && window.innerWidth < 1024)}>
+                          <Button
+                            className="px-4 py-2 text-xs"
+                            onClick={() =>
+                              openReview(
+                                nextReview.item.attendance_id,
+                                typeof window !== "undefined" && window.innerWidth < 1024,
+                                nextReview.item.regularization || nextReview.issueType === "missed_punch" ? "fix" : "details",
+                              )
+                            }
+                          >
                             Review next
                           </Button>
                           <div className="rounded-2xl border border-[var(--border)] bg-[rgba(10,14,24,0.78)] px-4 py-3 text-sm text-[var(--muted)]">
@@ -1183,7 +1230,13 @@ export default function AttendanceReviewPage() {
                                               "cursor-pointer border-t border-[var(--border)]/60 text-sm transition hover:bg-[rgba(255,255,255,0.02)]",
                                               isActive ? "bg-[rgba(34,211,238,0.08)]" : "bg-transparent",
                                             )}
-                                            onClick={() => openReview(review.item.attendance_id)}
+                                            onClick={() =>
+                                              openReview(
+                                                review.item.attendance_id,
+                                                false,
+                                                review.item.regularization || review.issueType === "missed_punch" ? "fix" : "details",
+                                              )
+                                            }
                                           >
                                             <td className="px-6 py-4 align-top">
                                               <div className="flex items-start gap-3">
@@ -1217,16 +1270,27 @@ export default function AttendanceReviewPage() {
                                             </td>
                                             <td className="px-4 py-4">
                                               <div className="text-sm font-semibold text-[var(--text)]">
-                                                {review.item.review_status.replaceAll("_", " ")}
+                                                {formatAttendanceReviewStatusLabel(review.item.review_status)}
                                               </div>
-                                              <div className="mt-1 text-xs text-[var(--muted)]">{review.severityLabel}</div>
+                                              <div className="mt-1 text-xs text-[var(--muted)]">{formatAttendanceStatusLabel(review.item.status)}</div>
+                                              {review.issueType === "missed_punch" ? (
+                                                <div className="mt-2">
+                                                  <span className={cn("rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]", severityClasses("critical"))}>
+                                                    Missed punch
+                                                  </span>
+                                                </div>
+                                              ) : null}
                                             </td>
                                             <td className="px-6 py-4 text-right">
                                               <Button
                                                 className="px-4 py-2 text-xs"
                                                 onClick={(event) => {
                                                   event.stopPropagation();
-                                                  openReview(review.item.attendance_id);
+                                                  openReview(
+                                                    review.item.attendance_id,
+                                                    false,
+                                                    review.item.regularization || review.issueType === "missed_punch" ? "fix" : "details",
+                                                  );
                                                 }}
                                               >
                                                 Review
@@ -1278,7 +1342,16 @@ export default function AttendanceReviewPage() {
                                       </div>
                                     </div>
 
-                                    <Button className="w-full" onClick={() => openReview(review.item.attendance_id, true)}>
+                                    <Button
+                                      className="w-full"
+                                      onClick={() =>
+                                        openReview(
+                                          review.item.attendance_id,
+                                          true,
+                                          review.item.regularization || review.issueType === "missed_punch" ? "fix" : "details",
+                                        )
+                                      }
+                                    >
                                       {review.actionLabel}
                                     </Button>
                                   </CardContent>
