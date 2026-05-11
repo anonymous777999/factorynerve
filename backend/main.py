@@ -52,6 +52,10 @@ from backend.services.ops_alerts import (
     record_request_outcome as record_ops_request_outcome,
     shutdown_ops_alerting,
 )
+from backend.services.attendance_absence_service import (
+    initialize_attendance_absence_scheduler,
+    shutdown_attendance_absence_scheduler,
+)
 
 try:
     import sentry_sdk  # type: ignore
@@ -70,6 +74,7 @@ async def lifespan(_app: FastAPI):
     try:
         logger.info("Starting backend initialization.")
         init_db()
+        initialize_attendance_absence_scheduler()
         initialize_ops_alerting()
         logger.info("Backend startup completed successfully.")
         yield
@@ -77,6 +82,7 @@ async def lifespan(_app: FastAPI):
         logger.exception("Startup initialization failed.")
         raise RuntimeError("Backend startup failed.") from error
     finally:
+        shutdown_attendance_absence_scheduler()
         shutdown_ops_alerting()
 
 
