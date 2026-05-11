@@ -1,0 +1,2707 @@
+[i18n] Missing translation for en:shell.workspace.label
+[i18n] Missing translation for en:shell.workspace.description
+[i18n] Missing translation for en:shell.show_sidebar
+[i18n] Missing translation for en:common.not_selected
+[i18n] Missing translation for en:shell.factory_context
+[i18n] Missing translation for en:shell.close_sidebar
+[i18n] Missing translation for en:role.team_member
+[i18n] Missing translation for en:shell.account_title
+[i18n] Missing translation for en:shell.account_subtitle
+[i18n] Missing translation for en:language.label
+[i18n] Missing translation for en:language.english
+[i18n] Missing translation for en:language.hindi
+[i18n] Missing translation for en:language.marathi
+[i18n] Missing translation for en:language.tamil
+[i18n] Missing translation for en:language.gujarati
+[i18n] Missing translation for en:shell.tips_title
+[i18n] Missing translation for en:shell.tips_subtitle
+[i18n] Missing translation for en:nav.profile.label
+[i18n] Missing translation for en:shell.logout
+[i18n] Missing translation for en:shell.switch_account
+[i18n] Missing translation for en:shell.go_back
+[i18n] Missing translation for en:nav.section.account
+[i18n] Missing translation for en:nav.profile.description
+[i18n] Missing translation for en:shell.hide_workspace
+Failed to proxy http://127.0.0.1:8765/auth/context Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/jobs?limit=12 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+[browser] [i18n] Missing translation for en:shell.workspace.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.pinned (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.workspace.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.show_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:common.not_selected (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.factory_context (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.close_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:role.team_member (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.english (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.hindi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.marathi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.tamil (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.gujarati (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.logout (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.switch_account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.go_back (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.hide_workspace (src\lib\i18n.tsx:922:11)
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/me/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/templates Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/live Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries?page=1&page_size=50 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/alerts Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/analytics/weekly Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ai/anomalies/preview?days=14 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries?status=pending&page=1&page_size=6 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/verifications?verification_status=pending Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/steel/inventory/reconciliations?status=pending&limit=6 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/status Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/review?lookback_days=14 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/verifications/summary Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/settings/usage Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/me/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/alerts Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+[i18n] Missing translation for en:shell.workspace.label
+[i18n] Missing translation for en:shell.workspace.description
+[i18n] Missing translation for en:shell.show_sidebar
+[i18n] Missing translation for en:common.not_selected
+[i18n] Missing translation for en:shell.factory_context
+[i18n] Missing translation for en:shell.close_sidebar
+[i18n] Missing translation for en:role.team_member
+[i18n] Missing translation for en:shell.account_title
+[i18n] Missing translation for en:shell.account_subtitle
+[i18n] Missing translation for en:language.label
+[i18n] Missing translation for en:language.english
+[i18n] Missing translation for en:language.hindi
+[i18n] Missing translation for en:language.marathi
+[i18n] Missing translation for en:language.tamil
+[i18n] Missing translation for en:language.gujarati
+[i18n] Missing translation for en:shell.tips_title
+[i18n] Missing translation for en:shell.tips_subtitle
+[i18n] Missing translation for en:nav.profile.label
+[i18n] Missing translation for en:shell.logout
+[i18n] Missing translation for en:shell.switch_account
+[i18n] Missing translation for en:shell.go_back
+[i18n] Missing translation for en:nav.section.account
+[i18n] Missing translation for en:nav.profile.description
+[i18n] Missing translation for en:shell.hide_workspace
+[browser] [i18n] Missing translation for en:shell.workspace.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.workspace.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.show_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:common.not_selected (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.factory_context (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.close_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:role.team_member (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.english (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.hindi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.marathi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.tamil (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.gujarati (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.logout (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.switch_account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.go_back (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.hide_workspace (src\lib\i18n.tsx:922:11)
+Failed to proxy http://127.0.0.1:8765/auth/context Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+[browser] [i18n] Missing translation for en:shell.pinned (src\lib\i18n.tsx:922:11)
+Failed to proxy http://127.0.0.1:8765/jobs?limit=12 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries?page=1&page_size=50 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/settings/usage Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/alerts Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/analytics/weekly Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ai/anomalies/preview?days=14 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/verifications/summary Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/me/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries?status=pending&page=1&page_size=6 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/verifications?verification_status=pending Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/steel/inventory/reconciliations?status=pending&limit=6 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/status Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/templates Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/live Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/review?lookback_days=14 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/alerts Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/me/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+[browser] [i18n] Missing translation for en:auth.login.destination.workspace (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.workflow_1_label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.workflow_1_detail (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.workflow_2_label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.workflow_2_detail (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.workflow_3_label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.workflow_3_detail (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.guardrail.verified_only (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.guardrail.cookie_eyebrow (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.guardrail.cookie_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.guardrail.role_eyebrow (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.guardrail.role_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.factory_os (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.system (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.eyebrow (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.step_1_label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.step_1_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.step_1_detail (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.step_2_label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.step_2_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.step_2_detail (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.step_3_label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.step_3_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.step_3_detail (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.email_label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.email_placeholder (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.password_label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.password_placeholder (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.show_password (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.submit (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.google (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.reset_password (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.create_account_prompt (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.create_account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.help_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.help_summary (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.safety_guardrails (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.workflow_map_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.access_lane_rating (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.routes_online (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.protected (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:auth.login.rating_detail (src\lib\i18n.tsx:922:11)
+Failed to proxy http://127.0.0.1:8765/observability/ready Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+[i18n] Missing translation for en:shell.workspace.label
+[i18n] Missing translation for en:shell.workspace.description
+[i18n] Missing translation for en:shell.show_sidebar
+[i18n] Missing translation for en:common.not_selected
+[i18n] Missing translation for en:shell.factory_context
+[i18n] Missing translation for en:shell.close_sidebar
+[i18n] Missing translation for en:role.team_member
+[i18n] Missing translation for en:shell.account_title
+[i18n] Missing translation for en:shell.account_subtitle
+[i18n] Missing translation for en:language.label
+[i18n] Missing translation for en:language.english
+[i18n] Missing translation for en:language.hindi
+[i18n] Missing translation for en:language.marathi
+[i18n] Missing translation for en:language.tamil
+[i18n] Missing translation for en:language.gujarati
+[i18n] Missing translation for en:shell.tips_title
+[i18n] Missing translation for en:shell.tips_subtitle
+[i18n] Missing translation for en:nav.profile.label
+[i18n] Missing translation for en:shell.logout
+[i18n] Missing translation for en:shell.switch_account
+[i18n] Missing translation for en:shell.go_back
+[i18n] Missing translation for en:nav.section.account
+[i18n] Missing translation for en:nav.profile.description
+[i18n] Missing translation for en:shell.hide_workspace
+⚠ Fast Refresh had to perform a full reload. Read more: https://nextjs.org/docs/messages/fast-refresh-reload
+[browser] [i18n] Missing translation for en:shell.workspace.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.workspace.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.show_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:common.not_selected (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.factory_context (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.close_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:role.team_member (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.english (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.hindi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.marathi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.tamil (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.gujarati (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.logout (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.switch_account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.go_back (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.hide_workspace (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.pinned (src\lib\i18n.tsx:922:11)
+Failed to proxy http://127.0.0.1:8765/auth/context Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/jobs?limit=12 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries?page=1&page_size=50 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/settings/usage Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/alerts Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/analytics/weekly Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ai/anomalies/preview?days=14 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/verifications/summary Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/me/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries?status=pending&page=1&page_size=6 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/verifications?verification_status=pending Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/steel/inventory/reconciliations?status=pending&limit=6 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/status Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/templates Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/live Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/review?lookback_days=14 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/alerts Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/me/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+[i18n] Missing translation for en:shell.workspace.label
+[i18n] Missing translation for en:shell.workspace.description
+[i18n] Missing translation for en:shell.show_sidebar
+[i18n] Missing translation for en:common.not_selected
+[i18n] Missing translation for en:shell.factory_context
+[i18n] Missing translation for en:shell.close_sidebar
+[i18n] Missing translation for en:role.team_member
+[i18n] Missing translation for en:shell.account_title
+[i18n] Missing translation for en:shell.account_subtitle
+[i18n] Missing translation for en:language.label
+[i18n] Missing translation for en:language.english
+[i18n] Missing translation for en:language.hindi
+[i18n] Missing translation for en:language.marathi
+[i18n] Missing translation for en:language.tamil
+[i18n] Missing translation for en:language.gujarati
+[i18n] Missing translation for en:shell.tips_title
+[i18n] Missing translation for en:shell.tips_subtitle
+[i18n] Missing translation for en:nav.profile.label
+[i18n] Missing translation for en:shell.logout
+[i18n] Missing translation for en:shell.switch_account
+[i18n] Missing translation for en:shell.go_back
+[i18n] Missing translation for en:nav.section.account
+[i18n] Missing translation for en:nav.profile.description
+[i18n] Missing translation for en:shell.hide_workspace
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+[i18n] Missing translation for en:shell.workspace.label
+[i18n] Missing translation for en:shell.workspace.description
+[i18n] Missing translation for en:shell.show_sidebar
+[i18n] Missing translation for en:common.not_selected
+[i18n] Missing translation for en:shell.factory_context
+[i18n] Missing translation for en:shell.close_sidebar
+[i18n] Missing translation for en:role.team_member
+[i18n] Missing translation for en:shell.account_title
+[i18n] Missing translation for en:shell.account_subtitle
+[i18n] Missing translation for en:language.label
+[i18n] Missing translation for en:language.english
+[i18n] Missing translation for en:language.hindi
+[i18n] Missing translation for en:language.marathi
+[i18n] Missing translation for en:language.tamil
+[i18n] Missing translation for en:language.gujarati
+[i18n] Missing translation for en:shell.tips_title
+[i18n] Missing translation for en:shell.tips_subtitle
+[i18n] Missing translation for en:nav.profile.label
+[i18n] Missing translation for en:shell.logout
+[i18n] Missing translation for en:shell.switch_account
+[i18n] Missing translation for en:shell.go_back
+[i18n] Missing translation for en:nav.section.account
+[i18n] Missing translation for en:nav.profile.description
+[i18n] Missing translation for en:shell.hide_workspace
+Failed to proxy http://127.0.0.1:8765/auth/context Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/jobs?limit=12 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries?page=1&page_size=50 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/settings/usage Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/alerts Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/analytics/weekly Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ai/anomalies/preview?days=14 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/verifications/summary Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/me/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/verifications?verification_status=pending Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries?status=pending&page=1&page_size=6 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/steel/inventory/reconciliations?status=pending&limit=6 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/status Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/templates Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/review?lookback_days=14 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/live Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/alerts Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/me/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+[browser] [i18n] Missing translation for en:shell.workspace.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.workspace.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.show_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:common.not_selected (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.factory_context (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.close_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:role.team_member (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.english (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.hindi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.marathi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.tamil (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.gujarati (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.logout (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.switch_account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.go_back (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.hide_workspace (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.pinned (src\lib\i18n.tsx:922:11)
+[i18n] Missing translation for en:shell.workspace.label
+[i18n] Missing translation for en:shell.workspace.description
+[i18n] Missing translation for en:shell.show_sidebar
+[i18n] Missing translation for en:common.not_selected
+[i18n] Missing translation for en:shell.factory_context
+[i18n] Missing translation for en:shell.close_sidebar
+[i18n] Missing translation for en:role.team_member
+[i18n] Missing translation for en:shell.account_title
+[i18n] Missing translation for en:shell.account_subtitle
+[i18n] Missing translation for en:language.label
+[i18n] Missing translation for en:language.english
+[i18n] Missing translation for en:language.hindi
+[i18n] Missing translation for en:language.marathi
+[i18n] Missing translation for en:language.tamil
+[i18n] Missing translation for en:language.gujarati
+[i18n] Missing translation for en:shell.tips_title
+[i18n] Missing translation for en:shell.tips_subtitle
+[i18n] Missing translation for en:nav.profile.label
+[i18n] Missing translation for en:shell.logout
+[i18n] Missing translation for en:shell.switch_account
+[i18n] Missing translation for en:shell.go_back
+[i18n] Missing translation for en:nav.section.account
+[i18n] Missing translation for en:nav.profile.description
+[i18n] Missing translation for en:shell.hide_workspace
+[browser] [i18n] Missing translation for en:shell.workspace.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.workspace.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.show_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:common.not_selected (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.factory_context (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.close_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:role.team_member (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.english (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.hindi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.marathi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.tamil (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.gujarati (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.logout (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.switch_account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.go_back (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.hide_workspace (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.pinned (src\lib\i18n.tsx:922:11)
+Failed to proxy http://127.0.0.1:8765/auth/context Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/jobs?limit=12 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/settings/usage Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries?page=1&page_size=50 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/alerts Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/analytics/weekly Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ai/anomalies/preview?days=14 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/verifications/summary Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/me/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries?status=pending&page=1&page_size=6 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/verifications?verification_status=pending Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/steel/inventory/reconciliations?status=pending&limit=6 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/status Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/templates Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/live Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/review?lookback_days=14 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/alerts Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/me/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+[i18n] Missing translation for en:shell.workspace.label
+[i18n] Missing translation for en:shell.workspace.description
+[i18n] Missing translation for en:shell.show_sidebar
+[i18n] Missing translation for en:common.not_selected
+[i18n] Missing translation for en:shell.factory_context
+[i18n] Missing translation for en:shell.close_sidebar
+[i18n] Missing translation for en:role.team_member
+[i18n] Missing translation for en:shell.account_title
+[i18n] Missing translation for en:shell.account_subtitle
+[i18n] Missing translation for en:language.label
+[i18n] Missing translation for en:language.english
+[i18n] Missing translation for en:language.hindi
+[i18n] Missing translation for en:language.marathi
+[i18n] Missing translation for en:language.tamil
+[i18n] Missing translation for en:language.gujarati
+[i18n] Missing translation for en:shell.tips_title
+[i18n] Missing translation for en:shell.tips_subtitle
+[i18n] Missing translation for en:nav.profile.label
+[i18n] Missing translation for en:shell.logout
+[i18n] Missing translation for en:shell.switch_account
+[i18n] Missing translation for en:shell.go_back
+[i18n] Missing translation for en:nav.section.account
+[i18n] Missing translation for en:nav.profile.description
+[i18n] Missing translation for en:shell.hide_workspace
+[browser] [i18n] Missing translation for en:shell.workspace.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.workspace.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.show_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:common.not_selected (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.factory_context (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.close_sidebar (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:role.team_member (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.account_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.english (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.hindi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.marathi (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.tamil (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:language.gujarati (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_title (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.tips_subtitle (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.label (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.logout (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.switch_account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.go_back (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.section.account (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:nav.profile.description (src\lib\i18n.tsx:922:11)
+[browser] [i18n] Missing translation for en:shell.hide_workspace (src\lib\i18n.tsx:922:11)
+Failed to proxy http://127.0.0.1:8765/auth/context Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/jobs?limit=12 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+[browser] [i18n] Missing translation for en:shell.pinned (src\lib\i18n.tsx:922:11)
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries?page=1&page_size=50 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/settings/usage Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/alerts Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/analytics/weekly Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ai/anomalies/preview?days=14 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/verifications/summary Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/me/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries?status=pending&page=1&page_size=6 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/verifications?verification_status=pending Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/steel/inventory/reconciliations?status=pending&limit=6 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/status Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/ocr/templates Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/live Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/review?lookback_days=14 Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/entries/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/alerts Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/attendance/me/today Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+[i18n] Missing translation for en:shell.workspace.label
+[i18n] Missing translation for en:shell.workspace.description
+[i18n] Missing translation for en:shell.show_sidebar
+[i18n] Missing translation for en:common.not_selected
+[i18n] Missing translation for en:shell.factory_context
+[i18n] Missing translation for en:shell.close_sidebar
+[i18n] Missing translation for en:role.team_member
+[i18n] Missing translation for en:shell.account_title
+[i18n] Missing translation for en:shell.account_subtitle
+[i18n] Missing translation for en:language.label
+[i18n] Missing translation for en:language.english
+[i18n] Missing translation for en:language.hindi
+[i18n] Missing translation for en:language.marathi
+[i18n] Missing translation for en:language.tamil
+[i18n] Missing translation for en:language.gujarati
+[i18n] Missing translation for en:shell.tips_title
+[i18n] Missing translation for en:shell.tips_subtitle
+[i18n] Missing translation for en:nav.profile.label
+[i18n] Missing translation for en:shell.logout
+[i18n] Missing translation for en:shell.switch_account
+[i18n] Missing translation for en:shell.go_back
+[i18n] Missing translation for en:nav.section.account
+[i18n] Missing translation for en:nav.profile.description
+[i18n] Missing translation for en:shell.hide_workspace
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Failed to proxy http://127.0.0.1:8765/auth/me Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
+Error: connect ECONNREFUSED 127.0.0.1:8765
+    at <unknown> (Error: connect ECONNREFUSED 127.0.0.1:8765) {
+  errno: -4078,
+  code: 'ECONNREFUSED',
+  syscall: 'connect',
+  address: '127.0.0.1',
+  port: 8765
+}
