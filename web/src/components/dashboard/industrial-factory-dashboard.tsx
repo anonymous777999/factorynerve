@@ -186,12 +186,16 @@ export function IndustrialFactoryDashboard({
   dataByRange,
   initialRange = "7d",
   embedded = false,
+  showOperationalKpis = true,
+  showDecisionPrompts = true,
 }: {
   loading?: boolean;
   industryType?: string;
   dataByRange?: Partial<Record<DashboardRangeKey, IndustrialDashboardData>>;
   initialRange?: DashboardRangeKey;
   embedded?: boolean;
+  showOperationalKpis?: boolean;
+  showDecisionPrompts?: boolean;
 }) {
   const resolvedData = useMemo(
     () => ({
@@ -399,14 +403,16 @@ export function IndustrialFactoryDashboard({
         </CardHeader>
         <CardContent className="space-y-6">
 
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <KPIBox {...activeData.kpis.totalStock} />
-            <KPIBox {...activeData.kpis.todayProduction} />
-            <KPIBox {...activeData.kpis.todayLoss} />
-            <KPIBox {...activeData.kpis.todayRevenue} />
-          </div>
+          {showOperationalKpis ? (
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <KPIBox {...activeData.kpis.totalStock} />
+              <KPIBox {...activeData.kpis.todayProduction} />
+              <KPIBox {...activeData.kpis.todayLoss} />
+              <KPIBox {...activeData.kpis.todayRevenue} />
+            </div>
+          ) : null}
 
-          <SmartInsightsPanel insights={smartInsights} loading={visualLoading} />
+          {showDecisionPrompts ? <SmartInsightsPanel insights={smartInsights} loading={visualLoading} /> : null}
 
           <div className="grid gap-6 xl:grid-cols-[0.34fr_0.66fr]">
             <div className="order-2 xl:order-1">
