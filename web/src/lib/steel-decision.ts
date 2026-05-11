@@ -86,7 +86,7 @@ export function deriveSteelTopPriority(overview: SteelOverview | null | undefine
       reason: `${formatItemLabel(redItem)} is off by ${formatKg(redItem.last_variance_kg)} and needs a trusted count.`,
       nextStep: "Reconcile the item first so every downstream stock, batch, and sales decision uses reliable inventory.",
       primaryAction: { href: "/steel/reconciliations", label: "Open Reconciliations", variant: "primary" },
-      secondaryAction: { href: "/steel?tab=inventory", label: "Inventory Lane", variant: "secondary" },
+      secondaryAction: { href: "/steel/inventory", label: "Open Inventory Desk", variant: "secondary" },
     };
   }
 
@@ -127,7 +127,7 @@ export function deriveSteelTopPriority(overview: SteelOverview | null | undefine
       statusLabel: "Watch-level stock drift",
       reason: `${formatItemLabel(watchItem)} is on watch with ${formatKg(watchItem.last_variance_kg)} drift.`,
       nextStep: "Review the inventory lane and tighten the next physical-to-system stock check before drift grows.",
-      primaryAction: { href: "/steel?tab=inventory", label: "Open Inventory Lane", variant: "primary" },
+      primaryAction: { href: "/steel/inventory", label: "Open Inventory Desk", variant: "primary" },
       secondaryAction: { href: "/steel/reconciliations", label: "Stock Review", variant: "secondary" },
     };
   }
@@ -157,7 +157,7 @@ export function deriveDataConfidence(params: {
       tone: "critical",
       reason: "Live steel data is incomplete, so this view may be relying on fallback or sparse records.",
       nextStep: "Refresh, confirm the active steel factory, and record or sync core stock, batch, invoice, and dispatch data.",
-      action: { href: "/steel?tab=inventory", label: "Record First Data", variant: "primary" },
+      action: { href: "/steel/inventory", label: "Record First Data", variant: "primary" },
     };
   }
 

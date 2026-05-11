@@ -10,6 +10,18 @@ export type SteelStockMismatchCause =
   | "wrong_entry"
   | "delayed_dispatch_update"
   | "other";
+
+export type SteelInventoryTransaction = {
+  id: number;
+  item_id: number;
+  item_name?: string | null;
+  item_code?: string | null;
+  transaction_type: string;
+  quantity_kg: number;
+  direction?: "in" | "out" | null;
+  notes?: string | null;
+  created_at: string;
+};
 export type SteelFollowUpTaskPriority = "low" | "medium" | "high" | "critical";
 export type SteelFollowUpTaskStatus = "open" | "in_progress" | "done" | "cancelled";
 export type SteelCustomerVerificationStatus =
@@ -601,6 +613,10 @@ export async function createSteelTransaction(payload: {
     method: "POST",
     body: payload,
   });
+}
+
+export async function listSteelTransactions(limit = 100) {
+  return apiFetch<{ items: any[] }>(`/steel/inventory/transactions?limit=${encodeURIComponent(String(limit))}`, {}, { cacheTtlMs: 5_000, cacheKey: `steel:transactions:${limit}` });
 }
 
 export async function reconcileSteelStock(payload: {

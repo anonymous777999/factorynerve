@@ -178,12 +178,44 @@ const navSections: NavSection[] = [
     title: "Operations",
     items: [
       {
-        label: "Steel Operations",
+        label: "Steel Hub",
         href: "/steel",
-        description: "Trusted stock, production, dispatch, and loss control",
+        description: "Operational overview, KPI health, and top-priority action board",
         roles: STEEL_CONTROL_ROLES,
         industryTypes: ["steel"],
         match: (pathname) => pathname === "/steel",
+      },
+      {
+        label: "Inventory",
+        href: "/steel/inventory",
+        description: "Live stock balance, material master, and yard control",
+        roles: STEEL_CONTROL_ROLES,
+        industryTypes: ["steel"],
+        match: (pathname) => pathname === "/steel/inventory" || (pathname.startsWith("/steel/inventory") && !pathname.includes("/transactions")),
+      },
+      {
+        label: "Inventory Transactions",
+        href: "/steel/inventory/transactions",
+        description: "Manual stock adjustments, adjustments, and movement audit trail",
+        roles: STEEL_CONTROL_ROLES,
+        industryTypes: ["steel"],
+        match: (pathname) => pathname === "/steel/inventory/transactions" || pathname.startsWith("/steel/inventory/transactions"),
+      },
+      {
+        label: "Production Record",
+        href: "/steel/production/record",
+        description: "Capture manual batch production and variance signals",
+        roles: STEEL_CONTROL_ROLES,
+        industryTypes: ["steel"],
+        match: (pathname) => pathname === "/steel/production/record" || pathname.startsWith("/steel/production/record"),
+      },
+      {
+        label: "Steel Batches",
+        href: "/steel/batches",
+        description: "Traceability list for production batches and output signals",
+        roles: STEEL_CHART_ROLES,
+        industryTypes: ["steel"],
+        match: (pathname) => pathname === "/steel/batches" || pathname.startsWith("/steel/batches/"),
       },
       {
         label: "Steel Charts",
@@ -449,8 +481,24 @@ const ITEM_TRANSLATION_KEY: Record<string, { label: string; description: string 
     description: "nav.document_desk.description",
   },
   "/steel": {
-    label: "nav.steel_operations.label",
-    description: "nav.steel_operations.description",
+    label: "nav.steel_hub.label",
+    description: "nav.steel_hub.description",
+  },
+  "/steel/inventory": {
+    label: "nav.steel_inventory.label",
+    description: "nav.steel_inventory.description",
+  },
+  "/steel/inventory/transactions": {
+    label: "nav.steel_transactions.label",
+    description: "nav.steel_transactions.description",
+  },
+  "/steel/production/record": {
+    label: "nav.steel_production_record.label",
+    description: "nav.steel_production_record.description",
+  },
+  "/steel/batches": {
+    label: "nav.steel_batches.label",
+    description: "nav.steel_batches.description",
   },
   "/steel/charts": {
     label: "nav.steel_charts.label",
