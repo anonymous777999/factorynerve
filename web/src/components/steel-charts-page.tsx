@@ -236,6 +236,8 @@ export function SteelChartsPage() {
               dataByRange={dashboardData}
               initialRange="7d"
               embedded
+              showOperationalKpis={false}
+              showDecisionPrompts={false}
             />
           ) : (
             <Card className="rounded-[1.6rem] !border-[#e7e5e4] !bg-none !bg-white shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
