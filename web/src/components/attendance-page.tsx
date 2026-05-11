@@ -8,6 +8,7 @@ import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
 import {
+  formatAttendanceStatusLabel,
   getMyAttendanceToday,
   punchAttendance,
   type AttendanceShift,
@@ -105,6 +106,7 @@ export default function AttendancePage() {
   const [error, setError] = useState("");
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const canOverrideShift = ["supervisor", "manager", "admin", "owner"].includes(user?.role || "");
 
   const shiftLabel = useCallback(
     (value?: string | null) => {
@@ -118,13 +120,13 @@ export default function AttendancePage() {
     (value?: AttendanceStatus | null) => {
       switch (value) {
         case "working":
-          return t("attendance.status.active_shift", "Active Shift");
+          return t("attendance.status.active_shift", "Shift in Progress");
         case "late":
-          return t("attendance.status.late", "Late");
+          return t("attendance.status.late", "Late Arrival");
         case "missed_punch":
           return t("attendance.status.missed_punch", "Missed Punch");
         case "completed":
-          return t("attendance.status.shift_closed", "Shift Closed");
+          return t("attendance.status.shift_closed", "Attendance Closed");
         case "half_day":
           return t("attendance.status.half_day", "Half Day");
         case "absent":
@@ -152,9 +154,7 @@ export default function AttendancePage() {
       try {
         const next = await getMyAttendanceToday();
         setToday(next);
-        setSelectedShift((current) =>
-          !shouldBackground || !hasLoadedOnce || !next.can_punch_in ? next.shift : current || next.shift,
-        );
+        setSelectedShift((current) => (!hasLoadedOnce || !current ? next.shift : current || next.shift));
       } catch (err) {
         if (err instanceof Error) {
           setError(err.message);
@@ -224,7 +224,7 @@ export default function AttendancePage() {
 
   const workedMinutes = useMemo(() => deriveWorkedMinutes(today, nowMs), [nowMs, today]);
   const workedTime = useMemo(() => formatDuration(workedMinutes), [workedMinutes]);
-  const displayShift = today?.can_punch_in ? selectedShift : today?.shift || selectedShift;
+  const displayShift = today?.shift || selectedShift;
   const factoryName = today?.factory_name || activeFactory?.name || user?.factory_name || "Factory";
   const statusMeta = statusTheme(today?.status);
   const lastActionAt = today?.punch_out_at || today?.punch_in_at || null;
@@ -301,7 +301,7 @@ export default function AttendancePage() {
     try {
       const next = await punchAttendance({
         action,
-        shift: action === "in" ? selectedShift : undefined,
+        shift: action === "in" && canOverrideShift ? selectedShift : undefined,
       });
       setToday(next);
       setSelectedShift(next.shift);
@@ -426,20 +426,25 @@ export default function AttendancePage() {
 
             {optionsOpen ? (
               <div className="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
-                <div>
-                  <label className="text-sm text-slate-300">{t("attendance.tools.shift", "Shift")}</label>
-                  <Select
-                    value={selectedShift}
-                    onChange={(event) => setSelectedShift(event.target.value as AttendanceShift)}
-                    disabled={busy || Boolean(today && !today.can_punch_in)}
-                  >
-                    {SHIFT_OPTIONS.map((shift) => (
-                      <option key={shift} value={shift}>
-                        {shiftLabel(shift)}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
+                {canOverrideShift && today?.can_punch_in ? (
+                  <div>
+                    <label className="text-sm text-slate-300">{t("attendance.tools.shift", "Shift Override")}</label>
+                    <Select value={selectedShift} onChange={(event) => setSelectedShift(event.target.value as AttendanceShift)} disabled={busy}>
+                      {SHIFT_OPTIONS.map((shift) => (
+                        <option key={shift} value={shift}>
+                          {shiftLabel(shift)}
+                        </option>
+                      ))}
+                    </Select>
+                    <div className="mt-2 text-xs text-slate-400">Manual shift override is kept for elevated attendance roles only.</div>
+                  </div>
+                ) : (
+                  <div className="rounded-[20px] border border-white/10 bg-[rgba(8,12,20,0.45)] px-4 py-4">
+                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">{t("attendance.tools.shift", "Shift")}</div>
+                    <div className="mt-2 text-sm font-semibold text-white">{shiftLabel(displayShift)}</div>
+                    <div className="mt-2 text-xs text-slate-400">Shift is assigned automatically from the employee profile or attendance rules.</div>
+                  </div>
+                )}
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <Button
@@ -489,13 +494,19 @@ export default function AttendancePage() {
                 </div>
               ) : null}
 
+              {today?.late_warning ? (
+                <div className="mt-4 rounded-[24px] border border-amber-400/20 bg-amber-500/10 px-4 py-4 text-sm text-amber-100">
+                  {today.late_warning}
+                </div>
+              ) : null}
+
               <details className="mt-6 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
                 <summary className="cursor-pointer list-none text-sm font-semibold text-white">{t("attendance.summary.shift_details", "Shift details")}</summary>
                 <div className="mt-4 rounded-[20px] border border-white/10 bg-[rgba(8,12,20,0.45)] px-4 py-4">
                   <div className="text-xs uppercase tracking-[0.18em] text-slate-400">{t("attendance.summary.shift_status", "Shift status")}</div>
                   <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">
                     <span className={`h-2.5 w-2.5 rounded-full ${statusMeta.dot}`} />
-                    {statusLabel(today?.status)}
+                    {formatAttendanceStatusLabel(today?.status)}
                   </div>
                   <div className="mt-4 text-sm text-slate-300">
                     {today?.status === "working"

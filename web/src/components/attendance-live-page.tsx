@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
-import { getLiveAttendance, type AttendanceLive, type AttendanceLiveRow } from "@/lib/attendance";
+import { formatAttendanceStatusLabel, getLiveAttendance, type AttendanceLive, type AttendanceLiveRow } from "@/lib/attendance";
 import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import { useSession } from "@/lib/use-session";
 
@@ -179,6 +179,14 @@ export default function AttendanceLivePage() {
     () => filteredRows.filter((row) => row.user_id !== nextAttentionRow?.user_id),
     [filteredRows, nextAttentionRow],
   );
+  const reviewQueueParams = new URLSearchParams();
+  reviewQueueParams.set("attendance_date", payload?.attendance_date || attendanceDate);
+  if (nextAttentionRow?.attendance_id) {
+    reviewQueueParams.set("focus", String(nextAttentionRow.attendance_id));
+    reviewQueueParams.set("tab", "fix");
+  }
+  const reviewQueueQuery = reviewQueueParams.toString();
+  const reviewQueueHref = reviewQueueQuery ? `/attendance/review?${reviewQueueQuery}` : "/attendance/review";
 
   if (loading || (pageLoading && user && canReview && !hasLoadedOnce)) {
     return (
@@ -256,7 +264,7 @@ export default function AttendanceLivePage() {
                   <Link href="/attendance">
                     <Button variant="outline">{t("attendance.live.open_my_attendance", "Open My Attendance")}</Button>
                   </Link>
-                  <Link href="/attendance/review">
+                  <Link href={reviewQueueHref}>
                     <Button variant="outline">{t("attendance.live.tools.review_queue", "Review Queue")}</Button>
                   </Link>
                 </div>
@@ -444,9 +452,9 @@ export default function AttendanceLivePage() {
                         {nextAttentionRow.role} • {nextAttentionRow.department || t("attendance.live.rows.no_department", "No department")} • {shiftLabel(nextAttentionRow.shift)}
                       </div>
                     </div>
-                    <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${statusTone(nextAttentionRow.status)}`}>
-                      {nextAttentionRow.status.replace("_", " ")}
-                    </span>
+                     <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${statusTone(nextAttentionRow.status)}`}>
+                       {formatAttendanceStatusLabel(nextAttentionRow.status)}
+                     </span>
                   </div>
                 </div>
               ) : null}
@@ -477,7 +485,7 @@ export default function AttendanceLivePage() {
                           <td className="px-3 py-3">{shiftLabel(row.shift)}</td>
                           <td className="px-3 py-3">
                             <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${statusTone(row.status)}`}>
-                              {row.status.replace("_", " ")}
+                              {formatAttendanceStatusLabel(row.status)}
                             </span>
                           </td>
                           <td className="px-3 py-3 text-[var(--muted)]">{formatDateTime(row.punch_in_at, locale)}</td>

@@ -35,6 +35,7 @@ export type AttendanceToday = {
   worked_minutes: number;
   late_minutes: number;
   overtime_minutes: number;
+  late_warning?: string | null;
   can_punch_in: boolean;
   can_punch_out: boolean;
 };
@@ -318,4 +319,50 @@ export async function getAttendanceReportSummary(dateFrom?: string, dateTo?: str
     cacheTtlMs: 5_000,
     cacheKey: `attendance:reports:${dateFrom || "default"}:${dateTo || "default"}`,
   });
+}
+
+export function formatAttendanceStatusLabel(status?: AttendanceStatus | null) {
+  switch (status) {
+    case "working":
+      return "Shift in progress";
+    case "late":
+      return "Late arrival";
+    case "missed_punch":
+      return "Missed punch";
+    case "completed":
+      return "Attendance closed";
+    case "half_day":
+      return "Half day";
+    case "absent":
+      return "Absent";
+    case "not_punched":
+      return "Not started";
+    default:
+      return status
+        ? status
+            .split("_")
+            .map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+            .join(" ")
+        : "Not started";
+  }
+}
+
+export function formatAttendanceReviewStatusLabel(status?: AttendanceReviewStatus | null) {
+  switch (status) {
+    case "pending_review":
+      return "Needs review";
+    case "approved":
+      return "Approved";
+    case "rejected":
+      return "Rejected";
+    case "auto":
+      return "Auto checked";
+    default:
+      return status
+        ? status
+            .split("_")
+            .map((part) => (part ? part.charAt(0).toUpperCase() + part.slice(1) : part))
+            .join(" ")
+        : "-";
+  }
 }
