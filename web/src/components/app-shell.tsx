@@ -1292,7 +1292,7 @@ function AppShellFrame({
       visibleNavSections
         .map((section) => ({
           ...section,
-          items: section.items.filter((item) => primarySectionHrefs.has(item.href)),
+          items: section.title === "Operations" ? [] : section.items.filter((item) => primarySectionHrefs.has(item.href)),
         }))
         .filter((section) => section.items.length > 0),
     [primarySectionHrefs, visibleNavSections],
@@ -1302,7 +1302,10 @@ function AppShellFrame({
       visibleNavSections
         .map((section) => ({
           ...section,
-          items: section.items.filter((item) => !primarySectionHrefs.has(item.href)),
+          items:
+            section.title === "Operations"
+              ? section.items
+              : section.items.filter((item) => !primarySectionHrefs.has(item.href)),
         }))
         .filter((section) => section.items.length > 0),
     [primarySectionHrefs, visibleNavSections],
