@@ -10,6 +10,7 @@ import { pushAppToast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
 
 const ACTIVE_STATUSES = new Set<JobStatus>(["queued", "running", "canceling"]);
+const DISMISSED_JOBS_STORAGE_KEY = "dpr:web:dismissed-jobs";
 
 function progressWidth(progress?: number) {
   return `${Math.max(4, Math.min(100, Number(progress || 0)))}%`;
@@ -144,13 +145,17 @@ export function JobsDrawer() {
   );
   const shouldPoll = open || activeCount > 0;
 
-  const handleDismiss = useCallback((jobId: string) => {
-    setDismissedJobIds((current) => {
-      const next = new Set(current);
-      next.add(jobId);
-      return next;
-    });
-  }, []);
+  const handleDismiss = useCallback(
+    (jobId: string) => {
+      setDismissedJobIds((current) => {
+        const next = new Set(current);
+        next.add(jobId);
+        window.localStorage.setItem(DISMISSED_JOBS_STORAGE_KEY, JSON.stringify(Array.from(next)));
+        return next;
+      });
+    },
+    [],
+  );
 
   const handleClearCompleted = useCallback(() => {
     setDismissedJobIds((current) => {
@@ -160,6 +165,7 @@ export function JobsDrawer() {
           next.add(job.job_id);
         }
       });
+      window.localStorage.setItem(DISMISSED_JOBS_STORAGE_KEY, JSON.stringify(Array.from(next)));
       return next;
     });
   }, [jobs]);
@@ -168,6 +174,20 @@ export function JobsDrawer() {
     () => visibleJobs.some((job) => !ACTIVE_STATUSES.has(job.status)),
     [visibleJobs],
   );
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(DISMISSED_JOBS_STORAGE_KEY);
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setDismissedJobIds(new Set(parsed.filter((id): id is string => typeof id === "string")));
+        }
+      } catch {
+        // Ignore invalid storage
+      }
+    }
+  }, []);
 
   useEffect(() => {
     loadJobs().catch(() => undefined);
@@ -288,7 +308,7 @@ export function JobsDrawer() {
             onClick={() => setOpen(false)}
             aria-label="Close jobs drawer"
           />
-          <aside className="absolute right-0 top-0 h-full w-full max-w-md border-l border-[var(--border)] bg-[rgba(10,14,22,0.98)] p-5 shadow-2xl backdrop-blur">
+          <aside className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-[var(--border)] bg-[rgba(10,14,22,0.98)] p-5 shadow-2xl backdrop-blur">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">Background Jobs</div>
@@ -311,112 +331,114 @@ export function JobsDrawer() {
               </Button>
             </div>
 
-            <div className="mt-6 space-y-3 overflow-y-auto pr-1">
-              {loading ? (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  Loading recent jobs...
-                </div>
-              ) : null}
+            <div className="mt-6 flex flex-1 flex-col overflow-hidden">
+              <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+                {loading ? (
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                    Loading recent jobs...
+                  </div>
+                ) : null}
 
-              {!loading && !visibleJobs.length ? (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  No background jobs yet. Exports, OCR runs, and AI summaries will appear here automatically.
-                </div>
-              ) : null}
+                {!loading && !visibleJobs.length ? (
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                    No background jobs yet. Exports, OCR runs, and AI summaries will appear here automatically.
+                  </div>
+                ) : null}
 
-              {visibleJobs.map((job) => {
-                const isCanceling = actionKey === `${job.job_id}:cancel`;
-                const isRetrying = actionKey === `${job.job_id}:retry`;
-                const isActive = ACTIVE_STATUSES.has(job.status);
+                {visibleJobs.map((job) => {
+                  const isCanceling = actionKey === `${job.job_id}:cancel`;
+                  const isRetrying = actionKey === `${job.job_id}:retry`;
+                  const isActive = ACTIVE_STATUSES.has(job.status);
 
-                return (
-                  <div
-                    key={job.job_id}
-                    className="rounded-2xl border border-[var(--border)] bg-[rgba(20,24,36,0.82)] p-4"
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <div className="text-sm font-semibold">{jobTitle(job.kind)}</div>
-                        <div className={cn("mt-1 text-xs uppercase tracking-[0.18em]", jobTone(job.status))}>
-                          {job.status}
+                  return (
+                    <div
+                      key={job.job_id}
+                      className="rounded-2xl border border-[var(--border)] bg-[rgba(20,24,36,0.82)] p-4"
+                    >
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <div className="text-sm font-semibold">{jobTitle(job.kind)}</div>
+                          <div className={cn("mt-1 text-xs uppercase tracking-[0.18em]", jobTone(job.status))}>
+                            {job.status}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs text-[var(--muted)]">
+                            {new Date(job.updated_at).toLocaleTimeString("en-IN", {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </div>
+                          {!isActive ? (
+                            <button
+                              type="button"
+                              className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--text)]"
+                              onClick={() => handleDismiss(job.job_id)}
+                            >
+                              Dismiss
+                            </button>
+                          ) : null}
                         </div>
                       </div>
-                      <div className="text-right">
-                        <div className="text-xs text-[var(--muted)]">
-                          {new Date(job.updated_at).toLocaleTimeString("en-IN", {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </div>
-                        {!isActive ? (
-                          <button
-                            type="button"
-                            className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--text)]"
-                            onClick={() => handleDismiss(job.job_id)}
+                      <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
+                        <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: progressWidth(job.progress) }} />
+                      </div>
+                      <div className="mt-3 text-sm text-[var(--text)]">{job.message}</div>
+                      {job.error ? <div className="mt-2 text-sm text-red-400">{job.error}</div> : null}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        {getOpenLink(job) ? (
+                          <Link href={getOpenLink(job)!}>
+                            <Button variant="outline" className="h-8 px-3 text-xs">
+                              Open
+                            </Button>
+                          </Link>
+                        ) : null}
+                        {getDownloadPath(job) && job.status === "succeeded" ? (
+                          <Button
+                            variant="outline"
+                            className="h-8 px-3 text-xs"
+                            onClick={() =>
+                              downloadJob(job).catch((err) => {
+                                const message = err instanceof Error ? err.message : "Download failed.";
+                                setError(message);
+                                pushAppToast({
+                                  title: `Could not download ${jobTitle(job.kind)}`,
+                                  description: message,
+                                  tone: "error",
+                                });
+                              })
+                            }
                           >
-                            Dismiss
-                          </button>
+                            Download
+                          </Button>
+                        ) : null}
+                        {job.can_cancel ? (
+                          <Button
+                            variant="outline"
+                            className="h-8 px-3 text-xs"
+                            disabled={isCanceling}
+                            onClick={() => handleCancel(job)}
+                          >
+                            {isCanceling ? "Canceling..." : "Cancel"}
+                          </Button>
+                        ) : null}
+                        {job.can_retry ? (
+                          <Button
+                            variant="outline"
+                            className="h-8 px-3 text-xs"
+                            disabled={isRetrying}
+                            onClick={() => handleRetry(job)}
+                          >
+                            {isRetrying ? "Retrying..." : "Retry"}
+                          </Button>
                         ) : null}
                       </div>
                     </div>
-                    <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                      <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: progressWidth(job.progress) }} />
-                    </div>
-                    <div className="mt-3 text-sm text-[var(--text)]">{job.message}</div>
-                    {job.error ? <div className="mt-2 text-sm text-red-400">{job.error}</div> : null}
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {getOpenLink(job) ? (
-                        <Link href={getOpenLink(job)!}>
-                          <Button variant="outline" className="h-8 px-3 text-xs">
-                            Open
-                          </Button>
-                        </Link>
-                      ) : null}
-                      {getDownloadPath(job) && job.status === "succeeded" ? (
-                        <Button
-                          variant="outline"
-                          className="h-8 px-3 text-xs"
-                          onClick={() =>
-                            downloadJob(job).catch((err) => {
-                              const message = err instanceof Error ? err.message : "Download failed.";
-                              setError(message);
-                              pushAppToast({
-                                title: `Could not download ${jobTitle(job.kind)}`,
-                                description: message,
-                                tone: "error",
-                              });
-                            })
-                          }
-                        >
-                          Download
-                        </Button>
-                      ) : null}
-                      {job.can_cancel ? (
-                        <Button
-                          variant="outline"
-                          className="h-8 px-3 text-xs"
-                          disabled={isCanceling}
-                          onClick={() => handleCancel(job)}
-                        >
-                          {isCanceling ? "Canceling..." : "Cancel"}
-                        </Button>
-                      ) : null}
-                      {job.can_retry ? (
-                        <Button
-                          variant="outline"
-                          className="h-8 px-3 text-xs"
-                          disabled={isRetrying}
-                          onClick={() => handleRetry(job)}
-                        >
-                          {isRetrying ? "Retrying..." : "Retry"}
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
 
-              {error ? <div className="text-sm text-red-400">{error}</div> : null}
+                {error ? <div className="text-sm text-red-400">{error}</div> : null}
+              </div>
             </div>
           </aside>
         </div>
