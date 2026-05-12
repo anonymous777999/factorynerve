@@ -13,7 +13,7 @@ from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, Response, UploadFile
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, TypeAdapter, ValidationError, field_validator
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
@@ -71,6 +71,9 @@ SteelPaymentMode = Literal["bank_transfer", "cash", "cheque", "upi"]
 SteelCustomerStatus = Literal["active", "on_hold", "blocked"]
 SteelDispatchStatus = Literal["pending", "loaded", "exited", "dispatched", "delivered", "cancelled"]
 SteelVehicleType = Literal["truck", "trailer", "pickup", "other"]
+GST_NUMBER_RE = re.compile(r"^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$")
+PAN_NUMBER_RE = re.compile(r"^[A-Z]{5}[0-9]{4}[A-Z]{1}$")
+EMAIL_TYPE_ADAPTER = TypeAdapter(EmailStr)
 SteelStockMismatchCause = Literal[
     "counting_error",
     "process_loss",
@@ -186,9 +189,9 @@ class SteelInvoiceCreateRequest(BaseModel):
 
 
 class SteelCustomerCreateRequest(BaseModel):
-    name: str = Field(min_length=2, max_length=200)
+    name: str = Field(max_length=200)
     phone: str | None = Field(default=None, max_length=32)
-    email: EmailStr | None = None
+    email: str | None = Field(default=None, max_length=255)
     address: str | None = Field(default=None, max_length=500)
     city: str | None = Field(default=None, max_length=120)
     state: str | None = Field(default=None, max_length=120)
@@ -198,30 +201,10 @@ class SteelCustomerCreateRequest(BaseModel):
     company_type: str | None = Field(default=None, max_length=40)
     contact_person: str | None = Field(default=None, max_length=160)
     designation: str | None = Field(default=None, max_length=120)
-    credit_limit: float | None = Field(default=None, ge=0)
-    payment_terms_days: int | None = Field(default=None, ge=0, le=365)
+    credit_limit: float | int | str | None = None
+    payment_terms_days: int | float | str | None = None
     status: SteelCustomerStatus = "active"
     notes: str | None = Field(default=None, max_length=500)
-
-    @field_validator("phone")
-    @classmethod
-    def validate_phone(cls, value: str | None) -> str | None:
-        return normalize_phone_number(value)
-
-    @field_validator("tax_id")
-    @classmethod
-    def validate_tax_id(cls, value: str | None) -> str | None:
-        return normalize_identifier_code(value, field_name="Tax ID", max_length=64)
-
-    @field_validator("gst_number")
-    @classmethod
-    def validate_gst_number(cls, value: str | None) -> str | None:
-        return normalize_identifier_code(value, field_name="GST number", max_length=32)
-
-    @field_validator("pan_number")
-    @classmethod
-    def validate_pan_number(cls, value: str | None) -> str | None:
-        return normalize_identifier_code(value, field_name="PAN number", max_length=16)
 
 
 class SteelCustomerVerificationReviewRequest(BaseModel):
@@ -705,6 +688,73 @@ def _normalize_customer_status(value: str | None) -> str:
     if normalized not in {"active", "on_hold", "blocked"}:
         raise HTTPException(status_code=422, detail="Customer status must be active, on_hold, or blocked.")
     return normalized
+
+
+def _sanitize_customer_text(value: str | None, *, max_length: int, preserve_newlines: bool = False) -> str | None:
+    return sanitize_text(value, max_length=max_length, preserve_newlines=preserve_newlines)
+
+
+def _normalize_customer_email(value: str | None) -> str | None:
+    cleaned = _sanitize_customer_text(value, max_length=255)
+    if not cleaned:
+        return None
+    normalized = cleaned.lower()
+    try:
+        return str(EMAIL_TYPE_ADAPTER.validate_python(normalized)).strip().lower()
+    except ValidationError as error:
+        raise HTTPException(status_code=400, detail="Enter a valid email address.") from error
+
+
+def _normalize_customer_phone(value: str | None) -> str | None:
+    cleaned = _sanitize_customer_text(value, max_length=32)
+    if not cleaned:
+        return None
+    normalized = re.sub(r"\s+", "", cleaned)
+    if not normalized.isdigit() or len(normalized) < 7 or len(normalized) > 15:
+        raise HTTPException(status_code=400, detail="Enter a valid phone number.")
+    return normalized
+
+
+def _normalize_customer_gst(value: str | None) -> str | None:
+    cleaned = (_sanitize_customer_text(value, max_length=32) or "").upper() or None
+    if cleaned is None:
+        return None
+    if not GST_NUMBER_RE.fullmatch(cleaned):
+        raise HTTPException(status_code=400, detail="Enter a valid GST number.")
+    return cleaned
+
+
+def _normalize_customer_pan(value: str | None) -> str | None:
+    cleaned = (_sanitize_customer_text(value, max_length=16) or "").upper() or None
+    if cleaned is None:
+        return None
+    if not PAN_NUMBER_RE.fullmatch(cleaned):
+        raise HTTPException(status_code=400, detail="Enter a valid PAN.")
+    return cleaned
+
+
+def _normalize_customer_credit_limit(value: float | int | str | None) -> float:
+    if value is None or (isinstance(value, str) and not value.strip()):
+        raise HTTPException(status_code=400, detail="Credit limit is required.")
+    try:
+        normalized = round(float(value), 2)
+    except (TypeError, ValueError) as error:
+        raise HTTPException(status_code=400, detail="Credit limit must be a number greater than or equal to 0.") from error
+    if normalized < 0:
+        raise HTTPException(status_code=400, detail="Credit limit must be a number greater than or equal to 0.")
+    return normalized
+
+
+def _normalize_customer_payment_terms(value: int | float | str | None) -> int:
+    if value is None or (isinstance(value, str) and not value.strip()):
+        raise HTTPException(status_code=400, detail="Payment terms are required.")
+    try:
+        normalized = float(value)
+    except (TypeError, ValueError) as error:
+        raise HTTPException(status_code=400, detail="Payment terms must be a positive whole number.") from error
+    if not normalized.is_integer() or int(normalized) <= 0:
+        raise HTTPException(status_code=400, detail="Payment terms must be a positive whole number.")
+    return int(normalized)
 
 
 def _normalize_dispatch_status(value: str | None, *, allow_cancelled: bool = True) -> str:
@@ -2497,41 +2547,57 @@ def create_steel_customer(
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
-    name = sanitize_text(payload.name, max_length=200, preserve_newlines=False)
+    name = _sanitize_customer_text(payload.name, max_length=200)
     if not name:
         raise HTTPException(status_code=400, detail="Customer name is required.")
+    phone = _normalize_customer_phone(payload.phone)
+    email = _normalize_customer_email(payload.email)
+    if not phone and not email:
+        raise HTTPException(status_code=400, detail="At least one contact method is required.")
+    gst_number = _normalize_customer_gst(payload.gst_number)
+    pan_number = _normalize_customer_pan(payload.pan_number)
+    credit_limit = _normalize_customer_credit_limit(payload.credit_limit)
+    payment_terms_days = _normalize_customer_payment_terms(payload.payment_terms_days)
+    address = _sanitize_customer_text(payload.address, max_length=500, preserve_newlines=True)
+    city = _sanitize_customer_text(payload.city, max_length=120)
+    state = _sanitize_customer_text(payload.state, max_length=120)
+    tax_id = _sanitize_customer_text(payload.tax_id, max_length=64)
+    notes = _sanitize_customer_text(payload.notes, max_length=500, preserve_newlines=True)
+    company_type = _sanitize_customer_text(payload.company_type, max_length=40)
+    contact_person = _sanitize_customer_text(payload.contact_person, max_length=160)
+    designation = _sanitize_customer_text(payload.designation, max_length=120)
 
     existing = (
         db.query(SteelCustomer)
         .filter(
             SteelCustomer.factory_id == factory.factory_id,
-            func.lower(SteelCustomer.name) == name.lower(),
+            func.lower(func.trim(SteelCustomer.name)) == name.lower(),
             SteelCustomer.is_active.is_(True),
         )
         .first()
     )
     if existing:
-        raise HTTPException(status_code=409, detail="Customer already exists.")
+        raise HTTPException(status_code=409, detail="A customer with this name already exists")
 
     customer = SteelCustomer(
         org_id=factory.org_id,
         factory_id=factory.factory_id,
         name=name,
-        phone=payload.phone,
-        email=str(payload.email).strip().lower() if payload.email else None,
-        address=sanitize_text(payload.address, max_length=500),
-        city=sanitize_text(payload.city, max_length=120, preserve_newlines=False),
-        state=sanitize_text(payload.state, max_length=120, preserve_newlines=False),
-        tax_id=sanitize_text(payload.tax_id, max_length=64, preserve_newlines=False),
-        gst_number=(sanitize_text(payload.gst_number, max_length=32, preserve_newlines=False) or "").upper() or None,
-        pan_number=(sanitize_text(payload.pan_number, max_length=16, preserve_newlines=False) or "").upper() or None,
-        company_type=sanitize_text(payload.company_type, max_length=40, preserve_newlines=False),
-        contact_person=sanitize_text(payload.contact_person, max_length=160, preserve_newlines=False),
-        designation=sanitize_text(payload.designation, max_length=120, preserve_newlines=False),
-        credit_limit=round(float(payload.credit_limit or 0.0), 2),
-        payment_terms_days=int(payload.payment_terms_days or 0),
+        phone=phone,
+        email=email,
+        address=address,
+        city=city,
+        state=state,
+        tax_id=tax_id,
+        gst_number=gst_number,
+        pan_number=pan_number,
+        company_type=company_type,
+        contact_person=contact_person,
+        designation=designation,
+        credit_limit=credit_limit,
+        payment_terms_days=payment_terms_days,
         status=_normalize_customer_status(payload.status),
-        notes=sanitize_text(payload.notes, max_length=500),
+        notes=notes,
         created_by_user_id=current_user.id,
     )
     db.add(customer)
