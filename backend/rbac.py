@@ -34,6 +34,11 @@ def require_any_role(user: User, roles: set[UserRole]) -> None:
         raise HTTPException(status_code=403, detail="Access denied.")
 
 
+def assert_not_self_approval(record_user_id: int, current_user_id: int) -> None:
+    if record_user_id == current_user_id:
+        raise HTTPException(status_code=403, detail="You cannot approve or reject your own record.")
+
+
 def is_admin_or_owner(user: User) -> bool:
     return user.role in {UserRole.ADMIN, UserRole.OWNER}
 

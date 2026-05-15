@@ -22,7 +22,7 @@ from backend.models.report import AuditLog
 from backend.models.shift_template import ShiftTemplate
 from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
-from backend.rbac import require_any_role, require_role
+from backend.rbac import assert_not_self_approval, require_any_role, require_role
 from backend.security import get_current_user
 from backend.tenancy import resolve_factory_id, resolve_org_id
 from backend.utils import normalize_identifier_code, sanitize_text
@@ -1562,6 +1562,7 @@ def approve_attendance_review(
     )
     if not record:
         raise HTTPException(status_code=404, detail="Attendance review record not found.")
+    assert_not_self_approval(record.user_id, current_user.id)
 
     regularization = (
         db.query(AttendanceRegularization)
@@ -1686,6 +1687,7 @@ def reject_attendance_review(
     )
     if not record:
         raise HTTPException(status_code=404, detail="Attendance review record not found.")
+    assert_not_self_approval(record.user_id, current_user.id)
     note = sanitize_text(payload.note, max_length=500) if payload.note else None
     if not note:
         raise HTTPException(status_code=422, detail="A rejection note is required.")
