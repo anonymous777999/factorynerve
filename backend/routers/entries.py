@@ -29,7 +29,7 @@ from backend.models.report import AuditLog
 from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
 from backend.security import get_current_user
-from backend.rbac import require_role
+from backend.rbac import assert_not_self_approval, require_role
 from backend.plans import normalize_plan, plan_rank, get_org_plan
 from backend.feature_limits import check_and_record_org_feature_usage
 from backend.ai_rate_limit import check_rate_limit, RateLimitError
@@ -690,6 +690,7 @@ def approve_entry(
         raise HTTPException(status_code=404, detail="Entry not found.")
     if not _can_view_entry(db, current_user, entry):
         raise HTTPException(status_code=403, detail="Access denied.")
+    assert_not_self_approval(entry.user_id, current_user.id)
     entry.status = "approved"
     request.state.org_id = entry.org_id or resolve_org_id(current_user)
     request.state.factory_id = entry.factory_id or resolve_factory_id(db, current_user)
@@ -725,6 +726,7 @@ def reject_entry(
         raise HTTPException(status_code=404, detail="Entry not found.")
     if not _can_view_entry(db, current_user, entry):
         raise HTTPException(status_code=403, detail="Access denied.")
+    assert_not_self_approval(entry.user_id, current_user.id)
     entry.status = "rejected"
     reason = sanitize_text(payload.reason, max_length=500, preserve_newlines=False) if payload else None
     detail = f"entry_id={entry.id}"
