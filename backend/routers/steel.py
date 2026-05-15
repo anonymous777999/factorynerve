@@ -346,7 +346,7 @@ def _get_item_or_404(db: Session, *, factory_id: str, item_id: int) -> SteelInve
     return item
 
 
-def _serialize_items_with_stock(db: Session, *, factory_id: str) -> list[dict[str, object]]:
+def _serialize_items_with_stock(db: Session, *, factory_id: str, current_user: User) -> list[dict[str, object]]:
     items = (
         db.query(SteelInventoryItem)
         .filter(SteelInventoryItem.factory_id == factory_id, SteelInventoryItem.is_active.is_(True))
@@ -355,11 +355,13 @@ def _serialize_items_with_stock(db: Session, *, factory_id: str) -> list[dict[st
     )
     balances = stock_balances_for_factory(db, factory_id)
     reconciliations = latest_reconciliations_for_factory(db, factory_id)
+    can_view_financials = _can_view_steel_financials(current_user)
     return [
         serialize_stock_row(
             item,
             balance_kg=balances.get(item.id, 0.0),
             reconciliation=reconciliations.get(item.id),
+            can_view_financials=can_view_financials,
         )
         for item in items
     ]
@@ -492,6 +494,7 @@ def _serialize_steel_dispatch_line(
     invoice_line: SteelSalesInvoiceLine | None,
     item: SteelInventoryItem | None,
     batch: SteelProductionBatch | None,
+    can_view_financials: bool = False,
 ) -> dict[str, Any]:
     created_at = coerce_utc_datetime(row.created_at) or datetime.now(timezone.utc)
     return {
@@ -504,8 +507,12 @@ def _serialize_steel_dispatch_line(
         "batch_code": batch.batch_code if batch else None,
         "weight_kg": round(float(row.weight_kg or 0.0), 3),
         "invoice_line_weight_kg": round(float(invoice_line.weight_kg or 0.0), 3) if invoice_line else None,
-        "rate_per_kg": round(float(invoice_line.rate_per_kg or 0.0), 2) if invoice_line else None,
-        "line_total_reference": round(float(invoice_line.line_total or 0.0), 2) if invoice_line else None,
+        "rate_per_kg": round(float(invoice_line.rate_per_kg or 0.0), 2)
+        if invoice_line and can_view_financials
+        else None,
+        "line_total_reference": round(float(invoice_line.line_total or 0.0), 2)
+        if invoice_line and can_view_financials
+        else None,
         "created_at": created_at.isoformat(),
     }
 
@@ -1330,6 +1337,14 @@ def _redact_batch_rollup(row: dict[str, Any] | None) -> dict[str, Any] | None:
     return payload
 
 
+def _redact_stock_row_financials(row: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not row:
+        return row
+    payload = dict(row)
+    payload["current_rate_per_kg"] = None
+    return payload
+
+
 def _redact_steel_overview_financials(payload: dict[str, Any]) -> dict[str, Any]:
     data = dict(payload)
     data["profit_summary"] = None
@@ -1358,6 +1373,9 @@ def _redact_steel_overview_financials(payload: dict[str, Any]) -> dict[str, Any]
     responsibility["by_day"] = [_redact_day_rollup(row) for row in list(responsibility.get("by_day") or [])]
     responsibility["by_batch"] = [_redact_batch_rollup(row) for row in list(responsibility.get("by_batch") or [])]
     data["responsibility_analytics"] = responsibility
+    data["low_confidence_items"] = [
+        _redact_stock_row_financials(row) for row in list(data.get("low_confidence_items") or [])
+    ]
     return data
 
 
@@ -1707,6 +1725,10 @@ def list_steel_inventory_items(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
+    require_any_role(
+        current_user,
+        {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
+    )
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
@@ -1717,6 +1739,11 @@ def list_steel_inventory_items(
         .order_by(SteelInventoryItem.category.asc(), SteelInventoryItem.name.asc())
         .all()
     )
+    can_view_item_financials = _can_view_steel_financials(current_user) or current_user.role in {
+        UserRole.MANAGER,
+        UserRole.ADMIN,
+        UserRole.ACCOUNTANT,
+    }
     return {
         "items": [
             {
@@ -1726,7 +1753,7 @@ def list_steel_inventory_items(
                 "category": item.category,
                 "display_unit": item.display_unit,
                 "base_unit": item.base_unit,
-                "current_rate_per_kg": item.current_rate_per_kg,
+                "current_rate_per_kg": item.current_rate_per_kg if can_view_item_financials else None,
                 "is_active": item.is_active,
             }
             for item in items
@@ -1739,11 +1766,15 @@ def list_steel_inventory_stock(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
+    require_any_role(
+        current_user,
+        {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
+    )
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-    return {"items": _serialize_items_with_stock(db, factory_id=factory.factory_id)}
+    return {"items": _serialize_items_with_stock(db, factory_id=factory.factory_id, current_user=current_user)}
 
 
 @router.get("/inventory/transactions")
@@ -1752,6 +1783,10 @@ def list_steel_inventory_transactions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
+    require_any_role(
+        current_user,
+        {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
+    )
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
@@ -2438,7 +2473,7 @@ def list_steel_customers(
 ) -> dict:
     require_any_role(
         current_user,
-        {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
+        {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
     )
     try:
         factory = require_active_steel_factory(db, current_user)
@@ -2628,7 +2663,7 @@ def get_steel_customer_ledger(
 ) -> dict:
     require_any_role(
         current_user,
-        {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
+        {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
     )
     try:
         factory = require_active_steel_factory(db, current_user)
@@ -2910,7 +2945,7 @@ def get_steel_customer_verification_document(
 ) -> FileResponse:
     require_any_role(
         current_user,
-        {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
+        {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
     )
     try:
         factory = require_active_steel_factory(db, current_user)
@@ -3224,7 +3259,7 @@ def list_steel_invoices(
 ) -> dict:
     require_any_role(
         current_user,
-        {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
+        {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
     )
     try:
         factory = require_active_steel_factory(db, current_user)
@@ -3298,7 +3333,7 @@ def get_steel_invoice_detail(
 ) -> dict:
     require_any_role(
         current_user,
-        {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
+        {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
     )
     try:
         factory = require_active_steel_factory(db, current_user)
@@ -3748,6 +3783,7 @@ def get_steel_dispatch_detail(
             invoice_line=invoice_line_map.get(row.invoice_line_id),
             item=item_map.get(row.item_id),
             batch=batch_map.get(row.batch_id),
+            can_view_financials=can_view_dispatch_line_financials,
         )
         for row in line_rows
     ]
@@ -3779,6 +3815,11 @@ def get_steel_dispatch_detail(
         user.id: user
         for user in db.query(User).filter(User.id.in_({actor_id for actor_id in actor_ids if actor_id})).all()
     } if actor_ids else {}
+    can_view_dispatch_line_financials = _can_view_steel_financials(current_user) or current_user.role in {
+        UserRole.MANAGER,
+        UserRole.ADMIN,
+        UserRole.ACCOUNTANT,
+    }
 
     return {
         "factory": {
@@ -4008,6 +4049,11 @@ def create_steel_dispatch(
     db.refresh(dispatch)
     for row in dispatch_line_rows:
         db.refresh(row)
+    can_view_dispatch_line_financials = _can_view_steel_financials(current_user) or current_user.role in {
+        UserRole.MANAGER,
+        UserRole.ADMIN,
+        UserRole.ACCOUNTANT,
+    }
 
     return {
         "dispatch": _serialize_steel_dispatch(
@@ -4021,6 +4067,7 @@ def create_steel_dispatch(
                     invoice_line=line["invoice_line"],
                     item=line["item"],
                     batch=line["batch"],
+                    can_view_financials=can_view_dispatch_line_financials,
                 )
                 for row, line in zip(dispatch_line_rows, prepared_lines)
             ],
@@ -4127,12 +4174,18 @@ def update_steel_dispatch_status(
         .filter(SteelProductionBatch.factory_id == factory.factory_id, SteelProductionBatch.id.in_({row.batch_id for row in line_rows if row.batch_id}))
         .all()
     } if line_rows else {}
+    can_view_dispatch_line_financials = _can_view_steel_financials(current_user) or current_user.role in {
+        UserRole.MANAGER,
+        UserRole.ADMIN,
+        UserRole.ACCOUNTANT,
+    }
     serialized_lines = [
         _serialize_steel_dispatch_line(
             row,
             invoice_line=invoice_line_map.get(row.invoice_line_id),
             item=item_map.get(row.item_id),
             batch=batch_map.get(row.batch_id),
+            can_view_financials=can_view_dispatch_line_financials,
         )
         for row in line_rows
     ]
@@ -4263,5 +4316,11 @@ def create_steel_batch(
     db.commit()
     db.refresh(batch)
     return {
-        "batch": serialize_batch(batch, input_item=input_item, output_item=output_item, operator=current_user)
+        "batch": serialize_batch(
+            batch,
+            input_item=input_item,
+            output_item=output_item,
+            operator=current_user,
+            can_view_financials=_can_view_steel_financials(current_user),
+        )
     }
