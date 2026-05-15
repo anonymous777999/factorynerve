@@ -288,6 +288,7 @@ def serialize_stock_row(
     *,
     balance_kg: float,
     reconciliation: SteelStockReconciliation | None,
+    can_view_financials: bool = False,
 ) -> dict[str, object]:
     confidence_status, confidence_reason = stock_confidence_for_item(
         balance_kg=balance_kg,
@@ -301,7 +302,7 @@ def serialize_stock_row(
         "category": item.category,
         "base_unit": item.base_unit,
         "display_unit": item.display_unit,
-        "current_rate_per_kg": item.current_rate_per_kg,
+        "current_rate_per_kg": item.current_rate_per_kg if can_view_financials else None,
         "stock_balance_kg": round(float(balance_kg or 0.0), 3),
         "stock_balance_ton": round(float(balance_kg or 0.0) / 1000.0, 3),
         "confidence_status": confidence_status,
@@ -312,7 +313,14 @@ def serialize_stock_row(
     }
 
 
-def serialize_batch(batch: SteelProductionBatch, *, input_item: SteelInventoryItem | None, output_item: SteelInventoryItem | None, operator: User | None) -> dict[str, object]:
+def serialize_batch(
+    batch: SteelProductionBatch,
+    *,
+    input_item: SteelInventoryItem | None,
+    output_item: SteelInventoryItem | None,
+    operator: User | None,
+    can_view_financials: bool = True,
+) -> dict[str, object]:
     created_at = coerce_utc_datetime(batch.created_at) or datetime.now(timezone.utc)
     input_rate_per_kg = float(input_item.current_rate_per_kg or 0.0) if input_item else 0.0
     output_rate_per_kg = float(output_item.current_rate_per_kg or 0.0) if output_item else 0.0
@@ -357,14 +365,14 @@ def serialize_batch(batch: SteelProductionBatch, *, input_item: SteelInventoryIt
         "loss_percent": round(loss_percent, 3),
         "variance_kg": round(variance_kg, 3),
         "variance_percent": round(variance_percent, 3),
-        "variance_value_inr": round(variance_value_inr, 2),
+        "variance_value_inr": round(variance_value_inr, 2) if can_view_financials else None,
         "severity": severity,
-        "input_rate_per_kg": round(input_rate_per_kg, 2),
-        "output_rate_per_kg": round(output_rate_per_kg, 2),
-        "estimated_input_cost_inr": round(estimated_input_cost_inr, 2),
-        "estimated_output_value_inr": round(estimated_output_value_inr, 2),
-        "estimated_gross_profit_inr": round(estimated_gross_profit_inr, 2),
-        "profit_per_kg_inr": round(profit_per_kg_inr, 2),
+        "input_rate_per_kg": round(input_rate_per_kg, 2) if can_view_financials else None,
+        "output_rate_per_kg": round(output_rate_per_kg, 2) if can_view_financials else None,
+        "estimated_input_cost_inr": round(estimated_input_cost_inr, 2) if can_view_financials else None,
+        "estimated_output_value_inr": round(estimated_output_value_inr, 2) if can_view_financials else None,
+        "estimated_gross_profit_inr": round(estimated_gross_profit_inr, 2) if can_view_financials else None,
+        "profit_per_kg_inr": round(profit_per_kg_inr, 2) if can_view_financials else None,
         "anomaly_score": round(anomaly_score, 2),
         "variance_reason": variance_reason(severity, variance_percent),
         "status": batch.status,
@@ -510,6 +518,7 @@ def build_steel_overview(db: Session, factory: Factory) -> dict[str, object]:
             item,
             balance_kg=balances.get(item.id, 0.0),
             reconciliation=reconciliations.get(item.id),
+            can_view_financials=True,
         )
         for item in items
     ]
