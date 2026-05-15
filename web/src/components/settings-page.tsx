@@ -111,7 +111,8 @@ export default function SettingsPage() {
   const canManageFactoryAccess = user?.role === "admin" || user?.role === "owner";
   const canViewBilling = user?.role === "admin" || user?.role === "owner";
   const canManageAlerts = user?.role === "admin" || user?.role === "owner";
-  const canManageFeedback = user?.role === "admin" || user?.role === "owner";
+  const canManageFeedback = user?.is_platform_admin === true;
+  const canOpenSettings = canManage || canManageFeedback;
   const assignableRoles = useMemo(
     () =>
       user?.role === "admin" || user?.role === "owner"
@@ -160,6 +161,12 @@ export default function SettingsPage() {
       setError(err instanceof Error ? err.message : "Could not load settings.");
     });
   }, [loadAll]);
+
+  useEffect(() => {
+    if (!canManage && canManageFeedback) {
+      setTab("feedback");
+    }
+  }, [canManage, canManageFeedback]);
 
   useEffect(() => {
     if (!canManageFactoryAccess) {
@@ -326,7 +333,27 @@ export default function SettingsPage() {
     );
   }
 
-  if (!canManage) {
+  if (!canManage && canManageFeedback) {
+    return (
+      <main className="min-h-screen px-4 py-8 md:px-8">
+        <div className="mx-auto max-w-7xl space-y-6">
+          <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
+            <div>
+              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("settings.title", "Settings")}</div>
+              <h1 className="mt-2 text-3xl font-semibold">{t("settings.tabs.feedback", "Feedback")}</h1>
+              <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
+                Platform-admin access is limited to the feedback console in this workspace.
+              </p>
+            </div>
+          </section>
+          <SettingsFeedbackTab active />
+          {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
+        </div>
+      </main>
+    );
+  }
+
+  if (!canOpenSettings) {
     return (
       <main className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-4">
         <Card className="w-full">

@@ -28,8 +28,7 @@ from backend.models.feedback import (
     FeedbackStatus,
     FeedbackType,
 )
-from backend.models.user import User, UserRole
-from backend.rbac import require_any_role
+from backend.models.user import User
 from backend.security import get_current_user
 from backend.services.feedback_translation import enrich_feedback_message
 from backend.tenancy import resolve_factory_id, resolve_org_id
@@ -157,7 +156,8 @@ class FeedbackListResponse(BaseModel):
 
 
 def _require_feedback_admin(current_user: User) -> None:
-    require_any_role(current_user, {UserRole.ADMIN, UserRole.OWNER})
+    if not current_user.is_platform_admin:
+        raise HTTPException(status_code=403, detail="Platform access required.")
 
 
 def _sanitize_json(value: Any, *, depth: int = 0) -> Any:

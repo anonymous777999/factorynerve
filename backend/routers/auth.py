@@ -740,6 +740,7 @@ def _activate_pending_registration(
         phone_e164=pending.phone_number,
         phone_verification_status=PhoneVerificationStatus.PENDING,
         org_id=resolved_org_id,
+        is_platform_admin=False,
         is_active=True,
         email_verified_at=datetime.now(timezone.utc),
     )

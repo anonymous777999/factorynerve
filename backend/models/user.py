@@ -59,6 +59,12 @@ class User(Base):
     phone_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     phone_last_otp_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     phone_otp_attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    is_platform_admin: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        server_default="false",
+        nullable=False,
+    )
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
     email_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     verification_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -101,6 +107,7 @@ class UserUpdateSchema(BaseModel):
 class UserReadSchema(UserBaseSchema):
     id: int
     user_code: int
+    is_platform_admin: bool = False
     is_active: bool
     phone_verification_status: str = PhoneVerificationStatus.PENDING.value
     phone_verified_at: datetime | None = None
