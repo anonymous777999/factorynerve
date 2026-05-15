@@ -1,70 +1,38 @@
-"""Grant platform admin access to an active user.
+"""Grant platform admin access to a user via direct SQL."""
 
-Run:
-python -m scripts.set_platform_admin user@email.com
-"""
-
-from __future__ import annotations
+# Run from D:\DPR APP\DPR.ai:
+# python -m backend.scripts.set_platform_admin your@email.com
 
 import sys
-from collections.abc import Sequence
 
-from starlette.requests import Request
+from sqlalchemy import text
 
 from backend.database import SessionLocal
-from backend.models.user import User
-from backend.routers.settings import _write_admin_audit
 
 
-def _build_system_request() -> Request:
-    return Request(
-        {
-            "type": "http",
-            "method": "POST",
-            "path": "/system/set-platform-admin",
-            "headers": [(b"user-agent", b"system-cli:set-platform-admin")],
-            "client": ("system", 0),
-        }
-    )
-
-
-def main(argv: Sequence[str] | None = None) -> int:
-    args = list(argv if argv is not None else sys.argv[1:])
-    if len(args) != 1:
-        print("Usage: python -m scripts.set_platform_admin user@email.com")
+def main() -> int:
+    if len(sys.argv) < 2:
+        print("Usage: python -m backend.scripts.set_platform_admin your@email.com")
         return 1
 
-    normalized_email = args[0].strip().lower()
-    if not normalized_email:
-        print("Email is required.")
+    email = sys.argv[1].strip().lower()
+    if not email:
+        print("User not found")
         return 1
 
     db = SessionLocal()
     try:
-        user = (
-            db.query(User)
-            .filter(
-                User.email == normalized_email,
-                User.is_active.is_(True),
-            )
-            .first()
+        result = db.execute(
+            text("UPDATE users SET is_platform_admin = true WHERE email = :email"),
+            {"email": email},
         )
-        if not user:
-            print(f"Active user not found for email: {normalized_email}")
+        if result.rowcount == 0:
+            print("User not found")
+            db.commit()
             return 1
 
-        user.is_platform_admin = True
-        _write_admin_audit(
-            db,
-            actor_id=None,
-            org_id=user.org_id,
-            factory_id=None,
-            action="PLATFORM_ADMIN_GRANTED",
-            details=f"actor=system target={user.id} email={normalized_email}",
-            request=_build_system_request(),
-        )
         db.commit()
-        print(f"Platform admin enabled for {normalized_email} (user_id={user.id}).")
+        print(f"Done. Platform admin granted to {email}")
         return 0
     finally:
         db.close()
