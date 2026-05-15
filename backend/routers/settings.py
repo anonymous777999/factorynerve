@@ -917,6 +917,7 @@ def invite_user(
         factory_name=factory_name,
         factory_code=factory_code,
         org_id=org_id,
+        is_platform_admin=False,
         is_active=True,
         email_verified_at=invited_at if delivery_mode == "preview" else None,
         verification_sent_at=None if delivery_mode == "preview" else invited_at,

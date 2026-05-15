@@ -7,6 +7,7 @@ export type CurrentUser = {
   user_code: number;
   email: string;
   role: string;
+  is_platform_admin: boolean;
   name: string;
   profile_picture?: string | null;
   factory_name: string;
