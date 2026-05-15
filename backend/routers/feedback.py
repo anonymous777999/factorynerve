@@ -197,18 +197,17 @@ def _dedupe_hash(*, feedback_type: FeedbackType, message_original: str, route: s
 def _feedback_group_stats(
     db: Session,
     *,
-    org_id: str,
+    org_id: str | None,
     status_value: FeedbackStatus | None = None,
     feedback_type: FeedbackType | None = None,
 ):
-    query = (
-        db.query(
-            Feedback.dedupe_hash.label("group_key"),
-            func.count(Feedback.id).label("group_occurrences"),
-            func.max(Feedback.created_at).label("latest_similar_at"),
-        )
-        .filter(Feedback.org_id == org_id)
+    query = db.query(
+        Feedback.dedupe_hash.label("group_key"),
+        func.count(Feedback.id).label("group_occurrences"),
+        func.max(Feedback.created_at).label("latest_similar_at"),
     )
+    if org_id is not None:
+        query = query.filter(Feedback.org_id == org_id)
     if status_value:
         query = query.filter(Feedback.status == status_value)
     if feedback_type:
@@ -216,7 +215,7 @@ def _feedback_group_stats(
     return query.group_by(Feedback.dedupe_hash).subquery()
 
 
-def _feedback_query(db: Session, *, org_id: str, group_stats=None):
+def _feedback_query(db: Session, *, org_id: str | None, group_stats=None):
     resolved_by_user = db.query(User).subquery()
     columns: list[Any] = [
         Feedback,
@@ -238,14 +237,15 @@ def _feedback_query(db: Session, *, org_id: str, group_stats=None):
         .join(User, Feedback.user_id == User.id)
         .outerjoin(Factory, Feedback.factory_id == Factory.factory_id)
         .outerjoin(resolved_by_user, Feedback.resolved_by_user_id == resolved_by_user.c.id)
-        .filter(Feedback.org_id == org_id)
     )
+    if org_id is not None:
+        query = query.filter(Feedback.org_id == org_id)
     if group_stats is not None:
         query = query.outerjoin(group_stats, Feedback.dedupe_hash == group_stats.c.group_key)
     return query
 
 
-def _feedback_by_id(db: Session, *, org_id: str, feedback_id: int, group_stats=None):
+def _feedback_by_id(db: Session, *, org_id: str | None, feedback_id: int, group_stats=None):
     return _feedback_query(db, org_id=org_id, group_stats=group_stats).filter(Feedback.id == feedback_id).first()
 
 
@@ -475,9 +475,11 @@ def list_feedback(
     current_user: User = Depends(get_current_user),
 ) -> FeedbackListResponse:
     _require_feedback_admin(current_user)
-    org_id = resolve_org_id(current_user)
-    if not org_id:
-        raise HTTPException(status_code=400, detail="Organization could not be resolved.")
+    org_id: str | None = None
+    if not current_user.is_platform_admin:
+        org_id = resolve_org_id(current_user)
+        if not org_id:
+            raise HTTPException(status_code=400, detail="Organization could not be resolved.")
 
     group_stats = _feedback_group_stats(
         db,
@@ -593,9 +595,11 @@ def get_feedback(
     current_user: User = Depends(get_current_user),
 ) -> FeedbackAdminItem:
     _require_feedback_admin(current_user)
-    org_id = resolve_org_id(current_user)
-    if not org_id:
-        raise HTTPException(status_code=400, detail="Organization could not be resolved.")
+    org_id: str | None = None
+    if not current_user.is_platform_admin:
+        org_id = resolve_org_id(current_user)
+        if not org_id:
+            raise HTTPException(status_code=400, detail="Organization could not be resolved.")
 
     group_stats = _feedback_group_stats(db, org_id=org_id)
     row = _feedback_by_id(db, org_id=org_id, feedback_id=feedback_id, group_stats=group_stats)
@@ -621,9 +625,11 @@ def update_feedback(
     current_user: User = Depends(get_current_user),
 ) -> FeedbackAdminItem:
     _require_feedback_admin(current_user)
-    org_id = resolve_org_id(current_user)
-    if not org_id:
-        raise HTTPException(status_code=400, detail="Organization could not be resolved.")
+    org_id: str | None = None
+    if not current_user.is_platform_admin:
+        org_id = resolve_org_id(current_user)
+        if not org_id:
+            raise HTTPException(status_code=400, detail="Organization could not be resolved.")
 
     row = _feedback_by_id(db, org_id=org_id, feedback_id=feedback_id)
     if not row:
