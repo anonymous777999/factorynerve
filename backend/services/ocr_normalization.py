@@ -4,7 +4,21 @@ from __future__ import annotations
 
 import ast
 import json
+import re
+from collections import Counter
 from typing import Any
+
+_NUMBER_HEADER_TOKENS = ("amount", "amt", "qty", "quantity", "count", "number", "total", "rate", "value", "balance", "debit", "credit", "dr", "cr")
+_DATE_HEADER_TOKENS = ("date", "day", "time", "month", "year")
+_CONFUSABLE_DIGIT_MAP = str.maketrans({
+    "O": "0",
+    "o": "0",
+    "I": "1",
+    "l": "1",
+    "S": "5",
+    "s": "5",
+    "B": "8",
+})
 
 
 def extract_json_candidate(raw: str | None) -> Any | None:
@@ -73,11 +87,21 @@ def _normalize_headers(headers: list[Any] | None, column_count: int) -> list[str
     ]
 
 
-def get_confidence_tier(value: Any, field_type: str) -> str:
+def get_confidence_tier(value: Any, field_type: str | dict[str, Any]) -> str:
+    profile = field_type if isinstance(field_type, dict) else {"field_type": field_type}
+    kind = str(profile.get("field_type") or "text")
     text = _stringify_cell(value)
     if not text or text.strip() == "":
+        return "review_required" if float(profile.get("non_empty_ratio") or 0.0) >= 0.6 else "medium"
+    if _contains_severe_noise(text):
         return "review_required"
-    if field_type == "number" and _looks_number_like(text) is False:
+    if kind == "number":
+        return _classify_number_cell(text)
+    if kind == "date":
+        return _classify_date_cell(text)
+    if _looks_merged_cell(text, profile):
+        return "review_required"
+    if _looks_text_anomaly(text, profile):
         return "medium"
     return "high"
 
@@ -91,6 +115,7 @@ def build_cell_confidence_matrix(
     column_count = max(len(normalized_headers), max((len(row) for row in normalized_rows), default=0))
     if column_count == 0:
         return []
+    profiles = _build_column_profiles(normalized_headers, normalized_rows)
 
     matrix: list[list[float]] = []
     for row in normalized_rows:
@@ -100,7 +125,7 @@ def build_cell_confidence_matrix(
                 _confidence_score_for_tier(
                     get_confidence_tier(
                         normalized_row[column_index],
-                        _infer_field_type(normalized_headers, normalized_rows, column_index),
+                        profiles[column_index],
                     )
                 )
                 for column_index in range(column_count)
@@ -118,6 +143,7 @@ def build_confidence_enriched_rows(
     column_count = max(len(normalized_headers), max((len(row) for row in normalized_rows), default=0))
     if column_count == 0:
         return []
+    profiles = _build_column_profiles(normalized_headers, normalized_rows)
 
     enriched_rows: list[list[dict[str, Any]]] = []
     for row in normalized_rows:
@@ -126,7 +152,7 @@ def build_confidence_enriched_rows(
             [
                 _build_confidence_cell(
                     normalized_row[column_index],
-                    _infer_field_type(normalized_headers, normalized_rows, column_index),
+                    profiles[column_index],
                 )
                 for column_index in range(column_count)
             ]
@@ -134,7 +160,7 @@ def build_confidence_enriched_rows(
     return enriched_rows
 
 
-def _build_confidence_cell(value: Any, field_type: str) -> dict[str, Any]:
+def _build_confidence_cell(value: Any, field_type: str | dict[str, Any]) -> dict[str, Any]:
     tier = get_confidence_tier(value, field_type)
     # OCR rows were falling back to fake 100% values because the tier was never assigned at normalization time.
     return {
@@ -155,8 +181,10 @@ def _confidence_score_for_tier(tier: str) -> float:
 
 def _infer_field_type(headers: list[str], rows: list[list[str]], column_index: int) -> str:
     header = headers[column_index].strip().lower() if column_index < len(headers) else ""
-    if any(token in header for token in ("amount", "amt", "qty", "quantity", "count", "number", "total", "rate", "value", "balance")):
+    if any(token in header for token in _NUMBER_HEADER_TOKENS):
         return "number"
+    if any(token in header for token in _DATE_HEADER_TOKENS):
+        return "date"
     column_values = [
         row[column_index].strip()
         for row in rows
@@ -164,18 +192,13 @@ def _infer_field_type(headers: list[str], rows: list[list[str]], column_index: i
     ]
     if column_values and all(_looks_number_like(value) for value in column_values):
         return "number"
+    if column_values and all(_looks_date_like(value) for value in column_values):
+        return "date"
     return "text"
 
 
 def _looks_number_like(value: str) -> bool:
-    cleaned = (
-        value.replace(",", "")
-        .replace(" ", "")
-        .replace("Rs.", "")
-        .replace("INR", "")
-        .replace("\u20b9", "")
-        .replace("$", "")
-    )
+    cleaned = _normalize_numeric_candidate(value)
     if not cleaned:
         return False
     try:
@@ -183,6 +206,134 @@ def _looks_number_like(value: str) -> bool:
         return True
     except ValueError:
         return False
+
+
+def _normalize_numeric_candidate(value: str) -> str:
+    cleaned = (
+        value.replace(",", "")
+        .replace(" ", "")
+        .replace("Rs.", "")
+        .replace("Rs", "")
+        .replace("INR", "")
+        .replace("USD", "")
+        .replace("\u20b9", "")
+        .replace("$", "")
+        .replace("%", "")
+    ).strip()
+    if cleaned.startswith("(") and cleaned.endswith(")"):
+        cleaned = f"-{cleaned[1:-1]}"
+    return cleaned
+
+
+def _looks_confusable_numeric(value: str) -> bool:
+    if _looks_number_like(value):
+        return False
+    translated = value.translate(_CONFUSABLE_DIGIT_MAP)
+    return _looks_number_like(translated)
+
+
+def _classify_number_cell(value: str) -> str:
+    if _looks_number_like(value):
+        return "high"
+    if _looks_confusable_numeric(value):
+        return "medium"
+    if _contains_digit_alpha_noise(value) or _contains_severe_noise(value):
+        return "review_required"
+    return "medium"
+
+
+def _classify_date_cell(value: str) -> str:
+    if _looks_date_like(value):
+        return "high"
+    if re.search(r"\d", value) and any(token in value for token in ("/", "-", ".")):
+        return "medium"
+    if _contains_severe_noise(value):
+        return "review_required"
+    return "medium"
+
+
+def _looks_date_like(value: str) -> bool:
+    text = value.strip()
+    if not text:
+        return False
+    patterns = (
+        r"^\d{1,2}[/-]\d{1,2}[/-]\d{2,4}$",
+        r"^\d{4}[/-]\d{1,2}[/-]\d{1,2}$",
+        r"^\d{1,2}[.]\d{1,2}[.]\d{2,4}$",
+        r"^\d{1,2}:\d{2}(?::\d{2})?$",
+    )
+    return any(re.match(pattern, text) for pattern in patterns)
+
+
+def _contains_digit_alpha_noise(value: str) -> bool:
+    stripped = re.sub(r"(rs\.?|inr|usd)", "", value, flags=re.IGNORECASE)
+    return bool(re.search(r"\d", stripped) and re.search(r"[A-Za-z]", stripped))
+
+
+def _contains_severe_noise(value: str) -> bool:
+    text = value.strip()
+    if not text:
+        return False
+    if any(token in text for token in ("\ufffd", "??", "__", "||", "\t")):
+        return True
+    symbol_count = sum(1 for char in text if not char.isalnum() and char not in " .,/-():%")
+    return len(text) >= 4 and (symbol_count / len(text)) > 0.3
+
+
+def _looks_merged_cell(value: str, profile: dict[str, Any]) -> bool:
+    average_length = float(profile.get("average_length") or 0.0)
+    baseline = max(average_length * 2.5, 36)
+    return len(value) > baseline and bool(re.search(r"\s{2,}|[|]{1,}|[,;].*[,;]", value))
+
+
+def _shape_signature(value: str) -> str:
+    chars: list[str] = []
+    for char in value:
+        if char.isdigit():
+            chars.append("9")
+        elif char.isalpha():
+            chars.append("A")
+        elif char.isspace():
+            chars.append(" ")
+        else:
+            chars.append(char)
+    return "".join(chars)
+
+
+def _looks_text_anomaly(value: str, profile: dict[str, Any]) -> bool:
+    dominant_shape = str(profile.get("dominant_shape") or "")
+    dominant_shape_ratio = float(profile.get("dominant_shape_ratio") or 0.0)
+    if dominant_shape_ratio < 0.85 or not dominant_shape:
+        return False
+    shape = _shape_signature(value)
+    return shape != dominant_shape and len(value) <= max(24, int((profile.get("average_length") or 0.0) * 1.8))
+
+
+def _build_column_profiles(headers: list[str], rows: list[list[str]]) -> list[dict[str, Any]]:
+    column_count = max(len(headers), max((len(row) for row in rows), default=0))
+    if column_count == 0:
+        return []
+
+    profiles: list[dict[str, Any]] = []
+    row_count = max(len(rows), 1)
+    for column_index in range(column_count):
+        values = [
+            row[column_index].strip() if column_index < len(row) else ""
+            for row in rows
+        ]
+        non_empty = [value for value in values if value]
+        shapes = Counter(_shape_signature(value) for value in non_empty)
+        dominant_shape, dominant_count = shapes.most_common(1)[0] if shapes else ("", 0)
+        profiles.append(
+            {
+                "field_type": _infer_field_type(headers, rows, column_index),
+                "non_empty_ratio": len(non_empty) / row_count,
+                "average_length": (sum(len(value) for value in non_empty) / len(non_empty)) if non_empty else 0.0,
+                "dominant_shape": dominant_shape,
+                "dominant_shape_ratio": (dominant_count / len(non_empty)) if non_empty else 0.0,
+            }
+        )
+    return profiles
 
 
 def normalize_headers_rows(

@@ -34,6 +34,7 @@ from backend.services.ocr_structural_grouping import (
     apply_selector_bridge,
 )
 from backend.table_scan import extract_table_from_image
+from backend.utils import normalize_confidence
 
 
 logger = logging.getLogger(__name__)
@@ -490,13 +491,14 @@ def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrT
     age_hours = int(age_seconds // 3600)
 
     # Determine cache trust
-    confidence = float(verification.avg_confidence or 0)
+    confidence = normalize_confidence(verification.avg_confidence) or 0.0
     warnings = verification.warnings or []
-    review_required = (confidence < 60) or bool(warnings)
+    scan_quality = verification.scan_quality or {}
+    review_required = scan_quality.get("confidence_band") == "low" or bool(warnings)
     
-    # Smart trust policy: low if low confidence + warnings OR explicit review_required
+    # Smart trust policy: lower trust only when document-level signals suggest a risky extraction.
     cache_trust = "high"
-    if (confidence < 0.60 and len(warnings) > 0) or review_required:
+    if review_required or (scan_quality.get("confidence_band") == "medium" and len(warnings) >= 2):
         cache_trust = "low"
 
     # user_corrected if reviewed_rows differs from original_rows
@@ -510,7 +512,6 @@ def serialize_reused_ocr_result(verification: OcrVerification, *, template: OcrT
     reprocess_count = int(routing.get("reprocess_count", 0))
     
     # Get layout confidence from scan_quality if available (NEW)
-    scan_quality = verification.scan_quality or {}
     layout_confidence = scan_quality.get("layout_confidence", 0.5)
 
     return {

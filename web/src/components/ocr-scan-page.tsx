@@ -449,7 +449,7 @@ function buildDebugPayloadFromRouting(
 function lowConfidenceCount(matrix: OcrConfidenceMatrix, visible: boolean) {
   if (!visible) return 0;
   return matrix.reduce(
-    (sum, row) => sum + row.filter((value) => getOcrConfidenceTier(value) !== "high").length,
+    (sum, row) => sum + row.filter((value) => getOcrConfidenceTier(value) === "review_required").length,
     0,
   );
 }

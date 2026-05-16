@@ -296,9 +296,13 @@ export function normalizeOcrConfidence(confidence: number | null | undefined) {
   return Math.max(0, Math.min(1, confidence));
 }
 
+export function hasOcrConfidenceSignal(confidence: number | null | undefined) {
+  return normalizeOcrConfidence(confidence) != null;
+}
+
 export function getOcrConfidenceTier(confidence: number | null | undefined): OcrConfidenceTier {
   const normalized = normalizeOcrConfidence(confidence);
-  if (normalized == null) return "review_required";
+  if (normalized == null) return "medium";
   if (normalized < 0.5) return "review_required";
   if (normalized < 0.85) return "medium";
   return "high";

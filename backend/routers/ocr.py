@@ -3180,7 +3180,13 @@ async def ocr_logbook(
     scan_quality_payload = None
     try:
         image_quality = analyze_image_quality(image_bytes)
-        warning_band = "low" if image_quality.warnings else "high"
+        warning_count = len(image_quality.warnings or [])
+        if fallback_used or warning_count >= 2:
+            warning_band = "low"
+        elif warning_count == 1:
+            warning_band = "medium"
+        else:
+            warning_band = "high"
         scan_quality_payload = {
             "confidence_band": warning_band,
             "quality_signals": image_quality.warnings,
@@ -3190,10 +3196,10 @@ async def ocr_logbook(
             "page_count": 1,
             "adjustment_count": 0,
             "retake_count": 0,
-            "manual_review_recommended": bool(image_quality.warnings),
-            "outcome": "partial" if image_quality.warnings else "success",
-            "next_action": "upload_better_image" if image_quality.warnings else None,
-            "notes": "Image quality may affect accuracy." if image_quality.warnings else None,
+            "manual_review_recommended": bool(fallback_used or warning_count >= 2),
+            "outcome": "partial" if warning_count else "success",
+            "next_action": "upload_better_image" if warning_count >= 2 else None,
+            "notes": "Image quality may affect accuracy." if warning_count else None,
             "cell_boxes": structured.get("cell_boxes"),
         }
     except Exception as error:  # pylint: disable=broad-except

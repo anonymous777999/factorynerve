@@ -15,6 +15,7 @@ import {
   createOcrVerification,
   downloadOcrVerificationExport,
   getOcrConfidenceTier,
+  hasOcrConfidenceSignal,
   getOcrVerification,
   listOcrTemplates,
   listOcrVerifications,
@@ -205,6 +206,19 @@ function inferIssueImpact(label: string, detail = ""): ReviewIssue["impact"] {
   return "workflow";
 }
 
+function looksSuspiciousValue(value: string) {
+  const text = value.trim();
+  if (!text) return false;
+  if (text.includes("??") || text.includes("__") || text.includes("||")) return true;
+  const symbolCount = Array.from(text).filter((char) => !/[A-Za-z0-9\s.,:/()%\-]/.test(char)).length;
+  return text.length >= 4 && symbolCount / text.length > 0.3;
+}
+
+function shouldFlagBlankCell(columnFillRatio: number, impact: ReviewIssue["impact"]) {
+  if (impact === "billing" || impact === "stock" || impact === "traceability") return true;
+  return columnFillRatio >= 0.6;
+}
+
 function cellInputClass(value: string, confidence?: number | null) {
   const tier = getOcrConfidenceTier(confidence ?? undefined);
   if (tier === "review_required") {
@@ -238,7 +252,10 @@ function documentConfidenceLabel(record: Pick<OcrVerificationRecord, "warnings" 
   if (band === "low") return "Review";
   if (band === "medium") return "Check";
   if (band === "high") return "Verified";
-  return (record?.warnings?.length || preview?.warnings?.length) ? "Review" : "Verified";
+  const warningCount = Math.max(record?.warnings?.length || 0, preview?.warnings?.length || 0);
+  if (warningCount >= 2) return "Review";
+  if (warningCount === 1) return "Check";
+  return "Verified";
 }
 
 function sortWeight(status: OcrVerificationRecord["status"]) {
@@ -1930,13 +1947,24 @@ export default function OcrVerificationPage() {
       });
     }
 
+    const columnFillRatios = headers.map((_, columnIndex) => {
+      if (!rows.length) return 0;
+      const filled = rows.filter((row) => row[columnIndex]?.trim()).length;
+      return filled / rows.length;
+    });
     const fieldIssues: ReviewIssue[] = [];
+    let mediumSignalCount = 0;
     rows.forEach((row, rowIndex) => {
       headers.forEach((header, columnIndex) => {
         const value = row[columnIndex] || "";
         const confidence = preview?.cell_confidence?.[rowIndex]?.[columnIndex];
         const impact = inferIssueImpact(header, value);
+        const hasConfidenceSignal = hasOcrConfidenceSignal(confidence);
+        const confidenceTier = getOcrConfidenceTier(confidence ?? undefined);
         if (!value.trim()) {
+          if (!shouldFlagBlankCell(columnFillRatios[columnIndex] ?? 0, impact)) {
+            return;
+          }
           fieldIssues.push({
             key: `blank-${rowIndex}-${columnIndex}`,
             tone: impact === "billing" || impact === "stock" ? "critical" : "warning",
@@ -1953,8 +1981,7 @@ export default function OcrVerificationPage() {
           return;
         }
 
-        const confidenceTier = getOcrConfidenceTier(confidence ?? undefined);
-        if (confidenceTier !== "high") {
+        if (confidenceTier === "review_required" || looksSuspiciousValue(value)) {
           fieldIssues.push({
             key: `confidence-${rowIndex}-${columnIndex}`,
             tone: confidenceTier === "review_required" ? "critical" : "warning",
@@ -1968,6 +1995,10 @@ export default function OcrVerificationPage() {
             rowIndex,
             columnIndex,
           });
+          return;
+        }
+        if (hasConfidenceSignal && confidenceTier === "medium") {
+          mediumSignalCount += 1;
         }
       });
     });
@@ -1995,6 +2026,19 @@ export default function OcrVerificationPage() {
         expectedValue: "Open all rows if a full pass is needed",
         actionLabel: "Review full table",
         helpText: "Focus mode keeps the first pass fast. Use all rows for a full audit.",
+      });
+    }
+    if (mediumSignalCount > 0) {
+      issues.push({
+        key: "medium-signals",
+        tone: "info",
+        title: "Some cells only need a quick check",
+        detail: `${mediumSignalCount} cell${mediumSignalCount === 1 ? "" : "s"} were marked Check instead of Review to avoid flooding the queue.`,
+        impact: "workflow",
+        affectedValue: `${mediumSignalCount} check signal${mediumSignalCount === 1 ? "" : "s"}`,
+        expectedValue: "Use the amber badges for a quick second pass if anything looks off",
+        actionLabel: "Spot-check cells",
+        helpText: "Amber cells are softer signals, so the queue stays focused on genuinely risky fields.",
       });
     }
 
