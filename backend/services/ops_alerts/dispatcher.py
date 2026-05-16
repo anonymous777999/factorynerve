@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 import logging
@@ -336,13 +335,11 @@ class AlertDispatcher:
             dispatched=False,
         )
         try:
-            message_result = asyncio.run(
-                whatsapp_sender.send_message(
-                    to=target.phone_number,
-                    template_name="ops_alert_text",
-                    template_params={"body": message},
-                    org_id=candidate.org_id,
-                )
+            message_result = whatsapp_sender.send_message_blocking(
+                to=target.phone_number,
+                template_name="ops_alert_text",
+                template_params={"body": message},
+                org_id=candidate.org_id,
             )
         except Exception as error:  # pylint: disable=broad-except
             logger.exception("Ops alert sender crashed for %s.", candidate.ref_id)

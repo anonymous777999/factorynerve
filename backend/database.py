@@ -844,10 +844,11 @@ def _ensure_entries_columns() -> None:
 
 
 def _ensure_users_columns() -> None:
-    """Ensure users.factory_code exists and is populated per factory."""
+    """Ensure legacy user columns exist and are safely backfilled."""
     try:
         inspector = inspect(engine)
         columns = {column["name"] for column in inspector.get_columns("users")}
+        dialect = engine.dialect.name
         with engine.connect() as conn:
             if "factory_code" not in columns:
                 conn.exec_driver_sql("ALTER TABLE users ADD COLUMN factory_code VARCHAR(32)")
@@ -859,6 +860,21 @@ def _ensure_users_columns() -> None:
                 conn.exec_driver_sql("ALTER TABLE users ADD COLUMN profile_picture VARCHAR(500)")
             if "auth_provider" not in columns:
                 conn.exec_driver_sql("ALTER TABLE users ADD COLUMN auth_provider VARCHAR(32) DEFAULT 'local'")
+            if "is_platform_admin" not in columns:
+                if dialect == "postgresql":
+                    conn.exec_driver_sql(
+                        "ALTER TABLE users ADD COLUMN is_platform_admin BOOLEAN NOT NULL DEFAULT FALSE"
+                    )
+                else:
+                    conn.exec_driver_sql(
+                        "ALTER TABLE users ADD COLUMN is_platform_admin BOOLEAN NOT NULL DEFAULT 0"
+                    )
+            if dialect == "postgresql":
+                conn.exec_driver_sql("UPDATE users SET is_platform_admin = FALSE WHERE is_platform_admin IS NULL")
+                conn.exec_driver_sql("ALTER TABLE users ALTER COLUMN is_platform_admin SET DEFAULT FALSE")
+                conn.exec_driver_sql("ALTER TABLE users ALTER COLUMN is_platform_admin SET NOT NULL")
+            else:
+                conn.exec_driver_sql("UPDATE users SET is_platform_admin = 0 WHERE is_platform_admin IS NULL")
             conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_users_org_id ON users (org_id)")
 
             factories = conn.execute(text("SELECT DISTINCT factory_name FROM users")).fetchall()
@@ -895,7 +911,7 @@ def _ensure_users_columns() -> None:
                 )
             conn.commit()
     except Exception:
-        logger.exception("Failed to ensure users.factory_code column.")
+        logger.exception("Failed to ensure users columns.")
 
 
 def _ensure_phone_and_alerting_columns() -> None:
@@ -907,21 +923,29 @@ def _ensure_phone_and_alerting_columns() -> None:
         with engine.connect() as conn:
             if "users" in table_names:
                 user_columns = {column["name"] for column in inspector.get_columns("users")}
+                if "phone_number" not in user_columns:
+                    conn.exec_driver_sql("ALTER TABLE users ADD COLUMN phone_number VARCHAR(32)")
+                    user_columns.add("phone_number")
                 if "phone_e164" not in user_columns:
                     conn.exec_driver_sql("ALTER TABLE users ADD COLUMN phone_e164 VARCHAR(20)")
+                    user_columns.add("phone_e164")
                 if "phone_verification_status" not in user_columns:
                     conn.exec_driver_sql(
                         "ALTER TABLE users ADD COLUMN phone_verification_status VARCHAR(24) "
                         "NOT NULL DEFAULT 'pending'"
                     )
+                    user_columns.add("phone_verification_status")
                 if "phone_verified_at" not in user_columns:
                     conn.exec_driver_sql("ALTER TABLE users ADD COLUMN phone_verified_at TIMESTAMP")
+                    user_columns.add("phone_verified_at")
                 if "phone_last_otp_sent_at" not in user_columns:
                     conn.exec_driver_sql("ALTER TABLE users ADD COLUMN phone_last_otp_sent_at TIMESTAMP")
+                    user_columns.add("phone_last_otp_sent_at")
                 if "phone_otp_attempts" not in user_columns:
                     conn.exec_driver_sql(
                         "ALTER TABLE users ADD COLUMN phone_otp_attempts INTEGER NOT NULL DEFAULT 0"
                     )
+                    user_columns.add("phone_otp_attempts")
                 conn.exec_driver_sql(
                     "UPDATE users SET phone_e164 = phone_number "
                     "WHERE phone_e164 IS NULL AND phone_number IS NOT NULL AND TRIM(phone_number) != ''"
