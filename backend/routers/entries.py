@@ -43,7 +43,6 @@ from backend.utils import (
 )
 from backend.services import ai_router
 from backend.services.background_jobs import create_job, register_retry_handler, start_job
-from backend.services.whatsapp import notify_entry_alerts
 from backend.tenancy import resolve_factory_id, resolve_org_id
 from backend.query_helpers import apply_role_scope, can_view_entry, factory_user_ids_query
 
@@ -547,8 +546,6 @@ def create_entry(
                 )
             )
         db.commit()
-        if alert_payloads:
-            notify_entry_alerts(entry, alert_payloads)
         db.refresh(entry)
         _invalidate_entry_related_cache(entry)
         summary_job_id = None

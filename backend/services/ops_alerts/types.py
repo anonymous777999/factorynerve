@@ -77,7 +77,9 @@ class AlertCandidate:
 class AlertDispatchResult:
     success: bool
     provider: str
+    result_status: str = "failed"
     retryable: bool = False
     error: str | None = None
     external_id: str | None = None
     status_code: int | None = None
+    attempt_count: int = 0

@@ -69,24 +69,24 @@ python run.py
 Set these environment variables in `.env`:
 
 ```env
-WHATSAPP_PROVIDER=meta
-WHATSAPP_API_KEY=your_provider_api_key
-WHATSAPP_API_URL=
-WHATSAPP_SENDER_ID=your_sender_phone_or_provider_id
+WHATSAPP_PROVIDER_MODE=meta
 WHATSAPP_TIMEOUT_SECONDS=10
-WHATSAPP_RETRY_ATTEMPTS=3
-WHATSAPP_RETRY_BACKOFF_SECONDS=1.5
+META_WA_PHONE_NUMBER_ID=your_meta_phone_number_id
+META_WA_ACCESS_TOKEN=your_meta_access_token
+META_WA_API_VERSION=v19.0
+WA_DAILY_SEND_CAP=500
+WA_DEDUP_WINDOW_SECONDS=300
 ```
 
-Provider notes:
+Mode notes:
 
-- `meta`: `WHATSAPP_SENDER_ID` is the Meta phone number ID. `WHATSAPP_API_URL` can usually stay blank.
-- `gupshup`: `WHATSAPP_SENDER_ID` can be the source number, or `source|app_name` if your setup also needs `src.name`.
-- `twilio`: set `WHATSAPP_API_KEY` as `account_sid:auth_token` and `WHATSAPP_SENDER_ID` as the WhatsApp-enabled sender number, for example `whatsapp:+14155238886`.
+- `meta`: sends real WhatsApp template messages through the Meta Cloud API.
+- `mock`: returns a fake success result without making an outbound HTTP request.
+- `disabled`: returns a disabled result and suppresses outbound delivery.
 
 ### Add sender number
 
-No code changes are required after setup. The sender/channel identity comes from `WHATSAPP_SENDER_ID`.
+Use the Meta phone number ID from the WhatsApp product dashboard as `META_WA_PHONE_NUMBER_ID`.
 
 ### Add recipients
 

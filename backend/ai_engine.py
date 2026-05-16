@@ -106,7 +106,8 @@ def _call_anthropic(prompt: str, *, max_tokens: int) -> str:
     import anthropic  # type: ignore
 
     client = anthropic.Anthropic(api_key=config.anthropic_api_key)
-    resp = client.messages.create(
+    messages_api = client.messages
+    resp = messages_api.create(
         model="claude-3-5-sonnet-20240620",
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],

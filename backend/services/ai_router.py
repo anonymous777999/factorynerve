@@ -177,7 +177,8 @@ def _call_anthropic(prompt: str, *, max_tokens: int) -> str:
     if not api_key:
         raise RuntimeError("ANTHROPIC_API_KEY missing.")
     client = anthropic.Anthropic(api_key=api_key)
-    resp = client.messages.create(
+    messages_api = client.messages
+    resp = messages_api.create(
         model=os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20240620"),
         max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],
