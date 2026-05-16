@@ -17,6 +17,7 @@ class OpsAlertEvent(Base):
         Index("ix_ops_alert_events_ref_id", "ref_id"),
         Index("ix_ops_alert_events_event_type", "event_type"),
         Index("ix_ops_alert_events_delivery_status", "delivery_status"),
+        Index("ix_ops_alert_events_provider_message_id", "provider_message_id"),
         Index("ix_ops_alert_events_created_at", "created_at"),
         Index("ix_ops_alert_events_org_created_at", "org_id", "created_at"),
     )
@@ -37,6 +38,13 @@ class OpsAlertEvent(Base):
     meta: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     provider: Mapped[str] = mapped_column(String(32), nullable=False)
     delivery_status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
+    provider_message_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    provider_status_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    read_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    failed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    provider_error_code: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    provider_error_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
     suppressed_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
     attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)

@@ -1031,6 +1031,20 @@ def _ensure_phone_and_alerting_columns() -> None:
                     )
                 if "suppressed_reason" not in alert_columns:
                     conn.exec_driver_sql("ALTER TABLE ops_alert_events ADD COLUMN suppressed_reason VARCHAR(64)")
+                if "provider_message_id" not in alert_columns:
+                    conn.exec_driver_sql("ALTER TABLE ops_alert_events ADD COLUMN provider_message_id VARCHAR(255)")
+                if "provider_status_at" not in alert_columns:
+                    conn.exec_driver_sql("ALTER TABLE ops_alert_events ADD COLUMN provider_status_at TIMESTAMP")
+                if "delivered_at" not in alert_columns:
+                    conn.exec_driver_sql("ALTER TABLE ops_alert_events ADD COLUMN delivered_at TIMESTAMP")
+                if "read_at" not in alert_columns:
+                    conn.exec_driver_sql("ALTER TABLE ops_alert_events ADD COLUMN read_at TIMESTAMP")
+                if "failed_at" not in alert_columns:
+                    conn.exec_driver_sql("ALTER TABLE ops_alert_events ADD COLUMN failed_at TIMESTAMP")
+                if "provider_error_code" not in alert_columns:
+                    conn.exec_driver_sql("ALTER TABLE ops_alert_events ADD COLUMN provider_error_code VARCHAR(64)")
+                if "provider_error_title" not in alert_columns:
+                    conn.exec_driver_sql("ALTER TABLE ops_alert_events ADD COLUMN provider_error_title VARCHAR(255)")
                 conn.exec_driver_sql(
                     "UPDATE ops_alert_events SET status = 'queued' WHERE status IS NULL OR TRIM(status) = ''"
                 )
@@ -1047,6 +1061,10 @@ def _ensure_phone_and_alerting_columns() -> None:
                 conn.exec_driver_sql(
                     "CREATE INDEX IF NOT EXISTS ix_ops_alert_events_org_created_at_desc "
                     "ON ops_alert_events (org_id, created_at DESC)"
+                )
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS ix_ops_alert_events_provider_message_id "
+                    "ON ops_alert_events (provider_message_id)"
                 )
 
             if "phone_verifications" not in table_names:

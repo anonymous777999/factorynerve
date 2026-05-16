@@ -199,6 +199,7 @@ class AlertDispatcher:
                         meta=row_meta,
                         provider=self.provider_name,
                         delivery_status=delivery_status,
+                        provider_message_id=provider_message_id,
                         suppressed_reason=suppressed_reason,
                         attempt_count=attempt_count,
                         last_error=last_error,
@@ -215,6 +216,8 @@ class AlertDispatcher:
                     row.is_summary = candidate.is_summary
                     row.summary = candidate.summary
                     row.delivery_status = delivery_status
+                    if provider_message_id is not None:
+                        row.provider_message_id = provider_message_id
                     row.suppressed_reason = suppressed_reason
                     row.attempt_count = attempt_count
                     row.last_error = last_error
@@ -280,10 +283,10 @@ class AlertDispatcher:
         suppressed_count = sum(1 for result in results if result.result_status in {"suppressed", "disabled"})
         max_attempt_count = max((result.attempt_count for result in results), default=0)
         if delivered_count == len(results):
-            status = "sent"
-            delivery_status = "dispatched"
+            status = "dispatching"
+            delivery_status = "dispatching"
         elif delivered_count > 0:
-            status = "sent"
+            status = "dispatching"
             delivery_status = "partial_failure"
         elif suppressed_count == len(results) and results:
             status = "suppressed"
@@ -328,8 +331,8 @@ class AlertDispatcher:
         self._persist_result(
             candidate=candidate,
             recipient_phone=target.phone_number,
-            status="queued",
-            delivery_status="queued",
+            status="dispatching",
+            delivery_status="dispatching",
             attempt_count=0,
             last_error=None,
             dispatched=False,
@@ -352,8 +355,8 @@ class AlertDispatcher:
             )
         success = message_result.status == "sent"
         if message_result.status == "sent":
-            event_status = "sent"
-            delivery_status = "dispatched"
+            event_status = "dispatching"
+            delivery_status = "dispatching"
         elif message_result.status in {"suppressed", "disabled"}:
             event_status = "suppressed"
             delivery_status = "suppressed"

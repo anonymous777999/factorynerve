@@ -48,6 +48,7 @@ def _enabled_settings() -> OpsAlertSettings:
         dispatch_workers=1,
         retry_attempts=1,
         retry_backoff_seconds=0.01,
+        dispatching_stale_seconds=900,
         default_cooldown_seconds=600,
         t1_5xx_window_seconds=300,
         t1_5xx_min_count=10,
@@ -447,7 +448,8 @@ def test_dispatcher_persists_delivery_history_rows(monkeypatch):
             .first()
         )
         assert row is not None
-        assert row.delivery_status == "dispatched"
+        assert row.delivery_status == "dispatching"
+        assert row.provider_message_id == "SM9"
         assert row.attempt_count == 1
         assert row.recipient_phone == "whatsapp:+919999999999"
 
@@ -519,10 +521,10 @@ def test_dispatcher_continues_when_one_recipient_fails(monkeypatch):
         rows = db.query(OpsAlertEvent).filter(OpsAlertEvent.ref_id == "pay-fanout-1").all()
         assert len(rows) == 3
         root_row = next(row for row in rows if row.recipient_phone is None)
-        assert root_row.status == "sent"
+        assert root_row.status == "dispatching"
         assert root_row.delivery_status == "partial_failure"
         statuses = {row.recipient_phone: row.delivery_status for row in rows if row.recipient_phone is not None}
-        assert statuses["whatsapp:+911111111111"] == "dispatched"
+        assert statuses["whatsapp:+911111111111"] == "dispatching"
         assert statuses["whatsapp:+922222222222"] == "failed"
 
 
