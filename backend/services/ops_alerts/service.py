@@ -18,6 +18,7 @@ from backend.database import SessionLocal, hash_ip_address
 from backend.models.ops_alert_daily_summary import OpsAlertDailySummary
 from backend.models.ops_alert_event import OpsAlertEvent
 from backend.models.organization import Organization
+from backend.phone_utils import mask_phone_number
 from backend.services.ops_alerts.detectors import (
     build_exception_fingerprint,
     count_recent_statuses,
@@ -45,6 +46,18 @@ SEVERITY_ORDER = {
     AlertSeverity.HIGH: 3,
     AlertSeverity.CRITICAL: 4,
 }
+DELIVERY_STATUS_PRECEDENCE = {
+    "queued": 0,
+    "pending": 1,
+    "suppressed": 1,
+    "dispatching": 2,
+    "dispatched": 3,
+    "delivered": 4,
+    "read": 5,
+    "failed": 5,
+    "partial_failure": 5,
+}
+FINAL_DELIVERY_STATUSES = frozenset({"read", "failed"})
 
 
 def _to_bool(value: str | None, default: bool = False) -> bool:
@@ -94,6 +107,7 @@ class OpsAlertSettings:
     dispatch_workers: int
     retry_attempts: int
     retry_backoff_seconds: float
+    dispatching_stale_seconds: int
     default_cooldown_seconds: int
     t1_5xx_window_seconds: int
     t1_5xx_min_count: int
@@ -143,6 +157,7 @@ def build_alert_settings() -> OpsAlertSettings:
         dispatch_workers=_to_int(os.getenv("ALERT_DISPATCH_WORKERS"), 2),
         retry_attempts=_to_int(os.getenv("ALERT_RETRY_ATTEMPTS"), 3),
         retry_backoff_seconds=_to_float(os.getenv("ALERT_RETRY_BACKOFF_SECONDS"), 1.5),
+        dispatching_stale_seconds=max(60, _to_int(os.getenv("ALERT_DISPATCHING_STALE_SECONDS"), 900)),
         default_cooldown_seconds=_to_int(os.getenv("ALERT_DEFAULT_COOLDOWN_SECONDS"), 600),
         t1_5xx_window_seconds=_to_int(os.getenv("ALERT_T1_5XX_WINDOW_SECONDS"), 300),
         t1_5xx_min_count=_to_int(os.getenv("ALERT_T1_5XX_MIN_COUNT"), 10),
@@ -225,6 +240,279 @@ def _request_org_name(request: Request | None) -> str | None:
     return cleaned or None
 
 
+def _normalize_timestamp(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _status_rank(value: str | None) -> int:
+    return DELIVERY_STATUS_PRECEDENCE.get(str(value or "").strip().lower(), 0)
+
+
+def _effective_status_timestamp(row: OpsAlertEvent) -> datetime | None:
+    return (
+        row.provider_status_at
+        or row.read_at
+        or row.delivered_at
+        or row.failed_at
+        or row.dispatched_at
+        or row.created_at
+    )
+
+
+def _should_reject_delivery_update(
+    row: OpsAlertEvent,
+    *,
+    next_status: str,
+    next_timestamp: datetime | None,
+) -> bool:
+    current_status = str(row.delivery_status or "queued").strip().lower()
+    current_timestamp = _effective_status_timestamp(row)
+    next_timestamp = _normalize_timestamp(next_timestamp)
+    current_timestamp = _normalize_timestamp(current_timestamp)
+
+    if next_timestamp and current_timestamp and next_timestamp < current_timestamp:
+        return True
+    if current_status in FINAL_DELIVERY_STATUSES and current_status != next_status:
+        if next_timestamp is None or current_timestamp is None or next_timestamp <= current_timestamp:
+            return True
+    if next_timestamp and current_timestamp and next_timestamp == current_timestamp:
+        return _status_rank(next_status) < _status_rank(current_status)
+    if next_timestamp is None:
+        return _status_rank(next_status) < _status_rank(current_status)
+    return current_status == next_status and current_timestamp is not None and next_timestamp <= current_timestamp
+
+
+def _append_status_history(
+    meta: dict[str, Any] | None,
+    *,
+    delivery_status: str,
+    provider_message_id: str,
+    status_timestamp: datetime | None,
+    error_code: str | None,
+    error_title: str | None,
+) -> dict[str, Any]:
+    updated_meta = dict(meta or {})
+    history = list(updated_meta.get("status_history") or [])
+    history.append(
+        {
+            "delivery_status": delivery_status,
+            "provider_message_id": provider_message_id,
+            "status_timestamp": status_timestamp.isoformat() if status_timestamp else None,
+            "error_code": error_code,
+            "error_title": error_title,
+        }
+    )
+    updated_meta["status_history"] = history[-20:]
+    return updated_meta
+
+
+def _set_delivery_state(
+    row: OpsAlertEvent,
+    *,
+    delivery_status: str,
+    status_timestamp: datetime | None,
+    provider_message_id: str,
+    error_code: str | None,
+    error_title: str | None,
+    failure_reason: str | None,
+    payload_excerpt: dict[str, Any] | None,
+) -> None:
+    normalized_timestamp = _normalize_timestamp(status_timestamp) or datetime.now(timezone.utc)
+    row.provider_message_id = provider_message_id
+    row.status = delivery_status
+    row.delivery_status = delivery_status
+    row.provider_status_at = normalized_timestamp
+    row.provider_error_code = error_code
+    row.provider_error_title = error_title
+    row.last_error = failure_reason if delivery_status == "failed" else None
+    if delivery_status == "dispatched":
+        row.dispatched_at = normalized_timestamp
+    if delivery_status == "delivered":
+        row.delivered_at = normalized_timestamp
+    if delivery_status == "read":
+        row.read_at = normalized_timestamp
+    if delivery_status == "failed":
+        row.failed_at = normalized_timestamp
+
+    updated_meta = _append_status_history(
+        row.meta,
+        delivery_status=delivery_status,
+        provider_message_id=provider_message_id,
+        status_timestamp=normalized_timestamp,
+        error_code=error_code,
+        error_title=error_title,
+    )
+    webhook_meta = dict(updated_meta.get("webhook") or {})
+    webhook_meta.update(
+        {
+            "delivery_status": delivery_status,
+            "provider_message_id": provider_message_id,
+            "provider_status_at": normalized_timestamp.isoformat(),
+            "error_code": error_code,
+            "error_title": error_title,
+            "failure_reason": failure_reason,
+            "payload_excerpt": payload_excerpt or {},
+        }
+    )
+    updated_meta["webhook"] = webhook_meta
+    row.meta = updated_meta
+
+
+def _aggregate_root_delivery_state(delivery_rows: list[OpsAlertEvent]) -> tuple[str, str, str | None]:
+    statuses = [str(row.delivery_status or "queued").strip().lower() for row in delivery_rows]
+    if not statuses:
+        return "queued", "queued", None
+    if all(status in {"queued", "pending"} for status in statuses):
+        return "pending", "pending", None
+    if all(status == "read" for status in statuses):
+        return "read", "read", None
+    if all(status in {"delivered", "read"} for status in statuses):
+        return "delivered", "delivered", None
+    if all(status in {"dispatched", "delivered", "read"} for status in statuses):
+        return "dispatched", "dispatched", None
+    if all(status == "suppressed" for status in statuses):
+        return "suppressed", "suppressed", "all_recipients_suppressed"
+    if any(status == "failed" for status in statuses):
+        if any(status in {"dispatching", "dispatched", "delivered", "read"} for status in statuses):
+            return "dispatching", "partial_failure", "partial_failure"
+        return "failed", "failed", "all_recipients_failed"
+    if any(status in {"queued", "pending", "dispatching"} for status in statuses):
+        return "dispatching", "dispatching", None
+    return "queued", "queued", None
+
+
+def _refresh_root_delivery_state(db, *, ref_id: str) -> None:
+    rows = (
+        db.query(OpsAlertEvent)
+        .filter(OpsAlertEvent.ref_id == ref_id)
+        .order_by(OpsAlertEvent.id.asc())
+        .all()
+    )
+    if not rows:
+        return
+    root = next((row for row in rows if row.recipient_phone is None), None)
+    if root is None:
+        return
+    delivery_rows = [row for row in rows if row.recipient_phone is not None]
+    status, delivery_status, last_error = _aggregate_root_delivery_state(delivery_rows)
+    root.status = status
+    root.delivery_status = delivery_status
+    root.last_error = last_error
+    if delivery_rows:
+        timestamps = [ts for ts in (_effective_status_timestamp(row) for row in delivery_rows) if ts is not None]
+        if timestamps:
+            root.provider_status_at = max(timestamps)
+
+
+def apply_whatsapp_delivery_update(
+    *,
+    provider_message_id: str,
+    delivery_status: str,
+    status_timestamp: datetime | None,
+    recipient_phone: str | None,
+    error_code: str | None = None,
+    error_title: str | None = None,
+    failure_reason: str | None = None,
+    payload_excerpt: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    normalized_status = str(delivery_status or "").strip().lower()
+    if normalized_status not in {"dispatched", "delivered", "read", "failed"}:
+        return {"updated": 0, "ignored": 1, "reason": "unsupported_status"}
+
+    with SessionLocal() as db:
+        rows = (
+            db.query(OpsAlertEvent)
+            .filter(
+                OpsAlertEvent.provider == "meta",
+                OpsAlertEvent.provider_message_id == provider_message_id,
+            )
+            .order_by(OpsAlertEvent.id.asc())
+            .all()
+        )
+        if not rows:
+            logger.info(
+                "whatsapp_webhook_unmatched_message provider_message_id=%s recipient=%s status=%s",
+                provider_message_id,
+                mask_phone_number(recipient_phone),
+                normalized_status,
+            )
+            return {"updated": 0, "ignored": 1, "reason": "message_not_found", "org_id": None}
+
+        resolved_org_id = rows[0].org_id
+        updated = 0
+        stale = 0
+        ref_ids: set[str] = set()
+        for row in rows:
+            ref_ids.add(str(row.ref_id or ""))
+            if _should_reject_delivery_update(row, next_status=normalized_status, next_timestamp=status_timestamp):
+                stale += 1
+                continue
+            _set_delivery_state(
+                row,
+                delivery_status=normalized_status,
+                status_timestamp=status_timestamp,
+                provider_message_id=provider_message_id,
+                error_code=error_code,
+                error_title=error_title,
+                failure_reason=failure_reason,
+                payload_excerpt=payload_excerpt,
+            )
+            updated += 1
+
+        for ref_id in ref_ids:
+            if ref_id:
+                _refresh_root_delivery_state(db, ref_id=ref_id)
+        db.commit()
+
+    logger.info(
+        "whatsapp_webhook_reconciled org_id=%s to=%s provider_message_id=%s event_type=status_update delivery_state=%s retry_decision=none failure_reason=%s updated=%s stale=%s",
+        resolved_org_id,
+        mask_phone_number(recipient_phone),
+        provider_message_id,
+        normalized_status,
+        failure_reason or "-",
+        updated,
+        stale,
+    )
+    return {
+        "updated": updated,
+        "ignored": stale,
+        "reason": "ok" if updated else "stale",
+        "org_id": resolved_org_id,
+    }
+
+
+def recover_stale_dispatching_events(*, stale_after_seconds: int) -> int:
+    cutoff = datetime.now(timezone.utc) - timedelta(seconds=max(60, int(stale_after_seconds)))
+    recovered = 0
+    with SessionLocal() as db:
+        rows = (
+            db.query(OpsAlertEvent)
+            .filter(
+                OpsAlertEvent.delivery_status == "dispatching",
+                OpsAlertEvent.created_at <= cutoff,
+            )
+            .all()
+        )
+        ref_ids = {str(row.ref_id or "") for row in rows}
+        for row in rows:
+            row.status = "pending"
+            row.delivery_status = "pending"
+            row.last_error = "startup_recovery_reset_from_dispatching"
+            recovered += 1
+        for ref_id in ref_ids:
+            if ref_id:
+                _refresh_root_delivery_state(db, ref_id=ref_id)
+        db.commit()
+    if recovered:
+        logger.warning("ops_alert_recovery_reset count=%s cutoff=%s", recovered, cutoff.isoformat())
+    return recovered
+
+
 class OpsAlertService:
     def __init__(self, settings: OpsAlertSettings) -> None:
         self.settings = settings
@@ -247,6 +535,7 @@ class OpsAlertService:
         )
 
     def start(self) -> None:
+        recover_stale_dispatching_events(stale_after_seconds=self.settings.dispatching_stale_seconds)
         self._dispatcher.start()
         if self._summary_thread is None:
             self._summary_stop.clear()

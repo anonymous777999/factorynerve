@@ -58,6 +58,14 @@ class OpsAlertHistoryItem(BaseModel):
     timestamp: datetime
     summary: str
     recipient_phone: str | None
+    provider_message_id: str | None
+    provider_status_at: datetime | None
+    dispatched_at: datetime | None
+    delivered_at: datetime | None
+    read_at: datetime | None
+    failed_at: datetime | None
+    provider_error_code: str | None
+    provider_error_title: str | None
 
 
 class OpsAlertHistoryResponse(BaseModel):
@@ -79,6 +87,14 @@ class OpsAlertDetailResponse(BaseModel):
     timestamp: datetime
     summary: str
     meta: dict[str, Any] | None
+    provider_message_id: str | None
+    provider_status_at: datetime | None
+    dispatched_at: datetime | None
+    delivered_at: datetime | None
+    read_at: datetime | None
+    failed_at: datetime | None
+    provider_error_code: str | None
+    provider_error_title: str | None
     deliveries: list[OpsAlertHistoryItem]
 
 
@@ -115,6 +131,14 @@ def _serialize_alert_row(row: OpsAlertEvent) -> OpsAlertHistoryItem:
         timestamp=timestamp,
         summary=summary,
         recipient_phone=row.recipient_phone,
+        provider_message_id=row.provider_message_id,
+        provider_status_at=row.provider_status_at,
+        dispatched_at=row.dispatched_at,
+        delivered_at=row.delivered_at,
+        read_at=row.read_at,
+        failed_at=row.failed_at,
+        provider_error_code=row.provider_error_code,
+        provider_error_title=row.provider_error_title,
     )
 
 
@@ -215,6 +239,14 @@ def get_alert_detail(
         timestamp=root.created_at,
         summary=root.summary,
         meta=root.meta,
+        provider_message_id=root.provider_message_id,
+        provider_status_at=root.provider_status_at,
+        dispatched_at=root.dispatched_at,
+        delivered_at=root.delivered_at,
+        read_at=root.read_at,
+        failed_at=root.failed_at,
+        provider_error_code=root.provider_error_code,
+        provider_error_title=root.provider_error_title,
         deliveries=[_serialize_alert_row(row) for row in deliveries],
     )
 

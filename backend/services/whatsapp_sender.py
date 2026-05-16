@@ -231,7 +231,7 @@ def _count_recent_dispatched_sync(*, org_id: str | int | None, lookback_hours: i
     with SessionLocal() as db:
         query = db.query(OpsAlertEvent).filter(
             OpsAlertEvent.recipient_phone.isnot(None),
-            OpsAlertEvent.delivery_status == "dispatched",
+            OpsAlertEvent.delivery_status.in_(("dispatching", "dispatched", "delivered", "read")),
             OpsAlertEvent.created_at >= cutoff,
         )
         org_key = _org_key(org_id)

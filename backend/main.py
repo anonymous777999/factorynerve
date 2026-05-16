@@ -32,6 +32,7 @@ from backend.routers.reports import router as reports_router
 from backend.routers.settings import router as settings_router
 from backend.routers.ocr import router as ocr_router
 from backend.routers.observability import router as observability_router
+from backend.routers.whatsapp_webhook import router as whatsapp_webhook_router
 from backend.routers.plans import router as plans_router
 from backend.routers.billing import router as billing_router
 from backend.routers.premium import router as premium_router
@@ -115,6 +116,7 @@ app.include_router(settings_router, prefix="/settings")
 app.include_router(alert_recipients_router, prefix="/settings")
 app.include_router(ocr_router, prefix="/ocr")
 app.include_router(observability_router, prefix="/observability")
+app.include_router(whatsapp_webhook_router, prefix="/webhooks")
 app.include_router(emails_router, prefix="/emails")
 app.include_router(intelligence_router, prefix="/intelligence")
 app.include_router(plans_router, prefix="/plans")
