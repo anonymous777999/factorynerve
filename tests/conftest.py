@@ -45,6 +45,8 @@ os.environ.setdefault("EMAIL_VERIFICATION_EXPOSE_LINK", "1")
 os.environ.setdefault("PASSWORD_RESET_EXPOSE_LINK", "1")
 os.environ.setdefault("SMTP_DRY_RUN", "1")
 
+from backend.database import init_db
+
 
 def _server_available(url: str) -> bool:
     try:
@@ -89,6 +91,7 @@ def _start_server(base_url: str) -> subprocess.Popen:
 @pytest.fixture(scope="session", autouse=True)
 def ensure_backend():
     global SERVER_AVAILABLE, _SERVER_PROCESS, _SELECTED_BASE_URL
+    init_db()
     if USE_EXISTING_SERVER and _server_available(CONFIGURED_BASE_URL):
         SERVER_AVAILABLE = True
         _SELECTED_BASE_URL = CONFIGURED_BASE_URL
