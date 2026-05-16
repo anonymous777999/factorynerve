@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 import logging
@@ -14,6 +15,7 @@ from backend.models.ops_alert_event import OpsAlertEvent
 from backend.services.ops_alerts.formatter import format_alert_message
 from backend.services.ops_alerts.recipients import AlertDeliveryTarget, format_whatsapp_target, resolve_alert_delivery_targets
 from backend.services.ops_alerts.types import AlertCandidate, AlertDispatchResult
+from backend.services import whatsapp_sender
 
 
 logger = logging.getLogger(__name__)
@@ -23,22 +25,18 @@ class AlertDispatcher:
     def __init__(
         self,
         *,
-        provider,
+        provider_name: str,
         app_name: str,
         env_name: str,
         timezone_name: str,
         worker_count: int,
-        retry_attempts: int,
-        retry_backoff_seconds: float,
         queue_size: int = 256,
     ) -> None:
-        self._provider = provider
+        self._provider_name = provider_name
         self._app_name = app_name
         self._env_name = env_name
         self._timezone_name = timezone_name
         self._worker_count = max(1, worker_count)
-        self._retry_attempts = max(1, retry_attempts)
-        self._retry_backoff_seconds = max(0.1, retry_backoff_seconds)
         self._queue: queue.Queue[AlertCandidate | None] = queue.Queue(maxsize=max(8, queue_size))
         self._threads: list[threading.Thread] = []
         self._started = False
@@ -47,7 +45,13 @@ class AlertDispatcher:
 
     @property
     def provider_name(self) -> str:
-        return getattr(self._provider, "name", "unknown")
+        return self._provider_name
+
+    def _mask_phone_number(self, value: str | None) -> str:
+        digits = "".join(char for char in str(value or "") if char.isdigit())
+        if len(digits) >= 4:
+            return f"***{digits[-4:]}"
+        return "***"
 
     def start(self) -> None:
         if self._started:
@@ -161,6 +165,8 @@ class AlertDispatcher:
         last_error: str | None,
         dispatched: bool,
         suppressed_reason: str | None = None,
+        provider_response: dict | None = None,
+        provider_message_id: str | None = None,
     ) -> None:
         try:
             with SessionLocal() as db:
@@ -171,6 +177,13 @@ class AlertDispatcher:
                     query = query.filter(OpsAlertEvent.recipient_phone == recipient_phone)
                 row = query.first()
                 if row is None:
+                    row_meta = candidate.storage_meta if candidate.storage_meta is not None else candidate.meta
+                    if provider_response is not None or provider_message_id is not None:
+                        row_meta = dict(row_meta or {})
+                        row_meta["dispatch"] = {
+                            "provider_response": provider_response,
+                            "provider_message_id": provider_message_id,
+                        }
                     row = OpsAlertEvent(
                         ref_id=str(candidate.ref_id or ""),
                         org_id=candidate.org_id,
@@ -184,7 +197,7 @@ class AlertDispatcher:
                         is_summary=candidate.is_summary,
                         summary=candidate.summary,
                         recipient_phone=recipient_phone,
-                        meta=candidate.storage_meta if candidate.storage_meta is not None else candidate.meta,
+                        meta=row_meta,
                         provider=self.provider_name,
                         delivery_status=delivery_status,
                         suppressed_reason=suppressed_reason,
@@ -207,7 +220,14 @@ class AlertDispatcher:
                     row.attempt_count = attempt_count
                     row.last_error = last_error
                     row.provider = self.provider_name
-                    row.meta = candidate.storage_meta if candidate.storage_meta is not None else candidate.meta
+                    row_meta = candidate.storage_meta if candidate.storage_meta is not None else candidate.meta
+                    if provider_response is not None or provider_message_id is not None:
+                        row_meta = dict(row_meta or {})
+                        row_meta["dispatch"] = {
+                            "provider_response": provider_response,
+                            "provider_message_id": provider_message_id,
+                        }
+                    row.meta = row_meta
                 if dispatched:
                     row.dispatched_at = datetime.now(timezone.utc)
                 db.commit()
@@ -235,7 +255,7 @@ class AlertDispatcher:
                 suppressed_reason="no_matching_recipients",
             )
             return
-        results: list[bool] = []
+        results: list[AlertDispatchResult] = []
         max_workers = min(self._delivery_batch_size, len(targets))
         if max_workers <= 1:
             for target in targets:
@@ -245,25 +265,44 @@ class AlertDispatcher:
                 futures = [executor.submit(self._deliver_to_target, candidate, message, target) for target in targets]
                 for future in as_completed(futures):
                     try:
-                        results.append(bool(future.result()))
+                        results.append(future.result())
                     except Exception:  # pylint: disable=broad-except
                         logger.exception("Ops alert recipient worker crashed for %s.", candidate.ref_id)
-                        results.append(False)
-        delivered_count = sum(1 for result in results if result)
-        status = "sent" if delivered_count > 0 else "failed"
+                        results.append(
+                            AlertDispatchResult(
+                                success=False,
+                                provider=self.provider_name,
+                                result_status="failed",
+                                retryable=False,
+                                error="recipient_worker_crash",
+                            )
+                        )
+        delivered_count = sum(1 for result in results if result.success)
+        suppressed_count = sum(1 for result in results if result.result_status in {"suppressed", "disabled"})
+        max_attempt_count = max((result.attempt_count for result in results), default=0)
         if delivered_count == len(results):
-            delivery_status = "delivered"
+            status = "sent"
+            delivery_status = "dispatched"
         elif delivered_count > 0:
+            status = "sent"
             delivery_status = "partial_failure"
+        elif suppressed_count == len(results) and results:
+            status = "suppressed"
+            delivery_status = "suppressed"
         else:
+            status = "failed"
             delivery_status = "failed"
         self._persist_result(
             candidate=candidate,
             recipient_phone=None,
             status=status,
             delivery_status=delivery_status,
-            attempt_count=max(0, self._retry_attempts if results else 0),
-            last_error=None if delivered_count > 0 else "all_recipients_failed",
+            attempt_count=max_attempt_count,
+            last_error=(
+                None
+                if delivered_count > 0
+                else ("all_recipients_suppressed" if suppressed_count == len(results) and results else "all_recipients_failed")
+            ),
             dispatched=delivered_count > 0,
         )
 
@@ -281,7 +320,12 @@ class AlertDispatcher:
             logger.exception("Failed to load ops alert recipients for %s.", candidate.ref_id)
             return []
 
-    def _deliver_to_target(self, candidate: AlertCandidate, message: str, target: AlertDeliveryTarget) -> bool:
+    def _deliver_to_target(
+        self,
+        candidate: AlertCandidate,
+        message: str,
+        target: AlertDeliveryTarget,
+    ) -> AlertDispatchResult:
         self._persist_result(
             candidate=candidate,
             recipient_phone=target.phone_number,
@@ -291,49 +335,59 @@ class AlertDispatcher:
             last_error=None,
             dispatched=False,
         )
-        last_result = AlertDispatchResult(success=False, provider=self.provider_name, error="Delivery not attempted.")
-        for attempt in range(1, self._retry_attempts + 1):
-            try:
-                last_result = self._provider.deliver(message, to_number=target.phone_number)
-            except Exception as error:  # pylint: disable=broad-except
-                logger.exception("Ops alert provider crashed for %s.", candidate.ref_id)
-                last_result = AlertDispatchResult(
-                    success=False,
-                    provider=self.provider_name,
-                    retryable=False,
-                    error=str(error),
+        try:
+            message_result = asyncio.run(
+                whatsapp_sender.send_message(
+                    to=target.phone_number,
+                    template_name="ops_alert_text",
+                    template_params={"body": message},
+                    org_id=candidate.org_id,
                 )
-            status = "sent" if last_result.success else "failed"
-            delivery_status = (
-                "delivered"
-                if last_result.success
-                else ("retrying" if last_result.retryable and attempt < self._retry_attempts else "failed")
             )
-            self._persist_result(
-                candidate=candidate,
-                recipient_phone=target.phone_number,
-                status=status,
-                delivery_status=delivery_status,
-                attempt_count=attempt,
-                last_error=last_result.error,
-                dispatched=last_result.success,
+        except Exception as error:  # pylint: disable=broad-except
+            logger.exception("Ops alert sender crashed for %s.", candidate.ref_id)
+            message_result = whatsapp_sender.MessageResult(
+                provider_message_id=None,
+                status="failed",
+                provider_response={"provider": self.provider_name, "reason": "sender_crash"},
+                error_message=str(error),
+                attempt_count=0,
             )
-            if last_result.success or not last_result.retryable:
-                if not last_result.success:
-                    logger.warning(
-                        "Ops alert delivery failed ref_id=%s provider=%s recipient=%s error=%s",
-                        candidate.ref_id,
-                        self.provider_name,
-                        target.phone_number,
-                        last_result.error,
-                    )
-                return last_result.success
-            time.sleep(self._retry_backoff_seconds * attempt)
-        logger.warning(
-            "Ops alert delivery exhausted retries ref_id=%s provider=%s recipient=%s error=%s",
-            candidate.ref_id,
-            self.provider_name,
-            target.phone_number,
-            last_result.error,
+        success = message_result.status == "sent"
+        if message_result.status == "sent":
+            event_status = "sent"
+            delivery_status = "dispatched"
+        elif message_result.status in {"suppressed", "disabled"}:
+            event_status = "suppressed"
+            delivery_status = "suppressed"
+        else:
+            event_status = "failed"
+            delivery_status = "failed"
+        self._persist_result(
+            candidate=candidate,
+            recipient_phone=target.phone_number,
+            status=event_status,
+            delivery_status=delivery_status,
+            attempt_count=message_result.attempt_count,
+            last_error=message_result.error_message,
+            dispatched=success,
+            provider_response=message_result.provider_response,
+            provider_message_id=message_result.provider_message_id,
         )
-        return False
+        if not success:
+            logger.warning(
+                "ops_alert_delivery_failed ref_id=%s provider=%s recipient=%s error=%s",
+                candidate.ref_id,
+                self.provider_name,
+                self._mask_phone_number(target.phone_number),
+                message_result.error_message or "unknown_error",
+            )
+        return AlertDispatchResult(
+            success=success,
+            provider=self.provider_name,
+            result_status=message_result.status,
+            retryable=False,
+            error=message_result.error_message,
+            external_id=message_result.provider_message_id,
+            attempt_count=message_result.attempt_count,
+        )

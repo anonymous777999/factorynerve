@@ -466,7 +466,8 @@ def _call_claude(
             )
         messages = [{"role": "user", "content": content}]
 
-    response = client.messages.create(
+    messages_api = client.messages
+    response = messages_api.create(
         model=requested_target_model,
         max_tokens=2048,
         temperature=0,

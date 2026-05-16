@@ -1,318 +1,642 @@
-"""Generic WhatsApp provider adapters and send orchestration."""
+"""Single outbound WhatsApp sender for the backend."""
 
 from __future__ import annotations
 
 import asyncio
+from concurrent.futures import Future
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 import logging
 import os
-from typing import Any, Protocol
+import threading
+import time
+from typing import Any
 
 import httpx
 
-from backend.phone_utils import normalize_phone_e164
+from backend.database import SessionLocal
+from backend.models.ops_alert_event import OpsAlertEvent
+from backend.phone_utils import mask_phone_number, normalize_phone_e164
 
 
 logger = logging.getLogger(__name__)
-
-
-class WhatsAppSenderError(RuntimeError):
-    """Raised when sender configuration is invalid."""
+_META_PROVIDER_NAME = "meta"
+_RUNTIME_LOCK = threading.Lock()
+_RUNTIME_READY = threading.Event()
+_RUNTIME_LOOP: asyncio.AbstractEventLoop | None = None
+_RUNTIME_THREAD: threading.Thread | None = None
+_HTTP_CLIENT: httpx.AsyncClient | None = None
+_DEDUP_LOCK = threading.Lock()
+_DEDUP_CACHE: dict[tuple[str, str, str], float] = {}
+_ALLOWED_MODES = {"disabled", "mock", "meta"}
 
 
 @dataclass(frozen=True)
-class WhatsAppProviderConfig:
-    provider: str
-    api_key: str
-    api_url: str | None
-    sender_id: str
+class SenderConfig:
+    mode: str
+    phone_number_id: str
+    access_token: str
+    api_version: str
     timeout_seconds: float
-    retry_attempts: int
-    retry_backoff_seconds: float
+    daily_send_cap: int
+    dedup_window_seconds: int
+    default_language: str
 
 
 @dataclass(slots=True)
-class WhatsAppSendResult:
-    success: bool
-    provider: str
-    retryable: bool
-    attempts_made: int = 1
-    status_code: int | None = None
-    provider_message_id: str | None = None
-    response_data: dict[str, Any] | None = None
-    error: str | None = None
-
-
-class WhatsAppSender(Protocol):
-    provider_name: str
-
-    def validate_config(self) -> None:
-        """Validate provider configuration."""
-
-    async def send_whatsapp_message(self, to: str, message: str) -> WhatsAppSendResult:
-        """Send a WhatsApp message to one recipient."""
+class MessageResult:
+    provider_message_id: str | None
+    status: str
+    provider_response: dict[str, Any]
+    error_message: str | None
+    attempt_count: int = 1
 
 
 def _env_float(name: str, default: float) -> float:
-    value = os.getenv(name)
-    if value is None:
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
         return default
-    return float(value)
+    try:
+        return float(raw)
+    except ValueError:
+        return default
 
 
 def _env_int(name: str, default: int) -> int:
-    value = os.getenv(name)
-    if value is None:
+    raw = os.getenv(name)
+    if raw is None or not raw.strip():
         return default
-    return int(value)
+    try:
+        return int(raw)
+    except ValueError:
+        return default
 
 
-def get_whatsapp_provider_config() -> WhatsAppProviderConfig:
-    return WhatsAppProviderConfig(
-        provider=(os.getenv("WHATSAPP_PROVIDER") or "meta").strip().lower(),
-        api_key=(os.getenv("WHATSAPP_API_KEY") or "").strip(),
-        api_url=(os.getenv("WHATSAPP_API_URL") or "").strip() or None,
-        sender_id=(os.getenv("WHATSAPP_SENDER_ID") or "").strip(),
-        timeout_seconds=_env_float("WHATSAPP_TIMEOUT_SECONDS", 10.0),
-        retry_attempts=_env_int("WHATSAPP_RETRY_ATTEMPTS", 3),
-        retry_backoff_seconds=_env_float("WHATSAPP_RETRY_BACKOFF_SECONDS", 1.5),
+def _normalize_mode(value: str | None) -> str:
+    mode = str(value or "").strip().lower()
+    if mode in _ALLOWED_MODES:
+        return mode
+    return "disabled"
+
+
+def sender_provider_name() -> str:
+    mode = _normalize_mode(os.getenv("WHATSAPP_PROVIDER_MODE"))
+    if mode == "meta":
+        return _META_PROVIDER_NAME
+    return mode
+
+
+def _load_config() -> tuple[SenderConfig, list[str]]:
+    mode = _normalize_mode(os.getenv("WHATSAPP_PROVIDER_MODE"))
+    api_version = (os.getenv("META_WA_API_VERSION") or "v19.0").strip() or "v19.0"
+    config = SenderConfig(
+        mode=mode,
+        phone_number_id=(os.getenv("META_WA_PHONE_NUMBER_ID") or "").strip(),
+        access_token=(os.getenv("META_WA_ACCESS_TOKEN") or "").strip(),
+        api_version=api_version,
+        timeout_seconds=max(1.0, _env_float("WHATSAPP_TIMEOUT_SECONDS", 10.0)),
+        daily_send_cap=max(1, _env_int("WA_DAILY_SEND_CAP", 500)),
+        dedup_window_seconds=max(1, _env_int("WA_DEDUP_WINDOW_SECONDS", 300)),
+        default_language=(os.getenv("META_WA_TEMPLATE_LANGUAGE") or "en_US").strip() or "en_US",
+    )
+    missing: list[str] = []
+    if config.mode == "meta":
+        if not config.phone_number_id:
+            missing.append("META_WA_PHONE_NUMBER_ID")
+        if not config.access_token:
+            missing.append("META_WA_ACCESS_TOKEN")
+        if not config.api_version:
+            missing.append("META_WA_API_VERSION")
+    return config, missing
+
+
+def _normalize_recipient_phone(phone_number: str) -> tuple[str, str]:
+    normalized_e164 = normalize_phone_e164(str(phone_number or "").replace("whatsapp:", ""))
+    recipient_digits = normalized_e164.lstrip("+")
+    if not recipient_digits.isdigit():
+        raise ValueError("Phone number must be a valid E.164 number.")
+    return normalized_e164, recipient_digits
+
+
+def _coerce_body_variables(template_params: dict[str, Any]) -> list[str]:
+    raw_values = template_params.get("body_variables", template_params.get("body"))
+    if raw_values is None:
+        return []
+    if isinstance(raw_values, dict):
+        iterable = list(raw_values.values())
+    elif isinstance(raw_values, (list, tuple)):
+        iterable = list(raw_values)
+    else:
+        iterable = [raw_values]
+    return [str(value if value is not None else "").strip() for value in iterable]
+
+
+def _build_template_payload(
+    *,
+    to_digits: str,
+    template_name: str,
+    template_params: dict[str, Any],
+    default_language: str,
+) -> dict[str, Any]:
+    normalized_template_name = str(template_name or "").strip()
+    if not normalized_template_name:
+        raise ValueError("template_name is required.")
+    language = str(template_params.get("language") or default_language).strip() or default_language
+    body_variables = _coerce_body_variables(template_params)
+    payload: dict[str, Any] = {
+        "messaging_product": "whatsapp",
+        "to": to_digits,
+        "type": "template",
+        "template": {
+            "name": normalized_template_name,
+            "language": {"code": language},
+        },
+    }
+    if body_variables:
+        payload["template"]["components"] = [
+            {
+                "type": "body",
+                "parameters": [
+                    {"type": "text", "text": value}
+                    for value in body_variables
+                ],
+            }
+        ]
+    return payload
+
+
+def _extract_provider_message_id(payload: dict[str, Any]) -> str | None:
+    messages = payload.get("messages")
+    if isinstance(messages, list) and messages:
+        first_message = messages[0]
+        if isinstance(first_message, dict) and first_message.get("id"):
+            return str(first_message["id"])
+    if payload.get("message_id"):
+        return str(payload["message_id"])
+    return None
+
+
+def _extract_meta_error_message(*, response: httpx.Response | None, payload: dict[str, Any]) -> str:
+    error = payload.get("error")
+    if isinstance(error, dict):
+        message = str(error.get("message") or "").strip()
+        error_type = str(error.get("type") or "").strip()
+        error_code = error.get("code")
+        if message and error_type and error_code is not None:
+            return f"{error_type} ({error_code}): {message}"[:500]
+        if message:
+            return message[:500]
+    if response is not None:
+        return (response.text.strip() or f"Meta returned HTTP {response.status_code}")[:500]
+    return "WhatsApp provider request failed."
+
+
+def _org_key(org_id: str | int | None) -> str:
+    cleaned = str(org_id or "").strip()
+    return cleaned or "__global__"
+
+
+def _dedup_cache_key(org_id: str | int | None, recipient_phone: str, template_name: str) -> tuple[str, str, str]:
+    return (
+        _org_key(org_id),
+        recipient_phone,
+        str(template_name or "").strip().lower(),
     )
 
 
-class BaseHTTPWhatsAppAdapter:
-    provider_name = "base"
+def _prune_dedup_cache(now_monotonic: float, window_seconds: int) -> None:
+    cutoff = now_monotonic - max(1, window_seconds)
+    expired_keys = [key for key, sent_at in _DEDUP_CACHE.items() if sent_at < cutoff]
+    for key in expired_keys:
+        _DEDUP_CACHE.pop(key, None)
 
-    def __init__(self, config: WhatsAppProviderConfig) -> None:
-        self.config = config
 
-    def validate_config(self) -> None:
-        missing: list[str] = []
-        if not self.config.api_key:
-            missing.append("WHATSAPP_API_KEY")
-        if not self.config.sender_id:
-            missing.append("WHATSAPP_SENDER_ID")
-        if missing:
-            raise WhatsAppSenderError("Missing required WhatsApp environment variables: " + ", ".join(missing))
+def _recent_duplicate_exists(*, org_id: str | int | None, recipient_phone: str, template_name: str, window_seconds: int) -> bool:
+    cache_key = _dedup_cache_key(org_id, recipient_phone, template_name)
+    now_monotonic = time.monotonic()
+    with _DEDUP_LOCK:
+        _prune_dedup_cache(now_monotonic, window_seconds)
+        sent_at = _DEDUP_CACHE.get(cache_key)
+        return sent_at is not None and (now_monotonic - sent_at) < max(1, window_seconds)
 
-    async def send_whatsapp_message(self, to: str, message: str) -> WhatsAppSendResult:
-        self.validate_config()
-        request_kwargs = self.build_request(to=to, message=message)
+
+def _remember_successful_send(*, org_id: str | int | None, recipient_phone: str, template_name: str) -> None:
+    cache_key = _dedup_cache_key(org_id, recipient_phone, template_name)
+    with _DEDUP_LOCK:
+        _DEDUP_CACHE[cache_key] = time.monotonic()
+
+
+def _count_recent_dispatched_sync(*, org_id: str | int | None, lookback_hours: int = 24) -> int:
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=lookback_hours)
+    with SessionLocal() as db:
+        query = db.query(OpsAlertEvent).filter(
+            OpsAlertEvent.recipient_phone.isnot(None),
+            OpsAlertEvent.delivery_status == "dispatched",
+            OpsAlertEvent.created_at >= cutoff,
+        )
+        org_key = _org_key(org_id)
+        if org_key == "__global__":
+            query = query.filter(OpsAlertEvent.org_id.is_(None))
+        else:
+            query = query.filter(OpsAlertEvent.org_id == org_key)
+        return int(query.count())
+
+
+async def _daily_cap_exceeded(*, org_id: str | int | None, daily_send_cap: int) -> bool:
+    if daily_send_cap <= 0:
+        return False
+    sent_count = await asyncio.to_thread(
+        _count_recent_dispatched_sync,
+        org_id=org_id,
+    )
+    return sent_count >= daily_send_cap
+
+
+async def _ensure_http_client() -> httpx.AsyncClient:
+    global _HTTP_CLIENT
+    if _HTTP_CLIENT is None:
+        timeout_seconds = max(1.0, _env_float("WHATSAPP_TIMEOUT_SECONDS", 10.0))
+        _HTTP_CLIENT = httpx.AsyncClient(
+            timeout=httpx.Timeout(timeout_seconds),
+            limits=httpx.Limits(max_connections=20, max_keepalive_connections=20),
+        )
+    return _HTTP_CLIENT
+
+
+async def _close_http_client() -> None:
+    global _HTTP_CLIENT
+    if _HTTP_CLIENT is not None:
+        await _HTTP_CLIENT.aclose()
+        _HTTP_CLIENT = None
+
+
+def _sender_loop() -> None:
+    global _RUNTIME_LOOP
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    _RUNTIME_LOOP = loop
+    _RUNTIME_READY.set()
+    try:
+        loop.run_forever()
+    finally:
+        loop.run_until_complete(_close_http_client())
+        loop.close()
+        _RUNTIME_LOOP = None
+
+
+def initialize_whatsapp_sender() -> None:
+    global _RUNTIME_THREAD
+    with _RUNTIME_LOCK:
+        if _RUNTIME_THREAD is not None and _RUNTIME_THREAD.is_alive():
+            return
+        _RUNTIME_READY.clear()
+        _RUNTIME_THREAD = threading.Thread(
+            target=_sender_loop,
+            name="whatsapp-sender-loop",
+            daemon=True,
+        )
+        _RUNTIME_THREAD.start()
+    _RUNTIME_READY.wait(timeout=5.0)
+
+
+def shutdown_whatsapp_sender() -> None:
+    global _RUNTIME_THREAD
+    with _RUNTIME_LOCK:
+        loop = _RUNTIME_LOOP
+        thread = _RUNTIME_THREAD
+        _RUNTIME_THREAD = None
+        _RUNTIME_READY.clear()
+    if loop is None or thread is None:
+        return
+    try:
+        asyncio.run_coroutine_threadsafe(_close_http_client(), loop).result(timeout=5.0)
+    finally:
+        loop.call_soon_threadsafe(loop.stop)
+        thread.join(timeout=5.0)
+
+
+def _submit_to_runtime(coro: Any) -> Future:
+    initialize_whatsapp_sender()
+    loop = _RUNTIME_LOOP
+    if loop is None:
+        raise RuntimeError("WhatsApp sender runtime is unavailable.")
+    return asyncio.run_coroutine_threadsafe(coro, loop)
+
+
+def _meta_messages_url(config: SenderConfig) -> str:
+    return f"https://graph.facebook.com/{config.api_version}/{config.phone_number_id}/messages"
+
+
+def _success_result(
+    *,
+    provider_mode: str,
+    template_name: str,
+    org_id: str | int | None,
+    masked_phone: str,
+    provider_response: dict[str, Any],
+    provider_message_id: str | None,
+    attempt_count: int,
+) -> MessageResult:
+    logger.info(
+        "whatsapp_send_completed org_id=%s to=%s template=%s mode=%s status=sent attempt=%s reason=-",
+        org_id,
+        masked_phone,
+        template_name,
+        provider_mode,
+        attempt_count,
+    )
+    return MessageResult(
+        provider_message_id=provider_message_id,
+        status="sent",
+        provider_response=provider_response,
+        error_message=None,
+        attempt_count=attempt_count,
+    )
+
+
+def _refused_result(
+    *,
+    provider_mode: str,
+    template_name: str,
+    org_id: str | int | None,
+    masked_phone: str,
+    status: str,
+    reason: str,
+    provider_response: dict[str, Any],
+) -> MessageResult:
+    logger.info(
+        "whatsapp_send_completed org_id=%s to=%s template=%s mode=%s status=%s attempt=0 reason=%s",
+        org_id,
+        masked_phone,
+        template_name,
+        provider_mode,
+        status,
+        reason,
+    )
+    return MessageResult(
+        provider_message_id=None,
+        status=status,
+        provider_response=provider_response,
+        error_message=reason,
+        attempt_count=0,
+    )
+
+
+def _failed_result(
+    *,
+    provider_mode: str,
+    template_name: str,
+    org_id: str | int | None,
+    masked_phone: str,
+    reason: str,
+    provider_response: dict[str, Any],
+    attempt_count: int,
+) -> MessageResult:
+    logger.warning(
+        "whatsapp_send_completed org_id=%s to=%s template=%s mode=%s status=failed attempt=%s reason=%s",
+        org_id,
+        masked_phone,
+        template_name,
+        provider_mode,
+        attempt_count,
+        reason,
+    )
+    return MessageResult(
+        provider_message_id=None,
+        status="failed",
+        provider_response=provider_response,
+        error_message=reason,
+        attempt_count=attempt_count,
+    )
+
+
+async def _perform_send(
+    *,
+    to: str,
+    template_name: str,
+    template_params: dict[str, Any],
+    org_id: str | int | None,
+) -> MessageResult:
+    config, missing = _load_config()
+    provider_mode = config.mode
+
+    try:
+        normalized_phone, recipient_digits = _normalize_recipient_phone(to)
+    except ValueError as error:
+        return _failed_result(
+            provider_mode=provider_mode,
+            template_name=template_name,
+            org_id=org_id,
+            masked_phone=mask_phone_number(to),
+            reason=str(error),
+            provider_response={"provider": sender_provider_name(), "reason": "invalid_phone"},
+            attempt_count=0,
+        )
+
+    masked_phone = mask_phone_number(normalized_phone)
+
+    try:
+        payload = _build_template_payload(
+            to_digits=recipient_digits,
+            template_name=template_name,
+            template_params=template_params or {},
+            default_language=config.default_language,
+        )
+    except ValueError as error:
+        return _failed_result(
+            provider_mode=provider_mode,
+            template_name=template_name,
+            org_id=org_id,
+            masked_phone=masked_phone,
+            reason=str(error),
+            provider_response={"provider": sender_provider_name(), "reason": "template_invalid"},
+            attempt_count=0,
+        )
+
+    if provider_mode == "disabled":
+        return _refused_result(
+            provider_mode=provider_mode,
+            template_name=template_name,
+            org_id=org_id,
+            masked_phone=masked_phone,
+            status="disabled",
+            reason="WhatsApp sender is disabled.",
+            provider_response={"provider": "disabled", "mode": "disabled"},
+        )
+
+    if missing:
+        return _failed_result(
+            provider_mode=provider_mode,
+            template_name=template_name,
+            org_id=org_id,
+            masked_phone=masked_phone,
+            reason="Missing WhatsApp configuration: " + ", ".join(missing),
+            provider_response={"provider": sender_provider_name(), "reason": "config_missing", "missing": missing},
+            attempt_count=0,
+        )
+
+    if _recent_duplicate_exists(
+        org_id=org_id,
+        recipient_phone=normalized_phone,
+        template_name=template_name,
+        window_seconds=config.dedup_window_seconds,
+    ):
+        return _refused_result(
+            provider_mode=provider_mode,
+            template_name=template_name,
+            org_id=org_id,
+            masked_phone=masked_phone,
+            status="suppressed",
+            reason="Duplicate send suppressed inside dedup window.",
+            provider_response={"provider": sender_provider_name(), "reason": "duplicate_suppressed"},
+        )
+
+    if await _daily_cap_exceeded(org_id=org_id, daily_send_cap=config.daily_send_cap):
+        return _refused_result(
+            provider_mode=provider_mode,
+            template_name=template_name,
+            org_id=org_id,
+            masked_phone=masked_phone,
+            status="suppressed",
+            reason="Daily WhatsApp send cap reached.",
+            provider_response={"provider": sender_provider_name(), "reason": "daily_cap_exceeded"},
+        )
+
+    if provider_mode == "mock":
+        provider_message_id = f"mock-{int(time.time() * 1000)}"
+        provider_response = {
+            "provider": "mock",
+            "mode": "mock",
+            "message_id": provider_message_id,
+            "status": "accepted",
+            "template": template_name,
+        }
+        _remember_successful_send(org_id=org_id, recipient_phone=normalized_phone, template_name=template_name)
+        return _success_result(
+            provider_mode=provider_mode,
+            template_name=template_name,
+            org_id=org_id,
+            masked_phone=masked_phone,
+            provider_response=provider_response,
+            provider_message_id=provider_message_id,
+            attempt_count=1,
+        )
+
+    client = await _ensure_http_client()
+    headers = {
+        "Authorization": f"Bearer {config.access_token}",
+        "Content-Type": "application/json",
+    }
+    url = _meta_messages_url(config)
+
+    attempt_count = 0
+    while attempt_count < 2:
+        attempt_count += 1
         try:
-            async with httpx.AsyncClient(timeout=self.config.timeout_seconds) as client:
-                response = await client.request(**request_kwargs)
-            data = self._safe_json(response)
-            if response.is_success:
-                return WhatsAppSendResult(
-                    success=True,
-                    provider=self.provider_name,
-                    retryable=False,
-                    status_code=response.status_code,
-                    provider_message_id=self.extract_message_id(data),
-                    response_data=data,
-                )
-            return WhatsAppSendResult(
-                success=False,
-                provider=self.provider_name,
-                retryable=response.status_code in {408, 409, 429} or response.status_code >= 500,
-                status_code=response.status_code,
-                response_data=data,
-                error=self.extract_error(response, data),
-            )
+            response = await client.post(url, headers=headers, json=payload)
         except httpx.TimeoutException as error:
-            return WhatsAppSendResult(
-                success=False,
-                provider=self.provider_name,
-                retryable=True,
-                error=f"Request timed out: {error}",
+            return _failed_result(
+                provider_mode=provider_mode,
+                template_name=template_name,
+                org_id=org_id,
+                masked_phone=masked_phone,
+                reason=f"Request timed out: {error}",
+                provider_response={"provider": _META_PROVIDER_NAME, "reason": "timeout"},
+                attempt_count=attempt_count,
             )
         except httpx.HTTPError as error:
-            return WhatsAppSendResult(
-                success=False,
-                provider=self.provider_name,
-                retryable=True,
-                error=f"HTTP transport error: {error}",
+            return _failed_result(
+                provider_mode=provider_mode,
+                template_name=template_name,
+                org_id=org_id,
+                masked_phone=masked_phone,
+                reason=f"HTTP transport error: {error}",
+                provider_response={"provider": _META_PROVIDER_NAME, "reason": "http_error"},
+                attempt_count=attempt_count,
             )
 
-    def _safe_json(self, response: httpx.Response) -> dict[str, Any]:
         try:
-            payload = response.json()
-            return payload if isinstance(payload, dict) else {"payload": payload}
-        except Exception:
-            return {"text": response.text}
+            response_payload = response.json()
+            provider_response = response_payload if isinstance(response_payload, dict) else {"payload": response_payload}
+        except Exception:  # pylint: disable=broad-except
+            provider_response = {"text": response.text}
+        provider_response["provider"] = _META_PROVIDER_NAME
+        provider_response["http_status"] = response.status_code
 
-    def extract_error(self, response: httpx.Response, payload: dict[str, Any]) -> str:
-        detail = payload.get("error") if isinstance(payload, dict) else None
-        if isinstance(detail, dict):
-            message = detail.get("message") or detail.get("error_user_msg") or str(detail)
-        elif detail:
-            message = str(detail)
-        else:
-            message = response.text.strip() or f"Provider returned HTTP {response.status_code}"
-        return message[:500]
-
-    def extract_message_id(self, payload: dict[str, Any]) -> str | None:
-        return payload.get("message_id") or payload.get("id")
-
-    def build_request(self, *, to: str, message: str) -> dict[str, Any]:
-        raise NotImplementedError
-
-
-class MetaWhatsAppAdapter(BaseHTTPWhatsAppAdapter):
-    provider_name = "meta"
-
-    def build_request(self, *, to: str, message: str) -> dict[str, Any]:
-        base_url = (self.config.api_url or "https://graph.facebook.com/v19.0").rstrip("/")
-        return {
-            "method": "POST",
-            "url": f"{base_url}/{self.config.sender_id}/messages",
-            "headers": {
-                "Authorization": f"Bearer {self.config.api_key}",
-                "Content-Type": "application/json",
-            },
-            "json": {
-                "messaging_product": "whatsapp",
-                "to": to,
-                "type": "text",
-                "text": {"preview_url": False, "body": message},
-            },
-        }
-
-    def extract_message_id(self, payload: dict[str, Any]) -> str | None:
-        messages = payload.get("messages")
-        if isinstance(messages, list) and messages:
-            first = messages[0]
-            if isinstance(first, dict):
-                message_id = first.get("id")
-                if message_id:
-                    return str(message_id)
-        return super().extract_message_id(payload)
-
-
-class GupshupWhatsAppAdapter(BaseHTTPWhatsAppAdapter):
-    provider_name = "gupshup"
-
-    def _sender_parts(self) -> tuple[str, str | None]:
-        raw = self.config.sender_id.strip()
-        if "|" in raw:
-            source, app_name = raw.split("|", 1)
-            return source.strip(), app_name.strip() or None
-        return raw, None
-
-    def build_request(self, *, to: str, message: str) -> dict[str, Any]:
-        url = (self.config.api_url or "https://api.gupshup.io/wa/api/v1/msg").rstrip("/")
-        source, app_name = self._sender_parts()
-        data = {
-            "channel": "whatsapp",
-            "source": source.replace("+", ""),
-            "destination": to.lstrip("+"),
-            "message": '{"type":"text","text":"' + message.replace('"', '\\"') + '"}',
-        }
-        if app_name:
-            data["src.name"] = app_name
-        return {
-            "method": "POST",
-            "url": url,
-            "headers": {
-                "apikey": self.config.api_key,
-                "Content-Type": "application/x-www-form-urlencoded",
-            },
-            "data": data,
-        }
-
-    def extract_message_id(self, payload: dict[str, Any]) -> str | None:
-        message_id = payload.get("messageId") or payload.get("message_id")
-        if message_id:
-            return str(message_id)
-        return super().extract_message_id(payload)
-
-
-class TwilioWhatsAppAdapter(BaseHTTPWhatsAppAdapter):
-    provider_name = "twilio"
-
-    def validate_config(self) -> None:
-        super().validate_config()
-        if ":" not in self.config.api_key:
-            raise WhatsAppSenderError(
-                "Twilio requires WHATSAPP_API_KEY in the format 'account_sid:auth_token'."
+        if response.is_success:
+            provider_message_id = _extract_provider_message_id(provider_response)
+            _remember_successful_send(org_id=org_id, recipient_phone=normalized_phone, template_name=template_name)
+            return _success_result(
+                provider_mode=provider_mode,
+                template_name=template_name,
+                org_id=org_id,
+                masked_phone=masked_phone,
+                provider_response=provider_response,
+                provider_message_id=provider_message_id,
+                attempt_count=attempt_count,
             )
 
-    def build_request(self, *, to: str, message: str) -> dict[str, Any]:
-        account_sid, auth_token = self.config.api_key.split(":", 1)
-        base_url = (self.config.api_url or f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}").rstrip("/")
-        from_number = self.config.sender_id
-        if not from_number.startswith("whatsapp:"):
-            from_number = f"whatsapp:{from_number}"
-        target = to if to.startswith("whatsapp:") else f"whatsapp:{to}"
-        return {
-            "method": "POST",
-            "url": f"{base_url}/Messages.json",
-            "auth": (account_sid, auth_token),
-            "data": {
-                "From": from_number,
-                "To": target,
-                "Body": message,
-            },
-        }
-
-    def extract_message_id(self, payload: dict[str, Any]) -> str | None:
-        sid = payload.get("sid")
-        if sid:
-            return str(sid)
-        return super().extract_message_id(payload)
-
-
-def build_whatsapp_sender(config: WhatsAppProviderConfig | None = None) -> WhatsAppSender:
-    active_config = config or get_whatsapp_provider_config()
-    provider = active_config.provider
-    if provider == "meta":
-        return MetaWhatsAppAdapter(active_config)
-    if provider == "gupshup":
-        return GupshupWhatsAppAdapter(active_config)
-    if provider == "twilio":
-        return TwilioWhatsAppAdapter(active_config)
-    raise WhatsAppSenderError(f"Unsupported WHATSAPP_PROVIDER '{active_config.provider}'.")
-
-
-async def send_whatsapp_message(
-    to: str,
-    message: str,
-    *,
-    sender: WhatsAppSender | None = None,
-) -> WhatsAppSendResult:
-    active_sender = sender or build_whatsapp_sender()
-    return await active_sender.send_whatsapp_message(to=normalize_phone_e164(to), message=message)
-
-
-async def send_with_retries(
-    to: str,
-    message: str,
-    *,
-    sender: WhatsAppSender | None = None,
-    retry_attempts: int | None = None,
-    retry_backoff_seconds: float | None = None,
-) -> WhatsAppSendResult:
-    active_sender = sender or build_whatsapp_sender()
-    config = get_whatsapp_provider_config()
-    attempts = retry_attempts or config.retry_attempts
-    base_backoff = retry_backoff_seconds or config.retry_backoff_seconds
-    result = await active_sender.send_whatsapp_message(to=to, message=message)
-    result.attempts_made = 1
-    if result.success:
-        return result
-    for attempt in range(2, attempts + 1):
-        if not result.retryable:
-            return result
-        sleep_seconds = base_backoff * max(1, attempt - 1)
-        logger.warning(
-            "Retrying WhatsApp delivery provider=%s attempt=%s to=%s error=%s",
-            active_sender.provider_name,
-            attempt,
-            to,
-            result.error,
+        error_message = _extract_meta_error_message(response=response, payload=provider_response)
+        if response.status_code >= 500 and attempt_count == 1:
+            logger.warning(
+                "whatsapp_send_retry org_id=%s to=%s template=%s mode=%s status=retry attempt=%s reason=%s",
+                org_id,
+                masked_phone,
+                template_name,
+                provider_mode,
+                attempt_count,
+                error_message,
+            )
+            continue
+        return _failed_result(
+            provider_mode=provider_mode,
+            template_name=template_name,
+            org_id=org_id,
+            masked_phone=masked_phone,
+            reason=error_message,
+            provider_response=provider_response,
+            attempt_count=attempt_count,
         )
-        await asyncio.sleep(sleep_seconds)
-        result = await active_sender.send_whatsapp_message(to=to, message=message)
-        result.attempts_made = attempt
-        if result.success:
-            return result
-    return result
+
+    return _failed_result(
+        provider_mode=provider_mode,
+        template_name=template_name,
+        org_id=org_id,
+        masked_phone=masked_phone,
+        reason="Unexpected sender failure.",
+        provider_response={"provider": _META_PROVIDER_NAME, "reason": "unknown"},
+        attempt_count=attempt_count,
+    )
+
+
+async def send_message(
+    to: str,
+    template_name: str,
+    template_params: dict[str, Any],
+    org_id: str | int | None,
+) -> MessageResult:
+    try:
+        future = _submit_to_runtime(
+            _perform_send(
+                to=to,
+                template_name=template_name,
+                template_params=template_params,
+                org_id=org_id,
+            )
+        )
+        return await asyncio.wrap_future(future)
+    except Exception as error:  # pylint: disable=broad-except
+        logger.exception(
+            "whatsapp_send_runtime_failure org_id=%s to=%s template=%s mode=%s",
+            org_id,
+            mask_phone_number(to),
+            template_name,
+            sender_provider_name(),
+        )
+        return MessageResult(
+            provider_message_id=None,
+            status="failed",
+            provider_response={"provider": sender_provider_name(), "reason": "runtime_failure"},
+            error_message=str(error).strip() or "Sender runtime failure.",
+            attempt_count=0,
+        )

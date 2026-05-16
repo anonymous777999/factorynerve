@@ -402,7 +402,8 @@ def _call_claude(
             }
         ]
 
-    response = client.messages.create(
+    messages_api = client.messages
+    response = messages_api.create(
         model=model,
         max_tokens=2048,
         temperature=0,

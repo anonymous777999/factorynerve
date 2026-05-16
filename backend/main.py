@@ -51,6 +51,7 @@ from backend.services.ops_alerts import (
     record_request_outcome as record_ops_request_outcome,
     shutdown_ops_alerting,
 )
+from backend.services.whatsapp_sender import initialize_whatsapp_sender, shutdown_whatsapp_sender
 from backend.services.attendance_absence_service import (
     initialize_attendance_absence_scheduler,
     shutdown_attendance_absence_scheduler,
@@ -73,6 +74,7 @@ async def lifespan(_app: FastAPI):
     try:
         logger.info("Starting backend initialization.")
         init_db()
+        initialize_whatsapp_sender()
         initialize_attendance_absence_scheduler()
         initialize_ops_alerting()
         logger.info("Backend startup completed successfully.")
@@ -83,6 +85,7 @@ async def lifespan(_app: FastAPI):
     finally:
         shutdown_attendance_absence_scheduler()
         shutdown_ops_alerting()
+        shutdown_whatsapp_sender()
 
 
 app = FastAPI(title=config.app_name, version="0.3.0", lifespan=lifespan)

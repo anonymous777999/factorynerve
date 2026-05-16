@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import date, datetime, timezone
 import queue
 import sys
@@ -18,6 +19,7 @@ from backend.models.ops_alert_event import OpsAlertEvent
 from backend.ocr_jobs import enqueue_job
 import backend.ocr_jobs as ocr_jobs
 from backend.routers import billing as billing_router
+from backend.services import whatsapp_sender
 from backend.services.ops_alerts.detectors import (
     build_exception_fingerprint,
     evaluate_5xx_spike,
@@ -27,7 +29,6 @@ from backend.services.ops_alerts.detectors import (
 )
 from backend.services.ops_alerts.dispatcher import AlertDispatcher
 from backend.services.ops_alerts.formatter import format_alert_message
-from backend.services.ops_alerts.providers import TwilioWhatsAppProvider
 from backend.services.ops_alerts.recipients import resolve_alert_delivery_targets
 from backend.services.ops_alerts.rate_limit import InMemoryAlertRateLimiter, RedisAlertRateLimiter
 from backend.services.ops_alerts.service import OpsAlertService, OpsAlertSettings, build_alert_settings
@@ -42,7 +43,7 @@ def _enabled_settings() -> OpsAlertSettings:
         allowed_deployment_envs=("production",),
         alerts_requested=True,
         enabled=True,
-        provider_name="twilio",
+        provider_name="meta",
         timezone_name="Asia/Kolkata",
         dispatch_workers=1,
         retry_attempts=1,
@@ -121,15 +122,24 @@ def test_build_alert_settings_requires_allowed_deployment_env(monkeypatch):
     assert settings.deployment_env == "staging"
 
 
-def test_twilio_provider_validate_config_requires_secrets(monkeypatch):
-    monkeypatch.delenv("TWILIO_ACCOUNT_SID", raising=False)
-    monkeypatch.delenv("TWILIO_AUTH_TOKEN", raising=False)
-    monkeypatch.delenv("TWILIO_WHATSAPP_FROM", raising=False)
+def test_whatsapp_sender_returns_failed_result_when_config_missing(monkeypatch):
+    monkeypatch.setenv("WHATSAPP_PROVIDER_MODE", "meta")
+    monkeypatch.delenv("META_WA_PHONE_NUMBER_ID", raising=False)
+    monkeypatch.delenv("META_WA_ACCESS_TOKEN", raising=False)
+    whatsapp_sender.shutdown_whatsapp_sender()
 
-    provider = TwilioWhatsAppProvider()
+    result = asyncio.run(
+        whatsapp_sender.send_message(
+            to="+919999999999",
+            template_name="ops_alert_text",
+            template_params={"body": "hello"},
+            org_id="org-test",
+        )
+    )
 
-    with pytest.raises(ValueError):
-        provider.validate_config()
+    assert result.status == "failed"
+    assert result.provider_message_id is None
+    assert "Missing WhatsApp configuration" in (result.error_message or "")
 
 
 def test_in_memory_rate_limiter_blocks_duplicates_inside_cooldown():
@@ -188,33 +198,157 @@ def test_exception_fingerprint_ignores_user_controlled_error_text():
     assert first == second
 
 
-def test_twilio_provider_handles_success_and_retryable_failure(monkeypatch):
-    provider = TwilioWhatsAppProvider()
-    provider.account_sid = "sid"
-    provider.auth_token = "token"
-    provider.from_number = "whatsapp:+14155238886"
-    provider.default_to_number = ""
+def test_whatsapp_sender_retries_once_on_provider_5xx(monkeypatch):
+    monkeypatch.setenv("WHATSAPP_PROVIDER_MODE", "meta")
+    monkeypatch.setenv("META_WA_PHONE_NUMBER_ID", "123456789")
+    monkeypatch.setenv("META_WA_ACCESS_TOKEN", "top-secret-token")
+    monkeypatch.setenv("META_WA_API_VERSION", "v19.0")
 
-    class FakeMessages:
-        def create(self, **kwargs):
-            return SimpleNamespace(sid="SM123", status="queued")
+    attempts: list[int] = []
+
+    class FakeResponse:
+        def __init__(self, status_code: int, payload: dict):
+            self.status_code = status_code
+            self._payload = payload
+            self.text = str(payload)
+
+        @property
+        def is_success(self) -> bool:
+            return 200 <= self.status_code < 300
+
+        def json(self):
+            return self._payload
 
     class FakeClient:
-        messages = FakeMessages()
+        async def post(self, url, *, headers=None, json=None):
+            attempts.append(int(json["template"]["name"] == "ops_alert_text"))
+            if len(attempts) == 1:
+                return FakeResponse(503, {"error": {"message": "temporary outage", "code": 131000, "type": "ServerError"}})
+            return FakeResponse(200, {"messages": [{"id": "wamid.SM123"}]})
 
-    monkeypatch.setattr(provider, "_build_client", lambda: FakeClient())
-    result = provider.deliver("hello", to_number="+919999999999")
-    assert result.success is True
-    assert result.external_id == "SM123"
+    async def fake_ensure_http_client():
+        return FakeClient()
 
-    class RetryableError(RuntimeError):
-        status = 503
+    monkeypatch.setattr(whatsapp_sender, "_ensure_http_client", fake_ensure_http_client)
 
-    provider.default_to_number = "+919999999999"
-    monkeypatch.setattr(provider, "_build_client", lambda: (_ for _ in ()).throw(RetryableError("twilio down")))
-    failed = provider.deliver("hello")
-    assert failed.success is False
-    assert failed.retryable is True
+    result = asyncio.run(
+        whatsapp_sender._perform_send(
+            to="+919999999999",
+            template_name="ops_alert_text",
+            template_params={"body": "hello"},
+            org_id="org-test",
+        )
+    )
+
+    assert result.status == "sent"
+    assert result.provider_message_id == "wamid.SM123"
+    assert result.attempt_count == 2
+    assert len(attempts) == 2
+
+
+def test_whatsapp_sender_disabled_mode_returns_disabled_result(monkeypatch):
+    monkeypatch.setenv("WHATSAPP_PROVIDER_MODE", "disabled")
+
+    result = asyncio.run(
+        whatsapp_sender.send_message(
+            to="+919999999999",
+            template_name="ops_alert_text",
+            template_params={"body": "hello"},
+            org_id="org-disabled",
+        )
+    )
+
+    assert result.status == "disabled"
+    assert result.provider_message_id is None
+
+
+def test_whatsapp_sender_mock_mode_returns_success_without_http(monkeypatch):
+    monkeypatch.setenv("WHATSAPP_PROVIDER_MODE", "mock")
+
+    async def fail_if_called():
+        raise AssertionError("HTTP client should not be used in mock mode.")
+
+    monkeypatch.setattr(whatsapp_sender, "_ensure_http_client", fail_if_called)
+
+    result = asyncio.run(
+        whatsapp_sender.send_message(
+            to="+919999999999",
+            template_name="ops_alert_text",
+            template_params={"body_variables": ["hello"]},
+            org_id="org-mock",
+        )
+    )
+
+    assert result.status == "sent"
+    assert result.provider_response["provider"] == "mock"
+
+
+def test_whatsapp_sender_suppresses_duplicates_inside_window(monkeypatch):
+    monkeypatch.setenv("WHATSAPP_PROVIDER_MODE", "mock")
+    monkeypatch.setenv("WA_DEDUP_WINDOW_SECONDS", "300")
+    with whatsapp_sender._DEDUP_LOCK:
+        whatsapp_sender._DEDUP_CACHE.clear()
+
+    first = asyncio.run(
+        whatsapp_sender.send_message(
+            to="+919999999999",
+            template_name="ops_alert_text",
+            template_params={"body_variables": ["hello"]},
+            org_id="org-dedup",
+        )
+    )
+    second = asyncio.run(
+        whatsapp_sender.send_message(
+            to="+919999999999",
+            template_name="ops_alert_text",
+            template_params={"body_variables": ["hello"]},
+            org_id="org-dedup",
+        )
+    )
+
+    assert first.status == "sent"
+    assert second.status == "suppressed"
+    assert second.provider_response["reason"] == "duplicate_suppressed"
+
+
+def test_whatsapp_sender_enforces_daily_send_cap(monkeypatch):
+    init_db()
+    monkeypatch.setenv("WHATSAPP_PROVIDER_MODE", "mock")
+    monkeypatch.setenv("WA_DAILY_SEND_CAP", "1")
+    with whatsapp_sender._DEDUP_LOCK:
+        whatsapp_sender._DEDUP_CACHE.clear()
+
+    with SessionLocal() as db:
+        db.add(
+            OpsAlertEvent(
+                ref_id="cap-seed-1",
+                org_id="org-cap",
+                org_name="Cap Org",
+                event_type="server_exception",
+                severity="HIGH",
+                status="sent",
+                dedup_key="cap-seed",
+                summary="Seed send",
+                recipient_phone="whatsapp:+919999999999",
+                meta={},
+                provider="meta",
+                delivery_status="dispatched",
+                created_at=datetime.now(timezone.utc),
+            )
+        )
+        db.commit()
+
+    result = asyncio.run(
+        whatsapp_sender.send_message(
+            to="+918888888888",
+            template_name="ops_alert_text",
+            template_params={"body_variables": ["hello"]},
+            org_id="org-cap",
+        )
+    )
+
+    assert result.status == "suppressed"
+    assert result.provider_response["reason"] == "daily_cap_exceeded"
 
 
 def test_service_deduplicates_alert_enqueues():
@@ -245,13 +379,11 @@ def test_service_drops_alerts_when_dispatcher_is_unavailable():
     service._dispatcher = SimpleNamespace(
         enqueue=lambda candidate: False,
         record_drop=lambda candidate, reason: AlertDispatcher(
-            provider=SimpleNamespace(name="twilio", deliver=lambda message, to_number=None: None),
+            provider_name="meta",
             app_name="DPR.ai",
             env_name="production",
             timezone_name="Asia/Kolkata",
             worker_count=1,
-            retry_attempts=1,
-            retry_backoff_seconds=0.01,
         ).record_drop(candidate, reason=reason),
     )
 
@@ -270,23 +402,29 @@ def test_service_drops_alerts_when_dispatcher_is_unavailable():
         assert row.delivery_status == "dropped_queue_full"
 
 
-def test_dispatcher_persists_delivery_history_rows(tmp_path):
+def test_dispatcher_persists_delivery_history_rows(monkeypatch):
     init_db()
 
-    class FakeProvider:
-        name = "twilio"
+    async def fake_send_message(*, to: str, template_name: str, template_params: dict, org_id: int | str):
+        assert to == "whatsapp:+919999999999"
+        assert template_name == "ops_alert_text"
+        assert template_params["body"]
+        return whatsapp_sender.MessageResult(
+            provider_message_id="SM9",
+            status="sent",
+            provider_response={"provider": "meta", "messages": [{"id": "wamid.SM9"}]},
+            error_message=None,
+            attempt_count=1,
+        )
 
-        def deliver(self, message: str, *, to_number: str | None = None):
-            return SimpleNamespace(success=True, provider="twilio", retryable=False, error=None, external_id="SM9")
+    monkeypatch.setattr("backend.services.ops_alerts.dispatcher.whatsapp_sender.send_message", fake_send_message)
 
     dispatcher = AlertDispatcher(
-        provider=FakeProvider(),
+        provider_name="meta",
         app_name="DPR.ai",
         env_name="production",
         timezone_name="Asia/Kolkata",
         worker_count=1,
-        retry_attempts=1,
-        retry_backoff_seconds=0.01,
     )
     candidate = AlertCandidate(
         event_type=AlertEventType.SERVER_EXCEPTION,
@@ -300,14 +438,21 @@ def test_dispatcher_persists_delivery_history_rows(tmp_path):
     dispatcher._deliver_candidate(candidate)
 
     with SessionLocal() as db:
-        row = db.query(OpsAlertEvent).filter(OpsAlertEvent.ref_id == "srv-test-123").first()
+        row = (
+            db.query(OpsAlertEvent)
+            .filter(
+                OpsAlertEvent.ref_id == "srv-test-123",
+                OpsAlertEvent.recipient_phone == "whatsapp:+919999999999",
+            )
+            .first()
+        )
         assert row is not None
-        assert row.delivery_status == "delivered"
+        assert row.delivery_status == "dispatched"
         assert row.attempt_count == 1
         assert row.recipient_phone == "whatsapp:+919999999999"
 
 
-def test_dispatcher_continues_when_one_recipient_fails():
+def test_dispatcher_continues_when_one_recipient_fails(monkeypatch):
     init_db()
 
     with SessionLocal() as db:
@@ -333,22 +478,31 @@ def test_dispatcher_continues_when_one_recipient_fails():
         )
         db.commit()
 
-    class FakeProvider:
-        name = "twilio"
+    async def fake_send_message(*, to: str, template_name: str, template_params: dict, org_id: int | str):
+        if to == "whatsapp:+922222222222":
+            return whatsapp_sender.MessageResult(
+                provider_message_id=None,
+                status="failed",
+                provider_response={"provider": "meta", "error": {"message": "downstream reject"}},
+                error_message="downstream reject",
+                attempt_count=1,
+            )
+        return whatsapp_sender.MessageResult(
+            provider_message_id="SM9",
+            status="sent",
+            provider_response={"provider": "meta", "messages": [{"id": "wamid.SM9"}]},
+            error_message=None,
+            attempt_count=1,
+        )
 
-        def deliver(self, message: str, *, to_number: str | None = None):
-            if to_number == "whatsapp:+922222222222":
-                return SimpleNamespace(success=False, provider="twilio", retryable=False, error="downstream reject")
-            return SimpleNamespace(success=True, provider="twilio", retryable=False, error=None, external_id="SM9")
+    monkeypatch.setattr("backend.services.ops_alerts.dispatcher.whatsapp_sender.send_message", fake_send_message)
 
     dispatcher = AlertDispatcher(
-        provider=FakeProvider(),
+        provider_name="meta",
         app_name="DPR.ai",
         env_name="production",
         timezone_name="Asia/Kolkata",
         worker_count=1,
-        retry_attempts=1,
-        retry_backoff_seconds=0.01,
     )
     candidate = AlertCandidate(
         event_type=AlertEventType.PAYMENT_FAILURE,
@@ -368,7 +522,7 @@ def test_dispatcher_continues_when_one_recipient_fails():
         assert root_row.status == "sent"
         assert root_row.delivery_status == "partial_failure"
         statuses = {row.recipient_phone: row.delivery_status for row in rows if row.recipient_phone is not None}
-        assert statuses["whatsapp:+911111111111"] == "delivered"
+        assert statuses["whatsapp:+911111111111"] == "dispatched"
         assert statuses["whatsapp:+922222222222"] == "failed"
 
 
@@ -452,19 +606,24 @@ def test_recipient_preferences_filter_delivery_targets():
     assert [target.phone_number for target in targets] == ["whatsapp:+911111111111"]
 
 
-def test_org_rate_limited_alerts_are_persisted_as_suppressed():
+def test_org_rate_limited_alerts_are_persisted_as_suppressed(monkeypatch):
     init_db()
 
-    class FakeProvider:
-        name = "twilio"
+    async def fake_send_message(*, to: str, template_name: str, template_params: dict, org_id: int | str):
+        return whatsapp_sender.MessageResult(
+            provider_message_id="SM10",
+            status="sent",
+            provider_response={"provider": "meta", "messages": [{"id": "wamid.SM10"}]},
+            error_message=None,
+            attempt_count=1,
+        )
 
-        def deliver(self, message: str, *, to_number: str | None = None):
-            return SimpleNamespace(success=True, provider="twilio", retryable=False, error=None, external_id="SM10")
+    monkeypatch.setattr("backend.services.ops_alerts.dispatcher.whatsapp_sender.send_message", fake_send_message)
 
     settings = OpsAlertSettings(
         **{**_enabled_settings().__dict__, "org_rate_limit_normal_max": 1, "org_rate_limit_critical_max": 1}
     )
-    service = OpsAlertService(settings, provider=FakeProvider())
+    service = OpsAlertService(settings)
     service._rate_limiter = InMemoryAlertRateLimiter()
     service.start()
     try:
@@ -511,14 +670,19 @@ def test_org_rate_limited_alerts_are_persisted_as_suppressed():
         assert row.suppressed_reason == "org_rate_limited"
 
 
-def test_daily_summary_creates_summary_record_and_alert():
+def test_daily_summary_creates_summary_record_and_alert(monkeypatch):
     init_db()
 
-    class FakeProvider:
-        name = "twilio"
+    async def fake_send_message(*, to: str, template_name: str, template_params: dict, org_id: int | str):
+        return whatsapp_sender.MessageResult(
+            provider_message_id="SM11",
+            status="sent",
+            provider_response={"provider": "meta", "messages": [{"id": "wamid.SM11"}]},
+            error_message=None,
+            attempt_count=1,
+        )
 
-        def deliver(self, message: str, *, to_number: str | None = None):
-            return SimpleNamespace(success=True, provider="twilio", retryable=False, error=None, external_id="SM11")
+    monkeypatch.setattr("backend.services.ops_alerts.dispatcher.whatsapp_sender.send_message", fake_send_message)
 
     summary_day = date(2026, 5, 1)
     summary_ts = datetime(2026, 5, 1, 10, 0, tzinfo=timezone.utc)
@@ -551,14 +715,14 @@ def test_daily_summary_creates_summary_record_and_alert():
                 summary="OCR failures exceeded threshold.",
                 recipient_phone=None,
                 meta={"failures": 12},
-                provider="twilio",
-                delivery_status="delivered",
+                provider="meta",
+                delivery_status="dispatched",
                 created_at=summary_ts,
             )
         )
         db.commit()
 
-    service = OpsAlertService(_enabled_settings(), provider=FakeProvider())
+    service = OpsAlertService(_enabled_settings())
     service.start()
     try:
         sent = service.run_daily_summary_once(summary_date=summary_day)

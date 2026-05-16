@@ -40,7 +40,8 @@ def _call_anthropic(prompt: str, *, model_name: str) -> str:
     import anthropic  # type: ignore
 
     client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
-    response = client.messages.create(
+    messages_api = client.messages
+    response = messages_api.create(
         model=model_name,
         max_tokens=int(os.getenv("INTELLIGENCE_MAX_OUTPUT_TOKENS", "700")),
         messages=[{"role": "user", "content": prompt}],

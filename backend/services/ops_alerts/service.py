@@ -28,9 +28,9 @@ from backend.services.ops_alerts.detectors import (
     trim_deque,
 )
 from backend.services.ops_alerts.dispatcher import AlertDispatcher
-from backend.services.ops_alerts.providers import build_provider
 from backend.services.ops_alerts.rate_limit import build_org_rate_limiter, build_rate_limiter
 from backend.services.ops_alerts.types import AlertCandidate, AlertEventType, AlertSeverity
+from backend.services.whatsapp_sender import sender_provider_name
 from backend.utils import get_config
 
 
@@ -129,7 +129,7 @@ def build_alert_settings() -> OpsAlertSettings:
     ).strip().lower()
     allowed_deployment_envs = _parse_csv(os.getenv("ALERT_ALLOWED_ENVS"), default=("production",))
     enabled = alerts_requested and app_env == "production" and deployment_env in allowed_deployment_envs
-    provider_name = (os.getenv("ALERTS_PROVIDER") or "twilio").strip().lower()
+    provider_name = sender_provider_name()
     timezone_name = (os.getenv("ALERT_TIMEZONE") or "Asia/Kolkata").strip() or "Asia/Kolkata"
     return OpsAlertSettings(
         app_name=app_name,
@@ -226,7 +226,7 @@ def _request_org_name(request: Request | None) -> str | None:
 
 
 class OpsAlertService:
-    def __init__(self, settings: OpsAlertSettings, *, provider=None) -> None:
+    def __init__(self, settings: OpsAlertSettings) -> None:
         self.settings = settings
         self._lock = threading.Lock()
         self._request_events: deque[tuple[float, int]] = deque()
@@ -238,15 +238,12 @@ class OpsAlertService:
         self._summary_stop = threading.Event()
         self._summary_thread: threading.Thread | None = None
         self._last_summary_date: date | None = None
-        resolved_provider = provider or build_provider(settings.provider_name)
         self._dispatcher = AlertDispatcher(
-            provider=resolved_provider,
+            provider_name=settings.provider_name,
             app_name=settings.app_name,
             env_name=settings.app_env,
             timezone_name=settings.timezone_name,
             worker_count=settings.dispatch_workers,
-            retry_attempts=settings.retry_attempts,
-            retry_backoff_seconds=settings.retry_backoff_seconds,
         )
 
     def start(self) -> None:
@@ -764,9 +761,7 @@ def initialize_ops_alerting() -> None:
         if not settings.enabled:
             logger.info("Ops alerting disabled for env=%s.", settings.app_env)
             return
-        provider = build_provider(settings.provider_name)
-        provider.validate_config()
-        service = OpsAlertService(settings, provider=provider)
+        service = OpsAlertService(settings)
         service.start()
         _service = service
         logger.info("Ops alerting initialized provider=%s.", settings.provider_name)
