@@ -245,9 +245,6 @@ def init_db() -> None:
         import backend.models.ops_alert_daily_summary  # noqa: F401
         import backend.models.phone_verification  # noqa: F401
         import backend.models.feedback  # noqa: F401
-        import backend.models.alert_recipient  # noqa: F401
-        import backend.models.alert_preference  # noqa: F401
-        import backend.models.alert_log  # noqa: F401
 
         Base.metadata.create_all(bind=engine)
         _ensure_factory_profile_columns()
