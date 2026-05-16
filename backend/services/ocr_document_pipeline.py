@@ -18,6 +18,10 @@ from backend.understanding.parser_registry import parse_document
 from backend.services.anthropic_usage import normalize_anthropic_model_name
 from backend.services.ocr_confidence import calculate_structural_confidence
 from backend.services.ocr_normalization import normalize_structured_payload
+from backend.services.ocr_normalization import (
+    build_cell_confidence_matrix,
+    build_confidence_enriched_rows,
+)
 from backend.services.ocr_routing import choose_ocr_route
 from backend.services.ocr_layout_analysis import (
     suppress_repeated_headers,
@@ -788,24 +792,9 @@ def build_structured_ocr_result(
     # Get layout confidence from analysis
     layout_confidence = layout_analysis_result.get("layout_confidence", 0.5)
     
-    # COMPATIBILITY FIX: Do NOT upgrade rows to cell objects in main runtime
-    # Cell objects should ONLY exist in export/metadata layers
-    # Existing OCR runtime functions MUST continue returning plain strings
-    final_rows = normalized_rows
-    
-    # Cell object upgrade is disabled by default to preserve compatibility
-    # Only enable in export layer when explicitly needed
-    if _ENABLE_CELL_FORMAT_V2:
-        try:
-            final_rows = _upgrade_rows_to_cell_objects(
-                normalized_rows,
-                base_result.cell_confidence
-            )
-            logger.info("Cell format V2 enabled: upgraded %d rows to cell objects", len(final_rows))
-        except Exception as error:  # pylint: disable=broad-except
-            logger.warning("Cell object upgrade failed; using string rows: %s", error, exc_info=True)
-            final_rows = normalized_rows
-    
+    heuristic_confidence_matrix = build_cell_confidence_matrix(normalized_headers, normalized_rows)
+    final_rows = build_confidence_enriched_rows(normalized_headers, normalized_rows)
+
     return {
         "type": normalized.get("type") or _doc_type(doc_type_hint),
         "title": normalized.get("title") or _title_from_hint(doc_type_hint, template),
@@ -820,7 +809,7 @@ def build_structured_ocr_result(
         "avg_confidence": avg_confidence,
         "layout_confidence": layout_confidence,  # NEW: Layout understanding confidence
         "layout_type": layout_analysis_result.get("layout_type", "unknown"),  # NEW: Detected layout type
-        "cell_confidence": base_result.cell_confidence or [],
+        "cell_confidence": heuristic_confidence_matrix,
         "cell_boxes": base_result.cell_boxes or [],
         "used_language": used_language,
         "fallback_used": fallback_used,

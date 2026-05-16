@@ -14,6 +14,7 @@ import {
   approveOcrVerification,
   createOcrVerification,
   downloadOcrVerificationExport,
+  getOcrConfidenceTier,
   getOcrVerification,
   listOcrTemplates,
   listOcrVerifications,
@@ -205,20 +206,39 @@ function inferIssueImpact(label: string, detail = ""): ReviewIssue["impact"] {
 }
 
 function cellInputClass(value: string, confidence?: number | null) {
-  const conf = typeof confidence === "number" ? confidence / 100 : 1.0;
-  if (conf < 0.5) {
+  const tier = getOcrConfidenceTier(confidence ?? undefined);
+  if (tier === "review_required") {
     return "border-red-400/50 bg-[rgba(239,68,68,0.15)] text-red-50";
   }
-  if (conf < 0.7) {
-    return "border-orange-400/40 bg-[rgba(245,158,11,0.12)] text-orange-50";
-  }
-  if (conf < 0.9) {
+  if (tier === "medium") {
     return "border-amber-400/40 bg-[rgba(245,158,11,0.08)] text-amber-50";
   }
   if (!value.trim()) {
     return "border-amber-400/20 bg-[rgba(245,158,11,0.05)]";
   }
   return "";
+}
+
+function confidenceLabel(confidence?: number | null) {
+  const tier = getOcrConfidenceTier(confidence ?? undefined);
+  if (tier === "review_required") return "Review";
+  if (tier === "medium") return "Check";
+  return "Verified";
+}
+
+function confidenceBadgeClass(confidence?: number | null) {
+  const tier = getOcrConfidenceTier(confidence ?? undefined);
+  if (tier === "review_required") return "border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100";
+  if (tier === "medium") return "border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100";
+  return "border-emerald-400/30 bg-[rgba(34,197,94,0.12)] text-emerald-100";
+}
+
+function documentConfidenceLabel(record: Pick<OcrVerificationRecord, "warnings" | "scan_quality"> | null, preview?: OcrPreviewResult | null) {
+  const band = preview?.scan_quality?.confidence_band || record?.scan_quality?.confidence_band || "unknown";
+  if (band === "low") return "Review";
+  if (band === "medium") return "Check";
+  if (band === "high") return "Verified";
+  return (record?.warnings?.length || preview?.warnings?.length) ? "Review" : "Verified";
 }
 
 function sortWeight(status: OcrVerificationRecord["status"]) {
@@ -368,6 +388,7 @@ function ReviewWorkspace({
   preview,
   rows,
   headers,
+  dirtyRowIndexes,
   reviewerNotes,
   rejectionReason,
   reviewIssues,
@@ -407,6 +428,7 @@ function ReviewWorkspace({
   preview: OcrPreviewResult | null;
   rows: string[][];
   headers: string[];
+  dirtyRowIndexes: number[];
   reviewerNotes: string;
   rejectionReason: string;
   reviewIssues: ReviewIssue[];
@@ -457,7 +479,7 @@ function ReviewWorkspace({
   const criticalCount = reviewIssues.filter((issue) => issue.tone === "critical").length;
   const warningCount = reviewIssues.filter((issue) => issue.tone === "warning").length;
   const progressPercent = totalIssues ? Math.round((checkedIssueCount / totalIssues) * 100) : 100;
-  const averageConfidence = (preview?.avg_confidence ?? activeVerification?.avg_confidence ?? 0).toFixed(0);
+  const documentConfidence = documentConfidenceLabel(activeVerification, preview);
   const viewerLanguage = preview?.used_language || activeVerification?.language || "-";
   const safeFixCount =
     headers.filter((header) => header.trim() !== header || /\s{2,}/.test(header)).length +
@@ -648,7 +670,7 @@ function ReviewWorkspace({
             {progressPercent}% reviewed
           </SurfaceBadge>
           <SurfaceBadge className="border-white/10 bg-white/[0.03] text-[var(--muted)]">
-            {averageConfidence}% confidence
+            {documentConfidence}
           </SurfaceBadge>
           {imageUrl ? (
             <a href={imageUrl} target="_blank" rel="noreferrer">
@@ -818,7 +840,7 @@ function ReviewWorkspace({
                     Issue checked
                   </div>
                 ) : (
-                  <Button onClick={() => onMarkIssueChecked(activeIssue.key)} disabled={busy || readOnly}>
+                  <Button onClick={() => onMarkIssueChecked(activeIssue.key)} disabled={busy}>
                     Mark checked
                   </Button>
                 )}
@@ -951,9 +973,9 @@ function ReviewWorkspace({
           <div className="space-y-3">
             {editableIssues.slice(0, showAllRows ? editableIssues.length : 6).map((issue) => {
               const confidence = preview?.cell_confidence?.[issue.rowIndex]?.[issue.columnIndex];
-              const conf = typeof confidence === "number" ? (confidence > 1 ? confidence / 100 : confidence) : 1.0;
               const value = stringifyOcrCell(rows[issue.rowIndex]?.[issue.columnIndex]);
               const resolved = resolvedIssueKeys.includes(issue.key);
+              const dirty = dirtyRowIndexes.includes(issue.rowIndex);
               return (
                 <div
                   key={issue.key}
@@ -971,6 +993,14 @@ function ReviewWorkspace({
                           {issue.tone}
                         </span>
                         <span className="text-xs text-[var(--muted)]">Row {issue.rowIndex + 1}</span>
+                        {dirty ? (
+                          <span className="rounded-full border border-orange-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-orange-100">
+                            Unsaved
+                          </span>
+                        ) : null}
+                        <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]", confidenceBadgeClass(confidence))}>
+                          {confidenceLabel(confidence)}
+                        </span>
                       </div>
                       <div className="mt-2 font-semibold text-[var(--text)]">{issue.title}</div>
                       <div className="mt-1 text-xs text-[var(--muted)]">{issue.helpText}</div>
@@ -981,7 +1011,7 @@ function ReviewWorkspace({
                           Checked
                         </div>
                       ) : (
-                        <Button variant="outline" className="px-3 py-2 text-xs" onClick={() => onMarkIssueChecked(issue.key)} disabled={busy || readOnly}>
+                        <Button variant="outline" className="px-3 py-2 text-xs" onClick={() => onMarkIssueChecked(issue.key)} disabled={busy}>
                           Mark checked
                         </Button>
                       )}
@@ -995,14 +1025,20 @@ function ReviewWorkspace({
                       <Input
                         id={`ocr-cell-${issue.rowIndex}-${issue.columnIndex}`}
                         value={value}
-                        title={`Confidence: ${Math.round(conf * 100)}%`}
+                        title={confidenceLabel(confidence)}
                         onChange={(event) => onUpdateCell(issue.rowIndex, issue.columnIndex, event.target.value)}
-                        className={cn(cellInputClass(value, confidence), activeIssue?.key === issue.key && "border-cyan-400/60 ring-2 ring-cyan-400/30", "pr-7")}
+                        className={cn(cellInputClass(value, confidence), activeIssue?.key === issue.key && "border-cyan-400/60 ring-2 ring-cyan-400/30", "pr-20")}
                         disabled={readOnly}
                       />
-                      {conf < 0.5 && value && (
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 pointer-events-none" title="Very low confidence - review required">⚠️</span>
-                      )}
+                      <span
+                        className={cn(
+                          "pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]",
+                          confidenceBadgeClass(confidence),
+                        )}
+                        title={confidenceLabel(confidence)}
+                      >
+                        {confidenceLabel(confidence)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1031,10 +1067,18 @@ function ReviewWorkspace({
               <tbody>
                 {displayRows.map(({ row, rowIndex }) => (
                   <tr key={`row-${rowIndex}`} className={cn("border-b border-[var(--border)]/60", activeIssue?.rowIndex === rowIndex && "bg-[rgba(62,166,255,0.05)]")}>
-                    <td className="px-3 py-3 align-top font-semibold text-[var(--muted)]">{rowIndex + 1}</td>
+                    <td className="px-3 py-3 align-top font-semibold text-[var(--muted)]">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span>{rowIndex + 1}</span>
+                        {dirtyRowIndexes.includes(rowIndex) ? (
+                          <span className="rounded-full border border-orange-400/30 bg-[rgba(245,158,11,0.12)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-orange-100">
+                            Unsaved
+                          </span>
+                        ) : null}
+                      </div>
+                    </td>
                     {headers.map((header, columnIndex) => {
                       const confidence = preview?.cell_confidence?.[rowIndex]?.[columnIndex];
-                      const conf = typeof confidence === "number" ? (confidence > 1 ? confidence / 100 : confidence) : 1.0;
                       const isActiveCell = activeIssue?.rowIndex === rowIndex && (activeIssue.columnIndex ?? columnIndex) === columnIndex;
                       return (
                         <td key={`${header}-${rowIndex}-${columnIndex}`} className="px-3 py-3 align-top">
@@ -1042,14 +1086,20 @@ function ReviewWorkspace({
                             <Input
                               id={`ocr-cell-${rowIndex}-${columnIndex}`}
                               value={stringifyOcrCell(row[columnIndex])}
-                              title={`Confidence: ${Math.round(conf * 100)}%`}
+                              title={confidenceLabel(confidence)}
                               onChange={(event) => onUpdateCell(rowIndex, columnIndex, event.target.value)}
-                              className={cn(cellInputClass(stringifyOcrCell(row[columnIndex]), confidence), isActiveCell && "border-cyan-400/60 ring-2 ring-cyan-400/30", "pr-7")}
+                              className={cn(cellInputClass(stringifyOcrCell(row[columnIndex]), confidence), isActiveCell && "border-cyan-400/60 ring-2 ring-cyan-400/30", "pr-20")}
                               disabled={readOnly}
                             />
-                            {conf < 0.5 && stringifyOcrCell(row[columnIndex]) && (
-                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-red-400 pointer-events-none" title="Very low confidence - review required">⚠️</span>
-                            )}
+                            <span
+                              className={cn(
+                                "pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]",
+                                confidenceBadgeClass(confidence),
+                              )}
+                              title={confidenceLabel(confidence)}
+                            >
+                              {confidenceLabel(confidence)}
+                            </span>
                           </div>
                         </td>
                       );
@@ -1071,7 +1121,7 @@ function ReviewWorkspace({
             Add row
           </Button>
           {activeIssue ? (
-            <Button variant="outline" onClick={() => onMarkIssueChecked(activeIssue.key)} disabled={busy || readOnly || resolvedIssueKeys.includes(activeIssue.key)}>
+            <Button variant="outline" onClick={() => onMarkIssueChecked(activeIssue.key)} disabled={busy || resolvedIssueKeys.includes(activeIssue.key)}>
               {resolvedIssueKeys.includes(activeIssue.key) ? "Issue checked" : "Mark active issue checked"}
             </Button>
           ) : null}
@@ -1088,7 +1138,7 @@ function ReviewWorkspace({
           <span className="font-semibold">
             {actorDisplayName(activeVerification.approved_by_name, activeVerification.approved_by)}
           </span>{" "}
-          on {formatTimestamp(activeVerification.approved_at)}. This approved review is now the trusted Excel export source, so the fields stay locked.
+          on {formatTimestamp(activeVerification.approved_at)}. This approved review is now the trusted Excel export source and the approval status stays attached while you inspect it.
         </div>
       ) : activeVerification?.status === "rejected" ? (
         <div className="rounded-[1.35rem] border border-red-400/30 bg-[rgba(239,68,68,0.08)] px-4 py-3 text-sm text-red-100">
@@ -1104,12 +1154,12 @@ function ReviewWorkspace({
         </div>
       ) : null}
 
-      {Number(averageConfidence) < 60 && (
+      {documentConfidence !== "Verified" && (
         <div className="rounded-[1.35rem] border border-orange-400/30 bg-[rgba(245,158,11,0.08)] px-4 py-3 text-sm text-orange-100 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
           <span className="text-xl">⚠️</span>
           <div>
-            <div className="font-semibold">Low confidence document detected</div>
-            <div>The OCR extraction quality is lower than usual ({averageConfidence}%). Review all rows carefully before export. If the image is blurry, consider re-uploading for better results.</div>
+            <div className="font-semibold">Document needs reviewer attention</div>
+            <div>This extraction is marked {documentConfidence.toLowerCase()}. Review the flagged rows carefully before export, and consider re-uploading if the source image is blurry.</div>
           </div>
         </div>
       )}
@@ -1226,12 +1276,12 @@ function ReviewWorkspace({
               </Button>
             ) : null}
             {canApprove ? (
-              <Button onClick={onApprove} disabled={busy || !rows.length || readOnly || approveNeedsOverride}>
+              <Button onClick={onApprove} disabled={busy || !rows.length || approveNeedsOverride}>
                 Approve
               </Button>
             ) : null}
             {canApprove ? (
-              <Button variant="ghost" onClick={onReject} disabled={busy || readOnly}>
+              <Button variant="ghost" onClick={onReject} disabled={busy}>
                 Send for correction
               </Button>
             ) : null}
@@ -1259,6 +1309,7 @@ export default function OcrVerificationPage() {
   const [preview, setPreview] = useState<OcrPreviewResult | null>(null);
   const [rows, setRows] = useState<string[][]>([]);
   const [headersState, setHeadersState] = useState<string[]>([]);
+  const [dirtyRowIndexes, setDirtyRowIndexes] = useState<number[]>([]);
   const [activeVerificationId, setActiveVerificationId] = useState<number | null>(null);
   const [reviewerNotes, setReviewerNotes] = useState("");
   const [rejectionReason, setRejectionReason] = useState("");
@@ -1292,7 +1343,7 @@ export default function OcrVerificationPage() {
     [activeVerificationId, verifications],
   );
 
-  const readOnly = activeVerification?.status === "approved";
+  const readOnly = activeVerification?.status === "pending";
 
   useEffect(() => {
     if (!activeTemplate) return;
@@ -1336,6 +1387,7 @@ export default function OcrVerificationPage() {
     setPreview(null);
     setRows([]);
     setHeadersState([]);
+    setDirtyRowIndexes([]);
     setReviewerNotes("");
     setRejectionReason("");
     setFile(null);
@@ -1360,6 +1412,8 @@ export default function OcrVerificationPage() {
       language: record.language || "eng",
       confidence: record.avg_confidence || 0,
       routing: record.routing_meta || null,
+      cell_confidence: record.cell_confidence || [],
+      cell_boxes: record.cell_boxes || [],
       reused: false,
       reused_verification_id: record.id,
       columns: record.columns || 3,
@@ -1379,6 +1433,7 @@ export default function OcrVerificationPage() {
       ),
     );
     setHeadersState(record.headers?.length ? record.headers : []);
+    setDirtyRowIndexes([]);
     setReviewerNotes(record.reviewer_notes || "");
     setRejectionReason(record.rejection_reason || "");
     setFile(null);
@@ -1388,7 +1443,7 @@ export default function OcrVerificationPage() {
     setMobileWorkspaceOpen(typeof window !== "undefined" && window.innerWidth < 1280);
   }, []);
 
-  const loadVerifications = useCallback(async (focusId?: number) => {
+  const loadVerifications = useCallback(async (focusId?: number, hydrateActive = true) => {
     const result = await listOcrVerifications();
     const sorted = [...result].sort((left, right) => {
       if (sortWeight(right.status) !== sortWeight(left.status)) {
@@ -1397,7 +1452,7 @@ export default function OcrVerificationPage() {
       return new Date(right.updated_at || 0).getTime() - new Date(left.updated_at || 0).getTime();
     });
     setVerifications(sorted);
-    if (focusId != null) {
+    if (focusId != null && hydrateActive) {
       const detail = await getOcrVerification(focusId);
       hydrateFromRecord(detail);
       setVerifications((current) => {
@@ -1441,9 +1496,9 @@ export default function OcrVerificationPage() {
   useEffect(() => {
     if (!canVerify) return;
     return subscribeToWorkflowRefresh(() => {
-      void loadVerifications(activeVerificationId ?? undefined);
+      void loadVerifications(undefined, false);
     });
-  }, [activeVerificationId, canVerify, loadVerifications]);
+  }, [canVerify, loadVerifications]);
 
   const handleRunPreview = async () => {
     const selectedFile = file;
@@ -1472,6 +1527,7 @@ export default function OcrVerificationPage() {
       setHeadersState(
         fallbackHeaders(nextColumnCount, activeTemplate, Boolean(result.raw_column_added)),
       );
+      setDirtyRowIndexes([]);
       setActiveVerificationId(null);
       setReviewerNotes("");
       setRejectionReason("");
@@ -1501,6 +1557,7 @@ export default function OcrVerificationPage() {
           : row,
       ),
     );
+    setDirtyRowIndexes((current) => (current.includes(rowIndex) ? current : [...current, rowIndex]));
   };
 
   const updateHeader = (columnIndex: number, value: string) => {
@@ -1513,10 +1570,12 @@ export default function OcrVerificationPage() {
 
   const addRow = () => {
     setRows((current) => [...current, Array.from({ length: columnCount }, () => "")]);
+    setDirtyRowIndexes((current) => (current.includes(rows.length) ? current : [...current, rows.length]));
   };
 
   const removeRow = (rowIndex: number) => {
     setRows((current) => current.filter((_, index) => index !== rowIndex));
+    setDirtyRowIndexes((current) => current.filter((index) => index !== rowIndex).map((index) => (index > rowIndex ? index - 1 : index)));
   };
 
   const buildVerificationPayload = (): OcrVerificationSavePayload => ({
@@ -1537,6 +1596,64 @@ export default function OcrVerificationPage() {
     reviewerNotes,
     file,
   });
+
+  const mergeVerificationRecord = useCallback((record: OcrVerificationRecord) => {
+    // Background refreshes were hydrating the active document from the server and wiping in-progress edits, so we only merge metadata here.
+    setActiveVerificationId(record.id);
+    setVerifications((current) => {
+      const next = current.filter((item) => item.id !== record.id);
+      return [record, ...next].sort((left, right) => {
+        if (sortWeight(right.status) !== sortWeight(left.status)) {
+          return sortWeight(right.status) - sortWeight(left.status);
+        }
+        return new Date(right.updated_at || 0).getTime() - new Date(left.updated_at || 0).getTime();
+      });
+    });
+    setPreview((current) => {
+      if (!current) {
+        return {
+          type: record.doc_type_hint || "table",
+          title: record.source_filename || "OCR Extraction",
+          headers: record.headers || [],
+          rows: record.original_rows || [],
+          raw_text: record.raw_text || null,
+          language: record.language || "eng",
+          confidence: record.avg_confidence || 0,
+          routing: record.routing_meta || null,
+          cell_confidence: record.cell_confidence || [],
+          cell_boxes: record.cell_boxes || [],
+          reused: false,
+          reused_verification_id: record.id,
+          columns: record.columns || 3,
+          avg_confidence: record.avg_confidence || 0,
+          warnings: record.warnings || [],
+          used_language: record.language || "eng",
+          fallback_used: false,
+          raw_column_added: Boolean(record.raw_column_added),
+          template: null,
+        };
+      }
+      return {
+        ...current,
+        type: record.doc_type_hint || current.type,
+        title: record.source_filename || current.title,
+        headers: current.headers,
+        rows: current.rows,
+        raw_text: record.raw_text ?? current.raw_text,
+        language: record.language || current.language,
+        confidence: record.avg_confidence ?? current.confidence,
+        routing: record.routing_meta ?? current.routing,
+        cell_confidence: record.cell_confidence || current.cell_confidence || [],
+        cell_boxes: record.cell_boxes || current.cell_boxes || [],
+        reused_verification_id: record.id,
+        columns: record.columns || current.columns,
+        avg_confidence: record.avg_confidence ?? current.avg_confidence,
+        warnings: record.warnings || current.warnings || [],
+        used_language: record.language || current.used_language,
+        raw_column_added: Boolean(record.raw_column_added),
+      };
+    });
+  }, []);
 
   const persistDraft = async () => {
     const payload = buildVerificationPayload();
@@ -1566,7 +1683,9 @@ export default function OcrVerificationPage() {
 
   const saveAndRefresh = async () => {
     const saved = await persistDraft();
-    await loadVerifications(saved.id);
+    mergeVerificationRecord(saved);
+    await loadVerifications(undefined, false);
+    setDirtyRowIndexes([]);
     signalWorkflowRefresh("ocr-review");
     return saved;
   };
@@ -1592,7 +1711,9 @@ export default function OcrVerificationPage() {
     try {
       const saved = await persistDraft();
       const submitted = await submitOcrVerification(saved.id, reviewerNotes);
-      await loadVerifications(submitted.id);
+      mergeVerificationRecord(submitted);
+      await loadVerifications(undefined, false);
+      setDirtyRowIndexes([]);
       signalWorkflowRefresh("ocr-review-submitted");
       setStatus(`Document #${submitted.id} sent for approval.`);
     } catch (err) {
@@ -1613,7 +1734,9 @@ export default function OcrVerificationPage() {
     try {
       const saved = await persistDraft();
       const approved = await approveOcrVerification(saved.id, reviewerNotes);
-      await loadVerifications(approved.id);
+      mergeVerificationRecord(approved);
+      await loadVerifications(undefined, false);
+      setDirtyRowIndexes([]);
       signalWorkflowRefresh("ocr-review-approved");
       setStatus(`Document #${approved.id} approved.`);
     } catch (err) {
@@ -1634,7 +1757,9 @@ export default function OcrVerificationPage() {
     try {
       const saved = await persistDraft();
       const rejected = await rejectOcrVerification(saved.id, rejectionReason.trim(), reviewerNotes);
-      await loadVerifications(rejected.id);
+      mergeVerificationRecord(rejected);
+      await loadVerifications(undefined, false);
+      setDirtyRowIndexes([]);
       signalWorkflowRefresh("ocr-review-rejected");
       setStatus(`Document #${rejected.id} sent back for correction.`);
     } catch (err) {
@@ -1653,11 +1778,13 @@ export default function OcrVerificationPage() {
       if (!targetId) {
         const saved = await persistDraft();
         targetId = saved.id;
-        await loadVerifications(saved.id);
+        mergeVerificationRecord(saved);
+        await loadVerifications(undefined, false);
       } else if (!readOnly) {
         const saved = await persistDraft();
         targetId = saved.id;
-        await loadVerifications(saved.id);
+        mergeVerificationRecord(saved);
+        await loadVerifications(undefined, false);
       }
       if (!targetId) {
         throw new Error("Save a review draft before exporting Excel.");
@@ -1715,6 +1842,7 @@ export default function OcrVerificationPage() {
     setHeadersState((current) =>
       current.map((header) => header.replace(/\s+/g, " ").trim()),
     );
+    setDirtyRowIndexes(rows.map((_, rowIndex) => rowIndex));
     setStatus("Safe cleanup applied. Recheck the highlighted values before approval.");
   };
 
@@ -1825,10 +1953,11 @@ export default function OcrVerificationPage() {
           return;
         }
 
-        if (typeof confidence === "number" && confidence < 80) {
+        const confidenceTier = getOcrConfidenceTier(confidence ?? undefined);
+        if (confidenceTier !== "high") {
           fieldIssues.push({
             key: `confidence-${rowIndex}-${columnIndex}`,
-            tone: confidence < 60 ? "critical" : "warning",
+            tone: confidenceTier === "review_required" ? "critical" : "warning",
             title: `${header || `Column ${columnIndex + 1}`} needs confirmation`,
             detail: `Row ${rowIndex + 1} may be incorrect. The detected value looks uncertain.`,
             impact,
@@ -2051,6 +2180,7 @@ export default function OcrVerificationPage() {
                   filteredVerifications.map((verification) => {
                     const warningCount = verification.warnings.length;
                     const isActive = activeVerificationId === verification.id;
+                    const queueConfidence = documentConfidenceLabel(verification);
                     return (
                       <button
                         key={verification.id}
@@ -2078,8 +2208,17 @@ export default function OcrVerificationPage() {
                               <span className={cn("rounded-full border px-3 py-1", verification.trusted_export ? metricTone("success") : metricTone("primary"))}>
                                 {verification.trusted_export ? "trusted export" : "review draft"}
                               </span>
-                              <span className={cn("rounded-full border px-3 py-1", verification.avg_confidence < 75 || warningCount ? metricTone("warning") : metricTone("success"))}>
-                                {verification.avg_confidence.toFixed(0)}% confidence
+                              <span
+                                className={cn(
+                                  "rounded-full border px-3 py-1",
+                                  queueConfidence === "Verified"
+                                    ? metricTone("success")
+                                    : queueConfidence === "Check"
+                                      ? metricTone("warning")
+                                      : "border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100",
+                                )}
+                              >
+                                {queueConfidence}
                               </span>
                             </div>
                           </div>
@@ -2155,7 +2294,7 @@ export default function OcrVerificationPage() {
 
           <div className="hidden xl:block min-w-0">
             <ReviewWorkspace
-              key={`workspace-desktop-${activeVerificationId ?? "draft"}-${activeVerification?.updated_at || localImageUrl || "new"}`}
+              key={`workspace-desktop-${activeVerificationId ?? localImageUrl ?? "new"}`}
               activeVerification={activeVerification}
               canApprove={canApprove}
               busy={busy}
@@ -2163,6 +2302,7 @@ export default function OcrVerificationPage() {
               preview={preview}
               rows={rows}
               headers={headers}
+              dirtyRowIndexes={dirtyRowIndexes}
               reviewerNotes={reviewerNotes}
               rejectionReason={rejectionReason}
               reviewIssues={reviewIssues}
@@ -2192,7 +2332,7 @@ export default function OcrVerificationPage() {
               onMarkIssueChecked={handleMarkIssueChecked}
               onNextIssue={handleNextIssue}
               onMobileTabChange={setMobileTab}
-              onRefreshQueue={() => void loadVerifications(activeVerificationId ?? undefined)}
+              onRefreshQueue={() => void loadVerifications(undefined, false)}
             />
           </div>
         </section>
@@ -2207,7 +2347,7 @@ export default function OcrVerificationPage() {
               </Button>
             </div>
             <ReviewWorkspace
-              key={`workspace-mobile-${activeVerificationId ?? "draft"}-${activeVerification?.updated_at || localImageUrl || "new"}`}
+              key={`workspace-mobile-${activeVerificationId ?? localImageUrl ?? "new"}`}
               activeVerification={activeVerification}
               canApprove={canApprove}
               busy={busy}
@@ -2215,6 +2355,7 @@ export default function OcrVerificationPage() {
               preview={preview}
               rows={rows}
               headers={headers}
+              dirtyRowIndexes={dirtyRowIndexes}
               reviewerNotes={reviewerNotes}
               rejectionReason={rejectionReason}
               reviewIssues={reviewIssues}
@@ -2245,7 +2386,7 @@ export default function OcrVerificationPage() {
               onMarkIssueChecked={handleMarkIssueChecked}
               onNextIssue={handleNextIssue}
               onMobileTabChange={setMobileTab}
-              onRefreshQueue={() => void loadVerifications(activeVerificationId ?? undefined)}
+              onRefreshQueue={() => void loadVerifications(undefined, false)}
             />
           </div>
         </div>

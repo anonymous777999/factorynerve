@@ -73,6 +73,118 @@ def _normalize_headers(headers: list[Any] | None, column_count: int) -> list[str
     ]
 
 
+def get_confidence_tier(value: Any, field_type: str) -> str:
+    text = _stringify_cell(value)
+    if not text or text.strip() == "":
+        return "review_required"
+    if field_type == "number" and _looks_number_like(text) is False:
+        return "medium"
+    return "high"
+
+
+def build_cell_confidence_matrix(
+    headers: list[Any] | None,
+    rows: list[list[Any]] | None,
+) -> list[list[float]]:
+    normalized_headers = [_stringify_cell(header) for header in headers or []]
+    normalized_rows = [[_stringify_cell(cell) for cell in row] for row in rows or []]
+    column_count = max(len(normalized_headers), max((len(row) for row in normalized_rows), default=0))
+    if column_count == 0:
+        return []
+
+    matrix: list[list[float]] = []
+    for row in normalized_rows:
+        normalized_row = row + ([""] * (column_count - len(row)))
+        matrix.append(
+            [
+                _confidence_score_for_tier(
+                    get_confidence_tier(
+                        normalized_row[column_index],
+                        _infer_field_type(normalized_headers, normalized_rows, column_index),
+                    )
+                )
+                for column_index in range(column_count)
+            ]
+        )
+    return matrix
+
+
+def build_confidence_enriched_rows(
+    headers: list[Any] | None,
+    rows: list[list[Any]] | None,
+) -> list[list[dict[str, Any]]]:
+    normalized_headers = [_stringify_cell(header) for header in headers or []]
+    normalized_rows = [[_stringify_cell(cell) for cell in row] for row in rows or []]
+    column_count = max(len(normalized_headers), max((len(row) for row in normalized_rows), default=0))
+    if column_count == 0:
+        return []
+
+    enriched_rows: list[list[dict[str, Any]]] = []
+    for row in normalized_rows:
+        normalized_row = row + ([""] * (column_count - len(row)))
+        enriched_rows.append(
+            [
+                _build_confidence_cell(
+                    normalized_row[column_index],
+                    _infer_field_type(normalized_headers, normalized_rows, column_index),
+                )
+                for column_index in range(column_count)
+            ]
+        )
+    return enriched_rows
+
+
+def _build_confidence_cell(value: Any, field_type: str) -> dict[str, Any]:
+    tier = get_confidence_tier(value, field_type)
+    # OCR rows were falling back to fake 100% values because the tier was never assigned at normalization time.
+    return {
+        "value": _stringify_cell(value),
+        "confidence": _confidence_score_for_tier(tier),
+        "reviewRequired": tier == "review_required",
+        "source": "ocr",
+    }
+
+
+def _confidence_score_for_tier(tier: str) -> float:
+    if tier == "review_required":
+        return 0.25
+    if tier == "medium":
+        return 0.65
+    return 0.95
+
+
+def _infer_field_type(headers: list[str], rows: list[list[str]], column_index: int) -> str:
+    header = headers[column_index].strip().lower() if column_index < len(headers) else ""
+    if any(token in header for token in ("amount", "amt", "qty", "quantity", "count", "number", "total", "rate", "value", "balance")):
+        return "number"
+    column_values = [
+        row[column_index].strip()
+        for row in rows
+        if column_index < len(row) and row[column_index].strip()
+    ]
+    if column_values and all(_looks_number_like(value) for value in column_values):
+        return "number"
+    return "text"
+
+
+def _looks_number_like(value: str) -> bool:
+    cleaned = (
+        value.replace(",", "")
+        .replace(" ", "")
+        .replace("Rs.", "")
+        .replace("INR", "")
+        .replace("\u20b9", "")
+        .replace("$", "")
+    )
+    if not cleaned:
+        return False
+    try:
+        float(cleaned)
+        return True
+    except ValueError:
+        return False
+
+
 def normalize_headers_rows(
     *,
     headers: list[Any] | None = None,
@@ -166,4 +278,3 @@ def normalize_structured_payload(
         "raw_text": raw_text,
         "warnings": warnings,
     }
-

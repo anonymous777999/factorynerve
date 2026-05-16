@@ -30,6 +30,7 @@ import {
   createOcrVerificationShareLink,
   downloadOcrVerificationExport,
   getOcrVerification,
+  getOcrConfidenceTier,
   listOcrVerifications,
   previewOcrLogbook,
   updateOcrVerification,
@@ -375,8 +376,10 @@ function buildWarpedFile(blob: Blob, originalName: string) {
 }
 
 function formatConfidence(value: number | null) {
-  if (value == null || Number.isNaN(value)) return "Confidence unavailable";
-  return `${Math.round(value)}% confidence`;
+  const tier = getOcrConfidenceTier(value ?? undefined);
+  if (tier === "review_required") return "Review";
+  if (tier === "medium") return "Check";
+  return "Verified";
 }
 
 function formatExtractionSource(routing?: OcrRoutingMeta | null, confidence?: number | null) {
@@ -447,7 +450,7 @@ function buildDebugPayloadFromRouting(
 function lowConfidenceCount(matrix: number[][], visible: boolean) {
   if (!visible) return 0;
   return matrix.reduce(
-    (sum, row) => sum + row.filter((value) => typeof value === "number" && value < 85).length,
+    (sum, row) => sum + row.filter((value) => getOcrConfidenceTier(value) !== "high").length,
     0,
   );
 }
@@ -1077,12 +1080,9 @@ export default function OcrScanPage() {
         // If this was a fresh scan after a cached one, check confidence delta
         const previousConf = (result as any).previous_confidence;
         if (forceRefresh && previousConf != null) {
-          const oldConf = Math.round(previousConf);
-          const newConf = Math.round(result.avg_confidence ?? result.confidence ?? 0);
-
           if ((result as any).confidence_dropped) {
             const keepOriginal = !window.confirm(
-              `Fresh scan returned lower confidence (${newConf}% vs ${oldConf}%). \n\nDo you want to use the new result anyway? Click Cancel to keep your previous result.`
+              "Fresh scan looks less reliable than the saved result.\n\nDo you want to use the new result anyway? Click Cancel to keep your previous result."
             );
             if (keepOriginal) {
               // Re-run without force_refresh to get the cached one back
@@ -1090,7 +1090,7 @@ export default function OcrScanPage() {
               return;
             }
           } else if ((result as any).confidence_improved) {
-            setStatus(`Scan updated. Confidence: ${newConf}% (was ${oldConf}%)`);
+            setStatus("Scan updated with a cleaner read.");
             setStatusTone("success");
           }
         }
@@ -1249,7 +1249,7 @@ export default function OcrScanPage() {
       });
       setSavedId(record.id);
       setDocumentHash(record.document_hash ?? null);
-      setConfidenceMatrix([]);
+      setConfidenceMatrix((record.cell_confidence || []).map((row) => row.map((value) => value ?? 0.25)));
       setStep("preview");
       setStatus("Recent OCR draft loaded.");
       setStatusTone("success");
@@ -1894,7 +1894,7 @@ export default function OcrScanPage() {
                     />
                   ) : (
                     <>
-                      {sheet && sheet.rows && sheet.rows.length > 0 ? (
+                      {sheet && sheet.rows && sheet.rows.length > 0 && resultPreview.type !== "table" ? (
                         <OcrErrorBoundary
                           fallbackMessage="The structured view could not be displayed. Switch to Raw view to see the data."
                           onError={(error) => {
@@ -1962,7 +1962,7 @@ export default function OcrScanPage() {
                               const updatedRows = cloneRows(editableRows);
                               updatedRows[rowIndex][columnIndex] = {
                                 value,
-                                confidence: 100,
+                                confidence: 0.95,
                                 source: "corrected"
                               };
                               applyTableChange({ rows: updatedRows });
