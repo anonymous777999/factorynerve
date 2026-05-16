@@ -141,7 +141,7 @@ export type OcrPreviewResult = {
   avg_confidence: number;
   warnings: string[];
   scan_quality?: OcrScanQuality | null;
-  cell_confidence?: number[][];
+  cell_confidence?: (number | null)[][];
   cell_boxes?: Array<Array<{ x: number; y: number; width: number; height: number } | null>> | null;
   used_language: string;
   fallback_used: boolean;
