@@ -640,3 +640,23 @@ async def send_message(
             error_message=str(error).strip() or "Sender runtime failure.",
             attempt_count=0,
         )
+
+
+def send_message_blocking(
+    *,
+    to: str,
+    template_name: str,
+    template_params: dict[str, Any],
+    org_id: str | int | None,
+    timeout_seconds: float | None = None,
+) -> MessageResult:
+    future = _submit_to_runtime(
+        _perform_send(
+            to=to,
+            template_name=template_name,
+            template_params=template_params,
+            org_id=org_id,
+        )
+    )
+    wait_timeout = timeout_seconds or max(5.0, _env_float("WHATSAPP_TIMEOUT_SECONDS", 10.0) + 2.0)
+    return future.result(timeout=wait_timeout)

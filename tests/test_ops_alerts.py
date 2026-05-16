@@ -405,7 +405,7 @@ def test_service_drops_alerts_when_dispatcher_is_unavailable():
 def test_dispatcher_persists_delivery_history_rows(monkeypatch):
     init_db()
 
-    async def fake_send_message(*, to: str, template_name: str, template_params: dict, org_id: int | str):
+    def fake_send_message_blocking(*, to: str, template_name: str, template_params: dict, org_id: int | str, timeout_seconds=None):
         assert to == "whatsapp:+919999999999"
         assert template_name == "ops_alert_text"
         assert template_params["body"]
@@ -417,7 +417,7 @@ def test_dispatcher_persists_delivery_history_rows(monkeypatch):
             attempt_count=1,
         )
 
-    monkeypatch.setattr("backend.services.ops_alerts.dispatcher.whatsapp_sender.send_message", fake_send_message)
+    monkeypatch.setattr("backend.services.ops_alerts.dispatcher.whatsapp_sender.send_message_blocking", fake_send_message_blocking)
 
     dispatcher = AlertDispatcher(
         provider_name="meta",
@@ -478,7 +478,7 @@ def test_dispatcher_continues_when_one_recipient_fails(monkeypatch):
         )
         db.commit()
 
-    async def fake_send_message(*, to: str, template_name: str, template_params: dict, org_id: int | str):
+    def fake_send_message_blocking(*, to: str, template_name: str, template_params: dict, org_id: int | str, timeout_seconds=None):
         if to == "whatsapp:+922222222222":
             return whatsapp_sender.MessageResult(
                 provider_message_id=None,
@@ -495,7 +495,7 @@ def test_dispatcher_continues_when_one_recipient_fails(monkeypatch):
             attempt_count=1,
         )
 
-    monkeypatch.setattr("backend.services.ops_alerts.dispatcher.whatsapp_sender.send_message", fake_send_message)
+    monkeypatch.setattr("backend.services.ops_alerts.dispatcher.whatsapp_sender.send_message_blocking", fake_send_message_blocking)
 
     dispatcher = AlertDispatcher(
         provider_name="meta",
@@ -609,7 +609,7 @@ def test_recipient_preferences_filter_delivery_targets():
 def test_org_rate_limited_alerts_are_persisted_as_suppressed(monkeypatch):
     init_db()
 
-    async def fake_send_message(*, to: str, template_name: str, template_params: dict, org_id: int | str):
+    def fake_send_message_blocking(*, to: str, template_name: str, template_params: dict, org_id: int | str, timeout_seconds=None):
         return whatsapp_sender.MessageResult(
             provider_message_id="SM10",
             status="sent",
@@ -618,7 +618,7 @@ def test_org_rate_limited_alerts_are_persisted_as_suppressed(monkeypatch):
             attempt_count=1,
         )
 
-    monkeypatch.setattr("backend.services.ops_alerts.dispatcher.whatsapp_sender.send_message", fake_send_message)
+    monkeypatch.setattr("backend.services.ops_alerts.dispatcher.whatsapp_sender.send_message_blocking", fake_send_message_blocking)
 
     settings = OpsAlertSettings(
         **{**_enabled_settings().__dict__, "org_rate_limit_normal_max": 1, "org_rate_limit_critical_max": 1}
@@ -673,7 +673,7 @@ def test_org_rate_limited_alerts_are_persisted_as_suppressed(monkeypatch):
 def test_daily_summary_creates_summary_record_and_alert(monkeypatch):
     init_db()
 
-    async def fake_send_message(*, to: str, template_name: str, template_params: dict, org_id: int | str):
+    def fake_send_message_blocking(*, to: str, template_name: str, template_params: dict, org_id: int | str, timeout_seconds=None):
         return whatsapp_sender.MessageResult(
             provider_message_id="SM11",
             status="sent",
@@ -682,7 +682,7 @@ def test_daily_summary_creates_summary_record_and_alert(monkeypatch):
             attempt_count=1,
         )
 
-    monkeypatch.setattr("backend.services.ops_alerts.dispatcher.whatsapp_sender.send_message", fake_send_message)
+    monkeypatch.setattr("backend.services.ops_alerts.dispatcher.whatsapp_sender.send_message_blocking", fake_send_message_blocking)
 
     summary_day = date(2026, 5, 1)
     summary_ts = datetime(2026, 5, 1, 10, 0, tzinfo=timezone.utc)
