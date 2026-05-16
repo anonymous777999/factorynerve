@@ -106,11 +106,15 @@ export type OcrScanQuality = {
   cell_boxes?: Array<Array<{ x: number; y: number; width: number; height: number } | null>> | null;
 };
 
+export type OcrConfidenceValue = number | null;
+
+export type OcrConfidenceMatrix = OcrConfidenceValue[][];
+
 export type OcrCell =
   | string
   | {
     value: string;
-    confidence: number;
+    confidence?: OcrConfidenceValue;
     bbox?: { x: number; y: number; width: number; height: number } | null;
     source?: "ocr" | "ai" | "corrected" | "manual" | "unknown" | null;
     normalized?: number | null;
@@ -141,7 +145,7 @@ export type OcrPreviewResult = {
   avg_confidence: number;
   warnings: string[];
   scan_quality?: OcrScanQuality | null;
-  cell_confidence?: (number | null)[][];
+  cell_confidence?: OcrConfidenceMatrix;
   cell_boxes?: Array<Array<{ x: number; y: number; width: number; height: number } | null>> | null;
   used_language: string;
   fallback_used: boolean;
@@ -219,7 +223,7 @@ export type OcrVerificationRecord = {
   headers: string[];
   original_rows: OcrCell[][];
   reviewed_rows: OcrCell[][];
-  cell_confidence?: Array<Array<number | null>>;
+  cell_confidence?: OcrConfidenceMatrix;
   cell_boxes?: Array<Array<{ x: number; y: number; width: number; height: number } | null>>;
   cell_sources?: Array<Array<string | null>>;
   raw_column_added: boolean;

@@ -1,4 +1,6 @@
-export type RawCell = string | { value: string; confidence: number };
+import type { OcrCell } from "@/lib/ocr";
+
+export type RawCell = OcrCell;
 
 // Normalize RawCell to string for export
 function normalizeCell(cell: RawCell | undefined): string {

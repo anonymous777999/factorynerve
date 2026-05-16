@@ -36,6 +36,7 @@ import {
   updateOcrVerification,
   warpOcrImage,
   type OcrCell,
+  type OcrConfidenceMatrix,
   type OcrPreviewResult,
   type OcrRoutingMeta,
   type OcrScanQuality,
@@ -186,14 +187,12 @@ function cloneRows(rows: OcrCell[][]): OcrCell[][] {
 }
 
 // Type guard for cell objects
-function isCellObject(value: unknown): value is { value: string; confidence: number } {
+function isCellObject(value: unknown): value is Extract<OcrCell, { value: string }> {
   return (
     typeof value === "object" &&
     value !== null &&
     "value" in value &&
-    "confidence" in value &&
-    typeof (value as { value: unknown }).value === "string" &&
-    typeof (value as { confidence: unknown }).confidence === "number"
+    typeof (value as { value: unknown }).value === "string"
   );
 }
 
@@ -447,7 +446,7 @@ function buildDebugPayloadFromRouting(
   };
 }
 
-function lowConfidenceCount(matrix: number[][], visible: boolean) {
+function lowConfidenceCount(matrix: OcrConfidenceMatrix, visible: boolean) {
   if (!visible) return 0;
   return matrix.reduce(
     (sum, row) => sum + row.filter((value) => getOcrConfidenceTier(value) !== "high").length,
@@ -602,7 +601,7 @@ export default function OcrScanPage() {
   const [processingWarning, setProcessingWarning] = useState<string | null>(null);
 
   const [resultPreview, setResultPreview] = useState<ResultPreview | null>(null);
-  const [confidenceMatrix, setConfidenceMatrix] = useState<number[][]>([]);
+  const [confidenceMatrix, setConfidenceMatrix] = useState<OcrConfidenceMatrix>([]);
   const [editableHeaders, setEditableHeaders] = useState<string[]>([]);
   const [editableRows, setEditableRows] = useState<OcrCell[][]>([]);
   const [columnTypes, setColumnTypes] = useState<OcrColumnType[]>([]);
@@ -1249,7 +1248,7 @@ export default function OcrScanPage() {
       });
       setSavedId(record.id);
       setDocumentHash(record.document_hash ?? null);
-      setConfidenceMatrix((record.cell_confidence || []).map((row) => row.map((value) => value ?? 0.25)));
+      setConfidenceMatrix(record.cell_confidence ?? []);
       setStep("preview");
       setStatus("Recent OCR draft loaded.");
       setStatusTone("success");
