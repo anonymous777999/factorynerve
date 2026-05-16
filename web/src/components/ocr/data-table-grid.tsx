@@ -2,17 +2,17 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { getOcrConfidenceTier, type OcrCell } from "@/lib/ocr";
 import { cn } from "@/lib/utils";
-import { type OcrCell } from "@/lib/ocr";
 
 export type OcrColumnType = "text" | "number" | "date";
 export type ActiveGridCell = { row: number; column: number } | null;
 
-type CellObject = { value: string; confidence: number; source?: string | null };
+type CellObject = { value: string; confidence?: number | null; source?: string | null; reviewRequired?: boolean };
 
 type DataTableGridProps = {
   headers: string[];
-  rows: OcrCell[][];  // Use the shared type
+  rows: OcrCell[][];
   columnTypes: OcrColumnType[];
   confidenceMatrix?: number[][];
   originalRows?: OcrCell[][];
@@ -27,15 +27,15 @@ type DataTableGridProps = {
 
 type CellTarget = { row: number; column: number } | null;
 
-// Phase 2: Helper to normalize any cell format to CellObject
 function normalizeCell(cell: OcrCell): CellObject {
   if (typeof cell === "string") {
-    return { value: cell, confidence: 1.0, source: null };
+    return { value: cell, confidence: null, source: null };
   }
   return {
     value: cell.value,
     confidence: cell.confidence,
     source: cell.source,
+    reviewRequired: cell.reviewRequired,
   };
 }
 
@@ -55,12 +55,22 @@ function inferColumnType(values: OcrCell[]): OcrColumnType {
   return "text";
 }
 
-// Phase 2: Updated confidence color mapping (uses 0-1.0 scale)
-function getConfidenceClass(confidence: number): string {
-  if (confidence < 0.5) return "bg-red-50 border-red-200 text-red-900";
-  if (confidence < 0.7) return "bg-orange-50 border-orange-200 text-orange-900";
-  if (confidence < 0.9) return "bg-yellow-50 border-yellow-200 text-yellow-900";
-  return "";
+function getConfidenceClass(tier: "high" | "medium" | "review_required"): string {
+  if (tier === "review_required") return "bg-red-50 border-red-200 text-red-900";
+  if (tier === "medium") return "bg-amber-50 border-amber-200 text-amber-900";
+  return "bg-emerald-50 border-emerald-200 text-emerald-900";
+}
+
+function getConfidenceBadgeClass(tier: "high" | "medium" | "review_required"): string {
+  if (tier === "review_required") return "border-red-200 bg-red-100 text-red-700";
+  if (tier === "medium") return "border-amber-200 bg-amber-100 text-amber-700";
+  return "border-emerald-200 bg-emerald-100 text-emerald-700";
+}
+
+function getConfidenceLabel(tier: "high" | "medium" | "review_required") {
+  if (tier === "review_required") return "Review";
+  if (tier === "medium") return "Check";
+  return "Verified";
 }
 
 function isAmountHeader(header: string) {
@@ -133,14 +143,13 @@ export function DataTableGrid({
     return next;
   };
 
-  // Phase 2: Updated to return cell objects when edited
   const commitCell = (target: CellTarget, value: string) => {
     if (!target) return;
     const nextRows = normalizedRows.map((row, rowIndex) =>
       rowIndex === target.row
         ? row.map((cell, columnIndex) =>
           columnIndex === target.column
-            ? { value, confidence: 100, source: "corrected" as const }  // User-edited = full confidence (0-100 scale) + source tag
+            ? { value, confidence: 0.95, reviewRequired: false, source: "corrected" as const }  // Edited cells were being re-saved as fake 100% values instead of a stable review tier.
             : cell
         )
         : row,
@@ -205,6 +214,11 @@ export function DataTableGrid({
         } else if (event.key === "Enter") {
           event.preventDefault();
           beginEdit(selectedCell);
+        } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+          event.preventDefault();
+          onActiveCellChange?.(selectedCell);
+          setEditingCell(selectedCell);
+          setDraftValue(event.key);
         }
       }}>
         <table className="min-w-full border-separate border-spacing-0">
@@ -244,7 +258,6 @@ export function DataTableGrid({
             {normalizedRows.map((row, rowIndex) => (
               <tr key={`row-${rowIndex}`}>
                 {row.map((currentCell, columnIndex) => {
-                  // Phase 2: Normalize cell to handle both formats
                   const cellData = normalizeCell(currentCell);
                   const isSelected =
                     selectedCell?.row === rowIndex && selectedCell?.column === columnIndex;
@@ -252,23 +265,18 @@ export function DataTableGrid({
                     editingCell?.row === rowIndex && editingCell?.column === columnIndex;
                   const originalCell = originalRows?.[rowIndex]?.[columnIndex];
                   const raw = originalCell ? normalizeCell(originalCell).value : "";
-
-                  // Phase 2: Use cell object confidence if available, otherwise use legacy matrix
-                  // Both sources now use 0-100 scale
                   const confidenceRaw = typeof currentCell === "object"
                     ? currentCell.confidence
                     : confidenceMatrix?.[rowIndex]?.[columnIndex];
-
-                  const confidence = (confidenceRaw ?? 100) / 100;  // Normalize to 0-1.0 for CSS classes
-                  const confidencePercent = Math.round(confidenceRaw ?? 100);
-                  const title = `Confidence: ${confidencePercent}%${raw && raw !== cellData.value ? ` | Original: ${raw}` : ""}`;
+                  const confidenceTier = getOcrConfidenceTier(confidenceRaw ?? undefined);
+                  const title = `${getConfidenceLabel(confidenceTier)}${raw && raw !== cellData.value ? ` | Original: ${raw}` : ""}`;
 
                   return (
                     <td
                       key={`cell-${rowIndex}-${columnIndex}`}
                       className={cn(
                         "border-b border-[#f0f3f7] px-3 py-3 align-top",
-                        getConfidenceClass(confidence),  // Phase 2: Apply to td so visible in both view and edit modes
+                        showLowConfidence || confidenceTier === "high" ? getConfidenceClass(confidenceTier) : "",
                       )}
                     >
                       {isEditing ? (
@@ -303,7 +311,7 @@ export function DataTableGrid({
                           type="button"
                           title={title}
                           className={cn(
-                            "flex h-10 w-full items-center rounded-[14px] border px-3 text-sm text-[#101828] outline-none transition duration-150",
+                            "flex h-10 w-full items-center gap-2 rounded-[14px] border px-3 text-sm text-[#101828] outline-none transition duration-150",
                             alignForColumn(normalizedTypes[columnIndex], normalizedHeaders[columnIndex] || ""),
                             isSelected
                               ? "border-[#185FA5] bg-[#f4f9ff] shadow-[inset_0_0_0_1px_rgba(24,95,165,0.12)]"
@@ -316,9 +324,9 @@ export function DataTableGrid({
                           onDoubleClick={() => beginEdit({ row: rowIndex, column: columnIndex })}
                         >
                           <span className="truncate">{cellData.value || "\u00A0"}</span>
-                          {confidence < 0.5 && cellData.value && (
-                            <span className="ml-auto pl-1 text-red-600" title="Very low confidence - review required">⚠️</span>
-                          )}
+                          <span className={cn("ml-auto rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]", getConfidenceBadgeClass(confidenceTier))}>
+                            {getConfidenceLabel(confidenceTier)}
+                          </span>
                         </button>
                       )}
                     </td>

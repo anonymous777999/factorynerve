@@ -219,6 +219,9 @@ export type OcrVerificationRecord = {
   headers: string[];
   original_rows: OcrCell[][];
   reviewed_rows: OcrCell[][];
+  cell_confidence?: Array<Array<number | null>>;
+  cell_boxes?: Array<Array<{ x: number; y: number; width: number; height: number } | null>>;
+  cell_sources?: Array<Array<string | null>>;
   raw_column_added: boolean;
   status: "draft" | "pending" | "approved" | "rejected";
   reviewer_notes?: string | null;
@@ -280,6 +283,22 @@ export type OcrVerificationShareLink = {
   url: string;
   expires_at: string;
 };
+
+export type OcrConfidenceTier = "high" | "medium" | "review_required";
+
+export function normalizeOcrConfidence(confidence: number | null | undefined) {
+  if (typeof confidence !== "number" || Number.isNaN(confidence)) return null;
+  if (confidence > 1) return Math.max(0, Math.min(1, confidence / 100));
+  return Math.max(0, Math.min(1, confidence));
+}
+
+export function getOcrConfidenceTier(confidence: number | null | undefined): OcrConfidenceTier {
+  const normalized = normalizeOcrConfidence(confidence);
+  if (normalized == null) return "review_required";
+  if (normalized < 0.5) return "review_required";
+  if (normalized < 0.85) return "medium";
+  return "high";
+}
 
 function toJsonOrText(value: string) {
   try {

@@ -94,7 +94,10 @@ from backend.services.anthropic_usage import (
     serialize_anthropic_response_debug,
     verify_anthropic_response_model,
 )
-from backend.services.ocr_normalization import normalize_structured_payload
+from backend.services.ocr_normalization import (
+    build_cell_confidence_matrix as build_heuristic_confidence_matrix,
+    normalize_structured_payload,
+)
 from backend.services.ocr_confidence import calculate_structural_confidence
 from backend.tenancy import resolve_factory_id, resolve_org_id
 
@@ -1698,6 +1701,9 @@ def _serialize_verification(db: Session, verification: OcrVerification) -> dict:
     # This preserves metadata through save/load cycles without modifying runtime row structure
     rows = verification.reviewed_rows or verification.original_rows or []
     cell_confidence = build_confidence_matrix(rows)
+    if not any(any(value is not None for value in row) for row in cell_confidence):
+        # Older verification rows were saved as plain strings, so we rebuild the review tiers here instead of defaulting every cell to 100%.
+        cell_confidence = build_heuristic_confidence_matrix(verification.headers or [], rows)
     cell_boxes = build_bbox_matrix(rows)
     cell_sources = build_source_matrix(rows)
     
