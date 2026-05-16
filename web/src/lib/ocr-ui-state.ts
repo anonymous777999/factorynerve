@@ -1,11 +1,11 @@
 "use client";
 
-import type { OcrDebugPayload, OcrRoutingMeta, OcrScanQuality, OcrTokenUsage } from "@/lib/ocr";
+import type { OcrCell, OcrDebugPayload, OcrRoutingMeta, OcrScanQuality, OcrTokenUsage } from "@/lib/ocr";
 
 const OCR_UI_STORAGE_KEY = "dpr:ocr-ui-state";
 const MAX_STORED_IMAGE_BYTES = 1_400_000;
 
-export type RawCell = string | { value: string; confidence: number };
+export type RawCell = OcrCell;
 
 export type PersistedOcrUiState = {
   step: "entry" | "prepare" | "processing" | "result" | "upload" | "preview" | "export";

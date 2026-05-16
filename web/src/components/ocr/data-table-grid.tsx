@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { getOcrConfidenceTier, type OcrCell } from "@/lib/ocr";
+import { getOcrConfidenceTier, type OcrCell, type OcrConfidenceMatrix } from "@/lib/ocr";
 import { cn } from "@/lib/utils";
 
 export type OcrColumnType = "text" | "number" | "date";
@@ -14,7 +14,7 @@ type DataTableGridProps = {
   headers: string[];
   rows: OcrCell[][];
   columnTypes: OcrColumnType[];
-  confidenceMatrix?: number[][];
+  confidenceMatrix?: OcrConfidenceMatrix;
   originalRows?: OcrCell[][];
   showLowConfidence?: boolean;
   readOnly?: boolean;
