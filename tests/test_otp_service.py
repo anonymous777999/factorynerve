@@ -5,6 +5,11 @@ from uuid import uuid4
 
 import fakeredis
 import pytest
+try:
+    from redis.exceptions import ConnectionError as RedisConnectionError
+except Exception:  # pragma: no cover - optional dependency fallback
+    class RedisConnectionError(Exception):
+        pass
 
 from backend.database import SessionLocal, init_db
 from backend.models.admin_alert_recipient import AdminAlertRecipient
@@ -22,6 +27,7 @@ from backend.services.otp_service import (
     MaxAttemptsExceededError,
     NoActiveOTPError,
     OTPService,
+    RateLimitedError,
     SMSDeliveryFailedError,
 )
 from backend.services.rate_limit_service import InMemoryRateLimitService, RateLimitService, build_otp_rate_limit_service
@@ -36,6 +42,20 @@ def _build_service(provider: MockSMSProvider | None = None) -> tuple[OTPService,
         rate_limits=RateLimitService(client=fake_redis),
     )
     return service, sms_provider
+
+
+class BrokenRedisClient:
+    def get(self, key: str):
+        raise RedisConnectionError(f"redis get failed for {key}")
+
+    def ttl(self, key: str):
+        raise RedisConnectionError(f"redis ttl failed for {key}")
+
+    def pipeline(self):
+        raise RedisConnectionError("redis pipeline failed")
+
+    def set(self, key: str, value: str, ex: int | None = None):
+        raise RedisConnectionError(f"redis set failed for {key}")
 
 
 def _create_user(*, phone: str = "+919876543210") -> User:
@@ -426,3 +446,56 @@ def test_otp_service_raises_delivery_failure_for_provider_error():
             )
 
     assert error.value.result.status_code == 503
+
+
+def test_otp_service_falls_back_when_redis_rate_limit_runtime_fails():
+    provider = MockSMSProvider()
+    service = OTPService(
+        sms_provider=provider,
+        rate_limits=RateLimitService(client=BrokenRedisClient()),
+    )
+    user = _create_user(phone="+919876543281")
+
+    with SessionLocal() as db:
+        db_user = db.query(User).filter(User.id == user.id).first()
+        assert db_user is not None
+        result = service.start_user_verification(
+            db,
+            user=db_user,
+            phone_e164="+919876543281",
+            ip_address="127.0.0.9",
+            channel=PhoneVerificationChannel.SMS,
+        )
+
+    assert result.masked_phone
+    assert provider.sent["+919876543281"]
+
+
+def test_otp_cooldown_still_applies_when_redis_runtime_fails():
+    provider = MockSMSProvider()
+    service = OTPService(
+        sms_provider=provider,
+        rate_limits=RateLimitService(client=BrokenRedisClient()),
+    )
+    user = _create_user(phone="+919876543282")
+
+    with SessionLocal() as db:
+        db_user = db.query(User).filter(User.id == user.id).first()
+        assert db_user is not None
+        service.start_user_verification(
+            db,
+            user=db_user,
+            phone_e164="+919876543282",
+            ip_address="127.0.0.10",
+            channel=PhoneVerificationChannel.SMS,
+        )
+        with pytest.raises(RateLimitedError) as error:
+            service.start_user_verification(
+                db,
+                user=db_user,
+                phone_e164="+919876543282",
+                ip_address="127.0.0.10",
+                channel=PhoneVerificationChannel.SMS,
+            )
+
+    assert "Please wait before requesting another code." in str(error.value)

@@ -3,11 +3,15 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 import threading
 import time
 
 from backend.cache import get_redis_client
 from backend.phone_utils import hash_ip_for_rate_limit
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -114,8 +118,16 @@ class RateLimitService:
 
     def __init__(self, client=None) -> None:
         self._client = client or get_redis_client()
+        self._fallback = InMemoryRateLimitService()
         if self._client is None:
             raise RuntimeError("Redis is required for OTP rate limiting.")
+
+    def _fallback_with_log(self, operation: str):
+        logger.warning(
+            "otp_rate_limit_redis_failed operation=%s fallback=in_memory",
+            operation,
+        )
+        return self._fallback
 
     @staticmethod
     def _phone_send_key(phone_e164: str) -> str:
@@ -130,35 +142,47 @@ class RateLimitService:
         return f"otp:cooldown:{phone_e164}"
 
     def check_send_allowed(self, phone: str, ip: str) -> RateLimitResult:
-        phone_count = int(self._client.get(self._phone_send_key(phone)) or 0)
-        if phone_count >= self.PHONE_SEND_LIMIT:
-            retry_after = max(0, int(self._client.ttl(self._phone_send_key(phone)) or 0))
-            return RateLimitResult(allowed=False, retry_after=retry_after, limit_type="send_count")
-        ip_key = self._ip_send_key(ip)
-        ip_count = int(self._client.get(ip_key) or 0)
-        if ip_count >= self.IP_SEND_LIMIT:
-            retry_after = max(0, int(self._client.ttl(ip_key) or 0))
-            return RateLimitResult(allowed=False, retry_after=retry_after, limit_type="ip")
-        return RateLimitResult(allowed=True)
+        try:
+            phone_count = int(self._client.get(self._phone_send_key(phone)) or 0)
+            if phone_count >= self.PHONE_SEND_LIMIT:
+                retry_after = max(0, int(self._client.ttl(self._phone_send_key(phone)) or 0))
+                return RateLimitResult(allowed=False, retry_after=retry_after, limit_type="send_count")
+            ip_key = self._ip_send_key(ip)
+            ip_count = int(self._client.get(ip_key) or 0)
+            if ip_count >= self.IP_SEND_LIMIT:
+                retry_after = max(0, int(self._client.ttl(ip_key) or 0))
+                return RateLimitResult(allowed=False, retry_after=retry_after, limit_type="ip")
+            return RateLimitResult(allowed=True)
+        except Exception:  # pragma: no cover - exercised by failure-path tests
+            return self._fallback_with_log("check_send_allowed").check_send_allowed(phone, ip)
 
     def record_send(self, phone: str, ip: str) -> None:
-        phone_key = self._phone_send_key(phone)
-        ip_key = self._ip_send_key(ip)
-        pipe = self._client.pipeline()
-        pipe.incr(phone_key)
-        pipe.expire(phone_key, self.PHONE_SEND_WINDOW_SECONDS)
-        pipe.incr(ip_key)
-        pipe.expire(ip_key, self.IP_SEND_WINDOW_SECONDS)
-        pipe.execute()
+        try:
+            phone_key = self._phone_send_key(phone)
+            ip_key = self._ip_send_key(ip)
+            pipe = self._client.pipeline()
+            pipe.incr(phone_key)
+            pipe.expire(phone_key, self.PHONE_SEND_WINDOW_SECONDS)
+            pipe.incr(ip_key)
+            pipe.expire(ip_key, self.IP_SEND_WINDOW_SECONDS)
+            pipe.execute()
+        except Exception:  # pragma: no cover - exercised by failure-path tests
+            self._fallback_with_log("record_send").record_send(phone, ip)
 
     def check_cooldown(self, phone: str) -> CooldownResult:
-        ttl = int(self._client.ttl(self._cooldown_key(phone)) or 0)
-        if ttl > 0:
-            return CooldownResult(allowed=False, seconds_remaining=ttl)
-        return CooldownResult(allowed=True, seconds_remaining=0)
+        try:
+            ttl = int(self._client.ttl(self._cooldown_key(phone)) or 0)
+            if ttl > 0:
+                return CooldownResult(allowed=False, seconds_remaining=ttl)
+            return CooldownResult(allowed=True, seconds_remaining=0)
+        except Exception:  # pragma: no cover - exercised by failure-path tests
+            return self._fallback_with_log("check_cooldown").check_cooldown(phone)
 
     def set_cooldown(self, phone: str) -> None:
-        self._client.set(self._cooldown_key(phone), "1", ex=self.COOLDOWN_SECONDS)
+        try:
+            self._client.set(self._cooldown_key(phone), "1", ex=self.COOLDOWN_SECONDS)
+        except Exception:  # pragma: no cover - exercised by failure-path tests
+            self._fallback_with_log("set_cooldown").set_cooldown(phone)
 
 
 def build_otp_rate_limit_service():
