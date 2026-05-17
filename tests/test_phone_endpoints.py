@@ -221,7 +221,7 @@ def test_start_verification_returns_safe_service_error_without_http_500():
 
     assert response.status_code == 503, response.text
     payload = response.json()
-    assert payload["detail"]["code"] == "sms_delivery_failed"
+    assert payload["detail"]["code"] == "otp_delivery_failed"
     assert "temporarily unavailable" in payload["detail"]["message"].lower()
 
 
@@ -241,7 +241,7 @@ def test_start_verification_returns_client_error_for_invalid_whatsapp_destinatio
 
     assert response.status_code == 400, response.text
     payload = response.json()
-    assert payload["detail"]["code"] == "sms_delivery_failed"
+    assert payload["detail"]["code"] == "otp_delivery_failed"
     assert "whatsapp verification codes" in payload["detail"]["message"].lower()
 
 

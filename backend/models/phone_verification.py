@@ -19,8 +19,8 @@ class PhoneVerificationStatus(str, Enum):
 
 
 class PhoneVerificationChannel(str, Enum):
-    SMS = "sms"
     WHATSAPP = "whatsapp"
+    EMAIL = "email"
 
 
 class PhoneVerificationPurpose(str, Enum):

@@ -68,7 +68,7 @@ class InvalidOTPError(OTPServiceError):
 
 class SMSDeliveryFailedError(OTPServiceError):
     def __init__(self, result: SMSResult) -> None:
-        super().__init__("sms_delivery_failed", result.error or "OTP delivery failed.")
+        super().__init__("otp_delivery_failed", result.error or "OTP delivery failed.")
         self.result = result
 
 
@@ -109,7 +109,7 @@ class OTPService:
         user: User,
         phone_e164: str,
         ip_address: str,
-        channel: PhoneVerificationChannel = PhoneVerificationChannel.SMS,
+        channel: PhoneVerificationChannel = PhoneVerificationChannel.WHATSAPP,
     ) -> OTPStartResult:
         return self._start_verification(
             db,
@@ -128,7 +128,7 @@ class OTPService:
         user: User,
         phone_e164: str,
         otp_code: str,
-        channel: PhoneVerificationChannel = PhoneVerificationChannel.SMS,
+        channel: PhoneVerificationChannel = PhoneVerificationChannel.WHATSAPP,
     ) -> OTPConfirmResult:
         return self._confirm_verification(
             db,
@@ -148,7 +148,7 @@ class OTPService:
         actor: User,
         phone_e164: str,
         ip_address: str,
-        channel: PhoneVerificationChannel = PhoneVerificationChannel.SMS,
+        channel: PhoneVerificationChannel = PhoneVerificationChannel.WHATSAPP,
     ) -> OTPStartResult:
         return self._start_verification(
             db,
@@ -168,7 +168,7 @@ class OTPService:
         actor: User,
         phone_e164: str,
         otp_code: str,
-        channel: PhoneVerificationChannel = PhoneVerificationChannel.SMS,
+        channel: PhoneVerificationChannel = PhoneVerificationChannel.WHATSAPP,
     ) -> OTPConfirmResult:
         return self._confirm_verification(
             db,
