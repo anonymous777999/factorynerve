@@ -20,24 +20,33 @@ depends_on = None
 def _column_names(table_name: str) -> set[str]:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
+    if table_name not in inspector.get_table_names():
+        return set()
     return {col["name"] for col in inspector.get_columns(table_name)}
 
 
 def _index_names(table_name: str) -> set[str]:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
+    if table_name not in inspector.get_table_names():
+        return set()
     return {idx["name"] for idx in inspector.get_indexes(table_name)}
 
 
 def _fk_names(table_name: str) -> set[str]:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
+    if table_name not in inspector.get_table_names():
+        return set()
     return {fk["name"] for fk in inspector.get_foreign_keys(table_name) if fk.get("name")}
 
 
 def upgrade() -> None:
     bind = op.get_bind()
     dialect = bind.dialect.name
+    inspector = sa.inspect(bind)
+    if "ocr_templates" not in inspector.get_table_names():
+        return
     columns = _column_names("ocr_templates")
     if "factory_id" not in columns:
         op.add_column("ocr_templates", sa.Column("factory_id", sa.String(length=36), nullable=True))

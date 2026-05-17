@@ -18,8 +18,16 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("subscriptions", sa.Column("pending_plan", sa.String(length=32), nullable=True))
-    op.add_column("subscriptions", sa.Column("pending_plan_effective_at", sa.DateTime(timezone=True), nullable=True))
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    table_names = set(inspector.get_table_names())
+    if "subscriptions" not in table_names:
+        return
+    columns = {column["name"] for column in inspector.get_columns("subscriptions")}
+    if "pending_plan" not in columns:
+        op.add_column("subscriptions", sa.Column("pending_plan", sa.String(length=32), nullable=True))
+    if "pending_plan_effective_at" not in columns:
+        op.add_column("subscriptions", sa.Column("pending_plan_effective_at", sa.DateTime(timezone=True), nullable=True))
 
 
 def downgrade() -> None:

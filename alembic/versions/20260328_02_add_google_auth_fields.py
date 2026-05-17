@@ -18,10 +18,21 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("users", sa.Column("google_id", sa.String(length=255), nullable=True))
-    op.add_column("users", sa.Column("profile_picture", sa.String(length=500), nullable=True))
-    op.add_column("users", sa.Column("auth_provider", sa.String(length=32), server_default="local", nullable=False))
-    op.create_index("ix_users_google_id", "users", ["google_id"], unique=True)
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    table_names = set(inspector.get_table_names())
+    if "users" not in table_names:
+        return
+    columns = {column["name"] for column in inspector.get_columns("users")}
+    indexes = {index["name"] for index in inspector.get_indexes("users")}
+    if "google_id" not in columns:
+        op.add_column("users", sa.Column("google_id", sa.String(length=255), nullable=True))
+    if "profile_picture" not in columns:
+        op.add_column("users", sa.Column("profile_picture", sa.String(length=500), nullable=True))
+    if "auth_provider" not in columns:
+        op.add_column("users", sa.Column("auth_provider", sa.String(length=32), server_default="local", nullable=False))
+    if "ix_users_google_id" not in indexes:
+        op.create_index("ix_users_google_id", "users", ["google_id"], unique=True)
 
 
 def downgrade() -> None:

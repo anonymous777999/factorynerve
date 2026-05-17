@@ -18,7 +18,13 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("pending_registrations", sa.Column("custom_note", sa.Text(), nullable=True))
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if "pending_registrations" not in inspector.get_table_names():
+        return
+    columns = {column["name"] for column in inspector.get_columns("pending_registrations")}
+    if "custom_note" not in columns:
+        op.add_column("pending_registrations", sa.Column("custom_note", sa.Text(), nullable=True))
 
 
 def downgrade() -> None:
