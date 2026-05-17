@@ -35,6 +35,21 @@ def get_otp_service() -> OTPService:
     return OTPService(sms_provider=build_sms_provider())
 
 
+def _delivery_http_exception(error: SMSDeliveryFailedError | RuntimeError) -> HTTPException:
+    if isinstance(error, SMSDeliveryFailedError):
+        status_code = error.result.status_code
+        message = error.message
+        code = error.code
+    else:
+        status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+        message = "Verification code delivery is temporarily unavailable. Please try again."
+        code = "sms_delivery_failed"
+    return HTTPException(
+        status_code=status_code,
+        detail={"code": code, "message": message},
+    )
+
+
 @router.post("/phone/start-verification", response_model=PhoneVerificationStartResponse)
 def start_phone_verification(
     payload: PhoneVerificationStartRequest,
@@ -58,12 +73,9 @@ def start_phone_verification(
             detail={"code": error.code, "message": error.message, "retry_after": error.retry_after},
         ) from error
     except SMSDeliveryFailedError as error:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail={"code": error.code, "message": error.message},
-        ) from error
+        raise _delivery_http_exception(error) from error
     except RuntimeError as error:
-        raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(error)) from error
+        raise _delivery_http_exception(error) from error
 
 
 @router.post("/phone/confirm-verification", response_model=PhoneVerificationConfirmResponse)

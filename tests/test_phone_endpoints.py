@@ -16,7 +16,7 @@ from backend.services.ops_alerts.recipients import resolve_alert_delivery_target
 from backend.services.ops_alerts.types import AlertCandidate, AlertEventType, AlertSeverity
 from backend.services.otp_service import OTPService
 from backend.services.rate_limit_service import RateLimitService
-from backend.services.sms_service import MockSMSProvider
+from backend.services.sms_service import MockSMSProvider, SMSProvider, SMSResult
 from tests.utils import register_user
 
 
@@ -31,6 +31,23 @@ def _build_override_service() -> tuple[OTPService, MockSMSProvider]:
         rate_limits=RateLimitService(client=fakeredis.FakeStrictRedis(decode_responses=True)),
     )
     return service, provider
+
+
+def _build_failure_service(*, status_code: int, message: str) -> OTPService:
+    class FailingProvider(SMSProvider):
+        def send_otp(self, phone_e164: str, otp: str, channel: str) -> SMSResult:
+            return SMSResult(
+                success=False,
+                provider="meta_whatsapp",
+                error=message,
+                status_code=status_code,
+                retryable=status_code >= 500,
+            )
+
+    return OTPService(
+        sms_provider=FailingProvider(),
+        rate_limits=RateLimitService(client=fakeredis.FakeStrictRedis(decode_responses=True)),
+    )
 
 
 @pytest.fixture
@@ -167,3 +184,43 @@ def test_profile_phone_change_resets_verification_status(otp_client):
     assert payload["phone_number"] == "+919876543224"
     assert payload["phone_verification_status"] == PhoneVerificationStatus.PENDING.value
     assert payload["phone_verified_at"] is None
+
+
+def test_start_verification_returns_safe_service_error_without_http_500():
+    init_db()
+    service = _build_failure_service(
+        status_code=503,
+        message="Verification code delivery is temporarily unavailable. Please try again.",
+    )
+    app.dependency_overrides[get_phone_otp_service] = lambda: service
+    app.dependency_overrides[get_alert_recipient_otp_service] = lambda: service
+    with TestClient(app) as client:
+        user = register_user(client, role="admin")
+        headers = _headers(user["access_token"])
+        response = client.post("/auth/phone/start-verification", json={"phone": "+919876543225"}, headers=headers)
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 503, response.text
+    payload = response.json()
+    assert payload["detail"]["code"] == "sms_delivery_failed"
+    assert "temporarily unavailable" in payload["detail"]["message"].lower()
+
+
+def test_start_verification_returns_client_error_for_invalid_whatsapp_destination():
+    init_db()
+    service = _build_failure_service(
+        status_code=400,
+        message="This phone number cannot receive WhatsApp verification codes.",
+    )
+    app.dependency_overrides[get_phone_otp_service] = lambda: service
+    app.dependency_overrides[get_alert_recipient_otp_service] = lambda: service
+    with TestClient(app) as client:
+        user = register_user(client, role="admin")
+        headers = _headers(user["access_token"])
+        response = client.post("/auth/phone/start-verification", json={"phone": "+919876543226"}, headers=headers)
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 400, response.text
+    payload = response.json()
+    assert payload["detail"]["code"] == "sms_delivery_failed"
+    assert "whatsapp verification codes" in payload["detail"]["message"].lower()

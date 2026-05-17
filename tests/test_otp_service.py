@@ -22,9 +22,10 @@ from backend.services.otp_service import (
     MaxAttemptsExceededError,
     NoActiveOTPError,
     OTPService,
+    SMSDeliveryFailedError,
 )
 from backend.services.rate_limit_service import InMemoryRateLimitService, RateLimitService, build_otp_rate_limit_service
-from backend.services.sms_service import MockSMSProvider, build_sms_provider
+from backend.services.sms_service import MockSMSProvider, SMSResult, WhatsAppSMSProvider, build_sms_provider
 
 
 def _build_service(provider: MockSMSProvider | None = None) -> tuple[OTPService, MockSMSProvider]:
@@ -283,3 +284,145 @@ def test_unknown_sms_provider_returns_controlled_failure(monkeypatch):
     assert result.success is False
     assert result.provider == "does-not-exist"
     assert "unsupported sms provider" in (result.error or "").lower()
+
+
+def test_build_sms_provider_defaults_to_whatsapp_when_meta_mode_enabled(monkeypatch):
+    monkeypatch.delenv("SMS_PROVIDER", raising=False)
+    monkeypatch.setenv("WHATSAPP_PROVIDER_MODE", "meta")
+
+    provider = build_sms_provider()
+
+    assert isinstance(provider, WhatsAppSMSProvider)
+
+
+def test_whatsapp_sms_provider_uses_existing_sender(monkeypatch):
+    captured: dict[str, object] = {}
+
+    def fake_send_message_blocking(*, to: str, template_name: str, template_params: dict, org_id: str, timeout_seconds=None):
+        captured["to"] = to
+        captured["template_name"] = template_name
+        captured["template_params"] = template_params
+        captured["org_id"] = org_id
+        captured["timeout_seconds"] = timeout_seconds
+        return type(
+            "FakeMessageResult",
+            (),
+            {
+                "provider_message_id": "wamid.otp.123",
+                "status": "sent",
+                "provider_response": {"provider": "meta", "http_status": 200},
+                "error_message": None,
+                "attempt_count": 1,
+            },
+        )()
+
+    monkeypatch.setattr("backend.services.sms_service.whatsapp_sender.send_message_blocking", fake_send_message_blocking)
+    provider = WhatsAppSMSProvider()
+
+    result = provider.send_otp("+919876543277", "123456", "sms")
+
+    assert result.success is True
+    assert result.provider == "meta_whatsapp"
+    assert captured["to"] == "+919876543277"
+    assert captured["template_name"] == "otp_verification_code"
+    assert captured["org_id"] == "otp-verification"
+    assert captured["template_params"] == {
+        "auth_template": True,
+        "code": "123456",
+        "expires_minutes": 5,
+        "disable_dedup": True,
+    }
+
+
+def test_whatsapp_sms_provider_maps_invalid_phone_to_client_error(monkeypatch):
+    def fake_send_message_blocking(*, to: str, template_name: str, template_params: dict, org_id: str, timeout_seconds=None):
+        return type(
+            "FakeMessageResult",
+            (),
+            {
+                "provider_message_id": None,
+                "status": "failed",
+                "provider_response": {"provider": "meta", "reason": "invalid_phone", "http_status": 400},
+                "error_message": "Phone number must be a valid E.164 number.",
+                "attempt_count": 0,
+            },
+        )()
+
+    monkeypatch.setattr("backend.services.sms_service.whatsapp_sender.send_message_blocking", fake_send_message_blocking)
+    provider = WhatsAppSMSProvider()
+
+    result = provider.send_otp("+919876543278", "123456", "sms")
+
+    assert result.success is False
+    assert result.status_code == 400
+    assert result.retryable is False
+    assert "whatsapp verification codes" in (result.error or "").lower()
+
+
+def test_whatsapp_sms_provider_masks_logging(monkeypatch):
+    events: list[tuple[str, str, dict[str, object]]] = []
+
+    class LoggerSpy:
+        def info(self, event: str, **kwargs):
+            events.append(("info", event, kwargs))
+
+        def warning(self, event: str, **kwargs):
+            events.append(("warning", event, kwargs))
+
+    def fake_send_message_blocking(*, to: str, template_name: str, template_params: dict, org_id: str, timeout_seconds=None):
+        return type(
+            "FakeMessageResult",
+            (),
+            {
+                "provider_message_id": None,
+                "status": "failed",
+                "provider_response": {"provider": "meta", "reason": "config_missing", "http_status": 400},
+                "error_message": "Token expired",
+                "attempt_count": 0,
+            },
+        )()
+
+    monkeypatch.setattr("backend.services.sms_service.whatsapp_sender.send_message_blocking", fake_send_message_blocking)
+    monkeypatch.setattr("backend.services.sms_service.logger", LoggerSpy())
+    provider = WhatsAppSMSProvider()
+
+    provider.send_otp("+919876543279", "654321", "sms")
+
+    assert events
+    payload = events[-1][2]
+    assert payload["phone_masked"] != "+919876543279"
+    assert "654321" not in str(payload)
+    assert "+919876543279" not in str(payload)
+
+
+def test_otp_service_raises_delivery_failure_for_provider_error():
+    class FailingProvider:
+        def send_otp(self, phone_e164: str, otp: str, channel: str) -> SMSResult:
+            return SMSResult(
+                success=False,
+                provider="meta_whatsapp",
+                error="Verification code delivery is temporarily unavailable. Please try again.",
+                status_code=503,
+                retryable=True,
+            )
+
+    fake_redis = fakeredis.FakeStrictRedis(decode_responses=True)
+    service = OTPService(
+        sms_provider=FailingProvider(),
+        rate_limits=RateLimitService(client=fake_redis),
+    )
+    user = _create_user(phone="+919876543280")
+
+    with SessionLocal() as db:
+        db_user = db.query(User).filter(User.id == user.id).first()
+        assert db_user is not None
+        with pytest.raises(SMSDeliveryFailedError) as error:
+            service.start_user_verification(
+                db,
+                user=db_user,
+                phone_e164="+919876543280",
+                ip_address="127.0.0.8",
+                channel=PhoneVerificationChannel.SMS,
+            )
+
+    assert error.value.result.status_code == 503

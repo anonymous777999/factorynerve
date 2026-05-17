@@ -131,6 +131,18 @@ def _coerce_body_variables(template_params: dict[str, Any]) -> list[str]:
     return [str(value if value is not None else "").strip() for value in iterable]
 
 
+def _coerce_authentication_code(template_params: dict[str, Any]) -> str:
+    return str(template_params.get("code") or "").strip()
+
+
+def _is_authentication_template(template_params: dict[str, Any]) -> bool:
+    return bool(template_params.get("auth_template"))
+
+
+def _dedup_disabled(template_params: dict[str, Any]) -> bool:
+    return bool(template_params.get("disable_dedup"))
+
+
 def _build_template_payload(
     *,
     to_digits: str,
@@ -142,7 +154,7 @@ def _build_template_payload(
     if not normalized_template_name:
         raise ValueError("template_name is required.")
     language = str(template_params.get("language") or default_language).strip() or default_language
-    body_variables = _coerce_body_variables(template_params)
+    is_auth_template = _is_authentication_template(template_params)
     payload: dict[str, Any] = {
         "messaging_product": "whatsapp",
         "to": to_digits,
@@ -152,6 +164,30 @@ def _build_template_payload(
             "language": {"code": language},
         },
     }
+
+    if is_auth_template:
+        code = _coerce_authentication_code(template_params)
+        if not code:
+            raise ValueError("Authentication template code is required.")
+        payload["template"]["components"] = [
+            {
+                "type": "body",
+                "parameters": [
+                    {"type": "text", "text": code},
+                ],
+            },
+            {
+                "type": "button",
+                "sub_type": "url",
+                "index": "0",
+                "parameters": [
+                    {"type": "text", "text": code},
+                ],
+            },
+        ]
+        return payload
+
+    body_variables = _coerce_body_variables(template_params)
     if body_variables:
         payload["template"]["components"] = [
             {
@@ -475,21 +511,22 @@ async def _perform_send(
             attempt_count=0,
         )
 
-    if _recent_duplicate_exists(
-        org_id=org_id,
-        recipient_phone=normalized_phone,
-        template_name=template_name,
-        window_seconds=config.dedup_window_seconds,
-    ):
-        return _refused_result(
-            provider_mode=provider_mode,
-            template_name=template_name,
+    if not _dedup_disabled(template_params):
+        if _recent_duplicate_exists(
             org_id=org_id,
-            masked_phone=masked_phone,
-            status="suppressed",
-            reason="Duplicate send suppressed inside dedup window.",
-            provider_response={"provider": sender_provider_name(), "reason": "duplicate_suppressed"},
-        )
+            recipient_phone=normalized_phone,
+            template_name=template_name,
+            window_seconds=config.dedup_window_seconds,
+        ):
+            return _refused_result(
+                provider_mode=provider_mode,
+                template_name=template_name,
+                org_id=org_id,
+                masked_phone=masked_phone,
+                status="suppressed",
+                reason="Duplicate send suppressed inside dedup window.",
+                provider_response={"provider": sender_provider_name(), "reason": "duplicate_suppressed"},
+            )
 
     if await _daily_cap_exceeded(org_id=org_id, daily_send_cap=config.daily_send_cap):
         return _refused_result(
