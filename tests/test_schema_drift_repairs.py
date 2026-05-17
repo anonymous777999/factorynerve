@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+import importlib.util
 
 from alembic import command
 from alembic.config import Config
@@ -22,6 +23,15 @@ def _run_alembic_upgrade(database_url: str) -> None:
             os.environ.pop("DATABASE_URL", None)
         else:
             os.environ["DATABASE_URL"] = previous
+
+
+def _load_migration_20260517_02():
+    migration_path = Path("alembic/versions/20260517_02_finalize_messaging_schema.py")
+    spec = importlib.util.spec_from_file_location("migration_20260517_02", migration_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_startup_repair_adds_missing_phone_and_alert_columns(tmp_path, monkeypatch: pytest.MonkeyPatch):
@@ -160,6 +170,75 @@ def test_postgres_enum_repair_is_idempotent():
         enum_value="alert_recipient",
     )
     assert existing_value_conn.executed == []
+
+
+def test_postgres_messaging_migration_uses_autocommit_for_new_enum_values(monkeypatch: pytest.MonkeyPatch):
+    migration = _load_migration_20260517_02()
+
+    class FakeScalarResult:
+        def __init__(self, values):
+            self._values = values
+
+        def all(self):
+            return list(self._values)
+
+    class FakeResult:
+        def __init__(self, values):
+            self._values = values
+
+        def scalars(self):
+            return FakeScalarResult(self._values)
+
+    class FakeConnection:
+        class Dialect:
+            name = "postgresql"
+
+        def __init__(self):
+            self.dialect = self.Dialect()
+            self.executed: list[str] = []
+
+        def execute(self, _statement, params):
+            enum_name = params["enum_name"]
+            if enum_name == "phone_verification_channel":
+                return FakeResult(["sms"])
+            return FakeResult(["user_verification"])
+
+        def exec_driver_sql(self, sql: str):
+            self.executed.append(sql)
+
+    class FakeAutocommitBlock:
+        def __init__(self, calls: list[str]):
+            self.calls = calls
+
+        def __enter__(self):
+            self.calls.append("enter")
+
+        def __exit__(self, exc_type, exc, tb):
+            self.calls.append("exit")
+
+    class FakeContext:
+        def __init__(self):
+            self.calls: list[str] = []
+
+        def autocommit_block(self):
+            self.calls.append("autocommit_block")
+            return FakeAutocommitBlock(self.calls)
+
+    fake_context = FakeContext()
+    monkeypatch.setattr(migration.op, "get_context", lambda: fake_context)
+    bind = FakeConnection()
+
+    migration._ensure_postgres_enum_values(
+        bind,
+        enum_name="phone_verification_channel",
+        values={"whatsapp", "email"},
+    )
+
+    assert fake_context.calls == ["autocommit_block", "enter", "exit"]
+    assert bind.executed == [
+        "ALTER TYPE phone_verification_channel ADD VALUE IF NOT EXISTS 'email'",
+        "ALTER TYPE phone_verification_channel ADD VALUE IF NOT EXISTS 'whatsapp'",
+    ]
 
 
 def test_messaging_schema_verifier_fails_for_missing_critical_columns(tmp_path, monkeypatch: pytest.MonkeyPatch):

@@ -67,8 +67,14 @@ def _ensure_postgres_enum_values(bind: sa.engine.Connection, *, enum_name: str, 
     if not labels:
         return
 
-    for value in sorted(values - labels):
-        bind.exec_driver_sql(f"ALTER TYPE {enum_name} ADD VALUE IF NOT EXISTS '{value}'")
+    missing_values = sorted(values - labels)
+    if not missing_values:
+        return
+
+    context = op.get_context()
+    with context.autocommit_block():
+        for value in missing_values:
+            bind.exec_driver_sql(f"ALTER TYPE {enum_name} ADD VALUE IF NOT EXISTS '{value}'")
 
 
 def _add_column_if_missing(table_name: str, column_name: str, column: sa.Column) -> None:
