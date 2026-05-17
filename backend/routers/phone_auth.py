@@ -43,7 +43,7 @@ def _delivery_http_exception(error: SMSDeliveryFailedError | RuntimeError) -> HT
     else:
         status_code = status.HTTP_503_SERVICE_UNAVAILABLE
         message = "Verification code delivery is temporarily unavailable. Please try again."
-        code = "sms_delivery_failed"
+        code = "otp_delivery_failed"
     return HTTPException(
         status_code=status_code,
         detail={"code": code, "message": message},
@@ -64,7 +64,7 @@ def start_phone_verification(
             user=current_user,
             phone_e164=payload.phone,
             ip_address=extract_client_ip(request),
-            channel=PhoneVerificationChannel.SMS,
+            channel=PhoneVerificationChannel.WHATSAPP,
         )
         return PhoneVerificationStartResponse(masked_phone=result.masked_phone, expires_in=result.expires_in)
     except RateLimitedError as error:
@@ -91,7 +91,7 @@ def confirm_phone_verification(
             user=current_user,
             phone_e164=payload.phone,
             otp_code=payload.otp,
-            channel=PhoneVerificationChannel.SMS,
+            channel=PhoneVerificationChannel.WHATSAPP,
         )
         return PhoneVerificationConfirmResponse(verified=result.verified, phone_e164=result.phone_e164)
     except NoActiveOTPError as error:

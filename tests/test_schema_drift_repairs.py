@@ -33,6 +33,36 @@ def test_startup_repair_adds_missing_phone_and_alert_columns(tmp_path, monkeypat
         connection.execute(
             text(
                 """
+                CREATE TABLE phone_verifications (
+                    id VARCHAR(36) PRIMARY KEY,
+                    phone_e164 VARCHAR(20) NOT NULL,
+                    otp_hash VARCHAR(72) NOT NULL,
+                    expires_at DATETIME NOT NULL,
+                    attempts INTEGER NOT NULL DEFAULT 0,
+                    used BOOLEAN NOT NULL DEFAULT 0,
+                    channel VARCHAR(24) NOT NULL,
+                    purpose VARCHAR(40) NOT NULL,
+                    user_id INTEGER NULL,
+                    recipient_id INTEGER NULL,
+                    created_at DATETIME NOT NULL
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO phone_verifications (
+                    id, phone_e164, otp_hash, expires_at, attempts, used, channel, purpose, user_id, recipient_id, created_at
+                ) VALUES (
+                    'legacy-otp-1', '+919876543299', 'hash', CURRENT_TIMESTAMP, 0, 0, 'sms', 'user_verification', NULL, NULL, CURRENT_TIMESTAMP
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
                 CREATE TABLE ops_alert_events (
                     id INTEGER PRIMARY KEY,
                     ref_id VARCHAR(80) NOT NULL,
@@ -63,6 +93,10 @@ def test_startup_repair_adds_missing_phone_and_alert_columns(tmp_path, monkeypat
     ops_columns = {column["name"] for column in inspector.get_columns("ops_alert_events")}
     phone_columns = {column["name"] for column in inspector.get_columns("phone_verifications")}
     ops_indexes = {index["name"] for index in inspector.get_indexes("ops_alert_events")}
+    with legacy_engine.connect() as connection:
+        channel = connection.execute(
+            text("SELECT channel FROM phone_verifications WHERE id = 'legacy-otp-1'")
+        ).scalar_one()
     legacy_engine.dispose()
 
     assert "recipient_phone" in ops_columns
@@ -74,6 +108,7 @@ def test_startup_repair_adds_missing_phone_and_alert_columns(tmp_path, monkeypat
     assert "provider_error_code" in ops_columns
     assert "provider_error_title" in ops_columns
     assert "purpose" in phone_columns
+    assert channel == "whatsapp"
     assert "ix_ops_alert_events_ref_id" in ops_indexes
     assert "ix_ops_alert_events_provider_message_id" in ops_indexes
 
@@ -127,6 +162,69 @@ def test_postgres_enum_repair_is_idempotent():
     assert existing_value_conn.executed == []
 
 
+def test_messaging_schema_verifier_fails_for_missing_critical_columns(tmp_path, monkeypatch: pytest.MonkeyPatch):
+    database_path = Path(tmp_path) / "invalid_messaging_schema.db"
+    invalid_engine = create_engine(f"sqlite:///{database_path}", future=True)
+    with invalid_engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                CREATE TABLE phone_verifications (
+                    id VARCHAR(36) PRIMARY KEY,
+                    phone_e164 VARCHAR(20) NOT NULL,
+                    otp_hash VARCHAR(72) NOT NULL,
+                    expires_at DATETIME NOT NULL,
+                    attempts INTEGER NOT NULL DEFAULT 0,
+                    used BOOLEAN NOT NULL DEFAULT 0,
+                    purpose VARCHAR(40) NOT NULL,
+                    user_id INTEGER NULL,
+                    recipient_id INTEGER NULL,
+                    created_at DATETIME NOT NULL
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                CREATE TABLE ops_alert_events (
+                    id INTEGER PRIMARY KEY,
+                    ref_id VARCHAR(80) NOT NULL,
+                    org_id VARCHAR(36),
+                    org_name VARCHAR(200),
+                    status VARCHAR(24) NOT NULL DEFAULT 'queued',
+                    event_type VARCHAR(64) NOT NULL,
+                    severity VARCHAR(16) NOT NULL,
+                    summary TEXT NOT NULL,
+                    recipient_phone VARCHAR(48),
+                    provider VARCHAR(32) NOT NULL,
+                    delivery_status VARCHAR(32) NOT NULL DEFAULT 'queued',
+                    provider_message_id VARCHAR(255),
+                    provider_status_at DATETIME,
+                    delivered_at DATETIME,
+                    read_at DATETIME,
+                    failed_at DATETIME,
+                    provider_error_code VARCHAR(64),
+                    provider_error_title VARCHAR(255),
+                    created_at DATETIME NOT NULL,
+                    dispatched_at DATETIME
+                )
+                """
+            )
+        )
+
+    original_engine = database_module.engine
+    try:
+        monkeypatch.setattr(database_module, "engine", invalid_engine)
+        with pytest.raises(RuntimeError) as error:
+            database_module._verify_messaging_schema_or_raise()
+    finally:
+        monkeypatch.setattr(database_module, "engine", original_engine)
+        invalid_engine.dispose()
+
+    assert "phone_verifications.channel" in str(error.value)
+
+
 def test_alembic_upgrade_head_repairs_drifted_ops_alert_schema(tmp_path):
     database_path = Path(tmp_path) / "drifted.db"
     database_url = f"sqlite:///{database_path}"
@@ -172,6 +270,57 @@ def test_alembic_upgrade_head_repairs_drifted_ops_alert_schema(tmp_path):
     assert "provider_error_code" in columns
     assert "provider_error_title" in columns
     assert "ix_ops_alert_events_provider_message_id" in indexes
+
+
+def test_alembic_upgrade_head_normalizes_legacy_sms_channel(tmp_path):
+    database_path = Path(tmp_path) / "drifted_channel.db"
+    database_url = f"sqlite:///{database_path}"
+    engine = create_engine(database_url, future=True)
+    with engine.begin() as connection:
+        connection.execute(text("CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)"))
+        connection.execute(text("INSERT INTO alembic_version (version_num) VALUES ('20260517_01')"))
+        connection.execute(
+            text(
+                """
+                CREATE TABLE phone_verifications (
+                    id VARCHAR(36) PRIMARY KEY,
+                    phone_e164 VARCHAR(20) NOT NULL,
+                    otp_hash VARCHAR(72) NOT NULL,
+                    expires_at DATETIME NOT NULL,
+                    attempts INTEGER NOT NULL DEFAULT 0,
+                    used BOOLEAN NOT NULL DEFAULT 0,
+                    channel VARCHAR(24) NOT NULL,
+                    purpose VARCHAR(40) NOT NULL,
+                    user_id INTEGER NULL,
+                    recipient_id INTEGER NULL,
+                    created_at DATETIME NOT NULL
+                )
+                """
+            )
+        )
+        connection.execute(
+            text(
+                """
+                INSERT INTO phone_verifications (
+                    id, phone_e164, otp_hash, expires_at, attempts, used, channel, purpose, user_id, recipient_id, created_at
+                ) VALUES (
+                    'legacy-otp-2', '+919876543298', 'hash', CURRENT_TIMESTAMP, 0, 0, 'sms', 'user_verification', NULL, NULL, CURRENT_TIMESTAMP
+                )
+                """
+            )
+        )
+    engine.dispose()
+
+    _run_alembic_upgrade(database_url)
+
+    upgraded_engine = create_engine(database_url, future=True)
+    with upgraded_engine.connect() as connection:
+        channel = connection.execute(
+            text("SELECT channel FROM phone_verifications WHERE id = 'legacy-otp-2'")
+        ).scalar_one()
+    upgraded_engine.dispose()
+
+    assert channel == "whatsapp"
 
 
 def test_alembic_upgrade_head_is_clean_on_fresh_sqlite(tmp_path):

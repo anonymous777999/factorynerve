@@ -37,6 +37,44 @@ NAMING_CONVENTION = {
 metadata = MetaData(naming_convention=NAMING_CONVENTION)
 Base = declarative_base(metadata=metadata)
 
+_CANONICAL_PHONE_VERIFICATION_CHANNELS = {"whatsapp", "email"}
+_CANONICAL_PHONE_VERIFICATION_PURPOSES = {"user_verification", "alert_recipient"}
+_REQUIRED_MESSAGING_COLUMNS: dict[str, set[str]] = {
+    "phone_verifications": {
+        "phone_e164",
+        "otp_hash",
+        "expires_at",
+        "attempts",
+        "used",
+        "channel",
+        "purpose",
+        "user_id",
+        "recipient_id",
+        "created_at",
+    },
+    "ops_alert_events": {
+        "ref_id",
+        "org_id",
+        "org_name",
+        "status",
+        "event_type",
+        "severity",
+        "summary",
+        "recipient_phone",
+        "provider",
+        "delivery_status",
+        "provider_message_id",
+        "provider_status_at",
+        "delivered_at",
+        "read_at",
+        "failed_at",
+        "provider_error_code",
+        "provider_error_title",
+        "created_at",
+        "dispatched_at",
+    },
+}
+
 pool_kwargs: dict[str, Any] = {}
 if not _IS_SQLITE:
     pool_kwargs = {
@@ -260,6 +298,7 @@ def init_db() -> None:
         _ensure_attendance_columns()
         _ensure_phone_and_alerting_columns()
         _ensure_feedback_columns()
+        _verify_messaging_schema_or_raise()
         logger.info("Database initialization complete.")
     except Exception as error:  # pylint: disable=broad-except
         logger.exception("Database initialization failed.")
@@ -289,6 +328,84 @@ def _ensure_postgres_enum_value(conn: Any, *, enum_name: str, enum_value: str) -
     conn.exec_driver_sql(f"ALTER TYPE {enum_name} ADD VALUE IF NOT EXISTS '{enum_value}'")
     logger.warning("Added missing PostgreSQL enum value %s.%s during startup drift repair.", enum_name, enum_value)
     return True
+
+
+def _postgres_enum_labels(conn: Any, *, enum_name: str) -> set[str]:
+    if conn.dialect.name != "postgresql":
+        return set()
+    return {
+        str(label).strip()
+        for label in conn.execute(
+            text(
+                """
+                SELECT e.enumlabel
+                FROM pg_type t
+                JOIN pg_enum e
+                  ON e.enumtypid = t.oid
+                WHERE t.typname = :enum_name
+                """
+            ),
+            {"enum_name": enum_name},
+        ).scalars().all()
+        if str(label).strip()
+    }
+
+
+def _verify_messaging_schema_or_raise() -> None:
+    inspector = inspect(engine)
+    table_names = set(inspector.get_table_names())
+    missing_columns: list[str] = []
+
+    for table_name, required_columns in _REQUIRED_MESSAGING_COLUMNS.items():
+        if table_name not in table_names:
+            missing_columns.append(f"{table_name} (missing table)")
+            continue
+        available_columns = {column["name"] for column in inspector.get_columns(table_name)}
+        missing = sorted(required_columns - available_columns)
+        missing_columns.extend(f"{table_name}.{column_name}" for column_name in missing)
+
+    if missing_columns:
+        raise RuntimeError(
+            "Critical messaging schema drift detected. Missing messaging columns: " + ", ".join(missing_columns)
+        )
+
+    problems: list[str] = []
+    with engine.connect() as conn:
+        if conn.dialect.name == "postgresql":
+            for enum_name, required_values in {
+                "phone_verification_channel": _CANONICAL_PHONE_VERIFICATION_CHANNELS,
+                "phone_verification_purpose": _CANONICAL_PHONE_VERIFICATION_PURPOSES,
+            }.items():
+                labels = _postgres_enum_labels(conn, enum_name=enum_name)
+                if labels:
+                    missing_values = sorted(required_values - labels)
+                    if missing_values:
+                        problems.append(f"{enum_name} missing values: {', '.join(missing_values)}")
+
+        channels = {
+            str(value).strip().lower()
+            for value in conn.execute(
+                text("SELECT DISTINCT channel FROM phone_verifications WHERE channel IS NOT NULL")
+            ).scalars().all()
+            if str(value).strip()
+        }
+        invalid_channels = sorted(channels - _CANONICAL_PHONE_VERIFICATION_CHANNELS)
+        if invalid_channels:
+            problems.append("phone_verifications.channel contains unsupported values: " + ", ".join(invalid_channels))
+
+        purposes = {
+            str(value).strip().lower()
+            for value in conn.execute(
+                text("SELECT DISTINCT purpose FROM phone_verifications WHERE purpose IS NOT NULL")
+            ).scalars().all()
+            if str(value).strip()
+        }
+        invalid_purposes = sorted(purposes - _CANONICAL_PHONE_VERIFICATION_PURPOSES)
+        if invalid_purposes:
+            problems.append("phone_verifications.purpose contains unsupported values: " + ", ".join(invalid_purposes))
+
+    if problems:
+        raise RuntimeError("Critical messaging schema drift detected. " + " | ".join(problems))
 
 
 def _ensure_user_code_columns() -> None:
@@ -948,6 +1065,21 @@ def _ensure_phone_and_alerting_columns() -> None:
         with engine.connect() as conn:
             _ensure_postgres_enum_value(
                 conn,
+                enum_name="phone_verification_channel",
+                enum_value="whatsapp",
+            )
+            _ensure_postgres_enum_value(
+                conn,
+                enum_name="phone_verification_channel",
+                enum_value="email",
+            )
+            _ensure_postgres_enum_value(
+                conn,
+                enum_name="phone_verification_purpose",
+                enum_value="user_verification",
+            )
+            _ensure_postgres_enum_value(
+                conn,
                 enum_name="phone_verification_purpose",
                 enum_value="alert_recipient",
             )
@@ -1121,6 +1253,10 @@ def _ensure_phone_and_alerting_columns() -> None:
                     )
                     """
                 )
+            conn.exec_driver_sql(
+                "UPDATE phone_verifications SET channel = 'whatsapp' "
+                "WHERE channel IS NOT NULL AND LOWER(TRIM(CAST(channel AS TEXT))) = 'sms'"
+            )
             conn.exec_driver_sql(
                 "CREATE INDEX IF NOT EXISTS ix_phone_verifications_phone_purpose_active "
                 "ON phone_verifications (phone_e164, purpose, used, expires_at)"

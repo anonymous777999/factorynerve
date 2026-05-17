@@ -1,4 +1,4 @@
-"""SMS provider abstraction for phone verification."""
+"""OTP delivery provider abstraction for phone verification."""
 
 from __future__ import annotations
 
@@ -168,12 +168,7 @@ def build_sms_provider() -> SMSProvider:
         return MockSMSProvider()
     if provider_name in {"whatsapp", "meta"}:
         return WhatsAppSMSProvider()
-    if provider_name == "twilio":
-        return UnavailableSMSProvider(
-            provider_name="twilio",
-            error="Legacy OTP delivery has been removed. Use the WhatsApp provider.",
-        )
     return UnavailableSMSProvider(
         provider_name=provider_name or "unknown",
-        error=f"Unsupported SMS provider: {provider_name or 'unknown'}",
+        error=f"Unsupported OTP delivery provider: {provider_name or 'unknown'}",
     )

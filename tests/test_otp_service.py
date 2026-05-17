@@ -108,7 +108,7 @@ def test_valid_otp_verifies_and_marks_used():
             user=db_user,
             phone_e164="+919876543210",
             ip_address="127.0.0.1",
-            channel=PhoneVerificationChannel.SMS,
+            channel=PhoneVerificationChannel.WHATSAPP,
         )
         otp_code = provider.sent["+919876543210"]
         confirmed = service.confirm_user_verification(
@@ -116,7 +116,7 @@ def test_valid_otp_verifies_and_marks_used():
             user=db_user,
             phone_e164="+919876543210",
             otp_code=otp_code,
-            channel=PhoneVerificationChannel.SMS,
+            channel=PhoneVerificationChannel.WHATSAPP,
         )
         verification = (
             db.query(PhoneVerification)
@@ -143,7 +143,7 @@ def test_expired_otp_returns_error():
             user=db_user,
             phone_e164="+919876543212",
             ip_address="127.0.0.2",
-            channel=PhoneVerificationChannel.SMS,
+            channel=PhoneVerificationChannel.WHATSAPP,
         )
         verification = db.query(PhoneVerification).filter(PhoneVerification.id == started.verification_id).first()
         assert verification is not None
@@ -156,7 +156,7 @@ def test_expired_otp_returns_error():
                 user=db_user,
                 phone_e164="+919876543212",
                 otp_code=provider.sent["+919876543212"],
-                channel=PhoneVerificationChannel.SMS,
+                channel=PhoneVerificationChannel.WHATSAPP,
             )
 
 
@@ -172,7 +172,7 @@ def test_wrong_otp_increments_attempt_counter():
             user=db_user,
             phone_e164="+919876543213",
             ip_address="127.0.0.3",
-            channel=PhoneVerificationChannel.SMS,
+            channel=PhoneVerificationChannel.WHATSAPP,
         )
         with pytest.raises(InvalidOTPError):
             service.confirm_user_verification(
@@ -180,7 +180,7 @@ def test_wrong_otp_increments_attempt_counter():
                 user=db_user,
                 phone_e164="+919876543213",
                 otp_code="000000",
-                channel=PhoneVerificationChannel.SMS,
+                channel=PhoneVerificationChannel.WHATSAPP,
             )
         verification = db.query(PhoneVerification).filter(PhoneVerification.id == started.verification_id).first()
 
@@ -200,7 +200,7 @@ def test_reused_otp_returns_no_active_code():
             user=db_user,
             phone_e164="+919876543214",
             ip_address="127.0.0.4",
-            channel=PhoneVerificationChannel.SMS,
+            channel=PhoneVerificationChannel.WHATSAPP,
         )
         otp_code = provider.sent["+919876543214"]
         service.confirm_user_verification(
@@ -208,7 +208,7 @@ def test_reused_otp_returns_no_active_code():
             user=db_user,
             phone_e164="+919876543214",
             otp_code=otp_code,
-            channel=PhoneVerificationChannel.SMS,
+            channel=PhoneVerificationChannel.WHATSAPP,
         )
         with pytest.raises(NoActiveOTPError):
             service.confirm_user_verification(
@@ -216,7 +216,7 @@ def test_reused_otp_returns_no_active_code():
                 user=db_user,
                 phone_e164="+919876543214",
                 otp_code=otp_code,
-                channel=PhoneVerificationChannel.SMS,
+                channel=PhoneVerificationChannel.WHATSAPP,
             )
 
 
@@ -232,7 +232,7 @@ def test_otp_locks_after_max_failed_attempts():
             user=db_user,
             phone_e164="+919876543215",
             ip_address="127.0.0.5",
-            channel=PhoneVerificationChannel.SMS,
+            channel=PhoneVerificationChannel.WHATSAPP,
         )
         for _ in range(5):
             with pytest.raises(InvalidOTPError):
@@ -241,7 +241,7 @@ def test_otp_locks_after_max_failed_attempts():
                     user=db_user,
                     phone_e164="+919876543215",
                     otp_code="111111",
-                    channel=PhoneVerificationChannel.SMS,
+                    channel=PhoneVerificationChannel.WHATSAPP,
                 )
         with pytest.raises(MaxAttemptsExceededError):
             service.confirm_user_verification(
@@ -249,7 +249,7 @@ def test_otp_locks_after_max_failed_attempts():
                 user=db_user,
                 phone_e164="+919876543215",
                 otp_code="111111",
-                channel=PhoneVerificationChannel.SMS,
+                    channel=PhoneVerificationChannel.WHATSAPP,
             )
 
 
@@ -265,7 +265,7 @@ def test_new_otp_invalidates_prior_active_otp():
             user=db_user,
             phone_e164="+919876543216",
             ip_address="127.0.0.6",
-            channel=PhoneVerificationChannel.SMS,
+            channel=PhoneVerificationChannel.WHATSAPP,
         )
         rate_limit = service._rate_limits  # noqa: SLF001
         phone_key = rate_limit._phone_send_key("+919876543216")  # noqa: SLF001
@@ -279,7 +279,7 @@ def test_new_otp_invalidates_prior_active_otp():
             user=db_user,
             phone_e164="+919876543216",
             ip_address="127.0.0.6",
-            channel=PhoneVerificationChannel.SMS,
+            channel=PhoneVerificationChannel.WHATSAPP,
         )
 
         first_record = db.query(PhoneVerification).filter(PhoneVerification.id == first.verification_id).first()
@@ -299,11 +299,11 @@ def test_otp_service_falls_back_to_in_memory_rate_limits_without_redis(monkeypat
 def test_unknown_sms_provider_returns_controlled_failure(monkeypatch):
     monkeypatch.setenv("SMS_PROVIDER", "does-not-exist")
     provider = build_sms_provider()
-    result = provider.send_otp("+919876543299", "123456", "sms")
+    result = provider.send_otp("+919876543299", "123456", "whatsapp")
 
     assert result.success is False
     assert result.provider == "does-not-exist"
-    assert "unsupported sms provider" in (result.error or "").lower()
+    assert "unsupported otp delivery provider" in (result.error or "").lower()
 
 
 def test_build_sms_provider_defaults_to_whatsapp_when_meta_mode_enabled(monkeypatch):
@@ -339,7 +339,7 @@ def test_whatsapp_sms_provider_uses_existing_sender(monkeypatch):
     monkeypatch.setattr("backend.services.sms_service.whatsapp_sender.send_message_blocking", fake_send_message_blocking)
     provider = WhatsAppSMSProvider()
 
-    result = provider.send_otp("+919876543277", "123456", "sms")
+    result = provider.send_otp("+919876543277", "123456", "whatsapp")
 
     assert result.success is True
     assert result.provider == "meta_whatsapp"
@@ -371,7 +371,7 @@ def test_whatsapp_sms_provider_maps_invalid_phone_to_client_error(monkeypatch):
     monkeypatch.setattr("backend.services.sms_service.whatsapp_sender.send_message_blocking", fake_send_message_blocking)
     provider = WhatsAppSMSProvider()
 
-    result = provider.send_otp("+919876543278", "123456", "sms")
+    result = provider.send_otp("+919876543278", "123456", "whatsapp")
 
     assert result.success is False
     assert result.status_code == 400
@@ -406,7 +406,7 @@ def test_whatsapp_sms_provider_masks_logging(monkeypatch):
     monkeypatch.setattr("backend.services.sms_service.logger", LoggerSpy())
     provider = WhatsAppSMSProvider()
 
-    provider.send_otp("+919876543279", "654321", "sms")
+    provider.send_otp("+919876543279", "654321", "whatsapp")
 
     assert events
     payload = events[-1][2]
@@ -442,7 +442,7 @@ def test_otp_service_raises_delivery_failure_for_provider_error():
                 user=db_user,
                 phone_e164="+919876543280",
                 ip_address="127.0.0.8",
-                channel=PhoneVerificationChannel.SMS,
+                channel=PhoneVerificationChannel.WHATSAPP,
             )
 
     assert error.value.result.status_code == 503
@@ -464,7 +464,7 @@ def test_otp_service_falls_back_when_redis_rate_limit_runtime_fails():
             user=db_user,
             phone_e164="+919876543281",
             ip_address="127.0.0.9",
-            channel=PhoneVerificationChannel.SMS,
+            channel=PhoneVerificationChannel.WHATSAPP,
         )
 
     assert result.masked_phone
@@ -487,7 +487,7 @@ def test_otp_cooldown_still_applies_when_redis_runtime_fails():
             user=db_user,
             phone_e164="+919876543282",
             ip_address="127.0.0.10",
-            channel=PhoneVerificationChannel.SMS,
+            channel=PhoneVerificationChannel.WHATSAPP,
         )
         with pytest.raises(RateLimitedError) as error:
             service.start_user_verification(
@@ -495,7 +495,7 @@ def test_otp_cooldown_still_applies_when_redis_runtime_fails():
                 user=db_user,
                 phone_e164="+919876543282",
                 ip_address="127.0.0.10",
-                channel=PhoneVerificationChannel.SMS,
+                channel=PhoneVerificationChannel.WHATSAPP,
             )
 
     assert "Please wait before requesting another code." in str(error.value)
