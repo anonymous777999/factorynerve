@@ -3,6 +3,11 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 import fakeredis
 import pytest
+try:
+    from redis.exceptions import ConnectionError as RedisConnectionError
+except Exception:  # pragma: no cover - optional dependency fallback
+    class RedisConnectionError(Exception):
+        pass
 
 from backend.database import SessionLocal, init_db
 from backend.main import app
@@ -48,6 +53,20 @@ def _build_failure_service(*, status_code: int, message: str) -> OTPService:
         sms_provider=FailingProvider(),
         rate_limits=RateLimitService(client=fakeredis.FakeStrictRedis(decode_responses=True)),
     )
+
+
+class BrokenRedisClient:
+    def get(self, key: str):
+        raise RedisConnectionError(f"redis get failed for {key}")
+
+    def ttl(self, key: str):
+        raise RedisConnectionError(f"redis ttl failed for {key}")
+
+    def pipeline(self):
+        raise RedisConnectionError("redis pipeline failed")
+
+    def set(self, key: str, value: str, ex: int | None = None):
+        raise RedisConnectionError(f"redis set failed for {key}")
 
 
 @pytest.fixture
@@ -224,3 +243,24 @@ def test_start_verification_returns_client_error_for_invalid_whatsapp_destinatio
     payload = response.json()
     assert payload["detail"]["code"] == "sms_delivery_failed"
     assert "whatsapp verification codes" in payload["detail"]["message"].lower()
+
+
+def test_start_verification_does_not_leak_http_500_when_redis_runtime_fails():
+    init_db()
+    provider = MockSMSProvider()
+    service = OTPService(
+        sms_provider=provider,
+        rate_limits=RateLimitService(client=BrokenRedisClient()),
+    )
+    app.dependency_overrides[get_phone_otp_service] = lambda: service
+    app.dependency_overrides[get_alert_recipient_otp_service] = lambda: service
+    with TestClient(app) as client:
+        user = register_user(client, role="admin")
+        headers = _headers(user["access_token"])
+        response = client.post("/auth/phone/start-verification", json={"phone": "+919876543227"}, headers=headers)
+    app.dependency_overrides.clear()
+
+    assert response.status_code == 200, response.text
+    payload = response.json()
+    assert payload["masked_phone"]
+    assert payload["expires_in"] > 0
