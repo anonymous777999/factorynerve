@@ -266,6 +266,31 @@ def init_db() -> None:
         raise RuntimeError("Could not initialize database.") from error
 
 
+def _ensure_postgres_enum_value(conn: Any, *, enum_name: str, enum_value: str) -> bool:
+    """Add a missing PostgreSQL enum label without recreating the enum."""
+    if conn.dialect.name != "postgresql":
+        return False
+
+    labels = conn.execute(
+        text(
+            """
+            SELECT e.enumlabel
+            FROM pg_type t
+            JOIN pg_enum e
+              ON e.enumtypid = t.oid
+            WHERE t.typname = :enum_name
+            """
+        ),
+        {"enum_name": enum_name},
+    ).scalars().all()
+    if not labels or enum_value in labels:
+        return False
+
+    conn.exec_driver_sql(f"ALTER TYPE {enum_name} ADD VALUE IF NOT EXISTS '{enum_value}'")
+    logger.warning("Added missing PostgreSQL enum value %s.%s during startup drift repair.", enum_name, enum_value)
+    return True
+
+
 def _ensure_user_code_columns() -> None:
     """Ensure org-scoped 5+ digit user-facing IDs exist for every user."""
     try:
@@ -921,6 +946,12 @@ def _ensure_phone_and_alerting_columns() -> None:
         table_names = set(inspector.get_table_names())
         dialect = engine.dialect.name
         with engine.connect() as conn:
+            _ensure_postgres_enum_value(
+                conn,
+                enum_name="phone_verification_purpose",
+                enum_value="alert_recipient",
+            )
+
             if "users" in table_names:
                 user_columns = {column["name"] for column in inspector.get_columns("users")}
                 if "phone_number" not in user_columns:
@@ -1029,6 +1060,8 @@ def _ensure_phone_and_alerting_columns() -> None:
                     conn.exec_driver_sql(
                         "ALTER TABLE ops_alert_events ADD COLUMN is_summary BOOLEAN NOT NULL DEFAULT FALSE"
                     )
+                if "recipient_phone" not in alert_columns:
+                    conn.exec_driver_sql("ALTER TABLE ops_alert_events ADD COLUMN recipient_phone VARCHAR(48)")
                 if "suppressed_reason" not in alert_columns:
                     conn.exec_driver_sql("ALTER TABLE ops_alert_events ADD COLUMN suppressed_reason VARCHAR(64)")
                 if "provider_message_id" not in alert_columns:
@@ -1065,6 +1098,9 @@ def _ensure_phone_and_alerting_columns() -> None:
                 conn.exec_driver_sql(
                     "CREATE INDEX IF NOT EXISTS ix_ops_alert_events_provider_message_id "
                     "ON ops_alert_events (provider_message_id)"
+                )
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS ix_ops_alert_events_ref_id ON ops_alert_events (ref_id)"
                 )
 
             if "phone_verifications" not in table_names:

@@ -26,47 +26,50 @@ def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
     table_names = set(inspector.get_table_names())
+    dialect = bind.dialect.name
 
-    user_columns = {column["name"] for column in inspector.get_columns("users")}
-    if "phone_e164" not in user_columns:
-        op.add_column("users", sa.Column("phone_e164", sa.String(length=20), nullable=True))
-    if "phone_verification_status" not in user_columns:
-        op.add_column(
-            "users",
-            sa.Column("phone_verification_status", sa.String(length=24), nullable=False, server_default="pending"),
-        )
-    if "phone_verified_at" not in user_columns:
-        op.add_column("users", sa.Column("phone_verified_at", sa.DateTime(timezone=True), nullable=True))
-    if "phone_last_otp_sent_at" not in user_columns:
-        op.add_column("users", sa.Column("phone_last_otp_sent_at", sa.DateTime(timezone=True), nullable=True))
-    if "phone_otp_attempts" not in user_columns:
-        op.add_column("users", sa.Column("phone_otp_attempts", sa.Integer(), nullable=False, server_default="0"))
+    if "users" in table_names:
+        user_columns = {column["name"] for column in inspector.get_columns("users")}
+        if "phone_e164" not in user_columns:
+            op.add_column("users", sa.Column("phone_e164", sa.String(length=20), nullable=True))
+        if "phone_verification_status" not in user_columns:
+            op.add_column(
+                "users",
+                sa.Column("phone_verification_status", sa.String(length=24), nullable=False, server_default="pending"),
+            )
+        if "phone_verified_at" not in user_columns:
+            op.add_column("users", sa.Column("phone_verified_at", sa.DateTime(timezone=True), nullable=True))
+        if "phone_last_otp_sent_at" not in user_columns:
+            op.add_column("users", sa.Column("phone_last_otp_sent_at", sa.DateTime(timezone=True), nullable=True))
+        if "phone_otp_attempts" not in user_columns:
+            op.add_column("users", sa.Column("phone_otp_attempts", sa.Integer(), nullable=False, server_default="0"))
 
-    recipient_columns = {column["name"] for column in inspector.get_columns("admin_alert_recipients")}
-    if "phone_e164" not in recipient_columns:
-        op.add_column("admin_alert_recipients", sa.Column("phone_e164", sa.String(length=20), nullable=True))
-    if "verification_status" not in recipient_columns:
-        op.add_column(
-            "admin_alert_recipients",
-            sa.Column("verification_status", sa.String(length=24), nullable=False, server_default="pending"),
-        )
-    if "verified_at" not in recipient_columns:
-        op.add_column("admin_alert_recipients", sa.Column("verified_at", sa.DateTime(timezone=True), nullable=True))
-    if "verified_by_user_id" not in recipient_columns:
-        op.add_column("admin_alert_recipients", sa.Column("verified_by_user_id", sa.Integer(), nullable=True))
-    if "otp_attempts" not in recipient_columns:
-        op.add_column("admin_alert_recipients", sa.Column("otp_attempts", sa.Integer(), nullable=False, server_default="0"))
-    if "last_otp_sent_at" not in recipient_columns:
-        op.add_column("admin_alert_recipients", sa.Column("last_otp_sent_at", sa.DateTime(timezone=True), nullable=True))
-    existing_fks = {fk["name"] for fk in inspector.get_foreign_keys("admin_alert_recipients")}
-    if "fk_admin_alert_recipients_verified_by_user_id_users" not in existing_fks:
-        op.create_foreign_key(
-            "fk_admin_alert_recipients_verified_by_user_id_users",
-            "admin_alert_recipients",
-            "users",
-            ["verified_by_user_id"],
-            ["id"],
-        )
+    if "admin_alert_recipients" in table_names:
+        recipient_columns = {column["name"] for column in inspector.get_columns("admin_alert_recipients")}
+        if "phone_e164" not in recipient_columns:
+            op.add_column("admin_alert_recipients", sa.Column("phone_e164", sa.String(length=20), nullable=True))
+        if "verification_status" not in recipient_columns:
+            op.add_column(
+                "admin_alert_recipients",
+                sa.Column("verification_status", sa.String(length=24), nullable=False, server_default="pending"),
+            )
+        if "verified_at" not in recipient_columns:
+            op.add_column("admin_alert_recipients", sa.Column("verified_at", sa.DateTime(timezone=True), nullable=True))
+        if "verified_by_user_id" not in recipient_columns:
+            op.add_column("admin_alert_recipients", sa.Column("verified_by_user_id", sa.Integer(), nullable=True))
+        if "otp_attempts" not in recipient_columns:
+            op.add_column("admin_alert_recipients", sa.Column("otp_attempts", sa.Integer(), nullable=False, server_default="0"))
+        if "last_otp_sent_at" not in recipient_columns:
+            op.add_column("admin_alert_recipients", sa.Column("last_otp_sent_at", sa.DateTime(timezone=True), nullable=True))
+        existing_fks = {fk["name"] for fk in inspector.get_foreign_keys("admin_alert_recipients") if fk.get("name")}
+        if dialect != "sqlite" and "fk_admin_alert_recipients_verified_by_user_id_users" not in existing_fks:
+            op.create_foreign_key(
+                "fk_admin_alert_recipients_verified_by_user_id_users",
+                "admin_alert_recipients",
+                "users",
+                ["verified_by_user_id"],
+                ["id"],
+            )
 
     if "phone_verifications" not in table_names:
         op.create_table(

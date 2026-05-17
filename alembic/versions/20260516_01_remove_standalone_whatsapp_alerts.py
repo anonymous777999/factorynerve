@@ -57,6 +57,8 @@ def _read_legacy_rows(bind: sa.engine.Connection) -> list[dict[str, Any]]:
 
 
 def _read_verified_users(bind: sa.engine.Connection) -> dict[str, list[dict[str, Any]]]:
+    if "users" not in _table_names(bind):
+        return {}
     rows = bind.execute(
         sa.text(
             """

@@ -20,6 +20,8 @@ depends_on = None
 def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
+    if "users" not in inspector.get_table_names():
+        return
     columns = {column["name"] for column in inspector.get_columns("users")}
 
     if "is_platform_admin" not in columns:

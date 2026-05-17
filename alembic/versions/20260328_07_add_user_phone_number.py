@@ -18,6 +18,13 @@ depends_on = None
 
 
 def upgrade() -> None:
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    if "users" not in inspector.get_table_names():
+        return
+    columns = {column["name"] for column in inspector.get_columns("users")}
+    if "phone_number" in columns:
+        return
     with op.batch_alter_table("users") as batch:
         batch.add_column(sa.Column("phone_number", sa.String(length=32), nullable=True))
 

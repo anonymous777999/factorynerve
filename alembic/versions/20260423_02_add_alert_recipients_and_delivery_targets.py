@@ -42,18 +42,19 @@ def upgrade() -> None:
     if "ix_admin_alert_recipients_is_active" not in existing_indexes:
         op.create_index("ix_admin_alert_recipients_is_active", "admin_alert_recipients", ["is_active"], unique=False)
 
-    alert_columns = {column["name"] for column in inspector.get_columns("ops_alert_events")}
-    if "recipient_phone" not in alert_columns:
-        op.add_column("ops_alert_events", sa.Column("recipient_phone", sa.String(length=48), nullable=True))
-    op.execute("DROP INDEX IF EXISTS ix_ops_alert_events_ref_id")
-    op.execute("CREATE INDEX IF NOT EXISTS ix_ops_alert_events_ref_id ON ops_alert_events (ref_id)")
-    unique_constraints = {constraint["name"] for constraint in inspector.get_unique_constraints("ops_alert_events")}
-    if "uq_ops_alert_events_ref_recipient" not in unique_constraints:
-        op.create_unique_constraint(
-            "uq_ops_alert_events_ref_recipient",
-            "ops_alert_events",
-            ["ref_id", "recipient_phone"],
-        )
+    if "ops_alert_events" in table_names:
+        alert_columns = {column["name"] for column in inspector.get_columns("ops_alert_events")}
+        if "recipient_phone" not in alert_columns:
+            op.add_column("ops_alert_events", sa.Column("recipient_phone", sa.String(length=48), nullable=True))
+        op.execute("DROP INDEX IF EXISTS ix_ops_alert_events_ref_id")
+        op.execute("CREATE INDEX IF NOT EXISTS ix_ops_alert_events_ref_id ON ops_alert_events (ref_id)")
+        unique_constraints = {constraint["name"] for constraint in inspector.get_unique_constraints("ops_alert_events")}
+        if "uq_ops_alert_events_ref_recipient" not in unique_constraints:
+            op.create_unique_constraint(
+                "uq_ops_alert_events_ref_recipient",
+                "ops_alert_events",
+                ["ref_id", "recipient_phone"],
+            )
 
 
 def downgrade() -> None:
