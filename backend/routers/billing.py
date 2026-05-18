@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import json
 import os
 import re
@@ -63,6 +64,7 @@ from backend.services.ops_alerts import (
 
 
 router = APIRouter(tags=["Billing"])
+logger = logging.getLogger(__name__)
 
 TRIAL_DAYS = int(os.getenv("TRIAL_DAYS", "7"))
 BILLING_GRACE_DAYS = int(os.getenv("BILLING_GRACE_DAYS", "3"))
@@ -248,12 +250,16 @@ def _fetch_order_entity(order_id: str | None) -> dict | None:
         return None
     try:
         import razorpay  # type: ignore
+    except ModuleNotFoundError:
+        return None
     except Exception:
+        logger.exception("Razorpay import failed while fetching order entity.")
         return None
     try:
         client = razorpay.Client(auth=(key_id, key_secret))
         return client.order.fetch(order_id) or None
     except Exception:
+        logger.exception("Razorpay initialization or order fetch failed for order_id=%s.", order_id)
         return None
 
 
@@ -760,10 +766,17 @@ async def create_order(
         )
     try:
         import razorpay  # type: ignore
-    except Exception as error:
+    except ModuleNotFoundError as error:
         raise HTTPException(status_code=500, detail="Razorpay SDK not installed.") from error
+    except Exception as error:
+        logger.exception("Razorpay import failed during order creation.")
+        raise HTTPException(status_code=500, detail="Razorpay initialization failed.") from error
 
-    client = razorpay.Client(auth=(key_id, key_secret))
+    try:
+        client = razorpay.Client(auth=(key_id, key_secret))
+    except Exception as error:
+        logger.exception("Razorpay client initialization failed during order creation.")
+        raise HTTPException(status_code=500, detail="Razorpay initialization failed.") from error
     quote = _resolve_checkout_quote(
         db,
         current_user=current_user,
@@ -936,12 +949,21 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
         raise HTTPException(status_code=400, detail="Webhook secret not configured.")
     try:
         import razorpay  # type: ignore
-    except Exception as error:
+    except ModuleNotFoundError as error:
         raise HTTPException(status_code=500, detail="Razorpay SDK not installed.") from error
+    except Exception as error:
+        logger.exception("Razorpay import failed during webhook handling.")
+        raise HTTPException(status_code=500, detail="Razorpay initialization failed.") from error
+
+    try:
+        utility = razorpay.Utility
+    except Exception as error:
+        logger.exception("Razorpay utility initialization failed during webhook handling.")
+        raise HTTPException(status_code=500, detail="Razorpay initialization failed.") from error
 
     signature = request.headers.get("x-razorpay-signature", "")
     try:
-        razorpay.Utility.verify_webhook_signature(payload, signature, secret)
+        utility.verify_webhook_signature(payload, signature, secret)
     except Exception as error:
         log_billing_event(
             "webhook.signature_verification",
