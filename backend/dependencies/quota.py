@@ -13,10 +13,40 @@ from backend.models.subscription import Subscription
 from backend.models.user import User
 from backend.security import get_current_user
 from backend.services.billing_logger import duration_ms_since, log_billing_event
+from backend.services.billing_manager import get_effective_subscription_status
 
 
 def _current_timestamp_sql(db: Session) -> str:
     return "CURRENT_TIMESTAMP" if db.bind and db.bind.dialect.name == "sqlite" else "NOW()"
+
+
+def refund_ocr_quota(
+    db: Session,
+    *,
+    org_id: str,
+    user_id: int | None = None,
+    reason: str,
+) -> None:
+    timestamp_sql = _current_timestamp_sql(db)
+    db.execute(
+        text(
+            f"""
+            UPDATE org_ocr_usage
+            SET request_count = CASE WHEN request_count > 0 THEN request_count - 1 ELSE 0 END
+            WHERE org_id = :org_id
+              AND period_end > {timestamp_sql}
+            """
+        ),
+        {"org_id": org_id},
+    )
+    db.commit()
+    log_billing_event(
+        "quota.refund",
+        org_id,
+        "success",
+        user_id=user_id,
+        reason=reason,
+    )
 
 
 async def require_ocr_quota(
@@ -30,7 +60,7 @@ async def require_ocr_quota(
         .order_by(Subscription.updated_at.desc(), Subscription.id.desc())
         .first()
     )
-    if subscription and subscription.status == "past_due":
+    if subscription and get_effective_subscription_status(subscription) == "past_due":
         log_billing_event(
             "quota.decrement",
             user.org_id,

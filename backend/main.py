@@ -58,7 +58,11 @@ from backend.services.attendance_absence_service import (
     initialize_attendance_absence_scheduler,
     shutdown_attendance_absence_scheduler,
 )
-from backend.services.billing_manager import enforce_expired_grace_periods, recover_stale_dispatching_events
+from backend.services.billing_manager import (
+    enforce_expired_grace_periods,
+    normalize_subscription_states,
+    recover_stale_dispatching_events,
+)
 
 try:
     import sentry_sdk  # type: ignore
@@ -77,10 +81,20 @@ async def lifespan(_app: FastAPI):
     try:
         logger.info("Starting backend initialization.")
         init_db()
-        with SessionLocal() as db:
-            enforce_expired_grace_periods(db)
-            await recover_stale_dispatching_events(db)
-            db.commit()
+        try:
+            with SessionLocal() as db:
+                normalized = normalize_subscription_states(db)
+                expired = enforce_expired_grace_periods(db)
+                recovered = await recover_stale_dispatching_events(db)
+                db.commit()
+                logger.info(
+                    "Billing recovery completed normalized=%s expired=%s recovered=%s",
+                    normalized,
+                    expired,
+                    recovered,
+                )
+        except Exception:
+            logger.exception("Billing recovery failed during startup; continuing without blocking app boot.")
         initialize_whatsapp_sender()
         initialize_attendance_absence_scheduler()
         initialize_ops_alerting()

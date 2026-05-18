@@ -298,6 +298,7 @@ def init_db() -> None:
         _ensure_attendance_columns()
         _ensure_phone_and_alerting_columns()
         _ensure_feedback_columns()
+        _ensure_billing_schema_columns()
         _verify_messaging_schema_or_raise()
         logger.info("Database initialization complete.")
     except Exception as error:  # pylint: disable=broad-except
@@ -328,6 +329,119 @@ def _ensure_postgres_enum_value(conn: Any, *, enum_name: str, enum_value: str) -
     conn.exec_driver_sql(f"ALTER TYPE {enum_name} ADD VALUE IF NOT EXISTS '{enum_value}'")
     logger.warning("Added missing PostgreSQL enum value %s.%s during startup drift repair.", enum_name, enum_value)
     return True
+
+
+def _ensure_billing_schema_columns() -> None:
+    """Repair drifted billing tables so runtime SQL matches the live schema."""
+    try:
+        with engine.begin() as conn:
+            dialect = conn.dialect.name
+            if "org_ocr_usage" in inspect(conn).get_table_names():
+                if dialect == "sqlite":
+                    org_ocr_columns = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(org_ocr_usage)").fetchall()}
+                    org_ocr_indexes = {
+                        row[1] for row in conn.exec_driver_sql("PRAGMA index_list('org_ocr_usage')").fetchall()
+                    }
+                else:
+                    org_ocr_columns = {
+                        str(row[0])
+                        for row in conn.execute(
+                            text(
+                                """
+                                SELECT column_name
+                                FROM information_schema.columns
+                                WHERE table_name = 'org_ocr_usage'
+                                """
+                            )
+                        ).fetchall()
+                    }
+                    org_ocr_indexes = {
+                        str(row[0])
+                        for row in conn.execute(
+                            text(
+                                """
+                                SELECT indexname
+                                FROM pg_indexes
+                                WHERE tablename = 'org_ocr_usage'
+                                """
+                            )
+                        ).fetchall()
+                    }
+                if "ocr_limit" not in org_ocr_columns:
+                    conn.exec_driver_sql("ALTER TABLE org_ocr_usage ADD COLUMN ocr_limit INTEGER NOT NULL DEFAULT 0")
+                if "period_start" not in org_ocr_columns:
+                    conn.exec_driver_sql("ALTER TABLE org_ocr_usage ADD COLUMN period_start TIMESTAMP")
+                if "period_end" not in org_ocr_columns:
+                    conn.exec_driver_sql("ALTER TABLE org_ocr_usage ADD COLUMN period_end TIMESTAMP")
+                if "ix_org_ocr_usage_org_id" not in org_ocr_indexes:
+                    conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_org_ocr_usage_org_id ON org_ocr_usage (org_id)")
+
+            if "payment_orders" in inspect(conn).get_table_names():
+                if dialect == "sqlite":
+                    payment_columns = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(payment_orders)").fetchall()}
+                    payment_indexes = {
+                        row[1] for row in conn.exec_driver_sql("PRAGMA index_list('payment_orders')").fetchall()
+                    }
+                else:
+                    payment_columns = {
+                        str(row[0])
+                        for row in conn.execute(
+                            text(
+                                """
+                                SELECT column_name
+                                FROM information_schema.columns
+                                WHERE table_name = 'payment_orders'
+                                """
+                            )
+                        ).fetchall()
+                    }
+                    payment_indexes = {
+                        str(row[0])
+                        for row in conn.execute(
+                            text(
+                                """
+                                SELECT indexname
+                                FROM pg_indexes
+                                WHERE tablename = 'payment_orders'
+                                """
+                            )
+                        ).fetchall()
+                    }
+                if "org_id" not in payment_columns:
+                    conn.exec_driver_sql("ALTER TABLE payment_orders ADD COLUMN org_id VARCHAR(36)")
+                if "plan_id" not in payment_columns:
+                    conn.exec_driver_sql("ALTER TABLE payment_orders ADD COLUMN plan_id VARCHAR(32)")
+                if "amount_paise" not in payment_columns:
+                    conn.exec_driver_sql("ALTER TABLE payment_orders ADD COLUMN amount_paise INTEGER")
+                if "razorpay_order_id" not in payment_columns:
+                    conn.exec_driver_sql("ALTER TABLE payment_orders ADD COLUMN razorpay_order_id VARCHAR(64)")
+                if "receipt_id" not in payment_columns:
+                    conn.exec_driver_sql("ALTER TABLE payment_orders ADD COLUMN receipt_id VARCHAR(120)")
+                conn.exec_driver_sql(
+                    """
+                    UPDATE payment_orders
+                    SET plan_id = COALESCE(plan_id, plan),
+                        amount_paise = COALESCE(amount_paise, amount),
+                        razorpay_order_id = COALESCE(razorpay_order_id, provider_order_id),
+                        receipt_id = COALESCE(receipt_id, receipt),
+                        org_id = COALESCE(
+                            org_id,
+                            (
+                                SELECT users.org_id
+                                FROM users
+                                WHERE users.id = payment_orders.user_id
+                            )
+                        )
+                    """
+                )
+                if "ix_payment_orders_org_id" not in payment_indexes:
+                    conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_payment_orders_org_id ON payment_orders (org_id)")
+                if "ix_payment_orders_razorpay_order_id" not in payment_indexes:
+                    conn.exec_driver_sql(
+                        "CREATE UNIQUE INDEX IF NOT EXISTS ix_payment_orders_razorpay_order_id ON payment_orders (razorpay_order_id)"
+                    )
+    except Exception:
+        logger.exception("Failed to reconcile billing schema drift during startup.")
 
 
 def _postgres_enum_labels(conn: Any, *, enum_name: str) -> set[str]:

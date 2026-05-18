@@ -19,6 +19,7 @@ class Subscription(Base):
             "uq_subscriptions_active_org_id",
             "org_id",
             unique=True,
+            sqlite_where=text("status = 'active'"),
             postgresql_where=text("status = 'active'"),
         ),
     )

@@ -30,7 +30,7 @@ from sqlalchemy.orm import Session
 from anthropic import AuthenticationError, BadRequestError
 
 from backend.database import SessionLocal, get_db, hash_ip_address
-from backend.dependencies.quota import require_ocr_quota
+from backend.dependencies.quota import refund_ocr_quota, require_ocr_quota
 from backend.dependencies.subscription import require_active_subscription
 from backend.ledger_scan import (
     build_excel_bytes as ledger_build_excel_bytes,
@@ -3315,13 +3315,12 @@ async def ocr_logbook_excel(
 ) -> Response:
     _require_ocr_access(current_user)
     requested_model = sanitize_text(model, max_length=80, preserve_newlines=False) or None
-    if mock:
-        _reject_mock_ocr()
-        image_bytes = await _read_image_upload_for_mock(file)
-    else:
-        image_bytes = await _read_validated_image_upload(file)
-
     try:
+        if mock:
+            _reject_mock_ocr()
+            image_bytes = await _read_image_upload_for_mock(file)
+        else:
+            image_bytes = await _read_validated_image_upload(file)
         if not preprocess_profile:
             preprocess_profile = os.getenv("LEDGER_SCAN_PREPROCESS_PROFILE")
         base64_image = preprocess_image_bytes(image_bytes, profile=preprocess_profile)
@@ -3336,21 +3335,26 @@ async def ocr_logbook_excel(
         excel_bytes = ledger_build_excel_bytes(validated)
     except ValueError as error:
         logger.exception("LedgerScan JSON parsing failed.")
+        refund_ocr_quota(db, org_id=resolve_org_id(current_user), user_id=current_user.id, reason="ocr_logbook_excel_validation")
         raise HTTPException(status_code=400, detail=str(error)) from error
     except AuthenticationError as error:
         logger.exception("LedgerScan authentication failed.")
+        refund_ocr_quota(db, org_id=resolve_org_id(current_user), user_id=current_user.id, reason="ocr_logbook_excel_auth")
         raise HTTPException(status_code=401, detail="Anthropic authentication failed. Check ANTHROPIC_API_KEY.") from error
     except BadRequestError as error:
         logger.exception("LedgerScan request rejected by Anthropic.")
+        refund_ocr_quota(db, org_id=resolve_org_id(current_user), user_id=current_user.id, reason="ocr_logbook_excel_bad_request")
         message = str(error)
         if "credit balance is too low" in message.lower():
             raise HTTPException(status_code=429, detail="Anthropic API credits are too low.") from error
         raise HTTPException(status_code=400, detail=message) from error
     except RuntimeError as error:
         logger.exception("LedgerScan configuration error.")
+        refund_ocr_quota(db, org_id=resolve_org_id(current_user), user_id=current_user.id, reason="ocr_logbook_excel_runtime")
         raise HTTPException(status_code=500, detail=str(error)) from error
     except Exception as error:  # pylint: disable=broad-except
         logger.exception("LedgerScan OCR failed.")
+        refund_ocr_quota(db, org_id=resolve_org_id(current_user), user_id=current_user.id, reason="ocr_logbook_excel_unexpected")
         raise HTTPException(status_code=500, detail="LedgerScan OCR failed unexpectedly.") from error
 
     metadata = validated.get("metadata", {})
@@ -3411,29 +3415,33 @@ async def ocr_logbook_excel_async(
 ) -> dict:
     _require_ocr_access(current_user)
     requested_model = sanitize_text(model, max_length=80, preserve_newlines=False) or None
-    if mock:
-        _reject_mock_ocr()
-        image_bytes = await _read_image_upload_for_mock(file)
-    else:
-        image_bytes = await _read_validated_image_upload(file)
-    if not preprocess_profile:
-        preprocess_profile = os.getenv("LEDGER_SCAN_PREPROCESS_PROFILE")
     org_id = resolve_org_id(current_user)
-    job = _queue_ocr_excel_job(
-        mode="ledger",
-        owner_id=current_user.id,
-        org_id=org_id,
-        factory_id=resolve_factory_id(db, current_user),
-        source_filename=_safe_file_name(file.filename, "ledger-ocr-input.png"),
-        content_type=file.content_type,
-        size_bytes=len(image_bytes),
-        mock=mock,
-        requested_model=requested_model,
-        system_prompt=system_prompt,
-        user_message=user_message,
-        preprocess_profile=preprocess_profile,
-        image_bytes=image_bytes,
-    )
+    try:
+        if mock:
+            _reject_mock_ocr()
+            image_bytes = await _read_image_upload_for_mock(file)
+        else:
+            image_bytes = await _read_validated_image_upload(file)
+        if not preprocess_profile:
+            preprocess_profile = os.getenv("LEDGER_SCAN_PREPROCESS_PROFILE")
+        job = _queue_ocr_excel_job(
+            mode="ledger",
+            owner_id=current_user.id,
+            org_id=org_id,
+            factory_id=resolve_factory_id(db, current_user),
+            source_filename=_safe_file_name(file.filename, "ledger-ocr-input.png"),
+            content_type=file.content_type,
+            size_bytes=len(image_bytes),
+            mock=mock,
+            requested_model=requested_model,
+            system_prompt=system_prompt,
+            user_message=user_message,
+            preprocess_profile=preprocess_profile,
+            image_bytes=image_bytes,
+        )
+    except Exception:
+        refund_ocr_quota(db, org_id=org_id, user_id=current_user.id, reason="ocr_logbook_excel_async_failed")
+        raise
     payload = dict(job)
     payload.update(_job_urls(str(job["job_id"])))
     return payload
@@ -3461,6 +3469,7 @@ async def ocr_table_excel(
     try:
         upload, image_bytes = await _read_table_excel_upload(file, image)
     except TableExcelRouteError as error:
+        refund_ocr_quota(db, org_id=resolve_org_id(current_user), user_id=current_user.id, reason="ocr_table_excel_upload_failed")
         return JSONResponse(status_code=error.status_code, content=error.payload)
 
     try:
@@ -3474,9 +3483,11 @@ async def ocr_table_excel(
         )
     except TableExcelRouteError as error:
         logger.warning("Table Excel OCR failed status=%s error=%s", error.status_code, error.payload.get("error"))
+        refund_ocr_quota(db, org_id=resolve_org_id(current_user), user_id=current_user.id, reason="ocr_table_excel_pipeline_failed")
         return JSONResponse(status_code=error.status_code, content=error.payload)
     except Exception as error:  # pylint: disable=broad-except
         logger.exception("[OCR] Error: Table Excel OCR failed unexpectedly")
+        refund_ocr_quota(db, org_id=resolve_org_id(current_user), user_id=current_user.id, reason="ocr_table_excel_unexpected")
         return JSONResponse(status_code=500, content={"error": f"Table Excel OCR failed: {error}"})
 
     headers = _table_excel_response_headers(metadata, filename="output.xlsx")
@@ -3528,8 +3539,10 @@ async def ocr_table_excel_async(
             filename=upload.filename,
         )
     except TableExcelRouteError as error:
+        refund_ocr_quota(db, org_id=resolve_org_id(current_user), user_id=current_user.id, reason="ocr_table_excel_async_upload_failed")
         return JSONResponse(status_code=error.status_code, content=error.payload)
     if int(inspection["image_quality_score"]) < 30:
+        refund_ocr_quota(db, org_id=resolve_org_id(current_user), user_id=current_user.id, reason="ocr_table_excel_async_quality_failed")
         return JSONResponse(
             status_code=400,
             content={
@@ -3538,19 +3551,23 @@ async def ocr_table_excel_async(
             },
         )
     org_id = resolve_org_id(current_user)
-    job = _queue_ocr_excel_job(
-        mode="table",
-        owner_id=current_user.id,
-        org_id=org_id,
-        factory_id=resolve_factory_id(db, current_user),
-        source_filename=_safe_file_name(upload.filename, "table-ocr-input.png"),
-        content_type=upload.content_type,
-        size_bytes=len(image_bytes),
-        requested_model=requested_model,
-        system_prompt=system_prompt,
-        user_message=user_message,
-        image_bytes=image_bytes,
-    )
+    try:
+        job = _queue_ocr_excel_job(
+            mode="table",
+            owner_id=current_user.id,
+            org_id=org_id,
+            factory_id=resolve_factory_id(db, current_user),
+            source_filename=_safe_file_name(upload.filename, "table-ocr-input.png"),
+            content_type=upload.content_type,
+            size_bytes=len(image_bytes),
+            requested_model=requested_model,
+            system_prompt=system_prompt,
+            user_message=user_message,
+            image_bytes=image_bytes,
+        )
+    except Exception:
+        refund_ocr_quota(db, org_id=org_id, user_id=current_user.id, reason="ocr_table_excel_async_queue_failed")
+        raise
     payload = dict(job)
     payload.update(_job_urls(str(job["job_id"])))
     return payload
