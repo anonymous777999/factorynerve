@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import re
@@ -48,7 +49,6 @@ from backend.tenancy import resolve_org_id
 from backend.services.billing_manager import (
     activate_org_addons,
     apply_plan_change,
-    enforce_expired_grace_periods,
     schedule_downgrade,
     cancel_scheduled_downgrade,
     apply_due_downgrades,
@@ -215,6 +215,16 @@ def _mark_payment_order_status(db: Session, *, order_id: str | None, status: str
     db.add(row)
 
 
+def _get_payment_order(db: Session, *, order_id: str | None) -> PaymentOrder | None:
+    if not order_id:
+        return None
+    return (
+        db.query(PaymentOrder)
+        .filter(PaymentOrder.provider == "razorpay", PaymentOrder.provider_order_id == order_id)
+        .first()
+    )
+
+
 def _resolve_event_id(data: dict, payload: bytes) -> str:
     event_type = str(data.get("event", ""))
     payment_entity = _extract_payment_entity(data)
@@ -238,6 +248,11 @@ def _fetch_order_entity(order_id: str | None) -> dict | None:
         return None
     try:
         import razorpay  # type: ignore
+    except Exception:
+        return None
+    try:
+        client = razorpay.Client(auth=(key_id, key_secret))
+        return client.order.fetch(order_id) or None
     except Exception:
         return None
 
@@ -362,11 +377,6 @@ def _activate_paid_order(
     except Exception:
         pass
     db.flush()
-    try:
-        client = razorpay.Client(auth=(key_id, key_secret))
-        return client.order.fetch(order_id) or None
-    except Exception:
-        return None
 
 
 def _reset_org_ocr_quota_period(
@@ -384,7 +394,7 @@ def _reset_org_ocr_quota_period(
             """
             INSERT INTO org_ocr_usage(org_id, period, ocr_limit, request_count, credit_count, period_start, period_end, created_at, updated_at)
             VALUES (:org_id, :period, :ocr_limit, 0, 0, :period_start, :period_end, :created_at, :updated_at)
-            ON CONFLICT (org_id) DO UPDATE
+            ON CONFLICT (org_id, period) DO UPDATE
               SET request_count = 0,
                   credit_count = 0,
                   period = EXCLUDED.period,
@@ -435,11 +445,16 @@ def _should_downgrade(event_type: str) -> bool:
 
 
 def _ensure_trial(db: Session, user_id: int, plan: str) -> Subscription:
-    sub = db.query(Subscription).filter(Subscription.user_id == user_id).first()
+    user = db.query(User).filter(User.id == user_id).first()
+    org_id = resolve_org_id(user) if user else None
+    if not org_id:
+        raise HTTPException(status_code=400, detail="User organization is required for trial setup.")
+    sub = db.query(Subscription).filter(Subscription.org_id == org_id).first()
     if sub:
         return sub
     now = datetime.now(timezone.utc)
     sub = Subscription(
+        org_id=org_id,
         user_id=user_id,
         plan=normalize_plan(plan),
         status="trialing",
@@ -813,23 +828,29 @@ async def create_order(
     if quote["chargeable_addon_quantities"]:
         notes["addon_quantities"] = json.dumps(quote["chargeable_addon_quantities"], separators=(",", ":"))
     receipt = f"dpr_{current_user.id}_{int(datetime.now().timestamp())}"
-    order = client.order.create(
+    order = await asyncio.to_thread(
+        client.order.create,
         {
             "amount": amount_paise,
             "currency": SUPPORTED_CURRENCY,
             "receipt": receipt,
             "notes": notes,
-        }
+        },
     )
     try:
         db.add(
             PaymentOrder(
+                org_id=resolve_org_id(current_user),
                 user_id=current_user.id,
+                plan_id=normalized_plan,
                 plan=normalized_plan,
+                amount_paise=amount_paise,
                 amount=amount_paise,
                 currency=SUPPORTED_CURRENCY,
                 provider="razorpay",
+                razorpay_order_id=str(order.get("id")),
                 provider_order_id=str(order.get("id")),
+                receipt_id=receipt,
                 receipt=receipt,
                 status=str(order.get("status") or "created"),
                 idempotency_key=idempotency_key,
@@ -872,9 +893,10 @@ async def sync_order_status(
     if not order_entity:
         raise HTTPException(status_code=502, detail="Could not verify the order with Razorpay.")
     provider_status = str(order_entity.get("status") or payment_order.status or "created").strip().lower()
+    was_paid = str(payment_order.status or "").strip().lower() in PAID_ORDER_STATUSES
     _mark_payment_order_status(db, order_id=order_id, status=provider_status)
     synced = provider_status in PAID_ORDER_STATUSES
-    if synced:
+    if synced and not was_paid:
         notes = order_entity.get("notes", {}) or {}
         plan = normalize_plan(str(notes.get("plan") or payment_order.plan))
         if not plan:
@@ -956,6 +978,7 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
             transaction = db.begin() if not db.in_transaction() else nullcontext()
             with transaction:
                 event = WebhookEvent(
+                    org_id=None,
                     provider="razorpay",
                     event_id=event_id,
                     razorpay_event_id=event_id,
@@ -965,7 +988,15 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
                 db.add(event)
                 db.flush()
                 if _should_activate(event_type):
-                    _mark_payment_order_status(db, order_id=_extract_order_id(data), status="paid")
+                    order_id = _extract_order_id(data)
+                    payment_order = _get_payment_order(db, order_id=order_id)
+                    was_paid = (
+                        str(payment_order.status or "").strip().lower() in PAID_ORDER_STATUSES
+                        if payment_order is not None
+                        else False
+                    )
+                    org_id = str(payment_order.org_id) if payment_order and payment_order.org_id else None
+                    _mark_payment_order_status(db, order_id=order_id, status="paid")
                     plan = _extract_plan(data)
                     user_id = _extract_user_id(data)
                     amount = _extract_amount(data)
@@ -987,8 +1018,10 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
                             if not addon_quantities:
                                 notes = order_entity.get("notes", {}) or {}
                                 addon_quantities = _extract_addon_quantities_from_notes(notes)
-                    if plan and user_id:
-                        order_id = _extract_order_id(data)
+                    if plan and user_id and not was_paid:
+                        if org_id is None:
+                            user = db.query(User).filter(User.id == user_id).first()
+                            org_id = resolve_org_id(user) if user else None
                         currency = str((_extract_order_entity(data).get("currency") or "INR"))
                         _activate_paid_order(
                             db,
@@ -1002,6 +1035,7 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
                             currency=currency,
                             event_type=event_type,
                         )
+                    event.org_id = org_id
                 elif _should_downgrade(event_type):
                     order_id = _extract_order_id(data)
                     payment_entity = _extract_payment_entity(data)
@@ -1030,6 +1064,7 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
                         effective_at = datetime.now(timezone.utc) + timedelta(days=BILLING_GRACE_DAYS)
                         schedule_downgrade(db, user_id=user_id, plan="free", effective_at=effective_at)
                         db.flush()
+                    event.org_id = org_id
             db.commit()
         except IntegrityError:
             db.rollback()

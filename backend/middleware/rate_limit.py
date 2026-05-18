@@ -30,6 +30,7 @@ except Exception:  # pragma: no cover - local fallback for environments without 
 
 _fallback_lock = threading.Lock()
 _fallback_hits: dict[tuple[str, str], deque[float]] = defaultdict(deque)
+_fallback_last_prune = 0.0
 
 
 def authenticated_user_key(request: Request) -> str:
@@ -71,13 +72,26 @@ def _parse_limit(limit_value: str) -> tuple[int, int]:
 
 
 def _fallback_enforce(limit_value: str, key_func: Callable[[Request], str], request: Request) -> None:
+    global _fallback_last_prune
     amount, window_seconds = _parse_limit(limit_value)
     key = (limit_value, key_func(request))
     now = time.time()
     with _fallback_lock:
+        if now - _fallback_last_prune >= 60 or len(_fallback_hits) > 4096:
+            stale_keys = [
+                history_key
+                for history_key, history in _fallback_hits.items()
+                if not history or now - history[-1] >= 3600
+            ]
+            for history_key in stale_keys:
+                _fallback_hits.pop(history_key, None)
+            _fallback_last_prune = now
         history = _fallback_hits[key]
         while history and now - history[0] >= window_seconds:
             history.popleft()
+        if not history:
+            _fallback_hits.pop(key, None)
+            history = _fallback_hits[key]
         if len(history) >= amount:
             raise HTTPException(status_code=429, detail="Rate limit exceeded.")
         history.append(now)

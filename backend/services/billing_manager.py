@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import text
@@ -21,6 +22,16 @@ from backend.tenancy import resolve_factory_id, resolve_org_id
 
 
 logger = logging.getLogger(__name__)
+VALID_SUBSCRIPTION_STATUSES = {"trialing", "active", "past_due", "suspended", "cancelled", "inactive"}
+BILLING_GRACE_DAYS = int(os.getenv("BILLING_GRACE_DAYS", "3"))
+
+
+def _as_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
 
 
 def _resolve_subscription_org_id(
@@ -40,11 +51,74 @@ def _resolve_subscription_org_id(
 
 
 def get_active_subscription(db: Session, org_id: str) -> Subscription | None:
-    return (
+    rows = (
         db.query(Subscription)
-        .filter(Subscription.org_id == org_id, Subscription.status == "active")
-        .first()
+        .filter(Subscription.org_id == org_id)
+        .order_by(Subscription.updated_at.desc(), Subscription.id.desc())
+        .all()
     )
+    for row in rows:
+        if get_effective_subscription_status(row) == "active":
+            return row
+    return None
+
+
+def get_effective_subscription_status(
+    sub: Subscription,
+    *,
+    now: datetime | None = None,
+) -> str:
+    current_time = now or datetime.now(timezone.utc)
+    raw_status = str(sub.status or "inactive").strip().lower()
+    status = raw_status if raw_status in VALID_SUBSCRIPTION_STATUSES else "suspended"
+    grace_end = _as_utc(sub.grace_period_end_at)
+    current_period_end = _as_utc(sub.current_period_end_at)
+    if status == "past_due":
+        if grace_end and grace_end <= current_time:
+            return "suspended"
+        return "past_due"
+    if status == "active" and current_period_end and current_period_end <= current_time:
+        if grace_end is None:
+            grace_end = current_period_end + timedelta(days=BILLING_GRACE_DAYS)
+        return "past_due" if grace_end > current_time else "suspended"
+    return status
+
+
+def normalize_subscription_record(
+    db: Session,
+    sub: Subscription,
+    *,
+    now: datetime | None = None,
+) -> bool:
+    current_time = now or datetime.now(timezone.utc)
+    updated = False
+    current_period_end = _as_utc(sub.current_period_end_at)
+    effective_status = get_effective_subscription_status(sub, now=current_time)
+    raw_status = str(sub.status or "").strip().lower()
+    if raw_status != effective_status:
+        sub.status = effective_status
+        updated = True
+    if (
+        effective_status == "past_due"
+        and current_period_end
+        and current_period_end <= current_time
+        and sub.grace_period_end_at is None
+    ):
+        sub.grace_period_end_at = current_period_end + timedelta(days=BILLING_GRACE_DAYS)
+        updated = True
+    if updated:
+        sub.updated_at = current_time
+        db.add(sub)
+    return updated
+
+
+def normalize_subscription_states(db: Session) -> int:
+    now = datetime.now(timezone.utc)
+    updated = 0
+    for row in db.query(Subscription).all():
+        if normalize_subscription_record(db, row, now=now):
+            updated += 1
+    return updated
 
 
 def detect_orphaned_subscriptions(db: Session) -> list[int]:
@@ -254,29 +328,24 @@ def apply_due_downgrades(
 
 def enforce_expired_grace_periods(db: Session) -> int:
     now = datetime.now(timezone.utc)
-    rows = (
-        db.query(Subscription)
-        .filter(
-            Subscription.status == "past_due",
-            Subscription.grace_period_end_at.isnot(None),
-            Subscription.grace_period_end_at <= now,
-        )
-        .all()
-    )
+    rows = db.query(Subscription).all()
+    changed = 0
     for row in rows:
-        row.status = "suspended"
-        row.updated_at = now
-        db.add(row)
-        log_billing_event(
-            "subscription.state_change",
-            row.org_id,
-            "success",
-            action="GRACE_PERIOD_EXPIRED",
-            user_id=row.user_id,
-            status="suspended",
-            grace_period_end=row.grace_period_end_at.isoformat() if row.grace_period_end_at else None,
-        )
-    return len(rows)
+        previous_status = str(row.status or "").strip().lower()
+        if normalize_subscription_record(db, row, now=now):
+            changed += 1
+            log_billing_event(
+                "subscription.state_change",
+                row.org_id,
+                "success",
+                action="GRACE_PERIOD_EXPIRED"
+                if previous_status == "past_due" and row.status == "suspended"
+                else "STATE_NORMALIZED",
+                user_id=row.user_id,
+                status=row.status,
+                grace_period_end=row.grace_period_end_at.isoformat() if row.grace_period_end_at else None,
+            )
+    return changed
 
 
 def record_invoice(
