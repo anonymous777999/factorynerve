@@ -1,0 +1,6 @@
+Extract fields from the OCR text and respond with JSON only.
+Schema:
+{extraction_schema}
+
+Document text:
+{document_text}

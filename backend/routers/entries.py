@@ -13,13 +13,15 @@ from sqlalchemy import case, func
 from sqlalchemy.orm import Session, selectinload
 
 from backend.cache import delete_prefix
+from backend.ai import get_provider_from_env
+from backend.ai.prompts.registry import PromptRegistry
+from backend.ai.services.parse_service import ParseService
 from backend.ai_engine import (
     build_summary_prompt,
     compute_confidence,
     estimate_tokens,
     generate_entry_summary,
     parse_unstructured_input,
-    parse_unstructured_input_ai,
     parse_unstructured_input_with_confidence,
 )
 from backend.database import get_db, hash_ip_address, SessionLocal
@@ -51,6 +53,33 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["Entries"])
 
 ALLOWED_ENTRY_STATUSES = {"submitted", "approved", "rejected"}
+SMART_INPUT_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "date": {"type": "string", "format": "date"},
+        "shift": {"type": "string"},
+        "units_target": {"type": "integer", "minimum": 0},
+        "units_produced": {"type": "integer", "minimum": 0},
+        "manpower_present": {"type": "integer", "minimum": 0},
+        "manpower_absent": {"type": "integer", "minimum": 0},
+        "downtime_minutes": {"type": "integer", "minimum": 0},
+        "downtime_reason": {"type": "string"},
+        "materials_used": {"type": "string"},
+        "quality_issues": {"type": "boolean"},
+        "quality_details": {"type": "string"},
+        "notes": {"type": "string"},
+    },
+    "required": [
+        "date",
+        "shift",
+        "units_target",
+        "units_produced",
+        "manpower_present",
+        "manpower_absent",
+        "downtime_minutes",
+        "quality_issues",
+    ],
+}
 
 
 def _invalidate_entry_related_cache(entry: Entry | None = None, *, org_id: str | None = None, user_id: int | None = None) -> None:
@@ -431,7 +460,10 @@ async def parse_smart_input(
     ai_used = False
     ai_error: str | None = None
     if confidence < threshold and os.getenv("SMART_INPUT_AI_FALLBACK", "1") == "1":
-        ai_extracted, ai_error = parse_unstructured_input_ai(cleaned_text)
+        parse_service = ParseService(provider=get_provider_from_env(), registry=PromptRegistry())
+        ai_result = await parse_service.parse_document(cleaned_text, SMART_INPUT_SCHEMA)
+        ai_extracted = ai_result.validated_output if ai_result.success else None
+        ai_error = ai_result.error_message
         if ai_extracted:
             for key, value in ai_extracted.items():
                 if value not in (None, ""):

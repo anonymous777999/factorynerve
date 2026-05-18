@@ -6,6 +6,7 @@ import os
 from typing import Any
 
 from backend.services.intelligence.schemas import ClassificationResult, ModelSelection, ModelTier
+from backend.utils import get_config
 
 
 TIER_ORDER: dict[str, int] = {"haiku": 0, "sonnet": 1, "opus": 2}
@@ -86,11 +87,11 @@ def resolve_model_name(provider: str, tier: str) -> str:
 def provider_has_key(provider: str) -> bool:
     key = provider.strip().lower()
     if key == "anthropic":
-        return _is_configured_secret(os.getenv("ANTHROPIC_API_KEY"))
+        return _is_configured_secret(config.anthropic_api_key)
     if key == "openai":
-        return _is_configured_secret(os.getenv("OPENAI_API_KEY"))
+        return _is_configured_secret(config.openai_api_key)
     if key == "groq":
-        return _is_configured_secret(os.getenv("GROQ_API_KEY"))
+        return _is_configured_secret(config.groq_api_key)
     return False
 
 
@@ -118,3 +119,4 @@ def json_safe(value: Any) -> Any:
     if isinstance(value, list):
         return [json_safe(item) for item in value]
     return value
+config = get_config()

@@ -56,6 +56,7 @@ from backend.utils import (
     HIGH_CONFIDENCE_THRESHOLD,
     LOW_CONFIDENCE_THRESHOLD,
     PROJECT_ROOT,
+    get_config,
     normalize_confidence,
     sanitize_text,
 )
@@ -353,12 +354,12 @@ def _table_excel_timeout_seconds() -> float:
 
 
 def _require_anthropic_api_key() -> str:
-    api_key = (os.getenv("ANTHROPIC_API_KEY") or "").strip()
+    api_key = (get_config().anthropic_api_key or "").strip()
     if not api_key:
         logger.error("[OCR] API key: missing")
         raise _table_excel_error(
             500,
-            "ANTHROPIC_API_KEY is not configured. Structured OCR requires a valid Anthropic API key.",
+            "Structured OCR provider credentials are not configured.",
         )
     logger.info("[OCR] API key: present")
     return api_key
@@ -3346,7 +3347,7 @@ async def ocr_logbook_excel(
     except AuthenticationError as error:
         logger.exception("LedgerScan authentication failed.")
         refund_ocr_quota(db, org_id=resolve_org_id(current_user), user_id=current_user.id, reason="ocr_logbook_excel_auth")
-        raise HTTPException(status_code=401, detail="Anthropic authentication failed. Check ANTHROPIC_API_KEY.") from error
+        raise HTTPException(status_code=401, detail="Structured OCR authentication failed.") from error
     except BadRequestError as error:
         logger.exception("LedgerScan request rejected by Anthropic.")
         refund_ocr_quota(db, org_id=resolve_org_id(current_user), user_id=current_user.id, reason="ocr_logbook_excel_bad_request")

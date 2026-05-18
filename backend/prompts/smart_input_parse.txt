@@ -1,0 +1,6 @@
+Extract DPR fields from the text and return JSON only.
+Required schema:
+{expected_schema}
+
+Input text:
+{document_text}

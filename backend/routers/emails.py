@@ -227,7 +227,7 @@ def generate_summary_email(
     if not has_any_ai_key():
         raise HTTPException(
             status_code=400,
-            detail="AI provider not configured. Add ANTHROPIC_API_KEY or OPENAI_API_KEY in DPR.ai/.env and restart.",
+            detail="AI provider not configured. Add a supported provider credential in settings and restart.",
         )
     summary = _build_summary(db, current_user, start_date, end_date)
     org_id = resolve_org_id(current_user)
