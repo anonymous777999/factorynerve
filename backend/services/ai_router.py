@@ -1,24 +1,30 @@
-"""AI routing with provider fallback, retries, and circuit breaker."""
+"""AI routing with provider fallback, retries, and circuit breaker.
+
+This module keeps the legacy public API intact while routing provider execution
+through typed AI response objects for safer internal handling.
+"""
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import os
 import time
-from functools import lru_cache
-from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 from typing import Any, Callable
 
+from backend.ai.prompts.base import RenderedPrompt
+from backend.ai.providers.base import ProviderConfig, RawAIResponse, TokenUsage
+from backend.ai.providers.openai import OpenAIProvider
 from backend.ai.validators.output_validator import AIOutputValidator
 from backend.utils import get_config
 
 
 logger = logging.getLogger(__name__)
-config = get_config()
+APP_CONFIG = get_config()
 _TEXT_VALIDATOR = AIOutputValidator()
 
 
@@ -89,7 +95,6 @@ def _call_with_timeout(fn: Callable[[], str], timeout: float) -> str:
     except FutureTimeout as error:
         raise TimeoutError("AI provider timed out.") from error
 
-
 def _retry(fn: Callable[[], str], *, provider: str) -> str:
     last_error: Exception | None = None
     for attempt in range(1, max(1, AI_RETRY_ATTEMPTS) + 1):
@@ -145,70 +150,16 @@ def primary_provider_label() -> str:
 
 def _has_key(provider: str) -> bool:
     if provider == "groq":
-        return bool((config.groq_api_key or "").strip())
+        return bool((APP_CONFIG.groq_api_key or "").strip())
     if provider == "anthropic":
-        return bool((config.anthropic_api_key or "").strip())
+        return bool((APP_CONFIG.anthropic_api_key or "").strip())
     if provider == "openai":
-        return bool((config.openai_api_key or "").strip())
+        return bool((APP_CONFIG.openai_api_key or "").strip())
     return False
 
 
 def has_any_key() -> bool:
     return any(_has_key(provider) for provider in _provider_chain())
-
-
-def _call_groq(prompt: str, *, max_tokens: int) -> str:
-    try:
-        import groq  # type: ignore
-    except Exception as error:
-        raise RuntimeError("Groq SDK not installed.") from error
-    api_key = config.groq_api_key
-    if not api_key:
-        raise RuntimeError("AI provider credential missing.")
-    client = groq.Groq(api_key=api_key)
-    resp = client.chat.completions.create(
-        model=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-        max_tokens=max_tokens,
-    )
-    return resp.choices[0].message.content.strip()
-
-
-def _call_anthropic(prompt: str, *, max_tokens: int) -> str:
-    try:
-        import anthropic  # type: ignore
-    except Exception as error:
-        raise RuntimeError("Anthropic SDK not installed.") from error
-    api_key = config.anthropic_api_key
-    if not api_key:
-        raise RuntimeError("AI provider credential missing.")
-    client = anthropic.Anthropic(api_key=api_key)
-    messages_api = client.messages
-    resp = messages_api.create(
-        model=os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20240620"),
-        max_tokens=max_tokens,
-        messages=[{"role": "user", "content": prompt}],
-    )
-    return resp.content[0].text.strip()
-
-
-def _call_openai(prompt: str, *, max_tokens: int) -> str:
-    try:
-        from openai import OpenAI  # type: ignore
-    except Exception as error:
-        raise RuntimeError("OpenAI SDK not installed.") from error
-    api_key = config.openai_api_key
-    if not api_key:
-        raise RuntimeError("AI provider credential missing.")
-    client = OpenAI(api_key=api_key, timeout=AI_TIMEOUT_SECONDS)
-    resp = client.chat.completions.create(
-        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-        messages=[{"role": "user", "content": prompt}],
-        temperature=0.2,
-        max_tokens=max_tokens,
-    )
-    return resp.choices[0].message.content.strip()
 
 
 def _safe_text(text: str | None) -> str:
@@ -227,7 +178,9 @@ def _text_output_schema() -> dict[str, Any]:
 
 def _validate_text_output(raw_text: str) -> str:
     try:
-        validated = asyncio.run(
+        from asyncio import run
+
+        validated = run(
             _TEXT_VALIDATOR.validate(
                 json.dumps({"text": _safe_text(raw_text)}),
                 _text_output_schema(),
@@ -312,14 +265,173 @@ def build_email_prompt(summary: dict[str, Any]) -> str:
     return template.format(raw=raw)
 
 
-def _run_provider(provider: str, prompt: str, *, max_tokens: int) -> str:
+def _provider_temperature() -> float:
+    return 0.2
+
+
+def _status_code_from_error(error: Exception) -> int | None:
+    for attr in ("status_code", "code", "status"):
+        value = getattr(error, attr, None)
+        try:
+            if value is not None:
+                return int(value)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _build_prompt(prompt: str) -> RenderedPrompt:
+    return RenderedPrompt(
+        name="legacy_ai_router_text",
+        prompt_text=prompt,
+        version="legacy",
+        metadata={},
+    )
+
+
+def _build_provider_config(provider: str, *, max_tokens: int) -> ProviderConfig:
     if provider == "groq":
-        return _call_with_timeout(lambda: _call_groq(prompt, max_tokens=max_tokens), AI_TIMEOUT_SECONDS)
+        model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
+    elif provider == "anthropic":
+        model = os.getenv("ANTHROPIC_MODEL", "claude-3-5-sonnet-20240620")
+    else:
+        model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    return ProviderConfig(
+        model=model,
+        temperature=_provider_temperature(),
+        max_tokens=max_tokens,
+        timeout_seconds=AI_TIMEOUT_SECONDS,
+    )
+
+
+class _AnthropicCompatProvider:
+    provider_name = "anthropic"
+
+    async def complete(self, prompt: RenderedPrompt, config: ProviderConfig) -> RawAIResponse:
+        started = time.perf_counter()
+        try:
+            import anthropic  # type: ignore
+
+            api_key = (prompt.metadata or {}).get("api_key") or APP_CONFIG.anthropic_api_key
+            if not api_key:
+                raise RuntimeError("AI provider credential missing.")
+            client = anthropic.Anthropic(api_key=api_key, timeout=config.timeout_seconds)
+            response = client.messages.create(
+                model=config.model,
+                max_tokens=config.max_tokens,
+                messages=[{"role": "user", "content": prompt.prompt_text}],
+            )
+            parts = getattr(response, "content", []) or []
+            text_chunks = [getattr(item, "text", "") for item in parts if getattr(item, "text", "")]
+            content = "\n".join(chunk.strip() for chunk in text_chunks if chunk).strip() or None
+            usage = getattr(response, "usage", None)
+            input_tokens = int(getattr(usage, "input_tokens", 0) or 0)
+            output_tokens = int(getattr(usage, "output_tokens", 0) or 0)
+            return RawAIResponse(
+                content=content,
+                usage=TokenUsage(
+                    input_tokens=max(0, input_tokens),
+                    output_tokens=max(0, output_tokens),
+                    total_tokens=max(0, input_tokens + output_tokens),
+                    estimated_cost_usd=0.0,
+                ),
+                provider=self.provider_name,
+                model=config.model,
+                latency_ms=int((time.perf_counter() - started) * 1000),
+                metadata={"prompt_name": prompt.name},
+            )
+        except Exception as error:  # pylint: disable=broad-except
+            return RawAIResponse(
+                content=None,
+                usage=TokenUsage(),
+                provider=self.provider_name,
+                model=config.model,
+                latency_ms=int((time.perf_counter() - started) * 1000),
+                error=str(error),
+                status_code=_status_code_from_error(error),
+                metadata={"prompt_name": prompt.name},
+            )
+
+
+class _GroqCompatProvider:
+    provider_name = "groq"
+
+    async def complete(self, prompt: RenderedPrompt, config: ProviderConfig) -> RawAIResponse:
+        started = time.perf_counter()
+        try:
+            import groq  # type: ignore
+
+            api_key = APP_CONFIG.groq_api_key
+            if not api_key:
+                raise RuntimeError("AI provider credential missing.")
+            client = groq.Groq(api_key=api_key)
+            response = client.chat.completions.create(
+                model=config.model,
+                messages=[{"role": "user", "content": prompt.prompt_text}],
+                temperature=config.temperature,
+                max_tokens=config.max_tokens,
+            )
+            content = _safe_text(response.choices[0].message.content) or None
+            usage = getattr(response, "usage", None)
+            prompt_tokens = int(getattr(usage, "prompt_tokens", 0) or 0)
+            completion_tokens = int(getattr(usage, "completion_tokens", 0) or 0)
+            total_tokens = int(getattr(usage, "total_tokens", 0) or 0) or (prompt_tokens + completion_tokens)
+            return RawAIResponse(
+                content=content,
+                usage=TokenUsage(
+                    input_tokens=max(0, prompt_tokens),
+                    output_tokens=max(0, completion_tokens),
+                    total_tokens=max(0, total_tokens),
+                    estimated_cost_usd=0.0,
+                ),
+                provider=self.provider_name,
+                model=config.model,
+                latency_ms=int((time.perf_counter() - started) * 1000),
+                metadata={"prompt_name": prompt.name},
+            )
+        except Exception as error:  # pylint: disable=broad-except
+            return RawAIResponse(
+                content=None,
+                usage=TokenUsage(),
+                provider=self.provider_name,
+                model=config.model,
+                latency_ms=int((time.perf_counter() - started) * 1000),
+                error=str(error),
+                status_code=_status_code_from_error(error),
+                metadata={"prompt_name": prompt.name},
+            )
+
+
+_OPENAI_PROVIDER = OpenAIProvider()
+_ANTHROPIC_PROVIDER = _AnthropicCompatProvider()
+_GROQ_PROVIDER = _GroqCompatProvider()
+
+
+def _provider_impl(provider: str) -> Any:
+    if provider == "groq":
+        return _GROQ_PROVIDER
     if provider == "anthropic":
-        return _call_with_timeout(lambda: _call_anthropic(prompt, max_tokens=max_tokens), AI_TIMEOUT_SECONDS)
+        return _ANTHROPIC_PROVIDER
     if provider == "openai":
-        return _call_with_timeout(lambda: _call_openai(prompt, max_tokens=max_tokens), AI_TIMEOUT_SECONDS)
+        return _OPENAI_PROVIDER
     raise RuntimeError(f"Unknown provider {provider}")
+
+
+def _run_provider(provider: str, prompt: str, *, max_tokens: int) -> str:
+    provider_impl = _provider_impl(provider)
+    rendered_prompt = _build_prompt(prompt)
+    provider_config = _build_provider_config(provider, max_tokens=max_tokens)
+
+    def _invoke() -> str:
+        from asyncio import run
+
+        response = run(provider_impl.complete(rendered_prompt, provider_config))
+        content = _safe_text(response.content)
+        if content:
+            return content
+        raise RuntimeError(response.error or "AI provider returned no content.")
+
+    return _call_with_timeout(_invoke, AI_TIMEOUT_SECONDS)
 
 
 def _generate(prompt: str, *, max_tokens: int, scope: str) -> str:
