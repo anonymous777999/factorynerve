@@ -24,7 +24,7 @@ def upgrade() -> None:
     op.add_column('invoices', sa.Column('period_end', sa.DateTime(timezone=True), nullable=True))
     op.add_column('invoices', sa.Column('amount_paise', sa.Integer(), nullable=True))
     
-    op.add_column('webhook_events', sa.Column('org_id', sa.String(length=36), nullable=True))
+    op.add_column('webhook_events', sa.Column('org_id', sa.Integer(), nullable=True))
     op.add_column('webhook_events', sa.Column('razorpay_event_id', sa.String(length=64), nullable=True))
     op.add_column('webhook_events', sa.Column('status', sa.String(length=32), server_default='processed', nullable=False))
     op.add_column('webhook_events', sa.Column('outcome', sa.String(length=64), nullable=True))
