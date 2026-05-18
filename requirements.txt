@@ -19,6 +19,7 @@ cryptography
 pytest
 email-validator
 requests
+razorpay==1.4.2
 qrcode[pil]
 pytesseract
 opencv-python-headless
