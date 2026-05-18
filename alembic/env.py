@@ -35,6 +35,7 @@ import backend.models.subscription  # noqa: F401
 import backend.models.invoice  # noqa: F401
 import backend.models.webhook_event  # noqa: F401
 import backend.models.payment_order  # noqa: F401
+import backend.models.org_subscription_addon  # noqa: F401
 import backend.models.password_reset_token  # noqa: F401
 import backend.models.email_verification_token  # noqa: F401
 import backend.models.pending_registration  # noqa: F401
@@ -47,6 +48,28 @@ import backend.models.shift_template  # noqa: F401
 import backend.models.admin_alert_recipient  # noqa: F401
 import backend.models.ops_alert_daily_summary  # noqa: F401
 import backend.models.phone_verification  # noqa: F401
+import backend.models.feedback  # noqa: F401
+import backend.models.ai_result_cache  # noqa: F401
+import backend.models.ai_usage_log  # noqa: F401
+import backend.models.intelligence_request  # noqa: F401
+import backend.models.intelligence_stage_usage  # noqa: F401
+import backend.models.ocr_verification  # noqa: F401
+import backend.models.steel_customer  # noqa: F401
+import backend.models.steel_customer_follow_up_task  # noqa: F401
+import backend.models.steel_customer_payment  # noqa: F401
+import backend.models.steel_customer_payment_allocation  # noqa: F401
+import backend.models.steel_dispatch  # noqa: F401
+import backend.models.steel_dispatch_line  # noqa: F401
+import backend.models.steel_inventory_item  # noqa: F401
+import backend.models.steel_inventory_transaction  # noqa: F401
+import backend.models.steel_production_batch  # noqa: F401
+import backend.models.steel_sales_invoice  # noqa: F401
+import backend.models.steel_sales_invoice_line  # noqa: F401
+import backend.models.steel_stock_reconciliation  # noqa: F401
+import backend.models.auth_audit_log  # noqa: F401
+import backend.models.auth_password_reset  # noqa: F401
+import backend.models.auth_session  # noqa: F401
+import backend.models.auth_user  # noqa: F401
 
 config = context.config
 

@@ -36,10 +36,11 @@ END
 
 
 def upgrade() -> None:
-    op.add_column("audit_logs", sa.Column("previous_state", postgresql.JSONB(astext_type=sa.Text()), nullable=True))
-    op.add_column("audit_logs", sa.Column("new_state", postgresql.JSONB(astext_type=sa.Text()), nullable=True))
-
     bind = op.get_bind()
+    json_type = postgresql.JSONB(astext_type=sa.Text()) if bind.dialect.name == "postgresql" else sa.JSON()
+    op.add_column("audit_logs", sa.Column("previous_state", json_type, nullable=True))
+    op.add_column("audit_logs", sa.Column("new_state", json_type, nullable=True))
+
     if bind.dialect.name != "postgresql":
         return
 
