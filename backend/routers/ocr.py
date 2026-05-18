@@ -30,6 +30,8 @@ from sqlalchemy.orm import Session
 from anthropic import AuthenticationError, BadRequestError
 
 from backend.database import SessionLocal, get_db, hash_ip_address
+from backend.dependencies.quota import require_ocr_quota
+from backend.dependencies.subscription import require_active_subscription
 from backend.ledger_scan import (
     build_excel_bytes as ledger_build_excel_bytes,
     extract_data_from_image as ledger_extract_data,
@@ -3295,7 +3297,11 @@ async def warp_document(
     return Response(content=warped_bytes, media_type="image/png", headers=headers)
 
 
-@router.post("/logbook-excel", status_code=status.HTTP_200_OK)
+@router.post(
+    "/logbook-excel",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_active_subscription), Depends(require_ocr_quota)],
+)
 async def ocr_logbook_excel(
     file: UploadFile = File(...),
     mock: bool = Form(default=False),
@@ -3314,13 +3320,6 @@ async def ocr_logbook_excel(
         image_bytes = await _read_image_upload_for_mock(file)
     else:
         image_bytes = await _read_validated_image_upload(file)
-    org_id = resolve_org_id(current_user)
-    plan = get_org_plan_for_usage(db, org_id=org_id, user_id=current_user.id)
-    check_rate_limit(current_user.id, plan=plan)
-    if org_id:
-        check_and_record_org_usage(db, org_id=org_id, image_bytes=len(image_bytes), plan=plan)
-    else:
-        check_and_record_usage(db, user_id=current_user.id, image_bytes=len(image_bytes), plan=plan)
 
     try:
         if not preprocess_profile:
@@ -3395,7 +3394,11 @@ async def ocr_logbook_excel(
     )
 
 
-@router.post("/logbook-excel-async", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/logbook-excel-async",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(require_active_subscription), Depends(require_ocr_quota)],
+)
 async def ocr_logbook_excel_async(
     file: UploadFile = File(...),
     mock: bool = Form(default=False),
@@ -3416,12 +3419,6 @@ async def ocr_logbook_excel_async(
     if not preprocess_profile:
         preprocess_profile = os.getenv("LEDGER_SCAN_PREPROCESS_PROFILE")
     org_id = resolve_org_id(current_user)
-    plan = get_org_plan_for_usage(db, org_id=org_id, user_id=current_user.id)
-    check_rate_limit(current_user.id, plan=plan)
-    if org_id:
-        check_and_record_org_usage(db, org_id=org_id, image_bytes=len(image_bytes), plan=plan)
-    else:
-        check_and_record_usage(db, user_id=current_user.id, image_bytes=len(image_bytes), plan=plan)
     job = _queue_ocr_excel_job(
         mode="ledger",
         owner_id=current_user.id,
@@ -3442,7 +3439,11 @@ async def ocr_logbook_excel_async(
     return payload
 
 
-@router.post("/table-excel", status_code=status.HTTP_200_OK)
+@router.post(
+    "/table-excel",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_active_subscription), Depends(require_ocr_quota)],
+)
 async def ocr_table_excel(
     file: UploadFile | None = File(default=None),
     image: UploadFile | None = File(default=None),
@@ -3461,13 +3462,6 @@ async def ocr_table_excel(
         upload, image_bytes = await _read_table_excel_upload(file, image)
     except TableExcelRouteError as error:
         return JSONResponse(status_code=error.status_code, content=error.payload)
-    org_id = resolve_org_id(current_user)
-    plan = get_org_plan_for_usage(db, org_id=org_id, user_id=current_user.id)
-    check_rate_limit(current_user.id, plan=plan)
-    if org_id:
-        check_and_record_org_usage(db, org_id=org_id, image_bytes=len(image_bytes), plan=plan)
-    else:
-        check_and_record_usage(db, user_id=current_user.id, image_bytes=len(image_bytes), plan=plan)
 
     try:
         excel_bytes, metadata = _run_table_excel_pipeline(
@@ -3508,7 +3502,11 @@ async def ocr_table_excel(
     )
 
 
-@router.post("/table-excel-async", status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/table-excel-async",
+    status_code=status.HTTP_202_ACCEPTED,
+    dependencies=[Depends(require_active_subscription), Depends(require_ocr_quota)],
+)
 async def ocr_table_excel_async(
     file: UploadFile | None = File(default=None),
     image: UploadFile | None = File(default=None),
@@ -3540,12 +3538,6 @@ async def ocr_table_excel_async(
             },
         )
     org_id = resolve_org_id(current_user)
-    plan = get_org_plan_for_usage(db, org_id=org_id, user_id=current_user.id)
-    check_rate_limit(current_user.id, plan=plan)
-    if org_id:
-        check_and_record_org_usage(db, org_id=org_id, image_bytes=len(image_bytes), plan=plan)
-    else:
-        check_and_record_usage(db, user_id=current_user.id, image_bytes=len(image_bytes), plan=plan)
     job = _queue_ocr_excel_job(
         mode="table",
         owner_id=current_user.id,
@@ -3564,7 +3556,11 @@ async def ocr_table_excel_async(
     return payload
 
 
-@router.get("/jobs/{job_id}", status_code=status.HTTP_200_OK)
+@router.get(
+    "/jobs/{job_id}",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_active_subscription)],
+)
 def get_ocr_job(job_id: str, current_user: User = Depends(get_current_user)) -> dict:
     _require_ocr_access(current_user)
     payload = get_background_job(job_id, owner_id=current_user.id)
@@ -3574,7 +3570,11 @@ def get_ocr_job(job_id: str, current_user: User = Depends(get_current_user)) -> 
     return payload
 
 
-@router.get("/jobs/{job_id}/download", status_code=status.HTTP_200_OK)
+@router.get(
+    "/jobs/{job_id}/download",
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_active_subscription)],
+)
 def download_ocr_job(job_id: str, current_user: User = Depends(get_current_user)) -> Response:
     _require_ocr_access(current_user)
     job = get_background_job(job_id, owner_id=current_user.id)

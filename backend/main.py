@@ -35,6 +35,7 @@ from backend.routers.observability import router as observability_router
 from backend.routers.whatsapp_webhook import router as whatsapp_webhook_router
 from backend.routers.plans import router as plans_router
 from backend.routers.billing import router as billing_router
+from backend.routers.admin_billing import router as admin_billing_router
 from backend.routers.premium import router as premium_router
 from backend.routers.steel import router as steel_router
 from backend.utils import get_config, setup_logging
@@ -57,6 +58,7 @@ from backend.services.attendance_absence_service import (
     initialize_attendance_absence_scheduler,
     shutdown_attendance_absence_scheduler,
 )
+from backend.services.billing_manager import enforce_expired_grace_periods, recover_stale_dispatching_events
 
 try:
     import sentry_sdk  # type: ignore
@@ -75,6 +77,10 @@ async def lifespan(_app: FastAPI):
     try:
         logger.info("Starting backend initialization.")
         init_db()
+        with SessionLocal() as db:
+            enforce_expired_grace_periods(db)
+            await recover_stale_dispatching_events(db)
+            db.commit()
         initialize_whatsapp_sender()
         initialize_attendance_absence_scheduler()
         initialize_ops_alerting()
@@ -121,6 +127,7 @@ app.include_router(emails_router, prefix="/emails")
 app.include_router(intelligence_router, prefix="/intelligence")
 app.include_router(plans_router, prefix="/plans")
 app.include_router(billing_router, prefix="/billing")
+app.include_router(admin_billing_router)
 app.include_router(premium_router, prefix="/premium")
 app.include_router(steel_router, prefix="/steel")
 
