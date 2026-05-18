@@ -759,7 +759,7 @@ def _activate_pending_registration(
             status_code=403,
             detail="Public registration is limited to attendance accounts. Ask an admin or owner to invite higher roles.",
         )
-    assigned_role = UserRole.ADMIN if not has_existing_org_user else UserRole.ATTENDANCE
+    assigned_role = UserRole.OWNER if not has_existing_org_user else UserRole.ATTENDANCE
 
     user = User(
         name=sanitize_text(pending.name, max_length=120, preserve_newlines=False) or pending.name.strip(),
@@ -788,11 +788,12 @@ def _activate_pending_registration(
         )
     )
 
-    if not db.query(Subscription).filter(Subscription.user_id == user.id).first():
+    if not db.query(Subscription).filter(Subscription.org_id == organization.org_id).first():
         trial_days = int(os.getenv("TRIAL_DAYS", "7"))
         now = datetime.now(timezone.utc)
         db.add(
             Subscription(
+                org_id=organization.org_id,
                 user_id=user.id,
                 plan=DEFAULT_PLAN,
                 status="trialing",

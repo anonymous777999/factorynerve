@@ -91,7 +91,12 @@ def resolve_registration_context(
             .first()
         )
         if existing_factory_user:
-            existing_factory = (
+            organization = (
+                db.query(Organization)
+                .filter(Organization.org_id == existing_factory_user.org_id)
+                .first()
+            )
+            factory = (
                 db.query(Factory)
                 .filter(
                     Factory.org_id == existing_factory_user.org_id,
@@ -100,24 +105,26 @@ def resolve_registration_context(
                 )
                 .first()
             )
-            plan = get_effective_factory_plan(
-                db,
-                requested,
-                org_id=existing_factory_user.org_id,
-                factory_id=existing_factory.factory_id if existing_factory else None,
-            )
-            try:
-                enforce_user_limit(
+            if organization and factory:
+                plan = get_effective_factory_plan(
                     db,
                     requested,
-                    plan,
-                    org_id=existing_factory_user.org_id,
-                    factory_id=existing_factory.factory_id if existing_factory else None,
+                    org_id=organization.org_id,
+                    factory_id=factory.factory_id,
                 )
-            except ValueError as error:
-                raise HTTPException(status_code=403, detail=str(error)) from error
-        if existing_factory_user and existing_factory_user.factory_code:
-            factory_code = existing_factory_user.factory_code
+                try:
+                    enforce_user_limit(
+                        db,
+                        requested,
+                        plan,
+                        org_id=organization.org_id,
+                        factory_id=factory.factory_id,
+                    )
+                except ValueError as error:
+                    raise HTTPException(status_code=403, detail=str(error)) from error
+            
+            if existing_factory_user.factory_code:
+                factory_code = existing_factory_user.factory_code
 
         attempts = 0
         while True:

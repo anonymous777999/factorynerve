@@ -1873,7 +1873,8 @@ def _verification_export_validation(
                 
                 if has_total and values and abs(sum(values) - total_val) > 1.0:
                     warnings.append(f"Total in column '{headers[idx]}' ({total_val}) does not match the sum of individual rows ({sum(values):.2f}).")
-            except Exception: pass
+            except Exception:
+                logger.debug("Failed to perform impossible totals check for column index %s", idx)
 
     return list(dict.fromkeys(blockers)), list(dict.fromkeys(warnings))
 
