@@ -5,7 +5,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, DateTime, String
+from sqlalchemy import Boolean, DateTime, Float, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.database import Base
@@ -22,6 +22,8 @@ class Organization(Base):
     plan_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     billing_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
     razorpay_customer_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    ai_daily_token_cap: Mapped[int] = mapped_column(Integer, nullable=False, default=250000, server_default="250000")
+    ai_monthly_cost_cap_usd: Mapped[float] = mapped_column(Float, nullable=False, default=250.0, server_default="250")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False
     )

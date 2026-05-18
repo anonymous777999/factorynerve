@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import os
 import time
 from typing import Any, Callable
 
+from backend.ai.validators.output_validator import AIOutputValidator
 from backend.services.intelligence.routing import (
     estimate_cost_usd,
     estimate_tokens,
@@ -15,9 +17,12 @@ from backend.services.intelligence.routing import (
     resolve_model_name,
 )
 from backend.services.intelligence.schemas import StageResult
+from backend.utils import get_config
 
 
 logger = logging.getLogger(__name__)
+config = get_config()
+_VALIDATOR = AIOutputValidator()
 
 RETRY_ATTEMPTS = max(1, int(os.getenv("INTELLIGENCE_RETRY_ATTEMPTS", "2")))
 RETRY_BACKOFF_SECONDS = float(os.getenv("INTELLIGENCE_RETRY_BACKOFF_SECONDS", "1.2"))
@@ -39,7 +44,7 @@ def _extract_json_object(raw_text: str) -> dict[str, Any] | None:
 def _call_anthropic(prompt: str, *, model_name: str) -> str:
     import anthropic  # type: ignore
 
-    client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY"))
+    client = anthropic.Anthropic(api_key=config.anthropic_api_key)
     messages_api = client.messages
     response = messages_api.create(
         model=model_name,
@@ -55,7 +60,7 @@ def _call_openai(prompt: str, *, model_name: str) -> str:
     from openai import OpenAI  # type: ignore
 
     client = OpenAI(
-        api_key=os.getenv("OPENAI_API_KEY"),
+        api_key=config.openai_api_key,
         timeout=float(os.getenv("INTELLIGENCE_PROVIDER_TIMEOUT_SECONDS", "25")),
     )
     response = client.chat.completions.create(
@@ -70,7 +75,7 @@ def _call_openai(prompt: str, *, model_name: str) -> str:
 def _call_groq(prompt: str, *, model_name: str) -> str:
     import groq  # type: ignore
 
-    client = groq.Groq(api_key=os.getenv("GROQ_API_KEY"))
+    client = groq.Groq(api_key=config.groq_api_key)
     response = client.chat.completions.create(
         model=model_name,
         temperature=0.1,
@@ -88,6 +93,25 @@ def _provider_callable(provider: str) -> Callable[[str, str], str]:
     if provider == "groq":
         return lambda prompt, model_name: _call_groq(prompt, model_name=model_name)
     raise RuntimeError(f"Unsupported provider: {provider}")
+
+
+def _infer_schema(value: Any) -> dict[str, Any]:
+    if isinstance(value, dict):
+        return {
+            "type": "object",
+            "properties": {str(key): _infer_schema(item) for key, item in value.items()},
+            "required": [str(key) for key in value.keys()],
+        }
+    if isinstance(value, list):
+        item_schema = _infer_schema(value[0]) if value else {"type": "string"}
+        return {"type": "array", "items": item_schema}
+    if isinstance(value, bool):
+        return {"type": "boolean"}
+    if isinstance(value, int) and not isinstance(value, bool):
+        return {"type": "integer"}
+    if isinstance(value, float):
+        return {"type": "number"}
+    return {"type": "string"}
 
 
 def invoke_stage_model(
@@ -112,6 +136,10 @@ def invoke_stage_model(
                 parsed = _extract_json_object(raw_text)
                 if parsed is None:
                     raise ValueError("Model did not return valid JSON.")
+                validated = asyncio.run(_VALIDATOR.validate(json.dumps(parsed), _infer_schema(parsed)))
+                if not validated.ok or validated.parsed_output is None:
+                    raise ValueError("Model output did not pass validation.")
+                parsed = validated.parsed_output
                 prompt_tokens = estimate_tokens(prompt)
                 completion_tokens = estimate_tokens(raw_text)
                 latency_ms = int((time.perf_counter() - started) * 1000)

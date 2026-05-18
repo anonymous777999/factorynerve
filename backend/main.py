@@ -37,6 +37,7 @@ from backend.routers.whatsapp_webhook import router as whatsapp_webhook_router
 from backend.routers.plans import router as plans_router
 from backend.routers.billing import router as billing_router
 from backend.routers.admin_billing import router as admin_billing_router
+from backend.routers.admin_ai import router as admin_ai_router
 from backend.routers.premium import router as premium_router
 from backend.routers.steel import router as steel_router
 from backend.utils import get_config, setup_logging
@@ -146,6 +147,7 @@ app.include_router(intelligence_router, prefix="/intelligence")
 app.include_router(plans_router, prefix="/plans")
 app.include_router(billing_router, prefix="/billing")
 app.include_router(admin_billing_router)
+app.include_router(admin_ai_router)
 app.include_router(premium_router, prefix="/premium")
 app.include_router(steel_router, prefix="/steel")
 

@@ -258,6 +258,8 @@ def init_db() -> None:
         import backend.models.payment_order  # noqa: F401
         import backend.models.intelligence_request  # noqa: F401
         import backend.models.intelligence_stage_usage  # noqa: F401
+        import backend.models.ai_result_cache  # noqa: F401
+        import backend.models.ai_usage_log  # noqa: F401
         import backend.models.steel_inventory_item  # noqa: F401
         import backend.models.steel_inventory_transaction  # noqa: F401
         import backend.models.steel_stock_reconciliation  # noqa: F401

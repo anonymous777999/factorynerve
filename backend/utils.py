@@ -40,6 +40,7 @@ class AppConfig:
     groq_api_key: str
     anthropic_api_key: str
     gemini_api_key: str
+    openai_api_key: str
     ai_provider: str
     jwt_secret_key: str
     jwt_expire_hours: int
@@ -83,7 +84,7 @@ def _validate_required_values(raw_values: dict[str, str | None]) -> None:
         raise ValueError("Missing required environment variables: " + ", ".join(sorted(missing_keys)))
 
     provider = str(raw_values.get("AI_PROVIDER") or "").strip().lower()
-    allowed_providers = {"groq", "anthropic", "gemini", "claude", "google"}
+    allowed_providers = {"groq", "anthropic", "gemini", "claude", "google", "openai", "gpt"}
     if provider not in allowed_providers:
         raise ValueError("AI_PROVIDER must be one of: groq, anthropic, gemini.")
 
@@ -91,10 +92,11 @@ def _validate_required_values(raw_values: dict[str, str | None]) -> None:
         "groq": str(raw_values.get("GROQ_API_KEY") or "").strip(),
         "anthropic": str(raw_values.get("ANTHROPIC_API_KEY") or "").strip(),
         "gemini": str(raw_values.get("GEMINI_API_KEY") or "").strip(),
+        "openai": str(raw_values.get("OPENAI_API_KEY") or "").strip(),
     }
     if not any(provider_keys.values()):
         raise ValueError(
-            "At least one AI provider key is required: GROQ_API_KEY, ANTHROPIC_API_KEY, or GEMINI_API_KEY."
+            "At least one AI provider key is required: GROQ_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, or OPENAI_API_KEY."
         )
     try:
         Fernet(str(raw_values.get("DATA_ENCRYPTION_KEY")).encode("utf-8"))
@@ -118,6 +120,7 @@ def get_config() -> AppConfig:
         "GROQ_API_KEY": os.getenv("GROQ_API_KEY"),
         "ANTHROPIC_API_KEY": os.getenv("ANTHROPIC_API_KEY"),
         "GEMINI_API_KEY": os.getenv("GEMINI_API_KEY"),
+        "OPENAI_API_KEY": os.getenv("OPENAI_API_KEY"),
         "AI_PROVIDER": os.getenv("AI_PROVIDER"),
         "JWT_SECRET_KEY": os.getenv("JWT_SECRET_KEY"),
         "JWT_EXPIRE_HOURS": os.getenv("JWT_EXPIRE_HOURS"),
@@ -138,6 +141,7 @@ def get_config() -> AppConfig:
         groq_api_key=str(raw.get("GROQ_API_KEY") or ""),
         anthropic_api_key=str(raw.get("ANTHROPIC_API_KEY") or ""),
         gemini_api_key=str(raw.get("GEMINI_API_KEY") or ""),
+        openai_api_key=str(raw.get("OPENAI_API_KEY") or ""),
         ai_provider=str(raw["AI_PROVIDER"]),
         jwt_secret_key=str(raw["JWT_SECRET_KEY"]),
         jwt_expire_hours=_to_int(raw["JWT_EXPIRE_HOURS"], 24),

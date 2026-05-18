@@ -18,6 +18,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from backend.ledger_scan import preprocess_image_bytes
+from backend.utils import get_config
 from backend.services.anthropic_usage import (
     ANTHROPIC_MODEL_HAIKU,
     ANTHROPIC_MODEL_OPUS,
@@ -35,6 +36,7 @@ from backend.services.anthropic_usage import (
 from backend.services.ocr_confidence import calculate_structural_confidence
 
 logger = logging.getLogger(__name__)
+config = get_config()
 
 BYTEZ_API_BASE = "https://api.bytez.com/models/v2"
 BYTEZ_DEFAULT_MODEL = "google/gemma-7b"
@@ -109,9 +111,9 @@ _COLUMN_PRIORITY_GROUPS = (
 
 
 def _get_client() -> Anthropic:
-    api_key = os.getenv("ANTHROPIC_API_KEY")
+    api_key = config.anthropic_api_key
     if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY is not set. Cannot use Anthropic as table scan provider.")
+        raise ValueError("Anthropic provider credential is not configured for table scan.")
     return Anthropic(
         api_key=api_key,
         timeout=_provider_timeout_seconds(),
@@ -185,7 +187,7 @@ def _has_provider_key(provider: str) -> bool:
     if provider == "tesseract":
         return True
     if provider == "anthropic":
-        return bool((os.getenv("ANTHROPIC_API_KEY") or "").strip())
+        return bool((config.anthropic_api_key or "").strip())
     if provider == "bytez":
         return bool((os.getenv("BYTEZ_API_KEY") or "").strip())
     return False

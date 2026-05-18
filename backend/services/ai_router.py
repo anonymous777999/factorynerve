@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
 import os
 import time
@@ -11,8 +13,13 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from backend.ai.validators.output_validator import AIOutputValidator
+from backend.utils import get_config
+
 
 logger = logging.getLogger(__name__)
+config = get_config()
+_TEXT_VALIDATOR = AIOutputValidator()
 
 
 def _env_float(key: str, default: float) -> float:
@@ -138,11 +145,11 @@ def primary_provider_label() -> str:
 
 def _has_key(provider: str) -> bool:
     if provider == "groq":
-        return bool((os.getenv("GROQ_API_KEY") or "").strip())
+        return bool((config.groq_api_key or "").strip())
     if provider == "anthropic":
-        return bool((os.getenv("ANTHROPIC_API_KEY") or "").strip())
+        return bool((config.anthropic_api_key or "").strip())
     if provider == "openai":
-        return bool((os.getenv("OPENAI_API_KEY") or "").strip())
+        return bool((config.openai_api_key or "").strip())
     return False
 
 
@@ -155,9 +162,9 @@ def _call_groq(prompt: str, *, max_tokens: int) -> str:
         import groq  # type: ignore
     except Exception as error:
         raise RuntimeError("Groq SDK not installed.") from error
-    api_key = os.getenv("GROQ_API_KEY")
+    api_key = config.groq_api_key
     if not api_key:
-        raise RuntimeError("GROQ_API_KEY missing.")
+        raise RuntimeError("AI provider credential missing.")
     client = groq.Groq(api_key=api_key)
     resp = client.chat.completions.create(
         model=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
@@ -173,9 +180,9 @@ def _call_anthropic(prompt: str, *, max_tokens: int) -> str:
         import anthropic  # type: ignore
     except Exception as error:
         raise RuntimeError("Anthropic SDK not installed.") from error
-    api_key = os.getenv("ANTHROPIC_API_KEY")
+    api_key = config.anthropic_api_key
     if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY missing.")
+        raise RuntimeError("AI provider credential missing.")
     client = anthropic.Anthropic(api_key=api_key)
     messages_api = client.messages
     resp = messages_api.create(
@@ -191,9 +198,9 @@ def _call_openai(prompt: str, *, max_tokens: int) -> str:
         from openai import OpenAI  # type: ignore
     except Exception as error:
         raise RuntimeError("OpenAI SDK not installed.") from error
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = config.openai_api_key
     if not api_key:
-        raise RuntimeError("OPENAI_API_KEY missing.")
+        raise RuntimeError("AI provider credential missing.")
     client = OpenAI(api_key=api_key, timeout=AI_TIMEOUT_SECONDS)
     resp = client.chat.completions.create(
         model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
@@ -206,6 +213,33 @@ def _call_openai(prompt: str, *, max_tokens: int) -> str:
 
 def _safe_text(text: str | None) -> str:
     return (text or "").strip()
+
+
+def _text_output_schema() -> dict[str, Any]:
+    return {
+        "type": "object",
+        "properties": {
+            "text": {"type": "string"},
+        },
+        "required": ["text"],
+    }
+
+
+def _validate_text_output(raw_text: str) -> str:
+    try:
+        validated = asyncio.run(
+            _TEXT_VALIDATOR.validate(
+                json.dumps({"text": _safe_text(raw_text)}),
+                _text_output_schema(),
+            )
+        )
+    except Exception as error:  # pylint: disable=broad-except
+        logger.warning("AI text validation failed before schema check: %s", error)
+        return ""
+    if not validated.ok or not validated.parsed_output:
+        logger.warning("AI text validation rejected response: %s", validated.validation_errors)
+        return ""
+    return _safe_text(validated.parsed_output.get("text"))
 
 
 def _summary_fallback(data: dict[str, Any]) -> str:
@@ -313,7 +347,7 @@ def _generate(prompt: str, *, max_tokens: int, scope: str) -> str:
 def generate_summary(data: dict[str, Any], *, scope: str | None = None) -> str:
     scope_key = scope or "global"
     prompt = build_summary_prompt(data)
-    content = _generate(prompt, max_tokens=220, scope=scope_key)
+    content = _validate_text_output(_generate(prompt, max_tokens=220, scope=scope_key))
     if content:
         return content
     return _summary_fallback(data)
@@ -322,7 +356,7 @@ def generate_summary(data: dict[str, Any], *, scope: str | None = None) -> str:
 def generate_email(summary: dict[str, Any], *, scope: str | None = None) -> str:
     scope_key = scope or "global"
     prompt = build_email_prompt(summary)
-    content = _generate(prompt, max_tokens=360, scope=scope_key)
+    content = _validate_text_output(_generate(prompt, max_tokens=360, scope=scope_key))
     if content:
         return content
     return _email_fallback(summary)
@@ -336,7 +370,7 @@ def generate_text(
     max_tokens: int = 260,
 ) -> tuple[str, bool]:
     scope_key = scope or "global"
-    content = _generate(prompt, max_tokens=max_tokens, scope=scope_key)
+    content = _validate_text_output(_generate(prompt, max_tokens=max_tokens, scope=scope_key))
     if content:
         return content, True
     return _safe_text(fallback), False
