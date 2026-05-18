@@ -6,12 +6,16 @@ import json
 import logging
 import os
 import re
+import time
 from datetime import datetime
 from io import BytesIO
 from typing import Any
 
 from anthropic import Anthropic
 import requests
+from backend.ai.prompts.base import RenderedPrompt
+from backend.ai.providers.base import ProviderConfig, RawAIResponse, TokenUsage
+from backend.ai.validators.output_validator import AIOutputValidator
 from openpyxl import Workbook
 from openpyxl.comments import Comment
 from openpyxl.styles import Alignment, Font, PatternFill
@@ -81,6 +85,7 @@ TOTAL_FONT = Font(name="Arial", size=10, bold=True)
 BALANCED_FILL = PatternFill("solid", fgColor="00B050")
 UNBALANCED_FILL = PatternFill("solid", fgColor="C00000")
 BALANCE_FONT = Font(name="Arial", size=10, bold=True, color="FFFFFF")
+_LEDGER_OUTPUT_VALIDATOR = AIOutputValidator()
 
 
 def preprocess_image_bytes(image_bytes: bytes, *, profile: str | None = None) -> str:
@@ -146,6 +151,101 @@ def _provider_timeout_seconds() -> float:
     except ValueError:
         value = 15.0
     return max(3.0, min(60.0, value))
+
+
+def _safe_int(value: Any) -> int:
+    try:
+        return max(0, int(value or 0))
+    except (TypeError, ValueError):
+        return 0
+
+
+def _status_code_from_error(error: Exception) -> int | None:
+    for attr in ("status_code", "code", "status"):
+        value = getattr(error, attr, None)
+        try:
+            if value is not None:
+                return int(value)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _ledger_provider_config(model_name: str) -> ProviderConfig:
+    return ProviderConfig(
+        model=model_name,
+        temperature=0.0,
+        max_tokens=2048,
+        timeout_seconds=_provider_timeout_seconds(),
+    )
+
+
+def _ledger_rendered_prompt(
+    *,
+    system_prompt: str,
+    messages: list[dict[str, Any]],
+    prompt_text: str,
+) -> RenderedPrompt:
+    return RenderedPrompt(
+        name="ledger_scan_extraction",
+        prompt_text=prompt_text,
+        version="legacy",
+        metadata={
+            "system_blocks": [
+                {
+                    "type": "text",
+                    "text": system_prompt,
+                    "cache_control": {"type": "ephemeral"},
+                }
+            ],
+            "messages": messages,
+        },
+    )
+
+
+class _LedgerAnthropicCompatProvider:
+    provider_name = "anthropic"
+
+    async def complete(self, prompt: RenderedPrompt, config: ProviderConfig) -> RawAIResponse:
+        started = time.perf_counter()
+        try:
+            client = _get_client()
+            response = client.messages.create(
+                model=config.model,
+                max_tokens=config.max_tokens,
+                temperature=config.temperature,
+                system=(prompt.metadata or {}).get("system_blocks") or [],
+                messages=(prompt.metadata or {}).get("messages") or [],
+                timeout=config.timeout_seconds,
+            )
+            text = _extract_text(response)
+            usage = getattr(response, "usage", None)
+            return RawAIResponse(
+                content=text or None,
+                usage=TokenUsage(
+                    input_tokens=_safe_int(getattr(usage, "input_tokens", 0)),
+                    output_tokens=_safe_int(getattr(usage, "output_tokens", 0)),
+                    total_tokens=_safe_int(getattr(usage, "input_tokens", 0)) + _safe_int(getattr(usage, "output_tokens", 0)),
+                    estimated_cost_usd=0.0,
+                ),
+                provider=self.provider_name,
+                model=config.model,
+                latency_ms=int((time.perf_counter() - started) * 1000),
+                metadata={"anthropic_response": response},
+            )
+        except Exception as error:  # pylint: disable=broad-except
+            return RawAIResponse(
+                content=None,
+                usage=TokenUsage(),
+                provider=self.provider_name,
+                model=config.model,
+                latency_ms=int((time.perf_counter() - started) * 1000),
+                error=str(error),
+                status_code=_status_code_from_error(error),
+            )
+
+
+_LEDGER_ANTHROPIC_PROVIDER = _LedgerAnthropicCompatProvider()
 
 
 def _is_mock_enabled() -> bool:
@@ -402,6 +502,43 @@ def _rows_from_parsed(parsed: Any) -> list[dict] | None:
     return None
 
 
+def _validate_ledger_rows(rows: list[dict] | None) -> bool:
+    if rows is None:
+        return False
+    from asyncio import run
+
+    validation_payload = {
+        "rows": [
+            {
+                "particular": "" if row.get("particular") is None else str(row.get("particular")),
+                "dr": "" if row.get("dr") is None else str(row.get("dr")),
+                "cr": "" if row.get("cr") is None else str(row.get("cr")),
+            }
+            for row in rows
+        ]
+    }
+
+    schema = {
+        "type": "object",
+        "properties": {
+            "rows": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "particular": {"type": "string"},
+                        "dr": {"type": "string"},
+                        "cr": {"type": "string"},
+                    },
+                },
+            }
+        },
+        "required": ["rows"],
+    }
+    validated = run(_LEDGER_OUTPUT_VALIDATOR.validate(json.dumps(validation_payload, default=str), schema))
+    return bool(validated.ok or validated.parsed_output)
+
+
 def _extract_text(response) -> str:
     parts = []
     for block in getattr(response, "content", []) or []:
@@ -449,7 +586,6 @@ def _call_claude(
     attempt: int = 1,
     fallback_used: bool = False,
 ) -> dict[str, Any]:
-    client = _get_client()
     requested_target_model = normalize_anthropic_model_name(model_override) or _anthropic_model_name(requested_model)
     if history:
         messages = history
@@ -467,23 +603,20 @@ def _call_claude(
                 }
             )
         messages = [{"role": "user", "content": content}]
-
-    messages_api = client.messages
-    response = messages_api.create(
-        model=requested_target_model,
-        max_tokens=2048,
-        temperature=0,
-        system=[
-            {
-                "type": "text",
-                "text": system_prompt,
-                "cache_control": {"type": "ephemeral"},
-            }
-        ],
+    prompt_text = f"{system_prompt}\n\n{user_message}"
+    rendered_prompt = _ledger_rendered_prompt(
+        system_prompt=system_prompt,
         messages=messages,
-        timeout=_provider_timeout_seconds(),
+        prompt_text=prompt_text,
     )
-    text = _extract_text(response)
+    provider_config = _ledger_provider_config(requested_target_model)
+    from asyncio import run
+
+    raw_response = run(_LEDGER_ANTHROPIC_PROVIDER.complete(rendered_prompt, provider_config))
+    response = raw_response.metadata.get("anthropic_response")
+    if response is None or raw_response.content is None:
+        raise RuntimeError(raw_response.error or "Anthropic provider returned no content.")
+    text = str(raw_response.content)
     next_history = messages + [
         {"role": "assistant", "content": text}
     ]
@@ -545,7 +678,7 @@ def extract_data_from_image(
         if provider == "bytez":
             output = _call_bytez(base64_image, system_prompt=system_prompt, user_message=user_message)
             rows = _maybe_rows_from_output(output)
-            if rows is not None:
+            if rows is not None and _validate_ledger_rows(rows):
                 metadata["model_used"] = os.getenv("BYTEZ_MODEL_ID", BYTEZ_DEFAULT_MODEL)
                 validated_rows = validate_data(rows)
                 metadata["confidence"] = validated_rows.get("metadata", {}).get("confidence")
@@ -609,7 +742,7 @@ def extract_data_from_image(
                 parsed = _extract_json_candidate(raw)
                 last_parsed = parsed
                 rows = _rows_from_parsed(parsed)
-                if rows is None:
+                if rows is None or not _validate_ledger_rows(rows):
                     logger.info("LedgerScan attempt %s produced invalid JSON rows.", attempt_index + 1)
                 else:
                     validated = validate_data(rows)
@@ -669,7 +802,7 @@ def extract_data_from_image(
                 usage_summaries,
             )
 
-        if rows is not None:
+        if rows is not None and _validate_ledger_rows(rows):
             validated_rows = validate_data(rows)
             metadata["confidence"] = validated_rows.get("metadata", {}).get("confidence")
             return rows, metadata
