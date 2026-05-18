@@ -17,8 +17,6 @@ depends_on = None
 
 def upgrade() -> None:
     # 1. Add columns as nullable first
-    op.add_column('invoices', sa.Column('org_id', sa.String(length=36), nullable=True))
-    op.add_column('invoices', sa.Column('sub_id', sa.Integer(), nullable=True))
     op.add_column('invoices', sa.Column('payment_event_id', sa.String(length=64), nullable=True))
     op.add_column('invoices', sa.Column('invoice_number', sa.String(length=64), nullable=True))
     op.add_column('invoices', sa.Column('razorpay_payment_id', sa.String(length=64), nullable=True))
