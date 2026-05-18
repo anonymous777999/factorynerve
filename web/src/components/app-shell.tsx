@@ -11,6 +11,7 @@ import { JobsDrawer } from "@/components/jobs-drawer";
 import { MicroFeedbackPrompt } from "@/components/micro-feedback-prompt";
 import { WorkflowReminderStrip } from "@/components/workflow-reminder-strip";
 import { Select } from "@/components/ui/select";
+import type { Permissions } from "@/lib/auth";
 import { logout, selectFactory } from "@/lib/auth";
 import { listUnreadAlerts } from "@/lib/dashboard";
 import { listEntries } from "@/lib/entries";
@@ -19,6 +20,7 @@ import type { AppLanguage } from "@/lib/i18n";
 import { listOcrVerifications } from "@/lib/ocr";
 import {
   getHomeDestination,
+  getRoleAllowedNavHrefs,
   getRoleDefaultFavoriteHrefs,
   getRoleDesktopQuickLinkHrefs,
   getRoleMobileNavHrefs,
@@ -30,34 +32,9 @@ import { warmRouteData } from "@/lib/route-warmup";
 import { listSteelReconciliations } from "@/lib/steel";
 import { subscribeToWorkflowRefresh } from "@/lib/workflow-sync";
 import { useI18n, useI18nNamespaces } from "@/lib/i18n";
-import { useSession } from "@/lib/use-session";
+import { useAuth } from "@/lib/use-session";
 import { cn } from "@/lib/utils";
 
-const REVIEW_ROLES = ["supervisor", "manager", "admin", "owner"] as const;
-const MANAGEMENT_ROLES = ["manager", "admin", "owner"] as const;
-const LEADERSHIP_ROLES = ["admin", "owner"] as const;
-const CORE_WORK_ROLES = ["operator", "supervisor", "manager"] as const;
-const REPORTING_ROLES = ["accountant", "supervisor", "manager", "admin", "owner"] as const;
-const ATTENDANCE_VIEW_ROLES = ["attendance", "operator"] as const;
-const ENTRY_WORK_ROLES = ["operator", "supervisor", "manager", "admin"] as const;
-const DOCUMENT_CAPTURE_ROLES = ["operator"] as const;
-const STEEL_CONTROL_ROLES = ["manager"] as const;
-const STEEL_CHART_ROLES = ["manager", "owner"] as const;
-const STEEL_COMMERCIAL_ROLES = ["accountant", "manager"] as const;
-const DISPATCH_WORK_ROLES = ["supervisor", "manager", "owner"] as const;
-const ATTENDANCE_REVIEW_NAV_ROLES = ["supervisor"] as const;
-const REVIEW_QUEUE_NAV_ROLES = ["supervisor", "manager", "admin"] as const;
-const OCR_VERIFY_NAV_ROLES = ["supervisor"] as const;
-const OCR_HISTORY_NAV_ROLES = ["operator", "supervisor", "manager", "admin", "owner"] as const;
-const STOCK_REVIEW_NAV_ROLES = ["supervisor"] as const;
-const ATTENDANCE_REPORT_NAV_ROLES = ["accountant"] as const;
-const OWNER_DESK_NAV_ROLES = ["owner"] as const;
-const FACTORY_NETWORK_NAV_ROLES = ["owner"] as const;
-const EMAIL_SUMMARY_NAV_ROLES = ["accountant", "manager", "owner"] as const;
-const AI_INSIGHTS_NAV_ROLES = ["owner"] as const;
-const ATTENDANCE_ADMIN_NAV_ROLES = ["admin"] as const;
-const FACTORY_ADMIN_NAV_ROLES = ["admin"] as const;
-const TASK_ROLES = ["operator", "supervisor"] as const;
 const RAIL_COUNT_REFRESH_EVENT = "dpr:rail-counts-refresh";
 const SIDEBAR_OPEN_STORAGE_KEY = "dpr:web:shell-sidebar-open";
 const NAV_FAVORITES_STORAGE_KEY = "dpr:web:shell-favorites";
@@ -94,7 +71,7 @@ type NavItem = {
   label: string;
   href: string;
   description: string;
-  roles?: readonly string[];
+  permission?: keyof Permissions;
   industryTypes?: readonly string[];
   badgeKey?: NavBadgeKey;
   match: (pathname: string) => boolean;
@@ -130,14 +107,12 @@ const navSections: NavSection[] = [
         href: "/work-queue",
         description: "Cross-app queue for daily work, review load, and unread alerts",
         badgeKey: "alerts",
-        roles: CORE_WORK_ROLES,
         match: (pathname) => pathname === "/work-queue" || pathname.startsWith("/work-queue/"),
       },
       {
         label: "Attendance",
         href: "/attendance",
         description: "Punch in, punch out, and keep live attendance visible for the active factory",
-        roles: ATTENDANCE_VIEW_ROLES,
         match: (pathname) =>
           pathname === "/attendance" ||
           pathname === "/attendance/live" ||
@@ -148,21 +123,18 @@ const navSections: NavSection[] = [
         href: "/dashboard",
         description: "Start with live priorities, alerts, and the active factory context",
         badgeKey: "alerts",
-        roles: ["operator", "supervisor", "manager", "admin"],
         match: (pathname) => pathname === "/" || pathname === "/dashboard" || pathname.startsWith("/dashboard/"),
       },
       {
         label: "My Day",
         href: "/tasks",
         description: "Assigned work, handoffs, and follow-through for the current shift",
-        roles: TASK_ROLES,
         match: (pathname) => pathname === "/tasks" || pathname.startsWith("/tasks/"),
       },
       {
         label: "Document Desk",
         href: "/ocr/scan",
         description: "Bring paper registers and plant documents into the workflow fast",
-        roles: DOCUMENT_CAPTURE_ROLES,
         match: (pathname) => pathname === "/ocr/scan" || pathname === "/ocr" || pathname.startsWith("/ocr/"),
       },
     ],
@@ -174,14 +146,12 @@ const navSections: NavSection[] = [
         label: "Shift Entry",
         href: "/entry",
         description: "Capture shift production without hunting through screens",
-        roles: ENTRY_WORK_ROLES,
         match: (pathname) => pathname === "/entry" || pathname.startsWith("/entry/"),
       },
       {
         label: "Steel Hub",
         href: "/steel",
         description: "Operational overview, KPI health, and top-priority action board",
-        roles: STEEL_CONTROL_ROLES,
         industryTypes: ["steel"],
         match: (pathname) => pathname === "/steel",
       },
@@ -189,7 +159,6 @@ const navSections: NavSection[] = [
         label: "Inventory",
         href: "/steel/inventory",
         description: "Live stock balance, material master, and yard control",
-        roles: STEEL_CONTROL_ROLES,
         industryTypes: ["steel"],
         match: (pathname) => pathname === "/steel/inventory" || (pathname.startsWith("/steel/inventory") && !pathname.includes("/transactions")),
       },
@@ -197,7 +166,6 @@ const navSections: NavSection[] = [
         label: "Inventory Transactions",
         href: "/steel/inventory/transactions",
         description: "Manual stock adjustments, adjustments, and movement audit trail",
-        roles: STEEL_CONTROL_ROLES,
         industryTypes: ["steel"],
         match: (pathname) => pathname === "/steel/inventory/transactions" || pathname.startsWith("/steel/inventory/transactions"),
       },
@@ -205,7 +173,6 @@ const navSections: NavSection[] = [
         label: "Production Record",
         href: "/steel/production/record",
         description: "Capture manual batch production and variance signals",
-        roles: STEEL_CONTROL_ROLES,
         industryTypes: ["steel"],
         match: (pathname) => pathname === "/steel/production/record" || pathname.startsWith("/steel/production/record"),
       },
@@ -213,7 +180,6 @@ const navSections: NavSection[] = [
         label: "Steel Batches",
         href: "/steel/batches",
         description: "Traceability list for production batches and output signals",
-        roles: STEEL_CHART_ROLES,
         industryTypes: ["steel"],
         match: (pathname) => pathname === "/steel/batches" || pathname.startsWith("/steel/batches/"),
       },
@@ -221,7 +187,6 @@ const navSections: NavSection[] = [
         label: "Steel Charts",
         href: "/steel/charts",
         description: "Chart-first board for stock, production, dispatch, and revenue movement",
-        roles: STEEL_CHART_ROLES,
         industryTypes: ["steel"],
         match: (pathname) => pathname === "/steel/charts" || pathname.startsWith("/steel/charts/"),
       },
@@ -229,7 +194,6 @@ const navSections: NavSection[] = [
         label: "Customers",
         href: "/steel/customers",
         description: "Track customer ledger, payments, and outstanding exposure",
-        roles: ["manager", "owner"],
         industryTypes: ["steel"],
         match: (pathname) => pathname === "/steel/customers" || pathname.startsWith("/steel/customers/"),
       },
@@ -237,7 +201,6 @@ const navSections: NavSection[] = [
         label: "Sales Invoices",
         href: "/steel/invoices",
         description: "Weight-based invoicing and revenue control",
-        roles: STEEL_COMMERCIAL_ROLES,
         industryTypes: ["steel"],
         match: (pathname) => pathname === "/steel/invoices" || pathname.startsWith("/steel/invoices/"),
       },
@@ -245,7 +208,6 @@ const navSections: NavSection[] = [
         label: "Dispatch",
         href: "/steel/dispatches",
         description: "Gate pass, truck movement, and dispatch follow-through",
-        roles: DISPATCH_WORK_ROLES,
         industryTypes: ["steel"],
         match: (pathname) => pathname === "/steel/dispatches" || pathname.startsWith("/steel/dispatches/"),
       },
@@ -258,14 +220,13 @@ const navSections: NavSection[] = [
         label: "Attendance Review",
         href: "/attendance/review",
         description: "Close missed punches, regularizations, and attendance exceptions",
-        roles: ATTENDANCE_REVIEW_NAV_ROLES,
         match: (pathname) => pathname === "/attendance/review" || pathname.startsWith("/attendance/review/"),
       },
       {
         label: "Approvals",
         href: "/approvals",
         description: "One place for pending review, verification, and stock trust work",
-        roles: REVIEW_QUEUE_NAV_ROLES,
+        permission: "can_approve_entries",
         badgeKey: "approvals",
         match: (pathname) => pathname === "/approvals" || pathname.startsWith("/approvals/"),
       },
@@ -273,21 +234,18 @@ const navSections: NavSection[] = [
         label: "Review Documents",
         href: "/ocr/verify",
         description: "Approve OCR rows before they reach reports and exports",
-        roles: OCR_VERIFY_NAV_ROLES,
         match: (pathname) => pathname === "/ocr/verify" || pathname.startsWith("/ocr/verify/"),
       },
       {
         label: "OCR History",
         href: "/ocr/history",
         description: "Reopen OCR drafts, exports, and recent document runs",
-        roles: OCR_HISTORY_NAV_ROLES,
         match: (pathname) => pathname === "/ocr/history" || pathname.startsWith("/ocr/history/"),
       },
       {
         label: "Stock Review",
         href: "/steel/reconciliations",
         description: "Review physical counts, confidence, and mismatch decisions",
-        roles: STOCK_REVIEW_NAV_ROLES,
         industryTypes: ["steel"],
         match: (pathname) => pathname === "/steel/reconciliations" || pathname.startsWith("/steel/reconciliations/"),
       },
@@ -300,49 +258,44 @@ const navSections: NavSection[] = [
         label: "Attendance Reports",
         href: "/attendance/reports",
         description: "Daily manpower completion, late signals, and review load by date",
-        roles: ATTENDANCE_REPORT_NAV_ROLES,
         match: (pathname) => pathname === "/attendance/reports" || pathname.startsWith("/attendance/reports/"),
       },
       {
         label: "Reports & Exports",
         href: "/reports",
         description: "Review output, exports, and operating signals across the selected range",
-        roles: REPORTING_ROLES,
+        permission: "can_export_data",
         match: (pathname) => pathname === "/reports" || pathname.startsWith("/reports/"),
       },
       {
         label: "Performance",
         href: "/analytics",
         description: "Trends, comparisons, and drill-down performance insight",
-        roles: MANAGEMENT_ROLES,
+        permission: "can_view_analytics",
         match: (pathname) => pathname === "/analytics" || pathname.startsWith("/analytics/"),
       },
       {
         label: "Owner Desk",
         href: "/premium/dashboard",
         description: "High-density owner view for risk, performance, and factory comparison",
-        roles: OWNER_DESK_NAV_ROLES,
         match: (pathname) => pathname === "/premium/dashboard" || pathname.startsWith("/premium/"),
       },
       {
         label: "Factory Network",
         href: "/control-tower",
         description: "Compare factories and switch live operating context",
-        roles: FACTORY_NETWORK_NAV_ROLES,
         match: (pathname) => pathname === "/control-tower" || pathname.startsWith("/control-tower/"),
       },
       {
         label: "Scheduled Updates",
         href: "/email-summary",
         description: "Automated summaries for managers and owners",
-        roles: EMAIL_SUMMARY_NAV_ROLES,
         match: (pathname) => pathname === "/email-summary" || pathname.startsWith("/email-summary/"),
       },
       {
         label: "AI Insights",
         href: "/ai",
         description: "Advanced anomaly scans, suggestions, and KPI questions",
-        roles: AI_INSIGHTS_NAV_ROLES,
         match: (pathname) => pathname === "/ai" || pathname.startsWith("/ai/"),
       },
     ],
@@ -354,14 +307,14 @@ const navSections: NavSection[] = [
         label: "Attendance Admin",
         href: "/settings/attendance",
         description: "Employee profile mapping, shift rules, and attendance operations setup",
-        roles: ATTENDANCE_ADMIN_NAV_ROLES,
+        permission: "can_manage_users",
         match: (pathname) => pathname === "/settings/attendance" || pathname.startsWith("/settings/attendance/"),
       },
       {
         label: "Factory Admin",
         href: "/settings",
         description: "Factories, users, templates, and organization controls",
-        roles: FACTORY_ADMIN_NAV_ROLES,
+        permission: "can_manage_users",
         match: (pathname) =>
           pathname === "/settings" ||
           (pathname.startsWith("/settings/") && !pathname.startsWith("/settings/attendance")),
@@ -370,14 +323,14 @@ const navSections: NavSection[] = [
         label: "Subscription",
         href: "/plans",
         description: "Review subscription tiers and available add-ons",
-        roles: LEADERSHIP_ROLES,
+        permission: "can_view_billing",
         match: (pathname) => pathname === "/plans" || pathname.startsWith("/plans/"),
       },
       {
         label: "Billing & Invoices",
         href: "/billing",
         description: "Checkout, invoices, and subscription management",
-        roles: LEADERSHIP_ROLES,
+        permission: "can_view_billing",
         match: (pathname) => pathname === "/billing" || pathname.startsWith("/billing/"),
       },
     ],
@@ -594,7 +547,16 @@ const LANGUAGE_CHOICES: Array<{ value: AppLanguage; key: string; fallback: strin
   { value: "gu", key: "language.gujarati", fallback: "Gujarati" },
 ];
 
-const shellHiddenRoutes = new Set(["/", "/login", "/access", "/register", "/forgot-password", "/reset-password"]);
+const shellHiddenRoutes = new Set([
+  "/",
+  "/403",
+  "/login",
+  "/access",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/onboarding/factory-required",
+]);
 
 function navLinkClasses(active: boolean) {
   return cn(
@@ -647,18 +609,22 @@ function roleLabel(role?: string | null, translate?: TranslateFn) {
   return translate(`role.${normalized}`, role.charAt(0).toUpperCase() + role.slice(1));
 }
 
-function getVisibleNavSections(role?: string | null, industryType?: string | null) {
+export function getVisibleNavSections(
+  allowedHrefs: Set<string>,
+  permissions: Permissions,
+  industryType?: string | null,
+) {
   const normalizedIndustry = (industryType || "").toLowerCase();
   return navSections
     .map((section) => ({
       ...section,
       items: section.items.filter((item) => {
-        const roleAllowed = !item.roles || (role ? item.roles.includes(role) : false);
+        const permissionAllowed = item.permission ? permissions[item.permission] : allowedHrefs.has(item.href);
         const industryAllowed =
           !item.industryTypes ||
           item.industryTypes.length === 0 ||
           (normalizedIndustry ? item.industryTypes.includes(normalizedIndustry) : false);
-        return roleAllowed && industryAllowed;
+        return permissionAllowed && industryAllowed;
       }),
     }))
     .filter((section) => section.items.length > 0);
@@ -1290,7 +1256,7 @@ function AppShellFrame({
   const { language, setLanguage, t } = useI18n();
   const { showTips, setShowTips } = useGuidancePreferences();
   useI18nNamespaces(["common", "navigation"]);
-  const { activeFactory, activeFactoryId, factories, organization, user } = useSession();
+  const { activeFactory, activeFactoryId, factories, organization, permissions, user } = useAuth();
   const [hydrated, setHydrated] = useState(false);
   const [switchingFactory, setSwitchingFactory] = useState(false);
   const [switchError, setSwitchError] = useState("");
@@ -1309,9 +1275,13 @@ function AppShellFrame({
   );
   const resolvedRole = hydrated ? user?.role : null;
   const activeIndustryType = hydrated ? activeFactory?.industry_type || null : null;
-  const visibleNavSections = useMemo(
-    () => getVisibleNavSections(resolvedRole, activeIndustryType),
+  const allowedNavHrefs = useMemo(
+    () => new Set(getRoleAllowedNavHrefs(resolvedRole, activeIndustryType)),
     [activeIndustryType, resolvedRole],
+  );
+  const visibleNavSections = useMemo(
+    () => getVisibleNavSections(allowedNavHrefs, permissions, activeIndustryType),
+    [activeIndustryType, allowedNavHrefs, permissions],
   );
   const visibleNavItems = useMemo(() => visibleNavSections.flatMap((section) => section.items), [visibleNavSections]);
   const visibleNavMap = useMemo(
@@ -1432,7 +1402,7 @@ function AppShellFrame({
     }
 
     let cancelled = false;
-    const canReview = REVIEW_ROLES.includes((user.role || "") as (typeof REVIEW_ROLES)[number]);
+    const canReview = permissions.can_approve_entries;
     const steelMode = (activeFactory?.industry_type || "").toLowerCase() === "steel";
 
     const loadCounts = async () => {
@@ -1494,7 +1464,7 @@ function AppShellFrame({
       document.removeEventListener("visibilitychange", onVisibility);
       stopWorkflowRefresh();
     };
-  }, [activeFactory?.industry_type, user]);
+  }, [activeFactory?.industry_type, permissions.can_approve_entries, user]);
 
   const setSidebarState = useCallback((next: boolean) => {
     setSidebarOpen(next);

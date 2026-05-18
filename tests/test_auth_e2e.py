@@ -1,8 +1,10 @@
 from http import HTTPStatus
+from types import SimpleNamespace
 from urllib.parse import parse_qs, urlparse
 
 import pytest
 from starlette.requests import Request
+from starlette.responses import Response
 
 from backend.database import SessionLocal, init_db
 from backend.models.pending_registration import PendingRegistration
@@ -10,6 +12,7 @@ from backend.models.report import AuditLog
 from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
 from backend.routers import auth as auth_router
+from backend.routers import auth_secure as auth_secure_router
 from backend.services.auth_service import get_or_create_google_user
 from tests.utils import register_user, unique_email, unique_factory
 
@@ -334,3 +337,57 @@ def test_google_onboarding_bootstraps_new_workspace_as_admin():
     assert user.role == UserRole.ADMIN
     assert membership is not None
     assert membership.role == UserRole.ADMIN
+
+
+def test_post_auth_login_returns_410_with_deprecated_code(http_client):
+    response = http_client.post("/auth/login", json={"email": "user@example.com", "password": "pass"})
+    assert response.status_code == HTTPStatus.GONE, response.text
+    assert response.json()["detail"]["code"] == "DEPRECATED"
+
+
+def test_post_auth_v2_login_still_works(monkeypatch):
+    class FakeQuery:
+        def filter(self, *args, **kwargs):
+            return self
+
+        def first(self):
+            return SimpleNamespace(
+                id="user-1",
+                email="user@example.com",
+                is_active=True,
+                password_hash="hashed",
+                mfa_enabled=False,
+            )
+
+    class FakeDb:
+        def query(self, model):
+            return FakeQuery()
+
+        def commit(self):
+            return None
+
+    monkeypatch.setattr(auth_secure_router, "check_rate_limit", lambda **kwargs: None)
+    monkeypatch.setattr(auth_secure_router, "verify_password", lambda password, hashed: True)
+    monkeypatch.setattr(auth_secure_router, "_log_event", lambda *args, **kwargs: None)
+    monkeypatch.setattr(auth_secure_router, "create_session", lambda db, user, request, response: SimpleNamespace())
+    monkeypatch.setattr(auth_secure_router, "touch_session", lambda db, session: None)
+
+    response = auth_secure_router.login(
+        payload=auth_secure_router.LoginRequest(email="user@example.com", password="StrongPassw0rd!"),
+        request=Request(
+            {
+                "type": "http",
+                "method": "POST",
+                "path": "/auth/v2/login",
+                "headers": [],
+                "client": ("127.0.0.1", 1234),
+                "server": ("127.0.0.1", 8765),
+                "scheme": "http",
+                "query_string": b"",
+            }
+        ),
+        response=Response(),
+        db=FakeDb(),
+    )
+
+    assert response == {"message": "Login successful."}

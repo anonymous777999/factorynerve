@@ -44,7 +44,7 @@ from backend.utils import (
 from backend.services import ai_router
 from backend.services.background_jobs import create_job, register_retry_handler, start_job
 from backend.tenancy import resolve_factory_id, resolve_org_id
-from backend.query_helpers import apply_role_scope, can_view_entry, factory_user_ids_query
+from backend.query_helpers import apply_role_scope, can_view_entry, factory_user_ids_query, get_org_record_or_404_sync
 
 
 logger = logging.getLogger(__name__)
@@ -682,8 +682,8 @@ def approve_entry(
     current_user: User = Depends(get_current_user),
 ) -> EntryResponse:
     require_role(current_user, UserRole.SUPERVISOR)
-    entry = db.query(Entry).filter(Entry.id == entry_id, Entry.is_active.is_(True)).first()
-    if not entry:
+    entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
+    if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
     if not _can_view_entry(db, current_user, entry):
         raise HTTPException(status_code=403, detail="Access denied.")
@@ -718,8 +718,8 @@ def reject_entry(
     current_user: User = Depends(get_current_user),
 ) -> EntryResponse:
     require_role(current_user, UserRole.SUPERVISOR)
-    entry = db.query(Entry).filter(Entry.id == entry_id, Entry.is_active.is_(True)).first()
-    if not entry:
+    entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
+    if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
     if not _can_view_entry(db, current_user, entry):
         raise HTTPException(status_code=403, detail="Access denied.")
@@ -767,13 +767,8 @@ def get_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntryResponse:
-    entry = (
-        db.query(Entry)
-        .options(selectinload(Entry.user))
-        .filter(Entry.id == entry_id, Entry.is_active.is_(True))
-        .first()
-    )
-    if not entry:
+    entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
+    if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
     if not _can_view_entry(db, current_user, entry):
         raise HTTPException(status_code=403, detail="Access denied.")
@@ -790,8 +785,8 @@ def get_entry_summary_meta(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntrySummaryMeta:
-    entry = db.query(Entry).filter(Entry.id == entry_id, Entry.is_active.is_(True)).first()
-    if not entry:
+    entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
+    if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
     if not _can_view_entry(db, current_user, entry):
         raise HTTPException(status_code=403, detail="Access denied.")
@@ -816,8 +811,8 @@ def queue_entry_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
-    entry = db.query(Entry).filter(Entry.id == entry_id, Entry.is_active.is_(True)).first()
-    if not entry:
+    entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
+    if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
     if not _can_view_entry(db, current_user, entry):
         raise HTTPException(status_code=403, detail="Access denied.")
@@ -842,8 +837,8 @@ def regenerate_entry_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntryResponse:
-    entry = db.query(Entry).filter(Entry.id == entry_id, Entry.is_active.is_(True)).first()
-    if not entry:
+    entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
+    if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
     if not _can_view_entry(db, current_user, entry):
         raise HTTPException(status_code=403, detail="Access denied.")
@@ -891,8 +886,8 @@ def update_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntryResponse:
-    entry = db.query(Entry).filter(Entry.id == entry_id, Entry.is_active.is_(True)).first()
-    if not entry:
+    entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
+    if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
     if current_user.role == UserRole.ACCOUNTANT:
         raise HTTPException(status_code=403, detail="Accountant role cannot edit entries.")
@@ -946,8 +941,8 @@ def delete_entry(
     current_user: User = Depends(get_current_user),
 ) -> dict[str, str]:
     require_role(current_user, UserRole.MANAGER)
-    entry = db.query(Entry).filter(Entry.id == entry_id, Entry.is_active.is_(True)).first()
-    if not entry:
+    entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
+    if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
     if current_user.role == UserRole.MANAGER and not _can_view_entry(db, current_user, entry):
         raise HTTPException(status_code=403, detail="Access denied.")

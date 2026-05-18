@@ -1,12 +1,47 @@
-import { API_BASE_URL, ApiError, apiFetch, invalidateApiCache } from "@/lib/api";
-import { clearSession, primeSession } from "@/lib/session-store";
+import {
+  API_BASE_URL,
+  ApiError,
+  apiFetch,
+  invalidateApiCache,
+  primeRoleRevision,
+  registerRoleRevisionMismatchHandler,
+} from "@/lib/api";
+import { pushAppToast } from "@/lib/toast";
+import {
+  clearSession,
+  getSessionSnapshot,
+  invalidateSession,
+  primeSession,
+} from "@/lib/session-store";
 import type { WorkflowTemplateSummary } from "@/lib/settings";
+
+export interface Permissions {
+  can_view_billing: boolean;
+  can_manage_users: boolean;
+  can_view_analytics: boolean;
+  can_approve_entries: boolean;
+  can_export_data: boolean;
+  can_manage_billing: boolean;
+  can_view_admin_panel: boolean;
+}
+
+export const DEFAULT_PERMISSIONS: Permissions = {
+  can_view_billing: false,
+  can_manage_users: false,
+  can_view_analytics: false,
+  can_approve_entries: false,
+  can_export_data: false,
+  can_manage_billing: false,
+  can_view_admin_panel: false,
+};
 
 export type CurrentUser = {
   id: number;
   user_code: number;
   email: string;
   role: string;
+  permissions: Permissions;
+  role_revision: number;
   is_platform_admin: boolean;
   name: string;
   profile_picture?: string | null;
@@ -114,6 +149,11 @@ type WakeRetryOptions = {
   retryMessage: string;
 };
 
+export type WorkspaceRecoveryPlan =
+  | { action: "switch"; factoryId: string; factoryName: string }
+  | { action: "redirect"; href: "/onboarding/factory-required" }
+  | { action: "ignore" };
+
 function sanitizeNextPath(raw?: string | null): string {
   if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
     return "/";
@@ -213,22 +253,128 @@ export async function startGoogleLogin(nextPath?: string | null): Promise<void> 
 function refreshAccountSession(payload: CurrentUser) {
   invalidateApiCache("session:me");
   invalidateApiCache("session:context");
+  primeRoleRevision(payload.role_revision);
   primeSession(payload);
   return payload;
+}
+
+export function invalidateAuthCache() {
+  invalidateApiCache("session:");
+  invalidateSession();
+}
+
+registerRoleRevisionMismatchHandler(() => {
+  invalidateAuthCache();
+  clearSession();
+  if (typeof window !== "undefined") {
+    window.location.assign("/access?reason=permissions_updated");
+  }
+});
+
+function mergeCurrentUserWithPermissions(user: CurrentUser): CurrentUser {
+  return {
+    ...user,
+    permissions: user.permissions ?? DEFAULT_PERMISSIONS,
+  };
+}
+
+function mergeAuthContextWithUserPermissions(context: AuthContext, user: CurrentUser): AuthContext {
+  return {
+    ...context,
+    user: mergeCurrentUserWithPermissions({
+      ...context.user,
+      ...user,
+      permissions: user.permissions,
+    }),
+  };
+}
+
+export async function recoverWorkspaceContextFromError(status: number): Promise<AuthContext | null> {
+  const snapshot = getSessionSnapshot();
+  const recoveryPlan = resolveWorkspaceRecoveryPlan(
+    {
+      activeFactoryId: snapshot.activeFactoryId,
+      factories: snapshot.factories,
+    },
+    status,
+  );
+
+  if (recoveryPlan.action === "ignore") {
+    return null;
+  }
+
+  if (recoveryPlan.action === "switch") {
+    const refreshedContext = await selectFactory(recoveryPlan.factoryId);
+    primeSession(refreshedContext);
+    pushAppToast({
+      title: "Workspace updated",
+      description: `Active workspace changed to ${recoveryPlan.factoryName}`,
+      tone: "info",
+    });
+    return refreshedContext;
+  }
+
+  primeSession({
+    ...(snapshot.user ? { user: snapshot.user } : {}),
+    active_factory_id: null,
+    active_factory: null,
+    factories: [],
+    organization: snapshot.organization,
+  } as AuthContext);
+  if (typeof window !== "undefined") {
+    window.location.assign("/onboarding/factory-required");
+  }
+  return null;
+}
+
+export function resolveWorkspaceRecoveryPlan(
+  snapshot: {
+    activeFactoryId: string | null;
+    factories: FactoryAccess[];
+  },
+  status: number,
+): WorkspaceRecoveryPlan {
+  if (status !== 403 && status !== 404) {
+    return { action: "ignore" };
+  }
+
+  const nextFactories = snapshot.factories.filter(
+    (factory) => factory.factory_id && factory.factory_id !== snapshot.activeFactoryId,
+  );
+
+  if (nextFactories.length > 0) {
+    return {
+      action: "switch",
+      factoryId: nextFactories[0].factory_id,
+      factoryName: nextFactories[0].name,
+    };
+  }
+
+  return { action: "redirect", href: "/onboarding/factory-required" };
 }
 
 export async function login(email: string, password: string): Promise<AuthResponse> {
   const performLogin = async () => {
     const response = await apiFetch<AuthResponse>(
-      "/auth/login",
+      "/auth/v2/login",
       {
         method: "POST",
         body: { email, password },
       },
       { cookieAuth: true },
     );
-    primeSession(response);
-    return response;
+    primeRoleRevision(response.user.role_revision);
+    const currentUser = await getMe();
+    const mergedResponse = {
+      ...response,
+      user: mergeCurrentUserWithPermissions({
+        ...response.user,
+        ...currentUser,
+        permissions: currentUser.permissions,
+      }),
+    };
+    primeSession(mergedResponse);
+    return mergedResponse;
   };
 
   return withBackendWakeRetry(performLogin, {
@@ -275,8 +421,18 @@ export async function refresh(): Promise<AuthResponse> {
       retryMessage: "DPR.ai is waking up. Please wait a few seconds and refresh your session again.",
     },
   );
-  primeSession(response);
-  return response;
+  primeRoleRevision(response.user.role_revision);
+  const currentUser = await getMe();
+  const mergedResponse = {
+    ...response,
+    user: mergeCurrentUserWithPermissions({
+      ...response.user,
+      ...currentUser,
+      permissions: currentUser.permissions,
+    }),
+  };
+  primeSession(mergedResponse);
+  return mergedResponse;
 }
 
 export async function requestPasswordReset(email: string): Promise<PasswordForgotResponse> {
@@ -349,7 +505,7 @@ export async function updateProfile(payload: {
     method: "PUT",
     body: payload,
   });
-  return refreshAccountSession(response);
+  return refreshAccountSession(mergeCurrentUserWithPermissions(response));
 }
 
 export async function uploadProfilePicture(file: File): Promise<CurrentUser> {
@@ -359,14 +515,14 @@ export async function uploadProfilePicture(file: File): Promise<CurrentUser> {
     method: "POST",
     body: formData,
   });
-  return refreshAccountSession(response);
+  return refreshAccountSession(mergeCurrentUserWithPermissions(response));
 }
 
 export async function removeProfilePicture(): Promise<CurrentUser> {
   const response = await apiFetch<CurrentUser>("/auth/profile-photo", {
     method: "DELETE",
   });
-  return refreshAccountSession(response);
+  return refreshAccountSession(mergeCurrentUserWithPermissions(response));
 }
 
 export async function changePassword(payload: {
@@ -384,11 +540,13 @@ export async function getMe(options?: {
   timeoutMs?: number;
 }): Promise<CurrentUser> {
   return withBackendWakeRetry(
-    () =>
-      apiFetch<CurrentUser>(
+    async () =>
+      mergeCurrentUserWithPermissions(
+        await apiFetch<CurrentUser>(
         "/auth/me",
         { signal: options?.signal },
         { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:me" },
+        ),
       ),
     {
       retryMessage: "DPR.ai is waking up. Please wait a few seconds while your session reloads.",
@@ -405,12 +563,27 @@ export async function getAuthContext(options?: {
   timeoutMs?: number;
 }): Promise<AuthContext> {
   return withBackendWakeRetry(
-    () =>
-      apiFetch<AuthContext>(
-        "/auth/context",
-        { signal: options?.signal },
-        { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:context" },
-      ),
+    async () => {
+      try {
+        const [context, user] = await Promise.all([
+          apiFetch<AuthContext>(
+            "/auth/context",
+            { signal: options?.signal },
+            { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:context" },
+          ),
+          getMe(options),
+        ]);
+        return mergeAuthContextWithUserPermissions(context, user);
+      } catch (error) {
+        if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
+          const recovered = await recoverWorkspaceContextFromError(error.status);
+          if (recovered) {
+            return recovered;
+          }
+        }
+        throw error;
+      }
+    },
     {
       retryMessage: "DPR.ai is waking up. Please wait a few seconds while your workspace reloads.",
     },
@@ -432,8 +605,18 @@ export async function selectFactory(factoryId: string): Promise<AuthResponse> {
       retryMessage: "DPR.ai is waking up. Please wait a few seconds before switching factory context again.",
     },
   );
-  primeSession(response);
-  return response;
+  primeRoleRevision(response.user.role_revision);
+  const currentUser = await getMe();
+  const mergedResponse = {
+    ...response,
+    user: mergeCurrentUserWithPermissions({
+      ...response.user,
+      ...currentUser,
+      permissions: currentUser.permissions,
+    }),
+  };
+  primeSession(mergedResponse);
+  return mergedResponse;
 }
 
 export async function getActiveWorkflowTemplate(): Promise<ActiveWorkflowTemplateContext> {

@@ -35,6 +35,14 @@ const PROTECTED_PREFIXES = [
   "/ai",
 ];
 
+const ROLE_ROUTES = {
+  "/billing": ["admin", "owner"],
+  "/settings": ["manager", "admin", "owner"],
+  "/admin-billing": ["superadmin"],
+  "/analytics": ["supervisor", "manager", "admin", "owner"],
+  "/settings/users": ["manager", "admin", "owner"],
+} as const;
+
 function isProtectedPath(pathname: string) {
   return PROTECTED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
@@ -44,6 +52,29 @@ function isProtectedPath(pathname: string) {
 function withBuildVersionHeader(response: NextResponse) {
   response.headers.set("x-dpr-build-version", BUILD_VERSION);
   return response;
+}
+
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  const parts = token.split(".");
+  if (parts.length < 2) {
+    return null;
+  }
+
+  try {
+    const normalized = parts[1].replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    return JSON.parse(atob(padded)) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function getAllowedRoles(pathname: string) {
+  const match = Object.keys(ROLE_ROUTES)
+    .sort((left, right) => right.length - left.length)
+    .find((route) => pathname === route || pathname.startsWith(`${route}/`));
+
+  return match ? ROLE_ROUTES[match as keyof typeof ROLE_ROUTES] : null;
 }
 
 export function middleware(request: NextRequest) {
@@ -79,12 +110,23 @@ export function middleware(request: NextRequest) {
   }
 
   if (isProtectedPath(pathname)) {
-    const hasAccess = request.cookies.get("dpr_access");
-    if (!hasAccess) {
+    const accessCookie = request.cookies.get("dpr_access");
+    if (!accessCookie) {
       const url = request.nextUrl.clone();
       url.pathname = "/access";
       url.searchParams.set("next", pathname);
       return withBuildVersionHeader(NextResponse.redirect(url));
+    }
+
+    const allowedRoles = getAllowedRoles(pathname);
+    if (allowedRoles) {
+      const payload = decodeJwtPayload(accessCookie.value);
+      const role = typeof payload?.role === "string" ? payload.role : null;
+      if (!role || !(allowedRoles as readonly string[]).includes(role)) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/403";
+        return withBuildVersionHeader(NextResponse.redirect(url));
+      }
     }
   }
 

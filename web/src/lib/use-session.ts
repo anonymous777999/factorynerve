@@ -2,7 +2,12 @@
 
 import { useEffect, useSyncExternalStore } from "react";
 
-import { getAuthContext, type CurrentUser } from "@/lib/auth";
+import {
+  DEFAULT_PERMISSIONS,
+  getAuthContext,
+  type CurrentUser,
+  type Permissions,
+} from "@/lib/auth";
 import {
   ensureSessionLoaded,
   getPendingSessionSnapshot,
@@ -26,4 +31,12 @@ export function useSession() {
   }, []);
 
   return state;
+}
+
+export function useAuth(): ReturnType<typeof useSession> & { permissions: Permissions } {
+  const state = useSession();
+  return {
+    ...state,
+    permissions: state.user?.permissions ?? DEFAULT_PERMISSIONS,
+  };
 }

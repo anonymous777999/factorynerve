@@ -2,12 +2,105 @@
 
 from __future__ import annotations
 
+from typing import TypeVar
+
+from fastapi import HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session, Query
 
 from backend.models.entry import Entry
 from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
 from backend.tenancy import resolve_factory_id, resolve_org_id
+
+
+T = TypeVar("T")
+
+
+async def get_org_record_or_404(
+    db: AsyncSession,
+    model: type[T],
+    record_id: int,
+    current_user: User,
+) -> T:
+    """Mandatory ownership helper for async routes.
+
+    Returns 404 on wrong-org access so callers never reveal record existence.
+    """
+    result = await db.execute(
+        select(model).where(
+            getattr(model, "id") == record_id,
+            getattr(model, "org_id") == current_user.org_id,
+        )
+    )
+    record = result.scalar_one_or_none()
+    if not record:
+        raise HTTPException(status_code=404, detail="Not found")
+    return record
+
+
+async def get_factory_record_or_404(
+    db: AsyncSession,
+    model: type[T],
+    record_id: int,
+    current_user: User,
+    factory_id: str,
+) -> T:
+    """Mandatory async helper for factory-scoped ownership checks."""
+    result = await db.execute(
+        select(model).where(
+            getattr(model, "id") == record_id,
+            getattr(model, "org_id") == current_user.org_id,
+            getattr(model, "factory_id") == factory_id,
+        )
+    )
+    record = result.scalar_one_or_none()
+    if not record:
+        raise HTTPException(status_code=404, detail="Not found")
+    return record
+
+
+def get_org_record_or_404_sync(
+    db: Session,
+    model: type[T],
+    record_id: int,
+    current_user: User,
+) -> T:
+    """Sync ownership helper for the current router stack."""
+    record = (
+        db.query(model)
+        .filter(
+            getattr(model, "id") == record_id,
+            getattr(model, "org_id") == current_user.org_id,
+        )
+        .first()
+    )
+    if not record:
+        raise HTTPException(status_code=404, detail="Not found")
+    return record
+
+
+def get_factory_record_or_404_sync(
+    db: Session,
+    model: type[T],
+    record_id: int,
+    current_user: User,
+    factory_id: str,
+) -> T:
+    """Sync factory ownership helper for the current router stack."""
+    record = (
+        db.query(model)
+        .filter(
+            getattr(model, "id") == record_id,
+            getattr(model, "org_id") == current_user.org_id,
+            getattr(model, "factory_id") == factory_id,
+        )
+        .first()
+    )
+    if not record:
+        raise HTTPException(status_code=404, detail="Not found")
+    return record
 
 
 def factory_user_ids_query(db: Session, current_user: User) -> Query:

@@ -58,6 +58,7 @@ from backend.services.user_code_service import (
 )
 from backend.services.email_verification_service import build_verification_link, create_verification_token
 from backend.services.password_reset_service import build_reset_link, create_reset_token
+from backend.services.user_service import validate_factory_role_assignment
 from backend.utils import generate_company_code
 
 
@@ -256,6 +257,8 @@ def _write_admin_audit(
     action: str,
     details: str,
     request: Request,
+    previous_state: dict | None = None,
+    new_state: dict | None = None,
 ) -> None:
     ip_address = request.client.host if request.client else None
     db.add(
@@ -267,6 +270,8 @@ def _write_admin_audit(
             details=details,
             ip_address=ip_address,
             user_agent=request.headers.get("user-agent"),
+            previous_state=previous_state,
+            new_state=new_state,
             timestamp=datetime.now(timezone.utc),
         )
     )
@@ -623,6 +628,7 @@ def create_factory(
         .first()
     )
     if not existing_access:
+        validate_factory_role_assignment(current_user.role, current_user.role)
         db.add(
             UserFactoryRole(
                 user_id=current_user.id,
@@ -891,6 +897,7 @@ def invite_user(
                 "message": "Existing user reactivated for this factory.",
                 "user_code": existing.user_code,
             }
+        validate_factory_role_assignment(existing.role, existing.role)
         db.add(
             UserFactoryRole(
                 user_id=existing.id,
@@ -924,6 +931,7 @@ def invite_user(
     )
     user = _persist_user_with_user_code(db, user)
     if factory and org_id:
+        validate_factory_role_assignment(payload.role, payload.role)
         db.add(
             UserFactoryRole(
                 user_id=user.id,
@@ -1044,11 +1052,13 @@ def update_user_factory_access(
 
     for membership in memberships:
         if membership.factory_id in selected_factory_id_set:
+            validate_factory_role_assignment(user.role, user.role)
             membership.role = user.role
         else:
             db.delete(membership)
 
     for factory_id in added_factory_ids:
+        validate_factory_role_assignment(user.role, user.role)
         db.add(
             UserFactoryRole(
                 user_id=user.id,
@@ -1102,6 +1112,15 @@ def update_user_role(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     require_role(current_user, UserRole.MANAGER)
+    role_order = {
+        UserRole.ATTENDANCE: 0,
+        UserRole.OPERATOR: 1,
+        UserRole.SUPERVISOR: 2,
+        UserRole.ACCOUNTANT: 2,
+        UserRole.MANAGER: 3,
+        UserRole.ADMIN: 4,
+        UserRole.OWNER: 5,
+    }
     org_id = resolve_org_id(current_user)
     if payload.role == UserRole.ACCOUNTANT and not has_org_feature(
         db,
@@ -1118,6 +1137,22 @@ def update_user_role(
     user = _scoped_users_query(db, current_user).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found.")
+    if role_order[payload.role] >= role_order[current_user.role]:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "INSUFFICIENT_RANK",
+                "detail": "Cannot assign a role equal to or higher than your own",
+            },
+        )
+    if role_order[user.role] >= role_order[current_user.role]:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "TARGET_OUTRANKS_YOU",
+                "detail": "Cannot modify a user with equal or higher rank",
+            },
+        )
     _assert_role_update_allowed(
         db,
         current_user=current_user,
@@ -1140,13 +1175,16 @@ def update_user_role(
             )
         }
     old_role = user.role
+    old_role_revision = user.role_revision
     user.role = payload.role
+    user.role_revision += 1
     memberships = (
         db.query(UserFactoryRole)
         .filter(UserFactoryRole.user_id == user.id, UserFactoryRole.org_id == org_id)
         .all()
     )
     for membership in memberships:
+        validate_factory_role_assignment(user.role, payload.role)
         membership.role = payload.role
     if old_role != payload.role:
         _write_admin_audit(
@@ -1157,6 +1195,8 @@ def update_user_role(
             action="ROLE_UPDATED",
             details=f"user_id={user.id} old_role={old_role.value} new_role={payload.role.value}",
             request=request,
+            previous_state={"role": old_role.value, "role_revision": old_role_revision},
+            new_state={"role": payload.role.value, "role_revision": user.role_revision},
         )
     db.commit()
     return {"message": "Role updated."}
@@ -1196,6 +1236,8 @@ def update_user_plan(
             action="PLAN_UPDATED",
             details=f"user_id={user.id} old_plan={old_plan} new_plan={plan}",
             request=request,
+            previous_state={"plan": old_plan},
+            new_state={"plan": plan},
         )
     db.commit()
     return {"message": "Plan updated.", "plan": plan}
@@ -1232,6 +1274,8 @@ def update_org_plan(
             action="ORG_PLAN_UPDATED",
             details=f"org_id={org_id} old_plan={old_plan} new_plan={plan}",
             request=request,
+            previous_state={"plan": old_plan},
+            new_state={"plan": plan},
         )
     db.commit()
     return {"message": "Organization plan updated.", "plan": plan}

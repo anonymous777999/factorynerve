@@ -14,6 +14,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from backend.database import SessionLocal, init_db
+from backend.models.user import User
 from backend.routers.analytics import router as analytics_router
 from backend.routers.ai import router as ai_router
 from backend.routers.alerts import router as alerts_router
@@ -47,6 +48,8 @@ from backend.metrics import (
 from backend.middleware.security import apply_security
 from backend.middleware.response_envelope import apply_response_envelope
 from backend.middleware.csrf_cookie import apply_cookie_csrf
+from backend.auth_cookies import get_access_cookie
+from backend.security import decode_access_token
 from backend.services.ops_alerts import (
     initialize_ops_alerting,
     record_request_exception as record_ops_request_exception,
@@ -124,6 +127,7 @@ app.include_router(auth_google_router, prefix="/auth")
 app.include_router(phone_auth_router, prefix="/auth")
 if os.getenv("ENABLE_AUTH_SECURE", "").strip().lower() in {"1", "true", "yes", "on"}:
     app.include_router(auth_secure_router, prefix="/auth-secure")
+app.include_router(auth_secure_router, prefix="/auth/v2")
 app.include_router(jobs_router, prefix="/jobs")
 app.include_router(entries_router, prefix="/entries")
 app.include_router(reports_router, prefix="/reports")
@@ -148,6 +152,34 @@ app.include_router(steel_router, prefix="/steel")
 apply_security(app)
 apply_response_envelope(app)
 apply_cookie_csrf(app)
+
+
+@app.middleware("http")
+async def attach_role_revision_header(request: Request, call_next: Callable) -> Response:
+    response = await call_next(request)
+    token: str | None = None
+    authorization = request.headers.get("Authorization") or ""
+    if authorization.startswith("Bearer "):
+        token = authorization.replace("Bearer ", "", 1).strip()
+    if not token:
+        token = get_access_cookie(request)
+    if not token:
+        return response
+
+    try:
+        payload = decode_access_token(token)
+        user_id = int(payload.get("sub", 0))
+    except Exception:
+        return response
+
+    if user_id <= 0:
+        return response
+
+    with SessionLocal() as db:
+        current_user = db.query(User).filter(User.id == user_id, User.is_active.is_(True)).first()
+        if current_user:
+            response.headers["X-Role-Revision"] = str(current_user.role_revision)
+    return response
 
 
 @app.middleware("http")
