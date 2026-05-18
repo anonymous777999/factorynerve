@@ -381,7 +381,7 @@ def _activate_paid_order(
             existing_invoice.issued_at = existing_invoice.issued_at or datetime.now(timezone.utc)
             db.add(existing_invoice)
     except Exception:
-        pass
+        logger.exception("Failed to record or update invoice for user_id=%s order_id=%s", user_id, provider_order_id)
     db.flush()
 
 
