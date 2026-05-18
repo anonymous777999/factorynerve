@@ -21,6 +21,7 @@ from backend.services.user_code_service import (
     is_user_code_collision,
     next_user_code,
 )
+from backend.services.user_service import validate_factory_role_assignment
 import secrets
 
 
@@ -107,6 +108,7 @@ def get_or_create_google_user(
     db.add_all([org, factory])
     db.flush()
     user = _persist_user_with_user_code(db, user)
+    validate_factory_role_assignment(user.role, user.role)
     db.add(
         UserFactoryRole(
             id=str(uuid.uuid4()),

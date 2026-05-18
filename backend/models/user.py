@@ -42,6 +42,7 @@ class User(Base):
     role: Mapped[UserRole] = mapped_column(
         SqlEnum(UserRole, name="user_role"), nullable=False, default=UserRole.ATTENDANCE
     )
+    role_revision: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
     factory_name: Mapped[str] = mapped_column(String(255), nullable=False)
     factory_code: Mapped[str | None] = mapped_column(String(32), nullable=True, index=True)
     phone_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
@@ -107,6 +108,7 @@ class UserUpdateSchema(BaseModel):
 class UserReadSchema(UserBaseSchema):
     id: int
     user_code: int
+    role_revision: int = 0
     is_platform_admin: bool = False
     is_active: bool
     phone_verification_status: str = PhoneVerificationStatus.PENDING.value

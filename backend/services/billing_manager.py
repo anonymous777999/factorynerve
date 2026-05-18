@@ -155,6 +155,8 @@ def apply_plan_change(
     now = datetime.now(timezone.utc)
     resolved_org_id = _resolve_subscription_org_id(db, org_id=org_id, user_id=user_id)
     sub = db.query(Subscription).filter(Subscription.org_id == resolved_org_id).first()
+    org = db.query(Organization).filter(Organization.org_id == resolved_org_id).first()
+    old_plan = sub.plan if sub else (org.plan if org else None)
     if sub:
         sub.plan = normalized
         sub.status = "active"
@@ -194,7 +196,6 @@ def apply_plan_change(
         plan_row = None
 
     user = db.query(User).filter(User.id == user_id).first() if user_id is not None else None
-    org = db.query(Organization).filter(Organization.org_id == resolved_org_id).first()
     if org:
         org.plan = normalized
         org.plan_expires_at = current_period_end_at
@@ -208,6 +209,8 @@ def apply_plan_change(
                 factory_id=resolve_factory_id(db, user),
                 action=audit_action,
                 details=audit_details,
+                previous_state={"plan": old_plan} if old_plan else None,
+                new_state={"plan": normalized},
                 ip_address=None,
                 user_agent=None,
                 timestamp=now,

@@ -95,9 +95,23 @@ type CacheEntry = {
   promise?: Promise<unknown>;
 };
 
+export type ApiErrorHandlerContext = {
+  path: string;
+  method: string;
+  status: number;
+  detail?: unknown;
+};
+
 const responseCache = new Map<string, CacheEntry>();
 let inflightCsrfBootstrap: Promise<string | null> | null = null;
 let csrfHeaderToken: string | null = null;
+let roleRevision: string | null = null;
+let roleRevisionMismatchHandler:
+  | ((serverRoleRevision: string) => void | Promise<void>)
+  | null = null;
+let apiErrorHandler:
+  | ((context: ApiErrorHandlerContext) => void | Promise<void>)
+  | null = null;
 
 function rememberCsrfToken(token?: string | null) {
   const normalized = String(token || "").trim();
@@ -105,6 +119,43 @@ function rememberCsrfToken(token?: string | null) {
     csrfHeaderToken = normalized;
   }
   return csrfHeaderToken;
+}
+
+function rememberRoleRevision(nextRoleRevision?: string | null) {
+  const normalized = String(nextRoleRevision || "").trim();
+  if (normalized) {
+    roleRevision = normalized;
+  }
+  return roleRevision;
+}
+
+async function handleRoleRevisionHeader(response: Response) {
+  const nextRoleRevision = response.headers.get("X-Role-Revision");
+  if (!nextRoleRevision) {
+    return;
+  }
+
+  const previousRoleRevision = roleRevision;
+  rememberRoleRevision(nextRoleRevision);
+  if (
+    previousRoleRevision &&
+    previousRoleRevision !== nextRoleRevision &&
+    roleRevisionMismatchHandler
+  ) {
+    await roleRevisionMismatchHandler(nextRoleRevision);
+  }
+}
+
+export function registerRoleRevisionMismatchHandler(
+  handler: ((serverRoleRevision: string) => void | Promise<void>) | null,
+) {
+  roleRevisionMismatchHandler = handler;
+}
+
+export function registerApiErrorHandler(
+  handler: ((context: ApiErrorHandlerContext) => void | Promise<void>) | null,
+) {
+  apiErrorHandler = handler;
 }
 
 function canUseResponseCache() {
@@ -199,8 +250,23 @@ export function primeApiCache<T>(
   });
 }
 
+export function primeRoleRevision(nextRoleRevision?: string | number | null) {
+  rememberRoleRevision(
+    nextRoleRevision === null || nextRoleRevision === undefined
+      ? null
+      : String(nextRoleRevision),
+  );
+}
+
 export function preloadApiGet<T>(path: string, apiOptions: ApiFetchOptions = {}) {
   return apiFetch<T>(path, { method: "GET" }, { ...apiOptions, cacheTtlMs: apiOptions.cacheTtlMs ?? 15000 });
+}
+
+async function notifyApiErrorHandler(context: ApiErrorHandlerContext) {
+  if (!apiErrorHandler || context.status === 404) {
+    return;
+  }
+  await apiErrorHandler(context);
 }
 
 export async function apiFetch<T>(
@@ -285,6 +351,7 @@ export async function apiFetch<T>(
     }
 
     rememberCsrfToken(response.headers.get(CSRF_HEADER));
+    await handleRoleRevisionHeader(response);
 
     if (
       allowCsrfRetry &&
@@ -332,6 +399,12 @@ export async function apiFetch<T>(
       }
       if (payload === undefined) {
         if (!response.ok) {
+          await notifyApiErrorHandler({
+            path,
+            method,
+            status: response.status,
+            detail: raw || undefined,
+          });
           throw new ApiError(`Request failed (${response.status}).`, response.status, raw || undefined);
         }
         if (!SAFE_METHODS.includes(method) && canUseResponseCache()) {
@@ -350,6 +423,12 @@ export async function apiFetch<T>(
       };
       if (!envelopePayload.ok) {
         const detail = envelopePayload.error?.detail;
+        await notifyApiErrorHandler({
+          path,
+          method,
+          status: envelopePayload.status ?? response.status,
+          detail,
+        });
         const message =
           typeof detail === "string"
             ? detail
@@ -371,6 +450,12 @@ export async function apiFetch<T>(
           : null;
       const detail =
         objectPayload?.detail ?? objectPayload ?? "Request failed.";
+      await notifyApiErrorHandler({
+        path,
+        method,
+        status: response.status,
+        detail,
+      });
       const message =
         typeof detail === "string"
           ? detail

@@ -2848,11 +2848,17 @@ def export_shared_verification_excel(
 ) -> Response:
     payload = _read_ocr_share_token(token)
     verification_id = int(payload.get("verification_id") or 0)
-    verification = db.query(OcrVerification).filter(OcrVerification.id == verification_id).first()
+    verification = (
+        db.query(OcrVerification)
+        .filter(
+            OcrVerification.id == verification_id,
+            OcrVerification.org_id == payload.get("org_id"),
+            OcrVerification.factory_id == payload.get("factory_id"),
+        )
+        .first()
+    )
     if not verification:
         raise HTTPException(status_code=404, detail="Verification record not found.")
-    if payload.get("org_id") != verification.org_id or payload.get("factory_id") != verification.factory_id:
-        raise HTTPException(status_code=404, detail="Share link invalid.")
     return _verification_export_response(verification)
 
 

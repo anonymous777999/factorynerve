@@ -5,7 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from pydantic import BaseModel, ConfigDict
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, Index
+from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, Index, JSON
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from backend.database import Base
@@ -24,6 +25,8 @@ class AuditLog(Base):
     factory_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
     action: Mapped[str] = mapped_column(String(120), nullable=False)
     details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    previous_state: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
+    new_state: Mapped[dict | None] = mapped_column(JSON().with_variant(JSONB, "postgresql"), nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String(120), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
     timestamp: Mapped[datetime] = mapped_column(
@@ -49,6 +52,8 @@ class AuditLogRead(BaseModel):
     factory_id: str | None = None
     action: str
     details: str | None
+    previous_state: dict | None = None
+    new_state: dict | None = None
     ip_address: str | None
     user_agent: str | None = None
     timestamp: datetime

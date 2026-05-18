@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { login, resendEmailVerification, startGoogleLogin, warmBackendConnection } from "@/lib/auth";
+import { resolveAccessReasonMessage } from "@/lib/access-reason";
 import { ApiError, formatApiErrorMessage } from "@/lib/api";
 import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import { getHomeDestination } from "@/lib/role-navigation";
@@ -146,6 +147,10 @@ export default function LoginPage() {
   const [resending, setResending] = useState(false);
 
   const routeInfo = useMemo(() => {
+    const accessReason = resolveAccessReasonMessage(searchParams.get("reason"), t);
+    if (accessReason) {
+      return accessReason;
+    }
     const oauthError = searchParams.get("oauth_error");
     if (oauthError) {
       return {

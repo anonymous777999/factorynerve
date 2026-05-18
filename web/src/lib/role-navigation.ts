@@ -128,6 +128,87 @@ export function getRoleDesktopQuickLinkHrefs(role?: string | null) {
   }
 }
 
+export function getRoleAllowedNavHrefs(role?: string | null, industryType?: string | null) {
+  const normalizedIndustry = (industryType || "").toLowerCase();
+  const base = new Set<string>(["/profile"]);
+
+  switch (normalizedRole(role)) {
+    case "attendance":
+      base.add("/attendance");
+      break;
+    case "operator":
+      [
+        "/dashboard",
+        "/work-queue",
+        "/tasks",
+        "/entry",
+        "/ocr/scan",
+        "/ocr/history",
+        "/attendance",
+      ].forEach((href) => base.add(href));
+      break;
+    case "supervisor":
+      [
+        "/work-queue",
+        "/attendance/review",
+        "/ocr/verify",
+        "/ocr/history",
+        "/steel/dispatches",
+      ].forEach((href) => base.add(href));
+      if (normalizedIndustry === "steel") {
+        base.add("/steel/reconciliations");
+      }
+      break;
+    case "accountant":
+      [
+        "/attendance/reports",
+        "/steel/customers",
+        "/steel/invoices",
+        "/email-summary",
+      ].forEach((href) => base.add(href));
+      break;
+    case "manager":
+      [
+        "/dashboard",
+        "/work-queue",
+        "/ocr/history",
+        "/steel",
+        "/steel/inventory",
+        "/steel/inventory/transactions",
+        "/steel/production/record",
+        "/steel/customers",
+        "/steel/invoices",
+        "/steel/dispatches",
+        "/email-summary",
+      ].forEach((href) => base.add(href));
+      break;
+    case "admin":
+      [
+        "/dashboard",
+        "/ocr/history",
+      ].forEach((href) => base.add(href));
+      break;
+    case "owner":
+      [
+        "/premium/dashboard",
+        "/control-tower",
+        "/ocr/history",
+        "/steel/batches",
+        "/steel/charts",
+        "/steel/customers",
+        "/steel/dispatches",
+        "/email-summary",
+        "/ai",
+      ].forEach((href) => base.add(href));
+      break;
+    default:
+      base.add("/dashboard");
+      break;
+  }
+
+  return [...base];
+}
+
 export function getRoleWorkflowHint(role?: string | null, industryType?: string | null) {
   switch (normalizedRole(role)) {
     case "attendance":

@@ -30,6 +30,7 @@ from backend.models.user import User, UserReadSchema, UserRole
 from backend.models.factory import Factory
 from backend.models.organization import Organization
 from backend.models.user_factory_role import UserFactoryRole
+from backend.schemas.auth import AuthMeResponse, PermissionsSchema
 from backend.security import (
     create_access_token,
     decode_access_token,
@@ -66,6 +67,7 @@ from backend.services.user_code_service import (
     is_user_code_collision,
     next_user_code,
 )
+from backend.services.user_service import validate_factory_role_assignment
 from backend.email_service import send_email
 from backend.services.registration_service import resolve_registration_context
 from backend.auth_cookies import (
@@ -96,6 +98,11 @@ PROFILE_PHOTO_SIZE = max(256, int(os.getenv("PROFILE_PHOTO_SIZE", "512")))
 PROFILE_PHOTO_DIR = Path(__file__).resolve().parents[2] / "var" / "profile_photos"
 _rate_limit_lock = threading.Lock()
 _login_attempts: dict[str, deque[float]] = defaultdict(deque)
+
+
+@router.on_event("startup")
+def log_deprecated_auth_route_warning() -> None:
+    logger.warning("DEPRECATED_AUTH_ROUTE_ACTIVE: /auth/login will be removed 2025-09-01")
 
 
 def _to_bool(value: str | None, default: bool = False) -> bool:
@@ -443,6 +450,31 @@ def _hash_refresh_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
+_ROLE_ORDER = {
+    UserRole.ATTENDANCE: 0,
+    UserRole.OPERATOR: 1,
+    UserRole.SUPERVISOR: 2,
+    UserRole.ACCOUNTANT: 2,
+    UserRole.MANAGER: 3,
+    UserRole.ADMIN: 4,
+    UserRole.OWNER: 5,
+}
+
+
+def _build_permissions(user: User) -> PermissionsSchema:
+    role_value = user.role.value if isinstance(user.role, UserRole) else str(user.role)
+    role = user.role if isinstance(user.role, UserRole) else None
+    return PermissionsSchema(
+        can_view_billing=role in {UserRole.ADMIN, UserRole.OWNER},
+        can_manage_users=bool(role and _ROLE_ORDER[role] >= _ROLE_ORDER[UserRole.MANAGER]),
+        can_view_analytics=bool(role and _ROLE_ORDER[role] >= _ROLE_ORDER[UserRole.SUPERVISOR]),
+        can_approve_entries=bool(role and _ROLE_ORDER[role] >= _ROLE_ORDER[UserRole.SUPERVISOR]),
+        can_export_data=role not in {UserRole.ATTENDANCE, UserRole.OPERATOR},
+        can_manage_billing=role == UserRole.OWNER,
+        can_view_admin_panel=role_value == "superadmin",
+    )
+
+
 def _persist_user_with_user_code(db: Session, user: User) -> User:
     last_error: IntegrityError | None = None
     for _ in range(MAX_USER_CODE_ATTEMPTS):
@@ -745,6 +777,7 @@ def _activate_pending_registration(
         email_verified_at=datetime.now(timezone.utc),
     )
     user = _persist_user_with_user_code(db, user)
+    validate_factory_role_assignment(assigned_role, assigned_role)
 
     db.add(
         UserFactoryRole(
@@ -886,115 +919,15 @@ def login_user(
     response: Response,
     db: Session = Depends(get_db),
 ) -> AuthResponse:
-    ip_address = request.client.host if request.client else "unknown"
-    generic_error = HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
-    if _check_rate_limit(ip_address):
-        raise HTTPException(status_code=429, detail="Too many login attempts. Try again later.")
-    try:
-        user = db.query(User).filter(User.email == payload.email.lower(), User.is_active.is_(True)).first()
-        if not user:
-            pending = (
-                db.query(PendingRegistration)
-                .filter(
-                    PendingRegistration.email == payload.email.lower(),
-                    PendingRegistration.used_at.is_(None),
-                    PendingRegistration.expires_at > datetime.now(timezone.utc),
-                )
-                .first()
-            )
-            if pending and verify_password(payload.password, pending.password_hash):
-                _register_failed_attempt(ip_address)
-                _log_auth_event(
-                    db,
-                    "USER_LOGIN_BLOCKED_PENDING_VERIFICATION",
-                    "Login blocked because signup is still waiting for email verification.",
-                    None,
-                    request,
-                )
-                db.commit()
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail="Verify your email before signing in.",
-                )
-            _register_failed_attempt(ip_address)
-            _log_auth_event(db, "USER_LOGIN_FAILED", "Failed login attempt.", None, request)
-            db.commit()
-            raise generic_error
-        if not verify_password(payload.password, user.password_hash):
-            _register_failed_attempt(ip_address)
-            _log_auth_event(db, "USER_LOGIN_FAILED", "Failed login attempt.", None, request)
-            db.commit()
-            raise generic_error
-        if user.auth_provider == "local" and user.email_verified_at is None:
-            _register_failed_attempt(ip_address)
-            _log_auth_event(
-                db,
-                "USER_LOGIN_BLOCKED_UNVERIFIED",
-                "Login blocked because email is not verified.",
-                user.id,
-                request,
-                org_id=user.org_id,
-                factory_id=None,
-            )
-            db.commit()
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Verify your email before signing in.",
-            )
-
-        user.last_login = datetime.now(timezone.utc)
-        _clear_attempts(ip_address)
-        role_row = (
-            db.query(UserFactoryRole)
-            .filter(UserFactoryRole.user_id == user.id)
-            .order_by(UserFactoryRole.assigned_at.asc())
-            .first()
-        )
-        active_factory_id = role_row.factory_id if role_row else None
-        active_role = role_row.role.value if role_row else user.role.value
-        _log_auth_event(
-            db,
-            "USER_LOGIN",
-            "User login successful.",
-            user.id,
-            request,
-            org_id=user.org_id,
-            factory_id=active_factory_id,
-        )
-        refresh_token = _issue_refresh_token(
-            db, user=user, org_id=user.org_id, factory_id=active_factory_id
-        )
-        db.commit()
-        db.refresh(user)
-
-        token = create_access_token(
-            user_id=user.id,
-            role=active_role,
-            email=user.email,
-            org_id=user.org_id,
-            factory_id=active_factory_id,
-        )
-        auth_context = _build_auth_context(db, user=user, active_factory_id=active_factory_id)
-        auth_response = AuthResponse(
-            access_token=token,
-            refresh_token=refresh_token,
-            **auth_context,
-        )
-        if wants_cookie_auth(request):
-            csrf_token = set_auth_cookies(
-                response=response,
-                access_token=token,
-                refresh_token=refresh_token,
-                request=request,
-            )
-            response.headers["X-CSRF-Token"] = csrf_token
-        return auth_response
-    except HTTPException:
-        raise
-    except Exception as error:  # pylint: disable=broad-except
-        db.rollback()
-        logger.exception("User login failed.")
-        raise HTTPException(status_code=500, detail="Could not process login.") from error
+    del payload, request, response, db
+    raise HTTPException(
+        status_code=410,
+        detail={
+            "code": "DEPRECATED",
+            "migrate_to": "/auth/v2/login",
+            "sunset_date": "2025-09-01",
+        },
+    )
 
 
 @router.post("/logout")
@@ -1527,9 +1460,13 @@ def select_factory(
     )
 
 
-@router.get("/me", response_model=UserReadSchema)
-def get_me(current_user: User = Depends(get_current_user)) -> UserReadSchema:
-    return current_user
+@router.get("/me", response_model=AuthMeResponse)
+def get_me(current_user: User = Depends(get_current_user)) -> AuthMeResponse:
+    user_payload = UserReadSchema.model_validate(current_user)
+    return AuthMeResponse(
+        **user_payload.model_dump(),
+        permissions=_build_permissions(current_user),
+    )
 
 
 @router.get("/profile-photo/{photo_name}")
