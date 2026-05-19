@@ -37,8 +37,8 @@ function makePermissions(overrides: Partial<Permissions>): Permissions {
   };
 }
 
-test("Flow 1 - operator trying billing is redirected to /403 by middleware", () => {
-  const response = middleware(createRequest("/billing", createJwt("operator")));
+test("Flow 1 - operator trying billing is redirected to /403 by middleware", async () => {
+  const response = await middleware(createRequest("/billing", createJwt("operator")));
   assert.equal(response.headers.get("location"), "https://example.com/403");
 });
 

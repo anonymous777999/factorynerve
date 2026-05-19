@@ -20,7 +20,41 @@ function detailCode(detail: unknown) {
     return "";
   }
   const code = "code" in detail ? (detail as { code?: unknown }).code : undefined;
-  return typeof code === "string" ? code : "";
+  if (typeof code === "string") {
+    return code;
+  }
+  const nestedDetail =
+    "detail" in detail ? (detail as { detail?: unknown }).detail : undefined;
+  return detailCode(nestedDetail);
+}
+
+export function shouldGloballyRedirect(
+  status: number,
+  code: string,
+  requestPath: string,
+): boolean {
+  if (status === 402) {
+    return false;
+  }
+
+  if (status !== 403) {
+    return false;
+  }
+
+  if (code === "SESSION_UPDATED" || code === "SUSPENDED") {
+    return true;
+  }
+
+  if (
+    code === "NO_SUBSCRIPTION" ||
+    code === "FEATURE_GATED" ||
+    code === "INSUFFICIENT_RANK" ||
+    code === "TARGET_OUTRANKS_YOU"
+  ) {
+    return false;
+  }
+
+  return requestPath === "/auth/me" || requestPath === "/auth/context" || requestPath === "/auth/refresh";
 }
 
 export function resolveApiError(context: ApiErrorHandlerContext): ApiErrorResolution {
@@ -28,23 +62,35 @@ export function resolveApiError(context: ApiErrorHandlerContext): ApiErrorResolu
     return { action: "ignore" };
   }
 
+  if (context.status === 402) {
+    return { action: "ignore" };
+  }
+
   if (context.status !== 403) {
     return { action: "ignore" };
   }
 
-  const code = detailCode(context.detail);
+  const code = context.code || detailCode(context.detail);
   if (code === "SESSION_UPDATED") {
     return { action: "redirect", href: "/access?reason=permissions_updated" };
   }
   if (code === "SUSPENDED") {
     return { action: "redirect", href: "/suspended" };
   }
-  if (code === "INSUFFICIENT_RANK") {
+  if (code === "INSUFFICIENT_RANK" || code === "TARGET_OUTRANKS_YOU") {
     return {
       action: "toast",
       title: "Action not permitted",
       description: "Action not permitted for your role",
     };
+  }
+
+  if (code === "NO_SUBSCRIPTION" || code === "FEATURE_GATED") {
+    return { action: "ignore" };
+  }
+
+  if (!shouldGloballyRedirect(context.status, code, context.path)) {
+    return { action: "ignore" };
   }
 
   return { action: "redirect", href: "/403" };
