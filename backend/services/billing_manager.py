@@ -24,6 +24,7 @@ from backend.tenancy import resolve_factory_id, resolve_org_id
 logger = logging.getLogger(__name__)
 VALID_SUBSCRIPTION_STATUSES = {"trialing", "active", "past_due", "suspended", "cancelled", "inactive"}
 BILLING_GRACE_DAYS = int(os.getenv("BILLING_GRACE_DAYS", "3"))
+NON_PROMOTABLE_SUBSCRIPTION_STATUSES = {"stale", "cancelled", "expired"}
 
 
 def _as_utc(value: datetime | None) -> datetime | None:
@@ -50,16 +51,71 @@ def _resolve_subscription_org_id(
     return str(user.org_id)
 
 
-def get_active_subscription(db: Session, org_id: str) -> Subscription | None:
-    rows = (
-        db.query(Subscription)
-        .filter(Subscription.org_id == org_id)
-        .order_by(Subscription.updated_at.desc(), Subscription.id.desc())
-        .all()
+def _raw_subscription_status(sub: Subscription) -> str:
+    return str(sub.status or "").strip().lower() or "inactive"
+
+
+def _subscription_recency_score(value: datetime | None) -> float:
+    normalized = _as_utc(value)
+    return normalized.timestamp() if normalized else 0.0
+
+
+def _subscription_priority_bucket(sub: Subscription, *, now: datetime | None = None) -> int:
+    raw_status = _raw_subscription_status(sub)
+    if raw_status in NON_PROMOTABLE_SUBSCRIPTION_STATUSES:
+        return 6 if raw_status == "cancelled" else 7
+
+    effective_status = get_effective_subscription_status(sub, now=now)
+    if effective_status == "active":
+        return 0
+    if effective_status == "trialing":
+        return 1
+    if effective_status == "past_due":
+        return 2
+    if effective_status == "suspended":
+        return 3
+    if effective_status == "inactive":
+        return 4
+    return 8
+
+
+def _subscription_sort_key(sub: Subscription, *, now: datetime | None = None) -> tuple[int, float, float, int]:
+    return (
+        _subscription_priority_bucket(sub, now=now),
+        -_subscription_recency_score(sub.updated_at),
+        -_subscription_recency_score(sub.created_at),
+        -int(sub.id or 0),
     )
-    for row in rows:
-        if get_effective_subscription_status(row) == "active":
-            return row
+
+
+def get_canonical_subscription(db: Session, org_id: str) -> Subscription | None:
+    rows = db.query(Subscription).filter(Subscription.org_id == org_id).all()
+    if not rows:
+        return None
+    now = datetime.now(timezone.utc)
+    return min(rows, key=lambda row: _subscription_sort_key(row, now=now))
+
+
+def get_mutable_subscription(db: Session, org_id: str) -> Subscription | None:
+    rows = db.query(Subscription).filter(Subscription.org_id == org_id).all()
+    if not rows:
+        return None
+    now = datetime.now(timezone.utc)
+    promotable = [
+        row
+        for row in rows
+        if _raw_subscription_status(row) not in NON_PROMOTABLE_SUBSCRIPTION_STATUSES
+        and _subscription_priority_bucket(row, now=now) < 5
+    ]
+    if not promotable:
+        return None
+    return min(promotable, key=lambda row: _subscription_sort_key(row, now=now))
+
+
+def get_active_subscription(db: Session, org_id: str) -> Subscription | None:
+    sub = get_canonical_subscription(db, org_id)
+    if sub and get_effective_subscription_status(sub) == "active":
+        return sub
     return None
 
 
@@ -154,7 +210,7 @@ def apply_plan_change(
         return
     now = datetime.now(timezone.utc)
     resolved_org_id = _resolve_subscription_org_id(db, org_id=org_id, user_id=user_id)
-    sub = db.query(Subscription).filter(Subscription.org_id == resolved_org_id).first()
+    sub = get_mutable_subscription(db, resolved_org_id)
     org = db.query(Organization).filter(Organization.org_id == resolved_org_id).first()
     old_plan = sub.plan if sub else (org.plan if org else None)
     if sub:
@@ -241,7 +297,7 @@ def schedule_downgrade(
         raise ValueError("Invalid plan.")
     now = datetime.now(timezone.utc)
     resolved_org_id = _resolve_subscription_org_id(db, org_id=org_id, user_id=user_id)
-    sub = db.query(Subscription).filter(Subscription.org_id == resolved_org_id).first()
+    sub = get_mutable_subscription(db, resolved_org_id)
     if not sub:
         sub = Subscription(org_id=resolved_org_id, user_id=user_id, plan="free", status="trialing")
         db.add(sub)
@@ -272,7 +328,7 @@ def cancel_scheduled_downgrade(
     org_id: str | None = None,
 ) -> None:
     resolved_org_id = _resolve_subscription_org_id(db, org_id=org_id, user_id=user_id)
-    sub = db.query(Subscription).filter(Subscription.org_id == resolved_org_id).first()
+    sub = get_mutable_subscription(db, resolved_org_id)
     if not sub:
         return
     sub.pending_plan = None

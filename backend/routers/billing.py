@@ -53,6 +53,7 @@ from backend.services.billing_manager import (
     schedule_downgrade,
     cancel_scheduled_downgrade,
     apply_due_downgrades,
+    get_mutable_subscription,
     record_invoice,
     list_invoices,
 )
@@ -455,7 +456,7 @@ def _ensure_trial(db: Session, user_id: int, plan: str) -> Subscription:
     org_id = resolve_org_id(user) if user else None
     if not org_id:
         raise HTTPException(status_code=400, detail="User organization is required for trial setup.")
-    sub = db.query(Subscription).filter(Subscription.org_id == org_id).first()
+    sub = get_mutable_subscription(db, org_id)
     if sub:
         return sub
     now = datetime.now(timezone.utc)

@@ -12,6 +12,7 @@ from backend.models.subscription import Subscription
 from backend.models.user import User
 from backend.security import get_current_user
 from backend.services.billing_manager import (
+    get_canonical_subscription,
     get_active_subscription,
     get_effective_subscription_status,
     normalize_subscription_record,
@@ -30,12 +31,7 @@ def _load_subscription(db: Session, org_id: str) -> Subscription | None:
     active = get_active_subscription(db, org_id)
     if active:
         return active
-    return (
-        db.query(Subscription)
-        .filter(Subscription.org_id == org_id)
-        .order_by(Subscription.updated_at.desc(), Subscription.id.desc())
-        .first()
-    )
+    return get_canonical_subscription(db, org_id)
 
 
 async def require_active_subscription(

@@ -19,6 +19,7 @@ from backend.models.user import User
 from backend.models.webhook_event import WebhookEvent
 from backend.plans import PLAN_CATALOG, PRICING_META, normalize_plan
 from backend.services.billing_logger import log_billing_event
+from backend.services.billing_manager import get_mutable_subscription
 from backend.services.billing.provider_adapter import AbstractPaymentProvider, PaymentResult
 
 
@@ -192,7 +193,7 @@ def _resolve_payment_order(db: Session, order_id: str) -> PaymentOrder:
 
 
 def _resolve_subscription(db: Session, org_id: str) -> Subscription:
-    sub = db.query(Subscription).filter(Subscription.org_id == org_id).first()
+    sub = get_mutable_subscription(db, org_id)
     if not sub:
         sub = Subscription(org_id=org_id, user_id=None, plan="free", status="inactive")
         db.add(sub)

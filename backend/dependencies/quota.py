@@ -13,7 +13,7 @@ from backend.models.subscription import Subscription
 from backend.models.user import User
 from backend.security import get_current_user
 from backend.services.billing_logger import duration_ms_since, log_billing_event
-from backend.services.billing_manager import get_effective_subscription_status
+from backend.services.billing_manager import get_canonical_subscription, get_effective_subscription_status
 
 
 def _current_timestamp_sql(db: Session) -> str:
@@ -54,12 +54,7 @@ async def require_ocr_quota(
     db: Session = Depends(get_db),
 ) -> dict[str, object]:
     started_at = time.perf_counter()
-    subscription = (
-        db.query(Subscription)
-        .filter(Subscription.org_id == user.org_id)
-        .order_by(Subscription.updated_at.desc(), Subscription.id.desc())
-        .first()
-    )
+    subscription = get_canonical_subscription(db, user.org_id)
     if subscription and get_effective_subscription_status(subscription) == "past_due":
         log_billing_event(
             "quota.decrement",
