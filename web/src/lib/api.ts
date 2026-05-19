@@ -99,6 +99,7 @@ export type ApiErrorHandlerContext = {
   path: string;
   method: string;
   status: number;
+  code?: string;
   detail?: unknown;
 };
 
@@ -156,6 +157,21 @@ export function registerApiErrorHandler(
   handler: ((context: ApiErrorHandlerContext) => void | Promise<void>) | null,
 ) {
   apiErrorHandler = handler;
+}
+
+function extractApiErrorCode(detail: unknown): string | undefined {
+  if (!detail || typeof detail !== "object") {
+    return undefined;
+  }
+
+  const code = "code" in detail ? (detail as { code?: unknown }).code : undefined;
+  if (typeof code === "string" && code.trim()) {
+    return code;
+  }
+
+  const nestedDetail =
+    "detail" in detail ? (detail as { detail?: unknown }).detail : undefined;
+  return extractApiErrorCode(nestedDetail);
 }
 
 function canUseResponseCache() {
@@ -403,6 +419,7 @@ export async function apiFetch<T>(
             path,
             method,
             status: response.status,
+            code: undefined,
             detail: raw || undefined,
           });
           throw new ApiError(`Request failed (${response.status}).`, response.status, raw || undefined);
@@ -427,6 +444,7 @@ export async function apiFetch<T>(
           path,
           method,
           status: envelopePayload.status ?? response.status,
+          code: extractApiErrorCode(detail),
           detail,
         });
         const message =
@@ -454,6 +472,7 @@ export async function apiFetch<T>(
         path,
         method,
         status: response.status,
+        code: extractApiErrorCode(detail),
         detail,
       });
       const message =

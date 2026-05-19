@@ -43,6 +43,12 @@ const ROLE_ROUTES = {
   "/settings/users": ["manager", "admin", "owner"],
 } as const;
 
+type NormalizedTokenPayload = {
+  role: string | null;
+  orgId: string | null;
+  source: "auth_session" | "dpr_access" | null;
+};
+
 function isProtectedPath(pathname: string) {
   return PROTECTED_PREFIXES.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
@@ -69,6 +75,92 @@ function decodeJwtPayload(token: string): Record<string, unknown> | null {
   }
 }
 
+async function readSessionAuthContext(
+  request: NextRequest,
+  sessionToken: string,
+): Promise<NormalizedTokenPayload> {
+  const cookieHeader = request.headers.get("cookie");
+  if (!cookieHeader || !sessionToken) {
+    return { role: null, orgId: null, source: "auth_session" };
+  }
+
+  try {
+    const authUrl = new URL("/api/auth/me", request.url);
+    const response = await fetch(authUrl, {
+      method: "GET",
+      headers: {
+        cookie: cookieHeader,
+        accept: "application/json",
+      },
+      cache: "no-store",
+    });
+    if (!response.ok) {
+      return { role: null, orgId: null, source: "auth_session" };
+    }
+
+    const payload = (await response.json()) as Record<string, unknown> | null;
+    const user =
+      payload && typeof payload === "object" && "user" in payload
+        ? (payload.user as Record<string, unknown> | null)
+        : null;
+    const rawRole =
+      typeof user?.role === "string"
+        ? user.role
+        : typeof payload?.role === "string"
+          ? payload.role
+          : null;
+    const rawOrgId =
+      typeof user?.org_id === "string"
+        ? user.org_id
+        : typeof payload?.org_id === "string"
+          ? payload.org_id
+          : null;
+
+    return {
+      role: rawRole ? rawRole.toLowerCase() : null,
+      orgId: rawOrgId,
+      source: "auth_session",
+    };
+  } catch {
+    return { role: null, orgId: null, source: "auth_session" };
+  }
+}
+
+async function normalizeTokenPayload(
+  request: NextRequest,
+  {
+    sessionToken,
+    legacyToken,
+  }: {
+    sessionToken?: string;
+    legacyToken?: string;
+  },
+): Promise<NormalizedTokenPayload> {
+  if (sessionToken) {
+    const sessionPayload = await readSessionAuthContext(request, sessionToken);
+    if (sessionPayload.role || sessionPayload.orgId) {
+      return sessionPayload;
+    }
+  }
+
+  if (legacyToken) {
+    const payload = decodeJwtPayload(legacyToken);
+    const rawRole = typeof payload?.role === "string" ? payload.role : null;
+    const rawOrgId = typeof payload?.org_id === "string" ? payload.org_id : null;
+    return {
+      role: rawRole ? rawRole.toLowerCase() : null,
+      orgId: rawOrgId,
+      source: "dpr_access",
+    };
+  }
+
+  return {
+    role: null,
+    orgId: null,
+    source: sessionToken ? "auth_session" : null,
+  };
+}
+
 function getAllowedRoles(pathname: string) {
   const match = Object.keys(ROLE_ROUTES)
     .sort((left, right) => right.length - left.length)
@@ -77,7 +169,7 @@ function getAllowedRoles(pathname: string) {
   return match ? ROLE_ROUTES[match as keyof typeof ROLE_ROUTES] : null;
 }
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const hostname = request.nextUrl.hostname;
 
@@ -110,8 +202,10 @@ export function middleware(request: NextRequest) {
   }
 
   if (isProtectedPath(pathname)) {
-    const accessCookie = request.cookies.get("dpr_access");
-    if (!accessCookie) {
+    const sessionCookie = request.cookies.get("auth_session")?.value;
+    const legacyCookie = request.cookies.get("dpr_access")?.value;
+    const token = sessionCookie ?? legacyCookie;
+    if (!token) {
       const url = request.nextUrl.clone();
       url.pathname = "/access";
       url.searchParams.set("next", pathname);
@@ -120,8 +214,18 @@ export function middleware(request: NextRequest) {
 
     const allowedRoles = getAllowedRoles(pathname);
     if (allowedRoles) {
-      const payload = decodeJwtPayload(accessCookie.value);
-      const role = typeof payload?.role === "string" ? payload.role : null;
+      const payload = await normalizeTokenPayload(request, {
+        sessionToken: sessionCookie,
+        legacyToken: legacyCookie,
+      });
+      const role = payload.role;
+      if (!role && payload.source === "auth_session") {
+        const url = request.nextUrl.clone();
+        url.pathname = "/access";
+        url.searchParams.set("next", pathname);
+        url.searchParams.set("reason", "session_unresolved");
+        return withBuildVersionHeader(NextResponse.redirect(url));
+      }
       if (!role || !(allowedRoles as readonly string[]).includes(role)) {
         const url = request.nextUrl.clone();
         url.pathname = "/403";
