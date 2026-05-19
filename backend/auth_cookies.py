@@ -86,6 +86,19 @@ def set_csrf_cookie(
     return csrf
 
 
+def set_access_cookie(
+    *,
+    response,
+    access_token: str,
+    request: Request | None = None,
+) -> None:
+    response.set_cookie(
+        ACCESS_COOKIE,
+        access_token,
+        **_cookie_kwargs(httponly=True, max_age=_access_max_age(), request=request),
+    )
+
+
 def set_auth_cookies(
     *,
     response,

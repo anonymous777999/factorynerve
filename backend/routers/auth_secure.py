@@ -11,9 +11,13 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.email_service import send_email
+from backend.auth_cookies import clear_auth_cookies, set_access_cookie
+from backend.security import create_access_token
 from backend.models.auth_audit_log import AuthAuditLog
 from backend.models.auth_password_reset import AuthPasswordReset
 from backend.models.auth_user import AuthUser
+from backend.models.user import User
+from backend.models.user_factory_role import UserFactoryRole
 from backend.auth_security.mfa import generate_secret, provisioning_uri, verify_totp
 from backend.auth_security.passwords import hash_password, validate_password_strength, verify_password
 from backend.auth_security.rate_limit import RateLimitError, check_rate_limit
@@ -92,6 +96,27 @@ def _generic_login_error() -> HTTPException:
     return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials.")
 
 
+def _issue_legacy_access_cookie(db: Session, *, auth_user: AuthUser, request: Request, response: Response) -> None:
+    legacy_user = db.query(User).filter(User.email == auth_user.email, User.is_active.is_(True)).first()
+    if not legacy_user:
+        return
+
+    role_row = (
+        db.query(UserFactoryRole)
+        .filter(UserFactoryRole.user_id == legacy_user.id)
+        .order_by(UserFactoryRole.assigned_at.asc())
+        .first()
+    )
+    access_token = create_access_token(
+        user_id=legacy_user.id,
+        role=role_row.role.value if role_row else legacy_user.role.value,
+        email=legacy_user.email,
+        org_id=role_row.org_id if role_row else legacy_user.org_id,
+        factory_id=role_row.factory_id if role_row else None,
+    )
+    set_access_cookie(response=response, access_token=access_token, request=request)
+
+
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def register(payload: RegisterRequest, request: Request, response: Response, db: Session = Depends(get_db)) -> dict:
     ip = request.client.host if request.client else "unknown"
@@ -142,6 +167,7 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
 
     session = create_session(db, user=user, request=request, response=response)
     touch_session(db, session)
+    _issue_legacy_access_cookie(db, auth_user=user, request=request, response=response)
     _log_event(db, action="AUTH_LOGIN_SUCCESS", user_id=user.id, request=request)
     db.commit()
     return {"message": "Login successful."}
@@ -152,6 +178,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)) 
     session = get_current_session(db, request)
     require_csrf(request, session)
     revoke_session(db, session=session, response=response)
+    clear_auth_cookies(response=response)
     _log_event(db, action="AUTH_LOGOUT", user_id=session.auth_user_id, request=request)
     db.commit()
     return {"message": "Logged out."}
