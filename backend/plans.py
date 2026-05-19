@@ -14,6 +14,7 @@ from backend.models.organization import Organization
 from backend.models.user import User
 from backend.models.user_factory_role import UserFactoryRole
 from backend.models.user_plan import UserPlan
+from backend.utils import ensure_utc
 
 
 ALLOWED_PLANS = {"free", "starter", "growth", "factory", "business", "enterprise"}
@@ -459,7 +460,7 @@ def get_org_active_addons(db: Session, *, org_id: str | None) -> list[OrgSubscri
         row
         for row in rows
         if int(getattr(row, "quantity", 1) or 0) > 0
-        and (not row.current_period_end_at or row.current_period_end_at >= now)
+        and (not row.current_period_end_at or ensure_utc(row.current_period_end_at) >= now)
     ]
 
 
