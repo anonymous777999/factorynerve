@@ -19,20 +19,13 @@ from backend.models.user_plan import UserPlan
 from backend.plans import get_addon, normalize_addon_quantities, normalize_plan
 from backend.services.billing_logger import log_billing_event
 from backend.tenancy import resolve_factory_id, resolve_org_id
+from backend.utils import ensure_utc
 
 
 logger = logging.getLogger(__name__)
 VALID_SUBSCRIPTION_STATUSES = {"trialing", "active", "past_due", "suspended", "cancelled", "inactive"}
 BILLING_GRACE_DAYS = int(os.getenv("BILLING_GRACE_DAYS", "3"))
 NON_PROMOTABLE_SUBSCRIPTION_STATUSES = {"stale", "cancelled", "expired"}
-
-
-def _as_utc(value: datetime | None) -> datetime | None:
-    if value is None:
-        return None
-    if value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value.astimezone(timezone.utc)
 
 
 def _resolve_subscription_org_id(
@@ -56,7 +49,7 @@ def _raw_subscription_status(sub: Subscription) -> str:
 
 
 def _subscription_recency_score(value: datetime | None) -> float:
-    normalized = _as_utc(value)
+    normalized = ensure_utc(value)
     return normalized.timestamp() if normalized else 0.0
 
 
@@ -127,8 +120,8 @@ def get_effective_subscription_status(
     current_time = now or datetime.now(timezone.utc)
     raw_status = str(sub.status or "inactive").strip().lower()
     status = raw_status if raw_status in VALID_SUBSCRIPTION_STATUSES else "suspended"
-    grace_end = _as_utc(sub.grace_period_end_at)
-    current_period_end = _as_utc(sub.current_period_end_at)
+    grace_end = ensure_utc(sub.grace_period_end_at)
+    current_period_end = ensure_utc(sub.current_period_end_at)
     if status == "past_due":
         if grace_end and grace_end <= current_time:
             return "suspended"
@@ -148,7 +141,7 @@ def normalize_subscription_record(
 ) -> bool:
     current_time = now or datetime.now(timezone.utc)
     updated = False
-    current_period_end = _as_utc(sub.current_period_end_at)
+    current_period_end = ensure_utc(sub.current_period_end_at)
     effective_status = get_effective_subscription_status(sub, now=current_time)
     raw_status = str(sub.status or "").strip().lower()
     if raw_status != effective_status:

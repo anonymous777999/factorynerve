@@ -324,6 +324,15 @@ def normalize_reference_code(
     return cleaned
 
 
+def ensure_utc(value: datetime | None) -> datetime | None:
+    """Ensure datetime is offset-aware UTC. Naive datetimes are assumed to be UTC."""
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
 def redact_secrets(value: Any) -> Any:
     if isinstance(value, dict):
         redacted: dict[str, Any] = {}
