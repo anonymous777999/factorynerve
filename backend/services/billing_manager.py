@@ -115,15 +115,14 @@ def get_active_subscription(db: Session, org_id: str) -> Subscription | None:
 
 def get_subscription_status(sub, db) -> str:
     now = datetime.now(timezone.utc)
-
-    if sub.status == "active" and sub.current_period_end_at is not None:
-        if sub.current_period_end_at.replace(tzinfo=timezone.utc) < now:
-            sub.status = "past_due"
-            db.add(sub)
-            db.commit()
-            db.refresh(sub)
-            return "past_due"
-
+    end = sub.current_period_end_at
+    if end:
+        end = end.replace(tzinfo=timezone.utc)
+    if sub.status == "active" and end and end < now:
+        sub.status = "past_due"
+        db.add(sub)
+        db.commit()
+        return "past_due"
     return sub.status
 
 

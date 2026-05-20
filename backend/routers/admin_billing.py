@@ -14,6 +14,7 @@ from backend.models.user import User
 from backend.models.webhook_event import WebhookEvent
 from backend.security import get_current_user
 from backend.services.billing_logger import log_billing_event
+from backend.services.billing_manager import get_effective_subscription_status
 
 
 router = APIRouter(prefix="/admin/billing", tags=["Admin Billing"])
@@ -64,19 +65,19 @@ def get_billing_subscriptions(
     _admin: User = Depends(require_superadmin),
     db: Session = Depends(get_db),
 ) -> list[dict[str, object]]:
-    rows = (
+    raw_rows = (
         db.query(Subscription)
-        .filter(Subscription.status == status)
         .order_by(Subscription.updated_at.desc(), Subscription.id.desc())
-        .limit(100)
+        .limit(250)
         .all()
     )
+    rows = [row for row in raw_rows if get_effective_subscription_status(row) == status][:100]
     return [
         {
             "org_id": row.org_id,
             "user_id": row.user_id,
             "plan": row.plan,
-            "status": row.status,
+            "status": get_effective_subscription_status(row),
             "grace_period_end": row.grace_period_end_at,
             "current_period_end": row.current_period_end_at,
             "updated_at": row.updated_at,

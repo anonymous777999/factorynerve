@@ -78,7 +78,8 @@ RETRYABLE_ORDER_STATUSES = {"failed", "cancelled", "expired"}
 
 
 class CreateOrderRequest(BaseModel):
-    plan: str = Field(default="starter")
+    plan: str | None = Field(default=None)
+    selected_plan: str | None = Field(default=None)
     billing_cycle: str = Field(default="monthly")
     requested_users: int | None = Field(default=None, ge=1)
     requested_factories: int | None = Field(default=None, ge=1)
@@ -599,6 +600,16 @@ def _resolve_checkout_quote(
     }
 
 
+def _resolve_checkout_plan(request: Request, payload: CreateOrderRequest) -> str:
+    selected_plan = (
+        request.query_params.get("selected_plan")
+        or getattr(request.state, "selected_plan", None)
+        or payload.selected_plan
+        or payload.plan
+    )
+    return normalize_plan(selected_plan or "starter")
+
+
 @router.get("/config")
 def get_billing_config(current_user: User = Depends(get_current_user)) -> dict:
     require_role(current_user, UserRole.ADMIN)
@@ -754,9 +765,8 @@ async def create_order(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     try:
-        del request
         require_role(current_user, UserRole.OWNER)
-        normalized_plan = normalize_plan(payload.plan)
+        normalized_plan = _resolve_checkout_plan(request, payload)
         if is_sales_only_plan(normalized_plan):
             raise HTTPException(status_code=400, detail=f"{get_plan(normalized_plan).get('name', 'This plan')} requires a custom sales quote.")
         requested_currency = str(payload.currency or SUPPORTED_CURRENCY).strip().upper()
