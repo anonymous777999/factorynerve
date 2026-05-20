@@ -1,4 +1,5 @@
-FROM python:3.12-slim
+# Use specific digest for absolute determinism (Python 3.12.7-slim)
+FROM python:3.12-slim@sha256:d878fd831622383822f360773f8476a60e0a969b4c023d8cf634e2c88f28c506
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -22,7 +23,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY requirements.txt ./requirements.txt
 
-RUN pip install --upgrade pip && pip install -r requirements.txt
+# Pin pip version to 24.3.1 for stable resolving and install pinned requirements
+RUN python -m pip install --upgrade pip==24.3.1 && \
+    pip install -r requirements.txt
+
+# Verify core dependencies are importable
+RUN python -c "import fastapi; import sqlalchemy; import razorpay"
 
 COPY alembic ./alembic
 COPY alembic.ini ./alembic.ini
