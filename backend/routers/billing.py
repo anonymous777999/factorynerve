@@ -1109,7 +1109,12 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
                         )
                     if user_id:
                         effective_at = datetime.now(timezone.utc) + timedelta(days=BILLING_GRACE_DAYS)
-                        schedule_downgrade(db, user_id=user_id, plan="free", effective_at=effective_at)
+                        schedule_downgrade(
+                            db,
+                            user_id=user_id,
+                            plan=str(get_plan(None).get("id") or normalize_plan(None)),
+                            effective_at=effective_at,
+                        )
                         db.flush()
                     event.org_id = org_id
             db.commit()

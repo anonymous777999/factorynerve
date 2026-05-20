@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { ApiError, formatApiErrorMessage } from "@/lib/api";
@@ -46,6 +46,7 @@ const PREVIEW_LANGUAGES = ["eng", "auto", "eng+hin+mar"];
 type StatusFilter = "all" | "draft" | "pending" | "rejected" | "approved";
 
 type MobileReviewTab = "document" | "issues" | "fix";
+type OcrReviewWorkspace = "review" | "intake";
 
 type ReviewIssue = {
   key: string;
@@ -1310,6 +1311,8 @@ function ReviewWorkspace({
 }
 
 export default function OcrVerificationPage() {
+  const pathname = usePathname();
+  const router = useRouter();
   const { user, loading, error: sessionError } = useSession();
   const searchParams = useSearchParams();
   const [templates, setTemplates] = useState<OcrTemplate[]>([]);
@@ -1346,6 +1349,10 @@ export default function OcrVerificationPage() {
     const parsed = Number(raw);
     return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
   }, [searchParams]);
+  const requestedWorkspace = useMemo<OcrReviewWorkspace>(
+    () => (searchParams.get("workspace") === "intake" ? "intake" : "review"),
+    [searchParams],
+  );
 
   const activeTemplate = useMemo(
     () => templates.find((template) => String(template.id) === selectedTemplateId),
@@ -1399,7 +1406,27 @@ export default function OcrVerificationPage() {
     return Array.from({ length: columnCount }, (_, index) => headersState[index] || base[index]);
   }, [activeTemplate, activeVerification?.raw_column_added, columnCount, headersState, preview?.raw_column_added]);
 
-  const resetWorkspace = useCallback(() => {
+  const replaceWorkspaceRoute = useCallback((workspace: OcrReviewWorkspace, verificationId: number | null) => {
+    const next = new URLSearchParams(searchParams.toString());
+    if (workspace === "intake") {
+      next.set("workspace", "intake");
+    } else {
+      next.delete("workspace");
+    }
+    if (verificationId != null) {
+      next.set("verification_id", String(verificationId));
+    } else {
+      next.delete("verification_id");
+    }
+    const query = next.toString();
+    const nextHref = query ? `${pathname}?${query}` : pathname;
+    const currentHref = searchParams.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
+    if (nextHref !== currentHref) {
+      router.replace(nextHref, { scroll: false });
+    }
+  }, [pathname, router, searchParams]);
+
+  const clearWorkspaceState = useCallback(() => {
     setActiveVerificationId(null);
     setPreview(null);
     setRows([]);
@@ -1415,7 +1442,12 @@ export default function OcrVerificationPage() {
     setResolvedIssueKeys([]);
   }, []);
 
-  const hydrateFromRecord = useCallback((record: OcrVerificationRecord) => {
+  const resetWorkspace = useCallback((workspace: OcrReviewWorkspace = "review") => {
+    clearWorkspaceState();
+    replaceWorkspaceRoute(workspace, null);
+  }, [clearWorkspaceState, replaceWorkspaceRoute]);
+
+  const hydrateFromRecord = useCallback((record: OcrVerificationRecord, syncRoute = true) => {
     setActiveVerificationId(record.id);
     setSelectedTemplateId(record.template_id ? String(record.template_id) : "");
     setLanguage(record.language || "eng");
@@ -1458,7 +1490,10 @@ export default function OcrVerificationPage() {
     setSelectedIssueKey("");
     setResolvedIssueKeys([]);
     setMobileWorkspaceOpen(typeof window !== "undefined" && window.innerWidth < 1280);
-  }, []);
+    if (syncRoute) {
+      replaceWorkspaceRoute("review", record.id);
+    }
+  }, [replaceWorkspaceRoute]);
 
   const loadVerifications = useCallback(async (focusId?: number, hydrateActive = true) => {
     const result = await listOcrVerifications();
@@ -1471,7 +1506,7 @@ export default function OcrVerificationPage() {
     setVerifications(sorted);
     if (focusId != null && hydrateActive) {
       const detail = await getOcrVerification(focusId);
-      hydrateFromRecord(detail);
+      hydrateFromRecord(detail, false);
       setVerifications((current) => {
         const next = current.filter((item) => item.id !== detail.id);
         return [detail, ...next].sort((left, right) => {
@@ -1509,6 +1544,13 @@ export default function OcrVerificationPage() {
       }
     });
   }, [canVerify, loadVerifications, requestedVerificationId]);
+
+  useEffect(() => {
+    setShowQuickIntake(requestedWorkspace === "intake");
+    if (requestedVerificationId == null && activeVerificationId != null) {
+      clearWorkspaceState();
+    }
+  }, [activeVerificationId, clearWorkspaceState, requestedVerificationId, requestedWorkspace]);
 
   useEffect(() => {
     if (!canVerify) return;
@@ -1552,6 +1594,7 @@ export default function OcrVerificationPage() {
       setSelectedIssueKey("");
       setResolvedIssueKeys([]);
       setMobileWorkspaceOpen(typeof window !== "undefined" && window.innerWidth < 1280);
+      replaceWorkspaceRoute("intake", null);
       setStatus("Document read successfully. Check the highlighted values, then save or send it forward.");
     } catch (err) {
       if (err instanceof ApiError) {
@@ -1617,6 +1660,7 @@ export default function OcrVerificationPage() {
   const mergeVerificationRecord = useCallback((record: OcrVerificationRecord) => {
     // Background refreshes were hydrating the active document from the server and wiping in-progress edits, so we only merge metadata here.
     setActiveVerificationId(record.id);
+    replaceWorkspaceRoute("review", record.id);
     setVerifications((current) => {
       const next = current.filter((item) => item.id !== record.id);
       return [record, ...next].sort((left, right) => {
@@ -1670,7 +1714,7 @@ export default function OcrVerificationPage() {
         raw_column_added: Boolean(record.raw_column_added),
       };
     });
-  }, []);
+  }, [replaceWorkspaceRoute]);
 
   const persistDraft = async () => {
     const payload = buildVerificationPayload();
@@ -2180,7 +2224,11 @@ export default function OcrVerificationPage() {
               <Button
                 variant="outline"
                 className="h-11 rounded-[18px] border-[#d4d9df] bg-white px-4 text-sm text-[#111827] hover:bg-[#fbfbfa]"
-                onClick={() => setShowQuickIntake((current) => !current)}
+                onClick={() => {
+                  const nextWorkspace = showQuickIntake ? "review" : "intake";
+                  setShowQuickIntake(!showQuickIntake);
+                  replaceWorkspaceRoute(nextWorkspace, nextWorkspace === "intake" ? null : activeVerificationId);
+                }}
               >
                 {showQuickIntake ? "Hide intake" : "Quick intake"}
               </Button>
@@ -2327,7 +2375,7 @@ export default function OcrVerificationPage() {
                     <Button className="px-4 py-2 text-xs" onClick={handleRunPreview} disabled={busy || !file}>
                       {busy ? "Reading..." : "Read doc"}
                     </Button>
-                    <Button variant="ghost" className="px-4 py-2 text-xs" onClick={resetWorkspace} disabled={busy}>
+                    <Button variant="ghost" className="px-4 py-2 text-xs" onClick={() => resetWorkspace("intake")} disabled={busy}>
                       Clear
                     </Button>
                   </div>

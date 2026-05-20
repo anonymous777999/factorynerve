@@ -71,9 +71,12 @@ class OpsAlertHistoryItem(BaseModel):
 
 
 class OpsAlertHistoryResponse(BaseModel):
-    alerts: list[OpsAlertHistoryItem]
+    items: list[OpsAlertHistoryItem]
     total: int
+    page: int
+    page_size: int
     filters: dict[str, Any]
+    alerts: list[OpsAlertHistoryItem] | None = None
 
 
 class OpsAlertDetailResponse(BaseModel):
@@ -190,8 +193,8 @@ def ai_governance(request: Request) -> dict[str, Any]:
 
 @router.get("/alerts", response_model=OpsAlertHistoryResponse)
 def get_alert_history(
-    limit: int = Query(default=50, ge=1, le=200),
-    offset: int = Query(default=0, ge=0),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=50, ge=1, le=200),
     org_id: str | None = Query(default=None),
     event_type: str | None = Query(default=None),
     severity: str | None = Query(default=None),
@@ -217,10 +220,16 @@ def get_alert_history(
     if to_time:
         query = query.filter(OpsAlertEvent.created_at <= to_time)
     total = query.count()
-    rows = query.order_by(OpsAlertEvent.created_at.desc(), OpsAlertEvent.id.desc()).offset(offset).limit(limit).all()
+    offset = (page - 1) * page_size
+    items = [
+        _serialize_alert_row(row)
+        for row in query.order_by(OpsAlertEvent.created_at.desc(), OpsAlertEvent.id.desc()).offset(offset).limit(page_size).all()
+    ]
     return OpsAlertHistoryResponse(
-        alerts=[_serialize_alert_row(row) for row in rows],
+        items=items,
         total=total,
+        page=page,
+        page_size=page_size,
         filters={
             "org_id": scoped_org_id,
             "event_type": event_type,
@@ -228,9 +237,10 @@ def get_alert_history(
             "status": status_value,
             "from": from_time.isoformat() if from_time else None,
             "to": to_time.isoformat() if to_time else None,
-            "limit": limit,
+            "limit": page_size,
             "offset": offset,
         },
+        alerts=items,
     )
 
 

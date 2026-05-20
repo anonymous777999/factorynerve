@@ -145,14 +145,18 @@ class FeedbackReporterUpdateItem(BaseModel):
 class FeedbackReporterUpdatesResponse(BaseModel):
     items: list[FeedbackReporterUpdateItem]
     total: int
-    limit: int
+    page: int
+    page_size: int
+    limit: int | None = None
 
 
 class FeedbackListResponse(BaseModel):
     items: list[FeedbackAdminItem]
     total: int
-    limit: int
-    offset: int
+    page: int
+    page_size: int
+    limit: int | None = None
+    offset: int | None = None
 
 
 def _require_feedback_admin(current_user: User) -> None:
@@ -469,8 +473,8 @@ def list_feedback(
     status_value: FeedbackStatus | None = Query(default=None, alias="status"),
     feedback_type: FeedbackType | None = Query(default=None, alias="type"),
     sort_value: FeedbackSort = Query(default=FeedbackSort.RECENCY, alias="sort"),
-    limit: int = Query(default=25, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=25, ge=1, le=100),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FeedbackListResponse:
@@ -504,7 +508,8 @@ def list_feedback(
     else:
         query = query.order_by(Feedback.created_at.desc(), Feedback.id.desc())
 
-    rows = query.offset(offset).limit(limit).all()
+    offset = (page - 1) * page_size
+    rows = query.offset(offset).limit(page_size).all()
     items = [
         _serialize_feedback_item(
             feedback,
@@ -517,13 +522,21 @@ def list_feedback(
         )
         for feedback, user_name, user_role, factory_name, resolved_by_name, group_occurrences, latest_similar_at in rows
     ]
-    return FeedbackListResponse(items=items, total=total, limit=limit, offset=offset)
+    return FeedbackListResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        limit=page_size,
+        offset=offset,
+    )
 
 
 @router.get("/mine/updates", response_model=FeedbackReporterUpdatesResponse)
 def list_my_feedback_updates(
     since: datetime | None = Query(default=None),
-    limit: int = Query(default=10, ge=1, le=50),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=10, ge=1, le=50),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FeedbackReporterUpdatesResponse:
@@ -544,7 +557,8 @@ def list_my_feedback_updates(
         query = query.filter(Feedback.resolved_at > since)
 
     total = query.count()
-    rows = query.order_by(Feedback.resolved_at.desc(), Feedback.id.desc()).limit(limit).all()
+    offset = (page - 1) * page_size
+    rows = query.order_by(Feedback.resolved_at.desc(), Feedback.id.desc()).offset(offset).limit(page_size).all()
     return FeedbackReporterUpdatesResponse(
         items=[
             FeedbackReporterUpdateItem(
@@ -557,7 +571,9 @@ def list_my_feedback_updates(
             for row in rows
         ],
         total=total,
-        limit=limit,
+        page=page,
+        page_size=page_size,
+        limit=page_size,
     )
 
 
@@ -573,8 +589,8 @@ def export_feedback_csv(
         status_value=status_value,
         feedback_type=feedback_type,
         sort_value=sort_value,
-        limit=5000,
-        offset=0,
+        page=1,
+        page_size=5000,
         db=db,
         current_user=current_user,
     )

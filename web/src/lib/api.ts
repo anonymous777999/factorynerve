@@ -196,13 +196,10 @@ async function bootstrapCsrfCookie(timeoutMs: number, force = false): Promise<st
     const controller = timeoutMs > 0 ? new AbortController() : null;
     const timeoutId = controller ? window.setTimeout(() => controller.abort(), Math.min(timeoutMs, 8000)) : null;
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/context`, {
+      const response = await fetch(`${API_BASE_URL}/health`, {
         method: "GET",
         credentials: "include",
         cache: "no-store",
-        headers: {
-          "X-Response-Envelope": "v1",
-        },
         signal: controller?.signal,
       });
       const headerToken = rememberCsrfToken(response.headers.get(CSRF_HEADER));
@@ -429,6 +426,38 @@ export async function apiFetch<T>(
         }
         return undefined as T;
       }
+    }
+
+    if (envelope && payload && typeof payload === "object" && "success" in payload) {
+      const envelopePayload = payload as {
+        success: boolean;
+        data?: unknown;
+        error?: { code?: unknown; message?: unknown; details?: unknown } | null;
+      };
+      if (!envelopePayload.success) {
+        const detail = envelopePayload.error?.details ?? envelopePayload.error;
+        await notifyApiErrorHandler({
+          path,
+          method,
+          status: response.status,
+          code:
+            typeof envelopePayload.error?.code === "string"
+              ? envelopePayload.error.code
+              : extractApiErrorCode(detail),
+          detail,
+        });
+        const message =
+          typeof envelopePayload.error?.message === "string" && envelopePayload.error.message.trim()
+            ? envelopePayload.error.message
+            : typeof detail === "string"
+              ? detail
+              : "Request failed.";
+        throw new ApiError(message, response.status, detail);
+      }
+      if (!SAFE_METHODS.includes(method) && canUseResponseCache()) {
+        invalidateApiCache();
+      }
+      return envelopePayload.data as T;
     }
 
     if (envelope && payload && typeof payload === "object" && "ok" in payload) {

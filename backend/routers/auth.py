@@ -939,19 +939,17 @@ def logout_user(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict[str, str]:
-    credentials = request.headers.get("Authorization", "")
-    token = credentials.replace("Bearer ", "").strip() if credentials else ""
+    token = str(getattr(current_user, "current_token", "") or "")
     if not token:
         token = get_access_cookie(request) or ""
         if token:
             require_csrf(request)
     if token:
-        token_payload = decode_access_token(token)
-        jti = str(token_payload.get("jti"))
-        exp = datetime.fromtimestamp(int(token_payload["exp"]), tz=timezone.utc)
+        jti = str(getattr(current_user, "current_token_jti", "") or "")
+        exp = getattr(current_user, "current_token_expires_at", None)
 
-        existing = db.query(TokenBlacklist).filter(TokenBlacklist.token_jti == jti).first()
-        if not existing:
+        existing = db.query(TokenBlacklist).filter(TokenBlacklist.token_jti == jti).first() if jti else None
+        if jti and exp and not existing:
             db.add(TokenBlacklist(token_jti=jti, user_id=current_user.id, expires_at=exp))
 
     refresh_token = payload.refresh_token if payload and payload.refresh_token else None
@@ -976,16 +974,14 @@ def logout_all_devices(
     if get_access_cookie(request) or get_refresh_cookie(request):
         require_csrf(request)
 
-    credentials = request.headers.get("Authorization", "")
-    token = credentials.replace("Bearer ", "").strip() if credentials else ""
+    token = str(getattr(current_user, "current_token", "") or "")
     if not token:
         token = get_access_cookie(request) or ""
     if token:
-        token_payload = decode_access_token(token)
-        jti = str(token_payload.get("jti"))
-        exp = datetime.fromtimestamp(int(token_payload["exp"]), tz=timezone.utc)
-        existing = db.query(TokenBlacklist).filter(TokenBlacklist.token_jti == jti).first()
-        if not existing:
+        jti = str(getattr(current_user, "current_token_jti", "") or "")
+        exp = getattr(current_user, "current_token_expires_at", None)
+        existing = db.query(TokenBlacklist).filter(TokenBlacklist.token_jti == jti).first() if jti else None
+        if jti and exp and not existing:
             db.add(TokenBlacklist(token_jti=jti, user_id=current_user.id, expires_at=exp))
 
     now = datetime.now(timezone.utc)
@@ -1051,7 +1047,7 @@ def refresh_access_token(
         )
         factory_id = role_row.factory_id if role_row else None
 
-    org_id = record.org_id or user.org_id
+    org_id = role_row.org_id if role_row else user.org_id
     active_role = role_row.role.value if role_row else user.role.value
 
     access_token = create_access_token(

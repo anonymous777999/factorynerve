@@ -1637,7 +1637,8 @@ function AppShellFrame({
     setSwitchError("");
     try {
       await selectFactory(nextFactoryId);
-      window.location.reload();
+      router.refresh();
+      setSwitchingFactory(false);
     } catch (error) {
       setSwitchError(error instanceof Error ? error.message : "Could not switch factory.");
       setSwitchingFactory(false);

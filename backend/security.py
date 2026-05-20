@@ -26,6 +26,16 @@ config = get_config()
 _auth_scheme = HTTPBearer(auto_error=False)
 
 
+def _extract_access_token(
+    request: Request | None,
+    credentials: HTTPAuthorizationCredentials | None = None,
+) -> str | None:
+    token = credentials.credentials if credentials else None
+    if not token and request is not None:
+        token = get_access_cookie(request)
+    return token
+
+
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
@@ -81,9 +91,7 @@ def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(_auth_scheme),
     db: Session = Depends(get_db),
 ) -> User:
-    token = credentials.credentials if credentials else None
-    if not token and request is not None:
-        token = get_access_cookie(request)
+    token = _extract_access_token(request, credentials)
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated.")
     payload = decode_access_token(token)
@@ -103,13 +111,25 @@ def get_current_user(
     if factory_id:
         membership = (
             db.query(UserFactoryRole)
-            .filter(UserFactoryRole.user_id == user.id, UserFactoryRole.factory_id == factory_id)
+            .filter(
+                UserFactoryRole.user_id == user.id,
+                UserFactoryRole.factory_id == factory_id,
+                UserFactoryRole.org_id == user.org_id,
+            )
             .first()
         )
         if membership:
             active_factory_id = factory_id
     setattr(user, "active_org_id", user.org_id)
     setattr(user, "active_factory_id", active_factory_id)
+    setattr(user, "current_token", token)
+    setattr(user, "current_token_payload", payload)
+    setattr(user, "current_token_jti", jti)
+    setattr(
+        user,
+        "current_token_expires_at",
+        datetime.fromtimestamp(int(payload["exp"]), tz=timezone.utc) if payload.get("exp") else None,
+    )
     return user
 
 

@@ -258,16 +258,28 @@ function refreshAccountSession(payload: CurrentUser) {
   return payload;
 }
 
+async function refreshSessionContext(options?: { timeoutMs?: number }) {
+  invalidateAuthCache();
+  invalidateSession();
+  const refreshedContext = await getAuthContext({ timeoutMs: options?.timeoutMs ?? 8000 });
+  primeRoleRevision(refreshedContext.user.role_revision);
+  primeSession(refreshedContext);
+  return refreshedContext;
+}
+
 export function invalidateAuthCache() {
   invalidateApiCache("session:");
   invalidateSession();
 }
 
-registerRoleRevisionMismatchHandler(() => {
-  invalidateAuthCache();
-  clearSession();
-  if (typeof window !== "undefined") {
-    window.location.assign("/access?reason=permissions_updated");
+registerRoleRevisionMismatchHandler(async () => {
+  try {
+    await refreshSessionContext({ timeoutMs: 8000 });
+  } catch {
+    clearSession();
+    if (typeof window !== "undefined" && window.location.pathname !== "/access") {
+      window.location.assign("/access?reason=permissions_updated");
+    }
   }
 });
 
@@ -565,14 +577,12 @@ export async function getAuthContext(options?: {
   return withBackendWakeRetry(
     async () => {
       try {
-        const [context, user] = await Promise.all([
-          apiFetch<AuthContext>(
-            "/auth/context",
-            { signal: options?.signal },
-            { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:context" },
-          ),
-          getMe(options),
-        ]);
+        const context = await apiFetch<AuthContext>(
+          "/auth/context",
+          { signal: options?.signal },
+          { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:context" },
+        );
+        const user = await getMe(options);
         return mergeAuthContextWithUserPermissions(context, user);
       } catch (error) {
         if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {

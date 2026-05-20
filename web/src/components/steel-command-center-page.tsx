@@ -96,13 +96,12 @@ export function SteelCommandCenterPage() {
     user?.role === "owner" ||
     user?.role === "manager" ||
     user?.role === "supervisor";
-  const [activeTab, setActiveTab] = useState<SteelControlTab>(() => {
+  const activeTab = useMemo(() => {
     const requestedTab = searchParams.get("tab");
     return isSteelControlTab(requestedTab) ? requestedTab : "overview";
-  });
+  }, [searchParams]);
 
   const navigateTab = useCallback((tab: SteelControlTab) => {
-    setActiveTab(tab);
     const next = new URLSearchParams(searchParams.toString());
     if (tab === "overview") {
       next.delete("tab");
@@ -112,12 +111,6 @@ export function SteelCommandCenterPage() {
     const query = next.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
   }, [pathname, router, searchParams]);
-
-  useEffect(() => {
-    const requestedTab = searchParams.get("tab");
-    const nextTab = isSteelControlTab(requestedTab) ? requestedTab : "overview";
-    setActiveTab((current) => (current === nextTab ? current : nextTab));
-  }, [searchParams]);
 
   const refreshAll = useCallback(async () => {
     if (!canAccessSteelControl) {
@@ -170,10 +163,10 @@ export function SteelCommandCenterPage() {
   }, [canAccessSteelControl, refreshAll, user]);
 
   useEffect(() => {
-    if (!isSteelFactory) {
-      setActiveTab("overview");
+    if (!isSteelFactory && activeTab !== "overview") {
+      navigateTab("overview");
     }
-  }, [isSteelFactory]);
+  }, [activeTab, isSteelFactory, navigateTab]);
 
   const inventoryZones = useMemo(() => {
     return stock.reduce(
