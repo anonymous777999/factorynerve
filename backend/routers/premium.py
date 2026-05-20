@@ -90,7 +90,9 @@ class PremiumDashboardResponse(BaseModel):
 class PremiumAuditTrailResponse(BaseModel):
     items: list[PremiumAuditItem]
     total: int
-    limit: int
+    page: int
+    page_size: int
+    limit: int | None = None
 
 
 def _start_day(days: int) -> date:
@@ -490,7 +492,8 @@ def premium_dashboard(
 @premium_required(min_plan="factory")
 def premium_audit_trail(
     days: int = Query(default=14, ge=7, le=45),
-    limit: int = Query(default=60, ge=10, le=200),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=60, ge=10, le=200),
     factory_id: str | None = Query(default=None),
     action: str | None = Query(default=None),
     db: Session = Depends(get_db),
@@ -505,7 +508,8 @@ def premium_audit_trail(
     start_dt = datetime.combine(_start_day(days), time.min, tzinfo=timezone.utc)
     query = _audit_query(db, current_user, start_dt=start_dt, factory_id=factory_id, action=action)
     total = query.count()
-    logs = query.order_by(AuditLog.timestamp.desc()).limit(limit).all()
+    offset = (page - 1) * page_size
+    logs = query.order_by(AuditLog.timestamp.desc()).offset(offset).limit(page_size).all()
     user_ids = {log.user_id for log in logs if log.user_id}
     user_map: dict[int, User] = {}
     if user_ids:
@@ -524,7 +528,13 @@ def premium_audit_trail(
         )
         for log in logs
     ]
-    return PremiumAuditTrailResponse(items=items, total=total, limit=limit)
+    return PremiumAuditTrailResponse(
+        items=items,
+        total=total,
+        page=page,
+        page_size=page_size,
+        limit=page_size,
+    )
 
 
 @router.get("/executive-pdf")

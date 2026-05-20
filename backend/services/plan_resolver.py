@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from sqlalchemy.orm import Session
 
-from backend.models.organization import Organization
 from backend.models.subscription import Subscription
 
 
@@ -22,9 +21,4 @@ def get_effective_plan(org_id: str, db: Session) -> str:
     )
     if subscription and subscription.plan:
         return str(subscription.plan)
-
-    organization = db.query(Organization).filter(Organization.org_id == org_id).first()
-    if organization and organization.plan:
-        return str(organization.plan)
-
     return "free"

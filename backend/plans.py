@@ -47,6 +47,14 @@ def plan_rank(plan: str | None) -> int:
 DEFAULT_PLAN = normalize_plan(os.getenv("OCR_DEFAULT_PLAN") or "free")
 HARD_USER_FACTORY_CAPS = True
 ENTERPRISE_CUSTOM_ONLY = True
+OCR_RATE_LIMITS = {
+    "free": 6,
+    "starter": 10,
+    "growth": 20,
+    "factory": 40,
+    "business": 50,
+    "enterprise": 60,
+}
 
 
 PLAN_CATALOG: dict[str, dict[str, Any]] = {
@@ -283,6 +291,12 @@ def plan_limit(plan: str | None, limit_key: str) -> int:
 def plan_limit_is_unlimited(plan: str | None, limit_key: str) -> bool:
     unlimited = get_plan(plan).get("unlimited_limits", []) or []
     return str(limit_key) in {str(item) for item in unlimited}
+
+
+def plan_ocr_rate_limit(plan: str | None) -> int:
+    plan_key = normalize_plan(plan)
+    base = int(OCR_RATE_LIMITS.get(plan_key, OCR_RATE_LIMITS["free"]))
+    return int(os.getenv(f"OCR_PLAN_{plan_key.upper()}_RATE_LIMIT", str(base)))
 
 
 def get_addon(addon_id: str | None) -> dict[str, Any] | None:

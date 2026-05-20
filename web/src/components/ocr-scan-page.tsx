@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -161,6 +162,17 @@ const STEP_LABELS: Array<{ key: OcrFlowStep; label: string }> = [
   { key: "preview", label: "Preview & Edit" },
   { key: "export", label: "Export" },
 ];
+
+function normalizeOcrFlowStep(value: string | null | undefined): OcrFlowStep | null {
+  if (value === "upload" || value === "processing" || value === "preview" || value === "export") {
+    return value;
+  }
+  return null;
+}
+
+function resolveRecordRouteStep(step: OcrFlowStep | null | undefined): OcrFlowStep {
+  return step === "export" ? "export" : "preview";
+}
 
 const MODEL_LABELS: Record<ModelOption, string> = {
   auto: "Auto",
@@ -577,6 +589,9 @@ function statusBannerClass(tone: "error" | "success" | "warning") {
 }
 
 export default function OcrScanPage() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading, error: sessionError } = useSession();
   const { isMobile, ready: deviceReady } = useOcrDevice();
 
@@ -627,6 +642,16 @@ export default function OcrScanPage() {
   const [, setHistoryVersion] = useState(0);
 
   const canUseOcr = canUseOcrScan(user?.role);
+  const requestedStep = useMemo(
+    () => normalizeOcrFlowStep(searchParams.get("step")),
+    [searchParams],
+  );
+  const requestedVerificationId = useMemo(() => {
+    const raw = searchParams.get("verification_id");
+    if (!raw) return null;
+    const parsed = Number(raw);
+    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
+  }, [searchParams]);
   const displayPreviewUrl = preparedPreviewUrl || originalUrl;
   const rerunSourceFile = originalFile || preparedPreviewFile || finalUploadFile;
   const canRerunWithSelectedModel = Boolean(rerunSourceFile);
@@ -701,6 +726,22 @@ export default function OcrScanPage() {
     void loadRecentRecords();
   }, [canUseOcr, loadRecentRecords]);
 
+  const replaceWorkflowRoute = useCallback((nextStep: OcrFlowStep, verificationId: number | null) => {
+    const next = new URLSearchParams(searchParams.toString());
+    next.set("step", nextStep);
+    if (verificationId != null) {
+      next.set("verification_id", String(verificationId));
+    } else {
+      next.delete("verification_id");
+    }
+    const query = next.toString();
+    const nextHref = query ? `${pathname}?${query}` : pathname;
+    const currentHref = searchParams.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
+    if (nextHref !== currentHref) {
+      router.replace(nextHref, { scroll: false });
+    }
+  }, [pathname, router, searchParams]);
+
   useEffect(() => {
     if (!originalUrl || !originalUrl.startsWith("blob:")) return;
     return () => URL.revokeObjectURL(originalUrl);
@@ -711,10 +752,84 @@ export default function OcrScanPage() {
     return () => URL.revokeObjectURL(preparedPreviewUrl);
   }, [preparedPreviewUrl]);
 
+  const openRecentRecord = useCallback(async (
+    verificationId: number,
+    options?: {
+      statusMessage?: string;
+      targetStep?: OcrFlowStep;
+    },
+  ) => {
+    try {
+      setBusy(true);
+      const record = await getOcrVerification(verificationId);
+      const headers = record.headers?.length
+        ? record.headers
+        : defaultHeaders(Math.max(record.columns || 0, ...(record.reviewed_rows || []).map((row) => row.length), 1));
+      const rows = cloneRows(record.reviewed_rows || record.original_rows || []);
+      setOriginalFile(null);
+      setSourceFilename(record.source_filename || "");
+      setPreparedPreviewFile(null);
+      setFinalUploadFile(null);
+      setOriginalUrl(record.source_image_url ? `/api${record.source_image_url}` : "");
+      setPreparedPreviewUrl("");
+      setResultPreview({
+        type: record.doc_type_hint || "table",
+        title: record.template_name || record.source_filename || "OCR Extraction",
+        headers,
+        rows: cloneRows(record.original_rows || rows),
+        rawText: record.raw_text ?? null,
+        language: record.language || "auto",
+        avgConfidence: record.avg_confidence ?? null,
+        warnings: record.warnings || [],
+        scanQuality: record.scan_quality ?? null,
+        routingMeta: record.routing_meta ?? null,
+        routingLabel: record.routing_meta?.model_tier ?? null,
+        tokenUsage: record.routing_meta?.usage ?? null,
+        debug: buildDebugPayloadFromRouting(record.routing_meta ?? null, record.routing_meta?.usage ?? null),
+        reused: true,
+      });
+      setSelectedModel(
+        toModelOption(
+          record.routing_meta?.requested_model
+          || record.routing_meta?.selected_model
+          || record.routing_meta?.provider_model,
+        ),
+      );
+      resetHistory({
+        headers,
+        rows,
+        columnTypes: inferColumnTypes(rows, headers.length),
+        headerRowEnabled: false,
+      });
+      setSavedId(record.id);
+      setDocumentHash(record.document_hash ?? null);
+      setConfidenceMatrix(record.cell_confidence ?? []);
+      setStep(resolveRecordRouteStep(options?.targetStep));
+      setStatus(options?.statusMessage || "Recent OCR draft loaded.");
+      setStatusTone("success");
+    } catch (reason) {
+      setStatus(formatApiErrorMessage(reason, "Could not open this OCR draft."));
+      setStatusTone("error");
+      setStep("upload");
+    } finally {
+      setBusy(false);
+    }
+  }, [resetHistory]);
+
   useEffect(() => {
     if (restored || typeof window === "undefined") return;
+    if (requestedVerificationId != null) {
+      void openRecentRecord(requestedVerificationId, {
+        statusMessage: `Opened OCR draft #${requestedVerificationId}.`,
+        targetStep: requestedStep ?? undefined,
+      }).finally(() => {
+        setRestored(true);
+      });
+      return;
+    }
     const snapshot = loadOcrUiState();
     if (!snapshot) {
+      setStep(requestedStep || "upload");
       setRestored(true);
       return;
     }
@@ -743,7 +858,7 @@ export default function OcrScanPage() {
             : snapshot.step === "prepare"
               ? "preview"
               : (snapshot.step as OcrFlowStep) || "upload";
-      setStep(restoredStep);
+      setStep(requestedStep || restoredStep);
       setStatus(snapshot.status || "");
       setDocumentHash(snapshot.documentHash || null);
       setSavedId(snapshot.savedId ?? null);
@@ -782,7 +897,7 @@ export default function OcrScanPage() {
     return () => {
       cancelled = true;
     };
-  }, [resetHistory, restored]);
+  }, [openRecentRecord, requestedStep, requestedVerificationId, resetHistory, restored]);
 
   useEffect(() => {
     if (!restored) return;
@@ -847,6 +962,11 @@ export default function OcrScanPage() {
     status,
     step,
   ]);
+
+  useEffect(() => {
+    if (!restored) return;
+    replaceWorkflowRoute(step, savedId);
+  }, [replaceWorkflowRoute, restored, savedId, step]);
 
   const resetFlow = useCallback(() => {
     setStep("upload");
@@ -1202,63 +1322,6 @@ export default function OcrScanPage() {
     }
     void processFile(rerunSourceFile, sourceFilename || rerunSourceFile.name, selectedModel, forceRefresh);
   }, [processFile, rerunSourceFile, selectedModel, sourceFilename]);
-
-  const openRecentRecord = useCallback(async (verificationId: number) => {
-    try {
-      setBusy(true);
-      const record = await getOcrVerification(verificationId);
-      const headers = record.headers?.length
-        ? record.headers
-        : defaultHeaders(Math.max(record.columns || 0, ...(record.reviewed_rows || []).map((row) => row.length), 1));
-      const rows = cloneRows(record.reviewed_rows || record.original_rows || []);
-      setOriginalFile(null);
-      setSourceFilename(record.source_filename || "");
-      setPreparedPreviewFile(null);
-      setFinalUploadFile(null);
-      setOriginalUrl(record.source_image_url ? `/api${record.source_image_url}` : "");
-      setPreparedPreviewUrl("");
-      setResultPreview({
-        type: record.doc_type_hint || "table",
-        title: record.template_name || record.source_filename || "OCR Extraction",
-        headers,
-        rows: cloneRows(record.original_rows || rows),
-        rawText: record.raw_text ?? null,
-        language: record.language || "auto",
-        avgConfidence: record.avg_confidence ?? null,
-        warnings: record.warnings || [],
-        scanQuality: record.scan_quality ?? null,
-        routingMeta: record.routing_meta ?? null,
-        routingLabel: record.routing_meta?.model_tier ?? null,
-        tokenUsage: record.routing_meta?.usage ?? null,
-        debug: buildDebugPayloadFromRouting(record.routing_meta ?? null, record.routing_meta?.usage ?? null),
-        reused: true,
-      });
-      setSelectedModel(
-        toModelOption(
-          record.routing_meta?.requested_model
-          || record.routing_meta?.selected_model
-          || record.routing_meta?.provider_model,
-        ),
-      );
-      resetHistory({
-        headers,
-        rows,
-        columnTypes: inferColumnTypes(rows, headers.length),
-        headerRowEnabled: false,
-      });
-      setSavedId(record.id);
-      setDocumentHash(record.document_hash ?? null);
-      setConfidenceMatrix(record.cell_confidence ?? []);
-      setStep("preview");
-      setStatus("Recent OCR draft loaded.");
-      setStatusTone("success");
-    } catch (reason) {
-      setStatus(formatApiErrorMessage(reason, "Could not open this OCR draft."));
-      setStatusTone("error");
-    } finally {
-      setBusy(false);
-    }
-  }, [resetHistory]);
 
   const handleImportUrl = useCallback(async () => {
     if (!remoteUrl.trim()) return;

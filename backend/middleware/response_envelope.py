@@ -12,10 +12,12 @@ from starlette.responses import JSONResponse, Response
 
 def _wants_envelope(request: Request) -> bool:
     header = (request.headers.get("X-Response-Envelope") or "").strip().lower()
-    if header in {"1", "true", "yes", "on", "v1"}:
-        return True
+    if header in {"0", "false", "no", "off"}:
+        return False
     query = (request.query_params.get("envelope") or "").strip().lower()
-    return query in {"1", "true", "yes", "on", "v1"}
+    if query in {"0", "false", "no", "off"}:
+        return False
+    return True
 
 
 def _is_json_response(response: Response) -> bool:
@@ -35,13 +37,51 @@ def _copy_headers(source: Response, target: Response) -> None:
         target.headers.append("set-cookie", cookie)
 
 
-def _build_error(payload: Any, status_code: int) -> dict[str, Any] | None:
-    if status_code < 400:
-        return None
-    detail = None
-    if isinstance(payload, dict):
-        detail = payload.get("detail")
-    return {"detail": detail or "Request failed."}
+def _is_enveloped(payload: Any) -> bool:
+    return isinstance(payload, dict) and "success" in payload and ("data" in payload or "error" in payload)
+
+
+def _normalize_error(payload: Any, status_code: int) -> dict[str, Any]:
+    detail = payload.get("detail") if isinstance(payload, dict) and "detail" in payload else payload
+    code = "error"
+    message = "Request failed."
+    details: Any = None
+
+    if isinstance(detail, list):
+        code = "validation_error" if status_code == 422 else "error"
+        message = "Validation failed." if status_code == 422 else "Request failed."
+        details = detail
+    elif isinstance(detail, dict):
+        code = str(detail.get("code") or detail.get("error") or "error")
+        message = str(
+            detail.get("message")
+            or detail.get("detail")
+            or detail.get("error_description")
+            or "Request failed."
+        )
+        details = detail
+    elif isinstance(detail, str):
+        code = "validation_error" if status_code == 422 else "error"
+        message = detail
+        details = detail
+    elif detail is not None:
+        details = detail
+
+    return {
+        "success": False,
+        "error": {
+            "code": code,
+            "message": message,
+            "details": details,
+        },
+    }
+
+
+def _normalize_success(payload: Any) -> dict[str, Any]:
+    return {
+        "success": True,
+        "data": payload,
+    }
 
 
 def apply_response_envelope(app: FastAPI) -> None:
@@ -69,15 +109,14 @@ def apply_response_envelope(app: FastAPI) -> None:
                 passthrough.background = response.background
                 return passthrough
 
-        envelope = {
-            "ok": response.status_code < 400,
-            "status": response.status_code,
-            "data": payload if response.status_code < 400 else None,
-            "error": _build_error(payload, response.status_code),
-            "request_id": response.headers.get("X-Request-ID"),
-        }
-        wrapped = JSONResponse(envelope, status_code=response.status_code)
+        if _is_enveloped(payload):
+            wrapped_payload = payload
+        elif response.status_code >= 400:
+            wrapped_payload = _normalize_error(payload, response.status_code)
+        else:
+            wrapped_payload = _normalize_success(payload)
+
+        wrapped = JSONResponse(wrapped_payload, status_code=response.status_code)
         _copy_headers(response, wrapped)
         wrapped.background = response.background
         return wrapped
-

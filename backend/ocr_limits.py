@@ -23,6 +23,7 @@ from backend.plans import (
     normalize_plan,
     plan_limit,
     plan_limit_is_unlimited,
+    plan_ocr_rate_limit,
 )
 from backend.services.plan_resolver import get_effective_plan
 RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("OCR_RATE_LIMIT_WINDOW_SECONDS", "60"))
@@ -54,20 +55,10 @@ def _compute_credits(image_bytes: int) -> int:
 def _plan_limits(plan: str) -> dict[str, int]:
     plan_key = normalize_plan(plan)
     base_requests = int(plan_limit(plan_key, "ocr") or 0)
-    defaults = {
-        "free": {"requests": base_requests, "credits": base_requests * OCR_CREDITS_PER_MB, "rate": 6},
-        "starter": {"requests": base_requests, "credits": base_requests * OCR_CREDITS_PER_MB, "rate": 10},
-        "growth": {"requests": base_requests, "credits": base_requests * OCR_CREDITS_PER_MB, "rate": 20},
-        "factory": {"requests": base_requests, "credits": base_requests * OCR_CREDITS_PER_MB, "rate": 40},
-        "business": {"requests": base_requests, "credits": base_requests * OCR_CREDITS_PER_MB, "rate": 50},
-        "enterprise": {"requests": 0, "credits": 0, "rate": 60},
-    }
-    base = defaults.get(plan_key, defaults["free"])
-    plan_env_key = normalize_plan(plan).upper()
     return {
-        "requests": int(os.getenv(f"OCR_PLAN_{plan_env_key}_MAX_REQUESTS", str(base["requests"]))),
-        "credits": int(os.getenv(f"OCR_PLAN_{plan_env_key}_MAX_CREDITS", str(base["credits"]))),
-        "rate": int(os.getenv(f"OCR_PLAN_{plan_env_key}_RATE_LIMIT", str(base["rate"]))),
+        "requests": base_requests,
+        "credits": 0 if plan_limit_is_unlimited(plan_key, "ocr") else base_requests * OCR_CREDITS_PER_MB,
+        "rate": plan_ocr_rate_limit(plan_key),
     }
 
 
