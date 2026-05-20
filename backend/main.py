@@ -9,6 +9,8 @@ import time
 from collections.abc import Callable
 
 from fastapi import FastAPI, HTTPException
+from backend.ai.monitoring.governance import governance_snapshot
+from backend.ai.monitoring.telemetry import snapshot_ai_telemetry
 from sqlalchemy import text
 from starlette.requests import Request
 from starlette.responses import Response
@@ -262,4 +264,8 @@ def metrics(request: Request) -> dict:
     header = request.headers.get("X-Metrics-Token") or ""
     if header.strip() != token:
         raise HTTPException(status_code=403, detail="Metrics token invalid.")
-    return metrics_snapshot()
+    return {
+        **metrics_snapshot(),
+        "ai": snapshot_ai_telemetry(recent_limit=20),
+        "ai_governance": governance_snapshot(),
+    }

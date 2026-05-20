@@ -22,6 +22,7 @@ class ValidationResult:
     confidence_score: float | None = None
     is_partial: bool = False
     error_message: str | None = None
+    metadata: dict[str, Any] = field(default_factory=dict)
 
 
 class AIOutputValidator:
@@ -39,6 +40,7 @@ class AIOutputValidator:
                 confidence_score=0.0,
                 is_partial=False,
                 error_message="unparseable JSON",
+                metadata={},
             )
 
         parsed_output = parsed if isinstance(parsed, dict) else {}
@@ -80,6 +82,7 @@ class AIOutputValidator:
             confidence_score=round(confidence_score, 4),
             is_partial=is_partial,
             error_message=None if ok else (validation_errors[0] if validation_errors else "validation_failed"),
+            metadata={},
         )
 
     def _parse_json_payload(self, raw_content: str) -> Any:

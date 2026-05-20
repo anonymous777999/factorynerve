@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from backend.ai.caching.result_cache import AIResultCacheStore
 from backend.ai.models.results import OCRResult
+from backend.ai.monitoring.telemetry import is_timeout_error, record_ai_event
 from backend.ai.monitoring.usage_tracker import AIUsageTracker
 from backend.ai.prompts.registry import PromptRegistry
 from backend.ai.providers import get_default_provider_config
@@ -75,6 +76,27 @@ class OCRPipeline:
         raw: RawAIResponse | None = None
         validated: ValidationResult | None = None
         prompt = None
+        correction_applied = False
+
+        def _record(result: OCRResult, *, provider: str, model: str, token_estimate: int, timeout_hit: bool) -> None:
+            record_ai_event(
+                system="ocr",
+                operation="extract_document",
+                provider=provider,
+                model=model,
+                latency_ms=result.total_latency_ms,
+                token_estimate=token_estimate,
+                fallback_used=False,
+                degraded_mode=not result.success or result.partial_extraction,
+                retry_count=result.retry_count,
+                timeout_hit=timeout_hit,
+                correction_applied=correction_applied,
+                confidence_score=result.confidence_score,
+                hallucination_blocked=False,
+                rules_engine_used=False,
+                success=result.success,
+            )
+
         try:
             sanitized_text = sanitize_document_input(document_text)
             prompt = self.registry.render(
@@ -101,6 +123,13 @@ class OCRPipeline:
                             cache_hit=True,
                             success=cached.success,
                         )
+                    _record(
+                        cached,
+                        provider=(cached.raw_response.provider if cached.raw_response is not None else "cache"),
+                        model=(cached.raw_response.model if cached.raw_response is not None else "cache"),
+                        token_estimate=(cached.raw_response.usage.total_tokens if cached.raw_response is not None else 0),
+                        timeout_hit=is_timeout_error(cached.error_message),
+                    )
                     return cached
             raw = await self.provider.complete_with_retry(prompt, get_default_provider_config())
             if raw.content is None:
@@ -113,14 +142,21 @@ class OCRPipeline:
                     cache_hit=False,
                     success=False,
                 )
-                return self._failure_result(
+                failure = self._failure_result(
                     raw=raw,
                     retry_count=raw.retry_count,
                     total_latency_ms=int((time.perf_counter() - started) * 1000),
                     error_message=raw.error or "provider_failure",
                     validation_errors=[raw.error or "provider_failure"],
                 )
-
+                _record(
+                    failure,
+                    provider=raw.provider or getattr(self.provider, "provider_name", "unknown"),
+                    model=raw.model or get_default_provider_config().model,
+                    token_estimate=raw.usage.total_tokens,
+                    timeout_hit=is_timeout_error(raw.error),
+                )
+                return failure
             validated = await self.validator.validate(raw.content, extraction_schema)
             if not validated.ok:
                 validated = await self.correction_pipeline.attempt_correction(
@@ -129,6 +165,7 @@ class OCRPipeline:
                     schema=extraction_schema,
                     provider=self.provider,
                 )
+                correction_applied = bool(validated.metadata.get("correction_applied"))
 
             self._log_usage(
                 org_id=org_id,
@@ -151,7 +188,7 @@ class OCRPipeline:
                     raw.retry_count,
                     validated.confidence_score,
                 )
-                return self._failure_result(
+                failure = self._failure_result(
                     raw=raw,
                     retry_count=raw.retry_count,
                     total_latency_ms=int((time.perf_counter() - started) * 1000),
@@ -161,6 +198,14 @@ class OCRPipeline:
                     extracted_fields=validated.parsed_output or {},
                     partial_extraction=validated.is_partial,
                 )
+                _record(
+                    failure,
+                    provider=raw.provider or getattr(self.provider, "provider_name", "unknown"),
+                    model=raw.model or get_default_provider_config().model,
+                    token_estimate=raw.usage.total_tokens,
+                    timeout_hit=is_timeout_error(raw.error) or is_timeout_error(validated.error_message),
+                )
+                return failure
 
             result = OCRResult(
                 success=validated.ok,
@@ -184,6 +229,13 @@ class OCRPipeline:
                     result=result,
                     ttl_seconds=ttl_seconds,
                 )
+            _record(
+                result,
+                provider=raw.provider or getattr(self.provider, "provider_name", "unknown"),
+                model=raw.model or get_default_provider_config().model,
+                token_estimate=raw.usage.total_tokens,
+                timeout_hit=is_timeout_error(raw.error),
+            )
             return result
         except HTTPException:
             raise
@@ -212,13 +264,21 @@ class OCRPipeline:
                 fallback_raw.retry_count,
                 getattr(validated, "confidence_score", None),
             )
-            return self._failure_result(
+            failure = self._failure_result(
                 raw=fallback_raw,
                 retry_count=fallback_raw.retry_count,
                 total_latency_ms=int((time.perf_counter() - started) * 1000),
                 error_message="extraction_failed_after_retry",
                 validation_errors=[str(error)],
             )
+            _record(
+                failure,
+                provider=fallback_raw.provider or getattr(self.provider, "provider_name", "unknown"),
+                model=fallback_raw.model or get_default_provider_config().model,
+                token_estimate=fallback_raw.usage.total_tokens,
+                timeout_hit=is_timeout_error(error),
+            )
+            return failure
 
     def _log_usage(self, *, org_id: int, raw: RawAIResponse, reason: str) -> None:
         self.usage_logger(

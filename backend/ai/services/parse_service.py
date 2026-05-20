@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from backend.ai.monitoring.telemetry import is_timeout_error, record_ai_event
 from backend.ai.models.results import AIResult
 from backend.ai.pipelines.ocr_pipeline import sanitize_document_input
 from backend.ai.prompts.registry import PromptRegistry
@@ -29,6 +30,23 @@ class ParseService:
         )
         raw = await self.provider.complete_with_retry(prompt, get_default_provider_config())
         if raw.content is None:
+            record_ai_event(
+                system="smart_input",
+                operation="typed_parse",
+                provider=raw.provider or getattr(self.provider, "provider_name", "unknown"),
+                model=raw.model or get_default_provider_config().model,
+                latency_ms=raw.latency_ms,
+                token_estimate=raw.usage.total_tokens,
+                fallback_used=False,
+                degraded_mode=True,
+                retry_count=raw.retry_count,
+                timeout_hit=is_timeout_error(raw.error),
+                correction_applied=False,
+                confidence_score=0.0,
+                hallucination_blocked=False,
+                rules_engine_used=False,
+                success=False,
+            )
             return AIResult(
                 success=False,
                 raw_response=raw,
@@ -39,6 +57,23 @@ class ParseService:
                 total_latency_ms=raw.latency_ms,
             )
         validated = await self.validator.validate(raw.content, expected_schema)
+        record_ai_event(
+            system="smart_input",
+            operation="typed_parse",
+            provider=raw.provider or getattr(self.provider, "provider_name", "unknown"),
+            model=raw.model or get_default_provider_config().model,
+            latency_ms=raw.latency_ms,
+            token_estimate=raw.usage.total_tokens,
+            fallback_used=False,
+            degraded_mode=not validated.ok or validated.is_partial,
+            retry_count=raw.retry_count,
+            timeout_hit=is_timeout_error(raw.error),
+            correction_applied=False,
+            confidence_score=validated.confidence_score,
+            hallucination_blocked=False,
+            rules_engine_used=False,
+            success=validated.ok,
+        )
         return AIResult(
             success=validated.ok,
             raw_response=raw,

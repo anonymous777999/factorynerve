@@ -184,6 +184,21 @@ def setup_logging() -> None:
                 "frontend_url",
                 "release",
                 "source",
+                "ai_system",
+                "ai_operation",
+                "ai_provider",
+                "ai_model",
+                "ai_latency_ms",
+                "ai_token_estimate",
+                "ai_fallback_used",
+                "ai_degraded_mode",
+                "ai_retry_count",
+                "ai_timeout_hit",
+                "ai_correction_applied",
+                "ai_confidence_score",
+                "ai_hallucination_blocked",
+                "ai_rules_engine_used",
+                "ai_success",
             ):
                 value = getattr(record, key, None)
                 if value is not None:

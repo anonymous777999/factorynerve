@@ -1,8 +1,4 @@
-"""AI routing with provider fallback, retries, and circuit breaker.
-
-This module keeps the legacy public API intact while routing provider execution
-through typed AI response objects for safer internal handling.
-"""
+"""AI routing with provider fallback, retries, and circuit breaker."""
 
 from __future__ import annotations
 
@@ -10,6 +6,7 @@ import json
 import logging
 import os
 import re
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from dataclasses import dataclass
@@ -18,6 +15,8 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable
 
+from backend.ai.monitoring.governance import allow_provider, cap_retry_attempts, governed_provider_chain, record_provider_attempt
+from backend.ai.monitoring.telemetry import is_timeout_error, record_ai_event
 from backend.ai.prompts.base import RenderedPrompt
 from backend.ai.providers.base import ProviderConfig, RawAIResponse, TokenUsage
 from backend.ai.providers.openai import OpenAIProvider
@@ -58,6 +57,7 @@ AI_CB_COOLDOWN = _env_int("AI_CIRCUIT_BREAKER_COOLDOWN_SECONDS", 180)
 AI_THREAD_WORKERS = _env_int("AI_THREAD_WORKERS", 4)
 
 _EXECUTOR = ThreadPoolExecutor(max_workers=AI_THREAD_WORKERS)
+_BREAKER_LOCK = threading.Lock()
 
 
 def _normalize_provider(value: str | None) -> str:
@@ -90,37 +90,56 @@ def _provider_chain() -> list[str]:
     return providers
 
 
-def _call_with_timeout(fn: Callable[[], str], timeout: float) -> str:
+def _call_with_timeout(fn: Callable[[], Any], timeout: float) -> Any:
     future = _EXECUTOR.submit(fn)
     try:
         return future.result(timeout=timeout)
     except FutureTimeout as error:
         raise TimeoutError("AI provider timed out.") from error
 
-def _retry(fn: Callable[[], str], *, provider: str) -> str:
+
+def _retry(fn: Callable[[], RawAIResponse], *, provider: str) -> tuple[RawAIResponse, int, bool]:
     last_error: Exception | None = None
-    for attempt in range(1, max(1, AI_RETRY_ATTEMPTS) + 1):
+    timeout_hit = False
+    max_attempts = cap_retry_attempts(max(1, AI_RETRY_ATTEMPTS), mode="router")
+    for attempt in range(1, max_attempts + 1):
         try:
-            return fn()
+            response = fn()
+            record_provider_attempt(
+                provider=provider,
+                system="router_provider",
+                success=True,
+                latency_ms=int(response.latency_ms or 0),
+                timeout_hit=is_timeout_error(response.error),
+                degraded=False,
+            )
+            return response, max(0, attempt - 1), timeout_hit
         except Exception as error:  # pylint: disable=broad-except
             last_error = error
+            timeout_hit = timeout_hit or is_timeout_error(error)
+            record_provider_attempt(
+                provider=provider,
+                system="router_provider",
+                success=False,
+                latency_ms=0,
+                timeout_hit=is_timeout_error(error),
+                degraded=True,
+            )
             logger.warning("AI provider failed (%s) attempt=%s error=%s", provider, attempt, error)
-            if attempt < AI_RETRY_ATTEMPTS:
+            if attempt < max_attempts:
                 time.sleep(AI_RETRY_BACKOFF * attempt)
     if last_error:
         raise last_error
     raise RuntimeError(f"{provider} failed unexpectedly.")
 
 
-@dataclass
+@dataclass(slots=True)
 class CircuitBreaker:
     failures: int = 0
     open_until: float = 0.0
 
     def allow(self) -> bool:
-        if self.open_until and time.time() < self.open_until:
-            return False
-        return True
+        return not (self.open_until and time.time() < self.open_until)
 
     def record_success(self) -> None:
         self.failures = 0
@@ -133,16 +152,32 @@ class CircuitBreaker:
             self.failures = 0
 
 
+@dataclass(slots=True)
+class _GenerationResult:
+    text: str
+    ai_used: bool
+    degraded_mode: bool
+    provider: str
+    model: str
+    latency_ms: int
+    token_estimate: int
+    fallback_used: bool
+    retry_count: int
+    timeout_hit: bool
+    rules_engine_used: bool
+
+
 _breakers: dict[tuple[str, str], CircuitBreaker] = {}
 
 
 def _breaker_for(provider: str, scope: str) -> CircuitBreaker:
     key = (provider, scope)
-    breaker = _breakers.get(key)
-    if not breaker:
-        breaker = CircuitBreaker()
-        _breakers[key] = breaker
-    return breaker
+    with _BREAKER_LOCK:
+        breaker = _breakers.get(key)
+        if breaker is None:
+            breaker = CircuitBreaker()
+            _breakers[key] = breaker
+        return breaker
 
 
 def primary_provider_label() -> str:
@@ -168,86 +203,14 @@ def _safe_text(text: str | None) -> str:
     return (text or "").strip()
 
 
-_NUMBER_PATTERN = re.compile(r"(?<![A-Za-z])[-+]?\d+(?:\.\d+)?")
-
-
-def _normalize_numeric_token(value: Any) -> str | None:
-    if isinstance(value, bool) or value is None:
-        return None
-    try:
-        normalized = Decimal(str(value).strip())
-    except (InvalidOperation, ValueError, TypeError):
-        return None
-    normalized = normalized.normalize()
-    rendered = format(normalized, "f")
-    if "." in rendered:
-        rendered = rendered.rstrip("0").rstrip(".")
-    return rendered or "0"
-
-
-def _collect_source_numbers(value: Any, sink: set[str]) -> None:
-    normalized = _normalize_numeric_token(value)
-    if normalized is not None:
-        sink.add(normalized)
-    if isinstance(value, dict):
-        for item in value.values():
-            _collect_source_numbers(item, sink)
-        return
-    if isinstance(value, list):
-        for item in value:
-            _collect_source_numbers(item, sink)
-        return
-    if isinstance(value, str):
-        for match in _NUMBER_PATTERN.findall(value):
-            normalized_match = _normalize_numeric_token(match)
-            if normalized_match is not None:
-                sink.add(normalized_match)
-
-
-def _find_hallucinated_numbers(text: str, source_payload: dict[str, Any]) -> list[str]:
-    source_numbers: set[str] = set()
-    _collect_source_numbers(source_payload, source_numbers)
-    unsupported: list[str] = []
-    seen: set[str] = set()
-    for match in _NUMBER_PATTERN.findall(text):
-        normalized = _normalize_numeric_token(match)
-        if normalized is None or normalized in source_numbers or normalized in seen:
-            continue
-        seen.add(normalized)
-        unsupported.append(match)
-    return unsupported
-
-
-def _generic_summary_fallback(data: dict[str, Any]) -> str:
-    shift = data.get("shift") or "scheduled"
-    date_label = data.get("date") or "the reported"
-    quality = "Quality issues were reported." if data.get("quality_issues") else "No quality issues were reported."
-    return (
-        f"Summary for {date_label} ({shift} shift): DPR data was recorded and reviewed. "
-        f"{quality} Please refer to the source DPR fields for exact figures and follow-up actions."
-    ).strip()
-
-
-def _generic_email_fallback(summary: dict[str, Any]) -> str:
-    header = "DPR update is available for review."
-    if summary.get("date") or summary.get("shift"):
-        date_label = summary.get("date") or "the reported"
-        shift = summary.get("shift") or "scheduled"
-        header = f"DPR update for {date_label} ({shift} shift) is available for review."
-    return (
-        "Hello Team,\n\n"
-        f"{header}\n"
-        "Please review the recorded DPR details in the system for exact metrics, issues, and next actions.\n\n"
-        "Regards,\nDPR.ai"
-    ).strip()
+def _estimate_tokens(text: str) -> int:
+    return max(1, len(text) // 4) if text else 0
 
 
 def _text_output_schema() -> dict[str, Any]:
     return {
         "type": "object",
-        "properties": {
-            "text": {"type": "string"},
-        },
+        "properties": {"text": {"type": "string"}},
         "required": ["text"],
     }
 
@@ -296,9 +259,7 @@ def _email_fallback(data: dict[str, Any]) -> str:
     header = lines[0] if lines else "DPR Summary"
     bullets = "\n".join([f"- {line}" for line in lines[1:]]) if len(lines) > 1 else "- No metrics recorded."
     next_steps = "Please review blockers, confirm corrective actions, and share any support needed."
-    return (
-        f"Hello Team,\n\n{header}\n{bullets}\n\n{next_steps}\n\nRegards,\nDPR.ai"
-    ).strip()
+    return f"Hello Team,\n\n{header}\n{bullets}\n\n{next_steps}\n\nRegards,\nDPR.ai".strip()
 
 
 PROMPTS_DIR = Path(__file__).resolve().parents[1] / "prompts"
@@ -419,7 +380,7 @@ class _AnthropicCompatProvider:
         except Exception as error:  # pylint: disable=broad-except
             return RawAIResponse(
                 content=None,
-                usage=TokenUsage(),
+                usage=TokenUsage(input_tokens=_estimate_tokens(prompt.prompt_text), total_tokens=_estimate_tokens(prompt.prompt_text)),
                 provider=self.provider_name,
                 model=config.model,
                 latency_ms=int((time.perf_counter() - started) * 1000),
@@ -440,7 +401,7 @@ class _GroqCompatProvider:
             api_key = APP_CONFIG.groq_api_key
             if not api_key:
                 raise RuntimeError("AI provider credential missing.")
-            client = groq.Groq(api_key=api_key)
+            client = groq.Groq(api_key=api_key, timeout=config.timeout_seconds)
             response = client.chat.completions.create(
                 model=config.model,
                 messages=[{"role": "user", "content": prompt.prompt_text}],
@@ -468,7 +429,7 @@ class _GroqCompatProvider:
         except Exception as error:  # pylint: disable=broad-except
             return RawAIResponse(
                 content=None,
-                usage=TokenUsage(),
+                usage=TokenUsage(input_tokens=_estimate_tokens(prompt.prompt_text), total_tokens=_estimate_tokens(prompt.prompt_text)),
                 provider=self.provider_name,
                 model=config.model,
                 latency_ms=int((time.perf_counter() - started) * 1000),
@@ -493,77 +454,324 @@ def _provider_impl(provider: str) -> Any:
     raise RuntimeError(f"Unknown provider {provider}")
 
 
-def _run_provider(provider: str, prompt: str, *, max_tokens: int) -> str:
+def _run_provider_response(provider: str, prompt: str, *, max_tokens: int) -> RawAIResponse:
     provider_impl = _provider_impl(provider)
     rendered_prompt = _build_prompt(prompt)
     provider_config = _build_provider_config(provider, max_tokens=max_tokens)
 
-    def _invoke() -> str:
+    def _invoke() -> RawAIResponse:
         from asyncio import run
 
         response = run(provider_impl.complete(rendered_prompt, provider_config))
-        content = _safe_text(response.content)
-        if content:
-            return content
+        if response.content:
+            return response
         raise RuntimeError(response.error or "AI provider returned no content.")
 
     return _call_with_timeout(_invoke, AI_TIMEOUT_SECONDS)
 
 
-def _generate(prompt: str, *, max_tokens: int, scope: str) -> str:
-    for provider in _provider_chain():
+def _generate_text_result(
+    prompt: str,
+    *,
+    fallback: str,
+    scope: str | None,
+    max_tokens: int,
+    governance_system: str,
+) -> _GenerationResult:
+    scope_key = scope or "global"
+    chain, suppressed = governed_provider_chain(_provider_chain(), system=governance_system)
+    content = ""
+    used_provider = "rules-engine"
+    used_model = "rules-engine"
+    latency_ms = 0
+    token_estimate = _estimate_tokens(prompt) + _estimate_tokens(fallback)
+    retry_count = 0
+    timeout_hit = False
+    degraded_mode = False
+    fallback_used = False
+    attempts_before_success = 0
+    if suppressed:
+        degraded_mode = True
+        fallback_used = True
+
+    for provider in chain:
         if not _has_key(provider):
+            degraded_mode = True
             continue
-        breaker = _breaker_for(provider, scope)
+        if not allow_provider(provider, system=governance_system):
+            degraded_mode = True
+            fallback_used = True
+            attempts_before_success += 1
+            continue
+        breaker = _breaker_for(provider, scope_key)
         if not breaker.allow():
-            logger.warning("Circuit breaker open for %s. Skipping provider.", provider)
+            degraded_mode = True
+            fallback_used = True
             continue
         try:
-            content = _retry(lambda: _run_provider(provider, prompt, max_tokens=max_tokens), provider=provider)
-            content = _safe_text(content)
-            if not content:
-                raise ValueError("Empty response.")
-            breaker.record_success()
-            return content
+            response, response_retry_count, response_timeout_hit = _retry(
+                lambda: _run_provider_response(provider, prompt, max_tokens=max_tokens),
+                provider=provider,
+            )
+            timeout_hit = timeout_hit or response_timeout_hit or is_timeout_error(response.error)
+            validated = _validate_text_output(response.content or "")
+            if validated:
+                content = validated
+                used_provider = response.provider or provider
+                used_model = response.model or _build_provider_config(provider, max_tokens=max_tokens).model
+                latency_ms = int(response.latency_ms or 0)
+                token_estimate = int(response.usage.total_tokens or (_estimate_tokens(prompt) + _estimate_tokens(validated)))
+                retry_count = max(retry_count, response.retry_count, response_retry_count)
+                fallback_used = fallback_used or attempts_before_success > 0 or provider != chain[0]
+                breaker.record_success()
+                break
+            record_provider_attempt(
+                provider=provider,
+                system=governance_system,
+                success=False,
+                latency_ms=int(response.latency_ms or 0),
+                timeout_hit=is_timeout_error(response.error),
+                degraded=True,
+            )
+            breaker.record_failure()
+            degraded_mode = True
+            fallback_used = True
         except Exception as error:  # pylint: disable=broad-except
             breaker.record_failure()
+            record_provider_attempt(
+                provider=provider,
+                system=governance_system,
+                success=False,
+                latency_ms=0,
+                timeout_hit=is_timeout_error(error),
+                degraded=True,
+            )
+            timeout_hit = timeout_hit or is_timeout_error(error)
+            degraded_mode = True
+            fallback_used = True
+            attempts_before_success += 1
             logger.warning("Provider %s failed: %s", provider, error)
             continue
-    return ""
 
-
-def generate_summary(data: dict[str, Any], *, scope: str | None = None) -> str:
-    scope_key = scope or "global"
-    prompt = build_summary_prompt(data)
-    content = _validate_text_output(_generate(prompt, max_tokens=220, scope=scope_key))
     if content:
-        hallucinated_numbers = _find_hallucinated_numbers(content, data)
+        return _GenerationResult(
+            text=content,
+            ai_used=True,
+            degraded_mode=degraded_mode,
+            provider=used_provider,
+            model=used_model,
+            latency_ms=latency_ms,
+            token_estimate=token_estimate,
+            fallback_used=fallback_used,
+            retry_count=retry_count,
+            timeout_hit=timeout_hit,
+            rules_engine_used=False,
+        )
+    return _GenerationResult(
+        text=_safe_text(fallback),
+        ai_used=False,
+        degraded_mode=True,
+        provider="rules-engine",
+        model="rules-engine",
+        latency_ms=0,
+        token_estimate=_estimate_tokens(prompt) + _estimate_tokens(fallback),
+        fallback_used=True,
+        retry_count=retry_count,
+        timeout_hit=timeout_hit,
+        rules_engine_used=True,
+    )
+
+
+_NUMBER_PATTERN = re.compile(r"(?<![A-Za-z])[-+]?\d+(?:\.\d+)?")
+
+
+def _normalize_numeric_token(value: Any) -> str | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        normalized = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError, TypeError):
+        return None
+    normalized = normalized.normalize()
+    rendered = format(normalized, "f")
+    if "." in rendered:
+        rendered = rendered.rstrip("0").rstrip(".")
+    return rendered or "0"
+
+
+def _collect_source_numbers(value: Any, sink: set[str]) -> None:
+    normalized = _normalize_numeric_token(value)
+    if normalized is not None:
+        sink.add(normalized)
+    if isinstance(value, dict):
+        for item in value.values():
+            _collect_source_numbers(item, sink)
+        return
+    if isinstance(value, list):
+        for item in value:
+            _collect_source_numbers(item, sink)
+        return
+    if isinstance(value, str):
+        for match in _NUMBER_PATTERN.findall(value):
+            normalized_match = _normalize_numeric_token(match)
+            if normalized_match is not None:
+                sink.add(normalized_match)
+
+
+def _find_hallucinated_numbers(text: str, source_payload: dict[str, Any]) -> list[str]:
+    source_numbers: set[str] = set()
+    _collect_source_numbers(source_payload, source_numbers)
+    unsupported: list[str] = []
+    seen: set[str] = set()
+    for match in _NUMBER_PATTERN.findall(text):
+        normalized = _normalize_numeric_token(match)
+        if normalized is None or normalized in source_numbers or normalized in seen:
+            continue
+        seen.add(normalized)
+        unsupported.append(match)
+    return unsupported
+
+
+def _generic_summary_fallback(data: dict[str, Any]) -> str:
+    shift = data.get("shift") or "scheduled"
+    date_label = data.get("date") or "the reported"
+    quality = "Quality issues were reported." if data.get("quality_issues") else "No quality issues were reported."
+    return (
+        f"Summary for {date_label} ({shift} shift): DPR data was recorded and reviewed. "
+        f"{quality} Please refer to the source DPR fields for exact figures and follow-up actions."
+    ).strip()
+
+
+def _generic_email_fallback(summary: dict[str, Any]) -> str:
+    header = "DPR update is available for review."
+    if summary.get("date") or summary.get("shift"):
+        date_label = summary.get("date") or "the reported"
+        shift = summary.get("shift") or "scheduled"
+        header = f"DPR update for {date_label} ({shift} shift) is available for review."
+    return (
+        "Hello Team,\n\n"
+        f"{header}\n"
+        "Please review the recorded DPR details in the system for exact metrics, issues, and next actions.\n\n"
+        "Regards,\nDPR.ai"
+    ).strip()
+
+
+def generate_summary(
+    data: dict[str, Any],
+    *,
+    scope: str | None = None,
+    telemetry_system: str = "entry_summary",
+) -> str:
+    prompt = build_summary_prompt(data)
+    result = _generate_text_result(
+        prompt,
+        fallback=_summary_fallback(data),
+        scope=scope,
+        max_tokens=220,
+        governance_system=telemetry_system,
+    )
+    hallucination_blocked = False
+    final_text = result.text
+    if result.ai_used:
+        hallucinated_numbers = _find_hallucinated_numbers(result.text, data)
         if hallucinated_numbers:
+            hallucination_blocked = True
             logger.warning(
                 "AI summary numeric validation failed scope=%s unsupported_numbers=%s",
-                scope_key,
+                scope or "global",
                 hallucinated_numbers,
             )
-            return _generic_summary_fallback(data)
-        return content
-    return _summary_fallback(data)
+            final_text = _generic_summary_fallback(data)
+            result = _GenerationResult(
+                text=final_text,
+                ai_used=False,
+                degraded_mode=True,
+                provider="rules-engine",
+                model="rules-engine",
+                latency_ms=result.latency_ms,
+                token_estimate=result.token_estimate,
+                fallback_used=True,
+                retry_count=result.retry_count,
+                timeout_hit=result.timeout_hit,
+                rules_engine_used=True,
+            )
+    record_ai_event(
+        system=telemetry_system,
+        operation="generate_summary",
+        provider=result.provider,
+        model=result.model,
+        latency_ms=result.latency_ms,
+        token_estimate=result.token_estimate,
+        fallback_used=result.fallback_used,
+        degraded_mode=result.degraded_mode,
+        retry_count=result.retry_count,
+        timeout_hit=result.timeout_hit,
+        correction_applied=False,
+        confidence_score=None,
+        hallucination_blocked=hallucination_blocked,
+        rules_engine_used=result.rules_engine_used,
+        success=bool(final_text),
+    )
+    return final_text
 
 
-def generate_email(summary: dict[str, Any], *, scope: str | None = None) -> str:
-    scope_key = scope or "global"
+def generate_email(
+    summary: dict[str, Any],
+    *,
+    scope: str | None = None,
+    telemetry_system: str = "email_generation",
+) -> str:
     prompt = build_email_prompt(summary)
-    content = _validate_text_output(_generate(prompt, max_tokens=360, scope=scope_key))
-    if content:
-        hallucinated_numbers = _find_hallucinated_numbers(content, summary)
+    result = _generate_text_result(
+        prompt,
+        fallback=_email_fallback(summary),
+        scope=scope,
+        max_tokens=360,
+        governance_system=telemetry_system,
+    )
+    hallucination_blocked = False
+    final_text = result.text
+    if result.ai_used:
+        hallucinated_numbers = _find_hallucinated_numbers(result.text, summary)
         if hallucinated_numbers:
+            hallucination_blocked = True
             logger.warning(
                 "AI email numeric validation failed scope=%s unsupported_numbers=%s",
-                scope_key,
+                scope or "global",
                 hallucinated_numbers,
             )
-            return _generic_email_fallback(summary)
-        return content
-    return _email_fallback(summary)
+            final_text = _generic_email_fallback(summary)
+            result = _GenerationResult(
+                text=final_text,
+                ai_used=False,
+                degraded_mode=True,
+                provider="rules-engine",
+                model="rules-engine",
+                latency_ms=result.latency_ms,
+                token_estimate=result.token_estimate,
+                fallback_used=True,
+                retry_count=result.retry_count,
+                timeout_hit=result.timeout_hit,
+                rules_engine_used=True,
+            )
+    record_ai_event(
+        system=telemetry_system,
+        operation="generate_email",
+        provider=result.provider,
+        model=result.model,
+        latency_ms=result.latency_ms,
+        token_estimate=result.token_estimate,
+        fallback_used=result.fallback_used,
+        degraded_mode=result.degraded_mode,
+        retry_count=result.retry_count,
+        timeout_hit=result.timeout_hit,
+        correction_applied=False,
+        confidence_score=None,
+        hallucination_blocked=hallucination_blocked,
+        rules_engine_used=result.rules_engine_used,
+        success=bool(final_text),
+    )
+    return final_text
 
 
 def generate_text(
@@ -572,9 +780,31 @@ def generate_text(
     fallback: str,
     scope: str | None = None,
     max_tokens: int = 260,
-) -> tuple[str, bool]:
-    scope_key = scope or "global"
-    content = _validate_text_output(_generate(prompt, max_tokens=max_tokens, scope=scope_key))
-    if content:
-        return content, True
-    return _safe_text(fallback), False
+    telemetry_system: str = "generic_text",
+) -> tuple[str, bool, bool, str]:
+    """Return (text, ai_used, degraded_mode, provider)."""
+    result = _generate_text_result(
+        prompt,
+        fallback=fallback,
+        scope=scope,
+        max_tokens=max_tokens,
+        governance_system=telemetry_system,
+    )
+    record_ai_event(
+        system=telemetry_system,
+        operation="generate_text",
+        provider=result.provider,
+        model=result.model,
+        latency_ms=result.latency_ms,
+        token_estimate=result.token_estimate,
+        fallback_used=result.fallback_used,
+        degraded_mode=result.degraded_mode,
+        retry_count=result.retry_count,
+        timeout_hit=result.timeout_hit,
+        correction_applied=False,
+        confidence_score=None,
+        hallucination_blocked=False,
+        rules_engine_used=result.rules_engine_used,
+        success=bool(result.text),
+    )
+    return result.text, result.ai_used, result.degraded_mode, result.provider

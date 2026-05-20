@@ -1,5 +1,3 @@
-"""AI monitoring utilities."""
+"""AI monitoring package."""
 
-from backend.ai.monitoring.usage_tracker import AIUsageTracker
-
-__all__ = ["AIUsageTracker"]
+__all__: list[str] = []

@@ -55,6 +55,7 @@ class StageResult:
     total_tokens: int
     estimated_cost_usd: float
     latency_ms: int
+    retry_count: int = 0
     cache_hit: bool = False
     warnings: list[str] = field(default_factory=list)
 
