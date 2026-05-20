@@ -10,10 +10,10 @@ from sqlalchemy.orm import Session
 
 from backend.models.factory import Factory
 from backend.models.org_subscription_addon import OrgSubscriptionAddon
-from backend.models.organization import Organization
 from backend.models.user import User
 from backend.models.user_factory_role import UserFactoryRole
 from backend.models.user_plan import UserPlan
+from backend.services.plan_resolver import get_effective_plan
 from backend.utils import ensure_utc
 
 
@@ -417,29 +417,23 @@ def get_effective_factory_plan(
         org_id=org_id,
         factory_id=factory_id,
     )
-    rows = (
-        db.query(UserPlan.plan)
-        .join(active_user_ids, active_user_ids.c.user_id == UserPlan.user_id)
-        .all()
-    )
+    rows = db.query(UserPlan).join(active_user_ids, active_user_ids.c.user_id == UserPlan.user_id).all()
     if not rows:
         return DEFAULT_PLAN
     best = DEFAULT_PLAN
-    for (plan,) in rows:
-        if plan_rank(plan) > plan_rank(best):
-            best = normalize_plan(plan)
+    for row in rows:
+        if plan_rank(row.plan) > plan_rank(best):
+            best = normalize_plan(row.plan)
     return best
 
 
 def get_org_plan(db: Session, *, org_id: str | None, fallback_user_id: int | None = None) -> str:
     if org_id:
-        org = db.query(Organization).filter(Organization.org_id == org_id).first()
-        if org and org.plan:
-            return normalize_plan(org.plan)
+        return normalize_plan(get_effective_plan(org_id, db))
     if fallback_user_id is not None:
-        plan_row = db.query(UserPlan).filter(UserPlan.user_id == fallback_user_id).first()
-        if plan_row and plan_row.plan:
-            return normalize_plan(plan_row.plan)
+        user = db.query(User).filter(User.id == fallback_user_id).first()
+        if user and user.org_id:
+            return normalize_plan(get_effective_plan(user.org_id, db))
     return DEFAULT_PLAN
 
 

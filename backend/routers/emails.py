@@ -18,9 +18,9 @@ from backend.models.report import AuditLog
 from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
 from backend.plans import min_plan_for_feature, has_plan_feature, get_org_plan
-from backend.feature_limits import check_and_record_feature_usage, check_and_record_org_feature_usage
 from backend.ai_rate_limit import check_rate_limit, RateLimitError
 from backend.database import get_db
+from backend.dependencies.quota import consume_ai_quota
 from backend.security import get_current_user
 from backend.rbac import require_any_role
 from backend.tenancy import resolve_factory_id, resolve_org_id
@@ -242,9 +242,7 @@ def generate_summary_email(
     except RateLimitError as error:
         raise HTTPException(status_code=429, detail=error.detail) from error
     if org_id:
-        check_and_record_org_feature_usage(db, org_id=org_id, feature="email", plan=plan)
-    else:
-        check_and_record_feature_usage(db, user_id=current_user.id, feature="email", plan=plan)
+        consume_ai_quota(db, org_id=org_id, feature="email")
     subject = f"DPR.ai Summary ({summary['range']['start_date']} to {summary['range']['end_date']})"
     scope_key = f"org:{org_id}" if org_id else f"user:{current_user.id}"
     body = generate_email_summary(summary, scope=scope_key)

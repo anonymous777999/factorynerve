@@ -16,7 +16,6 @@ from sqlalchemy.orm import Session
 from backend.models.ocr_usage import OcrUsage
 from backend.models.org_ocr_usage import OrgOcrUsage
 from backend.models.user import User
-from backend.models.user_plan import UserPlan
 from backend.plans import (
     DEFAULT_PLAN,
     get_org_ocr_scan_allowance,
@@ -25,6 +24,7 @@ from backend.plans import (
     plan_limit,
     plan_limit_is_unlimited,
 )
+from backend.services.plan_resolver import get_effective_plan
 RATE_LIMIT_WINDOW_SECONDS = int(os.getenv("OCR_RATE_LIMIT_WINDOW_SECONDS", "60"))
 OCR_CREDITS_PER_MB = int(os.getenv("OCR_CREDITS_PER_MB", "4"))
 
@@ -96,20 +96,10 @@ def _effective_plan_limits(db: Session, *, org_id: str | None, plan: str) -> dic
 
 
 def get_user_plan(db: Session, *, user_id: int) -> str:
-    plan_row = db.query(UserPlan).filter(UserPlan.user_id == user_id).first()
-    if plan_row:
-        normalized = normalize_plan(plan_row.plan)
-        if plan_row.plan != normalized:
-            plan_row.plan = normalized
-            plan_row.updated_at = datetime.now(timezone.utc)
-            db.add(plan_row)
-            db.flush()
-        return normalized
-    plan = normalize_plan(DEFAULT_PLAN)
-    plan_row = UserPlan(user_id=user_id, plan=plan)
-    db.add(plan_row)
-    db.flush()
-    return plan
+    user = db.query(User).filter(User.id == user_id).first()
+    if user and user.org_id:
+        return normalize_plan(get_effective_plan(user.org_id, db))
+    return normalize_plan(DEFAULT_PLAN)
 
 
 def get_org_plan_for_usage(db: Session, *, org_id: str | None, user_id: int | None = None) -> str:

@@ -27,6 +27,7 @@ from backend.ai_engine import (
     parse_unstructured_input_with_confidence,
 )
 from backend.database import get_db, hash_ip_address, SessionLocal
+from backend.dependencies.quota import consume_ai_quota
 from backend.models.alert import Alert
 from backend.models.entry import Entry, ShiftType
 from backend.models.report import AuditLog
@@ -35,7 +36,6 @@ from backend.models.user_factory_role import UserFactoryRole
 from backend.security import get_current_user
 from backend.rbac import assert_not_self_approval, require_role
 from backend.plans import normalize_plan, plan_rank, get_org_plan
-from backend.feature_limits import check_and_record_org_feature_usage
 from backend.ai_rate_limit import check_rate_limit, RateLimitError
 from backend.utils import (
     LOW_CONFIDENCE_THRESHOLD,
@@ -293,7 +293,7 @@ def _run_entry_summary_job(progress, *, entry_id: int, consume_quota: bool = Tru
         if consume_quota:
             check_rate_limit(entry.user_id, feature="summary")
             if org_id:
-                check_and_record_org_feature_usage(db, org_id=org_id, feature="summary", plan=plan)
+                consume_ai_quota(db, org_id=org_id, feature="summary")
         progress(70, "Generating AI summary")
         entry.ai_summary = generate_entry_summary(
             _summary_payload(entry),
@@ -451,7 +451,7 @@ async def parse_smart_input(
     org_id = resolve_org_id(current_user)
     plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
     if org_id:
-        check_and_record_org_feature_usage(db, org_id=org_id, feature="smart", plan=plan)
+        consume_ai_quota(db, org_id=org_id, feature="smart")
 
     whatsapp_started = time.perf_counter()
     cleaned_text = parse_whatsapp_export(text_data) or text_data
@@ -927,8 +927,12 @@ def regenerate_entry_summary(
             status_code=403,
             detail=f"AI summaries are not available on the {plan.title()} plan. Upgrade to {_summary_min_plan().title()} or higher to unlock this.",
         )
+    try:
+        check_rate_limit(current_user.id, feature="summary")
+    except RateLimitError as error:
+        raise HTTPException(status_code=429, detail=error.detail) from error
     if org_id:
-        check_and_record_org_feature_usage(db, org_id=org_id, feature="summary", plan=plan)
+        consume_ai_quota(db, org_id=org_id, feature="summary")
     try:
         entry.ai_summary = generate_entry_summary(
             _summary_payload(entry),

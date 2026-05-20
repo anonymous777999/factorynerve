@@ -18,6 +18,7 @@ from backend.models.user import User
 from backend.models.user_plan import UserPlan
 from backend.plans import get_addon, normalize_addon_quantities, normalize_plan
 from backend.services.billing_logger import log_billing_event
+from backend.services.plan_resolver import get_effective_plan
 from backend.tenancy import resolve_factory_id, resolve_org_id
 from backend.utils import ensure_utc
 
@@ -110,6 +111,20 @@ def get_active_subscription(db: Session, org_id: str) -> Subscription | None:
     if sub and get_effective_subscription_status(sub) == "active":
         return sub
     return None
+
+
+def get_subscription_status(sub, db) -> str:
+    now = datetime.now(timezone.utc)
+
+    if sub.status == "active" and sub.current_period_end_at is not None:
+        if sub.current_period_end_at.replace(tzinfo=timezone.utc) < now:
+            sub.status = "past_due"
+            db.add(sub)
+            db.commit()
+            db.refresh(sub)
+            return "past_due"
+
+    return sub.status
 
 
 def get_effective_subscription_status(
@@ -205,7 +220,7 @@ def apply_plan_change(
     resolved_org_id = _resolve_subscription_org_id(db, org_id=org_id, user_id=user_id)
     sub = get_mutable_subscription(db, resolved_org_id)
     org = db.query(Organization).filter(Organization.org_id == resolved_org_id).first()
-    old_plan = sub.plan if sub else (org.plan if org else None)
+    old_plan = sub.plan if sub else (get_effective_plan(resolved_org_id, db) if org else None)
     if sub:
         sub.plan = normalized
         sub.status = "active"
@@ -246,8 +261,8 @@ def apply_plan_change(
 
     user = db.query(User).filter(User.id == user_id).first() if user_id is not None else None
     if org:
-        org.plan = normalized
-        org.plan_expires_at = current_period_end_at
+        setattr(org, "plan", normalized)
+        setattr(org, "plan_expires_at", current_period_end_at)
         db.add(org)
 
     if audit_details and user and user_id is not None:

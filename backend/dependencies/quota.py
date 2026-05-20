@@ -9,15 +9,60 @@ from sqlalchemy import text
 from sqlalchemy.orm import Session
 
 from backend.database import get_db
+from backend.feature_limits import check_and_record_org_feature_usage
+from backend.models.organization import Organization
 from backend.models.subscription import Subscription
 from backend.models.user import User
 from backend.security import get_current_user
 from backend.services.billing_logger import duration_ms_since, log_billing_event
 from backend.services.billing_manager import get_canonical_subscription, get_effective_subscription_status
+from backend.services.plan_resolver import get_effective_plan
+from backend.tenancy import resolve_org_id
 
 
 def _current_timestamp_sql(db: Session) -> str:
     return "CURRENT_TIMESTAMP" if db.bind and db.bind.dialect.name == "sqlite" else "NOW()"
+
+
+def get_current_org(
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> Organization:
+    org_id = resolve_org_id(user)
+    if not org_id:
+        raise HTTPException(status_code=400, detail="Organization not found for current user.")
+    org = db.query(Organization).filter(Organization.org_id == org_id).first()
+    if not org:
+        raise HTTPException(status_code=404, detail="Organization not found.")
+    return org
+
+
+def consume_ai_quota(db: Session, *, org_id: str, feature: str) -> None:
+    check_and_record_org_feature_usage(
+        db=db,
+        org_id=org_id,
+        feature=feature,
+        plan=get_effective_plan(org_id, db),
+    )
+
+
+def require_ai_quota(feature: str):
+    def _dependency(
+        org: Organization = Depends(get_current_org),
+        db: Session = Depends(get_db),
+    ):
+        try:
+            consume_ai_quota(db, org_id=org.org_id, feature=feature)
+        except HTTPException as error:
+            if error.status_code == 429:
+                reason = error.detail
+                raise HTTPException(
+                    status_code=429,
+                    detail={"error": "quota_exceeded", "feature": feature, "reason": reason},
+                ) from error
+            raise
+
+    return Depends(_dependency)
 
 
 def refund_ocr_quota(

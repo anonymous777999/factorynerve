@@ -54,6 +54,7 @@ from backend.services.billing_manager import (
     cancel_scheduled_downgrade,
     apply_due_downgrades,
     get_mutable_subscription,
+    get_subscription_status,
     record_invoice,
     list_invoices,
 )
@@ -673,9 +674,10 @@ def get_billing_status(
         }
         for row in get_org_active_addons(db, org_id=org_id)
     ]
+    status = get_subscription_status(sub, db)
     return {
-        "plan": sub.plan,
-        "status": sub.status,
+        "plan": plan,
+        "status": status,
         "trial_start_at": sub.trial_start_at,
         "trial_end_at": sub.trial_end_at,
         "current_period_end_at": sub.current_period_end_at,

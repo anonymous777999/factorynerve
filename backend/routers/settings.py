@@ -44,6 +44,7 @@ from backend.plans import (
     normalize_plan,
 )
 from backend.plans import get_effective_factory_plan, enforce_user_limit
+from backend.services.plan_resolver import get_effective_plan
 from backend.usage_reconcile import reconcile_org_usage
 from backend.tenancy import resolve_factory_id, resolve_org_id
 from backend.factory_profiles import (
@@ -1262,9 +1263,9 @@ def update_org_plan(
     org = db.query(Organization).filter(Organization.org_id == org_id).first()
     if not org:
         raise HTTPException(status_code=404, detail="Organization not found.")
-    old_plan = org.plan or DEFAULT_PLAN
-    org.plan = plan
-    org.plan_expires_at = None
+    old_plan = normalize_plan(get_effective_plan(org_id, db)) or DEFAULT_PLAN
+    setattr(org, "plan", plan)
+    setattr(org, "plan_expires_at", None)
     if old_plan != plan:
         _write_admin_audit(
             db,
