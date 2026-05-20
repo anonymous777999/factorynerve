@@ -16,8 +16,8 @@ from sqlalchemy.orm import Session
 from backend.ai_rate_limit import RateLimitError, check_rate_limit
 from backend.cache import build_cache_key, get_json, set_json
 from backend.database import SessionLocal, get_db
-from backend.feature_limits import check_and_record_feature_usage, check_and_record_org_feature_usage
 from backend.ai.monitoring.telemetry import record_ai_event
+from backend.dependencies.quota import consume_ai_quota
 from backend.models.entry import Entry, ShiftType
 from backend.models.report import AuditLog
 from backend.models.user import User, UserRole
@@ -187,16 +187,14 @@ def _require_min_plan(db: Session, current_user: User, *, min_plan: str, feature
 
 
 def _consume_quota(db: Session, current_user: User, *, quota_feature: str, plan: str) -> None:
+    del plan
     try:
         check_rate_limit(current_user.id, feature=quota_feature)
     except RateLimitError as error:
         raise HTTPException(status_code=429, detail=error.detail) from error
-
     org_id = resolve_org_id(current_user)
     if org_id:
-        check_and_record_org_feature_usage(db, org_id=org_id, feature=quota_feature, plan=plan)
-    else:
-        check_and_record_feature_usage(db, user_id=current_user.id, feature=quota_feature, plan=plan)
+        consume_ai_quota(db, org_id=org_id, feature=quota_feature)
 
 
 def _write_ai_audit(

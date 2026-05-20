@@ -15,6 +15,7 @@ from backend.services.billing_manager import (
     get_canonical_subscription,
     get_active_subscription,
     get_effective_subscription_status,
+    get_subscription_status,
     normalize_subscription_record,
 )
 
@@ -44,7 +45,8 @@ async def require_active_subscription(
     if normalize_subscription_record(db, sub):
         db.commit()
         db.refresh(sub)
-    effective_status = get_effective_subscription_status(sub)
+    status = get_subscription_status(sub, db)
+    effective_status = "active" if status == "active" else get_effective_subscription_status(sub)
     if effective_status == "past_due":
         grace_ends = _as_utc(sub.grace_period_end_at)
         if grace_ends and grace_ends > datetime.now(timezone.utc):
