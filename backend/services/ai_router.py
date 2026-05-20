@@ -9,9 +9,11 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Callable
@@ -164,6 +166,80 @@ def has_any_key() -> bool:
 
 def _safe_text(text: str | None) -> str:
     return (text or "").strip()
+
+
+_NUMBER_PATTERN = re.compile(r"(?<![A-Za-z])[-+]?\d+(?:\.\d+)?")
+
+
+def _normalize_numeric_token(value: Any) -> str | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        normalized = Decimal(str(value).strip())
+    except (InvalidOperation, ValueError, TypeError):
+        return None
+    normalized = normalized.normalize()
+    rendered = format(normalized, "f")
+    if "." in rendered:
+        rendered = rendered.rstrip("0").rstrip(".")
+    return rendered or "0"
+
+
+def _collect_source_numbers(value: Any, sink: set[str]) -> None:
+    normalized = _normalize_numeric_token(value)
+    if normalized is not None:
+        sink.add(normalized)
+    if isinstance(value, dict):
+        for item in value.values():
+            _collect_source_numbers(item, sink)
+        return
+    if isinstance(value, list):
+        for item in value:
+            _collect_source_numbers(item, sink)
+        return
+    if isinstance(value, str):
+        for match in _NUMBER_PATTERN.findall(value):
+            normalized_match = _normalize_numeric_token(match)
+            if normalized_match is not None:
+                sink.add(normalized_match)
+
+
+def _find_hallucinated_numbers(text: str, source_payload: dict[str, Any]) -> list[str]:
+    source_numbers: set[str] = set()
+    _collect_source_numbers(source_payload, source_numbers)
+    unsupported: list[str] = []
+    seen: set[str] = set()
+    for match in _NUMBER_PATTERN.findall(text):
+        normalized = _normalize_numeric_token(match)
+        if normalized is None or normalized in source_numbers or normalized in seen:
+            continue
+        seen.add(normalized)
+        unsupported.append(match)
+    return unsupported
+
+
+def _generic_summary_fallback(data: dict[str, Any]) -> str:
+    shift = data.get("shift") or "scheduled"
+    date_label = data.get("date") or "the reported"
+    quality = "Quality issues were reported." if data.get("quality_issues") else "No quality issues were reported."
+    return (
+        f"Summary for {date_label} ({shift} shift): DPR data was recorded and reviewed. "
+        f"{quality} Please refer to the source DPR fields for exact figures and follow-up actions."
+    ).strip()
+
+
+def _generic_email_fallback(summary: dict[str, Any]) -> str:
+    header = "DPR update is available for review."
+    if summary.get("date") or summary.get("shift"):
+        date_label = summary.get("date") or "the reported"
+        shift = summary.get("shift") or "scheduled"
+        header = f"DPR update for {date_label} ({shift} shift) is available for review."
+    return (
+        "Hello Team,\n\n"
+        f"{header}\n"
+        "Please review the recorded DPR details in the system for exact metrics, issues, and next actions.\n\n"
+        "Regards,\nDPR.ai"
+    ).strip()
 
 
 def _text_output_schema() -> dict[str, Any]:
@@ -461,6 +537,14 @@ def generate_summary(data: dict[str, Any], *, scope: str | None = None) -> str:
     prompt = build_summary_prompt(data)
     content = _validate_text_output(_generate(prompt, max_tokens=220, scope=scope_key))
     if content:
+        hallucinated_numbers = _find_hallucinated_numbers(content, data)
+        if hallucinated_numbers:
+            logger.warning(
+                "AI summary numeric validation failed scope=%s unsupported_numbers=%s",
+                scope_key,
+                hallucinated_numbers,
+            )
+            return _generic_summary_fallback(data)
         return content
     return _summary_fallback(data)
 
@@ -470,6 +554,14 @@ def generate_email(summary: dict[str, Any], *, scope: str | None = None) -> str:
     prompt = build_email_prompt(summary)
     content = _validate_text_output(_generate(prompt, max_tokens=360, scope=scope_key))
     if content:
+        hallucinated_numbers = _find_hallucinated_numbers(content, summary)
+        if hallucinated_numbers:
+            logger.warning(
+                "AI email numeric validation failed scope=%s unsupported_numbers=%s",
+                scope_key,
+                hallucinated_numbers,
+            )
+            return _generic_email_fallback(summary)
         return content
     return _email_fallback(summary)
 

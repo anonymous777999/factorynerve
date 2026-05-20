@@ -10,6 +10,7 @@ import time
 from datetime import date
 from typing import Any
 
+from backend.ai.pipelines.ocr_pipeline import sanitize_document_input
 from backend.utils import get_config
 from backend.services import ai_router
 
@@ -92,7 +93,10 @@ def has_any_ai_key() -> bool:
 def _call_groq(prompt: str, *, temperature: float, max_tokens: int | None = None) -> str:
     import groq  # type: ignore
 
-    client = groq.Groq(api_key=config.groq_api_key)
+    client = groq.Groq(
+        api_key=config.groq_api_key,
+        timeout=25,
+    )
     resp = client.chat.completions.create(
         model=os.getenv("GROQ_MODEL", "llama-3.1-8b-instant"),
         messages=[{"role": "user", "content": prompt}],
@@ -105,7 +109,7 @@ def _call_groq(prompt: str, *, temperature: float, max_tokens: int | None = None
 def _call_anthropic(prompt: str, *, max_tokens: int) -> str:
     import anthropic  # type: ignore
 
-    client = anthropic.Anthropic(api_key=config.anthropic_api_key)
+    client = anthropic.Anthropic(api_key=config.anthropic_api_key, timeout=25)
     messages_api = client.messages
     resp = messages_api.create(
         model="claude-3-5-sonnet-20240620",
@@ -120,7 +124,7 @@ def _call_gemini(prompt: str) -> str:
 
     genai.configure(api_key=config.gemini_api_key)
     model = genai.GenerativeModel("gemini-1.5-flash")
-    resp = model.generate_content(prompt)
+    resp = model.generate_content(prompt, request_options={"timeout": 25})
     return str(resp.text).strip()
 
 
@@ -292,12 +296,13 @@ def parse_unstructured_input_with_confidence(text: str) -> tuple[dict[str, Any],
 def parse_unstructured_input_ai(text: str) -> tuple[dict[str, Any] | None, str | None]:
     if not _normalize_provider(config.ai_provider):
         return None, "AI provider not configured."
+    sanitized_text = sanitize_document_input(text)
     prompt = (
         "Extract DPR fields from the text. Return ONLY valid JSON with keys: "
         "date (YYYY-MM-DD), shift (morning/evening/night), units_target, units_produced, "
         "manpower_present, manpower_absent, downtime_minutes, downtime_reason, materials_used, "
         "quality_issues (true/false), quality_details, notes.\n\n"
-        f"Text:\n{text}"
+        f"Text:\n{sanitized_text}"
     )
     content = ""
     last_error = ""
