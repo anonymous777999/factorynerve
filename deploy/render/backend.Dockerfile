@@ -1,5 +1,5 @@
 # Use specific digest for absolute determinism (Python 3.12.7-slim)
-FROM python:3.12-slim@sha256:d878fd831622383822f360773f8476a60e0a969b4c023d8cf634e2c88f28c506
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
