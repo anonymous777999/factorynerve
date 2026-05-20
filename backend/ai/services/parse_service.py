@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from backend.ai.models.results import AIResult
+from backend.ai.pipelines.ocr_pipeline import sanitize_document_input
 from backend.ai.prompts.registry import PromptRegistry
 from backend.ai.providers import get_default_provider_config
 from backend.ai.providers.base import AbstractAIProvider
@@ -21,9 +22,10 @@ class ParseService:
         self.validator = validator or AIOutputValidator()
 
     async def parse_document(self, document_text: str, expected_schema: dict) -> AIResult:
+        sanitized_text = sanitize_document_input(document_text)
         prompt = self.registry.render(
             "smart_input_parse",
-            {"document_text": document_text, "expected_schema": expected_schema},
+            {"document_text": sanitized_text, "expected_schema": expected_schema},
         )
         raw = await self.provider.complete_with_retry(prompt, get_default_provider_config())
         if raw.content is None:

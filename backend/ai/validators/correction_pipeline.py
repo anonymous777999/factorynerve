@@ -41,6 +41,9 @@ class CorrectionPipeline:
             error_message=validation_errors[0] if validation_errors else "validation_failed",
         )
         for _attempt in range(2):
+            from backend.ai.pipelines.ocr_pipeline import sanitize_document_input
+
+            sanitized_content = sanitize_document_input(current_content)
             correction_prompt = RenderedPrompt(
                 name="validation_correction",
                 prompt_text=(
@@ -48,9 +51,9 @@ class CorrectionPipeline:
                     f"{validation_errors}. "
                     f"Original schema required: {json.dumps(schema, ensure_ascii=True)}. "
                     "Please correct and respond with valid JSON only.\n\n"
-                    f"Previous response:\n{current_content}"
+                    f"Previous response:\n{sanitized_content}"
                 ),
-                variables={"schema": schema, "validation_errors": validation_errors, "raw_content": current_content},
+                variables={"schema": schema, "validation_errors": validation_errors, "raw_content": sanitized_content},
                 metadata={},
             )
             corrected = await provider.complete(correction_prompt, self.provider_config)

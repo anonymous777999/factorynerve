@@ -44,7 +44,7 @@ def _extract_json_object(raw_text: str) -> dict[str, Any] | None:
 def _call_anthropic(prompt: str, *, model_name: str) -> str:
     import anthropic  # type: ignore
 
-    client = anthropic.Anthropic(api_key=config.anthropic_api_key)
+    client = anthropic.Anthropic(api_key=config.anthropic_api_key, timeout=25)
     messages_api = client.messages
     response = messages_api.create(
         model=model_name,
@@ -75,7 +75,7 @@ def _call_openai(prompt: str, *, model_name: str) -> str:
 def _call_groq(prompt: str, *, model_name: str) -> str:
     import groq  # type: ignore
 
-    client = groq.Groq(api_key=config.groq_api_key)
+    client = groq.Groq(api_key=config.groq_api_key, timeout=25)
     response = client.chat.completions.create(
         model=model_name,
         temperature=0.1,
