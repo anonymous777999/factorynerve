@@ -9,6 +9,7 @@ import os
 import re
 import hashlib
 import time
+import traceback
 from contextlib import nullcontext
 from datetime import datetime, timedelta, timezone
 
@@ -752,136 +753,147 @@ async def create_order(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    del request
-    require_role(current_user, UserRole.OWNER)
-    normalized_plan = normalize_plan(payload.plan)
-    if is_sales_only_plan(normalized_plan):
-        raise HTTPException(status_code=400, detail=f"{get_plan(normalized_plan).get('name', 'This plan')} requires a custom sales quote.")
-    requested_currency = str(payload.currency or SUPPORTED_CURRENCY).strip().upper()
-    if requested_currency != SUPPORTED_CURRENCY:
-        raise HTTPException(status_code=400, detail=f"Only {SUPPORTED_CURRENCY} billing is supported.")
-    key_id = os.getenv("RAZORPAY_KEY_ID")
-    key_secret = os.getenv("RAZORPAY_KEY_SECRET")
-    if not key_id or not key_secret:
-        raise HTTPException(
-            status_code=400,
-            detail="Razorpay is not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.",
-        )
     try:
-        import razorpay  # type: ignore
-    except ModuleNotFoundError as error:
-        raise HTTPException(status_code=500, detail="Razorpay SDK not installed.") from error
-    except Exception as error:
-        logger.exception("Razorpay import failed during order creation.")
-        raise HTTPException(status_code=500, detail="Razorpay initialization failed.") from error
-
-    try:
-        client = razorpay.Client(auth=(key_id, key_secret))
-    except Exception as error:
-        logger.exception("Razorpay client initialization failed during order creation.")
-        raise HTTPException(status_code=500, detail="Razorpay initialization failed.") from error
-    quote = _resolve_checkout_quote(
-        db,
-        current_user=current_user,
-        plan=normalized_plan,
-        billing_cycle=payload.billing_cycle,
-        requested_users=payload.requested_users,
-        requested_factories=payload.requested_factories,
-        addon_ids=payload.addon_ids,
-        addon_quantities=payload.addon_quantities,
-    )
-    amount_paise = int(quote["amount_paise"])
-    billing_cycle = str(quote["billing_cycle"])
-    chargeable_quantities_slug = ",".join(
-        f"{addon_id}:{quantity}"
-        for addon_id, quantity in sorted((quote["chargeable_addon_quantities"] or {}).items())
-    )
-    raw_idempotency = payload.idempotency_key or (
-        f"{current_user.id}:{normalized_plan}:{billing_cycle}:{payload.requested_users or 0}:{payload.requested_factories or 0}:{chargeable_quantities_slug}:{payload.currency}:{datetime.now(timezone.utc).date().isoformat()}"
-    )
-    idempotency_key = hashlib.sha256(raw_idempotency.encode("utf-8")).hexdigest()
-    existing_order = (
-        db.query(PaymentOrder)
-        .filter(PaymentOrder.idempotency_key == idempotency_key)
-        .first()
-    )
-    if existing_order:
-        existing_status = str(existing_order.status or "created").strip().lower()
-        if existing_status in PAID_ORDER_STATUSES:
+        del request
+        require_role(current_user, UserRole.OWNER)
+        normalized_plan = normalize_plan(payload.plan)
+        if is_sales_only_plan(normalized_plan):
+            raise HTTPException(status_code=400, detail=f"{get_plan(normalized_plan).get('name', 'This plan')} requires a custom sales quote.")
+        requested_currency = str(payload.currency or SUPPORTED_CURRENCY).strip().upper()
+        if requested_currency != SUPPORTED_CURRENCY:
+            raise HTTPException(status_code=400, detail=f"Only {SUPPORTED_CURRENCY} billing is supported.")
+        key_id = os.getenv("RAZORPAY_KEY_ID")
+        key_secret = os.getenv("RAZORPAY_KEY_SECRET")
+        if not key_id or not key_secret:
             raise HTTPException(
-                status_code=409,
-                detail="This checkout has already been paid. Refresh billing before creating a new order.",
+                status_code=400,
+                detail="Razorpay is not configured. Set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET.",
             )
-        if existing_status not in REUSABLE_ORDER_STATUSES:
-            retry_seed = f"{raw_idempotency}:{existing_status}:{datetime.now(timezone.utc).isoformat()}"
-            idempotency_key = hashlib.sha256(retry_seed.encode("utf-8")).hexdigest()
-        else:
-            return {
-                "order": {
-                    "id": existing_order.provider_order_id,
-                    "amount": existing_order.amount,
-                    "currency": existing_order.currency,
-                    "receipt": existing_order.receipt,
-                    "status": existing_order.status,
-                },
-                "plan": normalized_plan,
-                "billing_cycle": billing_cycle,
-                "amount": existing_order.amount,
-                "quote": quote,
-                "idempotent": True,
-            }
-    notes = {
-        "plan": normalized_plan,
-        "billing_cycle": billing_cycle,
-        "user_id": str(current_user.id),
-    }
-    if payload.requested_users:
-        notes["requested_users"] = str(payload.requested_users)
-    if payload.requested_factories:
-        notes["requested_factories"] = str(payload.requested_factories)
-    if quote["chargeable_addon_ids"]:
-        notes["addon_ids"] = ",".join(quote["chargeable_addon_ids"])
-    if quote["chargeable_addon_quantities"]:
-        notes["addon_quantities"] = json.dumps(quote["chargeable_addon_quantities"], separators=(",", ":"))
-    receipt = f"dpr_{current_user.id}_{int(datetime.now().timestamp())}"
-    order = await asyncio.to_thread(
-        client.order.create,
-        {
-            "amount": amount_paise,
-            "currency": SUPPORTED_CURRENCY,
-            "receipt": receipt,
-            "notes": notes,
-        },
-    )
-    try:
-        db.add(
-            PaymentOrder(
-                org_id=resolve_org_id(current_user),
-                user_id=current_user.id,
-                plan_id=normalized_plan,
-                plan=normalized_plan,
-                amount_paise=amount_paise,
-                amount=amount_paise,
-                currency=SUPPORTED_CURRENCY,
-                provider="razorpay",
-                razorpay_order_id=str(order.get("id")),
-                provider_order_id=str(order.get("id")),
-                receipt_id=receipt,
-                receipt=receipt,
-                status=str(order.get("status") or "created"),
-                idempotency_key=idempotency_key,
-            )
+        try:
+            import razorpay  # type: ignore
+        except ModuleNotFoundError as error:
+            raise HTTPException(status_code=500, detail="Razorpay SDK not installed.") from error
+        except Exception as error:
+            logger.exception("Razorpay import failed during order creation.")
+            raise HTTPException(status_code=500, detail="Razorpay initialization failed.") from error
+
+        try:
+            client = razorpay.Client(auth=(key_id, key_secret))
+        except Exception as error:
+            logger.exception("Razorpay client initialization failed during order creation.")
+            raise HTTPException(status_code=500, detail="Razorpay initialization failed.") from error
+        quote = _resolve_checkout_quote(
+            db,
+            current_user=current_user,
+            plan=normalized_plan,
+            billing_cycle=payload.billing_cycle,
+            requested_users=payload.requested_users,
+            requested_factories=payload.requested_factories,
+            addon_ids=payload.addon_ids,
+            addon_quantities=payload.addon_quantities,
         )
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-    return {
-        "order": order,
-        "plan": normalized_plan,
-        "billing_cycle": billing_cycle,
-        "amount": amount_paise,
-        "quote": quote,
-    }
+        amount_paise = int(quote["amount_paise"])
+        billing_cycle = str(quote["billing_cycle"])
+        chargeable_quantities_slug = ",".join(
+            f"{addon_id}:{quantity}"
+            for addon_id, quantity in sorted((quote["chargeable_addon_quantities"] or {}).items())
+        )
+        raw_idempotency = payload.idempotency_key or (
+            f"{current_user.id}:{normalized_plan}:{billing_cycle}:{payload.requested_users or 0}:{payload.requested_factories or 0}:{chargeable_quantities_slug}:{payload.currency}:{datetime.now(timezone.utc).date().isoformat()}"
+        )
+        idempotency_key = hashlib.sha256(raw_idempotency.encode("utf-8")).hexdigest()
+        existing_order = (
+            db.query(PaymentOrder)
+            .filter(PaymentOrder.idempotency_key == idempotency_key)
+            .first()
+        )
+        if existing_order:
+            existing_status = str(existing_order.status or "created").strip().lower()
+            if existing_status in PAID_ORDER_STATUSES:
+                raise HTTPException(
+                    status_code=409,
+                    detail="This checkout has already been paid. Refresh billing before creating a new order.",
+                )
+            if existing_status not in REUSABLE_ORDER_STATUSES:
+                retry_seed = f"{raw_idempotency}:{existing_status}:{datetime.now(timezone.utc).isoformat()}"
+                idempotency_key = hashlib.sha256(retry_seed.encode("utf-8")).hexdigest()
+            else:
+                return {
+                    "order": {
+                        "id": existing_order.provider_order_id,
+                        "amount": existing_order.amount,
+                        "currency": existing_order.currency,
+                        "receipt": existing_order.receipt,
+                        "status": existing_order.status,
+                    },
+                    "plan": normalized_plan,
+                    "billing_cycle": billing_cycle,
+                    "amount": existing_order.amount,
+                    "quote": quote,
+                    "idempotent": True,
+                }
+        notes = {
+            "plan": normalized_plan,
+            "billing_cycle": billing_cycle,
+            "user_id": str(current_user.id),
+        }
+        if payload.requested_users:
+            notes["requested_users"] = str(payload.requested_users)
+        if payload.requested_factories:
+            notes["requested_factories"] = str(payload.requested_factories)
+        if quote["chargeable_addon_ids"]:
+            notes["addon_ids"] = ",".join(quote["chargeable_addon_ids"])
+        if quote["chargeable_addon_quantities"]:
+            notes["addon_quantities"] = json.dumps(quote["chargeable_addon_quantities"], separators=(",", ":"))
+        receipt = f"dpr_{current_user.id}_{int(datetime.now().timestamp())}"
+        order = await asyncio.to_thread(
+            client.order.create,
+            {
+                "amount": amount_paise,
+                "currency": SUPPORTED_CURRENCY,
+                "receipt": receipt,
+                "notes": notes,
+            },
+        )
+        try:
+            db.add(
+                PaymentOrder(
+                    org_id=resolve_org_id(current_user),
+                    user_id=current_user.id,
+                    plan_id=normalized_plan,
+                    plan=normalized_plan,
+                    amount_paise=amount_paise,
+                    amount=amount_paise,
+                    currency=SUPPORTED_CURRENCY,
+                    provider="razorpay",
+                    razorpay_order_id=str(order.get("id")),
+                    provider_order_id=str(order.get("id")),
+                    receipt_id=receipt,
+                    receipt=receipt,
+                    status=str(order.get("status") or "created"),
+                    idempotency_key=idempotency_key,
+                )
+            )
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+        return {
+            "order": order,
+            "plan": normalized_plan,
+            "billing_cycle": billing_cycle,
+            "amount": amount_paise,
+            "quote": quote,
+        }
+    except Exception as e:
+        org_id = resolve_org_id(current_user)
+        logger.error(
+            "CRITICAL_BILLING_ORDER_FAILURE: type=%s, user_id=%s, org_id=%s\n%s",
+            type(e).__name__,
+            current_user.id,
+            org_id,
+            traceback.format_exc(),
+        )
+        raise
 
 
 @router.post("/orders/{order_id}/sync")
