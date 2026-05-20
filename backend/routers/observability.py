@@ -7,11 +7,13 @@ import logging
 import os
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from backend.ai.monitoring.governance import governance_snapshot
+from backend.ai.monitoring.telemetry import ai_dashboard_payload, ai_health_snapshot
 from backend.database import get_db
 from backend.metrics import record_frontend_error, snapshot as metrics_snapshot
 from backend.models.ops_alert_event import OpsAlertEvent
@@ -109,6 +111,15 @@ def _current_org_id(current_user: User) -> str:
     return org_id
 
 
+def _require_metrics_token(request: Request) -> None:
+    token = os.getenv("METRICS_TOKEN")
+    if not token:
+        raise HTTPException(status_code=403, detail="Metrics not configured.")
+    header = request.headers.get("X-Metrics-Token") or ""
+    if header.strip() != token:
+        raise HTTPException(status_code=403, detail="Metrics token invalid.")
+
+
 def _serialize_alert_row(row: OpsAlertEvent) -> OpsAlertHistoryItem:
     ref_id = str(row.ref_id or f"alert-{getattr(row, 'id', 'unknown')}")
     event_type = str(row.event_type or "unknown_event")
@@ -157,6 +168,24 @@ def readiness_check(db: Session = Depends(get_db)) -> dict[str, Any]:
         },
         "uptime_seconds": metrics.get("uptime_seconds", 0),
     }
+
+
+@router.get("/ai/health")
+def ai_health(request: Request) -> dict[str, Any]:
+    _require_metrics_token(request)
+    return ai_health_snapshot()
+
+
+@router.get("/ai/dashboard")
+def ai_dashboard(request: Request) -> dict[str, Any]:
+    _require_metrics_token(request)
+    return ai_dashboard_payload()
+
+
+@router.get("/ai/governance")
+def ai_governance(request: Request) -> dict[str, Any]:
+    _require_metrics_token(request)
+    return governance_snapshot()
 
 
 @router.get("/alerts", response_model=OpsAlertHistoryResponse)

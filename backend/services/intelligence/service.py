@@ -16,6 +16,7 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.ai_rate_limit import RateLimitError, check_rate_limit
+from backend.ai.monitoring.telemetry import is_timeout_error, record_ai_event
 from backend.cache import build_cache_key, get_json, set_json
 from backend.database import SessionLocal
 from backend.models.intelligence_request import IntelligenceRequest
@@ -249,6 +250,24 @@ def _record_stage_usage(
     task_kind: str,
     success: bool = True,
 ) -> None:
+    record_ai_event(
+        system=stage_result.stage_name,
+        operation="stage_execution",
+        provider=stage_result.provider,
+        model=stage_result.model_name,
+        latency_ms=stage_result.latency_ms,
+        token_estimate=stage_result.total_tokens,
+        fallback_used=stage_result.provider == "fallback",
+        degraded_mode=stage_result.provider == "fallback",
+        retry_count=stage_result.retry_count,
+        timeout_hit=any(is_timeout_error(warning) for warning in stage_result.warnings),
+        correction_applied=False,
+        confidence_score=stage_result.confidence,
+        hallucination_blocked=False,
+        rules_engine_used=stage_result.provider == "fallback",
+        success=success,
+        request_id=request_row.request_id,
+    )
     db.add(
         IntelligenceStageUsage(
             intelligence_request_id=request_row.id,
@@ -346,6 +365,7 @@ def _run_stage_with_escalation(
                 total_tokens=int(cached.get("total_tokens") or 0),
                 estimated_cost_usd=float(cached.get("estimated_cost_usd") or 0.0),
                 latency_ms=int(cached.get("latency_ms") or 0),
+                retry_count=int(cached.get("retry_count") or 0),
                 cache_hit=True,
                 warnings=list(cached.get("warnings") or []),
             )
@@ -371,6 +391,7 @@ def _run_stage_with_escalation(
                     "total_tokens": stage_result.total_tokens,
                     "estimated_cost_usd": stage_result.estimated_cost_usd,
                     "latency_ms": stage_result.latency_ms,
+                    "retry_count": stage_result.retry_count,
                     "warnings": stage_result.warnings,
                     "cache_payload": cache_payload,
                 },
@@ -407,6 +428,12 @@ def _build_pipeline_result(
         ),
         2,
     )
+    
+    # Identify if any stage used a fallback or reached maximum escalation
+    stages = [structured_stage, validation_stage, anomaly_stage, loss_stage]
+    degraded = any(s.provider == "fallback" or s.model_tier == "opus" for s in stages if classification.complexity != "complex")
+    any_fallback = any(s.provider == "fallback" for s in stages)
+    
     pipeline_state = {
         "ocr_extraction": {
             "warnings": document.warnings,
@@ -418,20 +445,29 @@ def _build_pipeline_result(
             "confidence": structured_stage.confidence,
             "model_tier": structured_stage.model_tier,
             "provider": structured_stage.provider,
+            "degraded": structured_stage.provider == "fallback",
         },
         "validation": {
             "confidence": validation_stage.confidence,
             "issues": validation_stage.payload.get("issues", []),
+            "degraded": validation_stage.provider == "fallback",
         },
         "anomaly_detection": {
             "confidence": anomaly_stage.confidence,
             "summary": anomaly_stage.payload.get("summary"),
             "severity": anomaly_stage.payload.get("severity"),
+            "degraded": anomaly_stage.provider == "fallback",
         },
         "loss_estimation": {
             "confidence": loss_stage.confidence,
             "estimated_loss_inr": loss_stage.payload.get("estimated_loss_inr"),
+            "degraded": loss_stage.provider == "fallback",
         },
+        "overall_status": {
+            "degraded_mode": degraded,
+            "any_fallback_active": any_fallback,
+            "classification_complexity": classification.complexity,
+        }
     }
     normalized_result = {
         "request_id": request_row.request_id,
@@ -457,6 +493,8 @@ def _build_pipeline_result(
         "report": {
             "summary": loss_stage.payload.get("report_excerpt"),
             "generated_at": _now().isoformat(),
+            "confidence_label": "High" if final_confidence >= 85 else "Medium" if final_confidence >= 60 else "Low (Manual Review Recommended)",
+            "ai_status": "Degraded/Rule-based" if degraded else "Optimal/AI-powered",
         },
     }
     total_tokens = (
@@ -471,6 +509,28 @@ def _build_pipeline_result(
         + anomaly_stage.estimated_cost_usd
         + loss_stage.estimated_cost_usd,
         6,
+    )
+    record_ai_event(
+        system="intelligence_engine",
+        operation="pipeline_complete",
+        provider="multi-stage",
+        model=loss_stage.model_name,
+        latency_ms=structured_stage.latency_ms + validation_stage.latency_ms + anomaly_stage.latency_ms + loss_stage.latency_ms,
+        token_estimate=total_tokens,
+        fallback_used=any_fallback,
+        degraded_mode=degraded,
+        retry_count=0,
+        timeout_hit=any(
+            is_timeout_error(warning)
+            for stage in (structured_stage, validation_stage, anomaly_stage, loss_stage)
+            for warning in stage.warnings
+        ),
+        correction_applied=False,
+        confidence_score=final_confidence,
+        hallucination_blocked=False,
+        rules_engine_used=any_fallback,
+        success=True,
+        request_id=request_row.request_id,
     )
     return OrchestrationResult(
         request_id=request_row.request_id,
@@ -645,6 +705,24 @@ def _process_request_job(request_id: str, *, progress) -> dict[str, Any]:
         cached_payload = get_json(cache_key)
         if isinstance(cached_payload, dict) and cached_payload.get("normalized_result"):
             cache_result = _cached_orchestration_payload(request_row, cached_payload)
+            record_ai_event(
+                system="intelligence_engine",
+                operation="pipeline_complete",
+                provider="cache",
+                model=str(cache_result.get("final_model_tier") or "cache"),
+                latency_ms=0,
+                token_estimate=int(cache_result.get("total_tokens") or 0),
+                fallback_used=False,
+                degraded_mode=bool((cache_result.get("pipeline_state") or {}).get("overall_status", {}).get("degraded_mode")),
+                retry_count=0,
+                timeout_hit=False,
+                correction_applied=False,
+                confidence_score=float(cache_result.get("confidence_score") or 0.0),
+                hallucination_blocked=False,
+                rules_engine_used=False,
+                success=True,
+                request_id=request_row.request_id,
+            )
             _update_request_row(
                 request_row,
                 status="succeeded",
@@ -795,6 +873,24 @@ def _process_request_job(request_id: str, *, progress) -> dict[str, Any]:
     except Exception as error:  # pylint: disable=broad-except
         logger.exception("Factory Intelligence job failed request_id=%s", request_id)
         request_row = db.query(IntelligenceRequest).filter(IntelligenceRequest.request_id == request_id).first()
+        record_ai_event(
+            system="intelligence_engine",
+            operation="pipeline_complete",
+            provider="multi-stage",
+            model="unknown",
+            latency_ms=0,
+            token_estimate=0,
+            fallback_used=False,
+            degraded_mode=True,
+            retry_count=0,
+            timeout_hit=is_timeout_error(error),
+            correction_applied=False,
+            confidence_score=(request_row.confidence_score if request_row is not None else None),
+            hallucination_blocked=False,
+            rules_engine_used=False,
+            success=False,
+            request_id=request_id,
+        )
         if request_row is not None:
             _update_request_row(request_row, status="failed", error_message=str(error))
             db.commit()

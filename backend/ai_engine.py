@@ -10,6 +10,7 @@ import time
 from datetime import date
 from typing import Any
 
+from backend.ai.monitoring.telemetry import is_timeout_error, record_ai_event
 from backend.ai.pipelines.ocr_pipeline import sanitize_document_input
 from backend.utils import get_config
 from backend.services import ai_router
@@ -296,6 +297,7 @@ def parse_unstructured_input_with_confidence(text: str) -> tuple[dict[str, Any],
 def parse_unstructured_input_ai(text: str) -> tuple[dict[str, Any] | None, str | None]:
     if not _normalize_provider(config.ai_provider):
         return None, "AI provider not configured."
+    started = time.perf_counter()
     sanitized_text = sanitize_document_input(text)
     prompt = (
         "Extract DPR fields from the text. Return ONLY valid JSON with keys: "
@@ -305,6 +307,11 @@ def parse_unstructured_input_ai(text: str) -> tuple[dict[str, Any] | None, str |
         f"Text:\n{sanitized_text}"
     )
     content = ""
+    used_provider = "unknown"
+    used_model = "unknown"
+    used_retry_count = 0
+    timeout_hit = False
+    fallback_used = False
     last_error = ""
     failures: list[str] = []
     for provider in _provider_chain(config.ai_provider):
@@ -312,29 +319,89 @@ def parse_unstructured_input_ai(text: str) -> tuple[dict[str, Any] | None, str |
             continue
         try:
             if provider == "groq":
+                used_model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
                 content = _call_groq(prompt, temperature=0.1, max_tokens=420)
             elif provider == "anthropic":
+                used_model = "claude-3-5-sonnet-20240620"
                 content = _call_anthropic(prompt, max_tokens=400)
             elif provider == "gemini":
+                used_model = "gemini-1.5-flash"
                 content = _call_gemini(prompt)
             else:
                 continue
+            used_provider = provider
+            used_retry_count = len(failures)
+            fallback_used = bool(failures) or provider != _provider_chain(config.ai_provider)[0]
             if failures:
                 logger.info("Smart input fallback succeeded with %s after %s", provider, failures)
             break
         except Exception as error:  # pylint: disable=broad-except
             logger.warning("Smart input AI failed (%s): %s", provider, error)
+            timeout_hit = timeout_hit or is_timeout_error(error)
             last_error = str(error)[:200]
             content = ""
             failures.append(provider)
 
     if not content:
+        record_ai_event(
+            system="smart_input",
+            operation="legacy_parse",
+            provider="rules-engine",
+            model=used_model,
+            latency_ms=int((time.perf_counter() - started) * 1000),
+            token_estimate=estimate_tokens(prompt),
+            fallback_used=True,
+            degraded_mode=True,
+            retry_count=max(0, used_retry_count),
+            timeout_hit=timeout_hit or is_timeout_error(last_error),
+            correction_applied=False,
+            confidence_score=0.0,
+            hallucination_blocked=False,
+            rules_engine_used=True,
+            success=False,
+        )
         return None, last_error or "AI provider error."
 
     raw_json = _extract_json_blob(content) or {}
     if not isinstance(raw_json, dict):
+        record_ai_event(
+            system="smart_input",
+            operation="legacy_parse",
+            provider=used_provider,
+            model=used_model,
+            latency_ms=int((time.perf_counter() - started) * 1000),
+            token_estimate=estimate_tokens(prompt) + estimate_tokens(content),
+            fallback_used=fallback_used,
+            degraded_mode=True,
+            retry_count=max(0, used_retry_count),
+            timeout_hit=timeout_hit,
+            correction_applied=False,
+            confidence_score=0.0,
+            hallucination_blocked=False,
+            rules_engine_used=False,
+            success=False,
+        )
         return None, "AI response was not valid JSON."
-    return _normalize_extracted_fields(raw_json), None
+    normalized = _normalize_extracted_fields(raw_json)
+    confidence_score, _missing_fields = compute_confidence(normalized)
+    record_ai_event(
+        system="smart_input",
+        operation="legacy_parse",
+        provider=used_provider,
+        model=used_model,
+        latency_ms=int((time.perf_counter() - started) * 1000),
+        token_estimate=estimate_tokens(prompt) + estimate_tokens(content),
+        fallback_used=fallback_used,
+        degraded_mode=False,
+        retry_count=max(0, used_retry_count),
+        timeout_hit=timeout_hit,
+        correction_applied=False,
+        confidence_score=confidence_score,
+        hallucination_blocked=False,
+        rules_engine_used=False,
+        success=True,
+    )
+    return normalized, None
 
 
 def parse_unstructured_input(text: str) -> dict[str, Any]:

@@ -6,6 +6,7 @@ import asyncio
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
+from backend.ai.monitoring.governance import allow_provider, cap_retry_attempts, record_provider_attempt
 from backend.ai.prompts.base import RenderedPrompt
 
 
@@ -73,8 +74,30 @@ async def retry_provider_call(
     *,
     max_retries: int = 3,
 ) -> RawAIResponse:
+    provider_name = str(getattr(provider, "provider_name", "unknown") or "unknown")
+    max_retries = cap_retry_attempts(max_retries, mode="typed")
+    if not allow_provider(provider_name, system="typed_provider"):
+        return RawAIResponse(
+            content=None,
+            provider=provider_name,
+            model=config.model,
+            latency_ms=0,
+            error="Provider temporarily suppressed by AI governance.",
+            status_code=503,
+            retryable=False,
+            retry_count=0,
+            metadata={"governance_blocked": True},
+        )
     backoff_seconds = 1
     response = await provider.complete(prompt, config)
+    record_provider_attempt(
+        provider=provider_name,
+        system="typed_provider",
+        success=not should_retry_status(response.status_code) and response.ok,
+        latency_ms=response.latency_ms,
+        timeout_hit="timeout" in str(response.error or "").lower(),
+        degraded=not response.ok,
+    )
     if not should_retry_status(response.status_code):
         return response
 
@@ -82,6 +105,14 @@ async def retry_provider_call(
         await asyncio.sleep(backoff_seconds)
         response = await provider.complete(prompt, config)
         response.retry_count = retry_index
+        record_provider_attempt(
+            provider=provider_name,
+            system="typed_provider",
+            success=not should_retry_status(response.status_code) and response.ok,
+            latency_ms=response.latency_ms,
+            timeout_hit="timeout" in str(response.error or "").lower(),
+            degraded=not response.ok,
+        )
         if not should_retry_status(response.status_code):
             return response
         backoff_seconds *= 2

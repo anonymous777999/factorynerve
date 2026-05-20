@@ -17,6 +17,7 @@ from backend.ai_rate_limit import RateLimitError, check_rate_limit
 from backend.cache import build_cache_key, get_json, set_json
 from backend.database import SessionLocal, get_db
 from backend.feature_limits import check_and_record_feature_usage, check_and_record_org_feature_usage
+from backend.ai.monitoring.telemetry import record_ai_event
 from backend.models.entry import Entry, ShiftType
 from backend.models.report import AuditLog
 from backend.models.user import User, UserRole
@@ -59,6 +60,8 @@ class SuggestionResponse(BaseModel):
     quota_feature: str
     provider: str
     ai_used: bool
+    degraded: bool = False
+    is_fallback: bool = False
     reference_entries: int
     generated_at: datetime
     suggestion: dict[str, Any]
@@ -84,6 +87,8 @@ class AnomalyResponse(BaseModel):
     quota_feature: str
     provider: str
     ai_used: bool
+    degraded: bool = False
+    is_fallback: bool = False
     generated_at: datetime
     summary: str
     items: list[AnomalyItem]
@@ -100,6 +105,8 @@ class NaturalLanguageQueryResponse(BaseModel):
     quota_feature: str
     provider: str
     ai_used: bool
+    degraded: bool = False
+    is_fallback: bool = False
     generated_at: datetime
     structured_query: dict[str, Any]
     answer: str
@@ -114,6 +121,8 @@ class ExecutiveSummaryResponse(BaseModel):
     quota_feature: str
     provider: str
     ai_used: bool
+    degraded: bool = False
+    is_fallback: bool = False
     generated_at: datetime
     metrics: dict[str, Any]
     summary: str
@@ -375,19 +384,22 @@ def _generate_anomaly_response(
         f"Baseline absent: {baselines['absent']:.1f}\n"
         f"Anomalies: {[item.model_dump() for item in items]}"
     )
-    summary, ai_used = ai_router.generate_text(
+    summary, ai_used, is_degraded, provider = ai_router.generate_text(
         prompt,
         fallback=fallback,
         scope=f"org:{resolve_org_id(current_user) or current_user.id}:anomalies",
         max_tokens=200,
+        telemetry_system="anomaly_detection",
     )
     return AnomalyResponse(
         days=days,
         plan=plan,
         min_plan=min_plan,
         quota_feature="summary",
-        provider=_provider_label(),
+        provider=provider,
         ai_used=ai_used,
+        degraded=is_degraded,
+        is_fallback=not ai_used,
         generated_at=datetime.now(timezone.utc),
         summary=summary,
         items=items,
@@ -452,11 +464,12 @@ def _generate_executive_summary_response(
         f"End date: {end.isoformat()}\n"
         f"Metrics: {metrics}"
     )
-    summary, ai_used = ai_router.generate_text(
+    summary, ai_used, is_degraded, provider = ai_router.generate_text(
         prompt,
         fallback=fallback,
         scope=f"org:{resolve_org_id(current_user) or current_user.id}:executive",
         max_tokens=240,
+        telemetry_system="executive_summary",
     )
     return ExecutiveSummaryResponse(
         start_date=start.isoformat(),
@@ -464,8 +477,10 @@ def _generate_executive_summary_response(
         plan=plan,
         min_plan=min_plan,
         quota_feature="summary",
-        provider=_provider_label(),
+        provider=provider,
         ai_used=ai_used,
+        degraded=is_degraded,
+        is_fallback=not ai_used,
         generated_at=datetime.now(timezone.utc),
         metrics=metrics,
         summary=summary,
@@ -655,7 +670,7 @@ def get_dpr_suggestions(
         patterns = ["No recent same-shift history was available in your current scope."]
 
     fallback = _fallback_suggestion_text(patterns, shift=shift)
-    rationale, ai_used = ai_router.generate_text(
+    rationale, ai_used, is_degraded, provider = ai_router.generate_text(
         _build_suggestion_prompt(
             shift=shift,
             date_value=target_date.isoformat(),
@@ -665,6 +680,7 @@ def get_dpr_suggestions(
         fallback=fallback,
         scope=f"org:{resolve_org_id(current_user) or current_user.id}:suggestions",
         max_tokens=180,
+        telemetry_system="recommendations",
     )
 
     _write_ai_audit(
@@ -680,8 +696,10 @@ def get_dpr_suggestions(
         plan=plan,
         min_plan=min_plan,
         quota_feature="smart",
-        provider=_provider_label(),
+        provider=provider,
         ai_used=ai_used,
+        degraded=is_degraded,
+        is_fallback=not ai_used,
         reference_entries=reference_entries,
         generated_at=datetime.now(timezone.utc),
         suggestion=suggestion,
@@ -750,6 +768,23 @@ def get_anomaly_preview(
         generated_at=datetime.now(timezone.utc),
         summary=_anomaly_fallback_summary(items, days=days),
         items=items,
+    )
+    record_ai_event(
+        system="anomaly_detection",
+        operation="preview",
+        provider="preview",
+        model="rules-engine",
+        latency_ms=0,
+        token_estimate=0,
+        fallback_used=False,
+        degraded_mode=False,
+        retry_count=0,
+        timeout_hit=False,
+        correction_applied=False,
+        confidence_score=None,
+        hallucination_blocked=False,
+        rules_engine_used=True,
+        success=True,
     )
     set_json(cache_key, response.model_dump(mode="json"), AI_CACHE_TTL)
     return response
@@ -838,11 +873,12 @@ def query_with_natural_language(
         f"Structured query: {structured_query}\n"
         f"Data points: {data_points[:10]}"
     )
-    answer, ai_used = ai_router.generate_text(
+    answer, ai_used, is_degraded, provider = ai_router.generate_text(
         prompt,
         fallback=fallback,
         scope=f"org:{resolve_org_id(current_user) or current_user.id}:nlq",
         max_tokens=220,
+        telemetry_system="nlq",
     )
 
     _write_ai_audit(
@@ -857,8 +893,10 @@ def query_with_natural_language(
         plan=plan,
         min_plan=min_plan,
         quota_feature="summary",
-        provider=_provider_label(),
+        provider=provider,
         ai_used=ai_used,
+        degraded=is_degraded,
+        is_fallback=not ai_used,
         generated_at=datetime.now(timezone.utc),
         structured_query=structured_query,
         answer=answer,

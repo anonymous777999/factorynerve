@@ -9,6 +9,7 @@ import os
 import time
 from typing import Any, Callable
 
+from backend.ai.monitoring.governance import allow_provider, cap_retry_attempts, governed_provider_chain, record_provider_attempt
 from backend.ai.validators.output_validator import AIOutputValidator
 from backend.services.intelligence.routing import (
     estimate_cost_usd,
@@ -124,12 +125,17 @@ def invoke_stage_model(
     fallback_builder: Callable[[], dict[str, Any]],
 ) -> StageResult:
     last_error = ""
-    for provider in provider_chain:
+    governed_chain, _suppressed = governed_provider_chain(provider_chain, system=stage_name)
+    max_attempts = cap_retry_attempts(RETRY_ATTEMPTS, mode="intelligence")
+    for provider in governed_chain:
         if not provider_has_key(provider):
+            continue
+        if not allow_provider(provider, system=stage_name):
+            last_error = f"{provider} suppressed by governance"
             continue
         model_name = resolve_model_name(provider, tier)
         runner = _provider_callable(provider)
-        for attempt in range(1, RETRY_ATTEMPTS + 1):
+        for attempt in range(1, max_attempts + 1):
             started = time.perf_counter()
             try:
                 raw_text = runner(prompt, model_name)
@@ -143,6 +149,14 @@ def invoke_stage_model(
                 prompt_tokens = estimate_tokens(prompt)
                 completion_tokens = estimate_tokens(raw_text)
                 latency_ms = int((time.perf_counter() - started) * 1000)
+                record_provider_attempt(
+                    provider=provider,
+                    system=stage_name,
+                    success=True,
+                    latency_ms=latency_ms,
+                    timeout_hit=False,
+                    degraded=False,
+                )
                 return StageResult(
                     stage_name=stage_name,
                     payload=parsed,
@@ -156,9 +170,18 @@ def invoke_stage_model(
                     total_tokens=prompt_tokens + completion_tokens,
                     estimated_cost_usd=estimate_cost_usd(tier, prompt_tokens, completion_tokens),
                     latency_ms=latency_ms,
+                    retry_count=max(0, attempt - 1),
                 )
             except Exception as error:  # pylint: disable=broad-except
                 last_error = str(error)
+                record_provider_attempt(
+                    provider=provider,
+                    system=stage_name,
+                    success=False,
+                    latency_ms=int((time.perf_counter() - started) * 1000),
+                    timeout_hit="timeout" in str(error).lower(),
+                    degraded=True,
+                )
                 logger.warning(
                     "Factory Intelligence provider failed stage=%s provider=%s tier=%s attempt=%s error=%s",
                     stage_name,
@@ -167,7 +190,7 @@ def invoke_stage_model(
                     attempt,
                     error,
                 )
-                if attempt < RETRY_ATTEMPTS:
+                if attempt < max_attempts:
                     time.sleep(RETRY_BACKOFF_SECONDS * attempt)
 
     fallback_payload = fallback_builder()
@@ -187,5 +210,6 @@ def invoke_stage_model(
         total_tokens=prompt_tokens + completion_tokens,
         estimated_cost_usd=0.0,
         latency_ms=0,
+        retry_count=max(0, max_attempts - 1) if last_error else 0,
         warnings=[last_error] if last_error else [],
     )

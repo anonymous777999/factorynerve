@@ -6,6 +6,7 @@ import logging
 import os
 from typing import Any
 from datetime import date, datetime, timedelta, timezone
+import time
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, Query, Request, Response, UploadFile, status
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -14,6 +15,7 @@ from sqlalchemy.orm import Session, selectinload
 
 from backend.cache import delete_prefix
 from backend.ai import get_provider_from_env
+from backend.ai.monitoring.telemetry import is_timeout_error, record_ai_event
 from backend.ai.prompts.registry import PromptRegistry
 from backend.ai.services.parse_service import ParseService
 from backend.ai_engine import (
@@ -171,6 +173,7 @@ class SmartInputResponse(BaseModel):
     extracted_fields: dict
     confidence: float | None = None
     ai_used: bool = False
+    degraded: bool = False
     missing_fields: list[str] = []
     ai_error: str | None = None
 
@@ -424,6 +427,7 @@ async def parse_smart_input(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> SmartInputResponse:
+    started = time.perf_counter()
     if current_user.role == UserRole.ACCOUNTANT:
         raise HTTPException(status_code=403, detail="Accountant role cannot use smart input.")
     if current_user.role == UserRole.ATTENDANCE:
@@ -449,7 +453,25 @@ async def parse_smart_input(
     if org_id:
         check_and_record_org_feature_usage(db, org_id=org_id, feature="smart", plan=plan)
 
+    whatsapp_started = time.perf_counter()
     cleaned_text = parse_whatsapp_export(text_data) or text_data
+    record_ai_event(
+        system="whatsapp_parsing",
+        operation="parse_export",
+        provider="rules-engine",
+        model="whatsapp_export_parser",
+        latency_ms=int((time.perf_counter() - whatsapp_started) * 1000),
+        token_estimate=estimate_tokens(cleaned_text),
+        fallback_used=False,
+        degraded_mode=False,
+        retry_count=0,
+        timeout_hit=False,
+        correction_applied=False,
+        confidence_score=None,
+        hallucination_blocked=False,
+        rules_engine_used=True,
+        success=bool(cleaned_text),
+    )
     extracted, meta = parse_unstructured_input_with_confidence(cleaned_text)
     # Normalize confidence to 0-100 standard
     confidence = normalize_confidence(meta.get("confidence")) or 0.0
@@ -459,7 +481,9 @@ async def parse_smart_input(
     threshold = float(os.getenv("SMART_INPUT_CONFIDENCE_THRESHOLD", str(LOW_CONFIDENCE_THRESHOLD)))
     ai_used = False
     ai_error: str | None = None
+    is_degraded = False
     if confidence < threshold and os.getenv("SMART_INPUT_AI_FALLBACK", "1") == "1":
+        is_degraded = True
         parse_service = ParseService(provider=get_provider_from_env(), registry=PromptRegistry())
         ai_result = await parse_service.parse_document(cleaned_text, SMART_INPUT_SCHEMA)
         ai_extracted = ai_result.validated_output if ai_result.success else None
@@ -472,22 +496,44 @@ async def parse_smart_input(
             confidence = normalize_confidence(new_conf) or 0.0
             ai_used = True
             ai_error = None
+        raw_response = ai_result.raw_response
+    else:
+        raw_response = None
 
     db.add(
         AuditLog(
             user_id=current_user.id,
             action="SMART_INPUT_USED",
-            details="Smart input parsed.",
+            details=f"Smart input parsed. ai_used={ai_used} degraded={is_degraded}",
             ip_address=None,
             timestamp=datetime.now(timezone.utc),
         )
     )
     db.commit()
 
+    record_ai_event(
+        system="smart_input",
+        operation="parse_request",
+        provider=(raw_response.provider if raw_response is not None else "rules-engine"),
+        model=(raw_response.model if raw_response is not None else "regex_parser"),
+        latency_ms=int((time.perf_counter() - started) * 1000),
+        token_estimate=estimate_tokens(cleaned_text),
+        fallback_used=ai_used,
+        degraded_mode=is_degraded,
+        retry_count=(raw_response.retry_count if raw_response is not None else 0),
+        timeout_hit=is_timeout_error(ai_error) or is_timeout_error(raw_response.error if raw_response is not None else None),
+        correction_applied=False,
+        confidence_score=confidence,
+        hallucination_blocked=False,
+        rules_engine_used=not ai_used,
+        success=bool(extracted),
+    )
+
     return SmartInputResponse(
         extracted_fields=extracted,
         confidence=confidence,
         ai_used=ai_used,
+        degraded=is_degraded,
         missing_fields=missing_fields,
         ai_error=ai_error,
     )

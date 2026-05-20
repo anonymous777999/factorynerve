@@ -3191,26 +3191,34 @@ async def ocr_logbook(
     try:
         image_quality = analyze_image_quality(image_bytes)
         warning_count = len(image_quality.warnings or [])
-        if fallback_used or warning_count >= 2:
+        avg_conf = (normalize_confidence(structured.get("avg_confidence")) or 0.0)
+        fallback_active = bool(fallback_used or structured.get("_fallback_active"))
+        correction_applied = bool(structured.get("_correction_applied"))
+        
+        if fallback_active or warning_count >= 2 or avg_conf < LOW_CONFIDENCE_THRESHOLD:
             warning_band = "low"
-        elif warning_count == 1:
+        elif warning_count == 1 or avg_conf < HIGH_CONFIDENCE_THRESHOLD:
             warning_band = "medium"
         else:
             warning_band = "high"
+            
         scan_quality_payload = {
             "confidence_band": warning_band,
             "quality_signals": image_quality.warnings,
             "auto_processing": ["deskew", "compression"],
-            "fallback_used": fallback_used,
-            "correction_count": 0,
+            "fallback_used": fallback_active,
+            "ai_corrected": correction_applied,
+            "degraded_mode": bool(fallback_active or avg_conf < LOW_CONFIDENCE_THRESHOLD),
+            "correction_count": 1 if correction_applied else 0,
             "page_count": 1,
             "adjustment_count": 0,
             "retake_count": 0,
-            "manual_review_recommended": bool(fallback_used or warning_count >= 2),
+            "manual_review_recommended": bool(fallback_active or warning_count >= 2 or avg_conf < LOW_CONFIDENCE_THRESHOLD),
             "outcome": "partial" if warning_count else "success",
-            "next_action": "upload_better_image" if warning_count >= 2 else None,
-            "notes": "Image quality may affect accuracy." if warning_count else None,
+            "next_action": "upload_better_image" if warning_count >= 2 else "verify_numbers_manually" if correction_applied else None,
+            "notes": "Image quality or AI confidence may affect accuracy." if (warning_count or correction_applied) else None,
             "cell_boxes": structured.get("cell_boxes"),
+            "provider_trust": "verified" if (not correction_applied and avg_conf >= HIGH_CONFIDENCE_THRESHOLD) else "experimental",
         }
     except Exception as error:  # pylint: disable=broad-except
         logger.warning("OCR scan quality analysis failed: %s", error, exc_info=True)
@@ -3219,6 +3227,12 @@ async def ocr_logbook(
     final_payload = {
         **structured,
         "scan_quality": scan_quality_payload,
+        "ai_metadata": {
+            "provider_model": structured.get("_provider_model"),
+            "selected_tier": _TABLE_EXCEL_MODEL_TO_TIER.get(structured.get("_provider_model")),
+            "correction_applied": bool(structured.get("_correction_applied")),
+            "fallback_active": bool(fallback_used or structured.get("_fallback_active")),
+        },
         "template": {
             "id": template.id,
             "name": template.name,
