@@ -52,6 +52,19 @@ def _hash_prefix(value: str | None, *, visible: int = 12) -> str:
     return f"{trimmed[:visible]}***"
 
 
+def _detect_password_hash_algorithm(password_hash: str | None) -> str:
+    if not password_hash:
+        return "missing"
+    trimmed = password_hash.strip()
+    if not trimmed:
+        return "missing"
+    if trimmed.startswith("$argon2"):
+        return "argon2"
+    if trimmed.startswith("$2a$") or trimmed.startswith("$2b$") or trimmed.startswith("$2y$"):
+        return "bcrypt"
+    return "unknown"
+
+
 class RegisterRequest(BaseModel):
     email: EmailStr
     password: str = Field(min_length=12, max_length=128)
@@ -162,6 +175,22 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
 
     user = db.query(AuthUser).filter(AuthUser.email == email, AuthUser.is_active.is_(True)).first()
     verify_result = verify_password(payload.password, user.password_hash) if user else False
+    password_hash_value = getattr(user, "password_hash", None)
+    password_hash_algorithm = _detect_password_hash_algorithm(password_hash_value)
+    hash_starts_with_argon2 = bool(password_hash_value and password_hash_value.strip().startswith("$argon2"))
+    hash_starts_with_bcrypt = bool(
+        password_hash_value
+        and (
+            password_hash_value.strip().startswith("$2a$")
+            or password_hash_value.strip().startswith("$2b$")
+            or password_hash_value.strip().startswith("$2y$")
+        )
+    )
+    login_rejection_reason = "none"
+    if not user:
+        login_rejection_reason = "auth_user_not_found"
+    elif not verify_result:
+        login_rejection_reason = "verify_password_false"
     logger.info(
         "AUTH_DIAGNOSTIC_LOGIN_V2",
         extra={
@@ -169,9 +198,13 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
             "login_comparison_path": "AuthUser.password_hash -> backend.auth_security.passwords.verify_password",
             "normalized_email": email,
             "user_lookup_result": bool(user),
-            "user_lookup_auth_user_id": getattr(user, "id", None),
+            "auth_user_id": getattr(user, "id", None),
             "verify_password_result": verify_result,
-            "password_hash_prefix": _hash_prefix(getattr(user, "password_hash", None)),
+            "password_hash_algorithm_detected": password_hash_algorithm,
+            "password_hash_prefix": _hash_prefix(password_hash_value),
+            "hash_starts_with_argon2_marker": hash_starts_with_argon2,
+            "hash_starts_with_bcrypt_marker": hash_starts_with_bcrypt,
+            "login_rejection_reason": login_rejection_reason,
         },
     )
     if not user or not verify_result:
@@ -181,10 +214,40 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
 
     if user.mfa_enabled:
         if not payload.mfa_code or not user.mfa_secret_encrypted:
+            logger.info(
+                "AUTH_DIAGNOSTIC_LOGIN_V2",
+                extra={
+                    "auth_flow_selected": "auth_v2_login",
+                    "normalized_email": email,
+                    "user_lookup_result": True,
+                    "auth_user_id": user.id,
+                    "verify_password_result": verify_result,
+                    "password_hash_algorithm_detected": password_hash_algorithm,
+                    "password_hash_prefix": _hash_prefix(password_hash_value),
+                    "hash_starts_with_argon2_marker": hash_starts_with_argon2,
+                    "hash_starts_with_bcrypt_marker": hash_starts_with_bcrypt,
+                    "login_rejection_reason": "mfa_required_or_secret_missing",
+                },
+            )
             _log_event(db, action="AUTH_LOGIN_MFA_REQUIRED", user_id=user.id, request=request)
             db.commit()
             raise _generic_login_error()
         if not verify_totp(secret=user.mfa_secret_encrypted, code=payload.mfa_code):
+            logger.info(
+                "AUTH_DIAGNOSTIC_LOGIN_V2",
+                extra={
+                    "auth_flow_selected": "auth_v2_login",
+                    "normalized_email": email,
+                    "user_lookup_result": True,
+                    "auth_user_id": user.id,
+                    "verify_password_result": verify_result,
+                    "password_hash_algorithm_detected": password_hash_algorithm,
+                    "password_hash_prefix": _hash_prefix(password_hash_value),
+                    "hash_starts_with_argon2_marker": hash_starts_with_argon2,
+                    "hash_starts_with_bcrypt_marker": hash_starts_with_bcrypt,
+                    "login_rejection_reason": "mfa_verification_failed",
+                },
+            )
             _log_event(db, action="AUTH_LOGIN_MFA_FAILED", user_id=user.id, request=request)
             db.commit()
             raise _generic_login_error()

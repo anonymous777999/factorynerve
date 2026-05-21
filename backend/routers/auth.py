@@ -270,6 +270,19 @@ def _hash_prefix(value: str | None, *, visible: int = 12) -> str:
     return f"{trimmed[:visible]}***"
 
 
+def _detect_password_hash_algorithm(password_hash: str | None) -> str:
+    if not password_hash:
+        return "missing"
+    trimmed = password_hash.strip()
+    if not trimmed:
+        return "missing"
+    if trimmed.startswith("$argon2"):
+        return "argon2"
+    if trimmed.startswith("$2a$") or trimmed.startswith("$2b$") or trimmed.startswith("$2y$"):
+        return "bcrypt"
+    return "unknown"
+
+
 def _log_auth_event(
     db: Session,
     action: str,
@@ -1358,8 +1371,9 @@ def password_reset(
     legacy_hash_after = _hash_prefix(user.password_hash)
     secure_user = db.query(AuthUser).filter(AuthUser.email == user.email.lower().strip(), AuthUser.is_active.is_(True)).first()
     secure_hash_before = _hash_prefix(secure_user.password_hash) if secure_user else "missing"
+    generated_secure_hash = hash_password_secure(payload.new_password) if secure_user else None
     if secure_user:
-        secure_user.password_hash = hash_password_secure(payload.new_password)
+        secure_user.password_hash = generated_secure_hash
         secure_user.password_changed_at = now
         secure_user.updated_at = now
     secure_hash_after = _hash_prefix(secure_user.password_hash) if secure_user else "missing"
@@ -1383,7 +1397,10 @@ def password_reset(
             "secure_password_hash_prefix_before_reset": secure_hash_before,
             "secure_password_hash_prefix_after_reset": secure_hash_after,
             "secure_sync_applied": bool(secure_user),
-            "reset_commit_success": False,
+            "generated_secure_hash_prefix": _hash_prefix(generated_secure_hash),
+            "generated_secure_hash_algorithm": _detect_password_hash_algorithm(generated_secure_hash),
+            "auth_user_updated": bool(secure_user),
+            "commit_success": False,
         },
     )
 
@@ -1396,6 +1413,7 @@ def password_reset(
         org_id=user.org_id,
         factory_id=None,
     )
+    db.flush()
     db.commit()
     logger.info(
         "AUTH_DIAGNOSTIC_RESET_LEGACY_COMMIT",
@@ -1404,7 +1422,10 @@ def password_reset(
             "legacy_user_id": user.id,
             "secure_user_lookup_result": bool(secure_user),
             "secure_sync_applied": bool(secure_user),
-            "reset_commit_success": True,
+            "generated_secure_hash_prefix": _hash_prefix(generated_secure_hash),
+            "generated_secure_hash_algorithm": _detect_password_hash_algorithm(generated_secure_hash),
+            "auth_user_updated": bool(secure_user),
+            "commit_success": True,
         },
     )
     return {"message": "Password reset successful. Please log in again."}
