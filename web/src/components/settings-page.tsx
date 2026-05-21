@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ApiError } from "@/lib/api";
@@ -46,6 +47,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 const USER_ROLES = ["attendance", "operator", "supervisor", "accountant", "manager", "admin", "owner"];
+const SETTINGS_TABS: SettingsTabKey[] = ["factory", "users", "usage", "alerts", "feedback"];
 
 function emptyFactorySettings(): FactorySettings {
   return {
@@ -68,11 +70,57 @@ function findTemplate(payload: FactoryTemplatesPayload | null, templateKey: stri
   return payload.templates.find((item) => item.key === templateKey) || payload.active_template || null;
 }
 
+function isSettingsTabKey(value: string | null): value is SettingsTabKey {
+  return value != null && SETTINGS_TABS.includes(value as SettingsTabKey);
+}
+
+function getDefaultSettingsTab({
+  canManage,
+  canManageFeedback,
+}: {
+  canManage: boolean;
+  canManageFeedback: boolean;
+}): SettingsTabKey {
+  if (!canManage && canManageFeedback) {
+    return "feedback";
+  }
+  return "factory";
+}
+
+function normalizeSettingsTab({
+  canManage,
+  canManageAlerts,
+  canManageFeedback,
+  rawTab,
+}: {
+  canManage: boolean;
+  canManageAlerts: boolean;
+  canManageFeedback: boolean;
+  rawTab: string | null;
+}): SettingsTabKey {
+  const fallback = getDefaultSettingsTab({ canManage, canManageFeedback });
+  if (!isSettingsTabKey(rawTab)) {
+    return fallback;
+  }
+  if (rawTab === "alerts" && !canManageAlerts) {
+    return fallback;
+  }
+  if (rawTab === "feedback" && !canManageFeedback) {
+    return fallback;
+  }
+  if ((rawTab === "factory" || rawTab === "users" || rawTab === "usage") && !canManage) {
+    return fallback;
+  }
+  return rawTab;
+}
+
 export default function SettingsPage() {
   const { t } = useI18n();
   useI18nNamespaces(["common", "settings"]);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user, loading, error: sessionError, activeFactoryId } = useSession();
-  const [tab, setTab] = useState<SettingsTabKey>("factory");
   const [factory, setFactory] = useState<FactorySettings>(() => emptyFactorySettings());
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [usage, setUsage] = useState<UsageSummary | null>(null);
@@ -111,6 +159,17 @@ export default function SettingsPage() {
   const canManageAlerts = user?.role === "admin" || user?.role === "owner";
   const canManageFeedback = user?.is_platform_admin === true;
   const canOpenSettings = canManage || canManageFeedback;
+  const requestedTab = searchParams.get("tab");
+  const activeTab = useMemo(
+    () =>
+      normalizeSettingsTab({
+        canManage,
+        canManageAlerts,
+        canManageFeedback,
+        rawTab: requestedTab,
+      }),
+    [canManage, canManageAlerts, canManageFeedback, requestedTab],
+  );
   const assignableRoles = useMemo(
     () =>
       user?.role === "admin" || user?.role === "owner"
@@ -170,10 +229,31 @@ export default function SettingsPage() {
   }, [loadAll]);
 
   useEffect(() => {
-    if (!canManage && canManageFeedback) {
-      setTab("feedback");
+    if (loading || !user || !canOpenSettings) {
+      return;
     }
-  }, [canManage, canManageFeedback]);
+    if (requestedTab === activeTab) {
+      return;
+    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("tab", activeTab);
+    router.replace(`${pathname}?${params.toString()}`);
+  }, [activeTab, canOpenSettings, loading, pathname, requestedTab, router, searchParams, user]);
+
+  const navigateTab = useCallback(
+    (nextTab: SettingsTabKey) => {
+      const normalizedTab = normalizeSettingsTab({
+        canManage,
+        canManageAlerts,
+        canManageFeedback,
+        rawTab: nextTab,
+      });
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("tab", normalizedTab);
+      router.push(`${pathname}?${params.toString()}`);
+    },
+    [canManage, canManageAlerts, canManageFeedback, pathname, router, searchParams],
+  );
 
   useEffect(() => {
     if (!canManageFactoryAccess) {
@@ -459,7 +539,7 @@ export default function SettingsPage() {
               }),
             },
           ]}
-          activeTab={tab}
+          activeTab={activeTab}
           canManageAlerts={canManageAlerts}
           canManageFeedback={canManageFeedback}
           tabLabels={{
@@ -469,9 +549,9 @@ export default function SettingsPage() {
             alerts: t("settings.tabs.alerts", "Alerts"),
             feedback: t("settings.tabs.feedback", "Feedback"),
           }}
-          onTabChange={setTab}
+          onTabChange={navigateTab}
         >
-          {tab === "factory" ? (
+          {activeTab === "factory" ? (
             <SettingsFactoryTab
               busy={busy}
               billing={billing}
@@ -520,7 +600,7 @@ export default function SettingsPage() {
             />
           ) : null}
 
-          {tab === "users" ? (
+          {activeTab === "users" ? (
             <SettingsUsersTab
               accessFactoryIds={accessFactoryIds}
               accessLoading={accessLoading}
@@ -625,9 +705,13 @@ export default function SettingsPage() {
             />
           ) : null}
 
-          {tab === "usage" ? <SettingsUsageTab billing={billing} usage={usage} /> : null}
-          {tab === "alerts" && canManageAlerts ? <SettingsAlertsTab active={tab === "alerts"} /> : null}
-          {tab === "feedback" && canManageFeedback ? <SettingsFeedbackTab active={tab === "feedback"} /> : null}
+          {activeTab === "usage" ? <SettingsUsageTab billing={billing} usage={usage} /> : null}
+          {activeTab === "alerts" && canManageAlerts ? (
+            <SettingsAlertsTab active={activeTab === "alerts"} />
+          ) : null}
+          {activeTab === "feedback" && canManageFeedback ? (
+            <SettingsFeedbackTab active={activeTab === "feedback"} />
+          ) : null}
         </SettingsShell>
 
         {status ? <div className="text-sm text-green-400">{status}</div> : null}
