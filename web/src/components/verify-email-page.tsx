@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { ApiError } from "@/lib/api";
+import { AUTH_ROUTE_PARAM_GUARDS } from "@/config/featureFlags";
 import { validateEmailVerificationToken, verifyEmail } from "@/lib/auth";
 import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import { AuthShell } from "@/components/auth-shell";
@@ -13,6 +14,7 @@ import { Button } from "@/components/ui/button";
 export default function VerifyEmailPage() {
   const { t } = useI18n();
   useI18nNamespaces(["auth", "errors", "common"]);
+  const router = useRouter();
   const searchParams = useSearchParams();
   const token = useMemo(
     () => searchParams.get("token") || searchParams.get("verification_token") || "",
@@ -27,57 +29,75 @@ export default function VerifyEmailPage() {
   const isPendingSignupToken = status.toLowerCase().includes("create the account");
   const verificationFinished = status.toLowerCase().includes("sign in now") || status.toLowerCase().includes("ready to sign in");
   const loginHref = verificationFinished ? "/access?verified=1" : "/access";
+  const missingTokenMessage = t(
+    "auth.verify.missing_token",
+    "This verification link is missing a token. Request a new one.",
+  );
+  const resolvedError = token ? error : missingTokenMessage;
+  const resolvedVerifying = token ? verifying : false;
+  const resolvedValid = token ? valid : false;
 
   useEffect(() => {
     let alive = true;
 
     if (!token) {
-      setValid(false);
-      setVerifying(false);
-      setError(t("auth.verify.missing_token", "This verification link is missing a token. Request a new one."));
+      if (AUTH_ROUTE_PARAM_GUARDS) {
+        router.replace("/register");
+      }
       return () => {
         alive = false;
       };
     }
 
-    setVerifying(true);
-    setError("");
-    setStatus("");
+    queueMicrotask(() => {
+      if (!alive) return;
+      setVerifying(true);
+      setError("");
+      setStatus("");
 
-    validateEmailVerificationToken(token)
-      .then((result) => {
-        if (!alive) return;
-        setValid(result.valid);
-        if (result.valid) {
-          setStatus(result.message);
-        } else {
-          setError(result.message);
-        }
-      })
-      .catch((err) => {
-        if (!alive) return;
-        if (err instanceof ApiError) {
-          setError(err.message);
-        } else if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError(t("auth.verify.invalid", "Could not verify the email link."));
-        }
-        setValid(false);
-      })
-      .finally(() => {
-        if (!alive) return;
-        setVerifying(false);
-      });
+      validateEmailVerificationToken(token)
+        .then((result) => {
+          if (!alive) return;
+          setValid(result.valid);
+          if (result.valid) {
+            setStatus(result.message);
+          } else {
+            if (AUTH_ROUTE_PARAM_GUARDS) {
+              router.replace("/register");
+              return;
+            }
+            setError(result.message);
+          }
+        })
+        .catch((err) => {
+          if (!alive) return;
+          if (AUTH_ROUTE_PARAM_GUARDS) {
+            router.replace("/register");
+            return;
+          }
+          if (err instanceof ApiError) {
+            setError(err.message);
+          } else if (err instanceof Error) {
+            setError(err.message);
+          } else {
+            setError(t("auth.verify.invalid", "Could not verify the email link."));
+          }
+          setValid(false);
+        })
+        .finally(() => {
+          if (!alive) return;
+          setVerifying(false);
+        });
+    });
 
     return () => {
       alive = false;
     };
-  }, [t, token]);
+  }, [router, t, token]);
 
   const onVerify = async () => {
     if (!token) {
-      setError(t("auth.verify.missing_token", "This verification link is missing a token. Request a new one."));
+      setError(missingTokenMessage);
       return;
     }
 
@@ -128,7 +148,7 @@ export default function VerifyEmailPage() {
       contentClassName="space-y-5"
       guidanceKey="auth-verify-help"
     >
-      {verifying ? (
+      {resolvedVerifying ? (
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
               {t("auth.verify.verifying", "Checking your verification link...")}
             </div>
@@ -145,13 +165,13 @@ export default function VerifyEmailPage() {
             </div>
           ) : null}
 
-          {error ? (
+          {resolvedError ? (
             <div className="rounded-2xl border border-[rgba(239,68,68,0.24)] bg-[rgba(239,68,68,0.08)] p-4 text-sm text-red-300">
-              {error}
+              {resolvedError}
             </div>
           ) : null}
 
-          {valid && !verifying ? (
+          {resolvedValid && !resolvedVerifying ? (
             <>
               {/* AUDIT: DENSITY_OVERLOAD - add one compact prep card so the verify CTA reads as the clear next move */}
               <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-4 text-sm text-[var(--text)]/90">

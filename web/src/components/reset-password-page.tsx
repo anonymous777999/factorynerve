@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { ApiError } from "@/lib/api";
+import { AUTH_ROUTE_PARAM_GUARDS } from "@/config/featureFlags";
 import { resetPassword, validatePasswordResetToken } from "@/lib/auth";
 import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import { AuthShell } from "@/components/auth-shell";
@@ -30,53 +31,71 @@ export default function ResetPasswordPage() {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const resetFinished = status.toLowerCase().includes("password reset successful");
+  const missingTokenMessage = t(
+    "auth.reset.missing_token",
+    "This reset link is missing a token. Please request a new one.",
+  );
+  const resolvedError = token ? error : missingTokenMessage;
+  const resolvedVerifying = token ? verifying : false;
+  const resolvedValid = token ? valid : false;
 
   useEffect(() => {
     let alive = true;
 
     if (!token) {
-      setValid(false);
-      setVerifying(false);
-      setError(t("auth.reset.missing_token", "This reset link is missing a token. Please request a new one."));
+      if (AUTH_ROUTE_PARAM_GUARDS) {
+        router.replace("/forgot-password");
+      }
       return () => {
         alive = false;
       };
     }
 
-    setVerifying(true);
-    setError("");
-    setStatus("");
+    queueMicrotask(() => {
+      if (!alive) return;
+      setVerifying(true);
+      setError("");
+      setStatus("");
 
-    validatePasswordResetToken(token)
-      .then((result) => {
-        if (!alive) return;
-        setValid(result.valid);
-        if (!result.valid) {
-          setError(result.message);
-        } else {
-          setStatus(result.message);
-        }
-      })
-      .catch((err) => {
-        if (!alive) return;
-        if (err instanceof ApiError) {
-          setError(err.message);
-        } else if (err instanceof Error) {
-          setError(err.message);
-        } else {
-          setError(t("auth.reset.verify_failed", "Could not verify the reset link."));
-        }
-        setValid(false);
-      })
-      .finally(() => {
-        if (!alive) return;
-        setVerifying(false);
-      });
+      validatePasswordResetToken(token)
+        .then((result) => {
+          if (!alive) return;
+          setValid(result.valid);
+          if (!result.valid) {
+            if (AUTH_ROUTE_PARAM_GUARDS) {
+              router.replace("/forgot-password");
+              return;
+            }
+            setError(result.message);
+          } else {
+            setStatus(result.message);
+          }
+        })
+        .catch((err) => {
+          if (!alive) return;
+          if (AUTH_ROUTE_PARAM_GUARDS) {
+            router.replace("/forgot-password");
+            return;
+          }
+          if (err instanceof ApiError) {
+            setError(err.message);
+          } else if (err instanceof Error) {
+            setError(err.message);
+          } else {
+            setError(t("auth.reset.verify_failed", "Could not verify the reset link."));
+          }
+          setValid(false);
+        })
+        .finally(() => {
+          if (!alive) return;
+          setVerifying(false);
+        });
+    });
 
     return () => {
       alive = false;
     };
-  }, [t, token]);
+  }, [router, t, token]);
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -84,7 +103,7 @@ export default function ResetPasswordPage() {
     setStatus("");
 
     if (!token) {
-      setError(t("auth.reset.missing_token", "This reset link is missing a token. Please request a new one."));
+      setError(missingTokenMessage);
       return;
     }
     if (!password || password !== confirmPassword) {
@@ -143,7 +162,7 @@ export default function ResetPasswordPage() {
       contentClassName="space-y-5"
       guidanceKey="auth-reset-help"
     >
-      {verifying ? (
+      {resolvedVerifying ? (
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
               {t("auth.reset.verifying", "Verifying your reset link...")}
             </div>
@@ -160,13 +179,13 @@ export default function ResetPasswordPage() {
             </div>
           ) : null}
 
-          {error ? (
+          {resolvedError ? (
             <div className="rounded-2xl border border-[rgba(239,68,68,0.24)] bg-[rgba(239,68,68,0.08)] p-4 text-sm text-red-300">
-              {error}
+              {resolvedError}
             </div>
           ) : null}
 
-          {valid && !verifying ? (
+          {resolvedValid && !resolvedVerifying ? (
             <div className="space-y-4">
               {/* AUDIT: DENSITY_OVERLOAD - compress repeated recovery guidance into one compact prep card */}
               <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-4 text-sm text-[var(--text)]/90">
@@ -200,7 +219,7 @@ export default function ResetPasswordPage() {
             </div>
           ) : null}
 
-          {!valid && !verifying && error ? (
+          {!resolvedValid && !resolvedVerifying && resolvedError ? (
             <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-4 text-sm text-[var(--muted)]">
               Use <span className="font-medium text-[var(--text)]">Request New Link</span> below to generate a fresh password reset email. Only the newest valid link should be used.
             </div>

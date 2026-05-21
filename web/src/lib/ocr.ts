@@ -290,6 +290,10 @@ export type OcrVerificationShareLink = {
 
 export type OcrConfidenceTier = "high" | "medium" | "review_required";
 
+type OcrRequestOptions = {
+  signal?: AbortSignal;
+};
+
 export function normalizeOcrConfidence(confidence: number | null | undefined) {
   if (typeof confidence !== "number" || Number.isNaN(confidence)) return null;
   if (confidence > 1) return Math.max(0, Math.min(1, confidence / 100));
@@ -359,8 +363,10 @@ export async function getOcrStatus() {
   return apiFetch<OcrStatus>("/ocr/status");
 }
 
-export async function listOcrTemplates() {
-  return apiFetch<OcrTemplate[]>("/ocr/templates");
+export async function listOcrTemplates(options: OcrRequestOptions = {}) {
+  return apiFetch<OcrTemplate[]>("/ocr/templates", {
+    signal: options.signal,
+  });
 }
 
 export async function createOcrTemplate(payload: OcrTemplateCreatePayload) {
@@ -578,19 +584,29 @@ function buildVerificationFormData(payload: OcrVerificationSavePayload) {
   return formData;
 }
 
-export async function listOcrVerifications(status?: string) {
+export async function listOcrVerifications(
+  status?: string,
+  options: OcrRequestOptions = {},
+) {
   const params = status
     ? `?verification_status=${encodeURIComponent(status)}`
     : "";
-  return apiFetch<OcrVerificationRecord[]>(`/ocr/verifications${params}`);
+  return apiFetch<OcrVerificationRecord[]>(`/ocr/verifications${params}`, {
+    signal: options.signal,
+  });
 }
 
 export async function getOcrVerificationSummary() {
   return apiFetch<OcrVerificationSummary>("/ocr/verifications/summary");
 }
 
-export async function getOcrVerification(verificationId: number) {
-  return apiFetch<OcrVerificationRecord>(`/ocr/verifications/${verificationId}`);
+export async function getOcrVerification(
+  verificationId: number,
+  options: OcrRequestOptions = {},
+) {
+  return apiFetch<OcrVerificationRecord>(`/ocr/verifications/${verificationId}`, {
+    signal: options.signal,
+  });
 }
 
 export async function downloadOcrVerificationExport(verificationId: number) {
