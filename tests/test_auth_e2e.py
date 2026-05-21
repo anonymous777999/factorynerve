@@ -355,6 +355,7 @@ def test_post_auth_v2_login_still_works(monkeypatch):
                 id="user-1",
                 email="user@example.com",
                 is_active=True,
+                is_email_verified=True,
                 password_hash="hashed",
                 mfa_enabled=False,
             )
@@ -371,6 +372,7 @@ def test_post_auth_v2_login_still_works(monkeypatch):
     monkeypatch.setattr(auth_secure_router, "_log_event", lambda *args, **kwargs: None)
     monkeypatch.setattr(auth_secure_router, "create_session", lambda db, user, request, response: SimpleNamespace())
     monkeypatch.setattr(auth_secure_router, "touch_session", lambda db, session: None)
+    monkeypatch.setattr(auth_secure_router, "_issue_legacy_access_cookie", lambda *args, **kwargs: None)
 
     response = auth_secure_router.login(
         payload=auth_secure_router.LoginRequest(email="user@example.com", password="StrongPassw0rd!"),

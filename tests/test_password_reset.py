@@ -83,14 +83,11 @@ def test_legacy_password_reset_syncs_secure_login_password(http_client):
 
     db = SessionLocal()
     try:
-        db.add(
-            AuthUser(
-                email=user["email"],
-                password_hash=hash_password_secure(user["password"]),
-                is_active=True,
-                is_email_verified=True,
-            )
-        )
+        secure_user = db.query(AuthUser).filter(AuthUser.email == user["email"]).first()
+        assert secure_user is not None
+        secure_user.password_hash = hash_password_secure(user["password"])
+        secure_user.is_active = True
+        secure_user.is_email_verified = True
         db.commit()
     finally:
         db.close()
@@ -118,3 +115,53 @@ def test_legacy_password_reset_syncs_secure_login_password(http_client):
         json={"email": user["email"], "password": new_password},
     )
     assert new_login.status_code == HTTPStatus.OK, new_login.text
+
+
+def test_password_reset_creates_missing_secure_user_and_allows_immediate_secure_login(http_client):
+    user = _register_verified_legacy_user(http_client)
+
+    db = SessionLocal()
+    try:
+        secure_user = db.query(AuthUser).filter(AuthUser.email == user["email"]).first()
+        if secure_user:
+            db.delete(secure_user)
+            db.commit()
+    finally:
+        db.close()
+
+    forgot = http_client.post("/auth/password/forgot", json={"email": user["email"]})
+    assert forgot.status_code == HTTPStatus.OK, forgot.text
+    forgot_payload = forgot.json().get("data", forgot.json())
+    token = _extract_token(forgot_payload["reset_link"])
+
+    new_password = "EvenStrongerPassw0rd!Reset2"
+    reset = http_client.post(
+        "/auth/password/reset",
+        json={"token": token, "new_password": new_password},
+    )
+    assert reset.status_code == HTTPStatus.OK, reset.text
+
+    db = SessionLocal()
+    try:
+        secure_user = db.query(AuthUser).filter(AuthUser.email == user["email"]).first()
+        assert secure_user is not None
+        assert secure_user.is_active is True
+        assert secure_user.is_email_verified is True
+    finally:
+        db.close()
+
+    new_login = http_client.post(
+        "/auth/v2/login",
+        json={"email": user["email"], "password": new_password},
+    )
+    assert new_login.status_code == HTTPStatus.OK, new_login.text
+
+
+def test_verified_registration_creates_secure_user_for_v2_login(http_client):
+    user = _register_verified_legacy_user(http_client)
+
+    login = http_client.post(
+        "/auth/v2/login",
+        json={"email": user["email"], "password": user["password"]},
+    )
+    assert login.status_code == HTTPStatus.OK, login.text
