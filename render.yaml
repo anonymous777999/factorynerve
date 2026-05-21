@@ -92,8 +92,10 @@ services:
         value: resend
       - key: SMTP_PASSWORD
         sync: false
-      - key: SMTP_FROM
+      - key: RESEND_API_KEY
         sync: false
+      - key: SMTP_FROM
+        value: no-reply@factorynerve.online
       - key: SMTP_USE_TLS
         value: "true"
       - key: SMTP_USE_SSL

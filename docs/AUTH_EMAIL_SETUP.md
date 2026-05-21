@@ -26,7 +26,7 @@ SMTP_HOST=your-smtp-host
 SMTP_PORT=587
 SMTP_USER=your-smtp-username
 SMTP_PASSWORD=your-smtp-password
-SMTP_FROM=no-reply@yourdomain.com
+SMTP_FROM=no-reply@factorynerve.online
 SMTP_USE_TLS=true
 SMTP_USE_SSL=false
 SMTP_DRY_RUN=false
@@ -140,7 +140,7 @@ SMTP_HOST=smtp.resend.com
 SMTP_PORT=465
 SMTP_USER=resend
 SMTP_PASSWORD=re_your_resend_api_key
-SMTP_FROM=no-reply@yourdomain.com
+SMTP_FROM=no-reply@factorynerve.online
 SMTP_USE_TLS=false
 SMTP_USE_SSL=true
 ```
