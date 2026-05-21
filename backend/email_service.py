@@ -8,6 +8,7 @@ import smtplib
 import ssl
 from email.message import EmailMessage
 from typing import Iterable
+from urllib.parse import urlparse
 
 import requests
 
@@ -15,6 +16,8 @@ logger = logging.getLogger(__name__)
 SMTP_TIMEOUT_SECONDS = float(os.getenv("SMTP_TIMEOUT_SECONDS", "12"))
 RESEND_API_TIMEOUT_SECONDS = float(os.getenv("RESEND_API_TIMEOUT_SECONDS", "15"))
 RESEND_API_BASE_URL = os.getenv("RESEND_API_BASE_URL", "https://api.resend.com").rstrip("/")
+LEGACY_RESEND_DOMAIN = "send.factorynerve.online"
+VERIFIED_RESEND_DOMAIN = "factorynerve.online"
 
 
 def _to_bool(value: str | None, default: bool = False) -> bool:
@@ -57,6 +60,70 @@ def _resolve_resend_api_key(*, host: str, user: str | None, password: str | None
     if "resend" in normalized_host and normalized_user == "resend" and candidate.startswith("re_"):
         return candidate
     return None
+
+
+def _mask_secret_prefix(value: str | None, *, visible: int = 6) -> str:
+    if not value:
+        return "missing"
+    trimmed = value.strip()
+    if not trimmed:
+        return "missing"
+    prefix = trimmed[:visible]
+    return f"{prefix}***"
+
+
+def _extract_sender_domain(sender: str) -> str:
+    parts = sender.rsplit("@", 1)
+    if len(parts) != 2:
+        return ""
+    return parts[1].strip().lower()
+
+
+def _normalize_sender_email(sender: str) -> str:
+    local_part, separator, domain = sender.strip().rpartition("@")
+    if not separator:
+        return sender.strip()
+    if domain.strip().lower() != LEGACY_RESEND_DOMAIN:
+        return sender.strip()
+    normalized = f"{local_part}@{VERIFIED_RESEND_DOMAIN}"
+    logger.warning(
+        "Legacy sender domain detected; normalizing sender.",
+        extra={
+            "legacy_sender_domain": LEGACY_RESEND_DOMAIN,
+            "normalized_sender_domain": VERIFIED_RESEND_DOMAIN,
+            "resolved_from_email": normalized,
+        },
+    )
+    return normalized
+
+
+def _log_delivery_diagnostics(
+    *,
+    sender: str,
+    host: str,
+    user: str | None,
+    resend_api_key: str | None,
+    smtp_password: str | None,
+    transport_mode: str,
+) -> None:
+    api_host = urlparse(RESEND_API_BASE_URL).netloc or RESEND_API_BASE_URL
+    logger.info(
+        "Email transport configuration resolved.",
+        extra={
+            "transport_mode": transport_mode,
+            "smtp_host": host,
+            "smtp_user": (user or "").strip() or "missing",
+            "smtp_uses_resend": "resend" in host.strip().lower(),
+            "resend_api_base_url": RESEND_API_BASE_URL,
+            "resend_api_host": api_host,
+            "resend_auth_present": bool(resend_api_key),
+            "resend_api_key_prefix": _mask_secret_prefix(resend_api_key),
+            "smtp_password_present": bool((smtp_password or "").strip()),
+            "smtp_password_prefix": _mask_secret_prefix(smtp_password),
+            "resolved_from_email": sender,
+            "active_sender_domain": _extract_sender_domain(sender),
+        },
+    )
 
 
 def _send_via_resend_api(
@@ -129,7 +196,7 @@ def send_email(
     port = int(os.getenv("SMTP_PORT", "587"))
     user = os.getenv("SMTP_USER")
     password = os.getenv("SMTP_PASSWORD")
-    sender = from_email or os.getenv("SMTP_FROM") or user
+    sender = _normalize_sender_email(from_email or os.getenv("SMTP_FROM") or user or "")
     if not sender:
         raise RuntimeError("SMTP_FROM or SMTP_USER is required.")
 
@@ -147,10 +214,26 @@ def send_email(
     msg.set_content(body)
 
     if dry_run:
+        _log_delivery_diagnostics(
+            sender=sender,
+            host=host,
+            user=user,
+            resend_api_key=None,
+            smtp_password=password,
+            transport_mode="dry_run",
+        )
         return {"sent": False, "dry_run": True}
 
     resend_api_key = _resolve_resend_api_key(host=host, user=user, password=password)
     if resend_api_key:
+        _log_delivery_diagnostics(
+            sender=sender,
+            host=host,
+            user=user,
+            resend_api_key=resend_api_key,
+            smtp_password=password,
+            transport_mode="resend_api",
+        )
         try:
             _send_via_resend_api(
                 api_key=resend_api_key,
@@ -175,6 +258,14 @@ def send_email(
     last_error: Exception | None = None
     for index, (attempt_host, attempt_port, attempt_tls, attempt_ssl) in enumerate(attempts, start=1):
         try:
+            _log_delivery_diagnostics(
+                sender=sender,
+                host=attempt_host,
+                user=user,
+                resend_api_key=resend_api_key,
+                smtp_password=password,
+                transport_mode="smtp_ssl" if attempt_ssl else "smtp_starttls" if attempt_tls else "smtp_plain",
+            )
             _send_via_smtp(
                 host=attempt_host,
                 port=attempt_port,

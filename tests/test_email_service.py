@@ -7,8 +7,9 @@ def test_send_email_uses_resend_api_when_key_is_available(monkeypatch):
     monkeypatch.setenv("SMTP_HOST", "smtp.resend.com")
     monkeypatch.setenv("SMTP_PORT", "465")
     monkeypatch.setenv("SMTP_USER", "resend")
-    monkeypatch.setenv("SMTP_PASSWORD", "re_test_key")
-    monkeypatch.setenv("SMTP_FROM", "no-reply@send.factorynerve.online")
+    monkeypatch.setenv("SMTP_PASSWORD", "smtp_password_should_not_win")
+    monkeypatch.setenv("RESEND_API_KEY", "re_explicit_test_key")
+    monkeypatch.setenv("SMTP_FROM", "no-reply@factorynerve.online")
     monkeypatch.setenv("SMTP_USE_TLS", "false")
     monkeypatch.setenv("SMTP_USE_SSL", "true")
     monkeypatch.setenv("SMTP_DRY_RUN", "false")
@@ -40,8 +41,8 @@ def test_send_email_uses_resend_api_when_key_is_available(monkeypatch):
     assert calls
     url, headers, payload, timeout = calls[0]
     assert url == "https://api.resend.com/emails"
-    assert headers["Authorization"] == "Bearer re_test_key"
-    assert payload["from"] == "no-reply@send.factorynerve.online"
+    assert headers["Authorization"] == "Bearer re_explicit_test_key"
+    assert payload["from"] == "no-reply@factorynerve.online"
     assert payload["to"] == ["anonymous152023@gmail.com"]
     assert payload["subject"] == "hello"
     assert payload["text"] == "world"
@@ -172,7 +173,7 @@ def test_send_email_falls_back_to_smtp_when_resend_api_fails(monkeypatch):
     monkeypatch.setenv("SMTP_PORT", "465")
     monkeypatch.setenv("SMTP_USER", "resend")
     monkeypatch.setenv("SMTP_PASSWORD", "re_test_key")
-    monkeypatch.setenv("SMTP_FROM", "no-reply@send.factorynerve.online")
+    monkeypatch.setenv("SMTP_FROM", "no-reply@factorynerve.online")
     monkeypatch.setenv("SMTP_USE_TLS", "false")
     monkeypatch.setenv("SMTP_USE_SSL", "true")
     monkeypatch.setenv("SMTP_DRY_RUN", "false")
@@ -213,3 +214,35 @@ def test_send_email_falls_back_to_smtp_when_resend_api_fails(monkeypatch):
     assert result == {"sent": True, "dry_run": False}
     assert ("ssl_connect", "smtp.resend.com", 465, email_service.SMTP_TIMEOUT_SECONDS, True) in calls
     assert ("ssl_send", "anonymous152023@gmail.com", "fallback") in calls
+
+
+def test_send_email_normalizes_legacy_sender_domain(monkeypatch):
+    monkeypatch.setenv("SMTP_HOST", "smtp.resend.com")
+    monkeypatch.setenv("SMTP_PORT", "465")
+    monkeypatch.setenv("SMTP_USER", "resend")
+    monkeypatch.setenv("SMTP_PASSWORD", "re_test_key")
+    monkeypatch.setenv("SMTP_FROM", "no-reply@send.factorynerve.online")
+    monkeypatch.setenv("SMTP_USE_TLS", "false")
+    monkeypatch.setenv("SMTP_USE_SSL", "true")
+    monkeypatch.setenv("SMTP_DRY_RUN", "false")
+
+    calls: list[tuple] = []
+
+    class FakeResponse:
+        def raise_for_status(self):
+            return None
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        calls.append((url, headers, json, timeout))
+        return FakeResponse()
+
+    monkeypatch.setattr(email_service.requests, "post", fake_post)
+
+    result = email_service.send_email(
+        to_emails=["anonymous152023@gmail.com"],
+        subject="hello",
+        body="world",
+    )
+
+    assert result == {"sent": True, "dry_run": False}
+    assert calls[0][2]["from"] == "no-reply@factorynerve.online"

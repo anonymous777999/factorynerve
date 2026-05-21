@@ -34,6 +34,7 @@ def _required_env() -> dict[str, str | None]:
         "SMTP_PORT": os.getenv("SMTP_PORT"),
         "SMTP_USER": os.getenv("SMTP_USER"),
         "SMTP_PASSWORD": os.getenv("SMTP_PASSWORD"),
+        "RESEND_API_KEY": os.getenv("RESEND_API_KEY"),
         "SMTP_FROM": os.getenv("SMTP_FROM"),
         "SMTP_USE_TLS": os.getenv("SMTP_USE_TLS"),
         "SMTP_USE_SSL": os.getenv("SMTP_USE_SSL"),
@@ -49,7 +50,7 @@ def _print_config_summary() -> None:
     env = _required_env()
     print("Auth email config summary:")
     for key, value in env.items():
-        if key == "SMTP_PASSWORD":
+        if key in {"SMTP_PASSWORD", "RESEND_API_KEY"}:
             print(f"  - {key}: {_mask(value)}")
         else:
             print(f"  - {key}: {value or 'missing'}")
