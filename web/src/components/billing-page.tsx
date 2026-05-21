@@ -4,10 +4,15 @@ import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
+import { BillingCheckoutSequence } from "@/components/billing-checkout-sequence";
+import { BillingInvoiceHistory } from "@/components/billing-invoice-history";
+import { BillingHeader } from "@/components/billing-header";
+import { BillingOwnerControls } from "@/components/billing-owner-controls";
+import { BillingPlanSummaryCards } from "@/components/billing-plan-summary-cards";
+import { BillingUsageDiagnostics } from "@/components/billing-usage-diagnostics";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
 import {
@@ -385,6 +390,120 @@ function BillingPageInner() {
   const smartHealth = getQuotaHealth(billing?.usage?.smart_used, billing?.usage?.smart_limit);
   const ocrRequestsLocked = Number(billing?.usage?.max_requests ?? 0) < 0;
   const ocrCreditsLocked = Number(billing?.usage?.max_credits ?? 0) < 0;
+  const summaryCards = useMemo(
+    () => [
+      {
+        title: "Current Plan",
+        value: billing?.plan || "-",
+        detail: `Status: ${billing?.status || "-"}`,
+      },
+      {
+        title: "Active Add-ons",
+        value: billing?.active_addons?.length || 0,
+        detail:
+          (billing?.active_addons || [])
+            .map((addon) =>
+              Number(addon.quantity || 0) > 1 ? `${addon.name} x${addon.quantity}` : addon.name,
+            )
+            .join(", ") || "No paid add-ons yet.",
+      },
+      {
+        title: "Current Period End",
+        value: billing?.current_period_end_at ? "Tracked" : "-",
+        detail: formatDateTime(billing?.current_period_end_at),
+      },
+      {
+        title: "Last Upgrade",
+        value: lastUpgrade ? "Recorded" : "-",
+        detail: lastUpgrade || "No upgrade audit log yet.",
+      },
+    ],
+    [billing?.active_addons, billing?.current_period_end_at, billing?.plan, billing?.status, lastUpgrade],
+  );
+  const usageDiagnosticsProps = {
+    requestsMeter: {
+      label: "Requests",
+      value: ocrRequestsLocked
+        ? "Locked - add OCR pack"
+        : `${billing?.usage?.requests_used ?? 0}${billing?.usage?.max_requests ? ` / ${billing.usage.max_requests}` : " / Unlimited"}`,
+      widthPercent: progressPercent(billing?.usage?.requests_used, billing?.usage?.max_requests),
+      barClassName: "bg-[var(--accent)]",
+    },
+    creditsMeter: {
+      label: "Credits",
+      value: ocrCreditsLocked
+        ? "Locked - add OCR pack"
+        : `${billing?.usage?.credits_used ?? 0}${billing?.usage?.max_credits ? ` / ${billing.usage.max_credits}` : " / Unlimited"}`,
+      widthPercent: progressPercent(billing?.usage?.credits_used, billing?.usage?.max_credits),
+      barClassName: "bg-[linear-gradient(90deg,#3ea6ff,#2dd4bf)]",
+    },
+    rateLimitLabel: `${billing?.usage?.rate_limit_per_minute ?? "-"} / minute`,
+    summaryQuota: {
+      label: "AI Summary",
+      value: quotaLabel(billing?.usage?.summary_used, billing?.usage?.summary_limit),
+      badge: summaryHealth.badge,
+      badgeClassName: summaryHealth.badgeClass,
+      barClassName: summaryHealth.barClass,
+      widthPercent: summaryHealth.percent,
+      detail: summaryHealth.detail,
+    },
+    emailQuota: {
+      label: "AI Email",
+      value: quotaLabel(billing?.usage?.email_used, billing?.usage?.email_limit),
+      badge: emailHealth.badge,
+      badgeClassName: emailHealth.badgeClass,
+      barClassName: emailHealth.barClass,
+      widthPercent: emailHealth.percent,
+      detail: emailHealth.detail,
+    },
+    smartQuota: {
+      label: "AI Smart",
+      value: quotaLabel(billing?.usage?.smart_used, billing?.usage?.smart_limit),
+      badge: smartHealth.badge,
+      badgeClassName: smartHealth.badgeClass,
+      barClassName: smartHealth.barClass,
+      widthPercent: smartHealth.percent,
+      detail: `${smartHealth.detail} · Used by smart DPR input and history-based production suggestions.`,
+    },
+    activeAddonBadges: (billing?.active_addons || []).map((addon) => addon.name),
+  };
+  const ownerPlanOptions = useMemo(
+    () => planOptions.map((plan) => ({ id: plan.id, name: plan.name })),
+    [planOptions],
+  );
+  const invoiceRows = useMemo(
+    () =>
+      invoices.map((invoice) => ({
+        id: invoice.id,
+        plan: invoice.plan,
+        amountLabel: formatAmount(invoice.amount, invoice.currency || "INR"),
+        status: invoice.status,
+        issuedAtLabel: formatDateTime(invoice.issued_at),
+        provider: invoice.provider || "-",
+      })),
+    [invoices],
+  );
+  const checkoutSequenceSteps = [
+    {
+      label: "Check billing access",
+      detail: canWriteBilling
+        ? "Owner access can start checkout and plan changes."
+        : "Admins can review, but owners complete checkout.",
+    },
+    {
+      label: "Confirm the fit",
+      detail:
+        checkoutEstimate?.isCompatible === false
+          ? `Current selection exceeds the ${checkoutPlanInfo?.name || "chosen"} plan cap.`
+          : `Users ${requestedUsers}, factories ${requestedFactories}, plan ${checkoutPlanInfo?.name || "-"}.`,
+    },
+    {
+      label: "Start checkout",
+      detail: billingConfig?.configured
+        ? "Razorpay is ready when the plan and add-ons look right."
+        : "Razorpay must be configured before checkout can start.",
+    },
+  ];
 
   const updateAddonQuantity = (addonId: string, quantity: number) => {
     setSelectedAddonQuantities((current) => {
@@ -546,238 +665,23 @@ function BillingPageInner() {
   return (
     <main className="min-h-screen px-4 py-8 md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
-          <div>
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("billing.billing.title", "Billing")}</div>
-            <h1 className="mt-2 text-3xl font-semibold">{t("billing.billing.heading", "Plan status and live checkout")}</h1>
-            {/* AUDIT: TEXT_NOISE - shorten the hero copy so checkout stays more prominent than the explanation */}
-            <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">{t("billing.billing.description", "Review plan status, confirm the checkout fit, then pay through Razorpay.")}</p>
-          </div>
-          {/* AUDIT: BUTTON_CLUTTER - move route jumps into a secondary tools tray so the checkout journey owns the top of the page */}
-          <details className="w-full min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4 sm:w-auto sm:min-w-[220px]">
-            <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("billing.billing.tools", "Billing tools")}</summary>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <Link href="/plans">
-                <Button>{t("billing.plans.title", "Plans")}</Button>
-              </Link>
-              <Link href="/dashboard">
-                <Button variant="outline">{t("billing.billing.dashboard", "Dashboard")}</Button>
-              </Link>
-            </div>
-          </details>
-        </section>
+        <BillingHeader
+          dashboardLabel={t("billing.billing.dashboard", "Dashboard")}
+          description={t(
+            "billing.billing.description",
+            "Review plan status, confirm the checkout fit, then pay through Razorpay.",
+          )}
+          plansLabel={t("billing.plans.title", "Plans")}
+          title={t("billing.billing.heading", "Plan status and live checkout")}
+          toolsTitle={t("billing.billing.tools", "Billing tools")}
+        />
 
-        {/* AUDIT: FLOW_BROKEN - add a simple checkout sequence so the page leads with a clear purchase path */}
-        <section className="grid gap-3 xl:grid-cols-3">
-          {[
-            {
-              label: "Check billing access",
-              detail: canWriteBilling ? "Owner access can start checkout and plan changes." : "Admins can review, but owners complete checkout.",
-            },
-            {
-              label: "Confirm the fit",
-              detail: checkoutEstimate?.isCompatible === false
-                ? `Current selection exceeds the ${checkoutPlanInfo?.name || "chosen"} plan cap.`
-                : `Users ${requestedUsers}, factories ${requestedFactories}, plan ${checkoutPlanInfo?.name || "-"}.`,
-            },
-            {
-              label: "Start checkout",
-              detail: billingConfig?.configured
-                ? "Razorpay is ready when the plan and add-ons look right."
-                : "Razorpay must be configured before checkout can start.",
-            },
-          ].map((step) => (
-            <div key={step.label} className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-5 py-4">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">{step.label}</div>
-              <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
-            </div>
-          ))}
-        </section>
+        <BillingCheckoutSequence steps={checkoutSequenceSteps} />
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Current Plan</div>
-              <CardTitle>{billing?.plan || "-"}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              Status: {billing?.status || "-"}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Active Add-ons</div>
-              <CardTitle>{billing?.active_addons?.length || 0}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              {(billing?.active_addons || [])
-                .map((addon) =>
-                  Number(addon.quantity || 0) > 1 ? `${addon.name} x${addon.quantity}` : addon.name,
-                )
-                .join(", ") ||
-                "No paid add-ons yet."}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Current Period End</div>
-              <CardTitle>{billing?.current_period_end_at ? "Tracked" : "-"}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              {formatDateTime(billing?.current_period_end_at)}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">Last Upgrade</div>
-              <CardTitle>{lastUpgrade ? "Recorded" : "-"}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">
-              {lastUpgrade || "No upgrade audit log yet."}
-            </CardContent>
-          </Card>
-        </section>
+        <BillingPlanSummaryCards cards={summaryCards} />
 
         <section className="min-w-0 grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
-          {/* AUDIT: DENSITY_OVERLOAD - move usage and quota diagnostics into a secondary reveal so checkout stays primary */}
-          <details className="min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-4 py-5 sm:px-5">
-            <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">Usage summary</summary>
-            <div className="mt-4 space-y-4 text-sm">
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-[var(--muted)]">Requests</span>
-                  <span>
-                    {ocrRequestsLocked
-                      ? "Locked - add OCR pack"
-                      : `${billing?.usage?.requests_used ?? 0}${billing?.usage?.max_requests ? ` / ${billing.usage.max_requests}` : " / Unlimited"}`}
-                  </span>
-                </div>
-                <div className="h-2 rounded-full bg-[var(--card-strong)]">
-                  <div
-                    className="h-2 rounded-full bg-[var(--accent)]"
-                    style={{
-                      width: `${progressPercent(
-                        billing?.usage?.requests_used,
-                        billing?.usage?.max_requests,
-                      )}%`,
-                    }}
-                  />
-                </div>
-              </div>
-              <div>
-                <div className="mb-2 flex items-center justify-between">
-                  <span className="text-[var(--muted)]">Credits</span>
-                  <span>
-                    {ocrCreditsLocked
-                      ? "Locked - add OCR pack"
-                      : `${billing?.usage?.credits_used ?? 0}${billing?.usage?.max_credits ? ` / ${billing.usage.max_credits}` : " / Unlimited"}`}
-                  </span>
-                </div>
-                <div className="h-2 rounded-full bg-[var(--card-strong)]">
-                  <div
-                    className="h-2 rounded-full bg-[linear-gradient(90deg,#3ea6ff,#2dd4bf)]"
-                    style={{
-                      width: `${progressPercent(
-                        billing?.usage?.credits_used,
-                        billing?.usage?.max_credits,
-                      )}%`,
-                    }}
-                  />
-                </div>
-              </div>
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                Rate limit: {billing?.usage?.rate_limit_per_minute ?? "-"} / minute
-              </div>
-              <div className="rounded-3xl border border-[var(--border)] bg-[rgba(8,14,24,0.72)] p-4">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <div className="text-sm font-semibold text-white">AI Quota Usage</div>
-                    <div className="mt-1 text-xs leading-5 text-[var(--muted)]">Live AI usage</div>
-                  </div>
-                  <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeClass("blue")}`}>
-                    Live sync
-                  </span>
-                </div>
-                <div className="mt-4 grid gap-3">
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="text-[var(--muted)]">AI Summary</span>
-                      <div className="flex items-center gap-2">
-                        <span>{quotaLabel(billing?.usage?.summary_used, billing?.usage?.summary_limit)}</span>
-                        <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${summaryHealth.badgeClass}`}>
-                          {summaryHealth.badge}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
-                      <div
-                        className={`h-2 rounded-full ${summaryHealth.barClass}`}
-                        style={{
-                          width: `${summaryHealth.percent}%`,
-                        }}
-                      />
-                    </div>
-                    <div className="mt-2 text-xs text-[var(--muted)]">
-                      {summaryHealth.detail}
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="text-[var(--muted)]">AI Email</span>
-                      <div className="flex items-center gap-2">
-                        <span>{quotaLabel(billing?.usage?.email_used, billing?.usage?.email_limit)}</span>
-                        <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${emailHealth.badgeClass}`}>
-                          {emailHealth.badge}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
-                      <div
-                        className={`h-2 rounded-full ${emailHealth.barClass}`}
-                        style={{
-                          width: `${emailHealth.percent}%`,
-                        }}
-                      />
-                    </div>
-                    <div className="mt-2 text-xs text-[var(--muted)]">
-                      {emailHealth.detail}
-                    </div>
-                  </div>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="mb-2 flex items-center justify-between">
-                      <span className="text-[var(--muted)]">AI Smart</span>
-                      <div className="flex items-center gap-2">
-                        <span>{quotaLabel(billing?.usage?.smart_used, billing?.usage?.smart_limit)}</span>
-                        <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${smartHealth.badgeClass}`}>
-                          {smartHealth.badge}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
-                      <div
-                        className={`h-2 rounded-full ${smartHealth.barClass}`}
-                        style={{
-                          width: `${smartHealth.percent}%`,
-                        }}
-                      />
-                    </div>
-                    <div className="mt-2 text-xs text-[var(--muted)]">
-                      {smartHealth.detail} · Used by smart DPR input and history-based production suggestions.
-                    </div>
-                  </div>
-                </div>
-              </div>
-              {(billing?.active_addons || []).length ? (
-                <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em]">
-                  {(billing?.active_addons || []).map((addon) => (
-                    <span key={addon.id} className={`rounded-full px-3 py-1 ${badgeClass("green")}`}>
-                      {addon.name}
-                    </span>
-                  ))}
-                </div>
-              ) : null}
-            </div>
-          </details>
+          <BillingUsageDiagnostics {...usageDiagnosticsProps} />
 
           <Card className="min-w-0">
             <CardHeader>
@@ -1003,129 +907,45 @@ function BillingPageInner() {
         </section>
 
         <section className="grid gap-4">
-          {/* AUDIT: BUTTON_CLUTTER - keep owner-only controls available, but move them into a secondary section so they do not compete with checkout */}
-          <details className="min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-4 py-5 sm:px-5">
-            <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">Plan controls</summary>
-            <div className="mt-4 space-y-6">
-              <div className="space-y-3">
-                <div className="text-sm font-semibold">Scheduled downgrade</div>
-                {billing?.pending_plan ? (
-                  <div className="space-y-3">
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                      Pending plan: {billing.pending_plan} on {formatDateTime(billing.pending_plan_effective_at)}
-                    </div>
-                    <Button
-                      variant="outline"
-                      onClick={() =>
-                        handleAction(async () => {
-                          await cancelScheduledDowngrade();
-                          setStatus("Scheduled downgrade cancelled.");
-                        })
-                      }
-                      disabled={busy || !canWriteBilling}
-                    >
-                      Cancel downgrade
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    <Select value={downgradePlan} onChange={(event) => setDowngradePlan(event.target.value)}>
-                      {planOptions.map((plan) => (
-                        <option key={plan.id} value={plan.id}>
-                          {plan.name}
-                        </option>
-                      ))}
-                    </Select>
-                    <Button
-                      variant="outline"
-                      onClick={() =>
-                        handleAction(async () => {
-                          await scheduleDowngrade(downgradePlan);
-                          setStatus("Downgrade scheduled at the end of the current billing cycle.");
-                        })
-                      }
-                      disabled={busy || !canWriteBilling}
-                    >
-                      Schedule downgrade
-                    </Button>
-                  </div>
-                )}
-              </div>
+          <BillingOwnerControls
+            busy={busy}
+            canWriteBilling={canWriteBilling}
+            downgradePlan={downgradePlan}
+            manualOverrideEnabled={Boolean(billingConfig?.manual_plan_override_enabled)}
+            overridePlan={overridePlan}
+            pendingDowngradeDetail={
+              billing?.pending_plan
+                ? `Pending plan: ${billing.pending_plan} on ${formatDateTime(billing.pending_plan_effective_at)}`
+                : null
+            }
+            planOptions={ownerPlanOptions}
+            readOnlyMessage="Owners are the only role allowed to schedule downgrades, start checkout, or use the emergency plan override."
+            onCancelDowngrade={() =>
+              void handleAction(async () => {
+                await cancelScheduledDowngrade();
+                setStatus("Scheduled downgrade cancelled.");
+              })
+            }
+            onDowngradePlanChange={setDowngradePlan}
+            onOverridePlanChange={setOverridePlan}
+            onScheduleDowngrade={() =>
+              void handleAction(async () => {
+                await scheduleDowngrade(downgradePlan);
+                setStatus("Downgrade scheduled at the end of the current billing cycle.");
+              })
+            }
+            onUpdatePlan={() =>
+              void handleAction(async () => {
+                await updateOrganizationPlan(overridePlan);
+                setStatus(`Organization plan updated to ${overridePlan}.`);
+              })
+            }
+          />
 
-              {billingConfig?.manual_plan_override_enabled ? (
-                <div className="space-y-3">
-                  <div className="text-sm font-semibold">Manual org plan override</div>
-                  <div className="text-sm text-[var(--muted)]">
-                    This emergency control is enabled by environment flag. Keep it off for normal billing so Razorpay stays the only upgrade path.
-                  </div>
-                  <Select value={overridePlan} onChange={(event) => setOverridePlan(event.target.value)}>
-                    {planOptions.map((plan) => (
-                      <option key={plan.id} value={plan.id}>
-                        {plan.name}
-                      </option>
-                    ))}
-                  </Select>
-                  <Button
-                    onClick={() =>
-                      handleAction(async () => {
-                        await updateOrganizationPlan(overridePlan);
-                        setStatus(`Organization plan updated to ${overridePlan}.`);
-                      })
-                    }
-                    disabled={busy || !canWriteBilling}
-                  >
-                    Update plan
-                  </Button>
-                </div>
-              ) : null}
-              {!canWriteBilling ? (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  Owners are the only role allowed to schedule downgrades, start checkout, or use the emergency plan override.
-                </div>
-              ) : null}
-            </div>
-          </details>
-
-          {/* AUDIT: DENSITY_OVERLOAD - move invoice history into a secondary section so the purchase journey stays first */}
-          <details className="min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-4 py-5 sm:px-5">
-            <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">Invoice history</summary>
-            <div className="mt-4">
-              {invoices.length ? (
-                <ResponsiveScrollArea debugLabel="billing-invoice-history">
-                  <table className="min-w-full text-left text-sm">
-                    <thead className="text-[var(--muted)]">
-                      <tr className="border-b border-[var(--border)]">
-                        <th className="px-3 py-3 font-medium">ID</th>
-                        <th className="px-3 py-3 font-medium">Plan</th>
-                        <th className="px-3 py-3 font-medium">Amount</th>
-                        <th className="px-3 py-3 font-medium">Status</th>
-                        <th className="px-3 py-3 font-medium">Issued At</th>
-                        <th className="px-3 py-3 font-medium">Provider</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {invoices.map((invoice) => (
-                        <tr key={invoice.id} className="border-b border-[var(--border)]/60">
-                          <td className="px-3 py-3">{invoice.id}</td>
-                          <td className="px-3 py-3">{invoice.plan}</td>
-                          <td className="px-3 py-3">
-                            {formatAmount(invoice.amount, invoice.currency || "INR")}
-                          </td>
-                          <td className="px-3 py-3">{invoice.status}</td>
-                          <td className="px-3 py-3">{formatDateTime(invoice.issued_at)}</td>
-                          <td className="px-3 py-3">{invoice.provider || "-"}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </ResponsiveScrollArea>
-              ) : (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  No invoices recorded yet.
-                </div>
-              )}
-            </div>
-          </details>
+          <BillingInvoiceHistory
+            emptyLabel="No invoices recorded yet."
+            invoices={invoiceRows}
+          />
         </section>
 
         {status ? <div className="text-sm text-green-400">{status}</div> : null}
