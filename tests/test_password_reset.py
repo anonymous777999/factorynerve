@@ -1,7 +1,12 @@
 from http import HTTPStatus
 from urllib.parse import parse_qs, urlparse
 
-from tests.utils import register_user
+from backend.auth_security.passwords import hash_password as hash_password_secure
+from backend.database import SessionLocal
+from backend.models.user import User
+from backend.models.auth_user import AuthUser
+from backend.security import verify_password
+from tests.utils import unique_email, unique_factory
 
 
 def _extract_token(reset_link: str) -> str:
@@ -12,13 +17,34 @@ def _extract_token(reset_link: str) -> str:
     return token[0]
 
 
+def _register_verified_legacy_user(http_client) -> dict[str, str]:
+    payload = {
+        "name": "QA User",
+        "email": unique_email(),
+        "password": "StrongPassw0rd!",
+        "role": "attendance",
+        "factory_name": unique_factory(),
+        "company_code": None,
+        "phone_number": "+910000000000",
+    }
+    register = http_client.post("/auth/register", json=payload)
+    assert register.status_code in (200, 201), register.text
+    register_payload = register.json().get("data", register.json())
+    verification_link = register_payload.get("verification_link")
+    assert verification_link, register_payload
+    token = _extract_token(verification_link)
+    verify = http_client.post("/auth/email/verify", json={"token": token})
+    assert verify.status_code == HTTPStatus.OK, verify.text
+    return {"email": payload["email"], "password": payload["password"]}
+
+
 def test_password_reset_flow(http_client):
-    user = register_user(http_client)
+    user = _register_verified_legacy_user(http_client)
 
     forgot = http_client.post("/auth/password/forgot", json={"email": user["email"]})
     assert forgot.status_code == HTTPStatus.OK, forgot.text
 
-    forgot_payload = forgot.json()
+    forgot_payload = forgot.json().get("data", forgot.json())
     assert forgot_payload["message"]
     assert forgot_payload.get("reset_link"), forgot_payload
 
@@ -26,7 +52,53 @@ def test_password_reset_flow(http_client):
 
     validate = http_client.get("/auth/password/reset/validate", params={"token": token})
     assert validate.status_code == HTTPStatus.OK, validate.text
-    assert validate.json()["valid"] is True
+    validate_payload = validate.json().get("data", validate.json())
+    assert validate_payload["valid"] is True
+
+    new_password = "EvenStrongerPassw0rd!"
+    reset = http_client.post(
+        "/auth/password/reset",
+        json={"token": token, "new_password": new_password},
+    )
+    assert reset.status_code == HTTPStatus.OK, reset.text
+
+    db = SessionLocal()
+    try:
+        legacy_user = db.query(User).filter(User.email == user["email"]).first()
+        assert legacy_user is not None
+        assert verify_password(user["password"], legacy_user.password_hash) is False
+        assert verify_password(new_password, legacy_user.password_hash) is True
+    finally:
+        db.close()
+
+    second_use = http_client.post(
+        "/auth/password/reset",
+        json={"token": token, "new_password": "AnotherStrongPassw0rd!"},
+    )
+    assert second_use.status_code == HTTPStatus.BAD_REQUEST
+
+
+def test_legacy_password_reset_syncs_secure_login_password(http_client):
+    user = _register_verified_legacy_user(http_client)
+
+    db = SessionLocal()
+    try:
+        db.add(
+            AuthUser(
+                email=user["email"],
+                password_hash=hash_password_secure(user["password"]),
+                is_active=True,
+                is_email_verified=True,
+            )
+        )
+        db.commit()
+    finally:
+        db.close()
+
+    forgot = http_client.post("/auth/password/forgot", json={"email": user["email"]})
+    assert forgot.status_code == HTTPStatus.OK, forgot.text
+    forgot_payload = forgot.json().get("data", forgot.json())
+    token = _extract_token(forgot_payload["reset_link"])
 
     new_password = "EvenStrongerPassw0rd!"
     reset = http_client.post(
@@ -36,19 +108,13 @@ def test_password_reset_flow(http_client):
     assert reset.status_code == HTTPStatus.OK, reset.text
 
     old_login = http_client.post(
-        "/auth/login",
+        "/auth/v2/login",
         json={"email": user["email"], "password": user["password"]},
     )
     assert old_login.status_code == HTTPStatus.UNAUTHORIZED
 
     new_login = http_client.post(
-        "/auth/login",
+        "/auth/v2/login",
         json={"email": user["email"], "password": new_password},
     )
     assert new_login.status_code == HTTPStatus.OK, new_login.text
-
-    second_use = http_client.post(
-        "/auth/password/reset",
-        json={"token": token, "new_password": "AnotherStrongPassw0rd!"},
-    )
-    assert second_use.status_code == HTTPStatus.BAD_REQUEST
