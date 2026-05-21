@@ -1,6 +1,7 @@
 "use client";
 
-import Link from "next/link"; import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { ProductionLossChart } from "@/components/charts/production-loss-chart";
@@ -28,6 +29,7 @@ const FILTERS: Array<{ key: DashboardRangeKey; label: string }> = [
   { key: "7d", label: "7 Days" },
   { key: "30d", label: "30 Days" },
 ];
+const DASHBOARD_FILTER_PARAM_KEYS = ["plant", "process", "loss"] as const;
 
 type DrillDownMeta = {
   chartId: string;
@@ -180,6 +182,10 @@ function resolveDrilldownDate(meta: DrillDownMeta, selectedRange: DashboardRange
   return null;
 }
 
+function isDashboardRangeKey(value: string | null): value is DashboardRangeKey {
+  return value === "today" || value === "7d" || value === "30d";
+}
+
 export function IndustrialFactoryDashboard({
   loading = false,
   industryType = "steel",
@@ -205,15 +211,15 @@ export function IndustrialFactoryDashboard({
     }),
     [dataByRange],
   );
-  const [selectedRange, setSelectedRange] = useState<DashboardRangeKey>(initialRange);
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const selectedRange = useMemo<DashboardRangeKey>(() => {
+    const raw = searchParams.get("range");
+    return isDashboardRangeKey(raw) ? raw : initialRange;
+  }, [initialRange, searchParams]);
   const [rangeLoading, setRangeLoading] = useState(false);
-  const [selectedFilters, setSelectedFilters] = useState<Record<string, string>>({});
   const [lastDrillDown, setLastDrillDown] = useState<DrillDownMeta | null>(null);
-  const [filterStatus, setFilterStatus] = useState("");
-
-  useEffect(() => {
-    setSelectedRange(initialRange);
-  }, [initialRange]);
 
   useEffect(() => {
     if (loading) return;
@@ -223,6 +229,23 @@ export function IndustrialFactoryDashboard({
   }, [loading, selectedRange]);
 
   const activeData = resolvedData[selectedRange];
+  const selectedFilters = useMemo(() => {
+    const filters: Record<string, string> = {};
+    activeData.filterPanels.forEach((panel) => {
+      const raw = searchParams.get(panel.id);
+      filters[panel.id] = raw && panel.options.includes(raw) ? raw : panel.options[0] || "";
+    });
+    return filters;
+  }, [activeData, searchParams]);
+  const filterStatus = useMemo(() => {
+    const applied = activeData.filterPanels
+      .map((panel) => {
+        const value = selectedFilters[panel.id];
+        return value ? `${panel.title}: ${value}` : "";
+      })
+      .filter(Boolean);
+    return applied.length ? `Applied filters: ${applied.join(" · ")}` : "";
+  }, [activeData, selectedFilters]);
   const smartInsights = useMemo(() => buildSmartInsights(activeData), [activeData]);
   const visualLoading = loading || rangeLoading;
   const drilldownAction = useMemo(
@@ -230,7 +253,37 @@ export function IndustrialFactoryDashboard({
     [lastDrillDown],
   );
   const viewConfig = useMemo(() => resolveViewConfig(selectedFilters), [selectedFilters]);
-  const router = useRouter();
+
+  useEffect(() => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+    let changed = false;
+
+    if (nextParams.get("range") !== selectedRange) {
+      nextParams.set("range", selectedRange);
+      changed = true;
+    }
+
+    DASHBOARD_FILTER_PARAM_KEYS.forEach((key) => {
+      const panel = activeData.filterPanels.find((item) => item.id === key);
+      if (!panel) {
+        if (nextParams.has(key)) {
+          nextParams.delete(key);
+          changed = true;
+        }
+        return;
+      }
+      const normalized = selectedFilters[key] || panel.options[0] || "";
+      if (normalized && nextParams.get(key) !== normalized) {
+        nextParams.set(key, normalized);
+        changed = true;
+      }
+    });
+
+    if (!changed) {
+      return;
+    }
+    router.replace(`${pathname}?${nextParams.toString()}`);
+  }, [activeData, pathname, router, searchParams, selectedFilters, selectedRange]);
 
   const handleDrillDown = (meta: DrillDownMeta) => {
     setLastDrillDown(meta);
@@ -260,12 +313,26 @@ export function IndustrialFactoryDashboard({
     router.push(`${targetPath}?${params.toString()}`);
   };
 
+  const handleRangeSelect = (nextRange: DashboardRangeKey) => {
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.set("range", nextRange);
+    const nextData = resolvedData[nextRange];
+    DASHBOARD_FILTER_PARAM_KEYS.forEach((key) => {
+      const panel = nextData.filterPanels.find((item) => item.id === key);
+      if (!panel) {
+        nextParams.delete(key);
+        return;
+      }
+      nextParams.set(key, panel.options[0] || "");
+    });
+    router.push(`${pathname}?${nextParams.toString()}`);
+  };
+
   const handleFilterSelect = (panelId: string, option: string) => {
-    setSelectedFilters((current) => ({
-      ...current,
-      [panelId]: option,
-    }));
-    setFilterStatus(`Applied ${panelId} filter: ${option}`);
+    const nextParams = new URLSearchParams(searchParams.toString());
+    nextParams.set("range", selectedRange);
+    nextParams.set(panelId, option);
+    router.push(`${pathname}?${nextParams.toString()}`);
   };
 
   const leftRail = (
@@ -329,15 +396,6 @@ export function IndustrialFactoryDashboard({
     </div>
   );
 
-  useEffect(() => {
-    const defaults: Record<string, string> = {};
-    activeData.filterPanels.forEach((panel) => {
-      defaults[panel.id] = panel.options[0] || "";
-    });
-    setSelectedFilters(defaults);
-    setFilterStatus("");
-  }, [activeData]);
-
   if (industryType !== "steel") {
     return (
       <section className="space-y-6">
@@ -381,7 +439,7 @@ export function IndustrialFactoryDashboard({
               <button
                 key={filter.key}
                 type="button"
-                onClick={() => setSelectedRange(filter.key)}
+                onClick={() => handleRangeSelect(filter.key)}
                 className={
                   selectedRange === filter.key
                     ? "shrink-0 rounded-full !border-[#111111] !bg-none !bg-[#111111] px-4 py-2 text-sm font-semibold !text-white shadow-sm transition"
