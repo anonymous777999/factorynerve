@@ -21,6 +21,7 @@ from backend.models.user import User
 from backend.models.user_factory_role import UserFactoryRole
 from backend.auth_security.mfa import generate_secret, provisioning_uri, verify_totp
 from backend.auth_security.passwords import hash_password, validate_password_strength, verify_password
+from backend.security import verify_password as verify_password_legacy
 from backend.auth_security.rate_limit import RateLimitError, check_rate_limit
 from backend.auth_security.sessions import (
     create_session,
@@ -32,6 +33,11 @@ from backend.auth_security.sessions import (
     touch_session,
 )
 from backend.auth_security.tokens import build_reset_token, expires_at, generate_token, hash_token, verify_reset_token
+from backend.services.auth_sync_service import (
+    detect_password_hash_algorithm,
+    ensure_auth_user_for_legacy_user,
+    hash_prefix as sync_hash_prefix,
+)
 
 
 router = APIRouter(tags=["AuthSecure"])
@@ -44,25 +50,7 @@ RESET_BASE_URL = os.getenv("AUTH_RESET_BASE_URL", "http://127.0.0.1:8765/auth-se
 
 
 def _hash_prefix(value: str | None, *, visible: int = 12) -> str:
-    if not value:
-        return "missing"
-    trimmed = value.strip()
-    if not trimmed:
-        return "missing"
-    return f"{trimmed[:visible]}***"
-
-
-def _detect_password_hash_algorithm(password_hash: str | None) -> str:
-    if not password_hash:
-        return "missing"
-    trimmed = password_hash.strip()
-    if not trimmed:
-        return "missing"
-    if trimmed.startswith("$argon2"):
-        return "argon2"
-    if trimmed.startswith("$2a$") or trimmed.startswith("$2b$") or trimmed.startswith("$2y$"):
-        return "bcrypt"
-    return "unknown"
+    return sync_hash_prefix(value, visible=visible)
 
 
 class RegisterRequest(BaseModel):
@@ -173,10 +161,51 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
     except RateLimitError as error:
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=error.detail) from error
 
-    user = db.query(AuthUser).filter(AuthUser.email == email, AuthUser.is_active.is_(True)).first()
-    verify_result = verify_password(payload.password, user.password_hash) if user else False
+    user = db.query(AuthUser).filter(AuthUser.email == email).first()
+    legacy_user = (
+        db.query(User)
+        .filter(
+            User.email == email,
+            User.is_active.is_(True),
+            User.auth_provider == "local",
+        )
+        .first()
+    )
+    auth_user_exists = bool(user)
+    auth_disabled_flag = bool(user and not user.is_active)
+    user_active_flag = bool(user.is_active) if user else False
+    auth_user_email_verified_flag = bool(getattr(user, "is_email_verified", False)) if user else False
+    verify_result = verify_password(payload.password, user.password_hash) if user and user.is_active else False
+    legacy_verify_result = (
+        verify_password_legacy(payload.password, legacy_user.password_hash)
+        if legacy_user
+        else False
+    )
+    secure_repair_applied = False
+    lookup_source = "AuthUser.email"
+    if legacy_verify_result and (
+        user is None
+        or not user.is_active
+        or not verify_result
+        or detect_password_hash_algorithm(user.password_hash) != "argon2"
+    ):
+        sync_result = ensure_auth_user_for_legacy_user(
+            db,
+            legacy_user=legacy_user,
+            raw_password=payload.password,
+            is_active=True,
+            is_email_verified=bool(legacy_user.email_verified_at),
+        )
+        user = sync_result.auth_user
+        auth_user_exists = True
+        auth_disabled_flag = False
+        user_active_flag = bool(user.is_active)
+        auth_user_email_verified_flag = bool(user.is_email_verified)
+        verify_result = verify_password(payload.password, user.password_hash)
+        secure_repair_applied = sync_result.created or sync_result.updated
+        lookup_source = "AuthUser.repaired_from_legacy_user"
     password_hash_value = getattr(user, "password_hash", None)
-    password_hash_algorithm = _detect_password_hash_algorithm(password_hash_value)
+    password_hash_algorithm = detect_password_hash_algorithm(password_hash_value)
     hash_starts_with_argon2 = bool(password_hash_value and password_hash_value.strip().startswith("$argon2"))
     hash_starts_with_bcrypt = bool(
         password_hash_value
@@ -187,8 +216,12 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
         )
     )
     login_rejection_reason = "none"
-    if not user:
+    jwt_generation_reached = False
+    mfa_gate_reached = False
+    if not auth_user_exists:
         login_rejection_reason = "auth_user_not_found"
+    elif auth_disabled_flag:
+        login_rejection_reason = "auth_user_inactive"
     elif not verify_result:
         login_rejection_reason = "verify_password_false"
     logger.info(
@@ -197,22 +230,30 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
             "auth_flow_selected": "auth_v2_login",
             "login_comparison_path": "AuthUser.password_hash -> backend.auth_security.passwords.verify_password",
             "normalized_email": email,
-            "user_lookup_result": bool(user),
+            "user_lookup_result": auth_user_exists,
             "auth_user_id": getattr(user, "id", None),
+            "lookup_source": lookup_source,
+            "secure_repair_applied": secure_repair_applied,
             "verify_password_result": verify_result,
             "password_hash_algorithm_detected": password_hash_algorithm,
             "password_hash_prefix": _hash_prefix(password_hash_value),
             "hash_starts_with_argon2_marker": hash_starts_with_argon2,
             "hash_starts_with_bcrypt_marker": hash_starts_with_bcrypt,
             "login_rejection_reason": login_rejection_reason,
+            "jwt_generation_reached": jwt_generation_reached,
+            "mfa_gate_reached": mfa_gate_reached,
+            "auth_disabled_flag": auth_disabled_flag,
+            "user_active_flag": user_active_flag,
+            "auth_user_email_verified_flag": auth_user_email_verified_flag,
         },
     )
-    if not user or not verify_result:
+    if not user or auth_disabled_flag or not verify_result:
         _log_event(db, action="AUTH_LOGIN_FAILED", user_id=None, request=request, meta={"email": email})
         db.commit()
         raise _generic_login_error()
 
     if user.mfa_enabled:
+        mfa_gate_reached = True
         if not payload.mfa_code or not user.mfa_secret_encrypted:
             logger.info(
                 "AUTH_DIAGNOSTIC_LOGIN_V2",
@@ -221,12 +262,19 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
                     "normalized_email": email,
                     "user_lookup_result": True,
                     "auth_user_id": user.id,
+                    "lookup_source": lookup_source,
+                    "secure_repair_applied": secure_repair_applied,
                     "verify_password_result": verify_result,
                     "password_hash_algorithm_detected": password_hash_algorithm,
                     "password_hash_prefix": _hash_prefix(password_hash_value),
                     "hash_starts_with_argon2_marker": hash_starts_with_argon2,
                     "hash_starts_with_bcrypt_marker": hash_starts_with_bcrypt,
                     "login_rejection_reason": "mfa_required_or_secret_missing",
+                    "jwt_generation_reached": jwt_generation_reached,
+                    "mfa_gate_reached": mfa_gate_reached,
+                    "auth_disabled_flag": auth_disabled_flag,
+                    "user_active_flag": user_active_flag,
+                    "auth_user_email_verified_flag": auth_user_email_verified_flag,
                 },
             )
             _log_event(db, action="AUTH_LOGIN_MFA_REQUIRED", user_id=user.id, request=request)
@@ -240,18 +288,26 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
                     "normalized_email": email,
                     "user_lookup_result": True,
                     "auth_user_id": user.id,
+                    "lookup_source": lookup_source,
+                    "secure_repair_applied": secure_repair_applied,
                     "verify_password_result": verify_result,
                     "password_hash_algorithm_detected": password_hash_algorithm,
                     "password_hash_prefix": _hash_prefix(password_hash_value),
                     "hash_starts_with_argon2_marker": hash_starts_with_argon2,
                     "hash_starts_with_bcrypt_marker": hash_starts_with_bcrypt,
                     "login_rejection_reason": "mfa_verification_failed",
+                    "jwt_generation_reached": jwt_generation_reached,
+                    "mfa_gate_reached": mfa_gate_reached,
+                    "auth_disabled_flag": auth_disabled_flag,
+                    "user_active_flag": user_active_flag,
+                    "auth_user_email_verified_flag": auth_user_email_verified_flag,
                 },
             )
             _log_event(db, action="AUTH_LOGIN_MFA_FAILED", user_id=user.id, request=request)
             db.commit()
             raise _generic_login_error()
 
+    jwt_generation_reached = True
     session = create_session(db, user=user, request=request, response=response)
     touch_session(db, session)
     _issue_legacy_access_cookie(db, auth_user=user, request=request, response=response)
@@ -261,8 +317,20 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
         "AUTH_DIAGNOSTIC_LOGIN_V2_COMMIT",
         extra={
             "auth_flow_selected": "auth_v2_login",
-            "user_lookup_auth_user_id": user.id,
+            "auth_user_id": user.id,
+            "lookup_source": lookup_source,
+            "secure_repair_applied": secure_repair_applied,
             "verify_password_result": verify_result,
+            "password_hash_algorithm_detected": password_hash_algorithm,
+            "password_hash_prefix": _hash_prefix(password_hash_value),
+            "hash_starts_with_argon2_marker": hash_starts_with_argon2,
+            "hash_starts_with_bcrypt_marker": hash_starts_with_bcrypt,
+            "login_rejection_reason": "none",
+            "jwt_generation_reached": jwt_generation_reached,
+            "mfa_gate_reached": mfa_gate_reached,
+            "auth_disabled_flag": auth_disabled_flag,
+            "user_active_flag": user_active_flag,
+            "auth_user_email_verified_flag": auth_user_email_verified_flag,
             "commit_success": True,
         },
     )
