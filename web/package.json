@@ -12,6 +12,7 @@
     "openapi:generate": "node scripts/generate-openapi.mjs"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5.100.11",
     "@tanstack/react-table": "^8.20.5",
     "@tanstack/react-virtual": "^3.12.0",
     "apexcharts": "^5.10.4",
