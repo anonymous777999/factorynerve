@@ -26,6 +26,7 @@ from backend.models.report import AuditLog, TokenBlacklist
 from backend.models.email_verification_token import EmailVerificationToken
 from backend.models.pending_registration import PendingRegistration
 from backend.models.refresh_token import RefreshToken
+from backend.models.auth_user import AuthUser
 from backend.models.user import User, UserReadSchema, UserRole
 from backend.models.factory import Factory
 from backend.models.organization import Organization
@@ -78,6 +79,7 @@ from backend.auth_cookies import (
     set_auth_cookies,
     wants_cookie_auth,
 )
+from backend.auth_security.passwords import hash_password as hash_password_secure
 
 
 logger = logging.getLogger(__name__)
@@ -257,6 +259,15 @@ def _register_failed_attempt(ip_address: str) -> None:
 def _clear_attempts(ip_address: str) -> None:
     with _rate_limit_lock:
         _login_attempts.pop(ip_address, None)
+
+
+def _hash_prefix(value: str | None, *, visible: int = 12) -> str:
+    if not value:
+        return "missing"
+    trimmed = value.strip()
+    if not trimmed:
+        return "missing"
+    return f"{trimmed[:visible]}***"
 
 
 def _log_auth_event(
@@ -1342,13 +1353,39 @@ def password_reset(
         raise HTTPException(status_code=400, detail="Invalid or expired reset token.")
 
     now = datetime.now(timezone.utc)
+    legacy_hash_before = _hash_prefix(user.password_hash)
     user.password_hash = hash_password(payload.new_password)
+    legacy_hash_after = _hash_prefix(user.password_hash)
+    secure_user = db.query(AuthUser).filter(AuthUser.email == user.email.lower().strip(), AuthUser.is_active.is_(True)).first()
+    secure_hash_before = _hash_prefix(secure_user.password_hash) if secure_user else "missing"
+    if secure_user:
+        secure_user.password_hash = hash_password_secure(payload.new_password)
+        secure_user.password_changed_at = now
+        secure_user.updated_at = now
+    secure_hash_after = _hash_prefix(secure_user.password_hash) if secure_user else "missing"
     record.used_at = now
 
     db.query(RefreshToken).filter(
         RefreshToken.user_id == user.id,
         RefreshToken.revoked_at.is_(None),
     ).update({"revoked_at": now}, synchronize_session=False)
+
+    logger.info(
+        "AUTH_DIAGNOSTIC_RESET_LEGACY",
+        extra={
+            "auth_flow_selected": "auth_legacy_password_reset",
+            "legacy_user_lookup_result": True,
+            "legacy_user_id": user.id,
+            "legacy_email": user.email.lower().strip(),
+            "password_hash_prefix_before_reset": legacy_hash_before,
+            "password_hash_prefix_after_reset": legacy_hash_after,
+            "secure_user_lookup_result": bool(secure_user),
+            "secure_password_hash_prefix_before_reset": secure_hash_before,
+            "secure_password_hash_prefix_after_reset": secure_hash_after,
+            "secure_sync_applied": bool(secure_user),
+            "reset_commit_success": False,
+        },
+    )
 
     _log_auth_event(
         db,
@@ -1360,6 +1397,16 @@ def password_reset(
         factory_id=None,
     )
     db.commit()
+    logger.info(
+        "AUTH_DIAGNOSTIC_RESET_LEGACY_COMMIT",
+        extra={
+            "auth_flow_selected": "auth_legacy_password_reset",
+            "legacy_user_id": user.id,
+            "secure_user_lookup_result": bool(secure_user),
+            "secure_sync_applied": bool(secure_user),
+            "reset_commit_success": True,
+        },
+    )
     return {"message": "Password reset successful. Please log in again."}
 
 

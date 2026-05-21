@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime, timezone
 
@@ -34,11 +35,21 @@ from backend.auth_security.tokens import build_reset_token, expires_at, generate
 
 
 router = APIRouter(tags=["AuthSecure"])
+logger = logging.getLogger(__name__)
 
 AUTH_RATE_LIMIT_WINDOW = int(os.getenv("AUTH_RATE_LIMIT_WINDOW_SECONDS", "60"))
 AUTH_RATE_LIMIT_MAX = int(os.getenv("AUTH_RATE_LIMIT_MAX_ATTEMPTS", "5"))
 RESET_TTL_MINUTES = int(os.getenv("AUTH_PASSWORD_RESET_TTL_MINUTES", "30"))
 RESET_BASE_URL = os.getenv("AUTH_RESET_BASE_URL", "http://127.0.0.1:8765/auth-secure/password/reset")
+
+
+def _hash_prefix(value: str | None, *, visible: int = 12) -> str:
+    if not value:
+        return "missing"
+    trimmed = value.strip()
+    if not trimmed:
+        return "missing"
+    return f"{trimmed[:visible]}***"
 
 
 class RegisterRequest(BaseModel):
@@ -150,7 +161,20 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail=error.detail) from error
 
     user = db.query(AuthUser).filter(AuthUser.email == email, AuthUser.is_active.is_(True)).first()
-    if not user or not verify_password(payload.password, user.password_hash):
+    verify_result = verify_password(payload.password, user.password_hash) if user else False
+    logger.info(
+        "AUTH_DIAGNOSTIC_LOGIN_V2",
+        extra={
+            "auth_flow_selected": "auth_v2_login",
+            "login_comparison_path": "AuthUser.password_hash -> backend.auth_security.passwords.verify_password",
+            "normalized_email": email,
+            "user_lookup_result": bool(user),
+            "user_lookup_auth_user_id": getattr(user, "id", None),
+            "verify_password_result": verify_result,
+            "password_hash_prefix": _hash_prefix(getattr(user, "password_hash", None)),
+        },
+    )
+    if not user or not verify_result:
         _log_event(db, action="AUTH_LOGIN_FAILED", user_id=None, request=request, meta={"email": email})
         db.commit()
         raise _generic_login_error()
@@ -170,6 +194,15 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
     _issue_legacy_access_cookie(db, auth_user=user, request=request, response=response)
     _log_event(db, action="AUTH_LOGIN_SUCCESS", user_id=user.id, request=request)
     db.commit()
+    logger.info(
+        "AUTH_DIAGNOSTIC_LOGIN_V2_COMMIT",
+        extra={
+            "auth_flow_selected": "auth_v2_login",
+            "user_lookup_auth_user_id": user.id,
+            "verify_password_result": verify_result,
+            "commit_success": True,
+        },
+    )
     return {"message": "Login successful."}
 
 
