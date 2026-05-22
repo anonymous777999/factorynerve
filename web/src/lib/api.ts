@@ -89,12 +89,6 @@ export function formatApiErrorMessage(error: unknown, fallback = "Request failed
   return fallback;
 }
 
-type CacheEntry = {
-  expiresAt: number;
-  data?: unknown;
-  promise?: Promise<unknown>;
-};
-
 export type ApiErrorHandlerContext = {
   path: string;
   method: string;
@@ -103,7 +97,7 @@ export type ApiErrorHandlerContext = {
   detail?: unknown;
 };
 
-const responseCache = new Map<string, CacheEntry>();
+// request deduplication - not a data cache
 let inflightCsrfBootstrap: Promise<string | null> | null = null;
 let csrfHeaderToken: string | null = null;
 let roleRevision: string | null = null;
@@ -174,10 +168,6 @@ function extractApiErrorCode(detail: unknown): string | undefined {
   return extractApiErrorCode(nestedDetail);
 }
 
-function canUseResponseCache() {
-  return typeof window !== "undefined";
-}
-
 async function bootstrapCsrfCookie(timeoutMs: number, force = false): Promise<string | null> {
   if (typeof window === "undefined") {
     return null;
@@ -220,28 +210,8 @@ async function bootstrapCsrfCookie(timeoutMs: number, force = false): Promise<st
   return inflightCsrfBootstrap;
 }
 
-function buildCacheKey(
-  path: string,
-  method: string,
-  useCookies: boolean,
-  envelope: boolean,
-  explicitKey?: string,
-) {
-  if (explicitKey) return explicitKey;
-  return `${method}:${useCookies ? "cookie" : "anon"}:${envelope ? "env" : "raw"}:${path}`;
-}
-
 export function invalidateApiCache(match?: string | RegExp) {
-  if (!responseCache.size) return;
-  if (!match) {
-    responseCache.clear();
-    return;
-  }
-  for (const key of responseCache.keys()) {
-    if (typeof match === "string" ? key.includes(match) : match.test(key)) {
-      responseCache.delete(key);
-    }
-  }
+  void match;
 }
 
 export function primeApiCache<T>(
@@ -249,18 +219,9 @@ export function primeApiCache<T>(
   value: T,
   apiOptions: ApiFetchOptions = {},
 ) {
-  if (!canUseResponseCache()) return;
-  const cacheKey = buildCacheKey(
-    path,
-    "GET",
-    apiOptions.useCookies ?? true,
-    apiOptions.envelope ?? true,
-    apiOptions.cacheKey,
-  );
-  responseCache.set(cacheKey, {
-    data: value,
-    expiresAt: Date.now() + (apiOptions.cacheTtlMs ?? 15000),
-  });
+  void path;
+  void value;
+  void apiOptions;
 }
 
 export function primeRoleRevision(nextRoleRevision?: string | number | null) {
@@ -272,7 +233,7 @@ export function primeRoleRevision(nextRoleRevision?: string | number | null) {
 }
 
 export function preloadApiGet<T>(path: string, apiOptions: ApiFetchOptions = {}) {
-  return apiFetch<T>(path, { method: "GET" }, { ...apiOptions, cacheTtlMs: apiOptions.cacheTtlMs ?? 15000 });
+  return apiFetch<T>(path, { method: "GET" }, apiOptions);
 }
 
 async function notifyApiErrorHandler(context: ApiErrorHandlerContext) {
@@ -292,25 +253,6 @@ export async function apiFetch<T>(
   const envelope = apiOptions.envelope ?? true;
   const timeoutMs = apiOptions.timeoutMs ?? 10000;
   const method = (options.method ?? "GET").toUpperCase();
-  const cacheTtlMs = apiOptions.cacheTtlMs ?? 0;
-  const useCache =
-    canUseResponseCache() &&
-    SAFE_METHODS.includes(method) &&
-    cacheTtlMs > 0 &&
-    !options.signal;
-  const cacheKey = useCache
-    ? buildCacheKey(path, method, useCookies, envelope, apiOptions.cacheKey)
-    : null;
-
-  if (cacheKey) {
-    const cached = responseCache.get(cacheKey);
-    if (cached?.data !== undefined && cached.expiresAt > Date.now()) {
-      return cached.data as T;
-    }
-    if (cached?.promise) {
-      return cached.promise as Promise<T>;
-    }
-  }
 
   const headers = new Headers(options.headers ?? {});
   if (
@@ -421,9 +363,6 @@ export async function apiFetch<T>(
           });
           throw new ApiError(`Request failed (${response.status}).`, response.status, raw || undefined);
         }
-        if (!SAFE_METHODS.includes(method) && canUseResponseCache()) {
-          invalidateApiCache();
-        }
         return undefined as T;
       }
     }
@@ -454,9 +393,6 @@ export async function apiFetch<T>(
               : "Request failed.";
         throw new ApiError(message, response.status, detail);
       }
-      if (!SAFE_METHODS.includes(method) && canUseResponseCache()) {
-        invalidateApiCache();
-      }
       return envelopePayload.data as T;
     }
 
@@ -484,9 +420,6 @@ export async function apiFetch<T>(
               : "Request failed.";
         throw new ApiError(message, envelopePayload.status ?? response.status, detail);
       }
-      if (!SAFE_METHODS.includes(method) && canUseResponseCache()) {
-        invalidateApiCache();
-      }
       return envelopePayload.data as T;
     }
 
@@ -513,32 +446,8 @@ export async function apiFetch<T>(
       throw new ApiError(message, response.status, detail);
     }
 
-    if (!SAFE_METHODS.includes(method) && canUseResponseCache()) {
-      invalidateApiCache();
-    }
     return payload as T;
   };
 
-  if (!cacheKey) {
-    return performFetch();
-  }
-
-  const promise = performFetch()
-    .then((result) => {
-      responseCache.set(cacheKey, {
-        data: result,
-        expiresAt: Date.now() + cacheTtlMs,
-      });
-      return result;
-    })
-    .catch((err) => {
-      responseCache.delete(cacheKey);
-      throw err;
-    });
-
-  responseCache.set(cacheKey, {
-    expiresAt: Date.now() + cacheTtlMs,
-    promise,
-  });
-  return promise;
+  return performFetch();
 }

@@ -8,6 +8,7 @@ import { FrontendErrorMonitor } from "@/components/frontend-error-monitor";
 import { OfflineSyncAgent } from "@/components/offline-sync-agent";
 import { ServiceWorker } from "@/components/service-worker";
 import { ToastCenter } from "@/components/toast-center";
+import { BadgeProvider } from "@/providers/badge-provider";
 
 export const metadata: Metadata = {
   title: "DPR.ai Web",
@@ -50,7 +51,9 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col bg-[var(--bg)] text-[var(--text)]">
         <AppProviders>
           <BetaRolloutBanner />
-          <AppShell>{children}</AppShell>
+          <BadgeProvider>
+            <AppShell>{children}</AppShell>
+          </BadgeProvider>
           <ToastCenter />
           <FrontendErrorMonitor />
           <OfflineSyncAgent />

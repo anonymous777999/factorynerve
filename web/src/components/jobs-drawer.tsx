@@ -53,7 +53,15 @@ function getDownloadPath(job: JobRecord) {
 }
 
 function getOpenLink(job: JobRecord) {
-  return job.context?.route || null;
+  // job identifier field: job_id
+  return `/ocr/jobs/${job.job_id}`;
+}
+
+function getOpenLabel(job: JobRecord) {
+  if (ACTIVE_STATUSES.has(job.status)) {
+    return "Resume";
+  }
+  return "View";
 }
 
 async function downloadJob(job: JobRecord) {
@@ -89,7 +97,7 @@ function buildToastForTransition(job: JobRecord) {
       description: job.message || "The result is ready.",
       tone: "success" as const,
       actionHref: openLink || undefined,
-      actionLabel: openLink ? "Open" : undefined,
+      actionLabel: openLink ? getOpenLabel(job) : undefined,
     };
   }
   if (job.status === "failed") {
@@ -98,7 +106,7 @@ function buildToastForTransition(job: JobRecord) {
       description: job.error || job.message || "The job did not finish successfully.",
       tone: "error" as const,
       actionHref: openLink || undefined,
-      actionLabel: openLink ? "Review" : undefined,
+      actionLabel: openLink ? getOpenLabel(job) : undefined,
     };
   }
   if (job.status === "canceled") {
@@ -107,7 +115,7 @@ function buildToastForTransition(job: JobRecord) {
       description: "The queued job was stopped before completion.",
       tone: "info" as const,
       actionHref: openLink || undefined,
-      actionLabel: openLink ? "Open" : undefined,
+      actionLabel: openLink ? getOpenLabel(job) : undefined,
     };
   }
   return null;
@@ -262,7 +270,7 @@ export function JobsDrawer() {
           description: "A fresh background job has been queued and will appear at the top of the list shortly.",
           tone: "success",
           actionHref: getOpenLink(queued) || undefined,
-          actionLabel: getOpenLink(queued) ? "Open" : undefined,
+          actionLabel: getOpenLink(queued) ? getOpenLabel(queued) : undefined,
         });
         await loadJobs();
       } catch (err) {
@@ -389,7 +397,7 @@ export function JobsDrawer() {
                         {getOpenLink(job) ? (
                           <Link href={getOpenLink(job)!}>
                             <Button variant="outline" className="h-8 px-3 text-xs">
-                              Open
+                              {getOpenLabel(job)}
                             </Button>
                           </Link>
                         ) : null}

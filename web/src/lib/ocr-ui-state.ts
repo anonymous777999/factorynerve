@@ -2,7 +2,6 @@
 
 import type { OcrCell, OcrDebugPayload, OcrRoutingMeta, OcrScanQuality, OcrTokenUsage } from "@/lib/ocr";
 
-const OCR_UI_STORAGE_KEY = "dpr:ocr-ui-state";
 const MAX_STORED_IMAGE_BYTES = 1_400_000;
 
 export type RawCell = OcrCell;
@@ -36,32 +35,14 @@ export type PersistedOcrUiState = {
 };
 
 export function loadOcrUiState() {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = window.sessionStorage.getItem(OCR_UI_STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw) as PersistedOcrUiState;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 export function saveOcrUiState(value: PersistedOcrUiState) {
-  if (typeof window === "undefined") return;
-  try {
-    window.sessionStorage.setItem(OCR_UI_STORAGE_KEY, JSON.stringify(value));
-  } catch {
-    // Ignore storage failures; OCR still works without local restoration.
-  }
+  void value;
 }
 
 export function clearOcrUiState() {
-  if (typeof window === "undefined") return;
-  try {
-    window.sessionStorage.removeItem(OCR_UI_STORAGE_KEY);
-  } catch {
-    // Ignore storage failures.
-  }
 }
 
 export async function fileToDataUrl(file: File | null) {

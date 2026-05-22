@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { CameraCapture } from "@/components/ocr/camera-capture";
 import { EditToolbar } from "@/components/ocr/edit-toolbar";
@@ -52,13 +53,9 @@ import {
   exportRowsToJson,
 } from "@/lib/ocr-export";
 import {
-  clearOcrUiState,
-  dataUrlToFile,
-  fileToDataUrl,
-  loadOcrUiState,
-  saveOcrUiState,
 } from "@/lib/ocr-ui-state";
 import { warmBackendConnection } from "@/lib/auth";
+import { queryKeys } from "@/lib/query-keys";
 import { useSession } from "@/lib/use-session";
 import { signalWorkflowRefresh } from "@/lib/workflow-sync";
 
@@ -589,6 +586,7 @@ function statusBannerClass(tone: "error" | "success" | "warning") {
 }
 
 export default function OcrScanPage() {
+  const queryClient = useQueryClient();
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -604,6 +602,7 @@ export default function OcrScanPage() {
   const [shareBusy, setShareBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState<"error" | "success" | "warning">("success");
+  const [draftSaveError, setDraftSaveError] = useState("");
   const [remoteUrl, setRemoteUrl] = useState("");
   const [recentRecords, setRecentRecords] = useState<OcrVerificationRecord[]>([]);
   const [sourceFilename, setSourceFilename] = useState("");
@@ -619,18 +618,25 @@ export default function OcrScanPage() {
   const [confidenceMatrix, setConfidenceMatrix] = useState<OcrConfidenceMatrix>([]);
   const [editableHeaders, setEditableHeaders] = useState<string[]>([]);
   const [editableRows, setEditableRows] = useState<OcrCell[][]>([]);
+  // TODO: requires backend endpoint for persistence
   const [columnTypes, setColumnTypes] = useState<OcrColumnType[]>([]);
+  // TODO: requires backend endpoint for persistence
   const [headerRowEnabled, setHeaderRowEnabled] = useState(false);
+  // TODO: requires backend endpoint for persistence
   const [showLowConfidence, setShowLowConfidence] = useState(true);
+  // TODO: requires backend endpoint for persistence
   const [activeCell, setActiveCell] = useState<ActiveCell>(null);
+  // TODO: requires backend endpoint for persistence
   const [zoom, setZoom] = useState(1);
   const [documentHash, setDocumentHash] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<number | null>(null);
   const [draftDirty, setDraftDirty] = useState(false);
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [shareExpiresAt, setShareExpiresAt] = useState<string | null>(null);
+  // TODO: requires backend endpoint for persistence
   const [selectedModel, setSelectedModel] = useState<ModelOption>("auto");
   const [restored, setRestored] = useState(false);
+  // TODO: requires backend endpoint for persistence
   const [viewMode, setViewMode] = useState<ViewMode>("spreadsheet");
   const [imageLoadError, setImageLoadError] = useState(false);
   const [imageRetryCount, setImageRetryCount] = useState(0);
@@ -827,141 +833,9 @@ export default function OcrScanPage() {
       });
       return;
     }
-    const snapshot = loadOcrUiState();
-    if (!snapshot) {
-      setStep(requestedStep || "upload");
-      setRestored(true);
-      return;
-    }
-
-    let cancelled = false;
-    void (async () => {
-      if (snapshot.imageDataUrl && snapshot.fileName && snapshot.fileType) {
-        const file = await dataUrlToFile(snapshot.imageDataUrl, snapshot.fileName, snapshot.fileType);
-        if (cancelled) return;
-        setSourceFilename(snapshot.fileName || "");
-        setOriginalFile(file);
-        setOriginalUrl(snapshot.imageDataUrl);
-      }
-      if (snapshot.preparedImageDataUrl && snapshot.fileName && snapshot.fileType) {
-        const file = await dataUrlToFile(snapshot.preparedImageDataUrl, snapshot.fileName, snapshot.fileType);
-        if (cancelled) return;
-        setPreparedPreviewFile(file);
-        setPreparedPreviewUrl(snapshot.preparedImageDataUrl);
-      }
-      if (cancelled) return;
-      const restoredStep =
-        snapshot.step === "entry"
-          ? "upload"
-          : snapshot.step === "result"
-            ? "preview"
-            : snapshot.step === "prepare"
-              ? "preview"
-              : (snapshot.step as OcrFlowStep) || "upload";
-      setStep(requestedStep || restoredStep);
-      setStatus(snapshot.status || "");
-      setDocumentHash(snapshot.documentHash || null);
-      setSavedId(snapshot.savedId ?? null);
-      setSelectedModel(toModelOption(snapshot.selectedModel));
-      setShowLowConfidence(snapshot.showLowConfidence ?? true);
-      setHeaderRowEnabled(snapshot.headerRowEnabled ?? false);
-      if (snapshot.title || snapshot.headers?.length || snapshot.rows?.length) {
-        const headers = snapshot.headers || defaultHeaders((snapshot.rows?.[0] || []).length || 1);
-        const rows = snapshot.rows || [];
-        const nextTypes = snapshot.columnTypes || inferColumnTypes(rows, headers.length);
-        setResultPreview({
-          type: snapshot.resultType || "table",
-          title: snapshot.title || "OCR Extraction",
-          headers,
-          rows,
-          rawText: snapshot.rawText ?? null,
-          language: snapshot.language || "auto",
-          avgConfidence: snapshot.confidence ?? null,
-          warnings: snapshot.warnings || [],
-          scanQuality: snapshot.scanQuality ?? null,
-          routingMeta: snapshot.routingMeta ?? null,
-          routingLabel: snapshot.routingMeta?.model_tier ?? null,
-          tokenUsage: snapshot.tokenUsage ?? snapshot.routingMeta?.usage ?? null,
-          debug: snapshot.debug ?? buildDebugPayloadFromRouting(snapshot.routingMeta, snapshot.tokenUsage ?? snapshot.routingMeta?.usage ?? null),
-        });
-        resetHistory({
-          headers,
-          rows,
-          columnTypes: nextTypes,
-          headerRowEnabled: snapshot.headerRowEnabled ?? false,
-        });
-      }
-      setRestored(true);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
+    setStep(requestedStep || "upload");
+    setRestored(true);
   }, [openRecentRecord, requestedStep, requestedVerificationId, resetHistory, restored]);
-
-  useEffect(() => {
-    if (!restored) return;
-    let cancelled = false;
-    void (async () => {
-      const imageDataUrl = await fileToDataUrl(originalFile);
-      const preparedImageDataUrl = await fileToDataUrl(preparedPreviewFile);
-      if (cancelled) return;
-      saveOcrUiState({
-        step,
-        fileName: sourceFilename || originalFile?.name,
-        fileType: originalFile?.type,
-        imageDataUrl,
-        preparedImageDataUrl,
-        headers: editableHeaders,
-        rows: editableRows,
-        columnTypes,
-        title: resultPreview?.title,
-        resultType: resultPreview?.type,
-        rawText: resultPreview?.rawText ?? null,
-        language: resultPreview?.language ?? "auto",
-        confidence: resultPreview?.avgConfidence ?? null,
-        warnings: resultPreview?.warnings ?? [],
-        scanQuality: resultPreview?.scanQuality ?? null,
-        routingMeta: resultPreview?.routingMeta ?? null,
-        tokenUsage: resultPreview?.tokenUsage ?? null,
-        debug: resultPreview?.debug ?? null,
-        documentHash,
-        savedId,
-        status,
-        selectedModel,
-        showLowConfidence,
-        headerRowEnabled,
-      });
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    columnTypes,
-    documentHash,
-    editableHeaders,
-    editableRows,
-    headerRowEnabled,
-    originalFile,
-    preparedPreviewFile,
-    restored,
-    resultPreview?.avgConfidence,
-    resultPreview?.debug,
-    resultPreview?.language,
-    resultPreview?.rawText,
-    resultPreview?.routingMeta,
-    resultPreview?.scanQuality,
-    resultPreview?.tokenUsage,
-    resultPreview?.title,
-    resultPreview?.type,
-    resultPreview?.warnings,
-    savedId,
-    selectedModel,
-    showLowConfidence,
-    sourceFilename,
-    status,
-    step,
-  ]);
 
   useEffect(() => {
     if (!restored) return;
@@ -999,8 +873,37 @@ export default function OcrScanPage() {
     setShareExpiresAt(null);
     historyRef.current = [];
     historyIndexRef.current = -1;
-    clearOcrUiState();
   }, []);
+
+  const persistDraftMutation = useMutation<
+    OcrVerificationRecord,
+    Error,
+    {
+      verificationId: number | null;
+      payload: Omit<Parameters<typeof updateOcrVerification>[1], never>;
+      file: File | null;
+    }
+  >({
+    mutationFn: async ({ verificationId, payload, file }) => {
+      if (verificationId) {
+        return updateOcrVerification(verificationId, payload);
+      }
+      return createOcrVerification({
+        ...payload,
+        file,
+      });
+    },
+    onSuccess: async (record) => {
+      setSavedId(record.id);
+      setDraftDirty(false);
+      setDraftSaveError("");
+      await queryClient.invalidateQueries({ queryKey: queryKeys.ocrVerify.detail(record.id) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.ocrVerify.queueRoot() });
+    },
+    onError: (error) => {
+      setDraftSaveError(formatApiErrorMessage(error, "Could not autosave this OCR draft."));
+    },
+  });
 
   const persistStructuredDraft = useCallback(async () => {
     if (!resultPreview) {
@@ -1026,15 +929,13 @@ export default function OcrScanPage() {
     };
 
     setSavingDraft(true);
+    setDraftSaveError("");
     try {
-      const record = savedId
-        ? await updateOcrVerification(savedId, payload)
-        : await createOcrVerification({
-          ...payload,
-          file: finalUploadFile || preparedPreviewFile || originalFile,
-        });
-      setSavedId(record.id);
-      setDraftDirty(false);
+      const record = await persistDraftMutation.mutateAsync({
+        verificationId: savedId,
+        payload,
+        file: finalUploadFile || preparedPreviewFile || originalFile,
+      });
       return record;
     } finally {
       setSavingDraft(false);
@@ -1046,6 +947,7 @@ export default function OcrScanPage() {
     finalUploadFile,
     originalFile,
     preparedPreviewFile,
+    persistDraftMutation,
     resultPreview,
     savedId,
     sourceFilename,
@@ -1068,7 +970,7 @@ export default function OcrScanPage() {
             tone: "error",
           });
         });
-    }, 900);
+    }, 800);
     return () => window.clearTimeout(timer);
   }, [draftDirty, persistStructuredDraft, resultPreview]);
 
@@ -1709,6 +1611,11 @@ export default function OcrScanPage() {
                   </button>
                 ) : null}
               </div>
+            </div>
+          ) : null}
+          {draftSaveError ? (
+            <div className="rounded-[22px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              Autosave issue: {draftSaveError}
             </div>
           ) : null}
 
