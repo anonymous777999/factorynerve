@@ -24,7 +24,23 @@ type DispatchRow = {
 
 const columnHelper = createDataTableColumnHelper<DispatchRow>();
 
-const columns: DataTableColumnDef<DispatchRow, unknown>[] = [
+function getDispatchStatus(index: number): DispatchRow["status"] {
+  if (index % 5 === 0) {
+    return "warning";
+  }
+
+  if (index % 7 === 0) {
+    return "paused";
+  }
+
+  if (index % 3 === 0) {
+    return "processing";
+  }
+
+  return "success";
+}
+
+const columns = [
   columnHelper.accessor("id", {
     header: "Dispatch ID",
     cell: (info) => info.getValue(),
@@ -88,22 +104,15 @@ const columns: DataTableColumnDef<DispatchRow, unknown>[] = [
       sortable: true,
     },
   }),
-];
+] as DataTableColumnDef<DispatchRow>[];
 
-const rows = Array.from({ length: 240 }, (_, index) => ({
+const rows: DispatchRow[] = Array.from({ length: 240 }, (_, index) => ({
   id: `DSP-${String(index + 1).padStart(4, "0")}`,
   isEditing: false,
   vehicle: `MH12-${3000 + index}`,
   supplier: index % 2 === 0 ? "Shree Steel Traders" : "Apex Inbound Logistics",
   quantityKg: 1200 + index * 17,
-  status:
-    index % 5 === 0
-      ? "warning"
-      : index % 7 === 0
-        ? "paused"
-        : index % 3 === 0
-          ? "processing"
-          : "success",
+  status: getDispatchStatus(index),
 }));
 
 const rowStateRows: DispatchRow[] = [

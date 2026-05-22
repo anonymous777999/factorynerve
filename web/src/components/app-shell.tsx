@@ -13,6 +13,7 @@ import {
   getVisibleNavSections,
 } from "@/components/app-sidebar";
 import { Badge } from "@/components/ui/badge";
+import type { BadgeStatus } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   CommandPalette,
@@ -67,21 +68,30 @@ function AppShellFrame({
     shell.user?.factory_name ||
     shell.t("common.not_selected", "Factory not selected");
   const commandItems = React.useMemo<CommandPaletteItem[]>(() => {
-    const navigationItems = shell.visibleNavItems.map((item) => ({
-      id: `nav-${item.href}`,
-      group: "Navigation",
-      label: item.label,
-      description: item.description,
-      keywords: [item.href],
-      shortcut: item.match(pathname) ? "Active" : undefined,
-      status: item.match(pathname) ? "processing" : undefined,
-      meta: item.match(pathname) ? "Current workspace" : undefined,
-      onSelect: () => {
-        shell.warmRoute(item.href);
-        router.push(item.href);
-        shell.handleNavNavigate();
+    const navigationItems = shell.visibleNavItems.map(
+      (item): CommandPaletteItem => {
+        const isCurrentItem = item.match(pathname);
+        const status: BadgeStatus | undefined = isCurrentItem
+          ? "processing"
+          : undefined;
+
+        return {
+          id: `nav-${item.href}`,
+          group: "Navigation",
+          label: item.label,
+          description: item.description,
+          keywords: [item.href],
+          shortcut: isCurrentItem ? "Active" : undefined,
+          status,
+          meta: isCurrentItem ? "Current workspace" : undefined,
+          onSelect: () => {
+            shell.warmRoute(item.href);
+            router.push(item.href);
+            shell.handleNavNavigate();
+          },
+        };
       },
-    }));
+    );
 
     const quickActions: CommandPaletteItem[] = [
       {

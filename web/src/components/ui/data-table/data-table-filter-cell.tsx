@@ -12,7 +12,8 @@ export function DataTableFilterCell<TData>({
 }: DataTableFilterCellProps<TData>) {
   const meta = column.columnDef.meta;
   const filterVariant = meta?.filterVariant ?? (meta?.filterOptions ? "select" : "text");
-  const filterValue = typeof column.getFilterValue() === "string" ? column.getFilterValue() : "";
+  const rawFilterValue = column.getFilterValue();
+  const filterValue = typeof rawFilterValue === "string" ? rawFilterValue : "";
   const label = typeof column.columnDef.header === "string" ? column.columnDef.header : column.id;
 
   if (filterVariant === "select") {

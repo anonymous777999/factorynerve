@@ -1,5 +1,9 @@
 import type { ButtonProps } from "@/components/ui/button";
-import type { ColumnFiltersState, SortingState } from "@tanstack/react-table";
+import type {
+  ColumnFiltersState,
+  RowData,
+  SortingState,
+} from "@tanstack/react-table";
 import { createColumnHelper, type ColumnDef } from "@tanstack/react-table";
 
 export type DataTableAlignment = "left" | "center" | "right";
@@ -43,8 +47,14 @@ export type DataTableQueryState = {
   sorting: SortingState;
 };
 
-export type DataTableColumnDef<TData, TValue = unknown> = ColumnDef<TData, TValue> & {
-  meta?: DataTableCellMeta;
-};
+// TanStack exposes column meta through declaration merging, so this interface is
+// intentionally empty aside from the inherited DPR data-table metadata contract.
+/* eslint-disable @typescript-eslint/no-empty-object-type, @typescript-eslint/no-unused-vars */
+declare module "@tanstack/react-table" {
+  interface ColumnMeta<TData extends RowData, TValue> extends DataTableCellMeta {}
+}
+/* eslint-enable @typescript-eslint/no-empty-object-type, @typescript-eslint/no-unused-vars */
+
+export type DataTableColumnDef<TData, TValue = unknown> = ColumnDef<TData, TValue>;
 
 export const createDataTableColumnHelper = createColumnHelper;
