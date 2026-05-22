@@ -1,0 +1,739 @@
+/* ==========================================================================
+   DPR.ai — Design Token Foundation System
+   Layer: CSS Custom Properties (Source of Truth)
+
+   Architecture:
+     1. Primitive Palette      — raw HSL values, never used directly in components
+     2. Semantic Tokens        — meaning-mapped references to primitives
+     3. Density System         — spacing/sizing multipliers per density mode
+     4. Typography Scale       — operational type hierarchy
+     5. Surface Hierarchy      — background layering system
+     6. Status Token System    — operational state colors
+     7. Elevation System       — shadow/depth hierarchy
+     8. Z-Index System         — layering contract
+     9. Motion Tokens          — state-transition only (≤150ms)
+    10. Focus + Interaction    — keyboard/a11y tokens
+
+   Usage contract:
+     - Components MUST reference semantic tokens only.
+     - Primitive palette is NEVER referenced directly in components.
+     - All spacing uses --space-* tokens.
+     - All color uses --color-* or --status-* or --surface-* tokens.
+     - Dark mode and density overrides are applied via [data-*] attributes on <html>.
+   ========================================================================== */
+
+
+/* --------------------------------------------------------------------------
+   1. PRIMITIVE PALETTE
+   Raw HSL values. Closed to direct component usage.
+   Components must use semantic tokens defined in section 2+.
+   -------------------------------------------------------------------------- */
+
+:root {
+  /* Neutrals */
+  --_prim-neutral-0:    0 0% 100%;       /* pure white */
+  --_prim-neutral-50:   210 20% 98%;     /* off-white shell bg */
+  --_prim-neutral-100:  210 16% 95%;     /* subtle surface */
+  --_prim-neutral-150:  210 14% 91%;     /* divider-level surface */
+  --_prim-neutral-200:  210 12% 86%;     /* border / rule */
+  --_prim-neutral-300:  210 10% 74%;     /* muted border */
+  --_prim-neutral-400:  210 9%  60%;     /* placeholder text */
+  --_prim-neutral-500:  210 8%  46%;     /* secondary text */
+  --_prim-neutral-600:  210 10% 34%;     /* tertiary heading */
+  --_prim-neutral-700:  213 14% 22%;     /* primary text */
+  --_prim-neutral-800:  215 18% 14%;     /* strong headings */
+  --_prim-neutral-900:  218 24% 8%;      /* near black */
+  --_prim-neutral-950:  220 30% 5%;      /* true dark bg */
+
+  /* Brand Blue — operational, not decorative */
+  --_prim-blue-50:      213 90% 96%;
+  --_prim-blue-100:     213 85% 90%;
+  --_prim-blue-200:     213 80% 80%;
+  --_prim-blue-300:     213 75% 68%;
+  --_prim-blue-400:     213 70% 55%;
+  --_prim-blue-500:     213 78% 44%;     /* primary action */
+  --_prim-blue-600:     213 82% 36%;     /* pressed/active action */
+  --_prim-blue-700:     213 84% 28%;
+  --_prim-blue-800:     213 86% 20%;
+  --_prim-blue-900:     213 88% 14%;
+
+  /* Status: Success — Green (operational complete/healthy) */
+  --_prim-green-50:     142 70% 95%;
+  --_prim-green-100:    142 65% 88%;
+  --_prim-green-200:    142 60% 75%;
+  --_prim-green-400:    142 55% 46%;
+  --_prim-green-500:    142 60% 36%;     /* status success */
+  --_prim-green-700:    142 62% 24%;
+  --_prim-green-900:    142 64% 14%;
+
+  /* Status: Warning — Amber (caution, degraded, attention) */
+  --_prim-amber-50:     38 95% 95%;
+  --_prim-amber-100:    38 90% 88%;
+  --_prim-amber-200:    38 88% 76%;
+  --_prim-amber-400:    38 85% 52%;
+  --_prim-amber-500:    38 88% 44%;      /* status warning */
+  --_prim-amber-700:    38 88% 30%;
+  --_prim-amber-900:    38 90% 18%;
+
+  /* Status: Danger — Red (error, fault, critical stop) */
+  --_prim-red-50:       4 86% 96%;
+  --_prim-red-100:      4 82% 90%;
+  --_prim-red-200:      4 78% 78%;
+  --_prim-red-400:      4 72% 54%;
+  --_prim-red-500:      4 76% 44%;       /* status danger */
+  --_prim-red-700:      4 78% 30%;
+  --_prim-red-900:      4 80% 18%;
+
+  /* Status: Processing — Indigo (AI/async in-progress) */
+  --_prim-indigo-50:    240 80% 97%;
+  --_prim-indigo-100:   240 76% 92%;
+  --_prim-indigo-200:   240 70% 82%;
+  --_prim-indigo-400:   240 64% 62%;
+  --_prim-indigo-500:   240 68% 52%;     /* status processing */
+  --_prim-indigo-700:   240 72% 36%;
+  --_prim-indigo-900:   240 76% 22%;
+
+  /* Status: Paused — Slate (hold, awaiting, queued) */
+  --_prim-slate-50:     220 30% 96%;
+  --_prim-slate-100:    220 26% 90%;
+  --_prim-slate-400:    220 14% 56%;
+  --_prim-slate-500:    220 16% 44%;     /* status paused */
+  --_prim-slate-700:    220 20% 30%;
+  --_prim-slate-900:    220 24% 16%;
+
+  /* Status: Draft — Warm Gray (incomplete, pending) */
+  --_prim-warmgray-50:  30 16% 96%;
+  --_prim-warmgray-100: 30 14% 90%;
+  --_prim-warmgray-400: 30 8%  56%;
+  --_prim-warmgray-500: 30 9%  44%;      /* status draft */
+  --_prim-warmgray-700: 30 10% 28%;
+}
+
+
+/* --------------------------------------------------------------------------
+   2. SEMANTIC TOKENS — Light Mode (default)
+   Semantic naming: what the token MEANS, not what it looks like.
+   All component styling must reference these.
+   -------------------------------------------------------------------------- */
+
+:root,
+[data-theme="light"] {
+
+  /* --- Text Hierarchy --- */
+  --text-primary:           hsl(var(--_prim-neutral-800));  /* headings, labels, key data */
+  --text-secondary:         hsl(var(--_prim-neutral-600));  /* supporting text, descriptions */
+  --text-tertiary:          hsl(var(--_prim-neutral-500));  /* placeholders, hints, metadata */
+  --text-disabled:          hsl(var(--_prim-neutral-400));  /* disabled fields */
+  --text-inverse:           hsl(var(--_prim-neutral-0));    /* text on dark/colored surfaces */
+  --text-link:              hsl(var(--_prim-blue-500));
+  --text-link-hover:        hsl(var(--_prim-blue-600));
+  --text-danger:            hsl(var(--_prim-red-700));
+  --text-success:           hsl(var(--_prim-green-700));
+  --text-warning:           hsl(var(--_prim-amber-700));
+
+  /* --- Surface Hierarchy ---
+     Rule: each level must be visually distinguishable from its neighbors.
+     app-bg < shell < panel < card < elevated < overlay */
+  --surface-app:            hsl(var(--_prim-neutral-50));   /* outermost page background */
+  --surface-shell:          hsl(var(--_prim-neutral-100));  /* sidebar, header, nav shells */
+  --surface-panel:          hsl(var(--_prim-neutral-0));    /* main content panels */
+  --surface-card:           hsl(var(--_prim-neutral-0));    /* data cards, table rows */
+  --surface-elevated:       hsl(var(--_prim-neutral-0));    /* dropdowns, popovers */
+  --surface-overlay:        hsl(var(--_prim-neutral-0));    /* modals, drawers */
+  --surface-hover:          hsl(var(--_prim-neutral-100));  /* row/item hover */
+  --surface-active:         hsl(var(--_prim-neutral-150));  /* pressed / selected */
+  --surface-selected:       hsl(213 90% 96%);               /* selected row (blue tint) */
+  --surface-skeleton:       hsl(var(--_prim-neutral-150));  /* loading skeletons */
+  --surface-skeleton-shine: hsl(var(--_prim-neutral-100));  /* skeleton animation highlight */
+
+  /* --- Border System --- */
+  --border-subtle:          hsl(var(--_prim-neutral-150));  /* table row dividers, card inner */
+  --border-default:         hsl(var(--_prim-neutral-200));  /* inputs, cards, panels */
+  --border-strong:          hsl(var(--_prim-neutral-300));  /* emphasized containers */
+  --border-focus:           hsl(var(--_prim-blue-400));     /* keyboard focus rings */
+  --border-danger:          hsl(var(--_prim-red-400));      /* error state inputs */
+  --border-success:         hsl(var(--_prim-green-400));    /* valid/synced inputs */
+
+  /* --- Action / Interactive --- */
+  --action-primary:         hsl(var(--_prim-blue-500));
+  --action-primary-hover:   hsl(var(--_prim-blue-600));
+  --action-primary-active:  hsl(var(--_prim-blue-700));
+  --action-primary-text:    hsl(var(--_prim-neutral-0));
+  --action-secondary:       hsl(var(--_prim-neutral-0));
+  --action-secondary-hover: hsl(var(--_prim-neutral-100));
+  --action-secondary-border:hsl(var(--_prim-neutral-300));
+  --action-secondary-text:  hsl(var(--_prim-neutral-700));
+  --action-ghost-hover:     hsl(var(--_prim-neutral-100));
+  --action-destructive:     hsl(var(--_prim-red-500));
+  --action-destructive-hover:hsl(var(--_prim-red-700));
+  --action-disabled:        hsl(var(--_prim-neutral-200));
+  --action-disabled-text:   hsl(var(--_prim-neutral-400));
+
+  /* --- Focus Ring --- */
+  --focus-ring:             0 0 0 2px hsl(var(--_prim-blue-400) / 0.6);
+  --focus-ring-danger:      0 0 0 2px hsl(var(--_prim-red-400) / 0.5);
+  --focus-ring-offset:      2px;
+
+  /* --- Workflow Tokens --- */
+  --workflow-active:        hsl(var(--_prim-blue-500));
+  --workflow-active-bg:     hsl(var(--_prim-blue-50));
+  --workflow-complete:      hsl(var(--_prim-green-500));
+  --workflow-complete-bg:   hsl(var(--_prim-green-50));
+  --workflow-blocked:       hsl(var(--_prim-red-500));
+  --workflow-blocked-bg:    hsl(var(--_prim-red-50));
+  --workflow-pending:       hsl(var(--_prim-slate-500));
+  --workflow-pending-bg:    hsl(var(--_prim-slate-50));
+  --workflow-ai-processing: hsl(var(--_prim-indigo-500));
+  --workflow-ai-bg:         hsl(var(--_prim-indigo-50));
+}
+
+
+/* --------------------------------------------------------------------------
+   3. STATUS TOKEN SYSTEM
+   Covers all operational states in DPR.ai workflows.
+   Each status has: foreground, background, border tokens.
+   -------------------------------------------------------------------------- */
+
+:root,
+[data-theme="light"] {
+
+  /* SUCCESS — task complete, sync confirmed, OCR verified */
+  --status-success-fg:        hsl(var(--_prim-green-700));
+  --status-success-bg:        hsl(var(--_prim-green-50));
+  --status-success-border:    hsl(var(--_prim-green-200));
+  --status-success-icon:      hsl(var(--_prim-green-500));
+
+  /* WARNING — degraded, partial, attention needed */
+  --status-warning-fg:        hsl(var(--_prim-amber-700));
+  --status-warning-bg:        hsl(var(--_prim-amber-50));
+  --status-warning-border:    hsl(var(--_prim-amber-200));
+  --status-warning-icon:      hsl(var(--_prim-amber-500));
+
+  /* DANGER — error, fault, failed, critical */
+  --status-danger-fg:         hsl(var(--_prim-red-700));
+  --status-danger-bg:         hsl(var(--_prim-red-50));
+  --status-danger-border:     hsl(var(--_prim-red-200));
+  --status-danger-icon:       hsl(var(--_prim-red-500));
+
+  /* PROCESSING — AI in-progress, async task running, OCR scanning */
+  --status-processing-fg:     hsl(var(--_prim-indigo-700));
+  --status-processing-bg:     hsl(var(--_prim-indigo-50));
+  --status-processing-border: hsl(var(--_prim-indigo-200));
+  --status-processing-icon:   hsl(var(--_prim-indigo-500));
+
+  /* PAUSED — workflow on hold, awaiting input, queued */
+  --status-paused-fg:         hsl(var(--_prim-slate-700));
+  --status-paused-bg:         hsl(var(--_prim-slate-50));
+  --status-paused-border:     hsl(var(--_prim-slate-100));
+  --status-paused-icon:       hsl(var(--_prim-slate-500));
+
+  /* INACTIVE — disabled, archived, turned off */
+  --status-inactive-fg:       hsl(var(--_prim-neutral-500));
+  --status-inactive-bg:       hsl(var(--_prim-neutral-100));
+  --status-inactive-border:   hsl(var(--_prim-neutral-200));
+  --status-inactive-icon:     hsl(var(--_prim-neutral-400));
+
+  /* DRAFT — created but not submitted, incomplete */
+  --status-draft-fg:          hsl(var(--_prim-warmgray-700));
+  --status-draft-bg:          hsl(var(--_prim-warmgray-50));
+  --status-draft-border:      hsl(var(--_prim-warmgray-100));
+  --status-draft-icon:        hsl(var(--_prim-warmgray-500));
+
+  /* SYNCED — data confirmed synced with source of record */
+  --status-synced-fg:         hsl(var(--_prim-green-700));
+  --status-synced-bg:         hsl(var(--_prim-green-50));
+  --status-synced-border:     hsl(var(--_prim-green-200));
+  --status-synced-icon:       hsl(var(--_prim-green-500));
+
+  /* INFO — neutral informational, not an alert */
+  --status-info-fg:           hsl(var(--_prim-blue-700));
+  --status-info-bg:           hsl(var(--_prim-blue-50));
+  --status-info-border:       hsl(var(--_prim-blue-200));
+  --status-info-icon:         hsl(var(--_prim-blue-500));
+}
+
+
+/* --------------------------------------------------------------------------
+   4. ELEVATION / SHADOW SYSTEM
+   Industrial software: use elevation to signal layer, not decoration.
+   Shadows are functional — they signal detachment from context.
+   -------------------------------------------------------------------------- */
+
+:root {
+  /* No shadow — flat, grounded to surface */
+  --shadow-none:    none;
+
+  /* Inset — for pressed states, sunken inputs */
+  --shadow-inset:   inset 0 1px 2px 0 hsl(var(--_prim-neutral-900) / 0.06);
+
+  /* XS — subtle card lift, table header sticky boundary */
+  --shadow-xs:      0 1px 2px 0 hsl(var(--_prim-neutral-900) / 0.05);
+
+  /* SM — panels, sidebar separators */
+  --shadow-sm:      0 1px 3px 0 hsl(var(--_prim-neutral-900) / 0.08),
+                    0 1px 2px -1px hsl(var(--_prim-neutral-900) / 0.06);
+
+  /* MD — dropdowns, command palette, floating toolbars */
+  --shadow-md:      0 4px 6px -1px hsl(var(--_prim-neutral-900) / 0.08),
+                    0 2px 4px -2px hsl(var(--_prim-neutral-900) / 0.06);
+
+  /* LG — modals, operational drawers */
+  --shadow-lg:      0 10px 15px -3px hsl(var(--_prim-neutral-900) / 0.08),
+                    0 4px 6px -4px hsl(var(--_prim-neutral-900) / 0.05);
+
+  /* XL — full-screen overlays, command bar */
+  --shadow-xl:      0 20px 25px -5px hsl(var(--_prim-neutral-900) / 0.10),
+                    0 8px 10px -6px hsl(var(--_prim-neutral-900) / 0.06);
+}
+
+
+/* --------------------------------------------------------------------------
+   5. Z-INDEX LAYERING SYSTEM
+   Named layers as a contract. Never use raw z-index integers in components.
+   -------------------------------------------------------------------------- */
+
+:root {
+  --z-base:           0;      /* default document flow */
+  --z-raised:         10;     /* sticky table headers, floating labels */
+  --z-sticky:         20;     /* sticky sidebars, filter bars */
+  --z-overlay-bg:     30;     /* drawer/modal scrim */
+  --z-overlay:        40;     /* drawers, side panels */
+  --z-modal:          50;     /* modals, confirmation dialogs */
+  --z-command:        60;     /* command bar (always above modals) */
+  --z-toast:          70;     /* toast notifications */
+  --z-tooltip:        80;     /* tooltips (above everything except dev tools) */
+}
+
+
+/* --------------------------------------------------------------------------
+   6. SPACING SCALE
+   Base unit: 4px. Scale is multiplicative.
+   Density modifier vars are defined in section 8.
+
+   Usage: var(--space-md) → 16px at default density
+          At compact density, multiplied by --density-scale (0.75)
+   -------------------------------------------------------------------------- */
+
+:root {
+  --space-px:    1px;
+  --space-0:     0px;
+  --space-0-5:   2px;
+  --space-1:     4px;
+  --space-1-5:   6px;
+  --space-2:     8px;
+  --space-2-5:   10px;
+  --space-3:     12px;
+  --space-3-5:   14px;
+  --space-4:     16px;
+  --space-5:     20px;
+  --space-6:     24px;
+  --space-7:     28px;
+  --space-8:     32px;
+  --space-9:     36px;
+  --space-10:    40px;
+  --space-12:    48px;
+  --space-14:    56px;
+  --space-16:    64px;
+  --space-20:    80px;
+  --space-24:    96px;
+
+  /* Semantic spacing aliases — use these in components */
+  --space-xs:    var(--space-1);     /* 4px  — icon gaps, tight badge padding */
+  --space-sm:    var(--space-2);     /* 8px  — inline gaps, compact cell padding */
+  --space-md:    var(--space-4);     /* 16px — standard element padding */
+  --space-lg:    var(--space-6);     /* 24px — section gaps, card padding */
+  --space-xl:    var(--space-10);    /* 40px — layout section separation */
+  --space-2xl:   var(--space-16);   /* 64px — page-level padding */
+}
+
+
+/* --------------------------------------------------------------------------
+   7. TYPOGRAPHY SCALE
+   Designed for operational readability at high data density.
+   Base: 14px (operational default — not 16px consumer default).
+   Font stack prioritizes system monospace for numerics.
+   -------------------------------------------------------------------------- */
+
+:root {
+  /* Font families */
+  --font-sans:        "Inter", "DM Sans", system-ui, -apple-system, sans-serif;
+  --font-mono:        "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+  --font-numeric:     "Tabular", "Inter", system-ui, sans-serif; /* tabular-nums */
+
+  /* Type scale — operational (not consumer) sizing */
+  --text-2xs:     10px;   /* micro labels, badge text, count indicators */
+  --text-xs:      11px;   /* table metadata, timestamps, secondary badges */
+  --text-sm:      12px;   /* secondary labels, helper text, captions */
+  --text-base:    13px;   /* operational default body / table cell text */
+  --text-md:      14px;   /* primary body, form labels */
+  --text-lg:      16px;   /* panel headings, workflow titles */
+  --text-xl:      18px;   /* page/section titles */
+  --text-2xl:     22px;   /* modal titles, major headings */
+  --text-3xl:     28px;   /* KPI numbers, dashboard metrics */
+
+  /* Line heights — optimized per use case */
+  --leading-none:     1;
+  --leading-tight:    1.2;   /* headings */
+  --leading-snug:     1.35;  /* dense table rows */
+  --leading-normal:   1.5;   /* body text */
+  --leading-relaxed:  1.65;  /* descriptions, help text */
+
+  /* Font weights */
+  --weight-regular:   400;
+  --weight-medium:    500;
+  --weight-semibold:  600;
+
+  /* Letter spacing */
+  --tracking-tight:   -0.02em;  /* large headings */
+  --tracking-normal:   0;
+  --tracking-wide:     0.03em;  /* table headers, uppercase labels */
+  --tracking-wider:    0.06em;  /* ALL CAPS micro labels */
+
+  /* Numeric rendering */
+  --numeric-tabular:  "tnum";   /* use font-variant-numeric: tabular-nums */
+
+  /* Semantic typography tokens — use these in components */
+  --type-table-cell:  var(--text-base);      /* 13px, normal weight */
+  --type-table-header: var(--text-sm);       /* 12px, semibold, wide tracking */
+  --type-label:       var(--text-sm);        /* 12px, medium */
+  --type-label-dense: var(--text-xs);        /* 11px, medium */
+  --type-body:        var(--text-md);        /* 14px */
+  --type-panel-title: var(--text-lg);        /* 16px, semibold */
+  --type-page-title:  var(--text-xl);        /* 18px, semibold */
+  --type-numeric-lg:  var(--text-3xl);       /* 28px, tabular */
+  --type-numeric-md:  var(--text-xl);        /* 18px, tabular */
+  --type-numeric-sm:  var(--text-md);        /* 14px, tabular, mono */
+  --type-status:      var(--text-xs);        /* 11px, semibold, wide */
+  --type-code:        var(--text-sm);        /* 12px, mono */
+  --type-timestamp:   var(--text-xs);        /* 11px, mono, tabular */
+}
+
+
+/* --------------------------------------------------------------------------
+   8. DENSITY SYSTEM
+   Three operational density modes controlled via [data-density] on <html>.
+   Components read density tokens — never hardcode pixel values.
+
+   Density affects: row height, cell padding, font size, icon size, gap.
+   Density does NOT affect: heading hierarchy, brand colors, layout zones.
+   -------------------------------------------------------------------------- */
+
+/* Default / Operational — standard factory floor terminal density */
+:root,
+[data-density="default"] {
+  --density-row-height:       36px;
+  --density-row-height-lg:    44px;   /* expanded rows, multi-line */
+  --density-cell-pad-x:       var(--space-3);   /* 12px */
+  --density-cell-pad-y:       var(--space-2);   /* 8px */
+  --density-gap:              var(--space-2);   /* 8px */
+  --density-icon-size:        16px;
+  --density-badge-pad-x:      var(--space-2);   /* 8px */
+  --density-badge-pad-y:      var(--space-0-5); /* 2px */
+  --density-input-height:     34px;
+  --density-btn-height:       34px;
+  --density-section-gap:      var(--space-5);   /* 20px */
+  --density-font-table:       var(--text-base); /* 13px */
+  --density-font-label:       var(--text-sm);   /* 12px */
+  --density-scale:            1;
+}
+
+/* Compact — maximum data density, power users, large tables */
+[data-density="compact"] {
+  --density-row-height:       28px;
+  --density-row-height-lg:    36px;
+  --density-cell-pad-x:       var(--space-2);   /* 8px */
+  --density-cell-pad-y:       var(--space-1);   /* 4px */
+  --density-gap:              var(--space-1);   /* 4px */
+  --density-icon-size:        14px;
+  --density-badge-pad-x:      var(--space-1-5); /* 6px */
+  --density-badge-pad-y:      var(--space-px);  /* 1px */
+  --density-input-height:     28px;
+  --density-btn-height:       28px;
+  --density-section-gap:      var(--space-3);   /* 12px */
+  --density-font-table:       var(--text-sm);   /* 12px */
+  --density-font-label:       var(--text-xs);   /* 11px */
+  --density-scale:            0.75;
+}
+
+/* Comfortable — review mode, dashboard KPIs, presentation contexts */
+[data-density="comfortable"] {
+  --density-row-height:       48px;
+  --density-row-height-lg:    60px;
+  --density-cell-pad-x:       var(--space-4);   /* 16px */
+  --density-cell-pad-y:       var(--space-3);   /* 12px */
+  --density-gap:              var(--space-3);   /* 12px */
+  --density-icon-size:        18px;
+  --density-badge-pad-x:      var(--space-3);   /* 12px */
+  --density-badge-pad-y:      var(--space-1);   /* 4px */
+  --density-input-height:     40px;
+  --density-btn-height:       40px;
+  --density-section-gap:      var(--space-6);   /* 24px */
+  --density-font-table:       var(--text-md);   /* 14px */
+  --density-font-label:       var(--text-sm);   /* 12px */
+  --density-scale:            1.25;
+}
+
+
+/* --------------------------------------------------------------------------
+   9. BORDER RADIUS SYSTEM
+   Operational UX: restrained rounding. Not rounded startup aesthetics.
+   -------------------------------------------------------------------------- */
+
+:root {
+  --radius-none:    0px;
+  --radius-xs:      2px;   /* tight: badge, table cell chip */
+  --radius-sm:      4px;   /* inputs, buttons, small cards */
+  --radius-md:      6px;   /* panels, modals, drawers */
+  --radius-lg:      8px;   /* cards, popovers, dropdowns */
+  --radius-xl:      12px;  /* large overlays */
+  --radius-full:    9999px; /* pills, avatars, toggles */
+}
+
+
+/* --------------------------------------------------------------------------
+  10. MOTION TOKENS
+   ERP/operational: motion is functional, never decorative.
+   Rule: transitions ≤150ms. No spring physics. No page transitions.
+   Motion is ONLY for: state changes, loading indicators, focus shifts.
+   -------------------------------------------------------------------------- */
+
+:root {
+  --motion-instant:   0ms;      /* immediate state, no transition */
+  --motion-fast:      80ms;     /* hover bg, focus ring */
+  --motion-base:      120ms;    /* button press, badge swap */
+  --motion-moderate:  150ms;    /* panel expand/collapse (max allowed) */
+  --motion-reduced:   0ms;      /* respects prefers-reduced-motion */
+
+  --ease-standard:    cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate:  cubic-bezier(0, 0, 0.2, 1);
+  --ease-accelerate:  cubic-bezier(0.4, 0, 1, 1);
+}
+
+/* Respect prefers-reduced-motion — always */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-fast:    var(--motion-reduced);
+    --motion-base:    var(--motion-reduced);
+    --motion-moderate:var(--motion-reduced);
+  }
+}
+
+
+/* --------------------------------------------------------------------------
+  11. DARK MODE — Semantic Token Overrides
+   Dark mode swaps semantic tokens only. Primitive palette stays unchanged.
+   Rule: every semantic token defined in section 2 MUST have a dark override here.
+   -------------------------------------------------------------------------- */
+
+[data-theme="dark"] {
+
+  /* Text */
+  --text-primary:           hsl(var(--_prim-neutral-100));
+  --text-secondary:         hsl(var(--_prim-neutral-300));
+  --text-tertiary:          hsl(var(--_prim-neutral-400));
+  --text-disabled:          hsl(var(--_prim-neutral-600));
+  --text-inverse:           hsl(var(--_prim-neutral-900));
+  --text-link:              hsl(var(--_prim-blue-300));
+  --text-link-hover:        hsl(var(--_prim-blue-200));
+  --text-danger:            hsl(var(--_prim-red-200));
+  --text-success:           hsl(var(--_prim-green-200));
+  --text-warning:           hsl(var(--_prim-amber-200));
+
+  /* Surfaces */
+  --surface-app:            hsl(var(--_prim-neutral-950));
+  --surface-shell:          hsl(var(--_prim-neutral-900));
+  --surface-panel:          hsl(var(--_prim-neutral-800));
+  --surface-card:           hsl(220 18% 12%);
+  --surface-elevated:       hsl(220 18% 16%);
+  --surface-overlay:        hsl(220 20% 14%);
+  --surface-hover:          hsl(var(--_prim-neutral-800));
+  --surface-active:         hsl(var(--_prim-neutral-700));
+  --surface-selected:       hsl(213 60% 18%);
+  --surface-skeleton:       hsl(var(--_prim-neutral-800));
+  --surface-skeleton-shine: hsl(var(--_prim-neutral-700));
+
+  /* Borders */
+  --border-subtle:          hsl(var(--_prim-neutral-800));
+  --border-default:         hsl(var(--_prim-neutral-700));
+  --border-strong:          hsl(var(--_prim-neutral-600));
+  --border-focus:           hsl(var(--_prim-blue-400));
+  --border-danger:          hsl(var(--_prim-red-400));
+  --border-success:         hsl(var(--_prim-green-400));
+
+  /* Actions */
+  --action-primary:         hsl(var(--_prim-blue-400));
+  --action-primary-hover:   hsl(var(--_prim-blue-300));
+  --action-primary-active:  hsl(var(--_prim-blue-200));
+  --action-secondary:       hsl(var(--_prim-neutral-800));
+  --action-secondary-hover: hsl(var(--_prim-neutral-700));
+  --action-secondary-border:hsl(var(--_prim-neutral-600));
+  --action-secondary-text:  hsl(var(--_prim-neutral-200));
+  --action-ghost-hover:     hsl(var(--_prim-neutral-800));
+
+  /* Status — dark mode */
+  --status-success-fg:      hsl(var(--_prim-green-200));
+  --status-success-bg:      hsl(142 40% 12%);
+  --status-success-border:  hsl(var(--_prim-green-700));
+  --status-success-icon:    hsl(var(--_prim-green-400));
+
+  --status-warning-fg:      hsl(var(--_prim-amber-200));
+  --status-warning-bg:      hsl(38 60% 10%);
+  --status-warning-border:  hsl(var(--_prim-amber-700));
+  --status-warning-icon:    hsl(var(--_prim-amber-400));
+
+  --status-danger-fg:       hsl(var(--_prim-red-200));
+  --status-danger-bg:       hsl(4 60% 10%);
+  --status-danger-border:   hsl(var(--_prim-red-700));
+  --status-danger-icon:     hsl(var(--_prim-red-400));
+
+  --status-processing-fg:   hsl(var(--_prim-indigo-200));
+  --status-processing-bg:   hsl(240 50% 12%);
+  --status-processing-border: hsl(var(--_prim-indigo-700));
+  --status-processing-icon: hsl(var(--_prim-indigo-400));
+
+  --status-paused-fg:       hsl(var(--_prim-slate-100));
+  --status-paused-bg:       hsl(220 18% 14%);
+  --status-paused-border:   hsl(var(--_prim-slate-700));
+  --status-paused-icon:     hsl(var(--_prim-slate-400));
+
+  --status-inactive-fg:     hsl(var(--_prim-neutral-400));
+  --status-inactive-bg:     hsl(var(--_prim-neutral-800));
+  --status-inactive-border: hsl(var(--_prim-neutral-700));
+  --status-inactive-icon:   hsl(var(--_prim-neutral-600));
+
+  --status-draft-fg:        hsl(var(--_prim-warmgray-100));
+  --status-draft-bg:        hsl(30 10% 12%);
+  --status-draft-border:    hsl(var(--_prim-warmgray-700));
+  --status-draft-icon:      hsl(var(--_prim-warmgray-400));
+
+  --status-synced-fg:       hsl(var(--_prim-green-200));
+  --status-synced-bg:       hsl(142 40% 12%);
+  --status-synced-border:   hsl(var(--_prim-green-700));
+  --status-synced-icon:     hsl(var(--_prim-green-400));
+
+  --status-info-fg:         hsl(var(--_prim-blue-200));
+  --status-info-bg:         hsl(213 60% 12%);
+  --status-info-border:     hsl(var(--_prim-blue-700));
+  --status-info-icon:       hsl(var(--_prim-blue-400));
+
+  /* Workflow */
+  --workflow-active:        hsl(var(--_prim-blue-400));
+  --workflow-active-bg:     hsl(213 60% 14%);
+  --workflow-complete:      hsl(var(--_prim-green-400));
+  --workflow-complete-bg:   hsl(142 40% 12%);
+  --workflow-blocked:       hsl(var(--_prim-red-400));
+  --workflow-blocked-bg:    hsl(4 60% 12%);
+  --workflow-pending:       hsl(var(--_prim-slate-400));
+  --workflow-pending-bg:    hsl(220 18% 14%);
+  --workflow-ai-processing: hsl(var(--_prim-indigo-400));
+  --workflow-ai-bg:         hsl(240 50% 14%);
+
+  /* Shadows — heavier in dark for legibility */
+  --shadow-xs:    0 1px 2px 0 hsl(var(--_prim-neutral-950) / 0.3);
+  --shadow-sm:    0 1px 3px 0 hsl(var(--_prim-neutral-950) / 0.4),
+                  0 1px 2px -1px hsl(var(--_prim-neutral-950) / 0.3);
+  --shadow-md:    0 4px 6px -1px hsl(var(--_prim-neutral-950) / 0.5),
+                  0 2px 4px -2px hsl(var(--_prim-neutral-950) / 0.4);
+  --shadow-lg:    0 10px 15px -3px hsl(var(--_prim-neutral-950) / 0.5),
+                  0 4px 6px -4px hsl(var(--_prim-neutral-950) / 0.4);
+  --shadow-xl:    0 20px 25px -5px hsl(var(--_prim-neutral-950) / 0.6),
+                  0 8px 10px -6px hsl(var(--_prim-neutral-950) / 0.5);
+}
+
+
+/* --------------------------------------------------------------------------
+  12. COMMAND SYSTEM TOKENS
+   Optimized for rapid keyboard-first execution and low cognitive load.
+   
+   Governance Rules:
+     - Command interactions MUST remain keyboard-first.
+     - Mouse interaction is secondary.
+     - Focus visibility MUST remain explicit.
+     - Command overlays MUST preserve workflow continuity.
+     - Command actions MUST remain deterministic.
+     - Hidden command states are FORBIDDEN.
+     - Visual noise inside command systems is FORBIDDEN.
+     - Motion inside command systems MUST remain functional only.
+   -------------------------------------------------------------------------- */
+
+:root {
+  /* Surface Tokens */
+  --command-bg:             hsla(var(--_prim-neutral-900) / 0.2); /* backdrop scrim */
+  --command-panel-bg:       var(--surface-overlay);
+  --command-border:         var(--border-strong);
+  --command-shadow:         var(--shadow-xl);
+
+  /* Interaction Tokens */
+  --command-hover:          var(--surface-hover);
+  --command-active:         var(--surface-active);
+  --command-selected:       var(--surface-selected);
+  --command-focus-ring:     var(--focus-ring);
+
+  /* Typography Tokens */
+  --command-font-size:      var(--text-md);        /* 14px body */
+  --command-shortcut-font:  var(--font-mono);      /* monospace shortcuts */
+  --command-group-label:    var(--type-label-dense); /* 11px uppercase */
+
+  /* Status Tokens */
+  --command-match-highlight: var(--action-primary);
+  --command-shortcut-muted:  var(--text-tertiary);
+  --command-danger:          var(--status-danger-fg);
+}
+
+[data-theme="dark"] {
+  --command-bg:             hsla(var(--_prim-neutral-950) / 0.6);
+}
+
+
+/* --------------------------------------------------------------------------
+  13. SCROLLBAR TOKENS (Webkit — operational environments)
+   -------------------------------------------------------------------------- */
+
+:root {
+  --scrollbar-width:        6px;
+  --scrollbar-track:        transparent;
+  --scrollbar-thumb:        hsl(var(--_prim-neutral-300));
+  --scrollbar-thumb-hover:  hsl(var(--_prim-neutral-400));
+}
+
+[data-theme="dark"] {
+  --scrollbar-thumb:        hsl(var(--_prim-neutral-700));
+  --scrollbar-thumb-hover:  hsl(var(--_prim-neutral-600));
+}
+
+/* Apply scrollbar styles globally */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+*::-webkit-scrollbar { width: var(--scrollbar-width); height: var(--scrollbar-width); }
+*::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+*::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: var(--radius-full); }
+*::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+
+
+/* --------------------------------------------------------------------------
+  14. BASE RESETS
+   Minimal — does not override browser focus or a11y defaults.
+   -------------------------------------------------------------------------- */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+html {
+  font-family: var(--font-sans);
+  font-size: var(--type-body);
+  line-height: var(--leading-normal);
+  color: var(--text-primary);
+  background-color: var(--surface-app);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-variant-numeric: tabular-nums;  /* all numerics use tabular spacing */
+}

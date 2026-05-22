@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 
+import { Badge, type BadgeStatus } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 type OcrShellProps = {
@@ -19,6 +21,19 @@ const STEP_LABELS: Array<{ key: OcrShellProps["step"]; label: string }> = [
   { key: "result", label: "Export" },
 ];
 
+const stepStatusClassNames: Record<"done" | "current" | "idle", string> = {
+  done: "border-status-synced-border bg-status-synced-bg text-status-synced-fg",
+  current: "border-workflow-active bg-workflow-active-bg text-workflow-active",
+  idle: "border-border-default bg-surface-shell text-text-secondary",
+};
+
+const shellStatusMap: Record<OcrShellProps["step"], { label: string; status: BadgeStatus }> = {
+  entry: { label: "Intake ready", status: "draft" },
+  prepare: { label: "Draft setup", status: "paused" },
+  processing: { label: "Review active", status: "processing" },
+  result: { label: "Output ready", status: "synced" },
+};
+
 export function OcrShell({
   title,
   subtitle,
@@ -29,22 +44,27 @@ export function OcrShell({
   className,
 }: OcrShellProps) {
   const activeIndex = STEP_LABELS.findIndex((item) => item.key === step);
+  const shellStatus = shellStatusMap[step];
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#0d1218_0%,#111820_100%)] px-4 py-4 md:px-6 md:py-6">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
-        <section className="rounded-[32px] border border-black/10 bg-[#f8f8f6] px-5 py-5 text-[#101418] shadow-[0_24px_80px_rgba(3,8,20,0.22)] md:px-7 md:py-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+    <main className="min-h-screen bg-surface-app px-md py-md md:px-lg md:py-lg">
+      <div className="mx-auto flex w-full max-w-7xl flex-col gap-density-gap">
+        <Card className="border-border-default bg-surface-panel shadow-sm">
+          <CardContent className="px-lg py-lg">
+            <div className="flex flex-col gap-md lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6b7280]">
+              <div className="flex flex-wrap items-center gap-sm">
+                <span className="ui-no-select ui-no-callout text-label-dense font-semibold uppercase tracking-wide text-text-secondary">
                 OCR Workspace
+                </span>
+                <Badge status={shellStatus.status}>{shellStatus.label}</Badge>
               </div>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#0f1720] md:text-[2.1rem]">
+              <h1 className="mt-sm text-page-title font-semibold tracking-tight text-text-primary md:text-2xl">
                 {title}
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#66707c]">{subtitle}</p>
+              <p className="mt-sm max-w-2xl text-body text-text-secondary">{subtitle}</p>
             </div>
-            <div className="grid grid-cols-4 gap-2 sm:min-w-[26rem]">
+            <div className="grid grid-cols-2 gap-sm sm:min-w-[26rem] sm:grid-cols-4">
               {STEP_LABELS.map((item, index) => {
                 const state =
                   index < activeIndex ? "done" : index === activeIndex ? "current" : "idle";
@@ -52,28 +72,25 @@ export function OcrShell({
                   <div
                     key={item.key}
                     className={cn(
-                      "rounded-[18px] border px-3 py-3 text-center transition duration-200",
-                      state === "done"
-                        ? "border-[#d0d7dd] bg-white text-[#111827]"
-                        : state === "current"
-                          ? "border-[#111827] bg-[#111827] text-white"
-                          : "border-[#e7eaee] bg-[#f3f4f6] text-[#8a93a0]",
+                      "rounded-panel border px-md py-sm text-center transition-[background-color,border-color,color] duration-fast ease-standard",
+                      stepStatusClassNames[state],
                     )}
                   >
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em]">
+                    <div className="text-label-dense font-semibold uppercase tracking-wide">
                       {index + 1}
                     </div>
-                    <div className="mt-1 text-sm font-medium">{item.label}</div>
+                    <div className="mt-xs text-label font-medium">{item.label}</div>
                   </div>
                 );
               })}
             </div>
-          </div>
-        </section>
+            </div>
+          </CardContent>
+        </Card>
 
         <section
           className={cn(
-            "grid gap-4",
+            "grid gap-density-gap",
             sideContent
               ? "xl:grid-cols-[minmax(0,1fr)_20rem]"
               : "",
@@ -81,12 +98,10 @@ export function OcrShell({
             className,
           )}
         >
-          <div className="rounded-[32px] border border-black/10 bg-[#f8f8f6] p-4 shadow-[0_20px_60px_rgba(3,8,20,0.18)] md:p-6">
+          <div className="rounded-overlay border border-border-default bg-surface-panel p-md shadow-sm md:p-lg">
             {children}
           </div>
-          {sideContent ? (
-            <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">{sideContent}</aside>
-          ) : null}
+          {sideContent ? <aside className="space-y-md xl:sticky xl:top-lg xl:self-start">{sideContent}</aside> : null}
         </section>
       </div>
     </main>

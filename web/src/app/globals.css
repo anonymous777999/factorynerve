@@ -1,43 +1,27 @@
-/* AUDIT: VISUAL_GENERIC - Load the new control-room font pairing from Google Fonts CDN without page-level font tags. */
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap");
 @import "tailwindcss";
+@import "../styles/tokens.css";
 
 :root {
-  /* AUDIT: VISUAL_GENERIC — Rebuilt the core palette around a warmer industrial accent and added a consistent 8px spacing scale. */
-  --font-body: "IBM Plex Sans";
-  --font-display: "Space Grotesk";
-  --bg: #0d1218;
-  --bg-soft: #151d24;
-  --card: #172028;
-  --card-strong: #202b35;
-  --card-elevated: #293642;
-  --border: rgba(171, 154, 137, 0.2);
-  --border-strong: rgba(201, 180, 157, 0.34);
-  --text: #ece7df;
-  --muted: #ab9f93;
-  --accent: #c56d2d;
-  --accent-strong: #8c4218;
-  --accent-soft: rgba(197, 109, 45, 0.18);
-  --accent-quiet: rgba(197, 109, 45, 0.1);
-  --signal: #1f8a78;
-  --success: #22c55e;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --shadow-lg: 0 26px 70px rgba(2, 6, 23, 0.36);
-  --shadow-md: 0 14px 36px rgba(2, 6, 23, 0.26);
-  --space-1: 8px;
-  --space-2: 16px;
-  --space-3: 24px;
-  --space-4: 32px;
-  --space-5: 48px;
-  --space-6: 64px;
-}
-
-@theme inline {
-  --color-background: var(--bg);
-  --color-foreground: var(--text);
-  --font-sans: var(--font-body);
-  --font-display: var(--font-display);
+  --font-body: var(--font-sans);
+  --font-display: var(--font-sans);
+  --bg: var(--surface-app);
+  --bg-soft: var(--surface-shell);
+  --card: var(--surface-card);
+  --card-strong: var(--surface-elevated);
+  --card-elevated: var(--surface-overlay);
+  --border: var(--border-default);
+  --text: var(--text-primary);
+  --muted: var(--text-tertiary);
+  --accent: var(--action-primary);
+  --accent-strong: var(--action-primary-active);
+  --accent-soft: var(--workflow-active-bg);
+  --accent-quiet: var(--surface-selected);
+  --signal: var(--status-processing-icon);
+  --success: var(--status-success-icon);
+  --warning: var(--status-warning-icon);
+  --danger: var(--status-danger-icon);
+  --shadow-soft: var(--shadow-sm);
 }
 
 * {
@@ -46,14 +30,9 @@
 
 body {
   min-height: 100vh;
-  background:
-    radial-gradient(circle at 12% 14%, rgba(197, 109, 45, 0.22), transparent 34%),
-    radial-gradient(circle at 82% 18%, rgba(31, 138, 120, 0.14), transparent 32%),
-    radial-gradient(circle at 48% 120%, rgba(245, 158, 11, 0.1), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 18%),
-    linear-gradient(180deg, #0b1116 0%, #111820 46%, #0c1319 100%);
-  color: var(--text);
-  font-family: var(--font-body), "IBM Plex Sans", sans-serif;
+  background-color: var(--surface-app);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   width: 100%;
@@ -66,7 +45,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-display), "Space Grotesk", sans-serif;
+  font-family: var(--font-sans);
 }
 
 button,
@@ -77,14 +56,22 @@ select {
 }
 
 ::selection {
-  background: rgba(197, 109, 45, 0.28);
-  color: #fdf8f2;
+  background: var(--surface-selected);
+  color: var(--text-primary);
 }
 
 html {
-  color-scheme: dark;
+  color-scheme: light dark;
   width: 100%;
   max-width: 100%;
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
 }
 
 img,
@@ -97,7 +84,7 @@ svg {
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(151, 164, 183, 0.34) transparent;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
 
 *::-webkit-scrollbar {
@@ -110,14 +97,18 @@ svg {
 }
 
 *::-webkit-scrollbar-thumb {
-  border-radius: 999px;
-  border: 2px solid transparent;
-  background: linear-gradient(180deg, rgba(171, 159, 147, 0.36), rgba(197, 109, 45, 0.24));
+  border-radius: var(--radius-full);
+  border: var(--space-px) solid transparent;
+  background: var(--scrollbar-thumb);
   background-clip: padding-box;
 }
 
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
 input[type="checkbox"] {
-  accent-color: var(--accent);
+  accent-color: var(--action-primary);
 }
 
 @keyframes auth-rise {
@@ -341,11 +332,11 @@ input[type="checkbox"] {
 }
 
 .safe-fixed-right {
-  right: calc(env(safe-area-inset-right, 0px) + 1rem);
+  right: calc(env(safe-area-inset-right, 0px) + var(--space-4));
 }
 
 .safe-fixed-left {
-  left: calc(env(safe-area-inset-left, 0px) + 1rem);
+  left: calc(env(safe-area-inset-left, 0px) + var(--space-4));
 }
 
 .responsive-scroll-area__viewport {
@@ -364,22 +355,22 @@ input[type="checkbox"] {
 .responsive-scroll-area__indicator {
   pointer-events: none;
   position: absolute;
-  top: 0.25rem;
-  bottom: 0.25rem;
+  top: var(--space-1);
+  bottom: var(--space-1);
   z-index: 1;
-  width: 2.5rem;
-  border-radius: 999px;
-  transition: opacity 180ms ease;
+  width: var(--space-10);
+  border-radius: var(--radius-full);
+  transition: opacity var(--motion-base) var(--ease-standard);
 }
 
 .responsive-scroll-area__indicator--left {
   left: 0;
-  background: linear-gradient(90deg, rgba(6, 12, 20, 0.88), rgba(6, 12, 20, 0));
+  background: linear-gradient(90deg, var(--surface-panel), transparent);
 }
 
 .responsive-scroll-area__indicator--right {
   right: 0;
-  background: linear-gradient(270deg, rgba(6, 12, 20, 0.88), rgba(6, 12, 20, 0));
+  background: linear-gradient(270deg, var(--surface-panel), transparent);
 }
 
 :where(.overflow-x-auto) {
@@ -405,21 +396,21 @@ input[type="checkbox"] {
 
 .apexcharts-tooltip,
 .apexcharts-xaxistooltip {
-  border: 1px solid #d6d3d1 !important;
-  background: #ffffff !important;
-  color: #111111 !important;
-  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.12) !important;
+  border: var(--space-px) solid var(--border-default) !important;
+  background: var(--surface-elevated) !important;
+  color: var(--text-primary) !important;
+  box-shadow: var(--shadow-lg) !important;
 }
 
 .apexcharts-tooltip-title {
-  border-bottom: 1px solid #f5f5f4 !important;
-  background: #fafaf9 !important;
-  color: #111111 !important;
-  font-weight: 600 !important;
+  border-bottom: var(--space-px) solid var(--border-subtle) !important;
+  background: var(--surface-shell) !important;
+  color: var(--text-primary) !important;
+  font-weight: var(--weight-semibold) !important;
 }
 
 .apexcharts-tooltip-text,
 .apexcharts-tooltip-series-group,
 .apexcharts-xaxistooltip-text {
-  color: #111111 !important;
+  color: var(--text-primary) !important;
 }

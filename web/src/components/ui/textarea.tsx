@@ -1,16 +1,28 @@
 import * as React from "react";
 
-import { cn } from "@/lib/utils";
+import {
+  getFieldControlClassName,
+  type FieldValidationState,
+} from "@/components/ui/field";
 
-type TextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>;
+export type TextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  validationState?: FieldValidationState;
+};
 
-export function Textarea({ className, ...props }: TextareaProps) {
+export function Textarea({
+  className,
+  rows = 3,
+  validationState = "default",
+  ...props
+}: TextareaProps) {
   return (
     <textarea
-      className={cn(
-        "mt-2 w-full rounded-xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-2 text-sm text-[var(--text)] placeholder:text-[var(--muted)] focus:border-[var(--accent)] focus:outline-none",
+      rows={rows}
+      className={getFieldControlClassName({
         className,
-      )}
+        validationState,
+        multiline: true,
+      })}
       {...props}
     />
   );
