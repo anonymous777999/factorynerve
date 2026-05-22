@@ -66,12 +66,16 @@ function formatMetadata(job: OcrJobPayload | null) {
   ];
 }
 
-export default function OcrPage() {
+type OcrPageProps = {
+  initialJob?: OcrJobPayload | null;
+};
+
+export default function OcrPage({ initialJob = null }: OcrPageProps) {
   const { user, loading, error: sessionError } = useSession();
   const [runtime, setRuntime] = useState<OcrStatus | null>(null);
   const [templates, setTemplates] = useState<OcrTemplate[]>([]);
   const [templateGate, setTemplateGate] = useState("");
-  const [job, setJob] = useState<OcrJobPayload | null>(null);
+  const [job, setJob] = useState<OcrJobPayload | null>(initialJob);
   const [mode, setMode] = useState<"ledger" | "table">("ledger");
   const [mock, setMock] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -121,6 +125,10 @@ export default function OcrPage() {
       setError(err instanceof Error ? err.message : "Could not load OCR runtime.");
     });
   }, [canUseOcr, loadRuntime]);
+
+  useEffect(() => {
+    setJob(initialJob);
+  }, [initialJob]);
 
   useEffect(() => {
     if (!job?.job_id) return;

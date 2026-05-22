@@ -83,13 +83,14 @@ export function useOcrVerifyQueueQuery(filters: OcrVerifyQueueFilters, enabled: 
 
 export function useOcrVerifyDetailQuery(id: number | null, enabled: boolean) {
   return useQuery<OcrVerificationRecord>({
-    queryKey: id != null ? queryKeys.ocrVerify.detail(id) : [...queryKeys.ocrVerify.root(), "detail", "idle"],
+    queryKey: id != null ? queryKeys.ocrVerify.detail(id) : queryKeys.ocrVerify.detailIdle(),
     queryFn: ({ signal }) => getOcrVerification(id as number, { signal }),
     enabled: enabled && id != null,
   });
 }
 
 export function useOcrVerifyRecordMutation<TVariables>(
+  invalidationMode: "create" | "update",
   options: UseMutationOptions<OcrVerificationRecord, Error, TVariables>,
 ) {
   const queryClient = useQueryClient();
@@ -98,14 +99,17 @@ export function useOcrVerifyRecordMutation<TVariables>(
     ...options,
     onSuccess: async (record, variables, onMutateResult, context) => {
       queryClient.setQueryData(queryKeys.ocrVerify.detail(record.id), record);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.ocrVerify.root() });
+      if (invalidationMode === "update") {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.ocrVerify.detail(record.id) });
+      }
+      await queryClient.invalidateQueries({ queryKey: queryKeys.ocrVerify.queueRoot() });
       await options.onSuccess?.(record, variables, onMutateResult, context);
     },
   });
 }
 
 export function useCreateOcrVerificationMutation() {
-  return useOcrVerifyRecordMutation<OcrVerificationSavePayload>({
+  return useOcrVerifyRecordMutation<OcrVerificationSavePayload>("create", {
     mutationFn: createOcrVerification,
   });
 }
@@ -114,19 +118,19 @@ export function useUpdateOcrVerificationMutation() {
   return useOcrVerifyRecordMutation<{
     id: number;
     payload: Omit<OcrVerificationSavePayload, "file">;
-  }>({
+  }>("update", {
     mutationFn: ({ id, payload }) => updateOcrVerification(id, payload),
   });
 }
 
 export function useSubmitOcrVerificationMutation() {
-  return useOcrVerifyRecordMutation<{ id: number; reviewerNotes?: string }>({
+  return useOcrVerifyRecordMutation<{ id: number; reviewerNotes?: string }>("update", {
     mutationFn: ({ id, reviewerNotes }) => submitOcrVerification(id, reviewerNotes),
   });
 }
 
 export function useApproveOcrVerificationMutation() {
-  return useOcrVerifyRecordMutation<{ id: number; reviewerNotes?: string }>({
+  return useOcrVerifyRecordMutation<{ id: number; reviewerNotes?: string }>("update", {
     mutationFn: ({ id, reviewerNotes }) => approveOcrVerification(id, reviewerNotes),
   });
 }
@@ -136,7 +140,7 @@ export function useRejectOcrVerificationMutation() {
     id: number;
     rejectionReason: string;
     reviewerNotes?: string;
-  }>({
+  }>("update", {
     mutationFn: ({ id, rejectionReason, reviewerNotes }) =>
       rejectOcrVerification(id, rejectionReason, reviewerNotes),
   });
