@@ -122,6 +122,12 @@ export function hydrateSessionFromStorage() {
   if (!persisted?.user) {
     return;
   }
+  console.info("[AUTH_DIAGNOSTIC_SESSION_STORAGE]", {
+    currentUserExists: Boolean(persisted.user?.id),
+    roleRevisionExists: persisted.user?.role_revision !== undefined,
+    activeFactoryId: persisted.activeFactoryId ?? null,
+    organizationPresent: Boolean(persisted.organization?.org_id),
+  });
   setSessionState({
     user: persisted.user ?? null,
     factories: persisted.factories ?? [],
@@ -214,8 +220,16 @@ export async function ensureSessionLoaded(loader: () => Promise<CurrentUser | Au
       if (sessionState.loadedAt > loadStartedAt) {
         return;
       }
+      const nextState = applySessionPayload(payload);
+      console.info("[AUTH_DIAGNOSTIC_SESSION_RESTORE]", {
+        currentUserExists: Boolean(nextState.user?.id),
+        roleRevisionExists: nextState.user?.role_revision !== undefined,
+        activeFactoryId: nextState.activeFactoryId ?? null,
+        organizationPresent: Boolean(nextState.organization?.org_id),
+        restoreSuccess: true,
+      });
       setSessionState({
-        ...applySessionPayload(payload),
+        ...nextState,
         loading: false,
         error: "",
         loadedAt: Date.now(),
@@ -225,6 +239,10 @@ export async function ensureSessionLoaded(loader: () => Promise<CurrentUser | Au
       if (sessionState.loadedAt > loadStartedAt) {
         return;
       }
+      console.warn("[AUTH_DIAGNOSTIC_SESSION_RESTORE]", {
+        restoreSuccess: false,
+        error: toSessionError(err),
+      });
       setSessionState({
         user: null,
         factories: [],
