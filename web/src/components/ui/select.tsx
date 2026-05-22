@@ -1,16 +1,25 @@
 import * as React from "react";
 
-import { cn } from "@/lib/utils";
+import {
+  getFieldControlClassName,
+  type FieldValidationState,
+} from "@/components/ui/field";
 
-type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement>;
+export type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
+  validationState?: FieldValidationState;
+};
 
-export function Select({ className, ...props }: SelectProps) {
+export function Select({
+  className,
+  validationState = "default",
+  ...props
+}: SelectProps) {
   return (
     <select
-      className={cn(
-        "mt-2 w-full rounded-xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-2 text-sm text-[var(--text)] focus:border-[var(--accent)] focus:outline-none",
-        className,
-      )}
+      className={getFieldControlClassName({
+        className: `pr-lg ${className || ""}`,
+        validationState,
+      })}
       {...props}
     />
   );

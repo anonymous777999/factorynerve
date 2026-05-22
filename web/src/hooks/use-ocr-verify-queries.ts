@@ -81,6 +81,33 @@ export function useOcrVerifyQueueQuery(filters: OcrVerifyQueueFilters, enabled: 
   });
 }
 
+export function useOcrHistoryQuery(search: string, enabled: boolean) {
+  return useQuery<OcrVerificationRecord[]>({
+    queryKey: queryKeys.ocrVerify.queue({ search, status: "all" }),
+    queryFn: ({ signal }) => listOcrVerifications(undefined, { signal }),
+    select: (records) => {
+      const sorted = sortVerifications(records);
+      const term = search.trim().toLowerCase();
+      if (!term) {
+        return sorted;
+      }
+
+      return sorted.filter((verification) =>
+        [
+          verification.source_filename || "",
+          verification.doc_type_hint || "",
+          verification.status,
+          verification.template_name || "",
+        ]
+          .join(" ")
+          .toLowerCase()
+          .includes(term),
+      );
+    },
+    enabled,
+  });
+}
+
 export function useOcrVerifyDetailQuery(id: number | null, enabled: boolean) {
   return useQuery<OcrVerificationRecord>({
     queryKey: id != null ? queryKeys.ocrVerify.detail(id) : queryKeys.ocrVerify.detailIdle(),

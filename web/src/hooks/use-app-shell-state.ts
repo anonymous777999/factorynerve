@@ -7,7 +7,6 @@ import { getMobileNavItems, getVisibleNavSections, localizedItemText, sectionSto
 import { logout, selectFactory } from "@/lib/auth";
 import { useGuidancePreferences } from "@/lib/guidance";
 import { useI18n, useI18nNamespaces } from "@/lib/i18n";
-import { NAV_ROLE_MAP } from "@/lib/navigation/role-registry";
 import { logOverflowIssues } from "@/lib/overflow-debug";
 import {
   getHomeDestination,
@@ -20,6 +19,7 @@ import {
 import { warmRouteData } from "@/lib/route-warmup";
 import { useAuth } from "@/lib/use-session";
 import { useBadges } from "@/providers/badge-provider";
+import { useUiPreferences } from "@/providers/ui-preferences-provider";
 
 const SIDEBAR_OPEN_STORAGE_KEY = "dpr:web:shell-sidebar-open";
 const NAV_FAVORITES_STORAGE_KEY = "dpr:web:shell-favorites";
@@ -108,11 +108,12 @@ export function useAppShellState(pathname: string) {
   const router = useRouter();
   const { language, setLanguage, t } = useI18n();
   const { showTips, setShowTips } = useGuidancePreferences();
+  const { theme, density, setTheme, setDensity } = useUiPreferences();
   useI18nNamespaces(["common", "navigation"]);
 
   const { activeFactory, activeFactoryId, factories, organization, permissions, user } = useAuth();
   const badgeCounts = useBadges();
-  const [hydrated, setHydrated] = useState(false);
+  const [hydrated] = useState(() => typeof window !== "undefined");
   const [switchingFactory, setSwitchingFactory] = useState(false);
   const [switchError, setSwitchError] = useState("");
   const [accountActionBusy, setAccountActionBusy] = useState<"logout" | "switch" | null>(null);
@@ -228,10 +229,6 @@ export function useAppShellState(pathname: string) {
   );
 
   useEffect(() => {
-    setHydrated(true);
-  }, []);
-
-  useEffect(() => {
     const primaryRoutes = [
       ...getRolePrimaryHrefs(resolvedRole),
       ...getRoleMobileNavHrefs(resolvedRole),
@@ -270,11 +267,14 @@ export function useAppShellState(pathname: string) {
   useEffect(() => {
     const timer = window.setTimeout(() => {
       const stored = window.localStorage.getItem(SIDEBAR_OPEN_STORAGE_KEY);
-      const next = window.innerWidth >= 1024 ? (stored != null ? stored === "true" : true) : false;
+      const next =
+        window.innerWidth >= 1024
+          ? immersiveScannerRoute || (stored != null ? stored === "true" : true)
+          : false;
       setSidebarState(next);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [setSidebarState]);
+  }, [immersiveScannerRoute, setSidebarState]);
 
   useEffect(() => {
     const handleResize = () => {
@@ -283,16 +283,10 @@ export function useAppShellState(pathname: string) {
         return;
       }
       const stored = window.localStorage.getItem(SIDEBAR_OPEN_STORAGE_KEY);
-      setSidebarState(stored != null ? stored === "true" : true);
+      setSidebarState(immersiveScannerRoute || (stored != null ? stored === "true" : true));
     };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
-  }, [setSidebarState]);
-
-  useEffect(() => {
-    if (immersiveScannerRoute && typeof window !== "undefined" && window.innerWidth >= 1024) {
-      setSidebarState(true);
-    }
   }, [immersiveScannerRoute, setSidebarState]);
 
   useEffect(() => {
@@ -483,8 +477,12 @@ export function useAppShellState(pathname: string) {
     t,
     user,
     language,
+    theme,
+    density,
     showTips,
     setShowTips,
+    setTheme,
+    setDensity,
     activeFactory,
     activeFactoryId,
     factories,

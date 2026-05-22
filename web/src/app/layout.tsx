@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 import { AppProviders } from "@/components/app-providers";
 import { AppShell } from "@/components/app-shell";
@@ -46,9 +47,26 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased">
-      {/* AUDIT: VISUAL_GENERIC — Swapped the default app fonts for a more deliberate control-room pairing loaded from Google Fonts CDN. */}
-      <body className="min-h-full flex flex-col bg-[var(--bg)] text-[var(--text)]">
+    <html lang="en" className="h-full antialiased" data-theme="dark" data-density="default">
+      <body className="flex min-h-full flex-col bg-surface-app font-sans text-text-primary">
+        <Script
+          id="dpr-ui-preferences-init"
+          strategy="beforeInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function () {
+                var root = document.documentElement;
+                var storedTheme = window.localStorage.getItem("dpr:web:theme");
+                var storedDensity = window.localStorage.getItem("dpr:web:density");
+                var theme = storedTheme === "light" || storedTheme === "dark" ? storedTheme : "dark";
+                var density = storedDensity === "compact" || storedDensity === "default" || storedDensity === "comfortable" ? storedDensity : "default";
+                root.dataset.theme = theme;
+                root.dataset.density = density;
+                root.style.colorScheme = theme;
+              })();
+            `,
+          }}
+        />
         <AppProviders>
           <BetaRolloutBanner />
           <BadgeProvider>

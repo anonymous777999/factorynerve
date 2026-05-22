@@ -10,6 +10,10 @@ import { NAV_ITEMS } from "@/lib/navigation/registry";
 import { NAV_ROLE_MAP } from "@/lib/navigation/role-registry";
 import { getRoleMobileNavHrefs } from "@/lib/role-navigation";
 import { cn } from "@/lib/utils";
+import {
+  type AppDensity,
+  type AppTheme,
+} from "@/providers/ui-preferences-provider";
 
 export type NavBadgeKey = "approvals" | "alerts";
 type NavIconName =
@@ -340,6 +344,17 @@ const LANGUAGE_CHOICES: Array<{ value: AppLanguage; key: string; fallback: strin
   { value: "gu", key: "language.gujarati", fallback: "Gujarati" },
 ];
 
+const THEME_CHOICES: Array<{ value: AppTheme; key: string; fallback: string }> = [
+  { value: "dark", key: "shell.theme_dark", fallback: "Dark" },
+  { value: "light", key: "shell.theme_light", fallback: "Light" },
+];
+
+const DENSITY_CHOICES: Array<{ value: AppDensity; key: string; fallback: string }> = [
+  { value: "compact", key: "shell.density_compact", fallback: "Compact" },
+  { value: "default", key: "shell.density_default", fallback: "Default" },
+  { value: "comfortable", key: "shell.density_comfortable", fallback: "Comfortable" },
+];
+
 function navLinkClasses(active: boolean) {
   return cn(
     "ui-no-select ui-no-callout group block rounded-xl border px-3.5 py-2.5 transition",
@@ -658,7 +673,11 @@ export function AppSidebar({
   onNavigate,
   onClose,
   language,
+  theme,
+  density,
   onLanguageChange,
+  onThemeChange,
+  onDensityChange,
   showTips,
   onToggleTips,
   accountActionBusy,
@@ -693,7 +712,11 @@ export function AppSidebar({
   onNavigate: () => void;
   onClose: () => void;
   language: AppLanguage;
+  theme: AppTheme;
+  density: AppDensity;
   onLanguageChange: (next: string) => void;
+  onThemeChange: (next: AppTheme) => void;
+  onDensityChange: (next: AppDensity) => void;
   showTips: boolean;
   onToggleTips: () => void;
   accountActionBusy: "logout" | "switch" | null;
@@ -850,7 +873,7 @@ export function AppSidebar({
                   {translate ? translate("shell.account_title", "Account") : "Account"}
                 </div>
                 <div className="mt-1 text-sm font-semibold text-[var(--text)]">
-                  {translate ? translate("shell.account_subtitle", "Profile and language") : "Profile and language"}
+                  {translate ? translate("shell.account_subtitle", "Profile and display") : "Profile and display"}
                 </div>
               </div>
               <span className="text-[var(--muted)] transition group-open:rotate-180">
@@ -858,22 +881,65 @@ export function AppSidebar({
               </span>
             </summary>
             <div className="mt-4 space-y-3">
-              <div className="flex items-center gap-2">
-                <label className="ui-no-select ui-no-callout shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-                  {translate ? translate("language.label", "Language") : "Language"}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <label className="ui-no-select ui-no-callout block text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                    {translate ? translate("language.label", "Language") : "Language"}
+                  </label>
+                  <Select
+                    className="h-8 bg-surface-shell text-xs"
+                    value={language}
+                    onChange={(event) => onLanguageChange(event.target.value)}
+                    aria-label={translate ? translate("language.label", "Language") : "Language"}
+                  >
+                    {LANGUAGE_CHOICES.map((choice) => (
+                      <option key={choice.value} value={choice.value}>
+                        {translate ? translate(choice.key, choice.fallback) : choice.fallback}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="ui-no-select ui-no-callout block text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                    {translate ? translate("shell.theme", "Theme") : "Theme"}
+                  </label>
+                  <Select
+                    className="h-8 bg-surface-shell text-xs"
+                    value={theme}
+                    onChange={(event) => onThemeChange(event.target.value as AppTheme)}
+                    aria-label={translate ? translate("shell.theme", "Theme") : "Theme"}
+                  >
+                    {THEME_CHOICES.map((choice) => (
+                      <option key={choice.value} value={choice.value}>
+                        {translate ? translate(choice.key, choice.fallback) : choice.fallback}
+                      </option>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="ui-no-select ui-no-callout block text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                  {translate ? translate("shell.density", "Density") : "Density"}
                 </label>
                 <Select
-                  className="h-8 min-w-0 flex-1 bg-[rgba(20,24,36,0.86)] text-xs"
-                  value={language}
-                  onChange={(event) => onLanguageChange(event.target.value)}
-                  aria-label={translate ? translate("language.label", "Language") : "Language"}
+                  className="h-8 bg-surface-shell text-xs"
+                  value={density}
+                  onChange={(event) => onDensityChange(event.target.value as AppDensity)}
+                  aria-label={translate ? translate("shell.density", "Density") : "Density"}
                 >
-                  {LANGUAGE_CHOICES.map((choice) => (
+                  {DENSITY_CHOICES.map((choice) => (
                     <option key={choice.value} value={choice.value}>
                       {translate ? translate(choice.key, choice.fallback) : choice.fallback}
                     </option>
                   ))}
                 </Select>
+                <div className="text-[11px] text-[var(--muted)]">
+                  {translate
+                    ? translate("shell.density_hint", "Compact keeps dense workflows tight; Default is the operational baseline.")
+                    : "Compact keeps dense workflows tight; Default is the operational baseline."}
+                </div>
               </div>
 
               <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-3 py-2.5">
