@@ -17,6 +17,11 @@ from backend.services.auth_service import get_or_create_google_user
 from tests.utils import register_user, unique_email, unique_factory
 
 
+def _unwrap(response):
+    payload = response.json()
+    return payload.get("data", payload) if isinstance(payload, dict) else payload
+
+
 def test_cookie_session_flow(http_client, base_url):
     user = register_user(http_client, use_cookies=True)
 
@@ -113,16 +118,17 @@ def test_public_registration_bootstraps_first_workspace_creator_as_admin(http_cl
     )
 
     assert response.status_code == HTTPStatus.CREATED, response.text
-    payload = response.json()
+    payload = _unwrap(response)
     assert payload["verification_required"] is True
     assert payload.get("verification_link")
     token = (parse_qs(urlparse(payload["verification_link"]).query).get("token") or [""])[0]
     verify = http_client.post("/auth/email/verify", json={"token": token})
     assert verify.status_code == HTTPStatus.OK, verify.text
-    login = http_client.post("/auth/login", json={"email": email, "password": password})
+    login = http_client.post("/auth/v2/login", json={"email": email, "password": password})
     assert login.status_code == HTTPStatus.OK, login.text
-    assert login.json()["user"]["role"] == "admin"
-    assert login.json()["organization"]["accessible_factories"] == 1
+    login_payload = _unwrap(login)
+    assert login_payload["user"]["role"] == "owner"
+    assert login_payload["organization"]["accessible_factories"] == 1
 
 
 def test_public_registration_blocks_high_roles_for_existing_workspace(http_client):
@@ -164,13 +170,18 @@ def test_public_registration_defaults_existing_workspace_users_to_attendance_rol
     )
 
     assert response.status_code == HTTPStatus.CREATED, response.text
-    payload = response.json()
+    payload = _unwrap(response)
     token = (parse_qs(urlparse(payload["verification_link"]).query).get("token") or [""])[0]
-    verify = http_client.post("/auth/email/verify", json={"token": token})
+    verify_headers = {}
+    csrf = http_client.cookies.get("dpr_csrf")
+    if csrf:
+        verify_headers["X-CSRF-Token"] = csrf
+    verify = http_client.post("/auth/email/verify", json={"token": token}, headers=verify_headers)
     assert verify.status_code == HTTPStatus.OK, verify.text
-    login = http_client.post("/auth/login", json={"email": email, "password": password})
+    login_headers = {"X-CSRF-Token": csrf} if csrf else None
+    login = http_client.post("/auth/v2/login", json={"email": email, "password": password}, headers=login_headers)
     assert login.status_code == HTTPStatus.OK, login.text
-    assert login.json()["user"]["role"] == "attendance"
+    assert _unwrap(login)["user"]["role"] == "attendance"
 
 
 def test_local_registration_requires_email_verification_before_login(http_client):
@@ -190,10 +201,10 @@ def test_local_registration_requires_email_verification_before_login(http_client
     )
 
     assert registration.status_code == HTTPStatus.CREATED, registration.text
-    verification_link = registration.json()["verification_link"]
+    verification_link = _unwrap(registration)["verification_link"]
 
     blocked = http_client.post(
-        "/auth/login",
+        "/auth/v2/login",
         json={"email": email, "password": password},
     )
     assert blocked.status_code == HTTPStatus.FORBIDDEN, blocked.text
@@ -204,7 +215,7 @@ def test_local_registration_requires_email_verification_before_login(http_client
     assert verify.status_code == HTTPStatus.OK, verify.text
 
     login = http_client.post(
-        "/auth/login",
+        "/auth/v2/login",
         json={"email": email, "password": password},
     )
     assert login.status_code == HTTPStatus.OK, login.text
@@ -342,7 +353,10 @@ def test_google_onboarding_bootstraps_new_workspace_as_admin():
 def test_post_auth_login_returns_410_with_deprecated_code(http_client):
     response = http_client.post("/auth/login", json={"email": "user@example.com", "password": "pass"})
     assert response.status_code == HTTPStatus.GONE, response.text
-    assert response.json()["detail"]["code"] == "DEPRECATED"
+    payload = response.json()
+    error = payload.get("error", {}) if isinstance(payload, dict) else {}
+    details = error.get("details", {}) if isinstance(error, dict) else {}
+    assert details.get("code") == "DEPRECATED"
 
 
 def test_post_auth_v2_login_still_works(monkeypatch):
@@ -372,7 +386,43 @@ def test_post_auth_v2_login_still_works(monkeypatch):
     monkeypatch.setattr(auth_secure_router, "_log_event", lambda *args, **kwargs: None)
     monkeypatch.setattr(auth_secure_router, "create_session", lambda db, user, request, response: SimpleNamespace())
     monkeypatch.setattr(auth_secure_router, "touch_session", lambda db, session: None)
-    monkeypatch.setattr(auth_secure_router, "_issue_legacy_access_cookie", lambda *args, **kwargs: None)
+    monkeypatch.setattr(
+        auth_secure_router,
+        "_build_legacy_auth_response",
+        lambda *args, **kwargs: {
+            "access_token": "access-token",
+            "refresh_token": "refresh-token",
+            "token_type": "bearer",
+            "user": {
+                "id": 1,
+                "org_id": "org-1",
+                "user_code": 1001,
+                "name": "User",
+                "email": "user@example.com",
+                "role": "manager",
+                "role_revision": 3,
+                "factory_name": "Factory",
+                "factory_code": "F001",
+                "phone_number": None,
+                "phone_e164": None,
+                "is_platform_admin": False,
+                "is_active": True,
+                "phone_verification_status": "pending",
+                "phone_verified_at": None,
+                "phone_last_otp_sent_at": None,
+                "phone_otp_attempts": 0,
+                "email_verified_at": None,
+                "verification_sent_at": None,
+                "created_at": None,
+                "last_login": None,
+                "profile_picture": None,
+            },
+            "active_factory_id": "factory-1",
+            "active_factory": None,
+            "factories": [],
+            "organization": None,
+        },
+    )
 
     response = auth_secure_router.login(
         payload=auth_secure_router.LoginRequest(email="user@example.com", password="StrongPassw0rd!"),
@@ -392,4 +442,6 @@ def test_post_auth_v2_login_still_works(monkeypatch):
         db=FakeDb(),
     )
 
-    assert response == {"message": "Login successful."}
+    assert response["access_token"] == "access-token"
+    assert response["user"]["email"] == "user@example.com"
+    assert response["user"]["role_revision"] == 3

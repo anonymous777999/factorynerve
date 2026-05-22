@@ -55,7 +55,7 @@ def register_user(
 
     headers = {"X-Use-Cookies": "1"} if use_cookies else None
     login = client.post(
-        "/auth/login",
+        "/auth/v2/login",
         json={"email": payload["email"], "password": payload["password"]},
         headers=headers,
     )

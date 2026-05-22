@@ -1,8 +1,12 @@
 from http import HTTPStatus
 from urllib.parse import parse_qs, urlparse
 
+from datetime import datetime, timezone
+
 from backend.auth_security.passwords import hash_password as hash_password_secure
+from backend.auth_security.tokens import build_reset_token, expires_at, generate_token, hash_token
 from backend.database import SessionLocal
+from backend.models.auth_password_reset import AuthPasswordReset
 from backend.models.user import User
 from backend.models.auth_user import AuthUser
 from backend.security import verify_password
@@ -165,3 +169,55 @@ def test_verified_registration_creates_secure_user_for_v2_login(http_client):
         json={"email": user["email"], "password": user["password"]},
     )
     assert login.status_code == HTTPStatus.OK, login.text
+    payload = login.json().get("data", login.json())
+    assert payload["user"]["email"] == user["email"]
+    assert payload["user"]["role_revision"] >= 0
+    assert "access_token" in payload
+    assert "refresh_token" in payload
+
+
+def test_secure_password_reset_syncs_legacy_user_password(http_client):
+    user = _register_verified_legacy_user(http_client)
+
+    db = SessionLocal()
+    try:
+        secure_user = db.query(AuthUser).filter(AuthUser.email == user["email"]).first()
+        assert secure_user is not None
+        secure_user.password_hash = hash_password_secure(user["password"])
+        secure_user.is_active = True
+        secure_user.is_email_verified = True
+        raw_token = generate_token(32)
+        db.add(
+            AuthPasswordReset(
+                auth_user_id=secure_user.id,
+                token_hash=hash_token(raw_token),
+                expires_at=expires_at(30),
+            )
+        )
+        db.commit()
+        signed_token = build_reset_token({"uid": secure_user.id, "token": raw_token})
+    finally:
+        db.close()
+
+    reset = http_client.post(
+        "/auth/v2/password/reset",
+        json={"token": signed_token, "new_password": "EvenStrongerPassw0rd!Secure"},
+    )
+    assert reset.status_code == HTTPStatus.OK, reset.text
+
+    db = SessionLocal()
+    try:
+        legacy_user = db.query(User).filter(User.email == user["email"]).first()
+        secure_user = db.query(AuthUser).filter(AuthUser.email == user["email"]).first()
+        assert legacy_user is not None
+        assert secure_user is not None
+        assert verify_password(user["password"], legacy_user.password_hash) is False
+        assert verify_password("EvenStrongerPassw0rd!Secure", legacy_user.password_hash) is True
+        password_changed_at = (
+            secure_user.password_changed_at
+            if secure_user.password_changed_at.tzinfo is not None
+            else secure_user.password_changed_at.replace(tzinfo=timezone.utc)
+        )
+        assert password_changed_at <= datetime.now(timezone.utc)
+    finally:
+        db.close()
