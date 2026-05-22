@@ -93,6 +93,11 @@ const meta = {
       exclude: ["items", "footer", "onOpenChange"],
     },
   },
+  args: {
+    items: baseItems,
+    onOpenChange: () => undefined,
+    open: true,
+  },
 } satisfies Meta<typeof CommandPalette>;
 
 export default meta;

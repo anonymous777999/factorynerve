@@ -56,6 +56,9 @@ const meta = {
     },
   },
   args: {
+    children: null,
+    onOpenChange: () => undefined,
+    open: true,
     title: "Review exception details",
     description:
       "Inspect the current exception, apply a contextual decision, and return to the queue without losing row focus.",
