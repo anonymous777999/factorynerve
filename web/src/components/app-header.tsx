@@ -1,5 +1,7 @@
 "use client";
 
+import { Button } from "@/components/ui/button";
+
 type TranslateFn = (key: string, fallback?: string) => string;
 
 export function AppHeader({
@@ -39,14 +41,15 @@ export function AppHeader({
             {mobileTabActive ? (
               <div className="h-10 w-10 shrink-0" />
             ) : (
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="icon"
                 aria-label={translate ? translate("shell.go_back", "Go back") : "Go back"}
-                className="ui-no-select ui-no-callout inline-flex h-input w-input shrink-0 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated text-label-dense font-semibold text-text-primary transition-[background-color,border-color,color] duration-fast ease-standard hover:border-border-strong hover:bg-surface-hover"
+                className="h-input w-input shrink-0 text-[var(--color-text-primary)]"
                 onClick={onMobileBack}
               >
                 {"<"}
-              </button>
+              </Button>
             )}
 
             <div className="min-w-0 flex-1 text-center">
@@ -56,25 +59,27 @@ export function AppHeader({
               <div className="truncate text-label-dense font-semibold uppercase tracking-wide text-text-primary">{currentItemLabel}</div>
             </div>
 
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="compact"
               aria-label={translate ? translate("shell.command_palette", "Open command palette") : "Open command palette"}
-              className="ui-no-select ui-no-callout inline-flex h-input min-w-[3.5rem] shrink-0 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-sm text-label-dense font-semibold text-text-secondary transition-[background-color,border-color,color] duration-fast ease-standard hover:border-border-strong hover:bg-surface-hover hover:text-text-primary"
+              className="h-input min-w-[3.5rem] shrink-0 px-sm"
               onClick={onOpenCommandPalette}
             >
               K
-            </button>
+            </Button>
 
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="icon"
               aria-label={sidebarLabel}
-              className="ui-no-select ui-no-callout inline-flex h-input w-input shrink-0 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated text-text-primary transition-[background-color,border-color,color] duration-fast ease-standard hover:border-border-strong hover:bg-surface-hover"
+              className="h-input w-input shrink-0 text-[var(--color-text-primary)]"
               onClick={onToggleSidebar}
             >
               <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
                 <path d="M4 6h12M4 10h12M4 14h12" strokeLinecap="round" />
               </svg>
-            </button>
+            </Button>
           </div>
         </div>
       ) : null}
