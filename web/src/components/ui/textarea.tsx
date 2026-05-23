@@ -9,14 +9,18 @@ export type TextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement> & 
   validationState?: FieldValidationState;
 };
 
-export function Textarea({
-  className,
-  rows = 3,
-  validationState = "default",
-  ...props
-}: TextareaProps) {
+export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(function Textarea(
+  {
+    className,
+    rows = 3,
+    validationState = "default",
+    ...props
+  },
+  ref,
+) {
   return (
     <textarea
+      ref={ref}
       rows={rows}
       className={getFieldControlClassName({
         className,
@@ -26,4 +30,4 @@ export function Textarea({
       {...props}
     />
   );
-}
+});
