@@ -15,10 +15,15 @@ type StickyActionBarAction = {
 };
 
 export type StickyActionBarProps = {
+  variant?: "page" | "drawer";
   title?: string;
   description?: string;
   status?: BadgeStatus;
   statusLabel?: string;
+  selectedCount?: number;
+  leftSlot?: React.ReactNode;
+  centerSlot?: React.ReactNode;
+  rightSlot?: React.ReactNode;
   primaryAction?: StickyActionBarAction;
   secondaryAction?: StickyActionBarAction;
   tertiaryAction?: StickyActionBarAction;
@@ -64,43 +69,70 @@ export function StickyActionBar({
   className,
   contentClassName,
   description,
+  leftSlot,
   meta,
+  centerSlot,
   primaryAction,
+  rightSlot,
   secondaryAction,
   status = "draft",
   statusLabel = "Draft",
+  selectedCount,
   tertiaryAction,
   title,
+  variant = "drawer",
 }: StickyActionBarProps) {
+  const isPage = variant === "page";
+
   return (
     <div
       className={cn(
-        "sticky bottom-0 z-sticky border-t border-border-default bg-surface-panel",
-        "safe-bottom-inset",
+        isPage
+          ? "sticky top-0 z-sticky border-b border-border-default bg-surface-panel"
+          : "sticky bottom-0 z-sticky border-t border-border-default bg-surface-panel safe-bottom-inset",
         className,
       )}
     >
       <div
         className={cn(
-          "operational-form-footer flex flex-col gap-sm px-md py-sm lg:flex-row lg:items-center lg:justify-between",
+          isPage
+            ? "flex min-h-12 flex-col gap-sm px-md py-sm lg:flex-row lg:items-center lg:justify-between"
+            : "operational-form-footer flex flex-col gap-sm px-md py-sm lg:flex-row lg:items-center lg:justify-between",
           contentClassName,
         )}
       >
-        <div className="min-w-0 space-y-xs">
-          <div className="flex flex-wrap items-center gap-sm">
-            <Badge status={status}>{statusLabel}</Badge>
-            {title ? (
-              <span className="text-label font-semibold text-text-primary">{title}</span>
-            ) : null}
-          </div>
-          {description ? <p className="text-label-dense text-text-secondary">{description}</p> : null}
-          {meta ? <div className="text-label-dense text-text-secondary">{meta}</div> : null}
+        <div className="flex min-w-0 flex-1 items-center gap-sm">
+          {leftSlot ?? (
+            <div className="min-w-0 space-y-xs">
+              <div className="flex flex-wrap items-center gap-sm">
+                <Badge status={status} size="compact">{statusLabel}</Badge>
+                {selectedCount != null && selectedCount > 0 ? (
+                  <span className="text-label font-semibold text-text-primary">{selectedCount} selected</span>
+                ) : null}
+                {title ? (
+                  <span className="text-label font-semibold text-text-primary">{title}</span>
+                ) : null}
+              </div>
+              {description ? <p className="text-label-dense text-text-secondary">{description}</p> : null}
+              {meta ? <div className="text-label-dense text-text-secondary">{meta}</div> : null}
+            </div>
+          )}
         </div>
-        <StickyActionBarActions
-          primaryAction={primaryAction}
-          secondaryAction={secondaryAction}
-          tertiaryAction={tertiaryAction}
-        />
+        {centerSlot ? (
+          <div className="flex min-w-0 flex-1 items-center justify-center">
+            {centerSlot}
+          </div>
+        ) : (
+          <div className="hidden min-w-0 flex-1 lg:block" />
+        )}
+        <div className="flex flex-1 items-center justify-end gap-sm">
+          {rightSlot}
+          <StickyActionBarActions
+            primaryAction={primaryAction}
+            secondaryAction={secondaryAction}
+            tertiaryAction={tertiaryAction}
+          />
+        </div>
       </div>
     </div>
   );

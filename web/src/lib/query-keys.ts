@@ -3,6 +3,15 @@ export type OcrVerifyQueueFilters = {
   status: "all" | "draft" | "pending" | "rejected" | "approved";
 };
 
+export type AttendanceLiveFilters = {
+  attendanceDate: string;
+};
+
+export type AttendanceReviewFilters = {
+  attendanceDate: string;
+  lookbackDays: number;
+};
+
 function normalizeQueueFilters(filters: OcrVerifyQueueFilters) {
   return {
     search: filters.search.trim().toLowerCase(),
@@ -11,6 +20,15 @@ function normalizeQueueFilters(filters: OcrVerifyQueueFilters) {
 }
 
 export const queryKeys = {
+  attendance: {
+    root: () => ["attendance"] as const,
+    liveRoot: () => [...queryKeys.attendance.root(), "live"] as const,
+    live: (filters: AttendanceLiveFilters) =>
+      [...queryKeys.attendance.liveRoot(), filters] as const,
+    reviewRoot: () => [...queryKeys.attendance.root(), "review"] as const,
+    review: (filters: AttendanceReviewFilters) =>
+      [...queryKeys.attendance.reviewRoot(), filters] as const,
+  },
   steel: {
     root: () => ["steel"] as const,
     overview: () => [...queryKeys.steel.root(), "overview"] as const,

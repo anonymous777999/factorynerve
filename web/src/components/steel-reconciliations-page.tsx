@@ -1,55 +1,50 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { startTransition, useEffect, useMemo, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useForm, useWatch } from "react-hook-form";
+import { z } from "zod";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
+import {
+  createDataTableColumnHelper,
+  type DataTableColumnDef,
+} from "@/components/ui/data-table/data-table-types";
+import { DataTable } from "@/components/ui/data-table/data-table";
+import { EmptyState } from "@/components/ui/empty-state";
+import { FilterBar } from "@/components/ui/filter-bar";
 import { Input } from "@/components/ui/input";
+import { LoadingBoundary } from "@/components/ui/loading-boundary";
+import { OperationalDrawer } from "@/components/ui/operational-drawer";
 import { Select } from "@/components/ui/select";
-import { ApiError } from "@/lib/api";
+import { StickyActionBar } from "@/components/ui/sticky-action-bar";
+import { Textarea } from "@/components/ui/textarea";
+import { queryKeys } from "@/lib/query-keys";
 import {
   approveSteelReconciliation,
+  getSteelReconciliationsSummary,
   listSteelReconciliations,
   listSteelStock,
   rejectSteelReconciliation,
   type SteelReconciliation,
-  type SteelStockMismatchCause,
   type SteelStockItem,
+  type SteelStockMismatchCause,
 } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
 
-function formatKg(value: number | null | undefined) {
-  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value || 0);
-}
+const columnHelper = createDataTableColumnHelper<SteelReconciliation>();
 
-function badgeTone(value: string) {
-  if (value === "approved" || value === "green") return "border-emerald-400/35 bg-emerald-400/12 text-emerald-200";
-  if (value === "pending" || value === "yellow") return "border-amber-400/35 bg-amber-400/12 text-amber-200";
-  return "border-rose-400/35 bg-rose-400/12 text-rose-200";
-}
-
-function formatMismatchCause(value: SteelStockMismatchCause | string | null | undefined) {
-  if (!value) return "Not tagged";
-  return value.replaceAll("_", " ");
-}
-
-function mismatchActionLink(value: SteelStockMismatchCause | string | null | undefined) {
-  switch (value) {
-    case "counting_error":
-      return { href: "/steel/reconciliations", label: "Recount this stock" };
-    case "process_loss":
-      return { href: "/steel?tab=production", label: "Open production loss lane" };
-    case "theft_or_leakage":
-      return { href: "/steel?tab=risk", label: "Open leakage risk lane" };
-    case "wrong_entry":
-      return { href: "/steel/invoices", label: "Check invoice or stock entries" };
-    case "delayed_dispatch_update":
-      return { href: "/steel/dispatches", label: "Check dispatch posting" };
-    default:
-      return { href: "/steel", label: "Open steel command center" };
-  }
-}
+const decisionSchema = z.object({
+  approverNotes: z.string().optional(),
+  rejectionReason: z.string().optional(),
+  mismatchCause: z.string().optional(),
+});
 
 const MISMATCH_CAUSE_OPTIONS: Array<{ value: SteelStockMismatchCause; label: string }> = [
   { value: "counting_error", label: "Counting Error" },
@@ -60,119 +55,231 @@ const MISMATCH_CAUSE_OPTIONS: Array<{ value: SteelStockMismatchCause; label: str
   { value: "other", label: "Other" },
 ];
 
+function formatKg(value: number | null | undefined) {
+  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value || 0);
+}
+
+function formatDateTime(value?: string | null) {
+  if (!value) return "-";
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return parsed.toLocaleString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function badgeStatus(value: string) {
+  if (value === "approved" || value === "green") return "success";
+  if (value === "pending" || value === "yellow") return "warning";
+  if (value === "rejected" || value === "red") return "destructive";
+  return "secondary";
+}
+
+function mismatchActionLink(value: SteelStockMismatchCause | string | null | undefined) {
+  switch (value) {
+    case "counting_error":
+      return { href: "/steel/reconciliations", label: "Recount this stock" };
+    case "process_loss":
+      return { href: "/steel/production/record", label: "Open production lane" };
+    case "theft_or_leakage":
+      return { href: "/approvals", label: "Escalate in review queue" };
+    case "wrong_entry":
+      return { href: "/steel/invoices", label: "Check invoice or stock entries" };
+    case "delayed_dispatch_update":
+      return { href: "/steel/dispatches", label: "Check dispatch posting" };
+    default:
+      return { href: "/steel", label: "Open steel command center" };
+  }
+}
+
+function canReviewSteel(role?: string | null) {
+  return ["owner", "admin"].includes(role || "");
+}
+
 export function SteelReconciliationsPage() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
   const { user, activeFactory, loading, error: sessionError } = useSession();
-  const [items, setItems] = useState<SteelStockItem[]>([]);
-  const [reconciliations, setReconciliations] = useState<SteelReconciliation[]>([]);
-  const [pageLoading, setPageLoading] = useState(true);
-  const [busyId, setBusyId] = useState<number | null>(null);
-  const [status, setStatus] = useState("");
-  const [error, setError] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [itemFilter, setItemFilter] = useState("");
-  const [reviewNotes, setReviewNotes] = useState<Record<number, string>>({});
-  const [rejectionReasons, setRejectionReasons] = useState<Record<number, string>>({});
-  const [mismatchCauses, setMismatchCauses] = useState<Record<number, string>>({});
 
+  const statusFilter = searchParams.get("status")?.trim() || "";
+  const itemFilter = searchParams.get("item_id")?.trim() || "";
+  const activeReconciliationId = searchParams.get("id")?.trim() || "";
   const isSteelFactory = (activeFactory?.industry_type || "").toLowerCase() === "steel";
-  const canReview = Boolean(user && ["owner", "admin"].includes(user.role));
+  const canReview = canReviewSteel(user?.role);
+  const [confirmDecision, setConfirmDecision] = useState<"approve" | "reject" | null>(null);
 
-  const loadData = useCallback(async () => {
-    if (!isSteelFactory) {
-      setPageLoading(false);
-      return;
-    }
-    setPageLoading(true);
-    try {
-      const [stockPayload, reconciliationPayload] = await Promise.all([
-        listSteelStock(),
-        listSteelReconciliations({
-          status: (statusFilter as "pending" | "approved" | "rejected" | "") || "",
-          item_id: itemFilter ? Number(itemFilter) : undefined,
-          limit: 100,
-        }),
-      ]);
-      setItems(stockPayload.items || []);
-      setReconciliations(reconciliationPayload.items || []);
-      setError("");
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not load reconciliation history.");
-    } finally {
-      setPageLoading(false);
-    }
-  }, [isSteelFactory, itemFilter, statusFilter]);
+  const updateParams = (updates: Record<string, string | null>) => {
+    const next = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (!value) {
+        next.delete(key);
+        return;
+      }
+      next.set(key, value);
+    });
+    const query = next.toString();
+    startTransition(() => {
+      router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+    });
+  };
+
+  const stockQuery = useQuery({
+    queryKey: queryKeys.steel.inventory.stock(),
+    queryFn: () => listSteelStock(),
+    enabled: Boolean(user) && isSteelFactory,
+    staleTime: 60_000,
+  });
+
+  const reconciliationsQuery = useQuery({
+    queryKey: [
+      ...queryKeys.steel.inventory.reconciliationsRoot(),
+      { itemId: itemFilter || "", status: statusFilter || "" },
+    ],
+    queryFn: () =>
+      listSteelReconciliations({
+        status: (statusFilter as "pending" | "approved" | "rejected" | "") || "",
+        item_id: itemFilter ? Number(itemFilter) : undefined,
+        limit: 100,
+      }),
+    enabled: Boolean(user) && isSteelFactory,
+  });
+
+  const summaryQuery = useQuery({
+    queryKey: queryKeys.steel.inventory.reconciliationsSummary(),
+    queryFn: () => getSteelReconciliationsSummary(),
+    enabled: Boolean(user) && isSteelFactory,
+  });
+
+  const form = useForm<z.infer<typeof decisionSchema>>({
+    resolver: zodResolver(decisionSchema),
+    defaultValues: {
+      approverNotes: "",
+      rejectionReason: "",
+      mismatchCause: "",
+    },
+  });
+
+  const rows = reconciliationsQuery.data?.items ?? [];
+  const items = stockQuery.data?.items ?? [];
+  const activeRow = rows.find((row) => String(row.id) === activeReconciliationId) ?? null;
+  const summary = summaryQuery.data?.summary;
+  const mismatchCauseValue = useWatch({ control: form.control, name: "mismatchCause" });
+  const rejectionReasonValue = useWatch({ control: form.control, name: "rejectionReason" });
 
   useEffect(() => {
-    if (!user || !isSteelFactory) {
-      setPageLoading(false);
-      return;
-    }
-    void loadData();
-  }, [isSteelFactory, loadData, user]);
+    form.reset({
+      approverNotes: activeRow?.approver_notes || "",
+      rejectionReason: activeRow?.rejection_reason || "",
+      mismatchCause: activeRow?.mismatch_cause || "",
+    });
+  }, [activeRow, form]);
 
-  const summary = useMemo(() => {
-    return reconciliations.reduce(
-      (acc, row) => {
-        acc[row.status] += 1;
-        return acc;
-      },
-      { pending: 0, approved: 0, rejected: 0 },
-    );
-  }, [reconciliations]);
-  const nextPending = useMemo(
-    () => reconciliations.find((row) => row.status === "pending") || null,
-    [reconciliations],
+  const decisionMutation = useMutation({
+    mutationFn: async (decision: "approve" | "reject") => {
+      if (!activeRow) {
+        throw new Error("No reconciliation selected.");
+      }
+
+      const values = form.getValues();
+      const mismatchCause = (values.mismatchCause || undefined) as SteelStockMismatchCause | undefined;
+
+      if (decision === "approve") {
+        return approveSteelReconciliation(activeRow.id, {
+          approver_notes: values.approverNotes || null,
+          mismatch_cause: mismatchCause,
+        });
+      }
+
+      if (!values.rejectionReason?.trim()) {
+        throw new Error("Rejection reason is required.");
+      }
+
+      return rejectSteelReconciliation(activeRow.id, {
+        rejection_reason: values.rejectionReason.trim(),
+        approver_notes: values.approverNotes || null,
+        mismatch_cause: mismatchCause,
+      });
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.steel.inventory.reconciliationsRoot() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.steel.inventory.reconciliationsSummary() }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.steel.inventory.stock() }),
+      ]);
+      setConfirmDecision(null);
+      updateParams({ id: null });
+    },
+  });
+
+  const columns = useMemo(
+    () =>
+      [
+        columnHelper.accessor("item_code", {
+          header: "Item",
+          cell: (info) => (
+            <div className="space-y-xs">
+              <div className="font-semibold text-text-primary">
+                {info.getValue() || `Item #${info.row.original.item_id}`}
+              </div>
+              <div className="text-label-dense text-text-secondary">
+                {info.row.original.item_name || "Unknown item"}
+              </div>
+            </div>
+          ),
+          meta: { isRowHeader: true },
+        }),
+        columnHelper.accessor("status", {
+          header: "Status",
+          cell: (info) => (
+            <Badge status={badgeStatus(info.getValue())} size="compact">
+              {info.getValue()}
+            </Badge>
+          ),
+        }),
+        columnHelper.accessor("confidence_status", {
+          header: "Confidence",
+          cell: (info) => (
+            <Badge status={badgeStatus(info.getValue())} size="compact">
+              {info.getValue()}
+            </Badge>
+          ),
+        }),
+        columnHelper.accessor("system_qty_kg", {
+          header: "System",
+          cell: (info) => <span className="font-mono tabular-nums">{formatKg(info.getValue())} KG</span>,
+          meta: { align: "right" },
+        }),
+        columnHelper.accessor("physical_qty_kg", {
+          header: "Physical",
+          cell: (info) => <span className="font-mono tabular-nums">{formatKg(info.getValue())} KG</span>,
+          meta: { align: "right" },
+        }),
+        columnHelper.accessor("variance_kg", {
+          header: "Variance",
+          cell: (info) => <span className="font-mono tabular-nums">{formatKg(info.getValue())} KG</span>,
+          meta: { align: "right" },
+        }),
+        columnHelper.accessor("counted_at", {
+          header: "Counted",
+          cell: (info) => formatDateTime(info.getValue()),
+        }),
+      ] as DataTableColumnDef<SteelReconciliation, unknown>[],
+    [],
   );
 
-  const handleApprove = async (reconciliationId: number) => {
-    setBusyId(reconciliationId);
-    setStatus("");
-    setError("");
-    try {
-      await approveSteelReconciliation(reconciliationId, {
-        approver_notes: reviewNotes[reconciliationId] || undefined,
-        mismatch_cause: (mismatchCauses[reconciliationId] || undefined) as SteelStockMismatchCause | undefined,
-      });
-      setStatus("Reconciliation approved.");
-      await loadData();
-    } catch (reason) {
-      if (reason instanceof ApiError || reason instanceof Error) {
-        setError(reason.message);
-      } else {
-        setError("Could not approve reconciliation.");
-      }
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  const handleReject = async (reconciliationId: number) => {
-    setBusyId(reconciliationId);
-    setStatus("");
-    setError("");
-    try {
-      await rejectSteelReconciliation(reconciliationId, {
-        approver_notes: reviewNotes[reconciliationId] || undefined,
-        rejection_reason: rejectionReasons[reconciliationId] || "",
-        mismatch_cause: (mismatchCauses[reconciliationId] || undefined) as SteelStockMismatchCause | undefined,
-      });
-      setStatus("Reconciliation rejected.");
-      await loadData();
-    } catch (reason) {
-      if (reason instanceof ApiError || reason instanceof Error) {
-        setError(reason.message);
-      } else {
-        setError("Could not reject reconciliation.");
-      }
-    } finally {
-      setBusyId(null);
-    }
-  };
-
-  if (loading || pageLoading) {
+  if (loading || (isSteelFactory && (reconciliationsQuery.isLoading || stockQuery.isLoading) && !reconciliationsQuery.data)) {
     return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading steel reconciliations...
+      <main className="min-h-screen px-4 py-8 md:px-8">
+        <div className="mx-auto max-w-7xl">
+          <LoadingBoundary isLoading loadingTitle="Loading stock review" loadingRows={8}>
+            <div />
+          </LoadingBoundary>
+        </div>
       </main>
     );
   }
@@ -185,7 +292,7 @@ export function SteelReconciliationsPage() {
             <CardTitle>Steel Reconciliations</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
+            <div className="text-sm text-status-danger-fg">{sessionError || "Please sign in to continue."}</div>
             <Link href="/access">
               <Button>Open Access</Button>
             </Link>
@@ -203,9 +310,9 @@ export function SteelReconciliationsPage() {
             <CardHeader>
               <CardTitle>Steel reconciliations are factory-aware</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 text-sm text-[var(--muted)]">
+            <CardContent className="space-y-4 text-sm text-text-secondary">
               <div>
-                Your active factory is <span className="font-semibold text-[var(--text)]">{activeFactory?.name || "not selected"}</span>.
+                Your active factory is <span className="font-semibold text-text-primary">{activeFactory?.name || "not selected"}</span>.
               </div>
               <div>Switch into a steel factory from the sidebar, or update the factory profile in Settings first.</div>
             </CardContent>
@@ -218,251 +325,299 @@ export function SteelReconciliationsPage() {
   return (
     <main className="min-h-screen px-4 py-8 md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-4xl">
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)] mb-4">
-                <span>Production</span>
-                <span>→</span>
-                <span>Invoice</span>
-                <span>→</span>
-                <span>Dispatch</span>
-                <span>→</span>
-                <span className="text-[var(--accent)] font-bold">Reconciliation</span>
-              </div>
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Reconciliations</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Stock mismatches</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Reconciliation compares your physical stock count against the system ledger. 
-                Variances indicate unrecorded movements or counting errors.
-              </p>
-            </div>
-            {/* AUDIT: BUTTON_CLUTTER - move route jumps into a secondary tray so reconciliation review stays primary. */}
-            <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
-                Review tools
-                <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
-                <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
-              </summary>
-              <div className="flex flex-wrap gap-3 border-t border-[var(--border)] px-4 py-4">
-                <Link href="/steel">
-                  <Button variant="outline">Steel hub</Button>
-                </Link>
-                <Link href="/steel/customers">
-                  <Button variant="ghost">Customers</Button>
-                </Link>
-              </div>
-            </details>
+        <section className="rounded-panel border border-border-default bg-surface-panel px-lg py-lg shadow-xs">
+          <div className="max-w-4xl">
+            <div className="text-sm uppercase tracking-wide text-text-secondary">Steel Reconciliations</div>
+            <h1 className="mt-2 text-3xl font-semibold text-text-primary md:text-4xl">Stock mismatches</h1>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-text-secondary">
+              Reconciliation compares your physical stock count against the system ledger so you can close inventory trust gaps without leaving the list workflow.
+            </p>
           </div>
         </section>
 
-        {nextPending ? (
-          // AUDIT: FLOW_BROKEN - feature the next pending reconciliation first so reviewers see the immediate task before the full history list.
-          <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-            <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
-              <CardHeader>
-                <div className="text-sm text-[var(--muted)]">Next review</div>
-                <CardTitle className="text-xl">{nextPending.item_code} - {nextPending.item_name}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="text-[var(--muted)]">
-                  Counted by {nextPending.counted_by_name || "Unknown"} on {nextPending.counted_at}
-                </div>
-                <div className="font-semibold text-white">
-                  {formatKg(nextPending.variance_kg)} KG variance | {nextPending.variance_percent.toFixed(2)}%
-                </div>
-                <div className="text-[var(--muted)]">
-                  Cause: {formatMismatchCause(mismatchCauses[nextPending.id] || nextPending.mismatch_cause)}
-                </div>
-              </CardContent>
-            </Card>
-            <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
-              <CardHeader>
-                <div className="text-sm text-[var(--muted)]">Queue pulse</div>
-                <CardTitle className="text-xl">Pending first</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm text-[var(--muted)]">
-                <div>{summary.pending} pending | {summary.approved} approved | {summary.rejected} rejected</div>
-                <div>Clear the pending queue first, then use the filters below for audits or post-mortems.</div>
-              </CardContent>
-            </Card>
-          </section>
-        ) : null}
+        <StickyActionBar
+          variant="page"
+          status="warning"
+          statusLabel="Review queue"
+          title="Stock review"
+          description="Open a mismatch in the drawer, decide it, and return to the same queue state."
+          primaryAction={{
+            id: "open-approvals",
+            label: "Open approvals",
+            onAction: () => router.push("/approvals"),
+          }}
+          secondaryAction={{
+            id: "refresh-stock-review",
+            label: reconciliationsQuery.isFetching ? "Refreshing" : "Refresh",
+            variant: "outline",
+            disabled: reconciliationsQuery.isFetching,
+            onAction: () => {
+              void reconciliationsQuery.refetch();
+              void summaryQuery.refetch();
+            },
+          }}
+        />
 
-        <section className="grid gap-4 md:grid-cols-3">
+        <section className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader><CardTitle className="text-base">Pending</CardTitle></CardHeader>
-            <CardContent className="text-2xl font-semibold text-white">{summary.pending}</CardContent>
+            <CardContent className="text-2xl font-semibold text-text-primary">{summary?.pending_reviews ?? rows.filter((row) => row.status === "pending").length}</CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">Approved</CardTitle></CardHeader>
-            <CardContent className="text-2xl font-semibold text-white">{summary.approved}</CardContent>
+            <CardHeader><CardTitle className="text-base">Matched</CardTitle></CardHeader>
+            <CardContent className="text-2xl font-semibold text-text-primary">{summary?.matched_items ?? rows.filter((row) => row.confidence_status === "green").length}</CardContent>
           </Card>
           <Card>
-            <CardHeader><CardTitle className="text-base">Rejected</CardTitle></CardHeader>
-            <CardContent className="text-2xl font-semibold text-white">{summary.rejected}</CardContent>
+            <CardHeader><CardTitle className="text-base">Mismatch</CardTitle></CardHeader>
+            <CardContent className="text-2xl font-semibold text-text-primary">{summary?.mismatch_items ?? rows.filter((row) => row.confidence_status !== "green").length}</CardContent>
+          </Card>
+          <Card>
+            <CardHeader><CardTitle className="text-base">Accuracy</CardTitle></CardHeader>
+            <CardContent className="text-2xl font-semibold text-text-primary">{summary?.accuracy_percent?.toFixed(1) ?? "0.0"}%</CardContent>
           </Card>
         </section>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-xl">History</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* AUDIT: BUTTON_CLUTTER - keep filters available in a reveal so the review list itself stays easier to scan. */}
-            <details className="group rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
-                Filter history
-                <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
-                <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
-              </summary>
-              <div className="grid gap-4 border-t border-[var(--border)] px-4 py-4 md:grid-cols-2">
-                <div>
-                  <label className="text-sm text-[var(--muted)]">Status</label>
-                  <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-                    <option value="">All statuses</option>
-                    <option value="pending">Pending</option>
-                    <option value="approved">Approved</option>
-                    <option value="rejected">Rejected</option>
-                  </Select>
+        <FilterBar
+          fields={[
+            {
+              id: "status",
+              label: "Status",
+              type: "select",
+              value: statusFilter,
+              onValueChange: (value) => updateParams({ status: value || null }),
+              options: [
+                { label: "Pending", value: "pending" },
+                { label: "Approved", value: "approved" },
+                { label: "Rejected", value: "rejected" },
+              ],
+              placeholder: "All statuses",
+            },
+            {
+              id: "item_id",
+              label: "Item",
+              type: "select",
+              value: itemFilter,
+              onValueChange: (value) => updateParams({ item_id: value || null }),
+              options: items.map((item: SteelStockItem) => ({
+                label: `${item.item_code} - ${item.name}`,
+                value: String(item.item_id),
+              })),
+              placeholder: "All items",
+            },
+          ]}
+          activeFilters={[
+            statusFilter
+              ? {
+                  id: "status",
+                  label: "Status",
+                  value: statusFilter,
+                  onClear: () => updateParams({ status: null }),
+                }
+              : null,
+            itemFilter
+              ? {
+                  id: "item_id",
+                  label: "Item",
+                  value: items.find((item) => String(item.item_id) === itemFilter)?.item_code || itemFilter,
+                  onClear: () => updateParams({ item_id: null }),
+                }
+              : null,
+          ].filter(Boolean) as Array<{ id: string; label: string; value: string; onClear: () => void }>}
+          onClearAll={() => updateParams({ status: null, item_id: null })}
+        />
+
+        <LoadingBoundary
+          isLoading={reconciliationsQuery.isLoading}
+          isFetching={reconciliationsQuery.isFetching}
+          isError={reconciliationsQuery.isError || stockQuery.isError || summaryQuery.isError}
+          error={(reconciliationsQuery.error || stockQuery.error || summaryQuery.error) as Error | null}
+          hasData={rows.length > 0}
+          isEmpty={rows.length === 0}
+          onRetry={() => {
+            void reconciliationsQuery.refetch();
+            void stockQuery.refetch();
+            void summaryQuery.refetch();
+          }}
+          emptyFallback={
+            <EmptyState
+              title="No reconciliation records match the current filters."
+              description="Clear the stock review filters or come back after the next count is recorded."
+              action={
+                <Button variant="outline" onClick={() => updateParams({ status: null, item_id: null })}>
+                  Clear filters
+                </Button>
+              }
+            />
+          }
+        >
+          <DataTable<SteelReconciliation>
+            ariaLabel="Steel reconciliation queue"
+            columns={columns}
+            data={rows}
+            activeRowId={activeRow ? String(activeRow.id) : null}
+            enableSorting
+            onRowClick={(row) => updateParams({ id: String(row.id) })}
+          />
+        </LoadingBoundary>
+
+        <OperationalDrawer
+          open={Boolean(activeRow)}
+          onOpenChange={(open) => {
+            if (!open) {
+              updateParams({ id: null });
+            }
+          }}
+          title={activeRow ? `${activeRow.item_code || `Item #${activeRow.item_id}`} reconciliation` : "Reconciliation"}
+          description="Review the mismatch, capture the cause, and confirm the decision without leaving the list."
+          status={activeRow ? badgeStatus(activeRow.status) : "secondary"}
+          statusLabel={activeRow?.status || "review"}
+          footer={
+            activeRow ? (
+              <StickyActionBar
+                variant="drawer"
+                status={badgeStatus(activeRow.status)}
+                statusLabel={activeRow.status}
+                title="Decision"
+                description={canReview ? "Approve or reject after capturing the root cause." : "Review is visible, but final approval is restricted by role."}
+                primaryAction={
+                  canReview && activeRow.status === "pending"
+                    ? {
+                        id: "approve-reconciliation",
+                        label: "Approve",
+                        onAction: () => setConfirmDecision("approve"),
+                      }
+                    : undefined
+                }
+                secondaryAction={
+                  canReview && activeRow.status === "pending"
+                    ? {
+                        id: "reject-reconciliation",
+                        label: "Reject",
+                        variant: "destructive",
+                        onAction: () => setConfirmDecision("reject"),
+                      }
+                    : {
+                        id: "close-reconciliation",
+                        label: "Close",
+                        variant: "ghost",
+                        onAction: () => updateParams({ id: null }),
+                      }
+                }
+              />
+            ) : null
+          }
+        >
+          {activeRow ? (
+            <form className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-panel border border-border-subtle bg-surface-shell px-md py-sm">
+                  <div className="text-xs uppercase tracking-wide text-text-secondary">System</div>
+                  <div className="mt-1 font-mono text-lg text-text-primary">{formatKg(activeRow.system_qty_kg)} KG</div>
                 </div>
-                <div>
-                  <label className="text-sm text-[var(--muted)]">Item</label>
-                  <Select value={itemFilter} onChange={(event) => setItemFilter(event.target.value)}>
-                    <option value="">All items</option>
-                    {items.map((item) => (
-                      <option key={item.item_id} value={item.item_id}>
-                        {item.item_code} - {item.name}
-                      </option>
-                    ))}
-                  </Select>
+                <div className="rounded-panel border border-border-subtle bg-surface-shell px-md py-sm">
+                  <div className="text-xs uppercase tracking-wide text-text-secondary">Physical</div>
+                  <div className="mt-1 font-mono text-lg text-text-primary">{formatKg(activeRow.physical_qty_kg)} KG</div>
+                </div>
+                <div className="rounded-panel border border-border-subtle bg-surface-shell px-md py-sm">
+                  <div className="text-xs uppercase tracking-wide text-text-secondary">Variance</div>
+                  <div className="mt-1 font-mono text-lg text-text-primary">{formatKg(activeRow.variance_kg)} KG</div>
+                </div>
+                <div className="rounded-panel border border-border-subtle bg-surface-shell px-md py-sm">
+                  <div className="text-xs uppercase tracking-wide text-text-secondary">Variance %</div>
+                  <div className="mt-1 font-mono text-lg text-text-primary">{activeRow.variance_percent.toFixed(2)}%</div>
                 </div>
               </div>
-            </details>
 
-            <div className="space-y-4">
-              {reconciliations.map((row) => (
-                <div key={row.id} className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <div className="text-lg font-semibold text-white">{row.item_code} - {row.item_name}</div>
-                      <div className="mt-1 text-xs text-[var(--muted)]">
-                        Counted by {row.counted_by_name || "Unknown"} on {row.counted_at}
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeTone(row.status)}`}>
-                        {row.status}
-                      </span>
-                      <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeTone(row.confidence_status)}`}>
-                        {row.confidence_status}
-                      </span>
-                    </div>
-                  </div>
+              <div className="rounded-panel border border-border-subtle bg-surface-shell px-md py-sm text-sm text-text-secondary">
+                Counted by {activeRow.counted_by_name || "Unknown"} on {formatDateTime(activeRow.counted_at)}
+              </div>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-4">
-                    <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
-                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">System</div>
-                      <div className="mt-1 text-sm font-semibold text-white">{formatKg(row.system_qty_kg)} KG</div>
-                    </div>
-                    <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
-                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Physical</div>
-                      <div className="mt-1 text-sm font-semibold text-white">{formatKg(row.physical_qty_kg)} KG</div>
-                    </div>
-                    <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
-                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Variance</div>
-                      <div className="mt-1 text-sm font-semibold text-white">{formatKg(row.variance_kg)} KG</div>
-                    </div>
-                    <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
-                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Variance %</div>
-                      <div className="mt-1 text-sm font-semibold text-white">{row.variance_percent.toFixed(2)}%</div>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.4)] p-3 text-sm text-[var(--muted)]">
-                    <div className="font-semibold text-white">Analysis & Correction</div>
-                    <div className="mt-1">
-                      {row.variance_kg > 0 
-                        ? `System shows ${formatKg(Math.abs(row.variance_kg))} KG LESS than physical count. Likely cause: Unrecorded production or inward material.`
-                        : row.variance_kg < 0
-                        ? `System shows ${formatKg(Math.abs(row.variance_kg))} KG MORE than physical count. Likely cause: Unrecorded dispatch, process loss, or theft.`
-                        : "System and physical count match perfectly."}
-                    </div>
-                    {row.status === "approved" && Math.abs(row.variance_kg) > 0.001 && (
-                      <div className="mt-2 text-emerald-300 font-medium">
-                        ✓ Ledger has been automatically adjusted by {formatKg(row.variance_kg)} KG.
-                      </div>
-                    )}
-                  </div>
-
-                  {row.notes ? <div className="mt-3 text-sm text-[var(--muted)]">Count note: {row.notes}</div> : null}
-                  <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
-                    <div className="rounded-full border border-[var(--border)] bg-[rgba(8,14,24,0.6)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                      Cause: {formatMismatchCause(mismatchCauses[row.id] || row.mismatch_cause)}
-                    </div>
-                    <Link href={mismatchActionLink(mismatchCauses[row.id] || row.mismatch_cause).href} className="text-xs font-medium text-[var(--accent)] hover:underline">
-                      {mismatchActionLink(mismatchCauses[row.id] || row.mismatch_cause).label}
-                    </Link>
-                  </div>
-                  {row.approver_notes ? <div className="mt-2 text-sm text-[var(--muted)]">Approver note: {row.approver_notes}</div> : null}
-                  {row.rejection_reason ? <div className="mt-2 text-sm text-red-300">Rejection: {row.rejection_reason}</div> : null}
-
-                  {row.status === "pending" && canReview ? (
-                    <div className="mt-4 space-y-3 rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.6)] p-4">
-                      <Select
-                        value={mismatchCauses[row.id] ?? row.mismatch_cause ?? ""}
-                        onChange={(event) => setMismatchCauses((current) => ({ ...current, [row.id]: event.target.value }))}
-                      >
-                        <option value="">Mismatch root cause</option>
-                        {MISMATCH_CAUSE_OPTIONS.map((option) => (
-                          <option key={option.value} value={option.value}>{option.label}</option>
-                        ))}
-                      </Select>
-                      <Input
-                        value={reviewNotes[row.id] || ""}
-                        onChange={(event) => setReviewNotes((current) => ({ ...current, [row.id]: event.target.value }))}
-                        placeholder="Approver note (optional)"
-                      />
-                      <Input
-                        value={rejectionReasons[row.id] || ""}
-                        onChange={(event) => setRejectionReasons((current) => ({ ...current, [row.id]: event.target.value }))}
-                        placeholder="Rejection reason (required for reject)"
-                      />
-                      {Math.abs(Number(row.variance_kg || 0)) > 0.001 && !(mismatchCauses[row.id] || row.mismatch_cause) ? (
-                        <div className="text-xs text-amber-200">
-                          Select the root cause before approving or rejecting this mismatch.
-                        </div>
-                      ) : null}
-                      <div className="flex flex-wrap gap-3">
-                        <Button
-                          disabled={busyId === row.id || (Math.abs(Number(row.variance_kg || 0)) > 0.001 && !(mismatchCauses[row.id] || row.mismatch_cause))}
-                          onClick={() => void handleApprove(row.id)}
-                        >
-                          {busyId === row.id ? "Saving..." : "Approve"}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          disabled={busyId === row.id || (Math.abs(Number(row.variance_kg || 0)) > 0.001 && !(mismatchCauses[row.id] || row.mismatch_cause))}
-                          onClick={() => void handleReject(row.id)}
-                        >
-                          {busyId === row.id ? "Saving..." : "Reject"}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              ))}
-              {!reconciliations.length ? (
-                <div className="rounded-3xl border border-dashed border-[var(--border)] px-4 py-10 text-center text-sm text-[var(--muted)]">
-                  No reconciliation records match the current filters.
+              {activeRow.notes ? (
+                <div className="rounded-panel border border-border-subtle bg-surface-shell px-md py-sm text-sm text-text-secondary">
+                  Count note: {activeRow.notes}
                 </div>
               ) : null}
-            </div>
-          </CardContent>
-        </Card>
 
-        {status ? <div className="text-sm text-green-400">{status}</div> : null}
-        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
+              <div className="space-y-sm">
+                <label className="text-label-dense font-medium uppercase tracking-wide text-text-secondary">Mismatch root cause</label>
+                <Select {...form.register("mismatchCause")}>
+                  <option value="">Mismatch root cause</option>
+                  {MISMATCH_CAUSE_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>{option.label}</option>
+                  ))}
+                </Select>
+              </div>
+
+              <div className="space-y-sm">
+                <label className="text-label-dense font-medium uppercase tracking-wide text-text-secondary">Approver note</label>
+                <Textarea {...form.register("approverNotes")} rows={3} placeholder="Capture what you checked before closing this mismatch." />
+              </div>
+
+              <div className="space-y-sm">
+                <label className="text-label-dense font-medium uppercase tracking-wide text-text-secondary">Rejection reason</label>
+                <Input {...form.register("rejectionReason")} placeholder="Required when rejecting this mismatch" />
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3 text-sm">
+                <Badge status={badgeStatus(activeRow.confidence_status)} size="compact">
+                  {activeRow.confidence_status}
+                </Badge>
+                <Link href={mismatchActionLink(mismatchCauseValue || activeRow.mismatch_cause).href} className="text-action-primary hover:underline">
+                  {mismatchActionLink(mismatchCauseValue || activeRow.mismatch_cause).label}
+                </Link>
+              </div>
+
+              {activeRow.approver_notes ? <div className="text-sm text-text-secondary">Approver note: {activeRow.approver_notes}</div> : null}
+              {activeRow.rejection_reason ? <div className="text-sm text-status-danger-fg">Rejection: {activeRow.rejection_reason}</div> : null}
+            </form>
+          ) : null}
+        </OperationalDrawer>
+
+        <ConfirmationModal
+          open={confirmDecision === "approve"}
+          onOpenChange={(open) => {
+            if (!open) {
+              setConfirmDecision(null);
+            }
+          }}
+          title="Approve this reconciliation?"
+          description="This will close the stock mismatch and persist the decision."
+          primaryActionLabel={`Approve ${activeRow?.item_code || "reconciliation"}`}
+          secondaryActionLabel="Cancel"
+          onConfirm={() => {
+            void decisionMutation.mutateAsync("approve");
+          }}
+          confirmBusy={decisionMutation.isPending}
+          status="warning"
+          statusLabel="Pending review"
+        >
+          <p className="text-sm text-text-secondary">
+            Variance {activeRow ? `${formatKg(activeRow.variance_kg)} KG` : "-"} will be closed with the current root-cause and approver note.
+          </p>
+        </ConfirmationModal>
+
+        <ConfirmationModal
+          open={confirmDecision === "reject"}
+          onOpenChange={(open) => {
+            if (!open) {
+              setConfirmDecision(null);
+            }
+          }}
+          title="Reject this reconciliation?"
+          description="This sends the stock mismatch back for another correction pass."
+          primaryActionLabel={`Reject ${activeRow?.item_code || "reconciliation"}`}
+          secondaryActionLabel="Cancel"
+          onConfirm={() => {
+            void decisionMutation.mutateAsync("reject");
+          }}
+          confirmBusy={decisionMutation.isPending}
+          status="destructive"
+          statusLabel="Rejecting"
+        >
+          <p className="text-sm text-text-secondary">
+            Rejection reason: {rejectionReasonValue?.trim() || "Add a reason in the drawer before confirming."}
+          </p>
+        </ConfirmationModal>
       </div>
     </main>
   );

@@ -96,10 +96,12 @@ export function useDataTableKeyboard({
       onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
         switch (event.key) {
           case "ArrowUp":
+          case "k":
             event.preventDefault();
             moveFocus(rowIndex - 1, columnIndex);
             break;
           case "ArrowDown":
+          case "j":
             event.preventDefault();
             moveFocus(rowIndex + 1, columnIndex);
             break;

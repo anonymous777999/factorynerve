@@ -30,6 +30,7 @@ import {
   useAppShellState,
 } from "@/hooks/use-app-shell-state";
 import { cn } from "@/lib/utils";
+import { useCommandRegistry } from "@/providers/command-registry-provider";
 
 export { getVisibleNavSections };
 
@@ -62,6 +63,7 @@ function AppShellFrame({
 }) {
   const router = useRouter();
   const shell = useAppShellState(pathname);
+  const commandRegistry = useCommandRegistry();
   const [commandPaletteOpen, setCommandPaletteOpen] = React.useState(false);
   const focusMode = shell.shellLayout.mode === "focus";
   const factoryName =
@@ -97,24 +99,24 @@ function AppShellFrame({
     const quickActions: CommandPaletteItem[] = [
       {
         id: "shell-toggle-sidebar",
-        group: "Workspace",
+        group: "Actions",
         label: shell.sidebarOpen ? "Collapse navigation rail" : "Open navigation rail",
         description: "Use bracket shortcuts to keep navigation available without leaving the keyboard flow.",
         shortcut: shell.sidebarOpen ? "[" : "]",
-        status: "paused",
+        status: "secondary",
         onSelect: () => shell.toggleSidebar(),
       },
       {
         id: "shell-toggle-context",
-        group: "Workspace",
+        group: "Actions",
         label: shell.desktopContextRailHidden ? "Show workspace rail" : "Hide workspace rail",
         description: "Adjust the desktop workspace rail to match the current review or scanning density.",
-        status: "draft",
+        status: "secondary",
         onSelect: () => shell.toggleDesktopContextRail(),
       },
       {
         id: "shell-profile",
-        group: "Account",
+        group: "Actions",
         label: "Open profile",
         description: "Review your account, access, and display preferences.",
         shortcut: "P",
@@ -123,10 +125,35 @@ function AppShellFrame({
           router.push("/profile");
         },
       },
+      {
+        id: "nav-steel-batches-shortcut",
+        group: "Steel",
+        label: "Open steel batches",
+        description: "Go to steel batches.",
+        shortcut: "G O",
+        onSelect: () => {
+          shell.warmRoute("/steel/batches");
+          router.push("/steel/batches");
+          shell.handleNavNavigate();
+        },
+      },
+      {
+        id: "nav-steel-inventory-shortcut",
+        group: "Steel",
+        label: "Open steel inventory",
+        description: "Go to steel inventory.",
+        shortcut: "G I",
+        onSelect: () => {
+          shell.warmRoute("/steel/inventory");
+          router.push("/steel/inventory");
+          shell.handleNavNavigate();
+        },
+      },
     ];
 
-    return [...quickActions, ...navigationItems];
+    return [...quickActions, ...navigationItems, ...commandRegistry.commands];
   }, [
+    commandRegistry.commands,
     pathname,
     router,
     shell,
@@ -137,9 +164,42 @@ function AppShellFrame({
       return;
     }
 
+    let pendingChord: "g" | null = null;
+    let chordTimer: number | null = null;
+
+    function clearChord() {
+      pendingChord = null;
+      if (chordTimer != null) {
+        window.clearTimeout(chordTimer);
+        chordTimer = null;
+      }
+    }
+
     function handleShellKeyDown(event: KeyboardEvent) {
       if (isEditableTarget(event.target) || event.metaKey || event.ctrlKey || event.altKey) {
         return;
+      }
+
+      if (pendingChord === "g") {
+        if (event.key.toLowerCase() === "o") {
+          event.preventDefault();
+          clearChord();
+          shell.warmRoute("/steel/batches");
+          router.push("/steel/batches");
+          shell.handleNavNavigate();
+          return;
+        }
+
+        if (event.key.toLowerCase() === "i") {
+          event.preventDefault();
+          clearChord();
+          shell.warmRoute("/steel/inventory");
+          router.push("/steel/inventory");
+          shell.handleNavNavigate();
+          return;
+        }
+
+        clearChord();
       }
 
       if (event.key === "[") {
@@ -151,12 +211,27 @@ function AppShellFrame({
       if (event.key === "]") {
         event.preventDefault();
         shell.toggleSidebar();
+        return;
+      }
+
+      if (event.key.toLowerCase() === "g") {
+        pendingChord = "g";
+        chordTimer = window.setTimeout(clearChord, 800);
+        return;
+      }
+
+      if (event.key === "/" && (event.metaKey || event.ctrlKey)) {
+        event.preventDefault();
+        shell.toggleSidebar();
       }
     }
 
     window.addEventListener("keydown", handleShellKeyDown);
-    return () => window.removeEventListener("keydown", handleShellKeyDown);
-  }, [shell]);
+    return () => {
+      clearChord();
+      window.removeEventListener("keydown", handleShellKeyDown);
+    };
+  }, [router, shell]);
 
   return (
     <div className="relative flex min-h-screen overflow-hidden bg-surface-app text-text-primary" data-component="app-shell">

@@ -2,8 +2,8 @@ import * as React from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { RecoveryBanner } from "@/components/ui/recovery-banner";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
@@ -46,28 +46,26 @@ export function LoadingStateSkeleton({
   ...props
 }: LoadingStateSkeletonProps) {
   return (
-    <Card className={cn("border-border-subtle bg-surface-panel shadow-none", className)} {...props}>
-      <CardHeader className="pb-sm">
-        <Badge status="processing">Loading</Badge>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-md pt-0">
+    <div className={cn("rounded-panel border border-border-subtle bg-surface-panel px-md py-md shadow-none", className)} {...props}>
+      <div className="flex flex-col gap-md">
         <div className="space-y-sm">
+          <Badge status="processing" size="compact">Loading</Badge>
           <div className="space-y-xs">
             <p className="text-panel-title font-semibold text-text-primary">{title}</p>
             <p className="text-body text-text-secondary">{description}</p>
           </div>
           <div className="space-y-xs" aria-hidden="true">
-            <Skeleton className="h-input w-1/3 rounded-control" />
-            <Skeleton className="h-row w-2/3 rounded-control" />
+            <Skeleton className="h-4 w-24 rounded-control" />
+            <Skeleton className="h-input w-full rounded-control" />
           </div>
         </div>
         <div className="space-y-sm" aria-hidden="true">
           {Array.from({ length: rows }).map((_, index) => (
-            <Skeleton key={index} className="h-row w-full rounded-control" />
+            <Skeleton key={index} className="h-9 w-full rounded-control" />
           ))}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -164,23 +162,17 @@ export function LoadingBoundary({
     return (
       <div className={className}>
         {errorFallback ?? (
-          <EmptyState
-            status="error"
-            statusLabel="Load failed"
+          <RecoveryBanner
+            kind="sync-failure"
             title={errorTitle}
             description={errorMessage ?? error?.message ?? "Could not load data. Retry when ready."}
-            action={
-              onRetry ? (
-                <Button
-                  variant="outline"
-                  onClick={onRetry}
-                  isBusy={isRetrying}
-                  busyLabel="Retrying"
-                >
-                  {retryLabel}
-                </Button>
-              ) : undefined
-            }
+            primaryAction={onRetry ? {
+              id: "retry-load-boundary",
+              label: retryLabel,
+              onAction: onRetry,
+              variant: "outline",
+              isBusy: isRetrying,
+            } : undefined}
           />
         )}
       </div>
@@ -194,8 +186,6 @@ export function LoadingBoundary({
           <EmptyState
             title={emptyTitle}
             description={emptyMessage}
-            status="draft"
-            statusLabel="No records"
           />
         )}
       </div>
