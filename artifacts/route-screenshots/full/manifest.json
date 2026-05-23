@@ -1,0 +1,206 @@
+[
+  {
+    "route": "/",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\root.png"
+  },
+  {
+    "route": "/_not-found",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\_not-found.png"
+  },
+  {
+    "route": "/403",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\403.png"
+  },
+  {
+    "route": "/access",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\access.png"
+  },
+  {
+    "route": "/ai",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\ai.png"
+  },
+  {
+    "route": "/analytics",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\analytics.png"
+  },
+  {
+    "route": "/approvals",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\approvals.png"
+  },
+  {
+    "route": "/attendance",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\attendance.png"
+  },
+  {
+    "route": "/attendance/live",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\attendance-live.png"
+  },
+  {
+    "route": "/attendance/reports",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\attendance-reports.png"
+  },
+  {
+    "route": "/attendance/review",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\attendance-review.png"
+  },
+  {
+    "route": "/billing",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\billing.png"
+  },
+  {
+    "route": "/control-tower",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\control-tower.png"
+  },
+  {
+    "route": "/dashboard",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\dashboard.png"
+  },
+  {
+    "route": "/email-summary",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\email-summary.png"
+  },
+  {
+    "route": "/entry",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\entry.png"
+  },
+  {
+    "route": "/entry/1",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\entry-1.png"
+  },
+  {
+    "route": "/forgot-password",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\forgot-password.png"
+  },
+  {
+    "route": "/login",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\login.png"
+  },
+  {
+    "route": "/ocr",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\ocr.png"
+  },
+  {
+    "route": "/ocr/history",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\ocr-history.png"
+  },
+  {
+    "route": "/ocr/jobs/1",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\ocr-jobs-1.png"
+  },
+  {
+    "route": "/ocr/scan",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\ocr-scan.png"
+  },
+  {
+    "route": "/ocr/verify",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\ocr-verify.png"
+  },
+  {
+    "route": "/offline",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\offline.png"
+  },
+  {
+    "route": "/onboarding/factory-required",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\onboarding-factory-required.png"
+  },
+  {
+    "route": "/plans",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\plans.png"
+  },
+  {
+    "route": "/premium/dashboard",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\premium-dashboard.png"
+  },
+  {
+    "route": "/profile",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\profile.png"
+  },
+  {
+    "route": "/register",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\register.png"
+  },
+  {
+    "route": "/reports",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\reports.png"
+  },
+  {
+    "route": "/reset-password",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\reset-password.png"
+  },
+  {
+    "route": "/settings",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\settings.png"
+  },
+  {
+    "route": "/settings/attendance",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\settings-attendance.png"
+  },
+  {
+    "route": "/steel",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\steel.png"
+  },
+  {
+    "route": "/steel/batches",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\steel-batches.png"
+  },
+  {
+    "route": "/steel/batches/1",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\steel-batches-1.png"
+  },
+  {
+    "route": "/steel/charts",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\steel-charts.png"
+  },
+  {
+    "route": "/steel/customers",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\steel-customers.png"
+  },
+  {
+    "route": "/steel/customers/1",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\steel-customers-1.png"
+  },
+  {
+    "route": "/steel/dispatches",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\steel-dispatches.png"
+  },
+  {
+    "route": "/steel/dispatches/1",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\steel-dispatches-1.png"
+  },
+  {
+    "route": "/steel/inventory",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\steel-inventory.png"
+  },
+  {
+    "route": "/steel/inventory/transactions",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\steel-inventory-transactions.png"
+  },
+  {
+    "route": "/steel/invoices",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\steel-invoices.png"
+  },
+  {
+    "route": "/steel/invoices/1",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\steel-invoices-1.png"
+  },
+  {
+    "route": "/steel/production/record",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\steel-production-record.png"
+  },
+  {
+    "route": "/steel/reconciliations",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\steel-reconciliations.png"
+  },
+  {
+    "route": "/tasks",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\tasks.png"
+  },
+  {
+    "route": "/verify-email",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\verify-email.png"
+  },
+  {
+    "route": "/work-queue",
+    "file": "D:\\DPR APP\\DPR.ai\\artifacts\\route-screenshots\\full\\work-queue.png"
+  }
+]
