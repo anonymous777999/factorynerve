@@ -16,22 +16,22 @@ export function SettingsUsageTab({ billing, usage }: SettingsUsageTabProps) {
           <CardTitle className="text-xl">Usage Summary</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-              <div className="text-sm text-[var(--muted)]">Requests Used</div>
-              <div className="mt-1 text-xl font-semibold">{usage?.requests_used ?? 0}</div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-[10px] bg-[var(--color-background-secondary)] p-4">
+              <div className="mb-1 text-[12px] text-[var(--color-text-tertiary)]">Requests Used</div>
+              <div className="text-[22px] font-medium text-[var(--color-text-primary)]">{usage?.requests_used ?? 0}</div>
             </div>
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-              <div className="text-sm text-[var(--muted)]">Credits Used</div>
-              <div className="mt-1 text-xl font-semibold">{usage?.credits_used ?? 0}</div>
+            <div className="rounded-[10px] bg-[var(--color-background-secondary)] p-4">
+              <div className="mb-1 text-[12px] text-[var(--color-text-tertiary)]">Credits Used</div>
+              <div className="text-[22px] font-medium text-[var(--color-text-primary)]">{usage?.credits_used ?? 0}</div>
             </div>
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-              <div className="text-sm text-[var(--muted)]">Request Limit</div>
-              <div className="mt-1 text-xl font-semibold">{usage?.max_requests || "Unlimited"}</div>
+            <div className="rounded-[10px] bg-[var(--color-background-secondary)] p-4">
+              <div className="mb-1 text-[12px] text-[var(--color-text-tertiary)]">Request Limit</div>
+              <div className="text-[22px] font-medium text-[var(--color-text-primary)]">{usage?.max_requests || "Unlimited"}</div>
             </div>
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-              <div className="text-sm text-[var(--muted)]">Rate Limit / min</div>
-              <div className="mt-1 text-xl font-semibold">{usage?.rate_limit_per_minute ?? "-"}</div>
+            <div className="rounded-[10px] bg-[var(--color-background-secondary)] p-4">
+              <div className="mb-1 text-[12px] text-[var(--color-text-tertiary)]">Rate Limit / min</div>
+              <div className="text-[22px] font-medium text-[var(--color-text-primary)]">{usage?.rate_limit_per_minute ?? "-"}</div>
             </div>
           </div>
         </CardContent>
@@ -42,13 +42,13 @@ export function SettingsUsageTab({ billing, usage }: SettingsUsageTabProps) {
           <CardTitle className="text-xl">Billing Status</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-            <div className="text-[var(--muted)]">Plan</div>
-            <div className="mt-1 text-lg font-semibold">{billing?.plan || "-"}</div>
+          <div className="rounded-[10px] bg-[var(--color-background-secondary)] p-4">
+            <div className="mb-1 text-[12px] text-[var(--color-text-tertiary)]">Plan</div>
+            <div className="text-[22px] font-medium text-[var(--color-text-primary)]">{billing?.plan || "-"}</div>
           </div>
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-            <div className="text-[var(--muted)]">Status</div>
-            <div className="mt-1 text-lg font-semibold">{billing?.status || "-"}</div>
+          <div className="rounded-[10px] bg-[var(--color-background-secondary)] p-4">
+            <div className="mb-1 text-[12px] text-[var(--color-text-tertiary)]">Status</div>
+            <div className="text-[22px] font-medium text-[var(--color-text-primary)]">{billing?.status || "-"}</div>
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <div>

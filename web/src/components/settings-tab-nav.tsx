@@ -1,7 +1,7 @@
 "use client";
 
-import { Button } from "@/components/ui/button";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
+import { cn } from "@/lib/utils";
 
 export type SettingsTabKey = "factory" | "users" | "usage" | "alerts" | "feedback";
 
@@ -32,45 +32,60 @@ export function SettingsTabNav({
       viewportClassName="-mx-1 px-1"
       showIndicators={false}
     >
-      <div className="flex min-w-max gap-3">
-        <Button
-          className="whitespace-nowrap"
-          variant={activeTab === "factory" ? "primary" : "outline"}
+      <div className="mb-5 flex min-w-max gap-1">
+        <button
+          type="button"
+          className={cn(
+            "whitespace-nowrap rounded-full border-none bg-transparent px-4 py-1.5 text-[13px] text-[var(--color-text-secondary)]",
+            activeTab === "factory" && "bg-[var(--color-text-primary)] font-medium text-[var(--color-background-primary)]",
+          )}
           onClick={() => onTabChange("factory")}
         >
           {labels.factory}
-        </Button>
-        <Button
-          className="whitespace-nowrap"
-          variant={activeTab === "users" ? "primary" : "outline"}
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "whitespace-nowrap rounded-full border-none bg-transparent px-4 py-1.5 text-[13px] text-[var(--color-text-secondary)]",
+            activeTab === "users" && "bg-[var(--color-text-primary)] font-medium text-[var(--color-background-primary)]",
+          )}
           onClick={() => onTabChange("users")}
         >
           {labels.users}
-        </Button>
-        <Button
-          className="whitespace-nowrap"
-          variant={activeTab === "usage" ? "primary" : "outline"}
+        </button>
+        <button
+          type="button"
+          className={cn(
+            "whitespace-nowrap rounded-full border-none bg-transparent px-4 py-1.5 text-[13px] text-[var(--color-text-secondary)]",
+            activeTab === "usage" && "bg-[var(--color-text-primary)] font-medium text-[var(--color-background-primary)]",
+          )}
           onClick={() => onTabChange("usage")}
         >
           {labels.usage}
-        </Button>
+        </button>
         {canManageAlerts ? (
-          <Button
-            className="whitespace-nowrap"
-            variant={activeTab === "alerts" ? "primary" : "outline"}
+          <button
+            type="button"
+            className={cn(
+              "whitespace-nowrap rounded-full border-none bg-transparent px-4 py-1.5 text-[13px] text-[var(--color-text-secondary)]",
+              activeTab === "alerts" && "bg-[var(--color-text-primary)] font-medium text-[var(--color-background-primary)]",
+            )}
             onClick={() => onTabChange("alerts")}
           >
             {labels.alerts}
-          </Button>
+          </button>
         ) : null}
         {canManageFeedback ? (
-          <Button
-            className="whitespace-nowrap"
-            variant={activeTab === "feedback" ? "primary" : "outline"}
+          <button
+            type="button"
+            className={cn(
+              "whitespace-nowrap rounded-full border-none bg-transparent px-4 py-1.5 text-[13px] text-[var(--color-text-secondary)]",
+              activeTab === "feedback" && "bg-[var(--color-text-primary)] font-medium text-[var(--color-background-primary)]",
+            )}
             onClick={() => onTabChange("feedback")}
           >
             {labels.feedback}
-          </Button>
+          </button>
         ) : null}
       </div>
     </ResponsiveScrollArea>

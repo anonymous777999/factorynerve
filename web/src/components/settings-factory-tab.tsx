@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, Label } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import type {
@@ -66,6 +67,20 @@ export function SettingsFactoryTab({
   onCreateFactory,
   coerceIntegerInput,
 }: SettingsFactoryTabProps) {
+  const moduleChipTone = (moduleName: string) => {
+    const normalized = moduleName.trim().toLowerCase();
+    if (normalized === "dpr" || normalized === "traceability") {
+      return "bg-[#E6F1FB] text-[#185FA5]";
+    }
+    if (normalized === "quality" || normalized === "certificates") {
+      return "bg-[#EAF3DE] text-[#3B6D11]";
+    }
+    if (normalized === "scrap" || normalized === "downtime") {
+      return "bg-[#FAEEDA] text-[#854F0B]";
+    }
+    return "bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)]";
+  };
+
   const profileOptions =
     profiles.length > 0
       ? profiles
@@ -78,15 +93,15 @@ export function SettingsFactoryTab({
           <CardTitle className="text-xl">Factory Profile</CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
-          <div>
-            <label className="text-sm text-[var(--muted)]">Factory Name</label>
+          <Field>
+            <Label>Factory Name</Label>
             <Input
               value={factory.factory_name}
               onChange={(e) => onFactoryChange((prev) => ({ ...prev, factory_name: e.target.value }))}
             />
-          </div>
-          <div>
-            <label className="text-sm text-[var(--muted)]">Industry Profile</label>
+          </Field>
+          <Field>
+            <Label>Industry Profile</Label>
             <Select
               value={factory.industry_type}
               onChange={(e) => {
@@ -104,14 +119,14 @@ export function SettingsFactoryTab({
                 <option key={profile.key} value={profile.key}>
                   {profile.label}
                 </option>
-              ))}
+                ))}
             </Select>
-            <p className="mt-2 text-xs text-[var(--muted)]">
+            <p className="mt-2 text-xs text-[var(--color-text-tertiary)]">
               {currentIndustryProfile?.description || "Choose the safest baseline industry workflow for this factory."}
             </p>
-          </div>
-          <div>
-            <label className="text-sm text-[var(--muted)]">Workflow Template</label>
+          </Field>
+          <Field>
+            <Label>Workflow Template</Label>
             <Select
               value={factory.workflow_template_key}
               onChange={(e) => {
@@ -127,29 +142,29 @@ export function SettingsFactoryTab({
                 <option key={template.key} value={template.key}>
                   {template.label}
                 </option>
-              ))}
+                ))}
             </Select>
-            <p className="mt-2 text-xs text-[var(--muted)]">
+            <p className="mt-2 text-xs text-[var(--color-text-tertiary)]">
               {selectedFactoryTemplate?.description ||
                 "Choose the operating template that becomes the default starter pack for this factory."}
             </p>
-          </div>
-          <div className="md:col-span-2">
-            <label className="text-sm text-[var(--muted)]">Address</label>
+          </Field>
+          <Field className="md:col-span-2">
+            <Label>Address</Label>
             <Input
               value={factory.address}
               onChange={(e) => onFactoryChange((prev) => ({ ...prev, address: e.target.value }))}
             />
-          </div>
+          </Field>
           <div className="md:col-span-2 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
             <div className="text-sm font-semibold">Starter Modules</div>
             <div className="mt-3 flex flex-wrap gap-2">
               {(selectedFactoryTemplate?.modules || factory.starter_modules || []).map((module) => (
                 <span
                   key={module}
-                  className="rounded-full border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]"
+                  className={`inline-flex rounded-full px-3 py-1 text-[12px] font-medium ${moduleChipTone(module)}`}
                 >
-                  {module.replace(/_/g, " ")}
+                  {module.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())}
                 </span>
               ))}
             </div>
@@ -163,7 +178,7 @@ export function SettingsFactoryTab({
                       {section.fields.map((field) => (
                         <span
                           key={field.key}
-                          className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]"
+                          className="inline-flex rounded-full bg-[var(--color-background-secondary)] px-3 py-1 text-[12px] font-medium text-[var(--color-text-secondary)]"
                         >
                           {field.label}
                         </span>
@@ -174,8 +189,8 @@ export function SettingsFactoryTab({
               </div>
             ) : null}
           </div>
-          <div>
-            <label className="text-sm text-[var(--muted)]">Morning Target</label>
+          <Field>
+            <Label>Morning Target</Label>
             <Input
               type="number"
               min={0}
@@ -189,9 +204,9 @@ export function SettingsFactoryTab({
                 }))
               }
             />
-          </div>
-          <div>
-            <label className="text-sm text-[var(--muted)]">Evening Target</label>
+          </Field>
+          <Field>
+            <Label>Evening Target</Label>
             <Input
               type="number"
               min={0}
@@ -205,9 +220,9 @@ export function SettingsFactoryTab({
                 }))
               }
             />
-          </div>
-          <div>
-            <label className="text-sm text-[var(--muted)]">Night Target</label>
+          </Field>
+          <Field>
+            <Label>Night Target</Label>
             <Input
               type="number"
               min={0}
@@ -221,10 +236,10 @@ export function SettingsFactoryTab({
                 }))
               }
             />
-          </div>
+          </Field>
           <div className="md:col-span-2">
             <Button onClick={onSaveFactoryProfile} disabled={busy}>
-              Save Factory Profile
+              Save profile
             </Button>
           </div>
         </CardContent>
@@ -236,15 +251,15 @@ export function SettingsFactoryTab({
             <CardTitle className="text-xl">Create Factory</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div>
-              <label className="text-sm text-[var(--muted)]">Factory Name</label>
+            <Field>
+              <Label>Factory Name</Label>
               <Input
                 value={newFactoryForm.name}
                 onChange={(e) => onNewFactoryFormChange((prev) => ({ ...prev, name: e.target.value }))}
               />
-            </div>
-            <div>
-              <label className="text-sm text-[var(--muted)]">Industry Profile</label>
+            </Field>
+            <Field>
+              <Label>Industry Profile</Label>
               <Select
                 value={newFactoryForm.industry_type}
                 onChange={(e) =>
@@ -255,11 +270,11 @@ export function SettingsFactoryTab({
                   <option key={profile.key} value={profile.key}>
                     {profile.label}
                   </option>
-                ))}
+                  ))}
               </Select>
-            </div>
-            <div>
-              <label className="text-sm text-[var(--muted)]">Workflow Template</label>
+            </Field>
+            <Field>
+              <Label>Workflow Template</Label>
               <Select
                 value={newFactoryForm.workflow_template_key}
                 onChange={(e) =>
@@ -276,27 +291,27 @@ export function SettingsFactoryTab({
                   <option key={template.key} value={template.key}>
                     {template.label}
                   </option>
-                ))}
+                  ))}
               </Select>
-              <p className="mt-2 text-xs text-[var(--muted)]">
+              <p className="mt-2 text-xs text-[var(--color-text-tertiary)]">
                 {selectedNewFactoryTemplate?.description ||
                   "Choose the starter workflow your team should see on day one."}
               </p>
-            </div>
-            <div>
-              <label className="text-sm text-[var(--muted)]">Location</label>
+            </Field>
+            <Field>
+              <Label>Location</Label>
               <Input
                 value={newFactoryForm.location}
                 onChange={(e) => onNewFactoryFormChange((prev) => ({ ...prev, location: e.target.value }))}
               />
-            </div>
-            <div>
-              <label className="text-sm text-[var(--muted)]">Address</label>
+            </Field>
+            <Field>
+              <Label>Address</Label>
               <Input
                 value={newFactoryForm.address}
                 onChange={(e) => onNewFactoryFormChange((prev) => ({ ...prev, address: e.target.value }))}
               />
-            </div>
+            </Field>
             <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
               <div className="text-sm font-semibold">Pack Preview</div>
               <div className="mt-1 text-xs text-[var(--muted)]">
@@ -306,9 +321,9 @@ export function SettingsFactoryTab({
                 {(selectedNewFactoryTemplate?.modules || newFactoryTemplates?.starter_modules || []).map((module) => (
                   <span
                     key={module}
-                    className="rounded-full border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]"
+                    className={`inline-flex rounded-full px-3 py-1 text-[12px] font-medium ${moduleChipTone(module)}`}
                   >
-                    {module.replace(/_/g, " ")}
+                    {module.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase())}
                   </span>
                 ))}
               </div>

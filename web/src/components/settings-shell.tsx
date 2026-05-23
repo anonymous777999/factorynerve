@@ -4,7 +4,6 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { SettingsTabNav, type SettingsTabKey } from "@/components/settings-tab-nav";
 
@@ -83,17 +82,17 @@ export function SettingsShell({
         </summary>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link href="/dashboard">
-            <Button variant="outline">{toolLabels.board}</Button>
+            <Button variant="ghost">{toolLabels.board}</Button>
           </Link>
           <Link href="/reports">
             <Button>{toolLabels.reports}</Button>
           </Link>
           <Link href="/plans">
-            <Button variant="outline">{toolLabels.plans}</Button>
+            <Button variant="ghost">{toolLabels.plans}</Button>
           </Link>
           {canViewBilling ? (
             <Link href="/billing">
-              <Button variant="outline">{toolLabels.billing}</Button>
+              <Button variant="ghost">{toolLabels.billing}</Button>
             </Link>
           ) : null}
         </div>
@@ -123,29 +122,26 @@ export function SettingsShell({
         </div>
       </GuidanceBlock>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-3 md:grid-cols-3">
         {summaryCards.map((card) => (
-          <Card key={card.title}>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">{card.title}</div>
-              <CardTitle>{card.value}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-[var(--muted)]">{card.detail}</CardContent>
-          </Card>
+          <div
+            key={card.title}
+            className="rounded-[10px] bg-[var(--color-background-secondary)] px-5 py-4 text-[var(--color-text-primary)]"
+          >
+            <div className="mb-1 text-[12px] font-normal text-[var(--color-text-tertiary)]">{card.title}</div>
+            <div className="text-[22px] font-medium text-[var(--color-text-primary)]">{card.value}</div>
+            <div className="text-[12px] text-[var(--color-text-tertiary)]">{card.detail}</div>
+          </div>
         ))}
       </section>
 
-      <Card>
-        <CardHeader>
-          <SettingsTabNav
-            activeTab={activeTab}
-            canManageAlerts={canManageAlerts}
-            canManageFeedback={canManageFeedback}
-            labels={tabLabels}
-            onTabChange={onTabChange}
-          />
-        </CardHeader>
-      </Card>
+      <SettingsTabNav
+        activeTab={activeTab}
+        canManageAlerts={canManageAlerts}
+        canManageFeedback={canManageFeedback}
+        labels={tabLabels}
+        onTabChange={onTabChange}
+      />
 
       {children}
     </>

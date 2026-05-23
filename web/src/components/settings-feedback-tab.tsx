@@ -16,6 +16,7 @@ import {
 import { pushAppToast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, Label } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -197,27 +198,27 @@ export default function SettingsFeedbackTab({ active }: Props) {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={handleExport} disabled={loading || exporting}>
+            <Button variant="ghost" onClick={handleExport} disabled={loading || exporting}>
               {exporting ? "Exporting..." : "Export CSV"}
             </Button>
-            <Button variant="outline" onClick={() => void loadFeedback()} disabled={loading}>
+            <Button variant="ghost" onClick={() => void loadFeedback()} disabled={loading}>
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-[12rem_12rem_12rem_1fr]">
-            <div>
-              <label className="text-sm text-[var(--muted)]">Status</label>
+            <Field>
+              <Label>Status</Label>
               <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as FeedbackStatus | "all")}>
                 <option value="all">All</option>
                 <option value="open">Open</option>
                 <option value="triaged">Triaged</option>
                 <option value="resolved">Resolved</option>
               </Select>
-            </div>
-            <div>
-              <label className="text-sm text-[var(--muted)]">Type</label>
+            </Field>
+            <Field>
+              <Label>Type</Label>
               <Select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as FeedbackType | "all")}>
                 <option value="all">All</option>
                 <option value="issue">Issue</option>
@@ -225,14 +226,14 @@ export default function SettingsFeedbackTab({ active }: Props) {
                 <option value="suggestion">Suggestion</option>
                 <option value="alert_problem">Alert problem</option>
               </Select>
-            </div>
-            <div>
-              <label className="text-sm text-[var(--muted)]">Sort</label>
+            </Field>
+            <Field>
+              <Label>Sort</Label>
               <Select value={sortFilter} onChange={(event) => setSortFilter(event.target.value as FeedbackSort)}>
                 <option value="recency">Recency</option>
                 <option value="frequency">Frequency</option>
               </Select>
-            </div>
+            </Field>
             <div className="flex items-end text-sm text-[var(--muted)]">{itemCountLabel}</div>
           </div>
 
@@ -341,15 +342,15 @@ export default function SettingsFeedbackTab({ active }: Props) {
                     </div>
                   </div>
 
-                  <div className="mt-4">
-                    <label className="text-sm text-[var(--muted)]">Resolution note</label>
+                  <Field className="mt-4 mb-0">
+                    <Label>Resolution note</Label>
                     <Textarea
                       rows={3}
                       value={notes[row.id] ?? row.resolution_note ?? ""}
                       onChange={(event) => setNotes((current) => ({ ...current, [row.id]: event.target.value }))}
                       placeholder="Optional note for the support or product team."
                     />
-                  </div>
+                  </Field>
 
                   {row.resolved_at ? (
                     <div className="mt-3 text-xs text-[var(--muted)]">
@@ -361,7 +362,7 @@ export default function SettingsFeedbackTab({ active }: Props) {
                   <div className="mt-4 flex flex-wrap justify-end gap-3">
                     {row.status !== "open" ? (
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => void handleStatusUpdate(row, "open")}
                         disabled={pendingId === row.id}
                       >
@@ -370,7 +371,7 @@ export default function SettingsFeedbackTab({ active }: Props) {
                     ) : null}
                     {row.status !== "triaged" ? (
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => void handleStatusUpdate(row, "triaged")}
                         disabled={pendingId === row.id}
                       >

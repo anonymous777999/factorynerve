@@ -22,14 +22,14 @@ type FieldControlClassNameOptions = {
 };
 
 const fieldBase =
-  "w-full appearance-none rounded-control border-[0.5px] border-border-default bg-surface-elevated text-body text-text-primary transition-[background-color,border-color,color,box-shadow] duration-fast ease-standard placeholder:text-text-tertiary focus:border-border-focus focus:outline-none focus:ring-1 focus:ring-border-focus disabled:bg-surface-shell disabled:text-text-disabled";
+  "w-full appearance-none rounded-[8px] border-[0.5px] border-[color:var(--color-border-secondary)] bg-[var(--color-background-primary)] text-[14px] text-[var(--color-text-primary)] transition-[background-color,border-color,color,box-shadow] duration-fast ease-standard placeholder:text-[var(--color-text-tertiary)] focus:outline-none focus:shadow-[0_0_0_2px_rgb(var(--color-border-info)/0.4)] disabled:cursor-not-allowed disabled:bg-surface-shell disabled:text-text-disabled";
 
 const fieldValidationStates: Record<FieldValidationState, string> = {
   default: "",
   invalid:
-    "border-status-danger-border text-text-primary focus:border-border-danger focus:ring-border-danger aria-[invalid=true]:border-border-danger aria-[invalid=true]:focus:ring-border-danger",
+    "border-status-danger-border text-text-primary aria-[invalid=true]:border-border-danger",
   valid:
-    "border-status-success-border text-text-primary focus:border-border-success focus:ring-border-success",
+    "border-status-success-border text-text-primary",
 };
 
 export function getFieldControlClassName({
@@ -39,14 +39,14 @@ export function getFieldControlClassName({
 }: FieldControlClassNameOptions) {
   return cn(
     fieldBase,
-    multiline ? "mt-xs min-h-textarea px-sm py-sm" : "mt-xs h-input px-sm",
+    multiline ? "min-h-[96px] px-3 py-2" : "min-h-[38px] px-3 py-2",
     fieldValidationStates[validationState],
     className,
   );
 }
 
 export function Field({ className, ...props }: FieldProps) {
-  return <div className={cn("min-w-0", className)} {...props} />;
+  return <div className={cn("field-group mb-4 min-w-0", className)} {...props} />;
 }
 
 export function Label({
@@ -59,7 +59,7 @@ export function Label({
   return (
     <label
       className={cn(
-        "ui-no-select ui-no-callout block text-label-dense font-medium uppercase tracking-wide text-text-secondary",
+        "ui-no-select ui-no-callout mb-1 block text-[11px] font-medium text-[var(--color-text-secondary)]",
         validationState === "invalid" ? "text-status-danger-fg" : "",
         className,
       )}
