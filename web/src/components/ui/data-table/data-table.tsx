@@ -586,7 +586,7 @@ export function DataTable<TData extends RowData>({
       ref={keyboardScopeRef}
       onKeyDownCapture={handleKeyboardBulkActions}
       className={cn(
-        "overflow-hidden rounded-panel border border-border-default bg-surface-panel text-text-primary shadow-xs",
+        "operational-table overflow-hidden rounded-panel border-[0.5px] border-border-default bg-surface-panel text-text-primary",
         className,
       )}
     >
@@ -625,7 +625,7 @@ export function DataTable<TData extends RowData>({
                       key={header.id}
                       scope="col"
                       className={cn(
-                        "ui-no-select ui-no-callout border-b border-border-default bg-surface-shell px-cell-x py-cell-y text-table-header font-semibold uppercase tracking-wide text-text-secondary",
+                        "ui-no-select ui-no-callout border-b border-border-subtle bg-surface-shell px-cell-x py-cell-y text-table-header font-semibold uppercase tracking-wide text-text-secondary",
                         alignmentClassNames[align],
                         isSticky ? "sticky left-0 z-sticky border-r border-border-subtle" : "",
                         meta?.headerClassName,
@@ -666,7 +666,7 @@ export function DataTable<TData extends RowData>({
                       key={`${column.id}-filter`}
                       scope="col"
                       className={cn(
-                        "border-b border-border-default bg-surface-shell px-cell-x py-cell-y",
+                        "border-b border-border-subtle bg-surface-shell px-cell-x py-cell-y",
                         alignmentClassNames[align],
                         isSticky ? "sticky left-0 z-sticky border-r border-border-subtle" : "",
                       )}
@@ -708,7 +708,7 @@ export function DataTable<TData extends RowData>({
                   aria-selected={isSelected || undefined}
                   data-state={Array.from(rowStates).join(" ") || undefined}
                   className={cn(
-                    "group border-b border-border-subtle transition-[background-color,box-shadow] duration-fast ease-standard",
+                    "group transition-[background-color,border-color] duration-fast ease-standard",
                     rowSurfaceClassName,
                     rowAccentClassName,
                   )}
@@ -724,7 +724,7 @@ export function DataTable<TData extends RowData>({
                       meta?.isRowHeader ?? columnIndex === (enableBulkSelection ? 1 : 0);
                     const cellProps = getCellProps(rowIndex, columnIndex, row.id);
                     const commonClassName = cn(
-                      "border-b border-border-subtle px-cell-x py-cell-y align-middle text-table-density text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-focus",
+                      "border-b border-border-subtle px-cell-x py-[calc(var(--density-cell-pad-y)-1px)] align-middle text-table-density text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-border-focus",
                       alignmentClassNames[align],
                       meta?.wrap ? "whitespace-normal" : "whitespace-nowrap",
                       getStickyCellClassName(isSticky, rowStates),

@@ -357,10 +357,10 @@ const DENSITY_CHOICES: Array<{ value: AppDensity; key: string; fallback: string 
 
 function navLinkClasses(active: boolean) {
   return cn(
-    "ui-no-select ui-no-callout group block rounded-xl border px-3.5 py-2.5 transition",
+    "ui-no-select ui-no-callout group block rounded-panel border-[0.5px] px-3 py-2 transition",
     active
-      ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)] shadow-[0_0_0_1px_rgba(62,166,255,0.15)]"
-      : "border-[var(--border)] bg-[rgba(20,24,36,0.7)] hover:border-[rgba(62,166,255,0.28)] hover:bg-[rgba(28,34,51,0.82)]",
+      ? "border-border-focus bg-surface-selected"
+      : "border-border-default bg-surface-panel hover:border-border-strong hover:bg-surface-hover",
   );
 }
 
@@ -595,10 +595,10 @@ function NavContent({
                         <div className="flex items-start gap-3">
                           <div
                             className={cn(
-                              "flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition",
+                              "flex h-9 w-9 shrink-0 items-center justify-center rounded-control border-[0.5px] transition",
                               active
-                                ? "border-[rgba(62,166,255,0.34)] bg-[rgba(62,166,255,0.16)]"
-                                : "border-[var(--border)] bg-[rgba(8,12,20,0.56)]",
+                                ? "border-border-focus bg-surface-selected"
+                                : "border-border-default bg-surface-shell",
                             )}
                           >
                             <NavIcon href={item.href} active={active} />
@@ -609,7 +609,7 @@ function NavContent({
                                 {translatedItem.label}
                               </div>
                               {item.badgeKey && badgeCounts[item.badgeKey] > 0 ? (
-                                <div className="inline-flex rounded-full border border-[rgba(62,166,255,0.28)] bg-[rgba(62,166,255,0.12)] px-2 py-0.5 text-[11px] font-semibold text-[var(--text)]">
+                                <div className="inline-flex rounded-badge border-[0.5px] border-border-default bg-surface-shell px-2 py-0.5 font-mono text-[11px] font-semibold text-text-primary">
                                   {formatBadgeCount(badgeCounts[item.badgeKey])}
                                 </div>
                               ) : null}
@@ -623,10 +623,10 @@ function NavContent({
                           aria-label={favorited ? `Unpin ${translatedItem.label}` : `Pin ${translatedItem.label}`}
                           aria-pressed={favorited}
                           className={cn(
-                            "ui-no-select ui-no-callout mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border transition",
+                            "ui-no-select ui-no-callout mt-1 inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-control border-[0.5px] transition",
                             favorited
-                              ? "border-[rgba(255,218,102,0.3)] bg-[rgba(255,218,102,0.12)] text-amber-200 opacity-100"
-                              : "border-[var(--border)] bg-[rgba(8,12,20,0.56)] text-[var(--muted)] opacity-0 group-hover/navitem:opacity-100 group-focus-within/navitem:opacity-100 hover:border-[rgba(62,166,255,0.28)] hover:text-[var(--text)]",
+                              ? "border-status-warning-border bg-status-warning-bg text-status-warning-fg opacity-100"
+                              : "border-border-default bg-surface-shell text-text-secondary opacity-0 group-hover/navitem:opacity-100 group-focus-within/navitem:opacity-100 hover:border-border-strong hover:text-text-primary",
                           )}
                           onClick={() => onToggleFavorite(item.href)}
                         >
@@ -727,21 +727,21 @@ export function AppSidebar({
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-40 w-[18rem] border-r border-[var(--border)] bg-[rgba(12,16,26,0.96)] shadow-[0_26px_80px_rgba(3,8,20,0.45)] transition-transform duration-300 ease-out",
+        "fixed inset-y-0 left-0 z-40 w-[18rem] border-r border-border-default bg-surface-shell transition-transform duration-300 ease-out",
         immersiveScannerRoute ? "hidden lg:block lg:translate-x-0" : "",
         !immersiveScannerRoute && (sidebarOpen ? "translate-x-0" : "-translate-x-full"),
       )}
       data-nav-count={navItems.length}
     >
-      <div className="flex h-full flex-col px-4 py-4">
-        <div className="rounded-[1.25rem] border border-[rgba(62,166,255,0.18)] bg-[linear-gradient(180deg,rgba(62,166,255,0.1),rgba(12,16,26,0.94))] p-3 shadow-[0_14px_38px_rgba(3,8,20,0.24)]">
+      <div className="flex h-full flex-col px-3 py-3">
+        <div className="rounded-panel border-[0.5px] border-border-default bg-surface-panel p-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[rgba(62,166,255,0.88)]">DPR.ai</div>
-              <div className="mt-1 truncate text-[15px] font-semibold leading-5 text-[var(--text)]">
+              <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-secondary">DPR.ai</div>
+              <div className="mt-1 truncate text-[15px] font-semibold leading-5 text-text-primary">
                 {activeFactoryName}
               </div>
-              <div className="mt-0.5 text-[11px] leading-4 text-[var(--muted)]">
+              <div className="mt-0.5 text-[11px] leading-4 text-text-secondary">
                 {activeIndustryLabel || (translate ? translate("shell.factory_context", "Factory context") : "Factory context")}
                 {organizationPlan ? ` • ${organizationPlan} ${translate ? translate("common.plan", "plan") : "plan"}` : ""}
               </div>
@@ -749,7 +749,7 @@ export function AppSidebar({
             <button
               type="button"
               aria-label={translate ? translate("shell.close_sidebar", "Close sidebar") : "Close sidebar"}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(8,12,20,0.62)] text-base font-semibold text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)] hover:bg-[rgba(20,24,36,0.85)] lg:hidden"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated text-base font-semibold text-text-primary transition hover:border-border-strong hover:bg-surface-hover lg:hidden"
               onClick={onClose}
             >
               {"<"}
@@ -757,16 +757,16 @@ export function AppSidebar({
           </div>
 
           <div className="mt-3 flex flex-wrap gap-1.5">
-            <span className="rounded-full border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.12)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-sky-100">
+            <span className="rounded-badge border-[0.5px] border-border-focus bg-surface-selected px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-primary">
               {roleLabel(resolvedRole, translate)}
             </span>
             {workflowTemplateLabel ? (
-              <span className="rounded-full border border-[var(--border)] bg-[rgba(8,12,20,0.52)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+              <span className="rounded-badge border-[0.5px] border-border-default bg-surface-shell px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-secondary">
                 {workflowTemplateLabel}
               </span>
             ) : null}
             {organizationName ? (
-              <span className="truncate rounded-full border border-[var(--border)] bg-[rgba(8,12,20,0.52)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-[var(--muted)]">
+              <span className="truncate rounded-badge border-[0.5px] border-border-default bg-surface-shell px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-secondary">
                 {organizationName}
               </span>
             ) : null}
@@ -778,7 +778,7 @@ export function AppSidebar({
                 {translate ? translate("shell.switch_factory", "Switch Factory") : "Switch Factory"}
               </label>
               <Select
-                className="mt-1.5 h-8 bg-[rgba(8,12,20,0.55)] text-xs"
+                className="mt-1.5 h-8 bg-surface-elevated text-xs"
                 value={activeFactoryId || ""}
                 onChange={(event) => void onFactorySwitch(event.target.value)}
                 disabled={switchingFactory}
@@ -833,7 +833,7 @@ export function AppSidebar({
                 <div key={section.title} className="space-y-3">
                   <button
                     type="button"
-                    className="flex w-full items-center justify-between rounded-xl border border-[var(--border)] bg-[rgba(8,12,20,0.45)] px-3 py-2 text-left transition hover:border-[rgba(62,166,255,0.28)] hover:bg-[rgba(20,24,36,0.8)]"
+                    className="flex w-full items-center justify-between rounded-panel border-[0.5px] border-border-default bg-surface-panel px-3 py-2 text-left transition hover:border-border-strong hover:bg-surface-hover"
                     onClick={() => onToggleSectionGroup(storageKey)}
                   >
                     <div className="flex items-center gap-2">
@@ -866,7 +866,7 @@ export function AppSidebar({
         </div>
 
         <div className="mt-3 border-t border-[var(--border)] pt-3">
-          <details className="group rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.45)] px-3 py-3">
+          <details className="group rounded-panel border-[0.5px] border-border-default bg-surface-panel px-3 py-3">
             <summary className="ui-no-select ui-no-callout flex cursor-pointer list-none items-center justify-between gap-3 text-left">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
@@ -942,7 +942,7 @@ export function AppSidebar({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-3 py-2.5">
+              <div className="flex items-center justify-between gap-3 rounded-panel border-[0.5px] border-border-default bg-surface-shell px-3 py-2.5">
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
                     {translate ? translate("shell.tips_title", "Tips") : "Tips"}
@@ -959,13 +959,13 @@ export function AppSidebar({
                   className={cn(
                     "ui-no-select ui-no-callout inline-flex h-8 w-14 items-center rounded-full border px-1 transition",
                     showTips
-                      ? "border-cyan-300/35 bg-cyan-400/18 text-cyan-100"
-                      : "border-[var(--border)] bg-[rgba(8,12,20,0.75)] text-[var(--muted)]",
+                      ? "border-border-focus bg-surface-selected text-text-primary"
+                      : "border-border-default bg-surface-elevated text-text-secondary",
                   )}
                 >
                   <span
                     className={cn(
-                      "inline-flex h-6 w-6 items-center justify-center rounded-full bg-white text-[10px] font-semibold text-slate-900 transition",
+                      "inline-flex h-6 w-6 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-panel text-[10px] font-semibold text-text-primary transition",
                       showTips ? "translate-x-6" : "translate-x-0",
                     )}
                   >
@@ -977,7 +977,7 @@ export function AppSidebar({
               <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
                 <Link
                   href="/profile"
-                  className="ui-no-select ui-no-callout inline-flex h-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-2 text-[11px] font-medium text-[var(--text)] transition hover:border-[rgba(62,166,255,0.34)] hover:bg-[rgba(20,24,36,0.86)]"
+                  className="ui-no-select ui-no-callout inline-flex h-8 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-2 text-[11px] font-medium text-text-primary transition hover:border-border-strong hover:bg-surface-hover"
                 >
                   {translate ? translate("nav.profile.label", "Profile") : "Profile"}
                 </Link>
@@ -985,7 +985,7 @@ export function AppSidebar({
                   type="button"
                   onClick={() => void onLogout()}
                   disabled={accountActionBusy !== null}
-                  className="ui-no-select ui-no-callout inline-flex h-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-2 text-[11px] font-medium text-[var(--text)] transition hover:border-[rgba(62,166,255,0.34)] hover:bg-[rgba(20,24,36,0.86)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ui-no-select ui-no-callout inline-flex h-8 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-2 text-[11px] font-medium text-text-primary transition hover:border-border-strong hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {accountActionBusy === "logout"
                     ? translate
@@ -999,7 +999,7 @@ export function AppSidebar({
                   type="button"
                   onClick={() => void onSwitchAccount()}
                   disabled={accountActionBusy !== null}
-                  className="ui-no-select ui-no-callout inline-flex h-8 items-center justify-center rounded-lg border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-2 text-[11px] font-medium text-[var(--text)] transition hover:border-[rgba(62,166,255,0.34)] hover:bg-[rgba(20,24,36,0.86)] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="ui-no-select ui-no-callout inline-flex h-8 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-2 text-[11px] font-medium text-text-primary transition hover:border-border-strong hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {accountActionBusy === "switch"
                     ? translate
@@ -1049,44 +1049,44 @@ export function AppDesktopContextRail({
     <>
       {visible ? (
         <aside className="hidden w-[19rem] shrink-0 xl:block">
-          <div className="sticky top-6 space-y-4 px-6 py-6">
-            <div className="rounded-[1.5rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-5 shadow-[0_16px_44px_rgba(3,8,20,0.28)]">
+          <div className="sticky top-4 space-y-3 px-4 py-4">
+            <div className="rounded-panel border-[0.5px] border-border-default bg-surface-panel p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(62,166,255,0.82)]">Workspace</div>
-                  <div className="mt-3 text-lg font-semibold text-[var(--text)]">{currentItem.label}</div>
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">Workspace</div>
+                  <div className="mt-2 text-lg font-semibold text-text-primary">{currentItem.label}</div>
                 </div>
                 <button
                   type="button"
                   aria-label={translate ? translate("shell.hide_workspace", "Hide workspace") : "Hide workspace"}
                   title={translate ? translate("shell.hide_workspace", "Hide workspace") : "Hide workspace"}
-                  className="ui-no-select ui-no-callout inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(8,12,20,0.62)] px-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)] hover:bg-[rgba(20,24,36,0.85)]"
+                  className="ui-no-select ui-no-callout inline-flex h-9 shrink-0 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-3 text-xs font-semibold uppercase tracking-[0.14em] text-text-primary transition hover:border-border-strong hover:bg-surface-hover"
                   onClick={onToggle}
                 >
                   Hide
                 </button>
               </div>
-              <div className="mt-2 text-sm leading-6 text-[var(--muted)]">{currentItem.description}</div>
+              <div className="mt-2 text-sm leading-6 text-text-secondary">{currentItem.description}</div>
             </div>
 
-            <div className="rounded-[1.5rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-5">
+            <div className="rounded-panel border-[0.5px] border-border-default bg-surface-panel p-4">
               <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">Factory Context</div>
               <div className="mt-4 space-y-3 text-sm text-[var(--muted)]">
-                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.5)] px-4 py-3">
+                <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell px-3 py-3">
                   <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Factory</div>
                   <div className="mt-1 font-semibold text-[var(--text)]">{factoryName}</div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.5)] px-4 py-3">
+                  <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell px-3 py-3">
                     <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Role</div>
                     <div className="mt-1 font-semibold text-[var(--text)]">{roleLabel(role, translate)}</div>
                   </div>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.5)] px-4 py-3">
+                  <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell px-3 py-3">
                     <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Alerts</div>
                     <div className="mt-1 font-semibold text-[var(--text)]">{badgeCounts.alerts}</div>
                   </div>
                 </div>
-                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.5)] px-4 py-3">
+                <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell px-3 py-3">
                   <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Review Load</div>
                   <div className="mt-1 font-semibold text-[var(--text)]">{badgeCounts.approvals}</div>
                   <div className="mt-1 text-xs text-[var(--muted)]">{organizationName || "Active organization context"}</div>
@@ -1094,14 +1094,14 @@ export function AppDesktopContextRail({
               </div>
             </div>
 
-            <div className="rounded-[1.5rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-5">
+            <div className="rounded-panel border-[0.5px] border-border-default bg-surface-panel p-4">
               <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">Primary Flow</div>
-              <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.5)] px-4 py-4">
+              <div className="mt-3 rounded-panel border-[0.5px] border-border-default bg-surface-shell px-3 py-3">
                 <div className="text-sm font-semibold text-[var(--text)]">{workflowHint.title}</div>
               </div>
             </div>
 
-            <div className="rounded-[1.5rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-5">
+            <div className="rounded-panel border-[0.5px] border-border-default bg-surface-panel p-4">
               <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">Quick Jump</div>
               <div className="mt-4 space-y-2">
                 {quickLinks.map((item) => {
@@ -1111,11 +1111,11 @@ export function AppDesktopContextRail({
                       key={item.href}
                       href={item.href}
                       prefetch
-                      className="ui-no-select ui-no-callout flex items-start gap-3 rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.5)] px-4 py-3 transition hover:border-[rgba(62,166,255,0.28)] hover:bg-[rgba(20,24,36,0.82)]"
+                      className="ui-no-select ui-no-callout flex items-start gap-3 rounded-panel border-[0.5px] border-border-default bg-surface-shell px-3 py-3 transition hover:border-border-strong hover:bg-surface-hover"
                       onMouseEnter={() => onWarm(item.href)}
                       onFocus={() => onWarm(item.href)}
                     >
-                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-[var(--border)] bg-[rgba(20,24,36,0.86)]">
+                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated">
                         <NavIcon href={item.href} active={false} />
                       </div>
                       <div className="min-w-0">
@@ -1135,7 +1135,7 @@ export function AppDesktopContextRail({
           type="button"
           aria-label={translate ? translate("shell.show_workspace", "Show workspace") : "Show workspace"}
           title={translate ? translate("shell.show_workspace", "Show workspace") : "Show workspace"}
-          className="ui-no-select ui-no-callout fixed right-6 top-6 z-30 hidden items-center justify-center rounded-full border border-[rgba(62,166,255,0.28)] bg-[rgba(12,16,26,0.96)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text)] shadow-[0_12px_30px_rgba(3,8,20,0.35)] transition hover:border-[rgba(62,166,255,0.48)] hover:bg-[rgba(20,24,36,0.98)] xl:inline-flex"
+          className="ui-no-select ui-no-callout fixed right-4 top-4 z-30 hidden items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-panel px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-text-primary transition hover:border-border-strong hover:bg-surface-hover xl:inline-flex"
           onClick={onToggle}
         >
           Workspace
@@ -1161,7 +1161,7 @@ export function AppMobileBottomNav({
   translate?: TranslateFn;
 }) {
   return (
-    <nav className="safe-x-inset fixed inset-x-0 bottom-0 z-40 border-t border-[var(--border)] bg-[rgba(11,14,20,0.95)] px-3 pb-[calc(0.8rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur lg:hidden">
+    <nav className="safe-x-inset fixed inset-x-0 bottom-0 z-40 border-t border-border-default bg-surface-panel px-3 pb-[calc(0.8rem+env(safe-area-inset-bottom))] pt-2 lg:hidden">
       <div className="mx-auto flex max-w-xl items-end justify-between gap-1">
         {items.map((item) => {
           const active = item.match(pathname);
@@ -1185,12 +1185,12 @@ export function AppMobileBottomNav({
                 className={cn(
                   "relative flex items-center justify-center transition",
                   scanAction
-                    ? "mb-1 h-14 w-14 -translate-y-4 rounded-[1.35rem] bg-[linear-gradient(135deg,#22d3ee,#60a5fa)] text-[#08101D] shadow-[0_18px_36px_rgba(34,211,238,0.28)]"
+                    ? "mb-1 h-12 w-12 -translate-y-2 rounded-panel border-[0.5px] border-border-focus bg-surface-selected text-text-primary"
                     : cn(
-                        "h-10 w-10 rounded-2xl border",
+                        "h-10 w-10 rounded-control border-[0.5px]",
                         active
-                          ? "border-[rgba(62,166,255,0.34)] bg-[rgba(62,166,255,0.14)]"
-                          : "border-[var(--border)] bg-[rgba(20,24,36,0.86)]",
+                          ? "border-border-focus bg-surface-selected"
+                          : "border-border-default bg-surface-elevated",
                       ),
                 )}
               >

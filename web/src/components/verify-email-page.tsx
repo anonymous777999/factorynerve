@@ -149,16 +149,16 @@ export default function VerifyEmailPage() {
       guidanceKey="auth-verify-help"
     >
       {resolvedVerifying ? (
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+            <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell p-4 text-sm text-text-secondary">
               {t("auth.verify.verifying", "Checking your verification link...")}
             </div>
           ) : null}
 
           {status ? (
-            <div className="rounded-2xl border border-[rgba(34,197,94,0.22)] bg-[rgba(34,197,94,0.08)] p-4 text-sm text-green-200">
+            <div className="rounded-panel border-[0.5px] border-status-success-border bg-status-success-bg p-4 text-sm text-status-success-fg">
               <div>{status}</div>
               {verificationFinished ? (
-                <div className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-xs text-green-100/90">
+                <div className="mt-3 rounded-panel border-[0.5px] border-border-default bg-surface-shell p-3 text-xs text-text-primary">
                   {t("auth.verify.next_step", "Next step: return to sign in and use the same email and password from registration.")}
                 </div>
               ) : null}
@@ -166,7 +166,7 @@ export default function VerifyEmailPage() {
           ) : null}
 
           {resolvedError ? (
-            <div className="rounded-2xl border border-[rgba(239,68,68,0.24)] bg-[rgba(239,68,68,0.08)] p-4 text-sm text-red-300">
+            <div className="rounded-panel border-[0.5px] border-status-danger-border bg-status-danger-bg p-4 text-sm text-status-danger-fg">
               {resolvedError}
             </div>
           ) : null}
@@ -174,7 +174,7 @@ export default function VerifyEmailPage() {
           {resolvedValid && !resolvedVerifying ? (
             <>
               {/* AUDIT: DENSITY_OVERLOAD - add one compact prep card so the verify CTA reads as the clear next move */}
-              <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-4 text-sm text-[var(--text)]/90">
+              <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell p-4 text-sm text-text-primary">
                 {t("auth.verify.prep", "Confirm this link once, then return to sign in with the same registration email.")}
               </div>
               <Button type="button" onClick={onVerify} disabled={loading} className="w-full">

@@ -58,6 +58,9 @@ input,
 textarea,
 select {
   font: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  border-radius: 0;
 }
 
 ::selection {
@@ -114,6 +117,15 @@ svg {
 
 input[type="checkbox"] {
   accent-color: var(--action-primary);
+}
+
+input[type="number"],
+input[data-mono="true"],
+[data-mono="true"] input,
+.mono-metric,
+.operational-table [data-numeric="true"] {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 @keyframes auth-rise {
@@ -387,6 +399,9 @@ input[type="checkbox"] {
 .operational-page {
   min-height: 100vh;
   padding: var(--space-4);
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--surface-shell) 72%, transparent), transparent 12rem),
+    var(--surface-app);
 }
 
 .operational-page__inner {
@@ -398,11 +413,10 @@ input[type="checkbox"] {
 }
 
 .operational-hero {
-  border: 1px solid var(--border-default);
-  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-panel) 88%, var(--surface-shell)) 0%, var(--surface-panel) 100%);
-  box-shadow: var(--shadow-xs);
+  border: 0.5px solid var(--border-default);
+  background: color-mix(in srgb, var(--surface-panel) 92%, var(--surface-shell));
   border-radius: var(--radius-lg);
-  padding: var(--space-5);
+  padding: var(--space-4);
 }
 
 .operational-hero__eyebrow {
@@ -416,23 +430,23 @@ input[type="checkbox"] {
 
 .operational-hero__title {
   margin-top: var(--space-2);
-  font-size: var(--type-page-title);
+  font-size: var(--type-panel-title);
   font-weight: var(--weight-semibold);
   color: var(--text-primary);
+  letter-spacing: var(--tracking-normal);
 }
 
 .operational-hero__body {
   margin-top: var(--space-2);
   max-width: 56rem;
-  font-size: var(--type-label);
-  line-height: var(--leading-relaxed);
+  font-size: var(--type-label-dense);
+  line-height: var(--leading-normal);
   color: var(--text-secondary);
 }
 
 .operational-panel {
-  border: 1px solid var(--border-default);
+  border: 0.5px solid var(--border-default);
   background: var(--surface-panel);
-  box-shadow: var(--shadow-xs);
   border-radius: var(--radius-lg);
 }
 
@@ -452,22 +466,261 @@ input[type="checkbox"] {
 }
 
 .telemetry-rail {
-  border: 1px solid var(--border-default);
+  border: 0.5px solid var(--border-default);
   background: color-mix(in srgb, var(--surface-shell) 72%, var(--surface-panel));
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs);
 }
 
 .surface-muted {
-  border: 1px solid var(--border-subtle);
+  border: 0.5px solid var(--border-subtle);
   background: color-mix(in srgb, var(--surface-shell) 82%, var(--surface-panel));
   border-radius: var(--radius-md);
 }
 
 .surface-accent {
-  border: 1px solid color-mix(in srgb, var(--border-focus) 45%, var(--border-subtle));
+  border: 0.5px solid color-mix(in srgb, var(--border-focus) 45%, var(--border-subtle));
   background: color-mix(in srgb, var(--surface-selected) 76%, var(--surface-panel));
   border-radius: var(--radius-md);
+}
+
+.operational-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.operational-form-section {
+  border: 0.5px solid var(--border-default);
+  background: var(--surface-panel);
+  padding: var(--space-4);
+}
+
+.operational-form-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  border-top: 0.5px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-shell) 70%, var(--surface-panel));
+  padding: var(--space-3) var(--space-4);
+}
+
+.operational-table {
+  background: var(--surface-panel);
+}
+
+.operational-table th,
+.operational-table td {
+  border-color: var(--border-subtle);
+}
+
+.route-workspace {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.route-header {
+  border: 0.5px solid var(--border-default);
+  background: color-mix(in srgb, var(--surface-panel) 88%, var(--surface-shell));
+  padding: var(--space-4);
+}
+
+.route-header__grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.route-header__copy {
+  min-width: 0;
+  flex: 1 1 28rem;
+}
+
+.route-header__eyebrow {
+  font-size: var(--type-label-dense);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.route-header__title {
+  margin-top: var(--space-2);
+  font-size: var(--type-page-title);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-tight);
+  color: var(--text-primary);
+}
+
+.route-header__body {
+  margin-top: var(--space-2);
+  max-width: 56rem;
+  font-size: var(--type-label);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+}
+
+.route-header__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.route-header__meta-item {
+  border: 0.5px solid var(--border-default);
+  background: var(--surface-shell);
+  padding: var(--space-1-5) var(--space-3);
+  font-size: var(--type-label-dense);
+  color: var(--text-secondary);
+}
+
+.route-header__meta-item strong {
+  font-family: var(--font-mono);
+  color: var(--text-primary);
+}
+
+.route-header__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.route-grid-main {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.route-grid-main--sidebar {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.route-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.route-panel {
+  border: 0.5px solid var(--border-default);
+  background: var(--surface-panel);
+}
+
+.route-panel__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  border-bottom: 0.5px solid var(--border-subtle);
+}
+
+.route-panel__body {
+  padding: var(--space-4);
+}
+
+.route-panel__eyebrow {
+  font-size: var(--type-label-dense);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.route-panel__title {
+  margin-top: var(--space-1);
+  font-size: var(--type-panel-title);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.route-panel__hint {
+  margin-top: var(--space-2);
+  font-size: var(--type-label-dense);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+}
+
+.route-metrics-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
+}
+
+.route-metric {
+  border: 0.5px solid var(--border-default);
+  background: var(--surface-shell);
+  padding: var(--space-3);
+}
+
+.route-metric__label {
+  font-size: var(--type-label-dense);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+  color: var(--text-secondary);
+}
+
+.route-metric__value {
+  margin-top: var(--space-1);
+  font-family: var(--font-mono);
+  font-size: var(--type-numeric-md);
+  color: var(--text-primary);
+}
+
+.route-metric__detail {
+  margin-top: var(--space-2);
+  font-size: var(--type-label-dense);
+  line-height: var(--leading-normal);
+  color: var(--text-secondary);
+}
+
+.route-table-anchor {
+  border: 0.5px solid var(--border-default);
+  background: var(--surface-panel);
+}
+
+.route-table-anchor__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-bottom: 0.5px solid var(--border-subtle);
+}
+
+.route-table-anchor__body {
+  padding: 0;
+}
+
+.route-telemetry-rail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.route-telemetry-card {
+  border: 0.5px solid var(--border-default);
+  background: color-mix(in srgb, var(--surface-shell) 78%, var(--surface-panel));
+  padding: var(--space-4);
+}
+
+@media (min-width: 1280px) {
+  .route-grid-main--sidebar {
+    grid-template-columns: minmax(0, 1.28fr) minmax(18rem, 0.72fr);
+    align-items: start;
+  }
+
+  .route-telemetry-rail {
+    position: sticky;
+    top: calc(var(--space-4) + 4.5rem);
+  }
 }
 
 .mono-metric {
@@ -501,7 +754,7 @@ input[type="checkbox"] {
   border: var(--space-px) solid var(--border-default) !important;
   background: var(--surface-elevated) !important;
   color: var(--text-primary) !important;
-  box-shadow: var(--shadow-lg) !important;
+  box-shadow: none !important;
 }
 
 .apexcharts-tooltip-title {

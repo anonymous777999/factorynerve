@@ -24,13 +24,13 @@ export function DataTableToolbar({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-end gap-density-gap border-b border-border-subtle bg-surface-shell px-md py-sm",
+        "flex flex-wrap items-end gap-density-gap border-b border-border-subtle bg-surface-shell px-sm py-sm",
         className,
       )}
     >
       {onSearchChange ? (
         <div className="min-w-0 flex-1">
-          <label className="ui-no-select ui-no-callout mb-xs block text-label-dense font-medium text-text-secondary">
+          <label className="ui-no-select ui-no-callout mb-xs block text-label-dense font-medium uppercase tracking-wide text-text-secondary">
             Search
           </label>
           <Input

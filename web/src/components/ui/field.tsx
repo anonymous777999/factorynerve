@@ -22,7 +22,7 @@ type FieldControlClassNameOptions = {
 };
 
 const fieldBase =
-  "w-full rounded-control border border-border-default bg-surface-panel text-body text-text-primary shadow-inset transition-[background-color,border-color,color,box-shadow] duration-fast ease-standard placeholder:text-text-tertiary focus:border-border-focus focus:outline-none focus:ring-2 focus:ring-border-focus disabled:bg-surface-shell disabled:text-text-disabled";
+  "w-full appearance-none rounded-control border-[0.5px] border-border-default bg-surface-elevated text-body text-text-primary transition-[background-color,border-color,color,box-shadow] duration-fast ease-standard placeholder:text-text-tertiary focus:border-border-focus focus:outline-none focus:ring-1 focus:ring-border-focus disabled:bg-surface-shell disabled:text-text-disabled";
 
 const fieldValidationStates: Record<FieldValidationState, string> = {
   default: "",
@@ -39,7 +39,7 @@ export function getFieldControlClassName({
 }: FieldControlClassNameOptions) {
   return cn(
     fieldBase,
-    multiline ? "mt-sm min-h-textarea px-md py-sm" : "mt-sm h-input px-md",
+    multiline ? "mt-xs min-h-textarea px-sm py-sm" : "mt-xs h-input px-sm",
     fieldValidationStates[validationState],
     className,
   );
@@ -59,7 +59,7 @@ export function Label({
   return (
     <label
       className={cn(
-        "ui-no-select ui-no-callout block text-label font-medium text-text-secondary",
+        "ui-no-select ui-no-callout block text-label-dense font-medium uppercase tracking-wide text-text-secondary",
         validationState === "invalid" ? "text-status-danger-fg" : "",
         className,
       )}
@@ -83,7 +83,7 @@ export function HelperText({
   return (
     <p
       className={cn(
-        "mt-xs text-label-dense",
+        "mt-xs text-label-dense leading-snug",
         validationState === "invalid"
           ? "text-status-danger-fg"
           : validationState === "valid"

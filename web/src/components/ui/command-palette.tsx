@@ -128,7 +128,7 @@ function CommandPaletteEmptyState({
   emptyTitle,
 }: Pick<CommandPaletteProps, "emptyMessage" | "emptyTitle">) {
   return (
-    <div className="rounded-panel border border-border-subtle bg-surface-shell px-md py-md">
+    <div className="rounded-panel border-[0.5px] border-border-subtle bg-surface-shell px-md py-md">
       <p className="text-label font-semibold text-text-primary">{emptyTitle}</p>
       {emptyMessage ? <p className="mt-xs text-label-dense text-text-secondary">{emptyMessage}</p> : null}
     </div>
@@ -387,11 +387,11 @@ function CommandPaletteDialog({
         onClick={() => onOpenChange(false)}
         aria-label={closeLabel}
       />
-      <div className="safe-top-inset safe-x-inset absolute inset-x-0 top-0 flex justify-center px-md py-lg">
+      <div className="safe-top-inset safe-x-inset absolute inset-x-0 top-0 flex justify-center px-md py-md">
         <section
           ref={panelRef}
           className={cn(
-            "flex max-h-screen w-full max-w-3xl flex-col overflow-hidden rounded-overlay border border-command-border bg-command-panel shadow-xl",
+            "flex max-h-screen w-full max-w-3xl flex-col overflow-hidden rounded-overlay border-[0.5px] border-command-border bg-command-panel",
             className,
           )}
           role="dialog"
@@ -425,7 +425,7 @@ function CommandPaletteDialog({
               role="combobox"
               aria-expanded="true"
               aria-autocomplete="list"
-              className="mt-md border-command-border bg-surface-elevated"
+              className="mt-sm border-command-border bg-surface-elevated"
             />
           </header>
           <div className={cn("min-h-0 flex-1 overflow-y-auto px-md py-md", contentClassName)}>
@@ -455,11 +455,11 @@ function CommandPaletteDialog({
                             onClick={() => handleSelect(item)}
                             onMouseEnter={() => setActiveCommandId(item.id)}
                             className={cn(
-                              "flex w-full items-start justify-between gap-md rounded-panel border px-md py-sm text-left transition-[background-color,border-color,color,box-shadow] duration-fast ease-standard",
+                              "flex w-full items-start justify-between gap-md rounded-panel border-[0.5px] px-md py-sm text-left transition-[background-color,border-color,color] duration-fast ease-standard",
                               isActive
-                                ? "border-border-focus bg-command-selected shadow-xs"
+                                ? "border-border-focus bg-command-selected"
                                 : "border-transparent bg-transparent hover:border-border-subtle hover:bg-command-hover",
-                              item.disabled ? "cursor-not-allowed opacity-60" : "focus-visible:ring-2 focus-visible:ring-border-focus",
+                              item.disabled ? "cursor-not-allowed opacity-60" : "focus-visible:ring-1 focus-visible:ring-border-focus",
                             )}
                           >
                             <div className="min-w-0 space-y-xs">
@@ -485,7 +485,7 @@ function CommandPaletteDialog({
                                 <span className="text-label-dense text-text-tertiary">{item.meta}</span>
                               ) : null}
                               {item.shortcut ? (
-                                <kbd className="rounded-badge border border-border-subtle bg-surface-shell px-badge-x py-badge-y font-mono text-label-dense text-command-shortcut">
+                                <kbd className="rounded-badge border-[0.5px] border-border-subtle bg-surface-shell px-badge-x py-badge-y font-mono text-label-dense text-command-shortcut">
                                   {item.shortcut}
                                 </kbd>
                               ) : null}

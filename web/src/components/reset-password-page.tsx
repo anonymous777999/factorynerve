@@ -163,16 +163,16 @@ export default function ResetPasswordPage() {
       guidanceKey="auth-reset-help"
     >
       {resolvedVerifying ? (
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+            <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell p-4 text-sm text-text-secondary">
               {t("auth.reset.verifying", "Verifying your reset link...")}
             </div>
           ) : null}
 
           {status ? (
-            <div className="rounded-2xl border border-[rgba(34,197,94,0.22)] bg-[rgba(34,197,94,0.08)] p-4 text-sm text-green-200">
+            <div className="rounded-panel border-[0.5px] border-status-success-border bg-status-success-bg p-4 text-sm text-status-success-fg">
               <div>{status}</div>
               {resetFinished ? (
-                <div className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-xs text-green-100/90">
+                <div className="mt-3 rounded-panel border-[0.5px] border-border-default bg-surface-shell p-3 text-xs text-text-primary">
                   {t("auth.reset.next_step", "Next step: use your new password on the sign-in screen. You will be redirected there automatically.")}
                 </div>
               ) : null}
@@ -180,7 +180,7 @@ export default function ResetPasswordPage() {
           ) : null}
 
           {resolvedError ? (
-            <div className="rounded-2xl border border-[rgba(239,68,68,0.24)] bg-[rgba(239,68,68,0.08)] p-4 text-sm text-red-300">
+            <div className="rounded-panel border-[0.5px] border-status-danger-border bg-status-danger-bg p-4 text-sm text-status-danger-fg">
               {resolvedError}
             </div>
           ) : null}
@@ -188,13 +188,13 @@ export default function ResetPasswordPage() {
           {resolvedValid && !resolvedVerifying ? (
             <div className="space-y-4">
               {/* AUDIT: DENSITY_OVERLOAD - compress repeated recovery guidance into one compact prep card */}
-              <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-4 text-sm text-[var(--text)]/90">
+              <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell p-4 text-sm text-text-primary">
                 {t("auth.reset.prep", "Enter the new password twice, save it once, then return to sign in with the same email.")}
                 <div className="mt-3 text-xs text-[var(--muted)]">
                   {t("auth.reset.expiry_notice", "This reset link works only once. If it expires, request a new link.")}
                 </div>
               </div>
-              <form onSubmit={onSubmit} className="space-y-4">
+              <form onSubmit={onSubmit} className="operational-form">
                 <PasswordField
                   label={t("auth.reset.new_password", "New Password")}
                   autoComplete="new-password"
@@ -204,7 +204,7 @@ export default function ResetPasswordPage() {
                 />
                 <PasswordStrengthMeter password={password} />
                 {/* AUDIT: TEXT_NOISE - reduce inline helper copy because the strength meter already carries most of the guidance */}
-                <div className="text-xs text-[var(--muted)]">{t("auth.reset.password_guidance", "Use 12+ characters with uppercase, lowercase, number, and symbol.")}</div>
+                <div className="text-xs text-text-secondary">{t("auth.reset.password_guidance", "Use 12+ characters with uppercase, lowercase, number, and symbol.")}</div>
                 <PasswordField
                   label={t("auth.reset.confirm_password", "Confirm Password")}
                   autoComplete="new-password"
@@ -220,7 +220,7 @@ export default function ResetPasswordPage() {
           ) : null}
 
           {!resolvedValid && !resolvedVerifying && resolvedError ? (
-            <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-4 text-sm text-[var(--muted)]">
+            <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell p-4 text-sm text-text-secondary">
               Use <span className="font-medium text-[var(--text)]">Request New Link</span> below to generate a fresh password reset email. Only the newest valid link should be used.
             </div>
           ) : null}
