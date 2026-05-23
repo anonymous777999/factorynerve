@@ -905,32 +905,34 @@ export default function AttendanceReviewPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-6 md:px-8 md:py-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="operational-page">
+      <div className="operational-page__inner route-workspace">
         {/* AUDIT: FLOW_BROKEN - lead the screen with the next attendance review instead of a broad review-board description. */}
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.9)] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-4xl space-y-3">
-              <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">Attendance Review</div>
-              <h1 className="text-3xl font-semibold md:text-4xl">Close the next attendance exception fast</h1>
-              <p className="max-w-3xl text-sm leading-6 text-[var(--muted)]">
+        <section className="route-header">
+          <div className="route-header__grid">
+            <div className="route-header__copy">
+              <div className="route-header__eyebrow">Attendance Review</div>
+              <h1 className="route-header__title">Close the next attendance exception fast</h1>
+              <p className="route-header__body">
                 Review missed punches and correction requests for {payload?.factory_name || activeFactory?.name || user.factory_name}, then move through the rest of the queue without losing fix context.
               </p>
-              <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
-                <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
-                  Factory: <span className="font-semibold text-[var(--text)]">{payload?.factory_name || activeFactory?.name || user.factory_name}</span>
-                </span>
-                <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
-                  {refreshing
-                    ? "Refreshing queue..."
-                    : lastUpdatedAt
-                      ? `Updated ${formatDateTime(lastUpdatedAt)}`
-                      : "Live updates every 25s"}
-                </span>
+              <div className="route-header__meta">
+                <div className="route-header__meta-item">
+                  <span>Factory</span>
+                  <strong>{payload?.factory_name || activeFactory?.name || user.factory_name}</strong>
+                </div>
+                <div className="route-header__meta-item">
+                  <span>Updated</span>
+                  <strong>{refreshing ? "Refreshing..." : lastUpdatedAt ? formatDateTime(lastUpdatedAt) : "Live / 25s"}</strong>
+                </div>
+                <div className="route-header__meta-item">
+                  <span>Open</span>
+                  <strong>{filteredItems.length}</strong>
+                </div>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="route-header__actions">
               {nextReview ? (
                 <Button
                   className="px-4 py-2 text-xs"
@@ -1014,7 +1016,7 @@ export default function AttendanceReviewPage() {
         ) : null}
 
         {/* AUDIT: DENSITY_OVERLOAD - collapse queue pulse metrics until the reviewer wants backlog context. */}
-        <details className="group telemetry-rail">
+        <details className="group route-panel">
           <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
             <div>
               <div className="text-sm text-[var(--muted)]">Queue pulse</div>
@@ -1038,7 +1040,7 @@ export default function AttendanceReviewPage() {
         </details>
 
         {/* AUDIT: BUTTON_CLUTTER - move route jumps and filters into one tools tray so the issue queue stays primary. */}
-        <details className="group telemetry-rail">
+        <details className="group route-panel">
           <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
             <div>
               <div className="text-sm text-[var(--muted)]">Review tools</div>
@@ -1112,12 +1114,12 @@ export default function AttendanceReviewPage() {
           </div>
         </details>
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.95fr)]">
-          <div className="space-y-4">
+        <section className="route-grid-main route-grid-main--sidebar">
+          <div className="route-stack">
             {nextReview ? (
               <>
                 {/* AUDIT: FLOW_BROKEN - feature the next attendance issue before the wider backlog so the first move is obvious. */}
-                <Card className="border-[var(--border)] bg-surface-panel">
+                <Card className="route-table-anchor border-[var(--border)] bg-surface-panel">
                   <CardHeader className="space-y-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>

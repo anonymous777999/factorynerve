@@ -134,22 +134,22 @@
   /* --- Surface Hierarchy ---
      Rule: each level must be visually distinguishable from its neighbors.
      app-bg < shell < panel < card < elevated < overlay */
-  --surface-app:            hsl(210 18% 96%);
-  --surface-shell:          hsl(210 16% 93%);
-  --surface-panel:          hsl(210 18% 99%);
-  --surface-card:           hsl(210 14% 98%);
-  --surface-elevated:       hsl(var(--_prim-neutral-0));
-  --surface-overlay:        hsl(var(--_prim-neutral-0));
-  --surface-hover:          hsl(210 18% 96%);
-  --surface-active:         hsl(210 16% 91%);
-  --surface-selected:       hsl(213 74% 94%);
-  --surface-skeleton:       hsl(210 14% 91%);
-  --surface-skeleton-shine: hsl(210 18% 96%);
+  --surface-app:            hsl(210 16% 95%);
+  --surface-shell:          hsl(210 12% 92%);
+  --surface-panel:          hsl(210 14% 97%);
+  --surface-card:           hsl(210 13% 96%);
+  --surface-elevated:       hsl(210 16% 98%);
+  --surface-overlay:        hsl(210 16% 98%);
+  --surface-hover:          hsl(210 14% 94%);
+  --surface-active:         hsl(210 13% 90%);
+  --surface-selected:       hsl(213 46% 91%);
+  --surface-skeleton:       hsl(210 12% 90%);
+  --surface-skeleton-shine: hsl(210 14% 94%);
 
   /* --- Border System --- */
-  --border-subtle:          hsl(210 14% 88%);
-  --border-default:         hsl(210 12% 83%);
-  --border-strong:          hsl(210 10% 72%);
+  --border-subtle:          hsl(210 12% 84%);
+  --border-default:         hsl(210 10% 78%);
+  --border-strong:          hsl(210 9% 64%);
   --border-focus:           hsl(var(--_prim-blue-400));     /* keyboard focus rings */
   --border-danger:          hsl(var(--_prim-red-400));      /* error state inputs */
   --border-success:         hsl(var(--_prim-green-400));    /* valid/synced inputs */
@@ -170,9 +170,9 @@
   --action-disabled-text:   hsl(var(--_prim-neutral-400));
 
   /* --- Focus Ring --- */
-  --focus-ring:             0 0 0 2px hsl(var(--_prim-blue-400) / 0.6);
-  --focus-ring-danger:      0 0 0 2px hsl(var(--_prim-red-400) / 0.5);
-  --focus-ring-offset:      2px;
+  --focus-ring:             0 0 0 1px hsl(var(--_prim-blue-400) / 0.85);
+  --focus-ring-danger:      0 0 0 1px hsl(var(--_prim-red-400) / 0.75);
+  --focus-ring-offset:      1px;
 
   /* --- Workflow Tokens --- */
   --workflow-active:        hsl(var(--_prim-blue-500));
@@ -264,26 +264,22 @@
   --shadow-none:    none;
 
   /* Inset — for pressed states, sunken inputs */
-  --shadow-inset:   inset 0 1px 2px 0 hsl(var(--_prim-neutral-900) / 0.06);
+  --shadow-inset:   none;
 
   /* XS — subtle card lift, table header sticky boundary */
-  --shadow-xs:      0 1px 1px 0 hsl(var(--_prim-neutral-900) / 0.035);
+  --shadow-xs:      none;
 
   /* SM — panels, sidebar separators */
-  --shadow-sm:      0 1px 2px 0 hsl(var(--_prim-neutral-900) / 0.05),
-                    0 1px 1px -1px hsl(var(--_prim-neutral-900) / 0.04);
+  --shadow-sm:      none;
 
   /* MD — dropdowns, command palette, floating toolbars */
-  --shadow-md:      0 4px 10px -4px hsl(var(--_prim-neutral-900) / 0.08),
-                    0 2px 4px -3px hsl(var(--_prim-neutral-900) / 0.06);
+  --shadow-md:      none;
 
   /* LG — modals, operational drawers */
-  --shadow-lg:      0 10px 20px -10px hsl(var(--_prim-neutral-900) / 0.12),
-                    0 4px 8px -6px hsl(var(--_prim-neutral-900) / 0.08);
+  --shadow-lg:      none;
 
   /* XL — full-screen overlays, command bar */
-  --shadow-xl:      0 20px 25px -5px hsl(var(--_prim-neutral-900) / 0.10),
-                    0 8px 10px -6px hsl(var(--_prim-neutral-900) / 0.06);
+  --shadow-xl:      none;
 }
 
 
@@ -482,10 +478,10 @@
 :root {
   --radius-none:    0px;
   --radius-xs:      2px;   /* tight: badge, table cell chip */
-  --radius-sm:      3px;   /* inputs, buttons, small cards */
-  --radius-md:      5px;   /* panels, modals, drawers */
-  --radius-lg:      7px;   /* cards, popovers, dropdowns */
-  --radius-xl:      10px;  /* large overlays */
+  --radius-sm:      2px;   /* inputs, buttons, small cards */
+  --radius-md:      4px;   /* panels, modals, drawers */
+  --radius-lg:      6px;   /* cards, popovers, dropdowns */
+  --radius-xl:      8px;   /* large overlays */
   --radius-full:    9999px; /* pills, avatars, toggles */
 }
 
@@ -540,22 +536,22 @@
   --text-warning:           hsl(var(--_prim-amber-200));
 
   /* Surfaces */
-  --surface-app:            hsl(var(--_prim-neutral-950));
-  --surface-shell:          hsl(var(--_prim-neutral-900));
-  --surface-panel:          hsl(var(--_prim-neutral-800));
-  --surface-card:           hsl(220 18% 12%);
-  --surface-elevated:       hsl(220 18% 16%);
-  --surface-overlay:        hsl(220 20% 14%);
-  --surface-hover:          hsl(var(--_prim-neutral-800));
-  --surface-active:         hsl(var(--_prim-neutral-700));
-  --surface-selected:       hsl(213 60% 18%);
-  --surface-skeleton:       hsl(var(--_prim-neutral-800));
-  --surface-skeleton-shine: hsl(var(--_prim-neutral-700));
+  --surface-app:            hsl(220 22% 8%);
+  --surface-shell:          hsl(220 20% 10%);
+  --surface-panel:          hsl(220 18% 13%);
+  --surface-card:           hsl(220 16% 12%);
+  --surface-elevated:       hsl(220 16% 15%);
+  --surface-overlay:        hsl(220 18% 16%);
+  --surface-hover:          hsl(220 16% 15%);
+  --surface-active:         hsl(220 16% 18%);
+  --surface-selected:       hsl(213 46% 20%);
+  --surface-skeleton:       hsl(220 14% 16%);
+  --surface-skeleton-shine: hsl(220 14% 19%);
 
   /* Borders */
-  --border-subtle:          hsl(var(--_prim-neutral-800));
-  --border-default:         hsl(var(--_prim-neutral-700));
-  --border-strong:          hsl(var(--_prim-neutral-600));
+  --border-subtle:          hsl(220 12% 22%);
+  --border-default:         hsl(220 10% 28%);
+  --border-strong:          hsl(220 9% 36%);
   --border-focus:           hsl(var(--_prim-blue-400));
   --border-danger:          hsl(var(--_prim-red-400));
   --border-success:         hsl(var(--_prim-green-400));
@@ -629,15 +625,11 @@
   --workflow-ai-bg:         hsl(240 50% 14%);
 
   /* Shadows — heavier in dark for legibility */
-  --shadow-xs:    0 1px 2px 0 hsl(var(--_prim-neutral-950) / 0.3);
-  --shadow-sm:    0 1px 3px 0 hsl(var(--_prim-neutral-950) / 0.4),
-                  0 1px 2px -1px hsl(var(--_prim-neutral-950) / 0.3);
-  --shadow-md:    0 4px 6px -1px hsl(var(--_prim-neutral-950) / 0.5),
-                  0 2px 4px -2px hsl(var(--_prim-neutral-950) / 0.4);
-  --shadow-lg:    0 10px 15px -3px hsl(var(--_prim-neutral-950) / 0.5),
-                  0 4px 6px -4px hsl(var(--_prim-neutral-950) / 0.4);
-  --shadow-xl:    0 20px 25px -5px hsl(var(--_prim-neutral-950) / 0.6),
-                  0 8px 10px -6px hsl(var(--_prim-neutral-950) / 0.5);
+  --shadow-xs:    none;
+  --shadow-sm:    none;
+  --shadow-md:    none;
+  --shadow-lg:    none;
+  --shadow-xl:    none;
 }
 
 

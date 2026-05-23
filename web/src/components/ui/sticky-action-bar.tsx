@@ -75,14 +75,14 @@ export function StickyActionBar({
   return (
     <div
       className={cn(
-        "sticky bottom-0 z-sticky border-t border-border-default bg-surface-panel/96 shadow-xs backdrop-blur supports-[backdrop-filter]:bg-surface-panel/92",
+        "sticky bottom-0 z-sticky border-t border-border-default bg-surface-panel",
         "safe-bottom-inset",
         className,
       )}
     >
       <div
         className={cn(
-          "flex flex-col gap-sm px-md py-sm lg:flex-row lg:items-center lg:justify-between",
+          "operational-form-footer flex flex-col gap-sm px-md py-sm lg:flex-row lg:items-center lg:justify-between",
           contentClassName,
         )}
       >

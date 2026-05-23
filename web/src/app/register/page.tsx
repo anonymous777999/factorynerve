@@ -184,19 +184,19 @@ export default function RegisterPage() {
       {success ? (
         <div className="space-y-5">
               {hasRedirectTarget ? (
-                <div className="rounded-2xl border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.08)] p-4 text-sm text-[var(--text)]">
+                <div className="rounded-panel border-[0.5px] border-border-focus bg-surface-selected p-4 text-sm text-text-primary">
                   <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">{t("auth.register.after_verification", "After verification")}</div>
                   <div className="mt-2 text-base font-semibold">{t("auth.register.after_verification_detail", "Sign in to continue into {{destination}}.", { destination: nextDestination })}</div>
                 </div>
               ) : null}
               {successState ? (
-                <div className={`rounded-2xl border p-4 text-sm ${successState.className}`}>
+                <div className={`rounded-panel border-[0.5px] p-4 text-sm ${successState.className}`}>
                   <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/80">{t("auth.register.status_title", "Signup Status")}</div>
                   <div className="mt-2 text-base font-semibold text-[var(--text)]">{successState.title}</div>
                   <div className="mt-2 leading-6">{successState.detail}</div>
                 </div>
               ) : null}
-              <div className="rounded-2xl border border-[rgba(245,158,11,0.28)] bg-[rgba(245,158,11,0.10)] p-4 text-sm">
+              <div className="rounded-panel border-[0.5px] border-status-warning-border bg-status-warning-bg p-4 text-sm text-status-warning-fg">
                 <div className="font-semibold text-amber-300">
                   {isEmailFailure
                     ? "Signup saved, but email delivery needs another try"
@@ -209,7 +209,7 @@ export default function RegisterPage() {
                   We saved a pending signup for <span className="font-medium text-[var(--text)]">{email}</span>.
                   The account cannot sign in until that inbox opens the verification link.
                 </div>
-                <div className="mt-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3">
+                <div className="mt-4 rounded-panel border-[0.5px] border-border-default bg-surface-shell p-3">
                   <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
                     What to do next
                   </div>
@@ -226,21 +226,21 @@ export default function RegisterPage() {
                   </ol>
                 </div>
                 {isEmailFailure ? (
-                  <div className="mt-3 rounded-xl border border-[rgba(248,113,113,0.28)] bg-[rgba(127,29,29,0.28)] p-3 text-xs text-red-100">
+                  <div className="mt-3 rounded-panel border-[0.5px] border-status-danger-border bg-status-danger-bg p-3 text-xs text-status-danger-fg">
                     The signup request is safe in the system, but the first verification email did not leave successfully. You do not need to fill the form again.
                   </div>
                 ) : null}
                 {isEmailDelivery ? (
-                  <div className="mt-3 rounded-xl border border-[rgba(34,197,94,0.18)] bg-[rgba(34,197,94,0.08)] p-3 text-xs text-[var(--muted)]">
+                  <div className="mt-3 rounded-panel border-[0.5px] border-status-success-border bg-status-success-bg p-3 text-xs text-text-secondary">
                     If you do not see the email within a minute, check spam or promotions, then use
                     {" "}
                     <span className="font-medium text-[var(--text)]">Resend Verification Email</span>.
                   </div>
                 ) : null}
-                <div className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-xs text-[var(--muted)]">
+                <div className="mt-3 rounded-panel border-[0.5px] border-border-default bg-surface-shell p-3 text-xs text-text-secondary">
                   Random or wrong emails can create a pending record, but they do not get working access. Only the person who can open that inbox can activate the account.
                 </div>
-                <div className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-xs text-[var(--muted)]">
+                <div className="mt-3 rounded-panel border-[0.5px] border-border-default bg-surface-shell p-3 text-xs text-text-secondary">
                   Password reset works only after verification is complete. Until then, use <span className="font-medium text-[var(--text)]">Resend Verification Email</span> instead of forgot password.
                 </div>
                 {success.verification_link ? (
@@ -250,7 +250,7 @@ export default function RegisterPage() {
                     </div>
                     <a
                       href={success.verification_link}
-                      className="inline-flex rounded-full border border-[rgba(62,166,255,0.4)] bg-[rgba(62,166,255,0.12)] px-4 py-2 text-sm font-semibold text-[var(--text)] transition hover:bg-[rgba(62,166,255,0.18)]"
+                      className="inline-flex rounded-control border-[0.5px] border-border-focus bg-surface-selected px-4 py-2 text-sm font-semibold text-text-primary transition hover:bg-surface-hover"
                     >
                       Open Verification Page
                     </a>
@@ -277,7 +277,7 @@ export default function RegisterPage() {
               </div>
 
               {resendStatus ? (
-                <div className="rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-sm text-[var(--muted)]">
+                <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell p-3 text-sm text-text-secondary">
                   {resendStatus}
                 </div>
               ) : null}
@@ -285,13 +285,13 @@ export default function RegisterPage() {
       ) : (
         <div className="space-y-5">
           {hasRedirectTarget ? (
-            <div className="rounded-2xl border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.08)] p-4 text-sm text-[var(--text)]">
+            <div className="rounded-panel border-[0.5px] border-border-focus bg-surface-selected p-4 text-sm text-text-primary">
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">{t("auth.register.start_here", "Start here first")}</div>
               <div className="mt-2 text-base font-semibold">{t("auth.register.start_here_detail", "After verification, the user can continue into {{destination}}.", { destination: nextDestination })}</div>
             </div>
           ) : null}
           {/* AUDIT: BUTTON_CLUTTER - keep the Google route available in a secondary reveal so the worker signup form stays primary. */}
-          <details className="group rounded-2xl border border-[rgba(62,166,255,0.2)] bg-[rgba(62,166,255,0.08)] p-4">
+          <details className="group rounded-panel border-[0.5px] border-border-default bg-surface-panel p-4">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-[var(--text)]">
               {t("auth.register.google_summary", "Google sign-in")}
               <span className="text-xs uppercase tracking-[0.18em] text-[var(--muted)] transition group-open:hidden">{t("common.open", "Open")}</span>
@@ -307,13 +307,13 @@ export default function RegisterPage() {
               />
             </div>
           </details>
-          <form onSubmit={onSubmit} className="grid gap-4 md:grid-cols-2">
+          <form onSubmit={onSubmit} className="grid gap-3 md:grid-cols-2">
               <div className="md:col-span-1">
-                <label className="text-sm text-[var(--muted)]">{t("auth.register.name_label", "Full Name")}</label>
+                <label className="text-label-dense font-medium uppercase tracking-wide text-text-secondary">{t("auth.register.name_label", "Full Name")}</label>
                 <Input value={name} onChange={(e) => setName(e.target.value)} required />
               </div>
               <div className="md:col-span-1">
-                <label className="text-sm text-[var(--muted)]">{t("forms.email", "Email")}</label>
+                <label className="text-label-dense font-medium uppercase tracking-wide text-text-secondary">{t("forms.email", "Email")}</label>
                 <Input
                   type="email"
                   autoComplete="email"
@@ -330,22 +330,22 @@ export default function RegisterPage() {
                   onChange={setPassword}
                   required
                 />
-                <p className="mt-2 text-xs text-[var(--muted)]">{t("auth.register.password_hint", "Use 12+ characters with mixed case, number, and symbol.")}</p>
+                <p className="mt-2 text-xs text-text-secondary">{t("auth.register.password_hint", "Use 12+ characters with mixed case, number, and symbol.")}</p>
               </div>
               <div className="md:col-span-1">
-                <label className="text-sm text-[var(--muted)]">{t("auth.register.account_type_label", "Account Type")}</label>
+                <label className="text-label-dense font-medium uppercase tracking-wide text-text-secondary">{t("auth.register.account_type_label", "Account Type")}</label>
                 <Input value={t("auth.register.account_type_value", "Attendance worker access")} readOnly aria-readonly />
               </div>
               <div className="md:col-span-1">
-                <label className="text-sm text-[var(--muted)]">{t("auth.register.factory_label", "Company / Factory Name")}</label>
+                <label className="text-label-dense font-medium uppercase tracking-wide text-text-secondary">{t("auth.register.factory_label", "Company / Factory Name")}</label>
                 <Input value={factoryName} onChange={(e) => setFactoryName(e.target.value)} required />
               </div>
               <div className="md:col-span-1">
-                <label className="text-sm text-[var(--muted)]">{t("auth.register.company_code_label", "Company Code (optional)")}</label>
+                <label className="text-label-dense font-medium uppercase tracking-wide text-text-secondary">{t("auth.register.company_code_label", "Company Code (optional)")}</label>
                 <Input value={companyCode} onChange={(e) => setCompanyCode(e.target.value)} />
               </div>
               <div className="md:col-span-2">
-                <label className="text-sm text-[var(--muted)]">{t("forms.phone_number_optional", "Phone Number (optional)")}</label>
+                <label className="text-label-dense font-medium uppercase tracking-wide text-text-secondary">{t("forms.phone_number_optional", "Phone Number (optional)")}</label>
                 <Input
                   type="tel"
                   autoComplete="tel"
@@ -356,7 +356,7 @@ export default function RegisterPage() {
                 />
               </div>
 
-              {error ? <div className="md:col-span-2 text-sm text-red-400">{error}</div> : null}
+              {error ? <div className="md:col-span-2 rounded-panel border-[0.5px] border-status-danger-border bg-status-danger-bg px-3 py-3 text-sm text-status-danger-fg">{error}</div> : null}
 
               <div className="md:col-span-2 flex flex-wrap items-center gap-3">
                 <Button type="submit" disabled={loading}>

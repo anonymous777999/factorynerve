@@ -1532,33 +1532,48 @@ export default function DashboardHome() {
 
   return (
     <main className="operational-page" data-component="dashboard-home">
-      <div className="operational-page__inner">
-        <section className="operational-hero flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-2">
-            <div className="text-sm uppercase tracking-[0.32em] text-[var(--accent)]">
-              {headerEyebrow}
+      <div className="operational-page__inner route-workspace">
+        <section className="route-header">
+          <div className="route-header__grid">
+            <div className="route-header__copy">
+              <div className="route-header__eyebrow">{headerEyebrow}</div>
+              <h1 className="route-header__title">{headerTitle}</h1>
+              <p className="route-header__body">{headerCopy}</p>
+              <div className="route-header__meta">
+                <div className="route-header__meta-item">
+                  <span>Factory</span>
+                  <strong>{activeFactory?.name || user.factory_name || "-"}</strong>
+                </div>
+                <div className="route-header__meta-item">
+                  <span>Pending</span>
+                  <strong>{queueCount}</strong>
+                </div>
+                <div className="route-header__meta-item">
+                  <span>Alerts</span>
+                  <strong>{state.alerts.length}</strong>
+                </div>
+              </div>
             </div>
-            <h1 className="text-3xl font-semibold md:text-4xl">{headerTitle}</h1>
-            <p className="max-w-3xl text-sm text-[var(--muted)]">
-              {headerCopy}
-            </p>
-          </div>
           {/* AUDIT: BUTTON_CLUTTER — The hero now keeps only the immediate board actions; logout and report navigation stay available from the shell and secondary routes below. */}
-          <div className="flex flex-wrap gap-3">
+          <div className="route-header__actions">
             {primaryAction ? (
               <Link href={primaryAction.href}>
                 <Button>{primaryAction.action}</Button>
               </Link>
             ) : null}
           </div>
+          </div>
         </section>
 
         {/* AUDIT: BUTTON_CLUTTER - move board maintenance actions into a secondary tray so the main work lane stays obvious. */}
-        <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
-          <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
-            Board tools
+        <details className="route-panel">
+          <summary className="route-panel__header cursor-pointer list-none marker:hidden">
+            <div>
+              <div className="route-panel__eyebrow">Board tools</div>
+              <div className="route-panel__hint">Refresh and sync controls stay nearby without crowding the primary lane.</div>
+            </div>
           </summary>
-          <div className="mt-4 flex flex-wrap gap-3">
+          <div className="route-panel__body flex flex-wrap gap-3 pt-0">
             <Button variant="outline" onClick={() => loadDashboard()}>
               {dashboardLoading
                 ? t("dashboard.action.refreshing", "Refreshing...")
@@ -1575,23 +1590,21 @@ export default function DashboardHome() {
         </details>
 
         {roleLaunchGuide ? (
-          <section className="grid gap-3 lg:grid-cols-3">
+          <section className="route-metrics-grid lg:grid-cols-3">
             {roleLaunchGuide.steps.map((step, index) => (
               <Link
                 key={`${step.href}-${index}`}
                 href={step.href}
-                className="rounded-2xl border border-[var(--border)] bg-surface-panel px-4 py-4 transition-colors hover:border-border-strong hover:bg-surface-hover"
+                className="route-metric transition-colors hover:border-border-strong hover:bg-surface-hover"
               >
-                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
-                  {step.action}
-                </div>
-                <div className="mt-2 text-sm font-semibold text-[var(--text)]">{step.title}</div>
+                <div className="route-metric__label">{step.action}</div>
+                <div className="route-metric__value text-sm">{step.title}</div>
               </Link>
             ))}
           </section>
         ) : null}
 
-        <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr_1fr]">
+        <section className="route-grid-main xl:grid-cols-[1.1fr_0.9fr_1fr]">
             <Card className="border border-[var(--border)] bg-surface-panel">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">

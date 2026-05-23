@@ -1800,23 +1800,30 @@ export default function ApprovalsPage() {
 
   return (
     <main className="operational-page">
-      <div className="operational-page__inner">
+      <div className="operational-page__inner route-workspace">
         {/* AUDIT: FLOW_BROKEN - lead the screen with the next review action instead of a passive inbox summary. */}
-        <section className="operational-hero flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div className="space-y-3">
-            <div className="text-sm uppercase tracking-[0.32em] text-[var(--accent)]">Review</div>
-            <h1 className="text-3xl font-semibold md:text-4xl">Review Queue</h1>
-            <p className="max-w-3xl text-sm text-[var(--muted)]">Close the next review first, then work down the backlog with context still in view.</p>
-            <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
-              <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
-                Factory: <span className="font-semibold text-[var(--text)]">{activeFactory?.name || user.factory_name}</span>
-              </span>
-              <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
-                Refreshed: <span className="font-semibold text-[var(--text)]">{refreshedLabel}</span>
-              </span>
+        <section className="route-header">
+          <div className="route-header__grid">
+            <div className="route-header__copy">
+              <div className="route-header__eyebrow">Review</div>
+              <h1 className="route-header__title">Review Queue</h1>
+              <p className="route-header__body">Close the next review first, then work down the backlog with context still in view.</p>
+              <div className="route-header__meta">
+                <div className="route-header__meta-item">
+                  <span>Factory</span>
+                  <strong>{activeFactory?.name || user.factory_name}</strong>
+                </div>
+                <div className="route-header__meta-item">
+                  <span>Refreshed</span>
+                  <strong>{refreshedLabel}</strong>
+                </div>
+                <div className="route-header__meta-item">
+                  <span>Open</span>
+                  <strong>{filteredTasks.length}</strong>
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
+            <div className="route-header__actions">
             {nextReviewItem ? (
               <Button
                 className="px-4 py-2 text-xs"
@@ -1828,6 +1835,7 @@ export default function ApprovalsPage() {
             <Button variant="outline" className="px-4 py-2 text-xs" onClick={() => void loadInbox()}>
               {busy ? "Refreshing..." : "Refresh"}
             </Button>
+            </div>
           </div>
         </section>
 
@@ -1875,7 +1883,7 @@ export default function ApprovalsPage() {
         {status ? <div className="operational-panel border-status-success-border bg-status-success-bg px-4 py-3 text-sm text-status-success-fg">{status}</div> : null}
 
         {/* AUDIT: DENSITY_OVERLOAD - collapse backlog analytics and SLA diagnostics until the reviewer asks for them. */}
-        <details className="group telemetry-rail">
+        <details className="group route-panel">
           <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
             <div>
               <div className="text-sm text-[var(--muted)]">Queue pulse</div>
@@ -1977,10 +1985,10 @@ export default function ApprovalsPage() {
           </div>
         </details>
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.95fr)]">
-          <div className="space-y-6">
+        <section className="route-grid-main route-grid-main--sidebar">
+          <div className="route-stack">
             {/* AUDIT: BUTTON_CLUTTER - move presets, filters, and bulk actions into one tools tray so they stop crowding the review lane. */}
-            <details className="group rounded-[2rem] border border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl">
+            <details className="group route-panel">
               <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
                 <div>
                   <div className="text-sm text-[var(--muted)]">Review tools</div>
@@ -2137,7 +2145,7 @@ export default function ApprovalsPage() {
             </details>
 
             {/* AUDIT: FLOW_BROKEN - feature the next review item before the wider backlog so the first move is obvious. */}
-            <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+            <Card className="route-table-anchor border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
               <CardHeader className="space-y-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
