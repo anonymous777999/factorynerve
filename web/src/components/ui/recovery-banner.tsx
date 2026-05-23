@@ -30,10 +30,10 @@ export type RecoveryBannerProps = {
 };
 
 const kindStatusMap: Record<RecoveryBannerKind, BadgeStatus> = {
-  "sync-failure": "error",
-  offline: "paused",
-  "unsaved-draft": "draft",
-  reconnecting: "processing",
+  "sync-failure": "destructive",
+  offline: "warning",
+  "unsaved-draft": "warning",
+  reconnecting: "info",
 };
 
 const kindLabelMap: Record<RecoveryBannerKind, string> = {

@@ -80,9 +80,12 @@ export function ConfirmationModal({
     const originalOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
+    const focusableElements = getFocusableElements(modalRef.current);
+    const cancelButton = focusableElements.find((element) => element.dataset.confirmationCancel === "true");
     const focusTarget =
       initialFocusRef?.current ??
-      getFocusableElements(modalRef.current)[0] ??
+      cancelButton ??
+      focusableElements[0] ??
       closeButtonRef.current;
 
     focusTarget?.focus();
@@ -100,6 +103,12 @@ export function ConfirmationModal({
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
+        event.preventDefault();
+        onOpenChange(false);
+        return;
+      }
+
+      if (event.key === "Enter" && (document.activeElement as HTMLElement | null)?.dataset.confirmationCancel === "true") {
         event.preventDefault();
         onOpenChange(false);
         return;
@@ -151,12 +160,7 @@ export function ConfirmationModal({
 
   return createPortal(
     <div className="fixed inset-0" style={{ zIndex: "var(--z-modal)" }}>
-      <button
-        type="button"
-        className="absolute inset-0 bg-command-bg"
-        onClick={() => onOpenChange(false)}
-        aria-label={secondaryActionLabel}
-      />
+      <div className="absolute inset-0 bg-command-bg" aria-hidden="true" />
       <div className="safe-top-inset safe-x-inset absolute inset-0 flex items-center justify-center px-md py-lg">
         <section
           ref={modalRef}
@@ -206,7 +210,11 @@ export function ConfirmationModal({
                   {confirmShortcutHint} confirms and {cancelShortcutHint ?? "Esc"} cancels.
                 </div>
                 <div className="flex flex-wrap items-center gap-sm">
-                  <Button variant="outline" onClick={() => onOpenChange(false)}>
+                  <Button
+                    variant="ghost"
+                    onClick={() => onOpenChange(false)}
+                    data-confirmation-cancel="true"
+                  >
                     {secondaryActionLabel}
                   </Button>
                   <Button
@@ -214,6 +222,7 @@ export function ConfirmationModal({
                     disabled={confirmDisabled}
                     isBusy={confirmBusy}
                     busyLabel={primaryActionLabel}
+                    variant="destructive"
                   >
                     {primaryActionLabel}
                   </Button>

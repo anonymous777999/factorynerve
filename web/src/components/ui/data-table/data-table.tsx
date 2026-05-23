@@ -56,6 +56,7 @@ export type DataTableProps<TData extends RowData> = {
   getRowSelectionDisabled?: (row: TData, rowId: string) => boolean;
   manualFiltering?: boolean;
   manualSorting?: boolean;
+  onRowClick?: (row: TData, rowId: string) => void;
   onColumnFiltersChange?: OnChangeFn<ColumnFiltersState>;
   onRowSelectionChange?: (rowId: string | null) => void;
   onSearchChange?: (value: string) => void;
@@ -226,6 +227,7 @@ export function DataTable<TData extends RowData>({
   getRowSelectionDisabled,
   manualFiltering = false,
   manualSorting = false,
+  onRowClick,
   onColumnFiltersChange,
   onRowSelectionChange,
   onSearchChange,
@@ -709,9 +711,11 @@ export function DataTable<TData extends RowData>({
                   data-state={Array.from(rowStates).join(" ") || undefined}
                   className={cn(
                     "group transition-[background-color,border-color] duration-fast ease-standard",
+                    onRowClick ? "cursor-pointer" : "",
                     rowSurfaceClassName,
                     rowAccentClassName,
                   )}
+                  onClick={onRowClick ? () => onRowClick(row.original, row.id) : undefined}
                 >
                   {row.getVisibleCells().map((cell, columnIndex) => {
                     const meta = cell.column.columnDef.meta;
@@ -723,6 +727,7 @@ export function DataTable<TData extends RowData>({
                     const isRowHeader =
                       meta?.isRowHeader ?? columnIndex === (enableBulkSelection ? 1 : 0);
                     const cellProps = getCellProps(rowIndex, columnIndex, row.id);
+                    const keyboardHandler = cellProps.onKeyDown;
                     const commonClassName = cn(
                       "border-b border-border-subtle px-cell-x py-[calc(var(--density-cell-pad-y)-1px)] align-middle text-table-density text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-border-focus",
                       alignmentClassNames[align],
@@ -746,6 +751,17 @@ export function DataTable<TData extends RowData>({
                           data-row-index={rowIndex}
                           className={cn(commonClassName, "font-medium")}
                           {...cellProps}
+                          onKeyDown={(event) => {
+                            keyboardHandler(event);
+                            if (!onRowClick || event.defaultPrevented) {
+                              return;
+                            }
+
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              onRowClick(row.original, row.id);
+                            }
+                          }}
                         >
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </th>
@@ -760,6 +776,17 @@ export function DataTable<TData extends RowData>({
                         data-row-index={rowIndex}
                         className={commonClassName}
                         {...cellProps}
+                        onKeyDown={(event) => {
+                          keyboardHandler(event);
+                          if (!onRowClick || event.defaultPrevented) {
+                            return;
+                          }
+
+                          if (event.key === "Enter") {
+                            event.preventDefault();
+                            onRowClick(row.original, row.id);
+                          }
+                        }}
                       >
                         {flexRender(cell.column.columnDef.cell, cell.getContext())}
                       </td>

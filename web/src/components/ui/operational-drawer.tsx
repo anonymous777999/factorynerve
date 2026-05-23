@@ -52,13 +52,13 @@ const sideClassNames: Record<OperationalDrawerSide, string> = {
 
 const sizeClassNames: Record<OperationalDrawerSize, Record<OperationalDrawerSide, string>> = {
   default: {
-    right: "w-full md:w-3/4 xl:w-1/3",
-    left: "w-full md:w-3/4 xl:w-1/3",
+    right: "w-full md:max-w-[30rem]",
+    left: "w-full md:max-w-[30rem]",
     bottom: "max-h-screen",
   },
   wide: {
-    right: "w-full lg:w-3/4 xl:w-1/2",
-    left: "w-full lg:w-3/4 xl:w-1/2",
+    right: "w-full md:max-w-[40rem]",
+    left: "w-full md:max-w-[40rem]",
     bottom: "max-h-screen",
   },
 };
@@ -207,12 +207,7 @@ export function OperationalDrawer({
 
   return createPortal(
     <div className="fixed inset-0 z-overlay" aria-hidden={open ? undefined : "true"}>
-      <button
-        type="button"
-        className="absolute inset-0 bg-surface-overlay/80"
-        onClick={() => onOpenChange(false)}
-        aria-label={closeLabel}
-      />
+      <div className="absolute inset-0 bg-surface-overlay/80" aria-hidden="true" />
       <aside
         ref={drawerRef}
         className={cn(

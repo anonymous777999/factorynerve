@@ -33,12 +33,16 @@ import { signalWorkflowRefresh, subscribeToWorkflowRefresh } from "@/lib/workflo
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { CommandPaletteItem } from "@/components/ui/command-palette";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StickyActionBar } from "@/components/ui/sticky-action-bar";
 import { Textarea } from "@/components/ui/textarea";
+import { useRegisterCommands } from "@/providers/command-registry-provider";
 
 type InboxState = {
   pendingAttendanceReviews: AttendanceReviewItem[];
@@ -1726,6 +1730,46 @@ export default function ApprovalsPage() {
   const sla24DprCount = taskItems.filter((item) => item.ageBand === "stale" && item.kind === "entry").length;
   const sla24OcrCount = taskItems.filter((item) => item.ageBand === "stale" && item.kind === "ocr").length;
   const sla24StockCount = taskItems.filter((item) => item.ageBand === "stale" && item.kind === "reconciliation").length;
+  const approvalCommands = useMemo<CommandPaletteItem[]>(
+    () => {
+      const commands: CommandPaletteItem[] = [];
+
+      if (nextReviewItem) {
+        commands.push({
+          id: "approvals-review-next",
+          group: "Actions",
+          label: "Review next approval",
+          description: "Open the next decision item from the queue.",
+          shortcut: "Shift R",
+          onSelect: () => openItem(nextReviewItem.key, false),
+        });
+      }
+
+      if (selectedApproveCount > 0) {
+        commands.push({
+          id: "approvals-approve-selected",
+          group: "Actions",
+          label: `Approve ${selectedApproveCount} selected`,
+          description: "Open bulk approval confirmation for the selected review items.",
+          onSelect: () => openBulkDecisionConfirm("approve"),
+        });
+      }
+
+      if (selectedRejectCount > 0) {
+        commands.push({
+          id: "approvals-reject-selected",
+          group: "Actions",
+          label: `Reject ${selectedRejectCount} selected`,
+          description: "Open bulk rejection confirmation for the selected review items.",
+          onSelect: () => openBulkDecisionConfirm("reject"),
+        });
+      }
+
+      return commands;
+    },
+    [nextReviewItem, openBulkDecisionConfirm, openItem, selectedApproveCount, selectedRejectCount],
+  );
+  useRegisterCommands("approvals-page", approvalCommands);
 
   if (loading) {
     return (
@@ -1838,6 +1882,50 @@ export default function ApprovalsPage() {
             </div>
           </div>
         </section>
+
+        <StickyActionBar
+          variant="page"
+          status={urgentTaskCount > 0 ? "warning" : "info"}
+          statusLabel={urgentTaskCount > 0 ? "Urgent queue" : "Queue stable"}
+          title="Approval workflow"
+          description="Keep the next decision visible, then batch the backlog when the same call applies."
+          selectedCount={selectedTaskCount}
+          primaryAction={
+            nextReviewItem
+              ? {
+                  id: "review-next-approval",
+                  label: "Review next",
+                  onAction: () => openItem(nextReviewItem.key, typeof window !== "undefined" && window.innerWidth < 1024),
+                }
+              : undefined
+          }
+          secondaryAction={
+            selectedApproveCount > 0
+              ? {
+                  id: "bulk-approve-selection",
+                  label: `Approve ${selectedApproveCount}`,
+                  variant: "outline",
+                  onAction: () => openBulkDecisionConfirm("approve"),
+                }
+              : undefined
+          }
+          tertiaryAction={
+            selectedRejectCount > 0
+              ? {
+                  id: "bulk-reject-selection",
+                  label: `Reject ${selectedRejectCount}`,
+                  variant: "ghost",
+                  onAction: () => openBulkDecisionConfirm("reject"),
+                }
+              : {
+                  id: "refresh-approvals",
+                  label: busy ? "Refreshing" : "Refresh",
+                  variant: "ghost",
+                  disabled: busy,
+                  onAction: () => void loadInbox(),
+                }
+          }
+        />
 
         <GuidanceBlock
           surfaceKey="approvals-flow"
@@ -2476,90 +2564,74 @@ export default function ApprovalsPage() {
         </section>
       </div>
 
-      {bulkConfirmDecision ? (
-        <div className="fixed inset-0 z-[55] flex items-center justify-center bg-[rgba(5,10,18,0.84)] px-4 py-4">
-          <Card className="w-full max-w-2xl border-[var(--border)] bg-[rgba(17,21,33,0.98)] shadow-2xl">
-            <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Confirm bulk decision</div>
-              <CardTitle className="text-2xl">
-                {bulkConfirmDecision === "approve" ? "Approve selected tasks?" : "Reject selected tasks?"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--card-strong)] px-3 py-3">
-                  <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">Selected</div>
-                  <div className="mt-1 text-xl font-semibold">{selectedTaskItems.length}</div>
-                </div>
-                <div className="rounded-xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-3 py-3">
-                  <div className="text-[11px] uppercase tracking-[0.14em] text-emerald-100">Will process</div>
-                  <div className="mt-1 text-xl font-semibold text-emerald-100">{bulkConfirmEligibleItems.length}</div>
-                </div>
-                <div className="rounded-xl border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-3">
-                  <div className="text-[11px] uppercase tracking-[0.14em] text-amber-100">Restricted</div>
-                  <div className="mt-1 text-xl font-semibold text-amber-100">{bulkConfirmRestrictedItems.length}</div>
-                </div>
+      <ConfirmationModal
+        open={Boolean(bulkConfirmDecision)}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeBulkDecisionConfirm();
+          }
+        }}
+        title={bulkConfirmDecision === "approve" ? "Approve selected tasks?" : "Reject selected tasks?"}
+        description={
+          bulkConfirmDecision === "approve"
+            ? "Eligible items will be approved, and restricted items will remain untouched."
+            : "Rejection note is required and will be written to each eligible selected item."
+        }
+        primaryActionLabel={
+          bulkConfirmDecision === "approve"
+            ? `Approve ${bulkConfirmEligibleItems.length} task${bulkConfirmEligibleItems.length === 1 ? "" : "s"}`
+            : `Reject ${bulkConfirmEligibleItems.length} task${bulkConfirmEligibleItems.length === 1 ? "" : "s"}`
+        }
+        secondaryActionLabel="Cancel"
+        onConfirm={confirmBulkDecision}
+        confirmBusy={bulkBusy}
+        confirmDisabled={!bulkConfirmEligibleItems.length || bulkApproveReasonMissing || bulkRejectReasonMissing}
+        status={bulkConfirmDecision === "approve" ? "warning" : "destructive"}
+        statusLabel={bulkConfirmDecision === "approve" ? "Bulk approval" : "Bulk rejection"}
+      >
+        <div className="space-y-4 text-sm text-text-secondary">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-panel border border-border-subtle bg-surface-shell px-3 py-3">
+              <div className="text-[11px] uppercase tracking-[0.14em] text-text-secondary">Selected</div>
+              <div className="mt-1 text-xl font-semibold text-text-primary">{selectedTaskItems.length}</div>
+            </div>
+            <div className="rounded-panel border border-status-success-border bg-status-success-bg px-3 py-3">
+              <div className="text-[11px] uppercase tracking-[0.14em] text-status-success-fg">Will process</div>
+              <div className="mt-1 text-xl font-semibold text-status-success-fg">{bulkConfirmEligibleItems.length}</div>
+            </div>
+            <div className="rounded-panel border border-status-warning-border bg-status-warning-bg px-3 py-3">
+              <div className="text-[11px] uppercase tracking-[0.14em] text-status-warning-fg">Restricted</div>
+              <div className="mt-1 text-xl font-semibold text-status-warning-fg">{bulkConfirmRestrictedItems.length}</div>
+            </div>
+          </div>
+          <p className={cn(bulkApproveReasonMissing || bulkRejectReasonMissing ? "text-status-warning-fg" : "text-text-secondary")}>
+            {bulkConfirmDecision === "approve"
+              ? bulkApproveReasonMissing
+                ? "High-risk approval note missing. Add one shared review note before confirming."
+                : "Approval note coverage is ready."
+              : bulkRejectReasonMissing
+                ? "Reason note missing. Add it before confirming."
+                : "Reason note ready."}
+          </p>
+          {bulkConfirmRestrictedItems.length ? (
+            <div className="rounded-panel border border-status-warning-border bg-status-warning-bg px-4 py-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-status-warning-fg">
+                Restricted items (not processed)
               </div>
-
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-                <div className="text-sm text-[var(--muted)]">
-                  {bulkConfirmDecision === "approve"
-                    ? "Eligible items will be approved, restricted items will remain untouched."
-                    : "Rejection note is required and will be written to each eligible selected item."}
-                </div>
-                {bulkConfirmDecision === "approve" ? (
-                  <div className={cn("mt-2 text-xs", bulkApproveReasonMissing ? "text-amber-200" : "text-emerald-200")}>
-                    {bulkApproveReasonMissing
-                      ? "High-risk approval note missing. Add one shared review note before confirming."
-                      : "Approval note coverage is ready."}
+              <div className="mt-2 space-y-1 text-xs text-status-warning-fg">
+                {bulkConfirmRestrictedItems.slice(0, 5).map((item) => (
+                  <div key={`restricted:${item.key}`}>
+                    {item.typeLabel}: {item.title}
                   </div>
-                ) : (
-                  <div className={cn("mt-2 text-xs", bulkRejectReasonMissing ? "text-red-200" : "text-emerald-200")}>
-                    {bulkRejectReasonMissing ? "Reason note missing. Add it before confirming." : "Reason note ready."}
-                  </div>
-                )}
+                ))}
+                {bulkConfirmRestrictedItems.length > 5 ? (
+                  <div>+{bulkConfirmRestrictedItems.length - 5} more</div>
+                ) : null}
               </div>
-
-              {bulkConfirmRestrictedItems.length ? (
-                <div className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.1)] px-4 py-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-100">
-                    Restricted items (not processed)
-                  </div>
-                  <div className="mt-2 space-y-1 text-xs text-amber-100">
-                    {bulkConfirmRestrictedItems.slice(0, 5).map((item) => (
-                      <div key={`restricted:${item.key}`}>
-                        {item.typeLabel}: {item.title}
-                      </div>
-                    ))}
-                    {bulkConfirmRestrictedItems.length > 5 ? (
-                      <div>+{bulkConfirmRestrictedItems.length - 5} more</div>
-                    ) : null}
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button variant="outline" className="px-4 py-2 text-xs" onClick={closeBulkDecisionConfirm} disabled={bulkBusy}>
-                  Cancel
-                </Button>
-                <Button
-                  className="px-4 py-2 text-xs"
-                  onClick={confirmBulkDecision}
-                  disabled={bulkBusy || !bulkConfirmEligibleItems.length || bulkApproveReasonMissing || bulkRejectReasonMissing}
-                >
-                  {bulkConfirmDecision === "approve"
-                    ? bulkApproveBusy
-                      ? "Approving..."
-                      : "Confirm approve"
-                    : bulkRejectBusy
-                      ? "Rejecting..."
-                      : "Confirm reject"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          ) : null}
         </div>
-      ) : null}
+      </ConfirmationModal>
 
       {mobileDetailOpen ? (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(4,8,16,0.96)] px-4 py-4 lg:hidden">
