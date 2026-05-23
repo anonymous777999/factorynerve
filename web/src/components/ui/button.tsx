@@ -13,23 +13,23 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const base =
-  "ui-no-select ui-no-callout inline-flex shrink-0 items-center justify-center gap-sm rounded-control border font-medium transition-[background-color,border-color,color,box-shadow,opacity] duration-fast ease-standard focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2 focus-visible:ring-offset-surface-app disabled:cursor-not-allowed disabled:border-action-disabled disabled:bg-action-disabled disabled:text-action-disabled-text";
+  "ui-no-select ui-no-callout inline-flex shrink-0 items-center justify-center gap-sm rounded-control border font-medium transition-[background-color,border-color,color,box-shadow,opacity] duration-fast ease-standard focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-1 focus-visible:ring-offset-surface-app disabled:cursor-not-allowed disabled:border-action-disabled disabled:bg-action-disabled disabled:text-action-disabled-text";
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    "border-action-primary bg-action-primary text-action-primary-text shadow-sm hover:bg-action-primary-hover active:bg-action-primary-active",
+    "border-action-primary bg-action-primary text-action-primary-text shadow-xs hover:bg-action-primary-hover active:bg-action-primary-active",
   secondary:
     "border-action-secondary-border bg-action-secondary text-action-secondary-text shadow-xs hover:bg-action-secondary-hover",
   outline:
-    "border-border-default bg-surface-panel text-text-primary shadow-xs hover:bg-surface-hover",
+    "border-border-default bg-surface-panel text-text-primary shadow-none hover:bg-surface-hover",
   ghost:
     "border-transparent bg-transparent text-text-secondary hover:bg-action-ghost-hover hover:text-text-primary",
   destructive:
-    "border-action-destructive bg-action-destructive text-text-inverse shadow-sm hover:bg-action-destructive-hover active:bg-action-destructive-hover",
+    "border-action-destructive bg-action-destructive text-text-inverse shadow-xs hover:bg-action-destructive-hover active:bg-action-destructive-hover",
 };
 
 const sizes: Record<ButtonSize, string> = {
-  default: "h-button px-md text-label",
+  default: "h-button px-sm text-label",
   compact: "h-input px-sm text-label-dense",
   icon: "h-button aspect-square px-0",
 };

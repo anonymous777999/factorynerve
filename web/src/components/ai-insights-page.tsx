@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -270,8 +269,8 @@ export default function AiInsightsPage() {
         <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div className="max-w-4xl space-y-3">
             <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("ai.title", "AI Insights")}</div>
-            <h1 className="text-3xl font-semibold">{t("ai.hero.title", "Ask an operations question")}</h1>
-            <p className="max-w-3xl text-sm text-[var(--muted)]">{t("ai.hero.subtitle", "Ask now. Check drift only when needed.")}</p>
+            <h1 className="text-3xl font-semibold">{t("ai.hero.title", "Operations questions")}</h1>
+            <p className="max-w-3xl text-sm text-[var(--muted)]">{t("ai.hero.subtitle", "Ask first. Drift on demand.")}</p>
             <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
               <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
                 {t("ai.hero.plan", "Plan")}: <span className="font-semibold text-[var(--text)] capitalize">{usage?.plan || "-"}</span>
@@ -320,42 +319,9 @@ export default function AiInsightsPage() {
           </div>
         </section>
 
-        <GuidanceBlock
-          surfaceKey="ai-insights"
-          title={t("ai.steps.title", "How this works")}
-          summary={t("ai.steps.summary", "Ask first. Open quota or drift only when you need more context.")}
-          eyebrow={t("ai.steps.eyebrow", "On demand")}
-          autoOpenVisits={1}
-          className="border border-[var(--border)] bg-[rgba(18,22,34,0.92)]"
-        >
-          <div className="grid gap-3 md:grid-cols-3">
-            {[
-              {
-                title: t("ai.steps.ask_title", "Ask"),
-                body: t("ai.steps.ask_body", "Type the KPI or trend question you need answered right now."),
-              },
-              {
-                title: t("ai.steps.answer_title", "Check answer"),
-                body: nlqResult
-                  ? t("ai.steps.answer_body_ready", "Latest answer came from {{provider}}.", { provider: nlqResult.provider })
-                  : t("ai.steps.answer_body_empty", "The answer panel stays ready for the next NLQ result."),
-              },
-              {
-                title: t("ai.steps.investigate_title", "Investigate"),
-                body: t("ai.steps.investigate_body", "Use anomaly drift and quota context only when you need to validate or extend the answer."),
-              },
-            ].map((item) => (
-              <div key={item.title} className="rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.42)] px-4 py-4">
-                <div className="text-sm font-semibold text-[var(--text)]">{item.title}</div>
-                <div className="mt-2 text-sm leading-6 text-[var(--muted)]">{item.body}</div>
-              </div>
-            ))}
-          </div>
-        </GuidanceBlock>
-
         {refreshing ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3 text-sm text-[var(--muted)]">
-            {t("ai.refreshing_background", "Refreshing AI insights in the background...")}
+            {t("ai.refreshing_background", "Refreshing AI insights...")}
           </div>
         ) : null}
 

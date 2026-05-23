@@ -191,11 +191,9 @@ export default function PlansPage() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("billing.plans.title", "Plans")}</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">
-                Simple, customer-safe pricing for every factory stage
-              </h1>
+              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Plans</h1>
               {/* AUDIT: TEXT_NOISE - shorten the hero copy so plan choice stays more prominent than pricing narration */}
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">{t("billing.plans.description", "Pick a plan first, then add OCR packs only if you need more scans.")}</p>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">{t("billing.plans.description", "Choose plan. Add OCR only if needed.")}</p>
             </div>
             {/* AUDIT: BUTTON_CLUTTER - move billing and dashboard jumps into a secondary tools tray so plan cards own the decision flow */}
             <details className="w-full min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4 sm:w-auto sm:min-w-[240px]">
@@ -229,19 +227,6 @@ export default function PlansPage() {
         </section>
 
         {/* AUDIT: FLOW_BROKEN - add a clear pricing sequence so the page leads users from plan choice into add-ons and billing */}
-        <section className="grid gap-3 xl:grid-cols-3">
-          {[
-            { label: "Choose a plan", detail: plans.length ? `${plans.length} plans are available in this catalog.` : "Pricing catalog is loading." },
-            { label: "Add OCR if needed", detail: addons.length ? `${addons.length} OCR packs are available after plan choice.` : "No OCR packs are available right now." },
-            { label: "Continue to billing", detail: canViewBilling ? "Admins and owners can continue straight into checkout." : "Ask your admin or owner to complete billing." },
-          ].map((step) => (
-            <div key={step.label} className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-5 py-4">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">{step.label}</div>
-              <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
-            </div>
-          ))}
-        </section>
-
         {/* AUDIT: DENSITY_OVERLOAD - keep usage health visible but secondary so it does not compete with plan cards */}
         <details className="rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-5 py-5">
           <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">Current AI usage</summary>

@@ -47,10 +47,10 @@ export function OcrShell({
   const shellStatus = shellStatusMap[step];
 
   return (
-    <main className="min-h-screen bg-surface-app px-md py-md md:px-lg md:py-lg">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-density-gap">
-        <Card className="border-border-default bg-surface-panel shadow-sm">
-          <CardContent className="px-lg py-lg">
+    <main className="operational-page bg-surface-app">
+      <div className="operational-page__inner max-w-[88rem]">
+        <Card className="border-border-default bg-surface-panel shadow-xs">
+          <CardContent className="px-md py-md md:px-lg md:py-lg">
             <div className="flex flex-col gap-md lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
               <div className="flex flex-wrap items-center gap-sm">
@@ -59,7 +59,7 @@ export function OcrShell({
                 </span>
                 <Badge status={shellStatus.status}>{shellStatus.label}</Badge>
               </div>
-              <h1 className="mt-sm text-page-title font-semibold tracking-tight text-text-primary md:text-2xl">
+              <h1 className="mt-sm text-page-title font-semibold tracking-tight text-text-primary">
                 {title}
               </h1>
               <p className="mt-sm max-w-2xl text-body text-text-secondary">{subtitle}</p>
@@ -72,7 +72,7 @@ export function OcrShell({
                   <div
                     key={item.key}
                     className={cn(
-                      "rounded-panel border px-md py-sm text-center transition-[background-color,border-color,color] duration-fast ease-standard",
+                      "rounded-panel border px-sm py-sm text-center transition-[background-color,border-color,color] duration-fast ease-standard",
                       stepStatusClassNames[state],
                     )}
                   >
@@ -98,7 +98,7 @@ export function OcrShell({
             className,
           )}
         >
-          <div className="rounded-overlay border border-border-default bg-surface-panel p-md shadow-sm md:p-lg">
+          <div className="rounded-overlay border border-border-default bg-surface-panel p-md shadow-xs md:p-lg">
             {children}
           </div>
           {sideContent ? <aside className="space-y-md xl:sticky xl:top-lg xl:self-start">{sideContent}</aside> : null}

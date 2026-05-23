@@ -1799,10 +1799,10 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="operational-page">
+      <div className="operational-page__inner">
         {/* AUDIT: FLOW_BROKEN - lead the screen with the next review action instead of a passive inbox summary. */}
-        <section className="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur md:flex-row md:items-end md:justify-between">
+        <section className="operational-hero flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="space-y-3">
             <div className="text-sm uppercase tracking-[0.32em] text-[var(--accent)]">Review</div>
             <h1 className="text-3xl font-semibold md:text-4xl">Review Queue</h1>
@@ -1836,7 +1836,7 @@ export default function ApprovalsPage() {
           title="Queue tips"
           summary="Open this only when you want the quick lane logic."
           eyebrow="Review"
-          className="border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl"
+          className="border-[var(--border)] bg-surface-panel shadow-xs"
         >
           <div className="grid gap-4 md:grid-cols-3">
             {[
@@ -1860,7 +1860,7 @@ export default function ApprovalsPage() {
                 body: "Approve, reject, or escalate from the detail panel without losing your place in the queue.",
               },
             ].map((item) => (
-              <Card key={item.title} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+              <Card key={item.title} className="border-[var(--border)] bg-surface-panel">
                 <CardContent className="space-y-3 px-5 py-5">
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
                   <div className="text-xl font-semibold text-[var(--text)]">{item.title}</div>
@@ -1871,11 +1871,11 @@ export default function ApprovalsPage() {
           </div>
         </GuidanceBlock>
 
-        {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
-        {status ? <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
+        {error ? <div className="operational-panel border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">{error}</div> : null}
+        {status ? <div className="operational-panel border-status-success-border bg-status-success-bg px-4 py-3 text-sm text-status-success-fg">{status}</div> : null}
 
         {/* AUDIT: DENSITY_OVERLOAD - collapse backlog analytics and SLA diagnostics until the reviewer asks for them. */}
-        <details className="group rounded-[2rem] border border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl">
+        <details className="group telemetry-rail">
           <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
             <div>
               <div className="text-sm text-[var(--muted)]">Queue pulse</div>

@@ -40,13 +40,13 @@ type LoadingStateSkeletonProps = React.HTMLAttributes<HTMLDivElement> & {
 
 export function LoadingStateSkeleton({
   className,
-  description = "Fetching the latest operational data for this view.",
+  description = "Fetching current data.",
   rows = 5,
   title = "Loading workspace",
   ...props
 }: LoadingStateSkeletonProps) {
   return (
-    <Card className={cn("border-border-subtle bg-surface-panel", className)} {...props}>
+    <Card className={cn("border-border-subtle bg-surface-panel shadow-none", className)} {...props}>
       <CardHeader className="pb-sm">
         <Badge status="processing">Loading</Badge>
       </CardHeader>
@@ -89,7 +89,7 @@ function LoadingNotice({
 
   return (
     <div
-      className="flex flex-wrap items-center justify-between gap-sm rounded-panel border border-border-subtle bg-surface-panel px-lg py-md"
+      className="flex flex-wrap items-center justify-between gap-sm rounded-panel border border-border-subtle bg-surface-panel px-md py-sm"
       role={isError ? "alert" : "status"}
       aria-live={isError ? "assertive" : "polite"}
     >
@@ -99,8 +99,8 @@ function LoadingNotice({
         </Badge>
         <p className="min-w-0 text-body text-text-secondary">
           {isError
-            ? "The latest refresh did not complete. You can retry while keeping the current data in view."
-            : "The current view is updating in the background."}
+            ? "Refresh failed. Retry when ready."
+            : "Updating in the background."}
         </p>
       </div>
       {showRetry ? (
@@ -123,8 +123,8 @@ export function LoadingBoundary({
   className,
   contentClassName,
   emptyFallback,
-  emptyMessage = "Adjust the current filters or create the next record to continue this workflow.",
-  emptyTitle = "No records match this view",
+  emptyMessage = "Adjust filters or add a record.",
+  emptyTitle = "No records",
   error,
   errorFallback,
   errorMessage,
@@ -168,7 +168,7 @@ export function LoadingBoundary({
             status="error"
             statusLabel="Load failed"
             title={errorTitle}
-            description={errorMessage ?? error?.message ?? "The data could not be loaded right now. Retry when you are ready."}
+            description={errorMessage ?? error?.message ?? "Could not load data. Retry when ready."}
             action={
               onRetry ? (
                 <Button
@@ -203,7 +203,7 @@ export function LoadingBoundary({
   }
 
   return (
-    <div className={cn("space-y-md", className)} aria-busy={isFetching ? "true" : undefined}>
+    <div className={cn("space-y-sm", className)} aria-busy={isFetching ? "true" : undefined}>
       <LoadingNotice
         isError={isError}
         isFetching={isFetching}
