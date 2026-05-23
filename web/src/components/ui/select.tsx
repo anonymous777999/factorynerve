@@ -9,13 +9,17 @@ export type SelectProps = React.SelectHTMLAttributes<HTMLSelectElement> & {
   validationState?: FieldValidationState;
 };
 
-export function Select({
-  className,
-  validationState = "default",
-  ...props
-}: SelectProps) {
+export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(function Select(
+  {
+    className,
+    validationState = "default",
+    ...props
+  },
+  ref,
+) {
   return (
     <select
+      ref={ref}
       className={getFieldControlClassName({
         className: `pr-lg ${className || ""}`,
         validationState,
@@ -23,4 +27,4 @@ export function Select({
       {...props}
     />
   );
-}
+});

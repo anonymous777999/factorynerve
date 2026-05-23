@@ -63,6 +63,7 @@ function AppShellFrame({
   const router = useRouter();
   const shell = useAppShellState(pathname);
   const [commandPaletteOpen, setCommandPaletteOpen] = React.useState(false);
+  const focusMode = shell.shellLayout.mode === "focus";
   const factoryName =
     shell.activeFactory?.name ||
     shell.user?.factory_name ||
@@ -222,7 +223,7 @@ function AppShellFrame({
         <div className={cn("min-w-0 flex-1 bg-surface-shell", shell.shellLayout.mobileBottomNav ? "pb-24 lg:pb-0" : "")}>
           {!shell.immersiveScannerRoute ? (
             <div className="sticky top-0 z-sticky hidden border-b border-border-subtle bg-surface-panel/95 backdrop-blur lg:block">
-              <div className="flex items-center justify-between gap-md px-lg py-sm">
+              <div className={cn("flex items-center justify-between gap-md px-lg", focusMode ? "py-xs" : "py-sm")}>
                 <div className="flex min-w-0 items-center gap-sm">
                   <Button
                     size="compact"
@@ -245,18 +246,20 @@ function AppShellFrame({
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-sm">
-                  <div className="hidden items-center gap-sm xl:flex">
-                    <span className="text-label-dense text-text-secondary">Alerts {shell.navBadgeCounts.alerts}</span>
-                    <span className="text-label-dense text-text-secondary">Review {shell.navBadgeCounts.approvals}</span>
-                  </div>
+                  {!focusMode ? (
+                    <div className="hidden items-center gap-sm xl:flex">
+                      <span className="text-label-dense text-text-secondary">Alerts {shell.navBadgeCounts.alerts}</span>
+                      <span className="text-label-dense text-text-secondary">Review {shell.navBadgeCounts.approvals}</span>
+                    </div>
+                  ) : null}
                   <Button size="compact" variant="outline" onClick={() => setCommandPaletteOpen(true)}>
-                    Command Palette (Ctrl/Cmd+K)
+                    {focusMode ? "Workspace Commands" : "Command Palette (Ctrl/Cmd+K)"}
                   </Button>
                 </div>
               </div>
             </div>
           ) : null}
-          {!shell.immersiveScannerRoute ? <WorkflowReminderStrip /> : null}
+          {!shell.immersiveScannerRoute && !focusMode ? <WorkflowReminderStrip /> : null}
           {shell.shellLayout.desktopRail === "context" ? (
             <div className={cn("min-h-full", shell.showDesktopContextRail ? "xl:grid xl:grid-cols-[minmax(0,1fr)_19rem]" : "")}>
               <div className="min-w-0 bg-surface-shell">{children}</div>

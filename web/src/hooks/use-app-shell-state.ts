@@ -77,6 +77,11 @@ const shellRouteRules: ShellRouteRule[] = [
     layout: { mode: "focus", desktopRail: "none", mobileBottomNav: false },
   },
   {
+    match: (pathname) =>
+      pathname === "/steel/production/record" || pathname.startsWith("/steel/production/record/"),
+    layout: { mode: "focus", desktopRail: "none", mobileBottomNav: false },
+  },
+  {
     match: (pathname) => pathname === "/ocr/scan",
     layout: { mode: "camera", desktopRail: "none", mobileTopBar: false, mobileBottomNav: false },
   },
