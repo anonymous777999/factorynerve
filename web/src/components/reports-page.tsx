@@ -33,6 +33,7 @@ import { useSession } from "@/lib/use-session";
 import { ReportsPageSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, Label } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
@@ -122,6 +123,12 @@ function filtersEqual(a: ReportFilters, b: ReportFilters) {
     && a.search === b.search
   );
 }
+
+const reportPanelClass =
+  "rounded-[1.5rem] border-[0.5px] border-[color:var(--color-border-secondary)] bg-[var(--color-background-secondary)] shadow-[var(--shadow-soft)]";
+
+const reportInsetClass =
+  "rounded-[1rem] border-[0.5px] border-[color:var(--color-border-tertiary)] bg-[var(--color-background-primary)]";
 
 export default function ReportsPage() {
   const { t } = useI18n();
@@ -746,11 +753,11 @@ export default function ReportsPage() {
         {sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{sessionError}</div> : null}
 
         {/* AUDIT: BUTTON_CLUTTER - Cross-product routes and deeper reporting lanes stay available, but they no longer compete with the export desk on first scan. */}
-        <details className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-soft)]">
+        <details className={reportPanelClass}>
           <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">Connected lanes</summary>
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
             {reportHubCards.map((card) => (
-              <Card key={card.title} className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
+              <Card key={card.title} className={reportInsetClass}>
                 <CardHeader>
                   <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">{card.eyebrow}</div>
                   <CardTitle className="text-xl">{card.title}</CardTitle>
@@ -759,7 +766,7 @@ export default function ReportsPage() {
                   <div className="text-2xl font-semibold">{card.metric}</div>
                   <div className="text-sm leading-6 text-[var(--muted)]">{card.detail}</div>
                   <Link href={card.href}>
-                    <Button variant="outline">{card.action}</Button>
+                    <Button variant="ghost">{card.action}</Button>
                   </Link>
                 </CardContent>
               </Card>
@@ -768,7 +775,7 @@ export default function ReportsPage() {
         </details>
 
         <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
-          <Card>
+          <Card className={reportPanelClass}>
             <CardHeader className="space-y-4">
               <div>
                 <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">{t("reports.step_one", "Range")}</div>
@@ -776,30 +783,30 @@ export default function ReportsPage() {
               </div>
               {/* AUDIT: TEXT_NOISE - Quick range controls stay visible, but the labels are shortened so they scan as presets rather than helper text. */}
               <div className="flex flex-wrap gap-3">
-                <Button variant="outline" onClick={() => handleQuickRange("today")}>Today</Button>
-                <Button variant="outline" onClick={() => handleQuickRange("week")}>Last 7d</Button>
-                <Button variant="outline" onClick={() => handleQuickRange("month")}>This Month</Button>
-                <Button variant="outline" onClick={resetFilters}>Reset</Button>
+                <Button variant="ghost" onClick={() => handleQuickRange("today")}>Today</Button>
+                <Button variant="ghost" onClick={() => handleQuickRange("week")}>Last 7d</Button>
+                <Button variant="ghost" onClick={() => handleQuickRange("month")}>This Month</Button>
+                <Button variant="ghost" onClick={resetFilters}>Reset</Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-[1fr_1fr_auto]">
-                <div>
-                  <label className="text-sm text-[var(--muted)]">Start Date</label>
+                <Field>
+                  <Label>Start Date</Label>
                   <Input
                     type="date"
                     value={draftFilters.startDate}
                     onChange={(e) => setDraftFilters((current) => ({ ...current, startDate: e.target.value }))}
                   />
-                </div>
-                <div>
-                  <label className="text-sm text-[var(--muted)]">End Date</label>
+                </Field>
+                <Field>
+                  <Label>End Date</Label>
                   <Input
                     type="date"
                     value={draftFilters.endDate}
                     onChange={(e) => setDraftFilters((current) => ({ ...current, endDate: e.target.value }))}
                   />
-                </div>
+                </Field>
                 <div className="flex items-end gap-2">
                   <Button onClick={applyFilters} disabled={loadingRows || isAccountant}>
                     {loadingRows && !hasLoadedRows ? "Loading..." : "Apply"}
@@ -810,13 +817,13 @@ export default function ReportsPage() {
                 </div>
               </div>
               {/* AUDIT: DENSITY_OVERLOAD - Less common filters stay on the screen, but they now live in a compact advanced tray instead of crowding the main export range. */}
-              <details className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+              <details className={`${reportInsetClass} p-4`}>
                 <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">
                   Advanced filters{activeAdvancedFilterCount ? ` (${activeAdvancedFilterCount} active)` : ""}
                 </summary>
                 <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Shift</label>
+                  <Field>
+                    <Label>Shift</Label>
                     <Select
                       value={draftFilters.shift}
                       onChange={(e) => setDraftFilters((current) => ({ ...current, shift: e.target.value }))}
@@ -826,9 +833,9 @@ export default function ReportsPage() {
                       <option value="evening">Evening</option>
                       <option value="night">Night</option>
                     </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Has Issues</label>
+                  </Field>
+                  <Field>
+                    <Label>Has Issues</Label>
                     <Select
                       value={draftFilters.hasIssues}
                       onChange={(e) => setDraftFilters((current) => ({ ...current, hasIssues: e.target.value as IssueFilter }))}
@@ -837,9 +844,9 @@ export default function ReportsPage() {
                       <option value="yes">Yes</option>
                       <option value="no">No</option>
                     </Select>
-                  </div>
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Status</label>
+                  </Field>
+                  <Field>
+                    <Label>Status</Label>
                     <Select
                       value={draftFilters.status}
                       onChange={(e) => setDraftFilters((current) => ({ ...current, status: e.target.value }))}
@@ -849,15 +856,15 @@ export default function ReportsPage() {
                       <option value="approved">Approved</option>
                       <option value="rejected">Rejected</option>
                     </Select>
-                  </div>
-                  <div className="md:col-span-2 xl:col-span-1">
-                    <label className="text-sm text-[var(--muted)]">Search</label>
+                  </Field>
+                  <Field className="md:col-span-2 xl:col-span-1">
+                    <Label>Search</Label>
                     <Input
                       value={draftFilters.search}
                       onChange={(e) => setDraftFilters((current) => ({ ...current, search: e.target.value }))}
                       placeholder="Notes, downtime, department"
                     />
-                  </div>
+                  </Field>
                 </div>
               </details>
               <div className="text-xs text-[var(--muted)]">
@@ -866,27 +873,27 @@ export default function ReportsPage() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className={reportPanelClass}>
             <CardHeader>
                 <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">{t("reports.step_two", "Export")}</div>
               <CardTitle className="mt-2 text-xl">{t("reports.export_report", "Export report")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* AUDIT: TEXT_NOISE - The export desk now leads with one short instruction instead of explaining every downstream reporting lane up front. */}
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+              <div className={`${reportInsetClass} p-4 text-sm text-[var(--muted)]`}>
                 Export Excel first. Use other formats only when needed.
               </div>
               <Button onClick={handleRangeExcelJob} disabled={busy}>
                 {busy ? "Working..." : "Export Excel"}
               </Button>
               {/* AUDIT: BUTTON_CLUTTER - Alternate export formats and follow-on routes stay available, but they no longer compete with the main range export. */}
-              <details className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+              <details className={`${reportInsetClass} p-4`}>
                 <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("reports.more_exports", "More exports")}</summary>
                 <div className="mt-4 flex flex-wrap gap-3">
-                  <Button variant="outline" onClick={() => handleJsonExport("weekly")} disabled={busy}>
+                  <Button variant="ghost" onClick={() => handleJsonExport("weekly")} disabled={busy}>
                     Weekly JSON
                   </Button>
-                  <Button variant="outline" onClick={() => handleJsonExport("monthly")} disabled={busy}>
+                  <Button variant="ghost" onClick={() => handleJsonExport("monthly")} disabled={busy}>
                     Monthly JSON
                   </Button>
                   {!isAccountant ? (
@@ -908,7 +915,7 @@ export default function ReportsPage() {
                 ) : null}
               </details>
               {reportJob ? (
-                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
+                <div className={`${reportInsetClass} p-4`}>
                   <div className="flex items-center justify-between gap-4 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
                     <span>Range Export Job</span>
                     <span>{reportJob.progress}%</span>
@@ -927,12 +934,12 @@ export default function ReportsPage() {
         </section>
 
         {/* AUDIT: DENSITY_OVERLOAD - Trust and analysis surfaces remain available, but they now sit behind one reveal so the range and export desk lead the screen. */}
-        <details className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-soft)]">
+        <details className={reportPanelClass}>
           <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("reports.trust_insights", "Trust and insights")}</summary>
           <div className="mt-4 space-y-6">
             <ReportInsightsBoard insights={insights} loading={loadingInsights} role={user.role} steelOverview={steelOverview} />
             {ocrSummary ? (
-              <Card className="border-cyan-400/20 bg-[rgba(18,24,36,0.92)]">
+            <Card className="rounded-[1.5rem] border-[0.5px] border-cyan-400/20 bg-[rgba(var(--color-border-info),0.08)]">
                 <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div>
                     <div className="text-sm uppercase tracking-[0.22em] text-cyan-200">OCR Trust</div>
@@ -943,7 +950,7 @@ export default function ReportsPage() {
                   </div>
                   <div className="flex flex-wrap gap-3">
                     <Link href="/ocr/verify">
-                      <Button variant="outline">Review OCR</Button>
+                    <Button variant="ghost">Review OCR</Button>
                     </Link>
                     <Link href="/approvals">
                       <Button variant="ghost">Review Queue</Button>
@@ -951,19 +958,19 @@ export default function ReportsPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="grid gap-4 md:grid-cols-4">
-                  <div className="rounded-2xl border border-cyan-400/20 bg-[rgba(6,14,22,0.55)] p-4">
+                  <div className="rounded-[1rem] border-[0.5px] border-cyan-400/20 bg-[var(--color-background-primary)] p-4">
                     <div className="text-xs uppercase tracking-[0.18em] text-cyan-100/80">Approved Docs</div>
                     <div className="mt-2 text-2xl font-semibold text-white">{ocrSummary.trusted_documents}</div>
                   </div>
-                  <div className="rounded-2xl border border-cyan-400/20 bg-[rgba(6,14,22,0.55)] p-4">
+                  <div className="rounded-[1rem] border-[0.5px] border-cyan-400/20 bg-[var(--color-background-primary)] p-4">
                     <div className="text-xs uppercase tracking-[0.18em] text-cyan-100/80">Trusted Rows</div>
                     <div className="mt-2 text-2xl font-semibold text-white">{ocrSummary.trusted_rows}</div>
                   </div>
-                  <div className="rounded-2xl border border-amber-400/20 bg-[rgba(28,20,8,0.42)] p-4">
+                  <div className="rounded-[1rem] border-[0.5px] border-amber-400/20 bg-[var(--color-background-primary)] p-4">
                     <div className="text-xs uppercase tracking-[0.18em] text-amber-100/80">Pending Review</div>
                     <div className="mt-2 text-2xl font-semibold text-white">{ocrSummary.pending_documents}</div>
                   </div>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4">
+                  <div className={`${reportInsetClass} p-4`}>
                     <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Last Approval</div>
                     <div className="mt-2 text-lg font-semibold text-white">{formatDateTime(ocrSummary.last_trusted_at || undefined)}</div>
                     <div className="mt-1 text-xs text-[var(--muted)]">
@@ -977,7 +984,7 @@ export default function ReportsPage() {
         </details>
 
         {/* AUDIT: BUTTON_CLUTTER - The AI summary stays available as a secondary reporting lane instead of competing with the main export action. */}
-        <details className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-soft)]">
+        <details className={reportPanelClass}>
           <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("reports.executive_summary", "Executive summary")}</summary>
           <div className="mt-4">
             <Card>
@@ -985,18 +992,18 @@ export default function ReportsPage() {
                 <div>
                   <CardTitle className="text-xl">AI summary</CardTitle>
                 </div>
-                <Button variant="outline" onClick={handleExecutiveSummary} disabled={executiveBusy}>
+                <Button variant="ghost" onClick={handleExecutiveSummary} disabled={executiveBusy}>
                   {executiveBusy ? "Generating..." : "Generate Summary"}
                 </Button>
               </CardHeader>
               <CardContent className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
+                <div className={`${reportInsetClass} p-4`}>
                   <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Summary</div>
                   <div className="mt-3 text-sm leading-7 text-[var(--text)]">
                     {executiveSummary?.summary || "Generate a management summary for the currently selected date range."}
                   </div>
                 </div>
-                <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
+                <div className={`${reportInsetClass} p-4`}>
                   <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Metrics</div>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div>
@@ -1027,7 +1034,7 @@ export default function ReportsPage() {
                     </div>
                   </div>
                   {summaryJob ? (
-                    <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4">
+                    <div className={`${reportInsetClass} mt-4 p-4`}>
                       <div className="flex items-center justify-between gap-4 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
                         <span>Summary Job</span>
                         <span>{summaryJob.progress}%</span>
@@ -1048,7 +1055,7 @@ export default function ReportsPage() {
         </details>
 
         {!isAccountant ? (
-          <Card>
+          <Card className={reportPanelClass}>
             <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
                 <div className="text-sm text-[var(--muted)]">{t("reports.results", "Results")}</div>
@@ -1058,22 +1065,24 @@ export default function ReportsPage() {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-[var(--muted)]">Page {page} of {pageCount}</span>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setPage((current) => Math.max(1, current - 1))}
                   disabled={page <= 1}
                 >
                   Prev
                 </Button>
-                <Input
-                  className="w-20"
-                  type="number"
-                  min={1}
-                  max={pageCount}
-                  value={page}
-                  onChange={(e) => setPage(Math.max(1, Math.min(pageCount, Number(e.target.value) || 1)))}
-                />
+                <Field className="mb-0 w-24">
+                  <Label>Page</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={pageCount}
+                    value={page}
+                    onChange={(e) => setPage(Math.max(1, Math.min(pageCount, Number(e.target.value) || 1)))}
+                  />
+                </Field>
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => setPage((current) => Math.min(pageCount, current + 1))}
                   disabled={page >= pageCount}
                 >
@@ -1120,24 +1129,24 @@ export default function ReportsPage() {
                           </td>
                           <td className="px-3 py-3 text-[var(--muted)]">{formatDateTime(row.created_at)}</td>
                           <td className="px-3 py-3">
-                            <div className="flex flex-wrap gap-3">
-                              <Link href={`/entry/${row.id}`} className="text-[var(--accent)] underline underline-offset-4">
-                                Open
+                            <div className="flex flex-wrap gap-2">
+                              <Link href={`/entry/${row.id}`}>
+                                <Button variant="ghost" size="compact">Open</Button>
                               </Link>
-                              <button
-                                type="button"
-                                className="text-[var(--accent)] underline underline-offset-4"
+                              <Button
+                                variant="ghost"
+                                size="compact"
                                 onClick={() => handleEntryPdfJob(row.id)}
                               >
                                 PDF
-                              </button>
-                              <button
-                                type="button"
-                                className="text-[var(--accent)] underline underline-offset-4"
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="compact"
                                 onClick={() => handleBinaryDownload(() => downloadEntryReport(row.id, "excel"), `entry-${row.id}.xlsx`)}
                               >
                                 Excel
-                              </button>
+                              </Button>
                             </div>
                           </td>
                         </tr>
@@ -1149,7 +1158,7 @@ export default function ReportsPage() {
                 <div className="space-y-4 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                   <div>No entries match this range.</div>
                   <div className="flex flex-wrap gap-3">
-                    <Button variant="outline" onClick={resetFilters}>
+                    <Button variant="ghost" onClick={resetFilters}>
                       Reset
                     </Button>
                     <Button variant="ghost" onClick={() => handleQuickRange("week")}>
