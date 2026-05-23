@@ -27,6 +27,7 @@ import {
 } from "@/lib/settings-alerts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, Label } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { SafeText } from "@/components/ui/safe-text";
@@ -647,7 +648,7 @@ export default function SettingsAlertsTab({ active }: Props) {
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button variant="outline" onClick={() => void loadRecipients()} disabled={recipientsLoading}>
+              <Button variant="ghost" onClick={() => void loadRecipients()} disabled={recipientsLoading}>
                 {recipientsLoading ? "Refreshing..." : "Refresh"}
               </Button>
               <Button onClick={openAddModal}>Add Number</Button>
@@ -672,7 +673,7 @@ export default function SettingsAlertsTab({ active }: Props) {
                 <div className="font-semibold">Could not load recipients</div>
                 <div className="mt-2">{recipientsError}</div>
                 <div className="mt-4">
-                  <Button variant="outline" onClick={() => void loadRecipients()}>
+                  <Button variant="ghost" onClick={() => void loadRecipients()}>
                     Retry
                   </Button>
                 </div>
@@ -758,7 +759,7 @@ export default function SettingsAlertsTab({ active }: Props) {
                           ) : null}
                           <div className="grid gap-2 sm:grid-cols-3">
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               onClick={() => void startVerification(recipient)}
                               disabled={verifyPendingId === recipient.id || cooldownSeconds > 0}
                               title={cooldownSeconds > 0 ? "Retry once cooldown ends." : ""}
@@ -766,14 +767,14 @@ export default function SettingsAlertsTab({ active }: Props) {
                             >
                               {verifyLabel}
                             </Button>
-                            <Button variant="outline" onClick={() => void openEditModal(recipient.id)} className="w-full">
+                            <Button variant="ghost" onClick={() => void openEditModal(recipient.id)} className="w-full">
                               Edit
                             </Button>
                             <Button
-                              variant="ghost"
+                              variant="destructive"
                               onClick={() => void removeRecipient(recipient)}
                               disabled={deletePendingId === recipient.id}
-                              className="w-full text-red-100"
+                              className="w-full"
                             >
                               {deletePendingId === recipient.id ? "Deleting..." : "Delete"}
                             </Button>
@@ -824,7 +825,7 @@ export default function SettingsAlertsTab({ active }: Props) {
                   Recent org-wide alert events build trust and make delivery problems visible.
                 </div>
               </div>
-              <Button variant="outline" onClick={() => void loadActivity()} disabled={activityLoading}>
+              <Button variant="ghost" onClick={() => void loadActivity()} disabled={activityLoading}>
                 {activityLoading ? "Refreshing..." : "Refresh"}
               </Button>
             </CardHeader>
@@ -844,7 +845,7 @@ export default function SettingsAlertsTab({ active }: Props) {
                   <div className="font-semibold">Could not load alert activity</div>
                   <div className="mt-2">{activityError}</div>
                   <div className="mt-4">
-                    <Button variant="outline" onClick={() => void loadActivity()}>
+                    <Button variant="ghost" onClick={() => void loadActivity()}>
                       Retry
                     </Button>
                   </div>
@@ -887,7 +888,7 @@ export default function SettingsAlertsTab({ active }: Props) {
                           <div className="mt-1 text-xs text-[var(--muted)]">Selected ref: {selectedAlertRef}</div>
                         </div>
                         {selectedAlertError ? (
-                          <Button variant="outline" onClick={() => void loadAlertDetail(selectedAlertRef)}>
+                          <Button variant="ghost" onClick={() => void loadAlertDetail(selectedAlertRef)}>
                             Retry
                           </Button>
                         ) : null}
@@ -975,8 +976,8 @@ export default function SettingsAlertsTab({ active }: Props) {
           </div>
         ) : (
           <div className="space-y-5">
-            <div>
-              <label className="text-sm text-[var(--muted)]">Phone number</label>
+            <Field>
+              <Label>Phone number</Label>
               <Input
                 value={form.phone_number}
                 onChange={(event) => setForm((current) => ({ ...current, phone_number: event.target.value }))}
@@ -985,7 +986,7 @@ export default function SettingsAlertsTab({ active }: Props) {
               <div className="mt-2 text-xs text-[var(--muted)]">
                 This is the only place where the full number is shown.
               </div>
-            </div>
+            </Field>
 
             <div className="grid gap-3 md:grid-cols-2">
               {[
@@ -1063,18 +1064,21 @@ export default function SettingsAlertsTab({ active }: Props) {
                     Keep this off until the route is verified and ready for live alerts.
                   </div>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={form.is_active}
-                  disabled={panel.mode === "add" || !!(selectedRecipient && selectedRecipient.verification_status !== "verified")}
-                  onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))}
-                  className="h-4 w-4 accent-[var(--accent)]"
-                  title={
-                    panel.mode === "add" || !!(selectedRecipient && selectedRecipient.verification_status !== "verified")
-                      ? "Verify number before enabling alerts"
-                      : ""
-                  }
-                />
+                <label className="flex items-center gap-2 rounded-[8px] border-[0.5px] border-[color:var(--color-border-secondary)] px-3 py-2 text-[14px] text-[var(--color-text-primary)]">
+                  <input
+                    type="checkbox"
+                    checked={form.is_active}
+                    disabled={panel.mode === "add" || !!(selectedRecipient && selectedRecipient.verification_status !== "verified")}
+                    onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))}
+                    className="h-4 w-4 accent-[var(--color-text-primary)]"
+                    title={
+                      panel.mode === "add" || !!(selectedRecipient && selectedRecipient.verification_status !== "verified")
+                        ? "Verify number before enabling alerts"
+                        : ""
+                    }
+                  />
+                  Enabled
+                </label>
               </div>
               {panel.mode === "add" || !!(selectedRecipient && selectedRecipient.verification_status !== "verified") ? (
                 <div className="mt-3 rounded-2xl border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
@@ -1090,7 +1094,7 @@ export default function SettingsAlertsTab({ active }: Props) {
             ) : null}
 
             <div className="flex flex-wrap justify-end gap-3">
-              <Button variant="outline" onClick={closePanel} disabled={panelSubmitting}>
+              <Button variant="ghost" onClick={closePanel} disabled={panelSubmitting}>
                 Cancel
               </Button>
               <Button onClick={() => void savePanel()} disabled={panelSubmitting}>
@@ -1127,8 +1131,8 @@ export default function SettingsAlertsTab({ active }: Props) {
             </div>
           </div>
 
-          <div>
-            <label className="text-sm text-[var(--muted)]">Enter OTP</label>
+          <Field>
+            <Label>Enter OTP</Label>
             <Input
               value={verificationModal.otp}
               maxLength={6}
@@ -1141,7 +1145,7 @@ export default function SettingsAlertsTab({ active }: Props) {
               }
               placeholder="6-digit code"
             />
-          </div>
+          </Field>
 
           {verificationModal.error ? (
             <div className="rounded-2xl border border-red-500/25 bg-red-500/8 px-4 py-3 text-sm text-red-100">
@@ -1151,7 +1155,7 @@ export default function SettingsAlertsTab({ active }: Props) {
 
           <div className="flex flex-wrap justify-between gap-3">
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => {
                 const recipient = recipients.find((item) => item.id === verificationModal.recipientId);
                 if (recipient) {
@@ -1175,7 +1179,7 @@ export default function SettingsAlertsTab({ active }: Props) {
             </Button>
             <div className="flex flex-wrap gap-3">
               <Button
-                variant="outline"
+                variant="ghost"
                 onClick={() =>
                   setVerificationModal({
                     open: false,

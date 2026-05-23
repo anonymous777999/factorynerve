@@ -15,10 +15,12 @@ import {
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, Label } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { validateIdentifierCode } from "@/lib/validation";
+import { cn } from "@/lib/utils";
 
 type SettingsTab = "employees" | "shifts";
 
@@ -71,6 +73,15 @@ function parseIntegerField(
     throw new Error(`${label} must be between ${min} and ${max}.`);
   }
   return parsed;
+}
+
+function getInitials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || "")
+    .join("");
 }
 
 export default function SettingsAttendancePage() {
@@ -329,8 +340,8 @@ export default function SettingsAttendancePage() {
                 <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
               </summary>
               <div className="flex flex-wrap gap-3 border-t border-[var(--border)] px-4 py-4">
-                <Link href="/attendance/review"><Button variant="outline">Review</Button></Link>
-                <Link href="/attendance/reports"><Button variant="outline">Reports</Button></Link>
+                <Link href="/attendance/review"><Button variant="ghost">Review</Button></Link>
+                <Link href="/attendance/reports"><Button variant="ghost">Reports</Button></Link>
               </div>
             </details>
           </div>
@@ -340,9 +351,27 @@ export default function SettingsAttendancePage() {
         {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
         {sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{sessionError}</div> : null}
 
-        <div className="flex flex-wrap gap-2">
-          <Button variant={tab === "employees" ? "primary" : "outline"} onClick={() => setTab("employees")}>Team</Button>
-          <Button variant={tab === "shifts" ? "primary" : "outline"} onClick={() => setTab("shifts")}>Shifts</Button>
+        <div className="mb-5 flex flex-wrap gap-1">
+          <button
+            type="button"
+            className={cn(
+              "rounded-full bg-transparent px-4 py-1.5 text-[13px] text-[var(--color-text-secondary)]",
+              tab === "employees" && "bg-[var(--color-text-primary)] font-medium text-[var(--color-background-primary)]",
+            )}
+            onClick={() => setTab("employees")}
+          >
+            Team
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "rounded-full bg-transparent px-4 py-1.5 text-[13px] text-[var(--color-text-secondary)]",
+              tab === "shifts" && "bg-[var(--color-text-primary)] font-medium text-[var(--color-background-primary)]",
+            )}
+            onClick={() => setTab("shifts")}
+          >
+            Shifts
+          </button>
         </div>
 
         {tab === "employees" ? (
@@ -354,11 +383,29 @@ export default function SettingsAttendancePage() {
                   <button
                     key={profile.user_id}
                     type="button"
-                    className={`w-full rounded-2xl border p-4 text-left transition ${selectedUserId === String(profile.user_id) ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.12)]" : "border-[var(--border)] bg-[var(--card-strong)]"}`}
+                    className={cn(
+                      "flex w-full cursor-pointer items-center gap-3 rounded-[10px] border-[0.5px] p-[10px_14px] text-left transition",
+                      selectedUserId === String(profile.user_id)
+                        ? "border-[rgb(var(--color-border-info))] bg-[rgb(var(--color-background-info)/0.3)]"
+                        : "border-[color:var(--color-border-tertiary)] hover:border-[color:var(--color-border-secondary)]",
+                    )}
                     onClick={() => applySelectedUser(String(profile.user_id))}
                   >
-                    <div className="font-semibold text-[var(--text)]">{profile.name}</div>
-                    <div className="mt-1 text-sm text-[var(--muted)]">ID {profile.user_code} | {profile.role} | {profile.department || "No department"}</div>
+                    <div className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-[rgb(var(--color-background-info))] text-[13px] font-medium text-[var(--color-text-info)]">
+                      {getInitials(profile.name)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-[14px] font-medium text-[var(--color-text-primary)]">{profile.name}</div>
+                      <div className="text-[12px] text-[var(--color-text-tertiary)]">
+                        {profile.role} · {profile.department || "No department"}
+                      </div>
+                    </div>
+                    <span
+                      className={cn(
+                        "h-[7px] w-[7px] rounded-full",
+                        profile.is_active ? "bg-[#639922]" : "bg-[var(--color-text-tertiary)]",
+                      )}
+                    />
                   </button>
                 ))}
               </CardContent>
@@ -367,22 +414,22 @@ export default function SettingsAttendancePage() {
             <Card>
               <CardHeader><CardTitle className="text-xl">Profile Editor</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <div>
-                  <label className="text-sm text-[var(--muted)]">Team Member</label>
+                <Field>
+                  <Label>Team Member</Label>
                   <Select value={selectedUserId} onChange={(event) => applySelectedUser(event.target.value)}>
                     <option value="">Select a user</option>
                     {profiles.map((profile) => <option key={profile.user_id} value={profile.user_id}>{profile.name} ({profile.user_code})</option>)}
                   </Select>
-                </div>
+                </Field>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div><label className="text-sm text-[var(--muted)]">Employee Code</label><Input value={employeeForm.employee_code} onChange={(event) => setEmployeeForm((current) => ({ ...current, employee_code: event.target.value }))} placeholder="EMP-102" /></div>
-                  <div><label className="text-sm text-[var(--muted)]">Department</label><Input value={employeeForm.department} onChange={(event) => setEmployeeForm((current) => ({ ...current, department: event.target.value }))} /></div>
-                  <div><label className="text-sm text-[var(--muted)]">Designation</label><Input value={employeeForm.designation} onChange={(event) => setEmployeeForm((current) => ({ ...current, designation: event.target.value }))} /></div>
-                  <div><label className="text-sm text-[var(--muted)]">Employment Type</label><Input value={employeeForm.employment_type} onChange={(event) => setEmployeeForm((current) => ({ ...current, employment_type: event.target.value }))} /></div>
-                  <div><label className="text-sm text-[var(--muted)]">Default Shift</label><Select value={employeeForm.default_shift} onChange={(event) => setEmployeeForm((current) => ({ ...current, default_shift: event.target.value }))}>{shiftTemplates.map((item) => <option key={item.id} value={item.shift_name}>{item.shift_name}</option>)}</Select></div>
-                  <div><label className="text-sm text-[var(--muted)]">Joining Date</label><Input type="date" value={employeeForm.joining_date} onChange={(event) => setEmployeeForm((current) => ({ ...current, joining_date: event.target.value }))} /></div>
-                  <div><label className="text-sm text-[var(--muted)]">Reporting Manager</label><Select value={employeeForm.reporting_manager_id} onChange={(event) => setEmployeeForm((current) => ({ ...current, reporting_manager_id: event.target.value }))}><option value="">No reporting manager</option>{managerOptions.map((item) => <option key={item.user_id} value={item.user_id}>{item.name}</option>)}</Select></div>
-                  <div><label className="text-sm text-[var(--muted)]">Active Status</label><Select value={employeeForm.is_active ? "active" : "inactive"} onChange={(event) => setEmployeeForm((current) => ({ ...current, is_active: event.target.value === "active" }))}><option value="active">Active</option><option value="inactive">Inactive</option></Select></div>
+                  <Field><Label>Employee Code</Label><Input value={employeeForm.employee_code} onChange={(event) => setEmployeeForm((current) => ({ ...current, employee_code: event.target.value }))} placeholder="EMP-102" /></Field>
+                  <Field><Label>Department</Label><Input value={employeeForm.department} onChange={(event) => setEmployeeForm((current) => ({ ...current, department: event.target.value }))} /></Field>
+                  <Field><Label>Designation</Label><Input value={employeeForm.designation} onChange={(event) => setEmployeeForm((current) => ({ ...current, designation: event.target.value }))} /></Field>
+                  <Field><Label>Employment Type</Label><Input value={employeeForm.employment_type} onChange={(event) => setEmployeeForm((current) => ({ ...current, employment_type: event.target.value }))} /></Field>
+                  <Field><Label>Default Shift</Label><Select value={employeeForm.default_shift} onChange={(event) => setEmployeeForm((current) => ({ ...current, default_shift: event.target.value }))}>{shiftTemplates.map((item) => <option key={item.id} value={item.shift_name}>{item.shift_name}</option>)}</Select></Field>
+                  <Field><Label>Joining Date</Label><Input type="date" value={employeeForm.joining_date} onChange={(event) => setEmployeeForm((current) => ({ ...current, joining_date: event.target.value }))} /></Field>
+                  <Field><Label>Reporting Manager</Label><Select value={employeeForm.reporting_manager_id} onChange={(event) => setEmployeeForm((current) => ({ ...current, reporting_manager_id: event.target.value }))}><option value="">No reporting manager</option>{managerOptions.map((item) => <option key={item.user_id} value={item.user_id}>{item.name}</option>)}</Select></Field>
+                  <Field><Label>Active Status</Label><Select value={employeeForm.is_active ? "active" : "inactive"} onChange={(event) => setEmployeeForm((current) => ({ ...current, is_active: event.target.value === "active" }))}><option value="active">Active</option><option value="inactive">Inactive</option></Select></Field>
                 </div>
                 <Button onClick={() => void handleEmployeeSave()} disabled={busy || !employeeForm.user_id}>{busy ? "Saving..." : "Save profile"}</Button>
               </CardContent>
@@ -413,17 +460,17 @@ export default function SettingsAttendancePage() {
             <Card>
               <CardHeader><CardTitle className="text-xl">Shift Editor</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                <div><label className="text-sm text-[var(--muted)]">Template</label><Select value={selectedShiftId} onChange={(event) => applySelectedShift(event.target.value)}><option value="">Create new shift</option>{shiftTemplates.map((item) => <option key={item.id} value={item.id}>{item.shift_name}</option>)}</Select></div>
+                <Field><Label>Template</Label><Select value={selectedShiftId} onChange={(event) => applySelectedShift(event.target.value)}><option value="">Create new shift</option>{shiftTemplates.map((item) => <option key={item.id} value={item.id}>{item.shift_name}</option>)}</Select></Field>
                 <div className="grid gap-4 md:grid-cols-2">
-                  <div><label className="text-sm text-[var(--muted)]">Shift Name</label><Input value={shiftForm.shift_name} onChange={(event) => setShiftForm((current) => ({ ...current, shift_name: event.target.value }))} /></div>
-                  <div><label className="text-sm text-[var(--muted)]">Grace Minutes</label><Input type="number" min="0" max="180" step="1" value={shiftForm.grace_minutes} onChange={(event) => setShiftForm((current) => ({ ...current, grace_minutes: event.target.value }))} /></div>
-                  <div><label className="text-sm text-[var(--muted)]">Start Time</label><Input type="time" value={shiftForm.start_time} onChange={(event) => setShiftForm((current) => ({ ...current, start_time: event.target.value }))} /></div>
-                  <div><label className="text-sm text-[var(--muted)]">End Time</label><Input type="time" value={shiftForm.end_time} onChange={(event) => setShiftForm((current) => ({ ...current, end_time: event.target.value }))} /></div>
-                  <div><label className="text-sm text-[var(--muted)]">OT After Minutes</label><Input type="number" min="0" max="1440" step="1" value={shiftForm.overtime_after_minutes} onChange={(event) => setShiftForm((current) => ({ ...current, overtime_after_minutes: event.target.value }))} /></div>
-                  <div className="grid gap-2 md:grid-cols-2">
-                    <label className="mt-6 flex items-center gap-2 text-sm text-[var(--muted)]"><input type="checkbox" checked={shiftForm.cross_midnight} onChange={(event) => setShiftForm((current) => ({ ...current, cross_midnight: event.target.checked }))} />Cross midnight</label>
-                    <label className="mt-6 flex items-center gap-2 text-sm text-[var(--muted)]"><input type="checkbox" checked={shiftForm.is_default} onChange={(event) => setShiftForm((current) => ({ ...current, is_default: event.target.checked }))} />Default shift</label>
-                    <label className="flex items-center gap-2 text-sm text-[var(--muted)]"><input type="checkbox" checked={shiftForm.is_active} onChange={(event) => setShiftForm((current) => ({ ...current, is_active: event.target.checked }))} />Active</label>
+                  <Field><Label>Shift Name</Label><Input value={shiftForm.shift_name} onChange={(event) => setShiftForm((current) => ({ ...current, shift_name: event.target.value }))} /></Field>
+                  <Field><Label>Grace Minutes</Label><Input type="number" min="0" max="180" step="1" value={shiftForm.grace_minutes} onChange={(event) => setShiftForm((current) => ({ ...current, grace_minutes: event.target.value }))} /></Field>
+                  <Field><Label>Start Time</Label><Input type="time" value={shiftForm.start_time} onChange={(event) => setShiftForm((current) => ({ ...current, start_time: event.target.value }))} /></Field>
+                  <Field><Label>End Time</Label><Input type="time" value={shiftForm.end_time} onChange={(event) => setShiftForm((current) => ({ ...current, end_time: event.target.value }))} /></Field>
+                  <Field><Label>OT After Minutes</Label><Input type="number" min="0" max="1440" step="1" value={shiftForm.overtime_after_minutes} onChange={(event) => setShiftForm((current) => ({ ...current, overtime_after_minutes: event.target.value }))} /></Field>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Field className="mb-0"><Label>Cross midnight</Label><label className="flex items-center gap-2 rounded-[8px] border-[0.5px] border-[color:var(--color-border-secondary)] px-3 py-2 text-[14px] text-[var(--color-text-primary)]"><input type="checkbox" checked={shiftForm.cross_midnight} onChange={(event) => setShiftForm((current) => ({ ...current, cross_midnight: event.target.checked }))} className="h-4 w-4 accent-[var(--color-text-primary)]" />Enabled</label></Field>
+                    <Field className="mb-0"><Label>Default shift</Label><label className="flex items-center gap-2 rounded-[8px] border-[0.5px] border-[color:var(--color-border-secondary)] px-3 py-2 text-[14px] text-[var(--color-text-primary)]"><input type="checkbox" checked={shiftForm.is_default} onChange={(event) => setShiftForm((current) => ({ ...current, is_default: event.target.checked }))} className="h-4 w-4 accent-[var(--color-text-primary)]" />Enabled</label></Field>
+                    <Field className="mb-0"><Label>Active</Label><label className="flex items-center gap-2 rounded-[8px] border-[0.5px] border-[color:var(--color-border-secondary)] px-3 py-2 text-[14px] text-[var(--color-text-primary)]"><input type="checkbox" checked={shiftForm.is_active} onChange={(event) => setShiftForm((current) => ({ ...current, is_active: event.target.checked }))} className="h-4 w-4 accent-[var(--color-text-primary)]" />Enabled</label></Field>
                   </div>
                 </div>
                 <Button onClick={() => void handleShiftSave()} disabled={busy || !shiftForm.shift_name}>{busy ? "Saving..." : "Save shift"}</Button>

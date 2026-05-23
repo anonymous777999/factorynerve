@@ -2,6 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, Label } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { SafeText } from "@/components/ui/safe-text";
@@ -96,7 +97,7 @@ export function SettingsUsersTab({
                           {row.email}
                         </SafeText>
                       </div>
-                      <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                      <span className="rounded-full bg-[var(--color-background-secondary)] px-3 py-1 text-[12px] font-medium text-[var(--color-text-secondary)]">
                         {row.role}
                       </span>
                     </div>
@@ -189,16 +190,16 @@ export function SettingsUsersTab({
             <CardTitle className="text-xl">Invite User</CardTitle>
           </CardHeader>
           <CardContent className="min-w-0 space-y-4">
-            <div>
-              <label className="text-sm text-[var(--muted)]">Name</label>
+            <Field>
+              <Label>Name</Label>
               <Input value={inviteName} onChange={(e) => onInviteNameChange(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm text-[var(--muted)]">Email</label>
+            </Field>
+            <Field>
+              <Label>Email</Label>
               <Input type="email" value={inviteEmail} onChange={(e) => onInviteEmailChange(e.target.value)} />
-            </div>
-            <div>
-              <label className="text-sm text-[var(--muted)]">Role</label>
+            </Field>
+            <Field>
+              <Label>Role</Label>
               <Select value={inviteRole} onChange={(e) => onInviteRoleChange(e.target.value)}>
                 {assignableRoles.map((role) => (
                   <option key={role} value={role}>
@@ -206,7 +207,7 @@ export function SettingsUsersTab({
                   </option>
                 ))}
               </Select>
-            </div>
+            </Field>
             <Button onClick={onInviteUser} disabled={busy} className="w-full sm:w-auto">
               Invite User
             </Button>
@@ -220,8 +221,8 @@ export function SettingsUsersTab({
           <CardContent className="min-w-0 space-y-4">
             {canManageFactoryAccess ? (
               <>
-                <div>
-                  <label className="text-sm text-[var(--muted)]">User</label>
+                <Field>
+                  <Label>User</Label>
                   <Select value={accessUserId} onChange={(e) => onAccessUserIdChange(e.target.value)}>
                     <option value="">Select a user</option>
                     {users.map((managedUser) => (
@@ -230,7 +231,7 @@ export function SettingsUsersTab({
                       </option>
                     ))}
                   </Select>
-                </div>
+                </Field>
                 {accessLoading ? (
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                     Loading factory access...
@@ -309,8 +310,8 @@ export function SettingsUsersTab({
             <CardTitle className="text-xl">Update Role / Deactivate</CardTitle>
           </CardHeader>
           <CardContent className="min-w-0 space-y-4">
-            <div>
-              <label className="text-sm text-[var(--muted)]">User Code or ID</label>
+            <Field>
+              <Label>User Code or ID</Label>
               <Input
                 type="number"
                 min={1}
@@ -319,9 +320,9 @@ export function SettingsUsersTab({
                 value={roleUserId}
                 onChange={(e) => onRoleUserIdChange(e.target.value)}
               />
-            </div>
-            <div>
-              <label className="text-sm text-[var(--muted)]">New Role</label>
+            </Field>
+            <Field>
+              <Label>New Role</Label>
               <Select value={newRole} onChange={(e) => onNewRoleChange(e.target.value)}>
                 {assignableRoles.map((role) => (
                   <option key={role} value={role}>
@@ -329,18 +330,19 @@ export function SettingsUsersTab({
                   </option>
                 ))}
               </Select>
-            </div>
-            <div>
-              <label className="text-sm text-[var(--muted)]">Type DOWNGRADE to confirm lower roles</label>
+            </Field>
+            <Field>
+              <Label>Type DOWNGRADE to confirm lower roles</Label>
               <Input value={downgradeConfirm} onChange={(e) => onDowngradeConfirmChange(e.target.value)} />
-            </div>
+            </Field>
             <div className="flex flex-wrap gap-3">
               <Button onClick={onUpdateRole} disabled={busy || !roleUserId} className="w-full sm:w-auto">
                 Update Role
               </Button>
             </div>
             <div className="border-t border-[var(--border)] pt-4">
-              <label className="text-sm text-[var(--muted)]">Deactivate User Code or ID</label>
+              <Field>
+                <Label>Deactivate User Code or ID</Label>
               <Input
                 type="number"
                 min={1}
@@ -349,9 +351,10 @@ export function SettingsUsersTab({
                 value={deactivateUserId}
                 onChange={(e) => onDeactivateUserIdChange(e.target.value)}
               />
+              </Field>
               <div className="mt-3">
                 <Button
-                  variant="outline"
+                  variant="destructive"
                   onClick={onDeactivateUser}
                   disabled={busy || !deactivateUserId}
                   className="w-full sm:w-auto"

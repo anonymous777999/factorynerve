@@ -469,7 +469,7 @@ export default function SettingsPage() {
                 </Button>
               </Link>
               <Link href="/reports">
-                <Button variant="outline">{t("dashboard.action.open_reports", "Open Reports")}</Button>
+                <Button variant="ghost">{t("dashboard.action.open_reports", "Open Reports")}</Button>
               </Link>
             </div>
           </CardContent>

@@ -13,24 +13,24 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const base =
-  "ui-no-select ui-no-callout inline-flex shrink-0 items-center justify-center gap-sm rounded-control border-[0.5px] font-medium uppercase tracking-wide transition-[background-color,border-color,color,box-shadow,opacity] duration-fast ease-standard focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-border-focus focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:border-action-disabled disabled:bg-action-disabled disabled:text-action-disabled-text";
+  "ui-no-select ui-no-callout inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-[8px] border-[0.5px] text-[13px] font-medium transition-[background-color,border-color,color,box-shadow,transform,opacity] duration-fast ease-standard active:scale-[0.98] focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_rgb(var(--color-border-info)/0.4)] disabled:cursor-not-allowed disabled:border-action-disabled disabled:bg-action-disabled disabled:text-action-disabled-text";
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    "border-action-primary bg-action-primary text-action-primary-text hover:bg-action-primary-hover active:bg-action-primary-active",
+    "border-transparent bg-[var(--color-text-primary)] text-[var(--color-background-primary)] hover:opacity-95",
   secondary:
-    "border-action-secondary-border bg-action-secondary text-action-secondary-text hover:bg-action-secondary-hover",
+    "border-transparent bg-[var(--color-text-primary)] text-[var(--color-background-primary)] hover:opacity-95",
   outline:
-    "border-border-default bg-surface-elevated text-text-primary hover:bg-surface-hover",
+    "border-[color:var(--color-border-secondary)] bg-transparent text-[var(--color-text-secondary)] hover:bg-surface-hover",
   ghost:
-    "border-transparent bg-transparent text-text-secondary hover:bg-action-ghost-hover hover:text-text-primary",
+    "border-[color:var(--color-border-secondary)] bg-transparent text-[var(--color-text-secondary)] hover:bg-surface-hover hover:text-[var(--color-text-primary)]",
   destructive:
-    "border-action-destructive bg-action-destructive text-text-inverse hover:bg-action-destructive-hover active:bg-action-destructive-hover",
+    "border-[color:var(--color-border-danger)] bg-transparent text-[var(--color-text-danger)] hover:bg-status-danger-bg",
 };
 
 const sizes: Record<ButtonSize, string> = {
-  default: "h-button px-sm text-label-dense",
-  compact: "h-input px-sm text-label-dense",
+  default: "min-h-[38px] px-[18px] py-2",
+  compact: "min-h-[34px] px-3 py-1.5",
   icon: "h-button aspect-square px-0",
 };
 

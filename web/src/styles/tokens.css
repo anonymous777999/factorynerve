@@ -118,6 +118,19 @@
 
 :root,
 [data-theme="light"] {
+  /* --- Requested UI Alias Tokens --- */
+  --color-text-primary: var(--text-primary);
+  --color-text-secondary: var(--text-secondary);
+  --color-text-tertiary: var(--text-tertiary);
+  --color-text-danger: var(--text-danger);
+  --color-text-info: #185fa5;
+  --color-background-primary: var(--surface-elevated);
+  --color-background-secondary: var(--surface-card);
+  --color-background-info: 230 241 251;
+  --color-border-secondary: var(--border-default);
+  --color-border-tertiary: var(--border-subtle);
+  --color-border-danger: var(--border-danger);
+  --color-border-info: 115 168 239;
 
   /* --- Text Hierarchy --- */
   --text-primary:           hsl(var(--_prim-neutral-800));  /* headings, labels, key data */
