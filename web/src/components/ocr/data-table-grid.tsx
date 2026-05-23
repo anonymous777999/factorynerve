@@ -56,15 +56,15 @@ function inferColumnType(values: OcrCell[]): OcrColumnType {
 }
 
 function getConfidenceClass(tier: "high" | "medium" | "review_required"): string {
-  if (tier === "review_required") return "bg-red-50 border-red-200 text-red-900";
-  if (tier === "medium") return "bg-amber-50 border-amber-200 text-amber-900";
-  return "bg-emerald-50 border-emerald-200 text-emerald-900";
+  if (tier === "review_required") return "bg-status-danger-bg border-status-danger-border text-status-danger-fg";
+  if (tier === "medium") return "bg-status-warning-bg border-status-warning-border text-status-warning-fg";
+  return "bg-status-synced-bg border-status-synced-border text-status-synced-fg";
 }
 
 function getConfidenceBadgeClass(tier: "high" | "medium" | "review_required"): string {
-  if (tier === "review_required") return "border-red-200 bg-red-100 text-red-700";
-  if (tier === "medium") return "border-amber-200 bg-amber-100 text-amber-700";
-  return "border-emerald-200 bg-emerald-100 text-emerald-700";
+  if (tier === "review_required") return "border-status-danger-border bg-status-danger-bg text-status-danger-fg";
+  if (tier === "medium") return "border-status-warning-border bg-status-warning-bg text-status-warning-fg";
+  return "border-status-synced-border bg-status-synced-bg text-status-synced-fg";
 }
 
 function getConfidenceLabel(tier: "high" | "medium" | "review_required") {
@@ -183,12 +183,12 @@ export function DataTableGrid({
   };
 
   return (
-    <div className="overflow-hidden rounded-[28px] border border-[#e3e8ef] bg-white shadow-[0_18px_54px_rgba(15,23,42,0.05)]">
-      <div className="border-b border-[#edf1f5] px-5 py-4">
-        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#667085]">
+    <div className="overflow-hidden rounded-panel border border-border-default bg-surface-panel shadow-xs">
+      <div className="border-b border-border-subtle px-md py-sm">
+        <div className="text-label-dense font-semibold uppercase tracking-[0.16em] text-text-secondary">
           Preview & edit
         </div>
-        <div className="mt-1 text-sm text-[#667085]">Inline edits only. No popups.</div>
+        <div className="mt-1 text-label text-text-secondary">Inline edits only. No popups.</div>
       </div>
 
       <div className="overflow-auto" onKeyDown={(event) => {
@@ -221,19 +221,19 @@ export function DataTableGrid({
           setDraftValue(event.key);
         }
       }}>
-        <table className="min-w-full border-separate border-spacing-0">
-          <thead className="sticky top-0 z-10 bg-white">
+        <table className="min-w-full border-separate border-spacing-0 text-table-density">
+          <thead className="sticky top-0 z-10 bg-surface-panel">
             <tr>
               {normalizedHeaders.map((header, columnIndex) => (
                 <th
                   key={`head-${columnIndex}`}
-                  className="min-w-[12rem] border-b border-[#edf1f5] bg-white px-3 py-3 text-left align-top"
+                  className="min-w-[11rem] border-b border-border-default bg-surface-panel px-cell-x py-cell-y text-left align-top"
                 >
                   <input
                     value={header}
                     readOnly={readOnly}
                     onChange={(event) => updateHeader(columnIndex, event.target.value)}
-                    className="h-10 w-full rounded-[14px] border border-[#d9e1e8] bg-[#fbfcfd] px-3 text-sm font-medium text-[#101828] outline-none transition focus:border-[#185FA5] focus:bg-white"
+                    className="h-input w-full rounded-control border border-border-default bg-surface-shell px-sm text-label font-medium text-text-primary outline-none transition focus:border-border-focus focus:bg-surface-panel"
                   />
                   {!readOnly ? (
                     <select
@@ -243,7 +243,7 @@ export function DataTableGrid({
                         next[columnIndex] = event.target.value as OcrColumnType;
                         onChangeColumnTypes(next);
                       }}
-                      className="mt-2 h-9 w-full rounded-[12px] border border-[#e0e7ef] bg-white px-3 text-xs text-[#667085] outline-none transition focus:border-[#185FA5]"
+                      className="mt-2 h-input w-full rounded-control border border-border-subtle bg-surface-panel px-sm text-label-dense text-text-secondary outline-none transition focus:border-border-focus"
                     >
                       <option value="text">Text</option>
                       <option value="number">Number</option>
@@ -275,7 +275,7 @@ export function DataTableGrid({
                     <td
                       key={`cell-${rowIndex}-${columnIndex}`}
                       className={cn(
-                        "border-b border-[#f0f3f7] px-3 py-3 align-top",
+                        "border-b border-border-subtle px-cell-x py-cell-y align-top",
                         showLowConfidence || confidenceTier === "high" ? getConfidenceClass(confidenceTier) : "",
                       )}
                     >
@@ -302,7 +302,7 @@ export function DataTableGrid({
                             }
                           }}
                           className={cn(
-                            "h-10 w-full rounded-[14px] border border-[#185FA5] bg-white px-3 text-sm text-[#101828] outline-none",
+                            "h-input w-full rounded-control border border-border-focus bg-surface-panel px-sm text-table-density text-text-primary outline-none",
                             alignForColumn(normalizedTypes[columnIndex], normalizedHeaders[columnIndex] || ""),
                           )}
                         />
@@ -311,11 +311,11 @@ export function DataTableGrid({
                           type="button"
                           title={title}
                           className={cn(
-                            "flex h-10 w-full items-center gap-2 rounded-[14px] border px-3 text-sm text-[#101828] outline-none transition duration-150",
+                            "flex h-input w-full items-center gap-2 rounded-control border px-sm text-table-density text-text-primary outline-none transition duration-150",
                             alignForColumn(normalizedTypes[columnIndex], normalizedHeaders[columnIndex] || ""),
                             isSelected
-                              ? "border-[#185FA5] bg-[#f4f9ff] shadow-[inset_0_0_0_1px_rgba(24,95,165,0.12)]"
-                              : "border-[#eef2f6] bg-[#fbfcfd] hover:border-[#d8e1ea] hover:bg-white",
+                              ? "border-border-focus bg-surface-selected shadow-[inset_0_0_0_1px_var(--border-focus)]"
+                              : "border-border-subtle bg-surface-shell hover:border-border-default hover:bg-surface-panel",
                           )}
                           onClick={() => {
                             const next = { row: rowIndex, column: columnIndex };
@@ -324,7 +324,7 @@ export function DataTableGrid({
                           onDoubleClick={() => beginEdit({ row: rowIndex, column: columnIndex })}
                         >
                           <span className="truncate">{cellData.value || "\u00A0"}</span>
-                          <span className={cn("ml-auto rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]", getConfidenceBadgeClass(confidenceTier))}>
+                          <span className={cn("ml-auto rounded-badge border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]", getConfidenceBadgeClass(confidenceTier))}>
                             {getConfidenceLabel(confidenceTier)}
                           </span>
                         </button>

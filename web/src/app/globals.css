@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap");
 @import "tailwindcss";
 @import "../styles/tokens.css";
 
@@ -37,6 +37,11 @@ body {
   -webkit-font-smoothing: antialiased;
   width: 100%;
   max-width: 100%;
+}
+
+#__next,
+body > div:first-child {
+  min-height: 100vh;
 }
 
 h1,
@@ -377,6 +382,103 @@ input[type="checkbox"] {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
   overscroll-behavior-x: contain;
+}
+
+.operational-page {
+  min-height: 100vh;
+  padding: var(--space-4);
+}
+
+.operational-page__inner {
+  margin: 0 auto;
+  max-width: 88rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--density-section-gap);
+}
+
+.operational-hero {
+  border: 1px solid var(--border-default);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-panel) 88%, var(--surface-shell)) 0%, var(--surface-panel) 100%);
+  box-shadow: var(--shadow-xs);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+}
+
+.operational-hero__eyebrow {
+  font-size: var(--type-label-dense);
+  font-weight: var(--weight-semibold);
+  line-height: var(--leading-snug);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.operational-hero__title {
+  margin-top: var(--space-2);
+  font-size: var(--type-page-title);
+  font-weight: var(--weight-semibold);
+  color: var(--text-primary);
+}
+
+.operational-hero__body {
+  margin-top: var(--space-2);
+  max-width: 56rem;
+  font-size: var(--type-label);
+  line-height: var(--leading-relaxed);
+  color: var(--text-secondary);
+}
+
+.operational-panel {
+  border: 1px solid var(--border-default);
+  background: var(--surface-panel);
+  box-shadow: var(--shadow-xs);
+  border-radius: var(--radius-lg);
+}
+
+.operational-panel--muted {
+  background: color-mix(in srgb, var(--surface-panel) 78%, var(--surface-shell));
+}
+
+.operational-section-grid {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.operational-stat-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+}
+
+.telemetry-rail {
+  border: 1px solid var(--border-default);
+  background: color-mix(in srgb, var(--surface-shell) 72%, var(--surface-panel));
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-xs);
+}
+
+.surface-muted {
+  border: 1px solid var(--border-subtle);
+  background: color-mix(in srgb, var(--surface-shell) 82%, var(--surface-panel));
+  border-radius: var(--radius-md);
+}
+
+.surface-accent {
+  border: 1px solid color-mix(in srgb, var(--border-focus) 45%, var(--border-subtle));
+  background: color-mix(in srgb, var(--surface-selected) 76%, var(--surface-panel));
+  border-radius: var(--radius-md);
+}
+
+.mono-metric {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 768px) {
+  .operational-page {
+    padding: var(--space-5);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

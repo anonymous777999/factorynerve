@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { ApiError } from "@/lib/api";
 import { selectFactory } from "@/lib/auth";
 import { getControlTower, type ControlTowerPayload, type FactorySummary } from "@/lib/settings";
@@ -79,9 +78,9 @@ export default function ControlTowerPage() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Control Tower</div>
-              <h1 className="mt-2 text-3xl font-semibold">Pick the right factory before opening the next desk</h1>
+              <h1 className="mt-2 text-3xl font-semibold">Factory context</h1>
               <p className="mt-3 max-w-3xl text-sm text-[var(--muted)]">
-                Compare sites, confirm the active context, and switch into the exact plant before opening day-to-day tools.
+                Compare sites. Switch context.
               </p>
             </div>
           </div>
@@ -104,30 +103,6 @@ export default function ControlTowerPage() {
             </Button>
           </div>
         </details>
-
-        <GuidanceBlock
-          surfaceKey="control-tower"
-          title="Tower tips"
-          summary="Compare sites, switch context, then open the right desk."
-          eyebrow="On demand"
-          autoOpenVisits={1}
-        >
-          <div className="grid gap-3 md:grid-cols-3">
-            {[
-              { title: "Compare sites", caption: "Check footprint, template, and team size." },
-              { title: "Switch context", caption: "Move into the right plant before opening work." },
-              { title: "Open desk", caption: "Open dashboard or entry after context is set." },
-            ].map((item) => (
-              <div
-                key={item.title}
-                className="rounded-[24px] border border-[var(--border)] bg-[rgba(10,14,24,0.68)] px-5 py-4"
-              >
-                <div className="text-sm font-semibold text-white">{item.title}</div>
-                <div className="mt-2 text-sm text-[var(--muted)]">{item.caption}</div>
-              </div>
-            ))}
-          </div>
-        </GuidanceBlock>
 
         {error ? (
           <Card>
@@ -164,7 +139,7 @@ export default function ControlTowerPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-4xl font-semibold">{totals.members}</div>
-                  <div className="mt-2 text-sm text-[var(--muted)]">Across visible factories</div>
+                  <div className="mt-2 text-sm text-[var(--muted)]">Visible factories</div>
                 </CardContent>
               </Card>
               <Card>
@@ -175,7 +150,7 @@ export default function ControlTowerPage() {
                   <div className="text-lg font-semibold">
                     {payload.factories.find((item) => item.factory_id === activeFactoryId)?.name || "Factory not selected"}
                   </div>
-                  <div className="mt-2 text-sm text-[var(--muted)]">Switch below to open work.</div>
+                  <div className="mt-2 text-sm text-[var(--muted)]">Switch below.</div>
                 </CardContent>
               </Card>
             </section>

@@ -842,8 +842,8 @@ export default function AttendanceReviewPage() {
 
   if (loading || (pageLoading && user && canReview && !hasLoadedOnce)) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-7xl space-y-6">
+    <main className="operational-page">
+      <div className="operational-page__inner">
           <Skeleton className="h-40 rounded-[2rem]" />
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
@@ -986,7 +986,7 @@ export default function AttendanceReviewPage() {
                 body: "Approve to close the record or reject with a note so the audit trail stays clear.",
               },
             ].map((item) => (
-              <Card key={item.title} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+              <Card key={item.title} className="border-[var(--border)] bg-surface-panel">
                 <CardContent className="space-y-3 px-5 py-5">
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
                   <div className="text-xl font-semibold text-[var(--text)]">{item.title}</div>
@@ -998,23 +998,23 @@ export default function AttendanceReviewPage() {
         </GuidanceBlock>
 
         {status ? (
-          <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">
+          <div className="operational-panel border-status-success-border bg-status-success-bg px-4 py-3 text-sm text-status-success-fg">
             {status}
           </div>
         ) : null}
         {error ? (
-          <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">
+          <div className="operational-panel border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">
             {error}
           </div>
         ) : null}
         {sessionError ? (
-          <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">
+          <div className="operational-panel border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">
             {sessionError}
           </div>
         ) : null}
 
         {/* AUDIT: DENSITY_OVERLOAD - collapse queue pulse metrics until the reviewer wants backlog context. */}
-        <details className="group rounded-[2rem] border border-[var(--border)] bg-[rgba(18,22,34,0.9)] shadow-xl">
+        <details className="group telemetry-rail">
           <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
             <div>
               <div className="text-sm text-[var(--muted)]">Queue pulse</div>
@@ -1038,7 +1038,7 @@ export default function AttendanceReviewPage() {
         </details>
 
         {/* AUDIT: BUTTON_CLUTTER - move route jumps and filters into one tools tray so the issue queue stays primary. */}
-        <details className="group rounded-[2rem] border border-[var(--border)] bg-[rgba(18,22,34,0.9)] shadow-xl">
+        <details className="group telemetry-rail">
           <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
             <div>
               <div className="text-sm text-[var(--muted)]">Review tools</div>
@@ -1117,7 +1117,7 @@ export default function AttendanceReviewPage() {
             {nextReview ? (
               <>
                 {/* AUDIT: FLOW_BROKEN - feature the next attendance issue before the wider backlog so the first move is obvious. */}
-                <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+                <Card className="border-[var(--border)] bg-surface-panel">
                   <CardHeader className="space-y-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
@@ -1130,7 +1130,7 @@ export default function AttendanceReviewPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    <div className="rounded-3xl border border-[var(--accent)]/30 bg-[rgba(17,35,37,0.9)] px-5 py-5">
+                    <div className="surface-accent px-5 py-5">
                       <div className="flex flex-wrap items-start justify-between gap-4">
                         <div className="space-y-3">
                           <div className="flex flex-wrap items-center gap-2">

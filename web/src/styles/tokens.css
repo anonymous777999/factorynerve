@@ -134,22 +134,22 @@
   /* --- Surface Hierarchy ---
      Rule: each level must be visually distinguishable from its neighbors.
      app-bg < shell < panel < card < elevated < overlay */
-  --surface-app:            hsl(var(--_prim-neutral-50));   /* outermost page background */
-  --surface-shell:          hsl(var(--_prim-neutral-100));  /* sidebar, header, nav shells */
-  --surface-panel:          hsl(var(--_prim-neutral-0));    /* main content panels */
-  --surface-card:           hsl(var(--_prim-neutral-0));    /* data cards, table rows */
-  --surface-elevated:       hsl(var(--_prim-neutral-0));    /* dropdowns, popovers */
-  --surface-overlay:        hsl(var(--_prim-neutral-0));    /* modals, drawers */
-  --surface-hover:          hsl(var(--_prim-neutral-100));  /* row/item hover */
-  --surface-active:         hsl(var(--_prim-neutral-150));  /* pressed / selected */
-  --surface-selected:       hsl(213 90% 96%);               /* selected row (blue tint) */
-  --surface-skeleton:       hsl(var(--_prim-neutral-150));  /* loading skeletons */
-  --surface-skeleton-shine: hsl(var(--_prim-neutral-100));  /* skeleton animation highlight */
+  --surface-app:            hsl(210 18% 96%);
+  --surface-shell:          hsl(210 16% 93%);
+  --surface-panel:          hsl(210 18% 99%);
+  --surface-card:           hsl(210 14% 98%);
+  --surface-elevated:       hsl(var(--_prim-neutral-0));
+  --surface-overlay:        hsl(var(--_prim-neutral-0));
+  --surface-hover:          hsl(210 18% 96%);
+  --surface-active:         hsl(210 16% 91%);
+  --surface-selected:       hsl(213 74% 94%);
+  --surface-skeleton:       hsl(210 14% 91%);
+  --surface-skeleton-shine: hsl(210 18% 96%);
 
   /* --- Border System --- */
-  --border-subtle:          hsl(var(--_prim-neutral-150));  /* table row dividers, card inner */
-  --border-default:         hsl(var(--_prim-neutral-200));  /* inputs, cards, panels */
-  --border-strong:          hsl(var(--_prim-neutral-300));  /* emphasized containers */
+  --border-subtle:          hsl(210 14% 88%);
+  --border-default:         hsl(210 12% 83%);
+  --border-strong:          hsl(210 10% 72%);
   --border-focus:           hsl(var(--_prim-blue-400));     /* keyboard focus rings */
   --border-danger:          hsl(var(--_prim-red-400));      /* error state inputs */
   --border-success:         hsl(var(--_prim-green-400));    /* valid/synced inputs */
@@ -267,19 +267,19 @@
   --shadow-inset:   inset 0 1px 2px 0 hsl(var(--_prim-neutral-900) / 0.06);
 
   /* XS — subtle card lift, table header sticky boundary */
-  --shadow-xs:      0 1px 2px 0 hsl(var(--_prim-neutral-900) / 0.05);
+  --shadow-xs:      0 1px 1px 0 hsl(var(--_prim-neutral-900) / 0.035);
 
   /* SM — panels, sidebar separators */
-  --shadow-sm:      0 1px 3px 0 hsl(var(--_prim-neutral-900) / 0.08),
-                    0 1px 2px -1px hsl(var(--_prim-neutral-900) / 0.06);
+  --shadow-sm:      0 1px 2px 0 hsl(var(--_prim-neutral-900) / 0.05),
+                    0 1px 1px -1px hsl(var(--_prim-neutral-900) / 0.04);
 
   /* MD — dropdowns, command palette, floating toolbars */
-  --shadow-md:      0 4px 6px -1px hsl(var(--_prim-neutral-900) / 0.08),
-                    0 2px 4px -2px hsl(var(--_prim-neutral-900) / 0.06);
+  --shadow-md:      0 4px 10px -4px hsl(var(--_prim-neutral-900) / 0.08),
+                    0 2px 4px -3px hsl(var(--_prim-neutral-900) / 0.06);
 
   /* LG — modals, operational drawers */
-  --shadow-lg:      0 10px 15px -3px hsl(var(--_prim-neutral-900) / 0.08),
-                    0 4px 6px -4px hsl(var(--_prim-neutral-900) / 0.05);
+  --shadow-lg:      0 10px 20px -10px hsl(var(--_prim-neutral-900) / 0.12),
+                    0 4px 8px -6px hsl(var(--_prim-neutral-900) / 0.08);
 
   /* XL — full-screen overlays, command bar */
   --shadow-xl:      0 20px 25px -5px hsl(var(--_prim-neutral-900) / 0.10),
@@ -356,7 +356,7 @@
 
 :root {
   /* Font families */
-  --font-sans:        "Inter", "DM Sans", system-ui, -apple-system, sans-serif;
+  --font-sans:        "IBM Plex Sans", "Inter", system-ui, -apple-system, sans-serif;
   --font-mono:        "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
   --font-numeric:     "Tabular", "Inter", system-ui, sans-serif; /* tabular-nums */
 
@@ -421,17 +421,17 @@
 /* Default / Operational — standard factory floor terminal density */
 :root,
 [data-density="default"] {
-  --density-row-height:       36px;
-  --density-row-height-lg:    44px;   /* expanded rows, multi-line */
-  --density-cell-pad-x:       var(--space-3);   /* 12px */
-  --density-cell-pad-y:       var(--space-2);   /* 8px */
+  --density-row-height:       34px;
+  --density-row-height-lg:    40px;   /* expanded rows, multi-line */
+  --density-cell-pad-x:       var(--space-2-5);   /* 10px */
+  --density-cell-pad-y:       var(--space-1-5);   /* 6px */
   --density-gap:              var(--space-2);   /* 8px */
   --density-icon-size:        16px;
   --density-badge-pad-x:      var(--space-2);   /* 8px */
   --density-badge-pad-y:      var(--space-0-5); /* 2px */
-  --density-input-height:     34px;
-  --density-btn-height:       34px;
-  --density-section-gap:      var(--space-5);   /* 20px */
+  --density-input-height:     32px;
+  --density-btn-height:       32px;
+  --density-section-gap:      var(--space-4);   /* 16px */
   --density-font-table:       var(--text-base); /* 13px */
   --density-font-label:       var(--text-sm);   /* 12px */
   --density-scale:            1;
@@ -482,10 +482,10 @@
 :root {
   --radius-none:    0px;
   --radius-xs:      2px;   /* tight: badge, table cell chip */
-  --radius-sm:      4px;   /* inputs, buttons, small cards */
-  --radius-md:      6px;   /* panels, modals, drawers */
-  --radius-lg:      8px;   /* cards, popovers, dropdowns */
-  --radius-xl:      12px;  /* large overlays */
+  --radius-sm:      3px;   /* inputs, buttons, small cards */
+  --radius-md:      5px;   /* panels, modals, drawers */
+  --radius-lg:      7px;   /* cards, popovers, dropdowns */
+  --radius-xl:      10px;  /* large overlays */
   --radius-full:    9999px; /* pills, avatars, toggles */
 }
 

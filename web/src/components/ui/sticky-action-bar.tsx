@@ -75,7 +75,7 @@ export function StickyActionBar({
   return (
     <div
       className={cn(
-        "sticky bottom-0 z-sticky border-t border-border-default bg-surface-panel/95 shadow-sm backdrop-blur supports-[backdrop-filter]:bg-surface-panel/90",
+        "sticky bottom-0 z-sticky border-t border-border-default bg-surface-panel/96 shadow-xs backdrop-blur supports-[backdrop-filter]:bg-surface-panel/92",
         "safe-bottom-inset",
         className,
       )}

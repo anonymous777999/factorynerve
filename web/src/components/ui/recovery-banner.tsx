@@ -104,7 +104,7 @@ export function RecoveryBanner({
   return (
     <section
       className={cn(
-        "rounded-panel border shadow-xs",
+        "rounded-panel border bg-surface-panel shadow-xs",
         kindContainerClassNames[kind],
         className,
       )}
@@ -125,7 +125,7 @@ export function RecoveryBanner({
           </div>
           {description ? <p className="text-label-dense text-text-secondary">{description}</p> : null}
           {meta ? (
-            <div className="rounded-control border border-border-subtle bg-surface-shell px-sm py-xs text-label-dense text-text-secondary">
+            <div className="surface-muted px-sm py-xs text-label-dense text-text-secondary">
               {meta}
             </div>
           ) : null}

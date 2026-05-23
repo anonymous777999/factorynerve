@@ -1209,8 +1209,8 @@ export default function WorkQueuePage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <main className="operational-page">
+      <div className="operational-page__inner">
         {/* AUDIT: FLOW_BROKEN - Added a short operating sequence so the queue reads as process-next work, not a wall of diagnostics. */}
         <section className="grid gap-4 md:grid-cols-3">
             {[
@@ -1220,7 +1220,7 @@ export default function WorkQueuePage() {
           ].map((item) => (
             <div
               key={item.step}
-              className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] px-5 py-4 shadow-[var(--shadow-soft)]"
+              className="operational-panel px-4 py-4"
             >
               <div className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--accent)]">Step {item.step}</div>
               <div className="mt-2 font-semibold text-[var(--text)]">{item.title}</div>
@@ -1229,7 +1229,7 @@ export default function WorkQueuePage() {
           ))}
         </section>
 
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
+        <section className="operational-hero">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-4xl">
               <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">{t("queue.daily_coordination", "Daily Coordination")}</div>
@@ -1298,10 +1298,10 @@ export default function WorkQueuePage() {
           ) : null}
         </section>
 
-        {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
-        {sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{sessionError}</div> : null}
+        {error ? <div className="operational-panel border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">{error}</div> : null}
+        {sessionError ? <div className="operational-panel border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">{sessionError}</div> : null}
         {refreshing ? (
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3 text-sm text-[var(--muted)]">
+          <div className="surface-muted px-4 py-3 text-sm text-[var(--muted)]">
             {t("queue.refreshing_background", "Refreshing queue data in the background...")}
           </div>
         ) : null}
@@ -1310,7 +1310,7 @@ export default function WorkQueuePage() {
             {sectionErrorEntries.map(([section, message]) => (
               <div
                 key={section}
-                className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-4 py-3 text-xs text-amber-100"
+                className="operational-panel border-status-warning-border bg-status-warning-bg px-4 py-3 text-xs text-status-warning-fg"
               >
                 <div className="font-semibold uppercase tracking-[0.14em]">{sectionLabel(section)}</div>
                 <div className="mt-1 leading-5">{message}</div>
@@ -1320,7 +1320,7 @@ export default function WorkQueuePage() {
         ) : null}
 
         {/* AUDIT: DENSITY_OVERLOAD - Queue totals stay available, but they now sit behind one pulse drawer instead of taking equal weight with the next action lane. */}
-        <details className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-soft)]">
+        <details className="telemetry-rail p-4">
           <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("queue.pulse", "Queue pulse")}</summary>
           <section className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             <Card>
@@ -1385,7 +1385,7 @@ export default function WorkQueuePage() {
               {nextUpItem ? (
                 <>
                   {/* AUDIT: FLOW_BROKEN - The top-priority task now has its own dedicated “next up” treatment instead of blending into the rest of the list. */}
-                  <div className={`rounded-[1.6rem] border p-5 shadow-[var(--shadow-soft)] ${toneClass(nextUpItem.tone)}`}>
+                  <div className={`rounded-panel border p-4 shadow-xs ${toneClass(nextUpItem.tone)}`}>
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
@@ -1419,7 +1419,7 @@ export default function WorkQueuePage() {
                   </div>
                   {remainingFilteredItems.length ? (
                     // AUDIT: DENSITY_OVERLOAD - Remaining queue items are still accessible, but they now sit behind a secondary reveal so the page can emphasize the immediate next task.
-                    <details className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                    <details className="surface-muted p-4">
                       <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">
                         More items ({remainingFilteredItems.length})
                       </summary>
@@ -1471,7 +1471,7 @@ export default function WorkQueuePage() {
             </CardContent>
           </Card>
 
-          <details className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-soft)]">
+          <details className="telemetry-rail p-4">
             <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("queue.signals", "Queue signals")}</summary>
             <div className="mt-4 space-y-6">
               <Card>

@@ -15,7 +15,6 @@ import { useSession } from "@/lib/use-session";
 import { signalWorkflowRefresh, subscribeToWorkflowRefresh } from "@/lib/workflow-sync";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { DashboardPageSkeleton } from "@/components/page-skeletons";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 
@@ -1532,9 +1531,9 @@ export default function DashboardHome() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8" data-component="dashboard-home">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur md:flex-row md:items-end md:justify-between">
+    <main className="operational-page" data-component="dashboard-home">
+      <div className="operational-page__inner">
+        <section className="operational-hero flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div className="space-y-2">
             <div className="text-sm uppercase tracking-[0.32em] text-[var(--accent)]">
               {headerEyebrow}
@@ -1576,37 +1575,24 @@ export default function DashboardHome() {
         </details>
 
         {roleLaunchGuide ? (
-          <GuidanceBlock
-            surfaceKey="dashboard-launch"
-            title={roleLaunchGuide.title}
-            summary={roleLaunchGuide.detail}
-            eyebrow={roleLaunchGuide.eyebrow}
-            autoOpenVisits={1}
-            className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]"
-          >
-            <div className="space-y-4">
-              <div className="flex justify-end">
-                <Link href={roleLaunchGuide.steps[0]?.href || "/dashboard"}>
-                  <Button variant="outline">{roleLaunchGuide.steps[0]?.action || "Open Workspace"}</Button>
-                </Link>
-              </div>
-              <div className="grid gap-3 lg:grid-cols-3">
-                {roleLaunchGuide.steps.map((step, index) => (
-                  <div key={`${step.href}-${index}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="mt-2 text-sm font-semibold text-[var(--text)]">{step.title}</div>
-                    <div className="mt-2 text-sm text-[var(--muted)]">{step.detail}</div>
-                    <Link href={step.href} className="mt-3 inline-block text-xs text-[var(--accent)] underline underline-offset-4">
-                      {step.action}
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </GuidanceBlock>
+          <section className="grid gap-3 lg:grid-cols-3">
+            {roleLaunchGuide.steps.map((step, index) => (
+              <Link
+                key={`${step.href}-${index}`}
+                href={step.href}
+                className="rounded-2xl border border-[var(--border)] bg-surface-panel px-4 py-4 transition-colors hover:border-border-strong hover:bg-surface-hover"
+              >
+                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
+                  {step.action}
+                </div>
+                <div className="mt-2 text-sm font-semibold text-[var(--text)]">{step.title}</div>
+              </Link>
+            ))}
+          </section>
         ) : null}
 
         <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr_1fr]">
-          <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
+            <Card className="border border-[var(--border)] bg-surface-panel">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
                 {t("dashboard.section.now", "Now")}
@@ -1632,7 +1618,7 @@ export default function DashboardHome() {
             </CardContent>
           </Card>
 
-          <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
+            <Card className="border border-[var(--border)] bg-surface-panel">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
                 {t("dashboard.section.attention", "Attention")}
@@ -1699,7 +1685,7 @@ export default function DashboardHome() {
             </CardContent>
           </Card>
 
-          <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
+            <Card className="border border-[var(--border)] bg-surface-panel">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
                 {t("dashboard.section.quick_actions", "Quick Actions")}
@@ -1751,7 +1737,7 @@ export default function DashboardHome() {
         </section>
 
         {activeFactory?.industry_type === "steel" && ["supervisor", "manager", "owner"].includes(user?.role || "") ? (
-          <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
+            <Card className="border border-[var(--border)] bg-surface-panel">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
                 {t("dashboard.steel.section", "Steel Control")}
