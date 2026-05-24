@@ -8,9 +8,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 
 function toneClasses(tone: SmartInsight["tone"]) {
-  if (tone === "good") return "border-[#bbf7d0] bg-[#f4fbf7]";
-  if (tone === "warning") return "border-[#fed7aa] bg-[#fff7ed]";
-  return "border-[#d6d3d1] bg-[#f5f5f4]";
+  if (tone === "good") return "border-[var(--status-success-border)] bg-[var(--status-success-bg)]";
+  if (tone === "warning") return "border-[var(--status-warning-border)] bg-[var(--status-warning-bg)]";
+  return "border-transparent bg-surface-elevated";
 }
 
 function severityLabel(severity: SmartInsight["severity"]) {
@@ -28,11 +28,11 @@ export function SmartInsightsPanel({
   loading?: boolean;
 }) {
   return (
-    <Card className="rounded-[1.9rem] !border-[#e7e5e4] !bg-none !bg-white !text-[#111111] shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+    <Card className="rounded-[1.9rem] bg-surface-card text-text-primary shadow-[var(--shadow-xs)]">
       <CardHeader>
-        <div className="text-xs uppercase tracking-[0.24em] text-[#78716c]">Ranked Insights</div>
-        <CardTitle className="mt-2 text-xl text-[#111111] md:text-2xl">Industrial decision prompts</CardTitle>
-        <p className="mt-2 text-sm leading-6 text-[#57534e]">
+        <div className="text-xs uppercase tracking-[0.24em] text-text-tertiary">Ranked Insights</div>
+        <CardTitle className="mt-2 text-xl text-text-primary md:text-2xl">Industrial decision prompts</CardTitle>
+        <p className="mt-2 text-sm leading-6 text-text-secondary">
           These messages are generated from live dashboard data so a manager can see risk, stock pressure, and revenue movement without scanning every chart manually.
         </p>
       </CardHeader>
@@ -48,21 +48,21 @@ export function SmartInsightsPanel({
             {insights.slice(0, 4).map((insight) => (
               <div
                 key={insight.id}
-                className={`rounded-[1.5rem] border p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)] ${toneClasses(insight.tone)}`}
+                className={`rounded-[1.5rem] border p-4 ${toneClasses(insight.tone)}`}
               >
                 <div className="flex items-start justify-between gap-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Impact {insight.impactScore}</div>
-                  <div className="rounded-full border border-[#d6d3d1] bg-white/90 px-3 py-1 text-[11px] font-semibold text-[#111111]">
+                  <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Impact {insight.impactScore}</div>
+                  <div className="rounded-full bg-surface-card px-3 py-1 text-[11px] font-semibold text-text-primary">
                     {severityLabel(insight.severity)}
                   </div>
                 </div>
-                <div className="mt-3 text-sm font-semibold text-[#111111]">{insight.headline}</div>
-                <div className="mt-2 text-xs leading-6 text-[#57534e]">{insight.supportingText}</div>
-                <div className="mt-3 text-xs font-medium leading-6 text-[#111111]">Next: {insight.nextStep}</div>
+                <div className="mt-3 text-sm font-semibold text-text-primary">{insight.headline}</div>
+                <div className="mt-2 text-xs leading-6 text-text-secondary">{insight.supportingText}</div>
+                <div className="mt-3 text-xs font-medium leading-6 text-text-primary">Next: {insight.nextStep}</div>
                 {insight.primaryAction ? (
                   <div className="mt-4">
                     <Link href={insight.primaryAction.href}>
-                      <Button variant="outline" className="!border-[#111111] !bg-none !bg-[#111111] !text-white hover:!border-[#2f2f2f] hover:!bg-none hover:!bg-[#2f2f2f]">
+                      <Button variant="secondary">
                         {insight.primaryAction.label}
                       </Button>
                     </Link>

@@ -13,9 +13,9 @@ export function IndustrialFilterPanel({
   onSelect: (panelId: string, option: string) => void;
 }) {
   return (
-    <Card className="rounded-[1.6rem] !border-[#e7e5e4] !bg-none !bg-white !text-[#111111] shadow-[0_14px_30px_rgba(15,23,42,0.06)]">
+    <Card className="rounded-[1.6rem] bg-surface-card text-text-primary shadow-[var(--shadow-xs)]">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base text-[#111111]">{panel.title}</CardTitle>
+        <CardTitle className="text-base text-text-primary">{panel.title}</CardTitle>
       </CardHeader>
       <CardContent className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
         {panel.options.map((option) => {
@@ -27,8 +27,8 @@ export function IndustrialFilterPanel({
               onClick={() => onSelect(panel.id, option)}
               className={
                 active
-                  ? "rounded-xl border border-[#111111] bg-[#111111] px-3 py-2 text-left text-sm font-semibold text-white shadow-[0_10px_24px_rgba(17,17,17,0.12)]"
-                  : "rounded-xl border border-[#d6d3d1] bg-[#f5f5f4] px-3 py-2 text-left text-sm text-[#57534e] hover:border-[#a8a29e] hover:bg-[#e7e5e4]"
+                  ? "rounded-xl border border-transparent bg-[var(--action-primary)] px-3 py-2 text-left text-sm font-semibold text-[var(--action-primary-text)] shadow-[var(--shadow-xs)]"
+                  : "rounded-xl border border-transparent bg-surface-elevated px-3 py-2 text-left text-sm text-text-secondary hover:bg-surface-hover"
               }
             >
               {option}

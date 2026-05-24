@@ -357,10 +357,10 @@ const DENSITY_CHOICES: Array<{ value: AppDensity; key: string; fallback: string 
 
 function navLinkClasses(active: boolean) {
   return cn(
-    "ui-no-select ui-no-callout group block rounded-panel border-[0.5px] px-3 py-2 transition",
+    "ui-no-select ui-no-callout group block rounded-panel px-3 py-2 transition",
     active
-      ? "border-border-focus bg-surface-selected"
-      : "border-border-default bg-surface-panel hover:border-border-strong hover:bg-surface-hover",
+      ? "border border-border-subtle bg-surface-card shadow-[var(--shadow-xs)]"
+      : "border border-transparent bg-transparent hover:bg-surface-panel",
   );
 }
 
@@ -727,14 +727,14 @@ export function AppSidebar({
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-40 w-[18rem] border-r border-border-default bg-surface-shell transition-transform duration-300 ease-out",
+        "fixed inset-y-0 left-0 z-40 w-[18rem] border-r border-border-subtle bg-surface-shell shadow-[var(--shadow-sm)] transition-transform duration-300 ease-out",
         immersiveScannerRoute ? "hidden lg:block lg:translate-x-0" : "",
         !immersiveScannerRoute && (sidebarOpen ? "translate-x-0" : "-translate-x-full"),
       )}
       data-nav-count={navItems.length}
     >
       <div className="flex h-full flex-col px-3 py-3">
-        <div className="rounded-panel border-[0.5px] border-border-default bg-surface-panel p-3">
+        <div className="rounded-panel border border-border-subtle bg-surface-panel p-3 shadow-[var(--shadow-xs)]">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-text-secondary">DPR.ai</div>
@@ -757,16 +757,16 @@ export function AppSidebar({
           </div>
 
           <div className="mt-3 flex flex-wrap gap-1.5">
-            <span className="rounded-badge border-[0.5px] border-border-focus bg-surface-selected px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-primary">
+            <span className="rounded-badge border border-transparent bg-surface-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-secondary">
               {roleLabel(resolvedRole, translate)}
             </span>
             {workflowTemplateLabel ? (
-              <span className="rounded-badge border-[0.5px] border-border-default bg-surface-shell px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-secondary">
+              <span className="rounded-badge border border-transparent bg-surface-shell px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-tertiary">
                 {workflowTemplateLabel}
               </span>
             ) : null}
             {organizationName ? (
-              <span className="truncate rounded-badge border-[0.5px] border-border-default bg-surface-shell px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-secondary">
+              <span className="truncate rounded-badge border border-transparent bg-surface-shell px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-tertiary">
                 {organizationName}
               </span>
             ) : null}
@@ -833,7 +833,7 @@ export function AppSidebar({
                 <div key={section.title} className="space-y-[var(--space-1)]">
                   <button
                     type="button"
-                    className="flex w-full items-center justify-between rounded-panel border-[0.5px] border-border-default bg-surface-panel px-3 py-2 text-left transition hover:border-border-strong hover:bg-surface-hover"
+                    className="flex w-full items-center justify-between rounded-panel border border-transparent bg-transparent px-3 py-2 text-left transition hover:bg-surface-panel"
                     onClick={() => onToggleSectionGroup(storageKey)}
                   >
                     <div className="flex items-center gap-2">
@@ -866,7 +866,7 @@ export function AppSidebar({
         </div>
 
         <div className="mt-3 border-t border-[var(--border)] pt-3">
-          <details className="group rounded-panel border-[0.5px] border-border-default bg-surface-panel px-3 py-3">
+          <details className="group rounded-panel border border-border-subtle bg-surface-panel px-3 py-3 shadow-[var(--shadow-xs)]">
             <summary className="ui-no-select ui-no-callout flex cursor-pointer list-none items-center justify-between gap-3 text-left">
               <div>
                 <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
@@ -942,7 +942,7 @@ export function AppSidebar({
                 </div>
               </div>
 
-              <div className="flex items-center justify-between gap-3 rounded-panel border-[0.5px] border-border-default bg-surface-shell px-3 py-2.5">
+              <div className="flex items-center justify-between gap-3 rounded-panel bg-surface-shell px-3 py-2.5">
                 <div>
                   <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
                     {translate ? translate("shell.tips_title", "Tips") : "Tips"}
@@ -1050,7 +1050,7 @@ export function AppDesktopContextRail({
       {visible ? (
         <aside className="hidden w-[19rem] shrink-0 xl:block">
           <div className="sticky top-4 space-y-3 px-4 py-4">
-            <div className="rounded-panel border-[0.5px] border-border-default bg-surface-panel p-4">
+            <div className="rounded-panel border border-border-subtle bg-surface-panel p-4 shadow-[var(--shadow-xs)]">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">Workspace</div>
@@ -1069,24 +1069,24 @@ export function AppDesktopContextRail({
               <div className="mt-2 text-sm leading-6 text-text-secondary">{currentItem.description}</div>
             </div>
 
-            <div className="rounded-panel border-[0.5px] border-border-default bg-surface-panel p-4">
+            <div className="rounded-panel border border-border-subtle bg-surface-panel p-4 shadow-[var(--shadow-xs)]">
               <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">Factory Context</div>
               <div className="mt-4 space-y-3 text-sm text-[var(--muted)]">
-                <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell px-3 py-3">
+                <div className="rounded-panel bg-surface-shell px-3 py-3">
                   <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Factory</div>
                   <div className="mt-1 font-semibold text-[var(--text)]">{factoryName}</div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell px-3 py-3">
+                  <div className="rounded-panel bg-surface-shell px-3 py-3">
                     <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Role</div>
                     <div className="mt-1 font-semibold text-[var(--text)]">{roleLabel(role, translate)}</div>
                   </div>
-                  <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell px-3 py-3">
+                  <div className="rounded-panel bg-surface-shell px-3 py-3">
                     <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Alerts</div>
                     <div className="mt-1 font-semibold text-[var(--text)]">{badgeCounts.alerts}</div>
                   </div>
                 </div>
-                <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell px-3 py-3">
+                <div className="rounded-panel bg-surface-shell px-3 py-3">
                   <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Review Load</div>
                   <div className="mt-1 font-semibold text-[var(--text)]">{badgeCounts.approvals}</div>
                   <div className="mt-1 text-xs text-[var(--muted)]">{organizationName || "Active organization context"}</div>
@@ -1094,14 +1094,14 @@ export function AppDesktopContextRail({
               </div>
             </div>
 
-            <div className="rounded-panel border-[0.5px] border-border-default bg-surface-panel p-4">
+            <div className="rounded-panel border border-border-subtle bg-surface-panel p-4 shadow-[var(--shadow-xs)]">
               <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">Primary Flow</div>
-              <div className="mt-3 rounded-panel border-[0.5px] border-border-default bg-surface-shell px-3 py-3">
+              <div className="mt-3 rounded-panel bg-surface-shell px-3 py-3">
                 <div className="text-sm font-semibold text-[var(--text)]">{workflowHint.title}</div>
               </div>
             </div>
 
-            <div className="rounded-panel border-[0.5px] border-border-default bg-surface-panel p-4">
+            <div className="rounded-panel border border-border-subtle bg-surface-panel p-4 shadow-[var(--shadow-xs)]">
               <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">Quick Jump</div>
               <div className="mt-4 space-y-2">
                 {quickLinks.map((item) => {
@@ -1111,7 +1111,7 @@ export function AppDesktopContextRail({
                       key={item.href}
                       href={item.href}
                       prefetch
-                      className="ui-no-select ui-no-callout flex items-start gap-3 rounded-panel border-[0.5px] border-border-default bg-surface-shell px-3 py-3 transition hover:border-border-strong hover:bg-surface-hover"
+                      className="ui-no-select ui-no-callout flex items-start gap-3 rounded-panel bg-surface-shell px-3 py-3 transition hover:bg-surface-hover"
                       onMouseEnter={() => onWarm(item.href)}
                       onFocus={() => onWarm(item.href)}
                     >

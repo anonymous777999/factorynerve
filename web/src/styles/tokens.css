@@ -123,7 +123,7 @@
   --color-text-secondary: var(--text-secondary);
   --color-text-tertiary: var(--text-tertiary);
   --color-text-danger: var(--text-danger);
-  --color-text-info: #185fa5;
+  --color-text-info: var(--status-info-fg);
   --color-background-primary: var(--surface-elevated);
   --color-background-secondary: var(--surface-card);
   --color-background-info: 230 241 251;
@@ -138,8 +138,8 @@
   --text-tertiary:          hsl(var(--_prim-neutral-500));  /* placeholders, hints, metadata */
   --text-disabled:          hsl(var(--_prim-neutral-400));  /* disabled fields */
   --text-inverse:           hsl(var(--_prim-neutral-0));    /* text on dark/colored surfaces */
-  --text-link:              hsl(var(--_prim-blue-500));
-  --text-link-hover:        hsl(var(--_prim-blue-600));
+  --text-link:              #1D6EEB;
+  --text-link-hover:        #175FCC;
   --text-danger:            hsl(var(--_prim-red-700));
   --text-success:           hsl(var(--_prim-green-700));
   --text-warning:           hsl(var(--_prim-amber-700));
@@ -171,9 +171,9 @@
   --border-success:         hsl(var(--_prim-green-400));    /* valid/synced inputs */
 
   /* --- Action / Interactive --- */
-  --action-primary:         hsl(var(--_prim-blue-500));
-  --action-primary-hover:   hsl(var(--_prim-blue-600));
-  --action-primary-active:  hsl(var(--_prim-blue-700));
+  --action-primary:         #1D6EEB;
+  --action-primary-hover:   #2379F3;
+  --action-primary-active:  #175FCC;
   --action-primary-text:    hsl(var(--_prim-neutral-0));
   --action-secondary:       hsl(var(--_prim-neutral-0));
   --action-secondary-hover: hsl(var(--_prim-neutral-100));
@@ -217,25 +217,25 @@
   --status-success-fg:        hsl(var(--_prim-green-700));
   --status-success-bg:        hsl(var(--_prim-green-50));
   --status-success-border:    hsl(var(--_prim-green-200));
-  --status-success-icon:      hsl(var(--_prim-green-500));
+  --status-success-icon:      #22C55E;
 
   /* WARNING — degraded, partial, attention needed */
   --status-warning-fg:        hsl(var(--_prim-amber-700));
   --status-warning-bg:        hsl(var(--_prim-amber-50));
   --status-warning-border:    hsl(var(--_prim-amber-200));
-  --status-warning-icon:      hsl(var(--_prim-amber-500));
+  --status-warning-icon:      #F59E0B;
 
   /* DANGER — error, fault, failed, critical */
   --status-danger-fg:         hsl(var(--_prim-red-700));
   --status-danger-bg:         hsl(var(--_prim-red-50));
   --status-danger-border:     hsl(var(--_prim-red-200));
-  --status-danger-icon:       hsl(var(--_prim-red-500));
+  --status-danger-icon:       #EF4444;
 
   /* PROCESSING — AI in-progress, async task running, OCR scanning */
   --status-processing-fg:     hsl(var(--_prim-indigo-700));
   --status-processing-bg:     hsl(var(--_prim-indigo-50));
   --status-processing-border: hsl(var(--_prim-indigo-200));
-  --status-processing-icon:   hsl(var(--_prim-indigo-500));
+  --status-processing-icon:   #4338CA;
 
   /* PAUSED — workflow on hold, awaiting input, queued */
   --status-paused-fg:         hsl(var(--_prim-slate-700));
@@ -549,81 +549,82 @@
 [data-theme="dark"] {
 
   /* Text */
-  --text-primary:           hsl(var(--_prim-neutral-100));
-  --text-secondary:         hsl(var(--_prim-neutral-300));
-  --text-tertiary:          hsl(var(--_prim-neutral-400));
-  --text-disabled:          hsl(var(--_prim-neutral-600));
+  --text-primary:           #EDF2F7;
+  --text-secondary:         #94A3B8;
+  --text-tertiary:          #546E8A;
+  --text-disabled:          #42546E;
   --text-inverse:           hsl(var(--_prim-neutral-900));
-  --text-link:              hsl(var(--_prim-blue-300));
-  --text-link-hover:        hsl(var(--_prim-blue-200));
-  --text-danger:            hsl(var(--_prim-red-200));
-  --text-success:           hsl(var(--_prim-green-200));
-  --text-warning:           hsl(var(--_prim-amber-200));
+  --text-link:              #1D6EEB;
+  --text-link-hover:        #2379F3;
+  --text-danger:            #F87171;
+  --text-success:           #4ADE80;
+  --text-warning:           #FBBF24;
 
   /* Surfaces */
-  --surface-app:            hsl(218 22% 9%);
-  --surface-shell:          hsl(216 20% 11%);
-  --surface-panel:          hsl(215 18% 13%);
-  --surface-card:           hsl(213 16% 15%);
-  --surface-elevated:       hsl(212 15% 18%);
-  --surface-overlay:        hsl(220 18% 16%);
-  --surface-hover:          hsl(213 16% 17%);
-  --surface-active:         hsl(213 18% 19%);
-  --surface-selected:       hsl(213 46% 20%);
-  --surface-skeleton:       hsl(220 14% 16%);
-  --surface-skeleton-shine: hsl(220 14% 19%);
-  --surface-industrial-deep:    hsl(218 24% 8%);
-  --surface-industrial-raised:  hsl(215 20% 11%);
-  --surface-industrial-card:    hsl(213 18% 14%);
+  --surface-app:            #080C14;
+  --surface-shell:          #0D1321;
+  --surface-panel:          #111927;
+  --surface-card:           #162030;
+  --surface-elevated:       #1C2A3E;
+  --surface-overlay:        #21324B;
+  --surface-hover:          #1A2537;
+  --surface-active:         #203048;
+  --surface-selected:       #152842;
+  --surface-skeleton:       #111A28;
+  --surface-skeleton-shine: #172334;
+  --surface-industrial-deep:    #080C14;
+  --surface-industrial-raised:  #0D1321;
+  --surface-industrial-card:    #111927;
 
   /* Borders */
-  --border-subtle:          hsl(220 12% 22%);
-  --border-default:         hsl(220 10% 28%);
-  --border-strong:          hsl(220 9% 36%);
-  --border-focus:           hsl(var(--_prim-blue-400));
-  --border-danger:          hsl(var(--_prim-red-400));
-  --border-success:         hsl(var(--_prim-green-400));
+  --border-subtle:          #1E2D42;
+  --border-default:         #243550;
+  --border-strong:          #2E4465;
+  --border-focus:           #1D6EEB;
+  --border-danger:          #EF4444;
+  --border-success:         #22C55E;
 
   /* Actions */
-  --action-primary:         hsl(var(--_prim-blue-400));
-  --action-primary-hover:   hsl(var(--_prim-blue-300));
-  --action-primary-active:  hsl(var(--_prim-blue-200));
-  --action-secondary:       hsl(var(--_prim-neutral-800));
-  --action-secondary-hover: hsl(var(--_prim-neutral-700));
-  --action-secondary-border:hsl(var(--_prim-neutral-600));
-  --action-secondary-text:  hsl(var(--_prim-neutral-200));
-  --action-ghost-hover:     hsl(var(--_prim-neutral-800));
+  --action-primary:         #1D6EEB;
+  --action-primary-hover:   #2379F3;
+  --action-primary-active:  #175FCC;
+  --action-primary-text:    #EDF2F7;
+  --action-secondary:       #162030;
+  --action-secondary-hover: #1C2A3E;
+  --action-secondary-border:#243550;
+  --action-secondary-text:  #EDF2F7;
+  --action-ghost-hover:     #162030;
 
   /* Status — dark mode */
-  --status-success-fg:      hsl(var(--_prim-green-200));
-  --status-success-bg:      hsl(142 40% 12%);
-  --status-success-border:  hsl(var(--_prim-green-700));
-  --status-success-icon:    hsl(var(--_prim-green-400));
+  --status-success-fg:      #BBF7D0;
+  --status-success-bg:      #0F2A1A;
+  --status-success-border:  #1F6F3F;
+  --status-success-icon:    #22C55E;
 
-  --status-warning-fg:      hsl(var(--_prim-amber-200));
-  --status-warning-bg:      hsl(38 60% 10%);
-  --status-warning-border:  hsl(var(--_prim-amber-700));
-  --status-warning-icon:    hsl(var(--_prim-amber-400));
+  --status-warning-fg:      #FDE68A;
+  --status-warning-bg:      #34250C;
+  --status-warning-border:  #6C4A12;
+  --status-warning-icon:    #F59E0B;
 
-  --status-danger-fg:       hsl(var(--_prim-red-200));
-  --status-danger-bg:       hsl(4 60% 10%);
-  --status-danger-border:   hsl(var(--_prim-red-700));
-  --status-danger-icon:     hsl(var(--_prim-red-400));
+  --status-danger-fg:       #FECACA;
+  --status-danger-bg:       #341316;
+  --status-danger-border:   #7F1D1D;
+  --status-danger-icon:     #EF4444;
 
-  --status-processing-fg:   hsl(var(--_prim-indigo-200));
-  --status-processing-bg:   hsl(240 50% 12%);
-  --status-processing-border: hsl(var(--_prim-indigo-700));
-  --status-processing-icon: hsl(var(--_prim-indigo-400));
+  --status-processing-fg:   #C7D2FE;
+  --status-processing-bg:   #171A3D;
+  --status-processing-border: #312E81;
+  --status-processing-icon: #4338CA;
 
-  --status-paused-fg:       hsl(var(--_prim-slate-100));
-  --status-paused-bg:       hsl(220 18% 14%);
-  --status-paused-border:   hsl(var(--_prim-slate-700));
-  --status-paused-icon:     hsl(var(--_prim-slate-400));
+  --status-paused-fg:       #CBD5E1;
+  --status-paused-bg:       #151C28;
+  --status-paused-border:   #334155;
+  --status-paused-icon:     #64748B;
 
-  --status-inactive-fg:     hsl(var(--_prim-neutral-400));
-  --status-inactive-bg:     hsl(var(--_prim-neutral-800));
-  --status-inactive-border: hsl(var(--_prim-neutral-700));
-  --status-inactive-icon:   hsl(var(--_prim-neutral-600));
+  --status-inactive-fg:     #7A8CA1;
+  --status-inactive-bg:     #111927;
+  --status-inactive-border: #243550;
+  --status-inactive-icon:   #546E8A;
 
   --status-draft-fg:        hsl(var(--_prim-warmgray-100));
   --status-draft-bg:        hsl(30 10% 12%);
@@ -635,22 +636,22 @@
   --status-synced-border:   hsl(var(--_prim-green-700));
   --status-synced-icon:     hsl(var(--_prim-green-400));
 
-  --status-info-fg:         hsl(var(--_prim-blue-200));
-  --status-info-bg:         hsl(213 60% 12%);
-  --status-info-border:     hsl(var(--_prim-blue-700));
-  --status-info-icon:       hsl(var(--_prim-blue-400));
+  --status-info-fg:         #BFDBFE;
+  --status-info-bg:         #10233E;
+  --status-info-border:     #1E3A5F;
+  --status-info-icon:       #1D6EEB;
 
   /* Workflow */
-  --workflow-active:        hsl(var(--_prim-blue-400));
-  --workflow-active-bg:     hsl(213 60% 14%);
-  --workflow-complete:      hsl(var(--_prim-green-400));
-  --workflow-complete-bg:   hsl(142 40% 12%);
-  --workflow-blocked:       hsl(var(--_prim-red-400));
-  --workflow-blocked-bg:    hsl(4 60% 12%);
-  --workflow-pending:       hsl(var(--_prim-slate-400));
-  --workflow-pending-bg:    hsl(220 18% 14%);
-  --workflow-ai-processing: hsl(var(--_prim-indigo-400));
-  --workflow-ai-bg:         hsl(240 50% 14%);
+  --workflow-active:        #1D6EEB;
+  --workflow-active-bg:     #10233E;
+  --workflow-complete:      #22C55E;
+  --workflow-complete-bg:   #0F2A1A;
+  --workflow-blocked:       #EF4444;
+  --workflow-blocked-bg:    #341316;
+  --workflow-pending:       #64748B;
+  --workflow-pending-bg:    #151C28;
+  --workflow-ai-processing: #4338CA;
+  --workflow-ai-bg:         #171A3D;
 
   /* Shadows — heavier in dark for legibility */
   --shadow-xs:    0 1px 2px hsl(220 30% 5% / 0.25);
