@@ -1,28 +1,129 @@
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap");
+/* ============================================================
+   DPR.ai — globals.css
+   MERGED: warm-industrial DNA (file A) + production architecture (file B)
+   Strategy: File B provides the architecture skeleton.
+             File A restores the cinematic warm visual soul.
+   ============================================================ */
+
+/* --- FONTS — from File A (File B had no font import) --- */
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
 @import "tailwindcss";
-@import "../styles/tokens.css";
+
+
+/* ============================================================
+   DESIGN TOKENS
+   ============================================================ */
 
 :root {
-  --font-body: var(--font-sans);
-  --font-display: var(--font-sans);
-  --bg: var(--surface-app);
-  --bg-soft: var(--surface-shell);
-  --card: var(--surface-card);
-  --card-strong: var(--surface-elevated);
-  --card-elevated: var(--surface-overlay);
-  --border: var(--border-default);
+  /* --- Font families (File A — File B referenced these but never defined them) --- */
+  --font-body: "IBM Plex Sans";
+  --font-display: "Space Grotesk";
+
+  /* --- Primary color scale (File B — full semantic scale) --- */
+  --color-primary: #3b82f6;
+  --color-primary-50: #eef7ff;
+  --color-primary-100: #dbeaf8;
+  --color-primary-700: #1d4ed8;
+  --color-primary-900: #1e40af;
+
+  /* --- Secondary color scale (File B) --- */
+  --color-secondary: #a78bfa;
+  --color-secondary-50: #ecfdf8;
+  --color-secondary-700: #7c3aed;
+  --color-secondary-900: #5b21b6;
+
+  /* --- Status color scales (File B — full tonal ramp) --- */
+  --color-success: #22c55e;
+  --color-success-50: #f0fdf4;
+  --color-success-700: #15803d;
+
+  --color-warning: #f59e0b;
+  --color-warning-50: #fffbeb;
+  --color-warning-700: #b45309;
+
+  --color-danger: #ef4444;
+  --color-danger-50: #fef2f2;
+  --color-danger-700: #b91c1c;
+
+  --color-info: #06b6d4;
+  --color-info-50: #f0f9ff;
+  --color-info-700: #0891b2;
+
+  /* --- Backgrounds & surfaces (File A — warmer, more atmospheric) --- */
+  --bg: #0d1218;
+  --bg-soft: #151d24;          /* File A only — mid-depth between bg and card */
+  --bg-secondary: #111827;     /* File B alias kept for component compat */
+  --bg-tertiary: #1f2937;      /* File B alias kept for component compat */
+  --card: #172028;
+  --card-strong: #202b35;
+  --card-elevated: #293642;
+
+  /* --- Text hierarchy (File A warm primary + File B semantic scale) --- */
+  --text-primary: #ece7df;     /* File A — warm off-white vs B's cool #f3f4f6 */
+  --text-secondary: #c2b8ae;
+  --text-tertiary: #9ca3af;
+  --text-muted: #6b7280;
+
+  /* --- Borders (File A — warm tone, more visible depth) --- */
+  --border: rgba(171, 154, 137, 0.2);
+  --border-strong: rgba(201, 180, 157, 0.34);
+  --divider: rgba(171, 154, 137, 0.1);  /* File B concept, warm value */
+
+  /* --- Shadow scale (merged — File A's richer lg/md + File B's xs/sm/xl/2xl) --- */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 14px 36px rgba(2, 6, 23, 0.26);   /* File A — deeper blur */
+  --shadow-lg: 0 26px 70px rgba(2, 6, 23, 0.36);   /* File A — cinematic */
+  --shadow-xl: 0 34px 72px rgba(3, 8, 18, 0.3);
+  --shadow-2xl: 0 42px 90px rgba(3, 8, 18, 0.34);
+
+  /* --- Warm industrial accent (File A — the visual DNA) --- */
+  --accent: #c56d2d;
+  --accent-strong: #8c4218;
+  --accent-soft: rgba(197, 109, 45, 0.18);
+  --accent-quiet: rgba(197, 109, 45, 0.1);  /* File A only */
+
+  /* --- Operational signals (File A additions) --- */
+  --signal: #1f8a78;   /* teal — distinct from success green */
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+
+  /* --- Spacing scale (File A — 8px base unit) --- */
+  --space-1: 8px;
+  --space-2: 16px;
+  --space-3: 24px;
+  --space-4: 32px;
+  --space-5: 48px;
+  --space-6: 64px;
+
+  /* --- Scrollbar custom props (File B) --- */
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: rgba(209, 213, 219, 0.3);
+  --scrollbar-thumb-hover: rgba(209, 213, 219, 0.5);
+
+  /* --- Legacy aliases — backward compatibility for components using old var names --- */
   --text: var(--text-primary);
-  --muted: var(--text-tertiary);
-  --accent: var(--action-primary);
-  --accent-strong: var(--action-primary-active);
-  --accent-soft: var(--workflow-active-bg);
-  --accent-quiet: var(--surface-selected);
-  --signal: var(--status-processing-icon);
-  --success: var(--status-success-icon);
-  --warning: var(--status-warning-icon);
-  --danger: var(--status-danger-icon);
-  --shadow-soft: var(--shadow-sm);
+  --muted: var(--text-muted);
+  --accent-strong: var(--accent-strong);  /* explicit — not aliased to primary */
 }
+
+
+/* ============================================================
+   TAILWIND THEME BRIDGE
+   ============================================================ */
+
+@theme inline {
+  --color-background: var(--bg);
+  --color-foreground: var(--text-primary);   /* File B — more explicit */
+  --font-sans: var(--font-body);
+  --font-display: var(--font-display);
+}
+
+
+/* ============================================================
+   BASE RESETS
+   ============================================================ */
 
 * {
   box-sizing: border-box;
@@ -30,18 +131,18 @@
 
 body {
   min-height: 100vh;
-  background-color: var(--surface-app);
+  /* Warm industrial atmosphere — File A gradient (cinematic soul) */
+  background:
+    radial-gradient(circle at 12% 14%, rgba(197, 109, 45, 0.22), transparent 34%),
+    radial-gradient(circle at 82% 18%, rgba(31, 138, 120, 0.14), transparent 32%),
+    radial-gradient(circle at 48% 120%, rgba(245, 158, 11, 0.1), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 18%),
+    linear-gradient(180deg, #0b1116 0%, #111820 46%, #0c1319 100%);
   color: var(--text-primary);
-  font-family: var(--font-sans);
+  font-family: var(--font-body), "IBM Plex Sans", sans-serif;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  width: 100%;
-  max-width: 100%;
-}
-
-#__next,
-body > div:first-child {
-  min-height: 100vh;
+  overflow-x: clip;   /* File B — modern approach, replaces A's width:100% */
 }
 
 h1,
@@ -50,7 +151,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-sans);
+  font-family: var(--font-display), "Space Grotesk", sans-serif;
 }
 
 button,
@@ -58,86 +159,84 @@ input,
 textarea,
 select {
   font: inherit;
-  appearance: none;
-  -webkit-appearance: none;
-  border-radius: 0;
 }
 
-/* Form Controls */
-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
-textarea,
+/* --- Select native element theming (File B — not in A) --- */
 select {
-  background: var(--surface-card);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  color: var(--text-primary);
-  font-family: var(--font-sans);
-  font-size: var(--text-md);
-  outline: none;
-  transition: border-color 150ms ease, box-shadow 150ms ease;
-}
-
-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
-select {
-  height: 36px;
-  padding: 0 var(--space-3);
-}
-
-textarea {
-  padding: var(--space-2) var(--space-3);
-}
-
-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
-textarea:focus,
-select:focus {
-  border-color: var(--border-focus);
-  box-shadow: var(--focus-ring);
-}
-
-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):disabled,
-textarea:disabled,
-select:disabled {
-  background: var(--action-disabled);
-  color: var(--action-disabled-text);
-  cursor: not-allowed;
-}
-
-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"])::placeholder,
-textarea::placeholder,
-select::placeholder {
-  color: var(--text-tertiary);
-}
-
-::selection {
-  background: var(--surface-selected);
-  color: var(--text-primary);
-}
-
-html {
-  color-scheme: light dark;
-  width: 100%;
-  max-width: 100%;
-}
-
-html[data-theme="dark"] {
   color-scheme: dark;
 }
 
-html[data-theme="light"] {
-  color-scheme: light;
+select option,
+select optgroup {
+  background: var(--card-elevated);
+  color: var(--text-primary);
 }
 
-img,
-video,
-canvas,
-svg {
-  max-width: 100%;
-  height: auto;
+select option:checked,
+select option:hover,
+select option:focus {
+  background:
+    linear-gradient(0deg, rgba(197, 109, 45, 0.2), rgba(197, 109, 45, 0.2)),
+    var(--card-elevated);   /* warm accent tint instead of blue */
+  color: var(--text-primary);
 }
+
+/* --- Text selection — warm accent from File A --- */
+::selection {
+  background: rgba(197, 109, 45, 0.28);
+  color: #fdf8f2;
+}
+
+html {
+  color-scheme: dark;
+  overflow-x: clip;   /* File B */
+}
+
+/* --- PWA standalone display mode (File B — not in A) --- */
+html[data-display-mode="standalone"],
+html[data-display-mode="standalone"] body {
+  overscroll-behavior-y: contain;
+}
+
+html[data-display-mode="standalone"] body {
+  min-height: 100dvh;
+}
+
+/* --- Performance tier: disable backdrop-filter on low-end devices (File B) --- */
+html[data-runtime-tier="safe"] .surface-panel,
+html[data-runtime-tier="safe"] .surface-panel-strong,
+html[data-runtime-tier="safe"] .surface-panel-soft,
+html[data-runtime-tier="safe"] .surface-pill,
+html[data-runtime-tier="safe"] .backdrop-blur,
+html[data-runtime-tier="safe"] .backdrop-blur-sm,
+html[data-runtime-tier="safe"] .backdrop-blur-xl,
+html[data-runtime-tier="safe"] .backdrop-blur-2xl {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+html[data-runtime-tier="safe"] .surface-panel,
+html[data-runtime-tier="safe"] .surface-panel-strong,
+html[data-runtime-tier="safe"] .surface-panel-soft,
+html[data-runtime-tier="safe"] .surface-pill {
+  box-shadow: 0 10px 28px rgba(3, 8, 18, 0.2) !important;
+}
+
+html[data-runtime-tier="safe"] .blur-3xl,
+html[data-runtime-tier="safe"] .blur-\[30px\] {
+  filter: blur(10px) !important;
+  opacity: 0.45 !important;
+}
+
+
+/* ============================================================
+   SCROLLBAR
+   (Combined: File A structure + warm gradient thumb)
+   ============================================================ */
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-color: rgba(151, 164, 183, 0.34) transparent;
 }
 
 *::-webkit-scrollbar {
@@ -150,28 +249,101 @@ svg {
 }
 
 *::-webkit-scrollbar-thumb {
-  border-radius: var(--radius-full);
-  border: var(--space-px) solid transparent;
-  background: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  /* File A warm gradient thumb — reinforces industrial accent */
+  background: linear-gradient(180deg, rgba(171, 159, 147, 0.36), rgba(197, 109, 45, 0.24));
   background-clip: padding-box;
 }
 
-*::-webkit-scrollbar-thumb:hover {
-  background: var(--scrollbar-thumb-hover);
+
+/* ============================================================
+   MEDIA BASE RULES
+   ============================================================ */
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+  height: auto;  /* File A — File B omitted this */
 }
 
 input[type="checkbox"] {
-  accent-color: var(--action-primary);
+  accent-color: var(--accent);   /* warm accent, File A */
 }
 
-input[type="number"],
-input[data-mono="true"],
-[data-mono="true"] input,
-.mono-metric,
-.operational-table [data-numeric="true"] {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
+:where(.overflow-x-auto) {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior-x: contain;  /* File A */
 }
+
+
+/* ============================================================
+   TAILWIND UTILITIES LAYER
+   (File B — surface panel system, safe area pads)
+   ============================================================ */
+
+@layer utilities {
+  .app-shell-content {
+    min-width: 0;
+    overflow-x: clip;
+  }
+
+  /* Glass surface system — backdrop blur with warm border */
+  .surface-panel {
+    border: 1px solid var(--border);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
+      var(--card);
+    box-shadow: var(--shadow-md);
+    backdrop-filter: blur(22px);
+  }
+
+  .surface-panel-strong {
+    border: 1px solid var(--border-strong);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.022)),
+      var(--card-elevated);
+    box-shadow: var(--shadow-lg);
+    backdrop-filter: blur(24px);
+  }
+
+  .surface-panel-soft {
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.04);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(18px);
+  }
+
+  .surface-pill {
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.045);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    backdrop-filter: blur(18px);
+  }
+
+  /* Safe area padding utilities */
+  .safe-bottom-pad {
+    padding-bottom: max(1rem, calc(1rem + env(safe-area-inset-bottom)));
+  }
+
+  .shell-bottom-clearance {
+    padding-bottom: max(7rem, calc(var(--shell-mobile-fixed-stack-clearance, 0px) + env(safe-area-inset-bottom)));
+  }
+
+  .safe-inline-pad {
+    padding-left: max(1rem, calc(1rem + env(safe-area-inset-left)));
+    padding-right: max(1rem, calc(1rem + env(safe-area-inset-right)));
+  }
+}
+
+
+/* ============================================================
+   AUTH PAGE — KEYFRAME ANIMATIONS
+   (File A — cinematic auth screen animations)
+   ============================================================ */
 
 @keyframes auth-rise {
   0% {
@@ -241,12 +413,8 @@ input[data-mono="true"],
 }
 
 @keyframes feedback-fade-in {
-  0% {
-    opacity: 0;
-  }
-  100% {
-    opacity: 1;
-  }
+  0% { opacity: 0; }
+  100% { opacity: 1; }
 }
 
 @keyframes feedback-sheet-in {
@@ -259,6 +427,12 @@ input[data-mono="true"],
     transform: translate3d(0, 0, 0) scale(1);
   }
 }
+
+
+/* ============================================================
+   AUTH PAGE — ANIMATION CLASSES
+   (File A)
+   ============================================================ */
 
 .auth-rise {
   opacity: 0;
@@ -292,18 +466,9 @@ input[data-mono="true"],
   will-change: transform, background-position;
 }
 
-.auth-float-slow {
-  animation: auth-float 16s ease-in-out infinite;
-}
-
-.auth-float-delay {
-  animation: auth-float 13s ease-in-out infinite reverse;
-}
-
-.auth-float-slower {
-  animation: auth-float 19s ease-in-out infinite;
-  animation-delay: -5s;
-}
+.auth-float-slow    { animation: auth-float 16s ease-in-out infinite; }
+.auth-float-delay   { animation: auth-float 13s ease-in-out infinite reverse; }
+.auth-float-slower  { animation: auth-float 19s ease-in-out infinite; animation-delay: -5s; }
 
 .auth-edge-beam {
   background: linear-gradient(90deg, transparent, rgba(154, 226, 255, 0.88), transparent);
@@ -315,6 +480,12 @@ input[data-mono="true"],
     0 0 26px rgba(197, 109, 45, 0.18),
     0 20px 46px rgba(2, 6, 23, 0.48);
 }
+
+
+/* ============================================================
+   OCR CAMERA — ANIMATIONS
+   (File A)
+   ============================================================ */
 
 @keyframes ocr-camera-pulse {
   0%,
@@ -349,6 +520,12 @@ input[data-mono="true"],
   animation: ocr-camera-pulse 2.6s ease-in-out infinite;
 }
 
+
+/* ============================================================
+   UTILITY CLASSES
+   (File A — text/selection safety helpers)
+   ============================================================ */
+
 .overflow-safe-text {
   overflow-wrap: anywhere;
   word-break: break-word;
@@ -370,7 +547,18 @@ input[data-mono="true"],
   -webkit-touch-callout: default;
 }
 
-.ui-no-select :where(.ui-select-text, [data-allow-text-selection="true"], input, textarea, select, [contenteditable="true"], [contenteditable=""], pre, code) {
+/* Re-enable selection inside no-select containers for interactive elements */
+.ui-no-select :where(
+  .ui-select-text,
+  [data-allow-text-selection="true"],
+  input,
+  textarea,
+  select,
+  [contenteditable="true"],
+  [contenteditable=""],
+  pre,
+  code
+) {
   user-select: text;
   -webkit-user-select: text;
   -webkit-touch-callout: default;
@@ -379,6 +567,12 @@ input[data-mono="true"],
 .overflow-safe-children > * {
   min-width: 0;
 }
+
+
+/* ============================================================
+   SAFE AREA INSET CLASSES
+   (File A — directional safe inset helpers, complement to @layer utilities)
+   ============================================================ */
 
 .safe-top-inset {
   padding-top: calc(env(safe-area-inset-top, 0px) + var(--space-2));
@@ -394,12 +588,18 @@ input[data-mono="true"],
 }
 
 .safe-fixed-right {
-  right: calc(env(safe-area-inset-right, 0px) + var(--space-4));
+  right: calc(env(safe-area-inset-right, 0px) + 1rem);
 }
 
 .safe-fixed-left {
-  left: calc(env(safe-area-inset-left, 0px) + var(--space-4));
+  left: calc(env(safe-area-inset-left, 0px) + 1rem);
 }
+
+
+/* ============================================================
+   RESPONSIVE SCROLL AREA COMPONENT
+   (File A — horizontal scroll with fade indicators)
+   ============================================================ */
 
 .responsive-scroll-area__viewport {
   width: 100%;
@@ -417,367 +617,29 @@ input[data-mono="true"],
 .responsive-scroll-area__indicator {
   pointer-events: none;
   position: absolute;
-  top: var(--space-1);
-  bottom: var(--space-1);
+  top: 0.25rem;
+  bottom: 0.25rem;
   z-index: 1;
-  width: var(--space-10);
-  border-radius: var(--radius-full);
-  transition: opacity var(--motion-base) var(--ease-standard);
+  width: 2.5rem;
+  border-radius: 999px;
+  transition: opacity 180ms ease;
 }
 
 .responsive-scroll-area__indicator--left {
   left: 0;
-  background: linear-gradient(90deg, var(--surface-panel), transparent);
+  background: linear-gradient(90deg, rgba(6, 12, 20, 0.88), rgba(6, 12, 20, 0));
 }
 
 .responsive-scroll-area__indicator--right {
   right: 0;
-  background: linear-gradient(270deg, var(--surface-panel), transparent);
+  background: linear-gradient(270deg, rgba(6, 12, 20, 0.88), rgba(6, 12, 20, 0));
 }
 
-:where(.overflow-x-auto) {
-  -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
-  overscroll-behavior-x: contain;
-}
 
-.operational-page {
-  min-height: 100vh;
-  padding: var(--space-4);
-  background:
-    linear-gradient(180deg, color-mix(in srgb, var(--surface-shell) 72%, transparent), transparent 12rem),
-    var(--surface-app);
-}
-
-.operational-page__inner {
-  margin: 0 auto;
-  max-width: 88rem;
-  display: flex;
-  flex-direction: column;
-  gap: var(--density-section-gap);
-}
-
-.operational-hero {
-  border: 0.5px solid var(--border-default);
-  background: color-mix(in srgb, var(--surface-panel) 92%, var(--surface-shell));
-  border-radius: var(--radius-lg);
-  padding: var(--space-4);
-}
-
-.operational-hero__eyebrow {
-  font-size: var(--type-label-dense);
-  font-weight: var(--weight-semibold);
-  line-height: var(--leading-snug);
-  letter-spacing: var(--tracking-wider);
-  text-transform: uppercase;
-  color: var(--text-tertiary);
-}
-
-.operational-hero__title {
-  margin-top: var(--space-2);
-  font-size: var(--type-panel-title);
-  font-weight: var(--weight-semibold);
-  color: var(--text-primary);
-  letter-spacing: var(--tracking-normal);
-}
-
-.operational-hero__body {
-  margin-top: var(--space-2);
-  max-width: 56rem;
-  font-size: var(--type-label-dense);
-  line-height: var(--leading-normal);
-  color: var(--text-secondary);
-}
-
-.operational-panel {
-  border: 0.5px solid var(--border-default);
-  background: var(--surface-panel);
-  border-radius: var(--radius-lg);
-}
-
-.operational-panel--muted {
-  background: color-mix(in srgb, var(--surface-panel) 78%, var(--surface-shell));
-}
-
-.operational-section-grid {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.operational-stat-grid {
-  display: grid;
-  gap: var(--space-3);
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-}
-
-.telemetry-rail {
-  border: 0.5px solid var(--border-default);
-  background: color-mix(in srgb, var(--surface-shell) 72%, var(--surface-panel));
-  border-radius: var(--radius-lg);
-}
-
-.surface-muted {
-  border: 0.5px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--surface-shell) 82%, var(--surface-panel));
-  border-radius: var(--radius-md);
-}
-
-.surface-accent {
-  border: 0.5px solid color-mix(in srgb, var(--border-focus) 45%, var(--border-subtle));
-  background: color-mix(in srgb, var(--surface-selected) 76%, var(--surface-panel));
-  border-radius: var(--radius-md);
-}
-
-.operational-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.operational-form-section {
-  border: 0.5px solid var(--border-default);
-  background: var(--surface-panel);
-  padding: var(--space-4);
-}
-
-.operational-form-footer {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
-  border-top: 0.5px solid var(--border-subtle);
-  background: color-mix(in srgb, var(--surface-shell) 70%, var(--surface-panel));
-  padding: var(--space-3) var(--space-4);
-}
-
-.operational-table {
-  background: var(--surface-panel);
-}
-
-.operational-table th,
-.operational-table td {
-  border-color: var(--border-subtle);
-}
-
-.route-workspace {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.route-header {
-  border: 0.5px solid var(--border-default);
-  background: color-mix(in srgb, var(--surface-panel) 88%, var(--surface-shell));
-  padding: var(--space-4);
-}
-
-.route-header__grid {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: var(--space-4);
-}
-
-.route-header__copy {
-  min-width: 0;
-  flex: 1 1 28rem;
-}
-
-.route-header__eyebrow {
-  font-size: var(--type-label-dense);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-wider);
-  text-transform: uppercase;
-  color: var(--text-secondary);
-}
-
-.route-header__title {
-  margin-top: var(--space-2);
-  font-size: var(--type-page-title);
-  font-weight: var(--weight-semibold);
-  line-height: var(--leading-tight);
-  color: var(--text-primary);
-}
-
-.route-header__body {
-  margin-top: var(--space-2);
-  max-width: 56rem;
-  font-size: var(--type-label);
-  line-height: var(--leading-normal);
-  color: var(--text-secondary);
-}
-
-.route-header__meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-top: var(--space-3);
-}
-
-.route-header__meta-item {
-  border: 0.5px solid var(--border-default);
-  background: var(--surface-shell);
-  padding: var(--space-1-5) var(--space-3);
-  font-size: var(--type-label-dense);
-  color: var(--text-secondary);
-}
-
-.route-header__meta-item strong {
-  font-family: var(--font-mono);
-  color: var(--text-primary);
-}
-
-.route-header__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.route-grid-main {
-  display: grid;
-  gap: var(--space-4);
-}
-
-.route-grid-main--sidebar {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.route-stack {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.route-panel {
-  border: 0.5px solid var(--border-default);
-  background: var(--surface-panel);
-}
-
-.route-panel__header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-4) var(--space-4) var(--space-3);
-  border-bottom: 0.5px solid var(--border-subtle);
-}
-
-.route-panel__body {
-  padding: var(--space-4);
-}
-
-.route-panel__eyebrow {
-  font-size: var(--type-label-dense);
-  font-weight: var(--weight-semibold);
-  letter-spacing: var(--tracking-wider);
-  text-transform: uppercase;
-  color: var(--text-secondary);
-}
-
-.route-panel__title {
-  margin-top: var(--space-1);
-  font-size: var(--type-panel-title);
-  font-weight: var(--weight-semibold);
-  color: var(--text-primary);
-}
-
-.route-panel__hint {
-  margin-top: var(--space-2);
-  font-size: var(--type-label-dense);
-  line-height: var(--leading-normal);
-  color: var(--text-secondary);
-}
-
-.route-metrics-grid {
-  display: grid;
-  gap: var(--space-3);
-  grid-template-columns: repeat(auto-fit, minmax(10.5rem, 1fr));
-}
-
-.route-metric {
-  border: 0.5px solid var(--border-default);
-  background: var(--surface-shell);
-  padding: var(--space-3);
-}
-
-.route-metric__label {
-  font-size: var(--type-label-dense);
-  text-transform: uppercase;
-  letter-spacing: var(--tracking-wide);
-  color: var(--text-secondary);
-}
-
-.route-metric__value {
-  margin-top: var(--space-1);
-  font-family: var(--font-mono);
-  font-size: var(--type-numeric-md);
-  color: var(--text-primary);
-}
-
-.route-metric__detail {
-  margin-top: var(--space-2);
-  font-size: var(--type-label-dense);
-  line-height: var(--leading-normal);
-  color: var(--text-secondary);
-}
-
-.route-table-anchor {
-  border: 0.5px solid var(--border-default);
-  background: var(--surface-panel);
-}
-
-.route-table-anchor__header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-4);
-  border-bottom: 0.5px solid var(--border-subtle);
-}
-
-.route-table-anchor__body {
-  padding: 0;
-}
-
-.route-telemetry-rail {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-}
-
-.route-telemetry-card {
-  border: 0.5px solid var(--border-default);
-  background: color-mix(in srgb, var(--surface-shell) 78%, var(--surface-panel));
-  padding: var(--space-4);
-}
-
-@media (min-width: 1280px) {
-  .route-grid-main--sidebar {
-    grid-template-columns: minmax(0, 1.28fr) minmax(18rem, 0.72fr);
-    align-items: start;
-  }
-
-  .route-telemetry-rail {
-    position: sticky;
-    top: calc(var(--space-4) + 4.5rem);
-  }
-}
-
-.mono-metric {
-  font-family: var(--font-mono);
-  font-variant-numeric: tabular-nums;
-}
-
-@media (min-width: 768px) {
-  .operational-page {
-    padding: var(--space-5);
-  }
-}
+/* ============================================================
+   REDUCED MOTION — AUTH & OCR
+   (File A)
+   ============================================================ */
 
 @media (prefers-reduced-motion: reduce) {
   .auth-rise,
@@ -794,23 +656,404 @@ input[data-mono="true"],
   }
 }
 
+
+/* ============================================================
+   INDUSTRIAL COMPONENT CLASSES — ACCESS SHELL
+   (File B)
+   ============================================================ */
+
+.industrial-access-shell {
+  background:
+    linear-gradient(180deg, rgba(6, 11, 19, 0.96), rgba(10, 16, 26, 0.98)),
+    var(--bg);
+}
+
+.industrial-brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 1px solid rgba(197, 109, 45, 0.22);   /* warm accent border */
+  border-radius: 0.95rem;
+  background:
+    linear-gradient(135deg, rgba(197, 109, 45, 0.28), rgba(31, 138, 120, 0.18)),
+    rgba(255, 255, 255, 0.02);
+  box-shadow: 0 10px 26px rgba(3, 8, 18, 0.3);
+}
+
+.industrial-console-panel {
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.015)),
+    rgba(14, 20, 31, 0.94);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 22px 54px rgba(3, 8, 18, 0.42);
+  backdrop-filter: blur(18px);
+}
+
+.industrial-console-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at top left, rgba(197, 109, 45, 0.1), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 26%);
+}
+
+.industrial-access-input {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.01);
+}
+
+.industrial-access-input:focus {
+  box-shadow:
+    0 0 0 1px rgba(197, 109, 45, 0.5),
+    0 0 0 6px rgba(197, 109, 45, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.industrial-access-cta {
+  background:
+    linear-gradient(180deg, rgba(222, 145, 80, 0.96), rgba(185, 98, 38, 0.96)),
+    var(--accent);
+  color: #1a0a02;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 18px 34px rgba(197, 109, 45, 0.28);
+}
+
+.industrial-access-cta:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 22px 38px rgba(197, 109, 45, 0.34);
+  filter: brightness(1.03);
+}
+
+.industrial-node-active {
+  border-color: rgba(197, 109, 45, 0.34) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 16px 36px rgba(197, 109, 45, 0.16),
+    0 -2px 0 rgba(197, 109, 45, 0.8) inset;
+}
+
+.industrial-signal-dot {
+  flex: none;
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 999px;
+}
+
+.industrial-performance-panel {
+  position: relative;
+  background:
+    linear-gradient(180deg, rgba(10, 18, 29, 0.92), rgba(10, 18, 29, 0.98)),
+    radial-gradient(circle at 35% 35%, rgba(31, 138, 120, 0.12), transparent 34%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 20px 48px rgba(3, 8, 18, 0.38);
+}
+
+.industrial-performance-panel::after {
+  content: "";
+  position: absolute;
+  inset: 1.25rem;
+  border-radius: 1rem;
+  pointer-events: none;
+  opacity: 0.34;
+  background:
+    linear-gradient(90deg, rgba(31, 138, 120, 0.18), transparent 18%, transparent 82%, rgba(197, 109, 45, 0.18)),
+    radial-gradient(circle at 50% 100%, rgba(255, 255, 255, 0.06), transparent 44%);
+}
+
+
+/* ============================================================
+   INDUSTRIAL COMPONENT CLASSES — BOTTOM DOCK
+   (File B)
+   ============================================================ */
+
+.industrial-bottom-dock {
+  padding-bottom: max(0.6rem, calc(0.6rem + env(safe-area-inset-bottom)));
+}
+
+.industrial-dock-item {
+  min-width: 4.3rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 1rem;
+  padding: 0.9rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.36);
+  transition:
+    background 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.industrial-dock-item:hover {
+  color: rgba(255, 255, 255, 0.74);
+}
+
+.industrial-dock-item-active {
+  /* warm accent dock active state */
+  background: linear-gradient(180deg, rgba(222, 140, 68, 0.96), rgba(185, 95, 35, 0.96));
+  color: #1a0802;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
+}
+
+@media (max-width: 639px) {
+  .industrial-access-shell {
+    padding-bottom: calc(7rem + env(safe-area-inset-bottom));
+  }
+}
+
+
+/* ============================================================
+   INDUSTRIAL COMPONENT CLASSES — AUTH SCREEN
+   (File B structure — warm accent applied throughout)
+   ============================================================ */
+
+.industrial-auth-shell {
+  background:
+    radial-gradient(circle at 50% 14%, rgba(197, 109, 45, 0.13), transparent 18%),
+    radial-gradient(circle at 50% 86%, rgba(31, 138, 120, 0.08), transparent 22%),
+    linear-gradient(180deg, #05101a 0%, #081625 52%, #06111b 100%);
+}
+
+.industrial-auth-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(197, 109, 45, 0.28);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(197, 109, 45, 0.12), transparent 34%),
+    linear-gradient(180deg, rgba(32, 39, 52, 0.88), rgba(18, 23, 33, 0.94));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px rgba(197, 109, 45, 0.08),
+    0 34px 88px rgba(2, 8, 20, 0.64),
+    0 0 90px rgba(197, 109, 45, 0.1);
+  backdrop-filter: blur(22px);
+}
+
+.industrial-auth-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), transparent 24%),
+    radial-gradient(circle at 50% 12%, rgba(197, 109, 45, 0.1), transparent 28%);
+}
+
+.industrial-auth-card::after {
+  content: "";
+  position: absolute;
+  inset: 1.2rem;
+  border-radius: 1.45rem;
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.industrial-auth-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.8rem;
+  height: 2.8rem;
+  border-radius: 0.9rem;
+  background:
+    linear-gradient(180deg, rgba(222, 165, 100, 0.96), rgba(185, 98, 40, 0.94)),
+    var(--accent);
+  color: #1a0a02;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.28),
+    0 14px 26px rgba(197, 109, 45, 0.24);
+}
+
+.industrial-auth-mark span {
+  font-size: 1.78rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: -0.08em;
+}
+
+.industrial-google-button {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 14px 28px rgba(2, 8, 20, 0.24);
+}
+
+.industrial-auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  color: rgba(193, 205, 220, 0.68);
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.industrial-auth-divider::before,
+.industrial-auth-divider::after {
+  content: "";
+  flex: 1 1 0%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.16), transparent);
+}
+
+.industrial-auth-input {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.015);
+}
+
+.industrial-auth-input:focus {
+  border-color: rgba(197, 109, 45, 0.7) !important;
+  box-shadow:
+    0 0 0 1px rgba(197, 109, 45, 0.5),
+    0 0 0 5px rgba(197, 109, 45, 0.08),
+    0 0 24px rgba(197, 109, 45, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.industrial-auth-submit {
+  background:
+    linear-gradient(180deg, rgba(222, 145, 80, 1), rgba(185, 95, 35, 1)),
+    var(--accent);
+  color: #1a0802;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.26),
+    0 18px 30px rgba(197, 109, 45, 0.22);
+}
+
+.industrial-auth-submit:hover:not(:disabled) {
+  filter: brightness(1.04);
+  transform: translateY(-1px);
+}
+
+.industrial-auth-feature {
+  position: relative;
+}
+
+.industrial-auth-feature-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.85rem;
+  height: 2.85rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(220, 230, 242, 0.86);
+}
+
+@media (max-width: 640px) {
+  .industrial-auth-card {
+    border-radius: 1.65rem;
+  }
+
+  .industrial-auth-divider {
+    gap: 0.6rem;
+    font-size: 0.76rem;
+    letter-spacing: 0.12em;
+  }
+}
+
+
+/* ============================================================
+   DASHBOARD — ANIMATIONS
+   (Identical in both files — kept once)
+   ============================================================ */
+
+@keyframes dashboardStatusPulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.95;
+  }
+  50% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+}
+
+.dashboard-status-pulse {
+  animation: dashboardStatusPulse 2.2s ease-in-out infinite;
+}
+
+.dashboard-soft-lift {
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
+  will-change: transform;
+}
+
+.dashboard-soft-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 34px rgba(3, 8, 18, 0.22);
+}
+
+.dashboard-soft-lift:active {
+  transform: scale(0.992);
+}
+
+
+/* ============================================================
+   REDUCED MOTION — DASHBOARD
+   (File B)
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-status-pulse {
+    animation: none;
+  }
+
+  .dashboard-soft-lift {
+    transition: none;
+  }
+
+  .dashboard-soft-lift:hover,
+  .dashboard-soft-lift:active {
+    transform: none;
+  }
+}
+
+
+/* ============================================================
+   THIRD-PARTY OVERRIDES — APEXCHARTS
+   (File A — chart tooltip theming)
+   ============================================================ */
+
 .apexcharts-tooltip,
 .apexcharts-xaxistooltip {
-  border: var(--space-px) solid var(--border-default) !important;
-  background: var(--surface-elevated) !important;
-  color: var(--text-primary) !important;
-  box-shadow: none !important;
+  border: 1px solid #d6d3d1 !important;
+  background: #ffffff !important;
+  color: #111111 !important;
+  box-shadow: 0 16px 36px rgba(15, 23, 42, 0.12) !important;
 }
 
 .apexcharts-tooltip-title {
-  border-bottom: var(--space-px) solid var(--border-subtle) !important;
-  background: var(--surface-shell) !important;
-  color: var(--text-primary) !important;
-  font-weight: var(--weight-semibold) !important;
+  border-bottom: 1px solid #f5f5f4 !important;
+  background: #fafaf9 !important;
+  color: #111111 !important;
+  font-weight: 600 !important;
 }
 
 .apexcharts-tooltip-text,
 .apexcharts-tooltip-series-group,
 .apexcharts-xaxistooltip-text {
-  color: var(--text-primary) !important;
+  color: #111111 !important;
 }
