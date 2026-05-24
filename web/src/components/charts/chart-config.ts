@@ -1,7 +1,7 @@
 "use client";
 
 import type { ApexOptions } from "apexcharts";
-import { INDUSTRIAL_CHART_THEME } from "@/components/charts/industrial-chart-theme";
+import type { ChartThemeConfig } from "@/components/charts/industrial-chart-theme";
 
 type DrillDownMeta = {
   chartId: string;
@@ -11,6 +11,7 @@ type DrillDownMeta = {
 };
 
 type SharedConfig = {
+  theme: ChartThemeConfig;
   chartId: string;
   categories: string[];
   horizontal?: boolean;
@@ -22,6 +23,7 @@ type SharedConfig = {
 };
 
 function baseOptions({
+  theme,
   chartId,
   categories,
   horizontal = false,
@@ -37,8 +39,8 @@ function baseOptions({
       toolbar: { show: false },
       zoom: { enabled: false },
       stacked,
-      background: "transparent",
-      foreColor: INDUSTRIAL_CHART_THEME.text,
+      background: theme.apex.chartBackground,
+      foreColor: theme.textPrimary,
       animations: {
         enabled: false,
       },
@@ -69,7 +71,7 @@ function baseOptions({
       },
     },
     grid: {
-      borderColor: INDUSTRIAL_CHART_THEME.grid,
+      borderColor: theme.apex.gridColor,
       strokeDashArray: 3,
       padding: {
         left: 8,
@@ -80,7 +82,7 @@ function baseOptions({
     },
     legend: {
       show: true,
-      labels: { colors: INDUSTRIAL_CHART_THEME.text },
+      labels: { colors: theme.apex.legendTextColor },
       fontSize: "12px",
       itemMargin: {
         horizontal: 10,
@@ -104,12 +106,13 @@ function baseOptions({
       categories,
       labels: {
         style: {
-          colors: INDUSTRIAL_CHART_THEME.muted,
+          colors: theme.apex.axisLabelColor,
           fontSize: "12px",
         },
       },
       axisBorder: {
-        show: false,
+        show: true,
+        color: theme.apex.axisLineColor,
       },
       axisTicks: {
         show: false,
@@ -119,7 +122,7 @@ function baseOptions({
       labels: {
         formatter: yFormatter,
         style: {
-          colors: INDUSTRIAL_CHART_THEME.muted,
+          colors: theme.apex.axisLabelColor,
           fontSize: "12px",
         },
       },
@@ -130,11 +133,11 @@ function baseOptions({
       style: {
         fontSize: "11px",
         fontWeight: 600,
-        colors: [INDUSTRIAL_CHART_THEME.text],
+        colors: [theme.apex.dataLabelColor],
       },
     },
     tooltip: {
-      theme: "light",
+      theme: theme.apex.tooltipMode,
       style: {
         fontSize: "12px",
         fontFamily: "IBM Plex Sans, sans-serif",
@@ -175,7 +178,7 @@ function baseOptions({
               trim: true,
               hideOverlappingLabels: true,
               style: {
-                colors: INDUSTRIAL_CHART_THEME.muted,
+                colors: theme.apex.axisLabelColor,
                 fontSize: "11px",
               },
             },
@@ -183,7 +186,7 @@ function baseOptions({
           yaxis: {
             labels: {
               style: {
-                colors: INDUSTRIAL_CHART_THEME.muted,
+                colors: theme.apex.axisLabelColor,
                 fontSize: "11px",
               },
             },
@@ -199,6 +202,7 @@ export function buildBarChartOptions(config: SharedConfig): ApexOptions {
 }
 
 export function buildLineChartOptions({
+  theme,
   chartId,
   categories,
   onDrillDown,
@@ -207,6 +211,7 @@ export function buildLineChartOptions({
 }: Omit<SharedConfig, "horizontal" | "stacked" | "dataLabelFormatter">): ApexOptions {
   return {
     ...baseOptions({
+      theme,
       chartId,
       categories,
       onDrillDown,
@@ -220,6 +225,8 @@ export function buildLineChartOptions({
     markers: {
       size: 4,
       strokeWidth: 0,
+      colors: [theme.series.processing],
+      strokeColors: theme.apex.markerFillColor,
       hover: { size: 6 },
     },
     fill: {

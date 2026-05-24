@@ -683,7 +683,7 @@ export default function ReportsPage() {
 
   return (
     <main className="min-h-screen px-4 py-8 md:px-8" data-component="reports-page">
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="mx-auto max-w-7xl">
         <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div>
             <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("reports.title", "Reports")}</div>
@@ -753,7 +753,7 @@ export default function ReportsPage() {
         {sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{sessionError}</div> : null}
 
         {/* AUDIT: BUTTON_CLUTTER - Cross-product routes and deeper reporting lanes stay available, but they no longer compete with the export desk on first scan. */}
-        <details className={reportPanelClass}>
+        <details className={`${reportPanelClass} mt-[var(--space-xl)]`}>
           <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">Connected lanes</summary>
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
             {reportHubCards.map((card) => (
@@ -774,7 +774,7 @@ export default function ReportsPage() {
           </div>
         </details>
 
-        <section className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
+        <section className="mt-[var(--space-xl)] grid gap-6 xl:grid-cols-[1.15fr_0.85fr]">
           <Card className={reportPanelClass}>
             <CardHeader className="space-y-4">
               <div>
@@ -934,9 +934,9 @@ export default function ReportsPage() {
         </section>
 
         {/* AUDIT: DENSITY_OVERLOAD - Trust and analysis surfaces remain available, but they now sit behind one reveal so the range and export desk lead the screen. */}
-        <details className={reportPanelClass}>
+        <details className={`${reportPanelClass} mt-[var(--space-xl)]`}>
           <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("reports.trust_insights", "Trust and insights")}</summary>
-          <div className="mt-4 space-y-6">
+          <div className="mt-[var(--space-md)] space-y-6">
             <ReportInsightsBoard insights={insights} loading={loadingInsights} role={user.role} steelOverview={steelOverview} />
             {ocrSummary ? (
             <Card className="rounded-[1.5rem] border-[0.5px] border-cyan-400/20 bg-[rgba(var(--color-border-info),0.08)]">
@@ -984,9 +984,9 @@ export default function ReportsPage() {
         </details>
 
         {/* AUDIT: BUTTON_CLUTTER - The AI summary stays available as a secondary reporting lane instead of competing with the main export action. */}
-        <details className={reportPanelClass}>
+        <details className={`${reportPanelClass} mt-[var(--space-xl)]`}>
           <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("reports.executive_summary", "Executive summary")}</summary>
-          <div className="mt-4">
+          <div className="mt-[var(--space-md)]">
             <Card>
               <CardHeader className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
                 <div>

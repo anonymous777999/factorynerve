@@ -274,7 +274,7 @@ export default function AnalyticsPage() {
         </section>
 
         {refreshing ? <div className="operational-panel px-4 py-3 text-sm text-[var(--muted)]">{t("analytics.refreshing_background", "Refreshing analytics...")}</div> : null}
-        {locked ? <div className="operational-panel border-status-warning-border bg-status-warning-bg px-4 py-3 text-sm text-status-warning-fg">{locked}</div> : null}
+        {locked ? <div className="operational-panel border-status-info-border bg-status-info-bg px-4 py-3 text-sm text-status-info-fg">{locked}</div> : null}
 
         <section className="route-grid-main route-grid-main--sidebar">
           <div className="route-stack">
@@ -336,7 +336,7 @@ export default function AnalyticsPage() {
                       <>
                         <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell p-4">
                           <div className="text-[var(--muted)]">{t("analytics.diagnostics.production_trend", "Production Trend")}</div>
-                          <div className="mt-1 font-mono text-lg font-semibold">{trends.production_trend}</div>
+                          <div className="mt-1 font-sans text-lg font-semibold">{trends.production_trend}</div>
                         </div>
                         <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell p-4">
                           <div className="text-[var(--muted)]">{t("analytics.diagnostics.common_issues", "Common Issues")}</div>
@@ -410,11 +410,11 @@ export default function AnalyticsPage() {
                   <>
                     <div className="rounded-panel border-[0.5px] border-border-default bg-surface-panel p-4">
                       <div className="text-sm text-[var(--muted)]">{t("analytics.monthly.best_day", "Best Day")}</div>
-                      <div className="mt-1 font-mono text-lg font-semibold">{monthly.best_day ? `${formatDate(monthly.best_day.date, locale)} - ${monthly.best_day.performance.toFixed(1)}%` : "-"}</div>
+                      <div className="mt-1 font-sans text-lg font-semibold">{monthly.best_day ? `${formatDate(monthly.best_day.date, locale)} - ${monthly.best_day.performance.toFixed(1)}%` : "-"}</div>
                     </div>
                     <div className="rounded-panel border-[0.5px] border-border-default bg-surface-panel p-4">
                       <div className="text-sm text-[var(--muted)]">{t("analytics.monthly.worst_day", "Worst Day")}</div>
-                      <div className="mt-1 font-mono text-lg font-semibold">{monthly.worst_day ? `${formatDate(monthly.worst_day.date, locale)} - ${monthly.worst_day.performance.toFixed(1)}%` : "-"}</div>
+                      <div className="mt-1 font-sans text-lg font-semibold">{monthly.worst_day ? `${formatDate(monthly.worst_day.date, locale)} - ${monthly.worst_day.performance.toFixed(1)}%` : "-"}</div>
                     </div>
                     <div className="rounded-panel border-[0.5px] border-border-default bg-surface-panel p-4">
                       <div className="text-sm text-[var(--muted)]">{t("analytics.monthly.average", "Average Performance")}</div>

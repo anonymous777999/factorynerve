@@ -425,7 +425,9 @@ export function DataTable<TData extends RowData>({
 
   const scrollViewportRef = React.useRef<HTMLDivElement | null>(null);
   const keyboardScopeRef = React.useRef<HTMLDivElement | null>(null);
-  const rowHeight = useDensityMetric("--density-row-height", 36);
+  const densityRowMetric = useDensityMetric("--density-row-height", 34);
+  const rowHeight =
+    densityRowMetric >= 48 ? 52 : densityRowMetric <= 28 ? 36 : 44;
 
   const rows = table.getRowModel().rows;
   rowsForSelectionRef.current = rows.map((row) => ({
@@ -627,7 +629,7 @@ export function DataTable<TData extends RowData>({
                       key={header.id}
                       scope="col"
                       className={cn(
-                        "ui-no-select ui-no-callout border-b border-border-subtle bg-surface-shell px-cell-x py-cell-y text-table-header font-semibold uppercase tracking-wide text-text-secondary",
+                        "ui-no-select ui-no-callout border-b border-border-subtle bg-surface-shell px-cell-x py-cell-y text-[length:var(--text-xs)] font-medium uppercase tracking-[var(--tracking-wide)] text-text-tertiary",
                         alignmentClassNames[align],
                         isSticky ? "sticky left-0 z-sticky border-r border-border-subtle" : "",
                         meta?.headerClassName,
@@ -709,6 +711,7 @@ export function DataTable<TData extends RowData>({
                   key={row.id}
                   aria-selected={isSelected || undefined}
                   data-state={Array.from(rowStates).join(" ") || undefined}
+                  style={{ height: `${rowHeight}px` }}
                   className={cn(
                     "group transition-[background-color,border-color] duration-fast ease-standard",
                     onRowClick ? "cursor-pointer" : "",
@@ -729,7 +732,7 @@ export function DataTable<TData extends RowData>({
                     const cellProps = getCellProps(rowIndex, columnIndex, row.id);
                     const keyboardHandler = cellProps.onKeyDown;
                     const commonClassName = cn(
-                      "border-b border-border-subtle px-cell-x py-[calc(var(--density-cell-pad-y)-1px)] align-middle text-table-density text-text-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-border-focus",
+                      "border-b border-border-subtle px-cell-x py-[calc(var(--density-cell-pad-y)+2px)] align-middle text-[length:var(--text-base)] text-text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-border-focus",
                       alignmentClassNames[align],
                       meta?.wrap ? "whitespace-normal" : "whitespace-nowrap",
                       getStickyCellClassName(isSticky, rowStates),
@@ -749,7 +752,7 @@ export function DataTable<TData extends RowData>({
                           data-col-index={columnIndex}
                           data-dpr-table-cell="true"
                           data-row-index={rowIndex}
-                          className={cn(commonClassName, "font-medium")}
+                          className={cn(commonClassName, "font-medium text-text-primary")}
                           {...cellProps}
                           onKeyDown={(event) => {
                             keyboardHandler(event);

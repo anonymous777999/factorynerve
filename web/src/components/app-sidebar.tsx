@@ -569,9 +569,9 @@ function NavContent({
       {sections.map((section) => {
         const translatedSectionTitle = localizedSectionTitle(section.title, translate);
         return (
-          <div key={section.title} className="space-y-3">
+          <div key={section.title} className="space-y-0">
             {hideSectionTitles ? null : (
-              <div className="ui-no-select ui-no-callout px-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+              <div className="ui-no-select ui-no-callout mb-[var(--space-1)] px-1 text-[length:var(--text-xs)] font-medium uppercase tracking-[var(--tracking-wider)] text-text-tertiary">
                 {translatedSectionTitle}
               </div>
             )}
@@ -830,14 +830,14 @@ export function AppSidebar({
               const expanded = resolvedExpandedSections[storageKey] ?? false;
               const active = section.items.some((item) => item.match(currentPath));
               return (
-                <div key={section.title} className="space-y-3">
+                <div key={section.title} className="space-y-[var(--space-1)]">
                   <button
                     type="button"
                     className="flex w-full items-center justify-between rounded-panel border-[0.5px] border-border-default bg-surface-panel px-3 py-2 text-left transition hover:border-border-strong hover:bg-surface-hover"
                     onClick={() => onToggleSectionGroup(storageKey)}
                   >
                     <div className="flex items-center gap-2">
-                      <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+                      <div className="text-[length:var(--text-xs)] font-medium uppercase tracking-[var(--tracking-wider)] text-text-tertiary">
                         {localizedSectionTitle(section.title, translate)}
                       </div>
                       {active ? <span className="inline-flex h-2 w-2 rounded-full bg-[var(--accent)]" /> : null}
@@ -1135,7 +1135,7 @@ export function AppDesktopContextRail({
           type="button"
           aria-label={translate ? translate("shell.show_workspace", "Show workspace") : "Show workspace"}
           title={translate ? translate("shell.show_workspace", "Show workspace") : "Show workspace"}
-          className="ui-no-select ui-no-callout fixed right-4 top-4 z-30 hidden items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-panel px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-text-primary transition hover:border-border-strong hover:bg-surface-hover xl:inline-flex"
+          className="ui-no-select ui-no-callout fixed right-6 top-[calc(env(safe-area-inset-top,0px)+0.75rem)] z-sticky hidden items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-panel px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-text-primary shadow-xs transition hover:border-border-strong hover:bg-surface-hover xl:inline-flex"
           onClick={onToggle}
         >
           Workspace

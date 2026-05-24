@@ -63,6 +63,51 @@ select {
   border-radius: 0;
 }
 
+/* Form Controls */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+textarea,
+select {
+  background: var(--surface-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  outline: none;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+select {
+  height: 36px;
+  padding: 0 var(--space-3);
+}
+
+textarea {
+  padding: var(--space-2) var(--space-3);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):focus,
+textarea:focus,
+select:focus {
+  border-color: var(--border-focus);
+  box-shadow: var(--focus-ring);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):disabled,
+textarea:disabled,
+select:disabled {
+  background: var(--action-disabled);
+  color: var(--action-disabled-text);
+  cursor: not-allowed;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"])::placeholder,
+textarea::placeholder,
+select::placeholder {
+  color: var(--text-tertiary);
+}
+
 ::selection {
   background: var(--surface-selected);
   color: var(--text-primary);

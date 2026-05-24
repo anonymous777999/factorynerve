@@ -6,8 +6,9 @@ import type { ApexOptions } from "apexcharts";
 import { ApexChartClient } from "@/components/charts/apex-chart-client";
 import { ChartCard } from "@/components/charts/chart-card";
 import { buildLineChartOptions } from "@/components/charts/chart-config";
-import { INDUSTRIAL_CHART_THEME } from "@/components/charts/industrial-chart-theme";
+import { getChartTheme } from "@/components/charts/industrial-chart-theme";
 import type { RevenueTrendDatum } from "@/lib/industrial-dashboard";
+import { useUiPreferences } from "@/providers/ui-preferences-provider";
 
 export function RevenueChart({
   data,
@@ -18,6 +19,8 @@ export function RevenueChart({
   loading?: boolean;
   onDrillDown?: (meta: { chartId: string; label: string; seriesName: string; value: number }) => void;
 }) {
+  const { theme: appTheme } = useUiPreferences();
+  const chartTheme = useMemo(() => getChartTheme(), [appTheme]);
   const categories = useMemo(() => data.map((item) => item.label), [data]);
   const series = useMemo(
     () => [
@@ -37,6 +40,7 @@ export function RevenueChart({
   const options: ApexOptions = useMemo(
     () => ({
       ...buildLineChartOptions({
+        theme: chartTheme,
         chartId: "revenue-chart",
         categories,
         onDrillDown,
@@ -48,7 +52,7 @@ export function RevenueChart({
             maximumFractionDigits: 0,
           }).format(value),
       }),
-      colors: [INDUSTRIAL_CHART_THEME.navy, INDUSTRIAL_CHART_THEME.aqua],
+      colors: [chartTheme.series.primary, chartTheme.series.processing],
       stroke: {
         width: [0, 3],
         curve: "smooth" as const,
@@ -70,12 +74,12 @@ export function RevenueChart({
       },
       markers: {
         size: 6,
-        colors: ["#ffffff"],
-        strokeColors: INDUSTRIAL_CHART_THEME.teal,
+        colors: [chartTheme.apex.markerFillColor],
+        strokeColors: chartTheme.series.processing,
         strokeWidth: 3,
       },
     }),
-    [categories, onDrillDown],
+    [categories, chartTheme, onDrillDown],
   );
   const isEmpty = !data.length || data.every((item) => item.valueInr <= 0);
 
@@ -88,7 +92,7 @@ export function RevenueChart({
       emptyTitle="No revenue trend yet"
       emptyDescription="Create steel invoices and dispatch-linked revenue records to unlock the commercial trend view."
     >
-      <ApexChartClient type="line" options={options} series={series} height={320} />
+      <ApexChartClient type="line" options={options} series={series} height={320} theme={chartTheme} />
     </ChartCard>
   );
 }

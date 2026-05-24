@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 
 export default function FactoryRequiredPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[#090d14] px-6 py-10 text-[#e8edf7]">
+    <main className="flex min-h-screen items-center justify-center bg-[var(--surface-industrial-deep)] px-6 py-10 text-[var(--text-primary)]">
       <div className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(24,28,37,0.98),rgba(18,23,33,0.98))] p-8 shadow-[0_24px_60px_rgba(2,6,23,0.45)]">
         <div className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-200/80">
           Workspace update
@@ -19,7 +19,7 @@ export default function FactoryRequiredPage() {
         </p>
         <div className="mt-8">
           <Link href="mailto:admin@dpr.ai">
-            <Button className="rounded-xl bg-[linear-gradient(180deg,#89bcf8,#55a9ff)] px-5 text-sm font-semibold text-[#07131f]">
+            <Button className="rounded-xl px-5 text-sm font-semibold">
               Request access from your administrator
             </Button>
           </Link>

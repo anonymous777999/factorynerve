@@ -6,8 +6,9 @@ import type { ApexOptions } from "apexcharts";
 
 import { ApexChartClient } from "@/components/charts/apex-chart-client";
 import { ChartCard } from "@/components/charts/chart-card";
-import { INDUSTRIAL_CHART_THEME } from "@/components/charts/industrial-chart-theme";
+import { getChartTheme } from "@/components/charts/industrial-chart-theme";
 import type { DonutSliceDatum } from "@/lib/industrial-dashboard";
+import { useUiPreferences } from "@/providers/ui-preferences-provider";
 
 export function LossTypeDonutChart({
   title,
@@ -22,6 +23,8 @@ export function LossTypeDonutChart({
   loading?: boolean;
   onDrillDown?: (meta: { chartId: string; label: string; seriesName: string; value: number }) => void;
 }) {
+  const { theme: appTheme } = useUiPreferences();
+  const chartTheme = useMemo(() => getChartTheme(), [appTheme]);
   const series = useMemo(() => data.map((item) => item.value), [data]);
   const labels = useMemo(() => data.map((item) => item.label), [data]);
   const total = useMemo(() => series.reduce((sum, value) => sum + value, 0), [series]);
@@ -30,8 +33,9 @@ export function LossTypeDonutChart({
     () => ({
       chart: {
         type: "donut",
-        background: "transparent",
+        background: chartTheme.apex.chartBackground,
         toolbar: { show: false },
+        foreColor: chartTheme.textPrimary,
         events: {
           dataPointSelection: (_event, _chartContext, config) => {
             if (!onDrillDown || !config) return;
@@ -48,22 +52,22 @@ export function LossTypeDonutChart({
       legend: {
         position: "bottom",
         labels: {
-          colors: INDUSTRIAL_CHART_THEME.text,
+          colors: chartTheme.apex.legendTextColor,
         },
       },
-      colors: [INDUSTRIAL_CHART_THEME.blue, INDUSTRIAL_CHART_THEME.teal, INDUSTRIAL_CHART_THEME.coral],
+      colors: [chartTheme.series.processing, chartTheme.series.warning, chartTheme.series.danger],
       stroke: {
-        colors: ["#ffffff"],
+        colors: [chartTheme.apex.donutStrokeColor],
       },
       dataLabels: {
         enabled: true,
         formatter: (value) => `${Number(value).toFixed(0)}%`,
         style: {
-          colors: ["#ffffff"],
+          colors: [chartTheme.apex.dataLabelColor],
         },
       },
       tooltip: {
-        theme: "light",
+        theme: chartTheme.apex.tooltipMode,
         y: {
           formatter: (value) => `${value}%`,
         },
@@ -79,13 +83,14 @@ export function LossTypeDonutChart({
                 show: true,
                 label: "Total",
                 formatter: () => `${total}%`,
+                color: chartTheme.textPrimary,
               },
             },
           },
         },
       },
     }),
-    [labels, onDrillDown, series, total],
+    [chartTheme, labels, onDrillDown, series, total],
   );
   const isEmpty = !data.length || data.every((item) => item.value <= 0);
 
@@ -98,7 +103,7 @@ export function LossTypeDonutChart({
       emptyTitle="No severity mix yet"
       emptyDescription="Once anomaly batches are ranked, this chart will show whether the current mix is mostly watch, high, or critical."
     >
-      <ApexChartClient type="donut" options={options} series={series} height={320} />
+      <ApexChartClient type="donut" options={options} series={series} height={320} theme={chartTheme} />
     </ChartCard>
   );
 }

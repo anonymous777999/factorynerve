@@ -347,45 +347,45 @@ export function IndustrialFactoryDashboard({
       ))}
       <Card className="shadow-xs">
         <CardHeader>
-          <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Active Filters</div>
-          <CardTitle className="mt-2 text-lg text-[#111111]">Control context</CardTitle>
+          <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Active Filters</div>
+          <CardTitle className="mt-2 text-lg text-text-primary">Control context</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm text-[#57534e]">
+        <CardContent className="space-y-2 text-sm text-text-secondary">
           {activeData.filterPanels.map((panel) => (
             <div
               key={panel.id}
-              className="flex flex-col gap-1 rounded-xl border border-[#e7e5e4] bg-[#f5f5f4] px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
+              className="flex flex-col gap-1 rounded-xl border border-border-default bg-surface-elevated px-3 py-2 sm:flex-row sm:items-center sm:justify-between sm:gap-3"
             >
               <span>{panel.title}</span>
-              <span className="font-semibold text-[#111111]">{selectedFilters[panel.id] || "-"}</span>
+              <span className="font-semibold text-text-primary">{selectedFilters[panel.id] || "-"}</span>
             </div>
           ))}
         </CardContent>
       </Card>
       <Card className="shadow-xs">
         <CardHeader>
-          <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Action Center</div>
-          <CardTitle className="mt-2 text-lg text-[#111111]">Next best step</CardTitle>
+          <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Action Center</div>
+          <CardTitle className="mt-2 text-lg text-text-primary">Next best step</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm text-[#57534e]">
+        <CardContent className="space-y-3 text-sm text-text-secondary">
           {filterStatus ? (
-            <div className="rounded-xl border border-[#e7e5e4] bg-[#f5f5f4] px-3 py-2">{filterStatus}</div>
+            <div className="rounded-xl border border-border-default bg-surface-elevated px-3 py-2">{filterStatus}</div>
           ) : (
-            <div className="rounded-xl border border-[#e7e5e4] bg-[#f5f5f4] px-3 py-2">
+            <div className="rounded-xl border border-border-default bg-surface-elevated px-3 py-2">
               Pick a filter or tap a chart point to open the right steel workflow.
             </div>
           )}
-          <div className="rounded-xl border border-[#e7e5e4] bg-[#f5f5f4] px-3 py-2 text-xs">
+          <div className="rounded-xl border border-border-default bg-surface-elevated px-3 py-2 text-xs">
             {viewConfig.note}
           </div>
           {drilldownAction ? (
-            <div className="space-y-2 rounded-xl border border-[#e7e5e4] bg-[#f5f5f4] px-3 py-3">
-              <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">{drilldownAction.context}</div>
-              <div className="font-semibold text-[#111111]">
+            <div className="space-y-2 rounded-xl border border-border-default bg-surface-elevated px-3 py-3">
+              <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">{drilldownAction.context}</div>
+              <div className="font-semibold text-text-primary">
                 {lastDrillDown?.seriesName}: {lastDrillDown?.label} ({Math.round(lastDrillDown?.value || 0)})
               </div>
               <Link href={drilldownAction.href} className="block">
-                <Button className="w-full !border-[#111111] !bg-none !bg-[#111111] !text-white hover:!border-[#2f2f2f] hover:!bg-none hover:!bg-[#2f2f2f] sm:w-auto">
+                <Button className="w-full sm:w-auto">
                   {drilldownAction.label}
                 </Button>
               </Link>
@@ -401,10 +401,10 @@ export function IndustrialFactoryDashboard({
       <section className="space-y-6">
         <Card className="shadow-sm">
           <CardHeader>
-            <div className="text-xs uppercase tracking-[0.28em] text-[#78716c]">Steel Dashboard</div>
-            <CardTitle className="mt-3 text-3xl text-[#111111]">Steel-first control board</CardTitle>
+            <div className="text-xs uppercase tracking-[0.28em] text-text-tertiary">Steel Dashboard</div>
+            <CardTitle className="mt-3 text-3xl text-text-primary">Steel-first control board</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm leading-7 text-[#57534e]">
+          <CardContent className="text-sm leading-7 text-text-secondary">
             The new reference-style operations dashboard is currently wired for steel factories only. Once the chemical
             module exists, we can bring the same system back and create a proper chemical variant instead of forcing a
             fake mixed-industry board now.
@@ -421,9 +421,9 @@ export function IndustrialFactoryDashboard({
           {!embedded ? (
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
-                <div className="text-xs uppercase tracking-[0.28em] text-[#78716c]">Steel Control System</div>
-                <CardTitle className="mt-3 text-2xl text-[#111111] md:text-3xl">Steel performance overview</CardTitle>
-                <p className="mt-3 max-w-3xl text-sm leading-7 text-[#57534e]">
+                <div className="text-xs uppercase tracking-[0.28em] text-text-tertiary">Steel Control System</div>
+                <CardTitle className="mt-3 text-2xl text-text-primary md:text-3xl">Steel performance overview</CardTitle>
+                <p className="mt-3 max-w-3xl text-sm leading-7 text-text-secondary">
                   Steel plant signals designed for managers and owners. The focus stays on stock trust, output, batch loss,
                   dispatch movement, and invoiced steel value instead of generic admin widgets.
                 </p>
@@ -442,8 +442,8 @@ export function IndustrialFactoryDashboard({
                 onClick={() => handleRangeSelect(filter.key)}
                 className={
                   selectedRange === filter.key
-                    ? "shrink-0 rounded-full !border-[#111111] !bg-none !bg-[#111111] px-4 py-2 text-sm font-semibold !text-white shadow-sm transition"
-                    : "shrink-0 rounded-full !border-[#d6d3d1] !bg-none !bg-[#f5f5f4] px-4 py-2 text-sm font-semibold !text-[#57534e] transition hover:!border-[#a8a29e] hover:!bg-none hover:!bg-[#e7e5e4]"
+                    ? "shrink-0 rounded-full !border-transparent !bg-[var(--action-primary)] px-4 py-2 text-sm font-semibold !text-[var(--action-primary-text)] shadow-sm transition hover:!bg-[var(--action-primary-hover)]"
+                    : "shrink-0 rounded-full !border-[var(--action-secondary-border)] !bg-[var(--action-secondary)] px-4 py-2 text-sm font-semibold !text-[var(--action-secondary-text)] transition hover:!bg-[var(--action-secondary-hover)]"
                 }
               >
                 {filter.label}
@@ -451,10 +451,10 @@ export function IndustrialFactoryDashboard({
             ))}
           </ResponsiveScrollArea>
           <div className="surface-muted p-4">
-            <div className="text-sm uppercase tracking-[0.18em] text-[#78716c]">Active Time Window</div>
-            <div className="mt-2 text-xl font-semibold text-[#111111] md:text-2xl">{activeData.title}</div>
-            <div className="mt-2 text-sm leading-6 text-[#57534e]">{activeData.subtitle}</div>
-            <div className="mt-3 inline-flex rounded-full border border-[#d6d3d1] bg-[#f5f5f4] px-3 py-1 text-xs font-semibold text-[#111111]">
+            <div className="text-sm uppercase tracking-[0.18em] text-text-tertiary">Active Time Window</div>
+            <div className="mt-2 text-xl font-semibold text-text-primary md:text-2xl">{activeData.title}</div>
+            <div className="mt-2 text-sm leading-6 text-text-secondary">{activeData.subtitle}</div>
+            <div className="mt-3 inline-flex rounded-full border border-border-default bg-surface-elevated px-3 py-1 text-xs font-semibold text-text-primary">
               KPI context {activeData.rangeComparisonLabel}
             </div>
           </div>
@@ -476,11 +476,11 @@ export function IndustrialFactoryDashboard({
             <div className="order-2 xl:order-1">
               <details className="telemetry-rail xl:hidden">
                 <summary className="cursor-pointer list-none px-5 py-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Filters and actions</div>
-                  <div className="mt-1 text-lg font-semibold text-[#111111]">Open chart controls</div>
-                  <div className="mt-1 text-sm text-[#57534e]">Choose plant/process lenses and see the next best step.</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Filters and actions</div>
+                  <div className="mt-1 text-lg font-semibold text-text-primary">Open chart controls</div>
+                  <div className="mt-1 text-sm text-text-secondary">Choose plant/process lenses and see the next best step.</div>
                 </summary>
-                <div className="border-t border-[#f5f5f4] px-4 py-4">{leftRail}</div>
+                <div className="border-t border-border-subtle px-4 py-4">{leftRail}</div>
               </details>
               <div className="hidden xl:block">{leftRail}</div>
             </div>
@@ -490,8 +490,8 @@ export function IndustrialFactoryDashboard({
                 {viewConfig.showProduction ? (
                   <ProductionLossChart data={activeData.productionLoss} loading={visualLoading} onDrillDown={handleDrillDown} />
                 ) : (
-                  <Card className="rounded-[1.6rem] border border-dashed border-[#e7e5e4] !bg-none bg-white">
-                    <CardContent className="py-10 text-center text-sm text-[#57534e]">
+                  <Card className="rounded-[1.6rem] border border-dashed border-border-default !bg-none bg-surface-card">
+                    <CardContent className="py-10 text-center text-sm text-text-secondary">
                       Production trend is hidden for the current filter combination.
                     </CardContent>
                   </Card>
@@ -510,8 +510,8 @@ export function IndustrialFactoryDashboard({
                     />
                   ) : null}
                   {!viewConfig.showInventory && !viewConfig.showLossDonut ? (
-                    <Card className="rounded-[1.6rem] border border-dashed border-[#e7e5e4] !bg-none bg-white">
-                      <CardContent className="py-10 text-center text-sm text-[#57534e]">
+                    <Card className="rounded-[1.6rem] border border-dashed border-border-default !bg-none bg-surface-card">
+                      <CardContent className="py-10 text-center text-sm text-text-secondary">
                         Inventory and severity panels are hidden for this lens.
                       </CardContent>
                     </Card>
@@ -529,8 +529,8 @@ export function IndustrialFactoryDashboard({
               <DispatchTrendChart data={activeData.dispatchTrend} loading={visualLoading} onDrillDown={handleDrillDown} />
             ) : null}
             {!viewConfig.showTopLoss && !viewConfig.showDispatch ? (
-              <Card className="rounded-[1.6rem] border border-dashed border-[#e7e5e4] !bg-none bg-white xl:col-span-2">
-                <CardContent className="py-10 text-center text-sm text-[#57534e]">
+              <Card className="rounded-[1.6rem] border border-dashed border-border-default !bg-none bg-surface-card xl:col-span-2">
+                <CardContent className="py-10 text-center text-sm text-text-secondary">
                   Top-loss and dispatch trends are hidden for the selected process focus.
                 </CardContent>
               </Card>
@@ -543,8 +543,8 @@ export function IndustrialFactoryDashboard({
             ) : null}
             {viewConfig.showKpiTable ? <IndustrialKpiTable rows={activeData.kpiRows} /> : null}
             {!viewConfig.showRevenue && !viewConfig.showKpiTable ? (
-              <Card className="rounded-[1.6rem] border border-dashed border-[#e7e5e4] !bg-none bg-white xl:col-span-2">
-                <CardContent className="py-10 text-center text-sm text-[#57534e]">
+              <Card className="rounded-[1.6rem] border border-dashed border-border-default !bg-none bg-surface-card xl:col-span-2">
+                <CardContent className="py-10 text-center text-sm text-text-secondary">
                   Revenue and KPI table are hidden for this filter combination.
                 </CardContent>
               </Card>

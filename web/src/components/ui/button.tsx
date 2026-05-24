@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 
 type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "destructive";
 type ButtonSize = "default" | "compact" | "icon";
+type ResolvedButtonVariant = "primary" | "secondary" | "ghost";
 
 export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
@@ -13,26 +14,32 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const base =
-  "ui-no-select ui-no-callout inline-flex shrink-0 cursor-pointer items-center justify-center gap-2 rounded-[8px] border-[0.5px] text-[13px] font-medium transition-[background-color,border-color,color,box-shadow,transform,opacity] duration-fast ease-standard active:scale-[0.98] focus-visible:outline-none focus-visible:shadow-[0_0_0_2px_rgb(var(--color-border-info)/0.4)] disabled:cursor-not-allowed disabled:border-action-disabled disabled:bg-action-disabled disabled:text-action-disabled-text";
+  "ui-no-select ui-no-callout inline-flex h-[36px] shrink-0 cursor-pointer items-center justify-center gap-2 rounded-control border text-[length:var(--text-base)] font-medium transition-[background-color,color] duration-[120ms] ease-standard focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)] disabled:cursor-not-allowed disabled:border-transparent disabled:bg-[var(--action-disabled)] disabled:text-[var(--action-disabled-text)]";
 
 const variants: Record<ButtonVariant, string> = {
   primary:
-    "border-transparent bg-[var(--color-text-primary)] text-[var(--color-background-primary)] hover:opacity-95",
+    "border-transparent bg-[var(--action-primary)] text-[var(--action-primary-text)] hover:bg-[var(--action-primary-hover)] active:bg-[var(--action-primary-active)]",
   secondary:
-    "border-transparent bg-[var(--color-text-primary)] text-[var(--color-background-primary)] hover:opacity-95",
+    "border-[color:var(--action-secondary-border)] bg-[var(--action-secondary)] text-[var(--action-secondary-text)] hover:bg-[var(--action-secondary-hover)]",
   outline:
-    "border-[color:var(--color-border-secondary)] bg-transparent text-[var(--color-text-secondary)] hover:bg-surface-hover",
+    "border-[color:var(--action-secondary-border)] bg-[var(--action-secondary)] text-[var(--action-secondary-text)] hover:bg-[var(--action-secondary-hover)]",
   ghost:
-    "border-[color:var(--color-border-secondary)] bg-transparent text-[var(--color-text-secondary)] hover:bg-surface-hover hover:text-[var(--color-text-primary)]",
+    "border-transparent bg-transparent text-[var(--text-link)] hover:bg-[var(--action-ghost-hover)] hover:text-[var(--text-link-hover)]",
   destructive:
-    "border-[color:var(--color-border-danger)] bg-transparent text-[var(--color-text-danger)] hover:bg-status-danger-bg",
+    "border-transparent bg-[var(--action-primary)] text-[var(--action-primary-text)] hover:bg-[var(--action-primary-hover)] active:bg-[var(--action-primary-active)]",
 };
 
 const sizes: Record<ButtonSize, string> = {
-  default: "min-h-[38px] px-[18px] py-2",
-  compact: "min-h-[34px] px-3 py-1.5",
-  icon: "h-button aspect-square px-0",
+  default: "px-[var(--space-4)] text-[length:var(--text-base)]",
+  compact: "px-[var(--space-4)] text-[length:var(--text-sm)]",
+  icon: "aspect-square px-0 text-[length:var(--text-sm)]",
 };
+
+function resolveVariant(variant: ButtonVariant): ResolvedButtonVariant {
+  if (variant === "outline") return "secondary";
+  if (variant === "destructive") return "primary";
+  return variant;
+}
 
 function ButtonSpinner({ className }: { className?: string }) {
   return (
@@ -76,6 +83,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
   ref,
 ) {
   const content = isBusy && busyLabel ? busyLabel : children;
+  const resolvedVariant = resolveVariant(variant);
 
   return (
     <button
@@ -91,7 +99,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function 
       disabled={disabled || isBusy}
       aria-busy={isBusy}
       data-busy={isBusy ? "true" : "false"}
-      data-variant={variant}
+      data-variant={resolvedVariant}
       data-size={size}
       {...props}
     >

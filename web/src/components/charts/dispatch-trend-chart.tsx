@@ -5,8 +5,9 @@ import { useMemo } from "react";
 import { ApexChartClient } from "@/components/charts/apex-chart-client";
 import { ChartCard } from "@/components/charts/chart-card";
 import { buildLineChartOptions } from "@/components/charts/chart-config";
-import { INDUSTRIAL_CHART_THEME } from "@/components/charts/industrial-chart-theme";
+import { getChartTheme } from "@/components/charts/industrial-chart-theme";
 import type { DispatchTrendDatum } from "@/lib/industrial-dashboard";
+import { useUiPreferences } from "@/providers/ui-preferences-provider";
 
 export function DispatchTrendChart({
   data,
@@ -17,6 +18,8 @@ export function DispatchTrendChart({
   loading?: boolean;
   onDrillDown?: (meta: { chartId: string; label: string; seriesName: string; value: number }) => void;
 }) {
+  const { theme: appTheme } = useUiPreferences();
+  const chartTheme = useMemo(() => getChartTheme(), [appTheme]);
   const categories = useMemo(() => data.map((item) => item.label), [data]);
   const series = useMemo(
     () => [
@@ -30,22 +33,23 @@ export function DispatchTrendChart({
   const options = useMemo(
     () => ({
       ...buildLineChartOptions({
+        theme: chartTheme,
         chartId: "dispatch-trend",
         categories,
         onDrillDown,
         yFormatter: (value) => `${Math.round(value)} KG`,
         tooltipFormatter: (value) => `${Math.round(value)} KG`,
       }),
-      colors: [INDUSTRIAL_CHART_THEME.aqua],
+      colors: [chartTheme.series.processing],
       markers: {
         size: 7,
-        colors: ["#ffffff"],
-        strokeColors: INDUSTRIAL_CHART_THEME.aqua,
+        colors: [chartTheme.apex.markerFillColor],
+        strokeColors: chartTheme.series.processing,
         strokeWidth: 3,
         hover: { size: 9 },
       },
     }),
-    [categories, onDrillDown],
+    [categories, chartTheme, onDrillDown],
   );
   const isEmpty = !data.length || data.every((item) => item.valueKg <= 0);
 
@@ -58,7 +62,7 @@ export function DispatchTrendChart({
       emptyTitle="No dispatch rhythm yet"
       emptyDescription="Post dispatch records so transport movement and closure pace become visible on the chart board."
     >
-      <ApexChartClient type="area" options={options} series={series} height={320} />
+      <ApexChartClient type="area" options={options} series={series} height={320} theme={chartTheme} />
     </ChartCard>
   );
 }

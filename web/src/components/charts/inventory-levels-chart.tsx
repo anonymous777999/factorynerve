@@ -5,10 +5,9 @@ import { useMemo } from "react";
 import { ApexChartClient } from "@/components/charts/apex-chart-client";
 import { ChartCard } from "@/components/charts/chart-card";
 import { buildBarChartOptions } from "@/components/charts/chart-config";
-import { INDUSTRIAL_CHART_THEME } from "@/components/charts/industrial-chart-theme";
+import { getChartTheme } from "@/components/charts/industrial-chart-theme";
 import type { InventoryLevelDatum } from "@/lib/industrial-dashboard";
-
-const INVENTORY_COLORS = [INDUSTRIAL_CHART_THEME.slate, INDUSTRIAL_CHART_THEME.amber, INDUSTRIAL_CHART_THEME.teal];
+import { useUiPreferences } from "@/providers/ui-preferences-provider";
 
 export function InventoryLevelsChart({
   data,
@@ -19,6 +18,12 @@ export function InventoryLevelsChart({
   loading?: boolean;
   onDrillDown?: (meta: { chartId: string; label: string; seriesName: string; value: number }) => void;
 }) {
+  const { theme: appTheme } = useUiPreferences();
+  const chartTheme = useMemo(() => getChartTheme(), [appTheme]);
+  const inventoryColors = useMemo(
+    () => [chartTheme.series.processing, chartTheme.series.warning, chartTheme.series.success],
+    [chartTheme],
+  );
   const categories = useMemo(() => data.map((item) => item.category), [data]);
   const series = useMemo(
     () => [
@@ -27,15 +32,16 @@ export function InventoryLevelsChart({
         data: data.map((item, index) => ({
           x: item.category,
           y: item.valueKg,
-          fillColor: INVENTORY_COLORS[index] || "#3ea6ff",
+          fillColor: inventoryColors[index] || chartTheme.series.primary,
         })),
       },
     ],
-    [data],
+    [chartTheme, data, inventoryColors],
   );
   const options = useMemo(
     () =>
       buildBarChartOptions({
+        theme: chartTheme,
         chartId: "inventory-levels",
         categories,
         horizontal: true,
@@ -44,7 +50,7 @@ export function InventoryLevelsChart({
         tooltipFormatter: (value) => `${Math.round(value)} KG`,
         dataLabelFormatter: (value) => `${Math.round(value)} KG`,
       }),
-    [categories, onDrillDown],
+    [categories, chartTheme, onDrillDown],
   );
   const isEmpty = !data.length || data.every((item) => item.valueKg <= 0);
 
@@ -57,7 +63,7 @@ export function InventoryLevelsChart({
       emptyTitle="No inventory posture yet"
       emptyDescription="Add or sync steel stock records so the inventory confidence view can show live stage balances."
     >
-      <ApexChartClient type="bar" options={options} series={series} height={300} />
+      <ApexChartClient type="bar" options={options} series={series} height={300} theme={chartTheme} />
     </ChartCard>
   );
 }
