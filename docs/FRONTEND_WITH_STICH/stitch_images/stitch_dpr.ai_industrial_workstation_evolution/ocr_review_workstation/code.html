@@ -1,0 +1,423 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>DPR.ai | Operational Node</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-size: 20px;
+        }
+        body {
+            background-color: #121416;
+            color: #e2e2e5;
+            -webkit-font-smoothing: antialiased;
+            overflow: hidden;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1a1c1e;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #434655;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #8d90a0;
+        }
+        .border-share {
+            margin-top: -1px;
+            margin-left: -1px;
+        }
+        .zebra-striping div:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+        .terminal-input:focus {
+            outline: none;
+            border-bottom-color: #b5c4ff;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "primary-container": "#2a5ee6",
+                        "background": "#121416",
+                        "on-primary-fixed": "#00164e",
+                        "surface-bright": "#38393c",
+                        "secondary-fixed": "#d3e4fe",
+                        "on-tertiary-fixed": "#360f00",
+                        "tertiary": "#ffb597",
+                        "on-secondary-container": "#a9bad3",
+                        "primary-fixed": "#dce1ff",
+                        "tertiary-container": "#b74400",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "on-surface": "#e2e2e5",
+                        "error-container": "#93000a",
+                        "on-error-container": "#ffdad6",
+                        "on-secondary": "#213145",
+                        "surface-container-high": "#282a2c",
+                        "on-secondary-fixed": "#0b1c30",
+                        "on-primary": "#00287c",
+                        "surface-dim": "#121416",
+                        "on-primary-container": "#e6e9ff",
+                        "surface-container-highest": "#333537",
+                        "on-tertiary": "#591d00",
+                        "on-error": "#690005",
+                        "on-surface-variant": "#c3c5d7",
+                        "surface-container": "#1e2022",
+                        "error": "#ffb4ab",
+                        "on-tertiary-fixed-variant": "#7e2c00",
+                        "surface-container-low": "#1a1c1e",
+                        "secondary": "#b7c8e1",
+                        "inverse-surface": "#e2e2e5",
+                        "inverse-primary": "#1652da",
+                        "inverse-on-surface": "#2f3133",
+                        "tertiary-fixed-dim": "#ffb597",
+                        "on-background": "#e2e2e5",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "secondary-container": "#3a4a5f",
+                        "outline": "#8d90a0",
+                        "surface-container-lowest": "#0c0e10",
+                        "surface": "#121416",
+                        "surface-variant": "#333537",
+                        "on-tertiary-container": "#ffe5db",
+                        "surface-tint": "#b5c4ff",
+                        "primary": "#b5c4ff",
+                        "outline-variant": "#434655",
+                        "tertiary-fixed": "#ffdbcd",
+                        "on-primary-fixed-variant": "#003bae",
+                        "primary-fixed-dim": "#b5c4ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "sm": "8px",
+                        "md": "16px",
+                        "gutter": "1px",
+                        "lg": "24px",
+                        "xs": "4px",
+                        "unit": "8px"
+                    },
+                    "fontFamily": {
+                        "data-mono": ["JetBrains Mono"],
+                        "body-sm": ["Hanken Grotesk"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "label-caps": ["JetBrains Mono"],
+                        "body-md": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "data-mono": ["12px", {"lineHeight": "16px", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "headline-sm": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "label-caps": ["10px", {"lineHeight": "12px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "body-md": ["13px", {"lineHeight": "18px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="flex h-screen overflow-hidden">
+<!-- Left Side Rail (Shared Component: SideNavBar) -->
+<aside class="flex flex-col items-center py-md gap-sm fixed left-0 top-0 h-full w-[64px] bg-surface-container-low dark:bg-surface-container-low border-r border-outline-variant dark:border-outline-variant z-50">
+<div class="mb-lg">
+<span class="font-headline-sm text-headline-sm text-primary dark:text-primary font-bold">DPR</span>
+</div>
+<nav class="flex flex-col items-center gap-sm w-full">
+<button class="w-full py-md flex flex-col items-center border-l-2 border-primary bg-surface-container-high text-primary dark:text-primary transition-all duration-75 ease-linear" title="Nodes">
+<span class="material-symbols-outlined">hub</span>
+<span class="font-label-caps text-label-caps mt-xs">NODES</span>
+</button>
+<button class="w-full py-md flex flex-col items-center text-on-surface-variant dark:text-on-surface-variant opacity-70 hover:bg-surface-container transition-all duration-75 ease-linear" title="Assets">
+<span class="material-symbols-outlined">inventory_2</span>
+<span class="font-label-caps text-label-caps mt-xs">ASSETS</span>
+</button>
+<button class="w-full py-md flex flex-col items-center text-on-surface-variant dark:text-on-surface-variant opacity-70 hover:bg-surface-container transition-all duration-75 ease-linear" title="Traffic">
+<span class="material-symbols-outlined">lan</span>
+<span class="font-label-caps text-label-caps mt-xs">TRAFFIC</span>
+</button>
+<button class="w-full py-md flex flex-col items-center text-on-surface-variant dark:text-on-surface-variant opacity-70 hover:bg-surface-container transition-all duration-75 ease-linear" title="Logs">
+<span class="material-symbols-outlined">receipt_long</span>
+<span class="font-label-caps text-label-caps mt-xs">LOGS</span>
+</button>
+</nav>
+<div class="mt-auto">
+<button class="w-10 h-10 rounded-full border border-outline-variant overflow-hidden hover:opacity-80 transition-opacity">
+<img alt="Operator" data-alt="A sharp, detailed headshot of a professional operator wearing high-tech tactical glasses in a dimly lit workstation environment. The lighting is cold and blue-toned, emphasizing the clinical and stoic industrial minimalism aesthetic. The focus is sharp on the facial features, reflecting a sense of precision and stolid duty within a modern data center context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnivnx3QtkYJjxXs2563vFxWPigL9aECf2CCaIEVrla2VOSd_MSn-0CeqDx1vkIy-sdJo-Xe5Mr-3XkwM5QNkLGQ_tWcnY2pB_PRR2-zbdzqBGnxc0ftQdRihmzudSYZc2FhxGI1yYbN9JZZK9oIUjECtcWa5Chdn51pywuc3wWjMKjFxtVlopdRtaGZoA7a7cNrCftQB98ZyATTE6W3affqKU2Usrpan6zUlP1JsgTrw2pg3b4dG-aBO8VCLRn29vu2aCP7Zr88oB">
+</button>
+</div>
+</aside>
+<!-- Main Operational Workspace -->
+<main class="flex flex-col flex-1 ml-[64px] relative">
+<!-- Top Navigation Bar (Shared Component: TopNavBar) -->
+<header class="flex justify-between items-center w-full px-md h-[48px] bg-surface dark:bg-surface border-b border-outline-variant dark:border-outline-variant z-40 sticky top-0">
+<div class="flex items-center gap-lg">
+<div class="flex items-center gap-sm">
+<span class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary tracking-tighter">DPR.ai</span>
+<span class="text-outline-variant h-4 border-r border-outline-variant mx-sm"></span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">NODE_OPERATIONS_v4.5</span>
+</div>
+<nav class="hidden md:flex items-center gap-md">
+<button class="text-primary dark:text-primary border-b-2 border-primary pb-2 font-label-caps text-label-caps">OPERATIONS</button>
+<button class="text-on-surface-variant dark:text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-highest transition-colors duration-150 p-1 px-2">INVENTORY</button>
+<button class="text-on-surface-variant dark:text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-highest transition-colors duration-150 p-1 px-2">ANALYTICS</button>
+<button class="text-on-surface-variant dark:text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-highest transition-colors duration-150 p-1 px-2">LOGISTICS</button>
+</nav>
+</div>
+<div class="flex items-center gap-sm">
+<button class="p-1 hover:bg-surface-container-highest text-on-surface-variant transition-colors duration-150" title="Terminal"><span class="material-symbols-outlined">terminal</span></button>
+<button class="p-1 hover:bg-surface-container-highest text-on-surface-variant transition-colors duration-150" title="Search"><span class="material-symbols-outlined">search</span></button>
+<button class="p-1 hover:bg-surface-container-highest text-on-surface-variant transition-colors duration-150" title="Notifications"><span class="material-symbols-outlined">notifications</span></button>
+<button class="p-1 hover:bg-surface-container-highest text-on-surface-variant transition-colors duration-150" title="Settings"><span class="material-symbols-outlined">settings</span></button>
+</div>
+</header>
+<!-- Dynamic Grid Content -->
+<div class="flex flex-1 overflow-hidden">
+<!-- Operational Lane: Document Review -->
+<section class="flex flex-col flex-1 bg-surface border-r border-outline-variant overflow-hidden">
+<div class="p-md border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-primary uppercase">DOCUMENT SCAN</span>
+<h1 class="font-headline-sm text-headline-sm text-on-surface">Scan &amp; Review: Ledger_FY24</h1>
+</div>
+<div class="flex gap-xs">
+<div class="flex border border-outline-variant bg-surface-container-low p-xs rounded-xs">
+<button class="px-sm py-1 bg-primary text-on-primary font-label-caps text-label-caps rounded-xs">RECONCILE</button>
+<button class="px-sm py-1 font-label-caps text-label-caps text-on-surface hover:bg-surface-container-highest transition-colors">EXPORT</button>
+</div>
+</div>
+</div>
+<div class="flex flex-1 overflow-hidden">
+<!-- Source Image Panel -->
+<div class="w-1/3 border-r border-outline-variant bg-surface-container-low flex flex-col p-sm gap-sm overflow-y-auto custom-scrollbar">
+<div class="flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-outline">ORIGINAL_BUFFER</span>
+<span class="font-data-mono text-data-mono text-primary">[ 1:1 ]</span>
+</div>
+<div class="bg-black/40 border border-outline-variant rounded-xs overflow-hidden relative group">
+<img alt="Ledger Scan" class="opacity-80 group-hover:opacity-100 transition-opacity" data-alt="A high-contrast, macro photograph of a handwritten accounting ledger on aged, textured paper. The lighting is dramatic, casting deep shadows in the paper's creases, aligning with an industrial minimalism and clinical aesthetic. The frame focuses on numerical entries in black ink, captured with high technical precision against a dark, monochromatic workstation background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAPc1DLYzcyOOlQPew9cDYoWiiqhRER2OA6AzmEZxV2Wv5h9QSs5EIiPujRZjwNcXIP9B2b8tsEYGNXBVu6VqMBuhiCCjL15w8py4aDdkpebEQGiO3vvs-E2Zuc0OM1Vyg5BROB7wHi71JD7skYDM-kmiF7AtW01wZER8QgTStGf0OGw6NBpGWhfGeJzpH77lcAvM-0ioT4tsQTtVQSne0_yO4Dv0zV-zZVolhsonU1HLANuDb2BEvGa4hBphStLP6D4LkQxJTLLBQ0">
+<div class="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-primary/40"></div>
+<div class="absolute top-2 left-2 px-1 bg-primary text-on-primary font-data-mono text-[9px]">OCR_REGION_ALPHA</div>
+</div>
+<div class="mt-auto pt-sm border-t border-outline-variant">
+<div class="flex flex-col gap-xs">
+<span class="font-label-caps text-label-caps text-outline">METADATA</span>
+<div class="grid grid-cols-2 gap-xs">
+<div class="bg-surface-container p-xs border border-outline-variant">
+<span class="block font-label-caps text-[8px] text-outline">UID</span>
+<span class="font-data-mono text-data-mono">DPR-0922-X</span>
+</div>
+<div class="bg-surface-container p-xs border border-outline-variant">
+<span class="block font-label-caps text-[8px] text-outline">CONFIDENCE</span>
+<span class="font-data-mono text-data-mono text-primary">94.2%</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Density Table: Extracted Data -->
+<div class="flex-1 bg-background overflow-auto custom-scrollbar relative">
+<div class="sticky top-0 z-10 bg-surface-container-high border-b border-outline-variant grid grid-cols-12 divide-x divide-outline-variant">
+<div class="col-span-1 p-xs font-label-caps text-label-caps text-outline text-center">ID</div>
+<div class="col-span-6 p-xs font-label-caps text-label-caps text-outline">LEDGER_ENTRY_DESCRIPTION</div>
+<div class="col-span-2 p-xs font-label-caps text-label-caps text-outline text-right">DEBIT (DR)</div>
+<div class="col-span-2 p-xs font-label-caps text-label-caps text-outline text-right">CREDIT (CR)</div>
+<div class="col-span-1 p-xs font-label-caps text-label-caps text-outline text-center">STS</div>
+</div>
+<div class="zebra-striping">
+<!-- Table Rows -->
+<div class="grid grid-cols-12 divide-x divide-outline-variant border-b border-outline-variant/30 hover:bg-primary-container/5 cursor-pointer group">
+<div class="col-span-1 p-xs font-data-mono text-data-mono text-outline text-center">001</div>
+<div class="col-span-6 p-xs font-body-sm text-body-sm text-on-surface group-hover:text-primary transition-colors">Cash in hand</div>
+<div class="col-span-2 p-xs font-data-mono text-data-mono text-right text-primary">14,000.00</div>
+<div class="col-span-2 p-xs font-data-mono text-data-mono text-right">—</div>
+<div class="col-span-1 p-xs flex justify-center items-center"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span></div>
+</div>
+<div class="grid grid-cols-12 divide-x divide-outline-variant border-b border-outline-variant/30 hover:bg-primary-container/5 cursor-pointer group">
+<div class="col-span-1 p-xs font-data-mono text-data-mono text-outline text-center">002</div>
+<div class="col-span-6 p-xs font-body-sm text-body-sm text-on-surface group-hover:text-primary transition-colors">Cash at Bank</div>
+<div class="col-span-2 p-xs font-data-mono text-data-mono text-right text-primary">2,600.00</div>
+<div class="col-span-2 p-xs font-data-mono text-data-mono text-right">—</div>
+<div class="col-span-1 p-xs flex justify-center items-center"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span></div>
+</div>
+<div class="grid grid-cols-12 divide-x divide-outline-variant border-b border-outline-variant/30 bg-error-container/10 hover:bg-error-container/20 cursor-pointer group">
+<div class="col-span-1 p-xs font-data-mono text-data-mono text-outline text-center">003</div>
+<div class="col-span-6 p-xs font-body-sm text-body-sm text-error group-hover:underline">Sundry Debtors</div>
+<div class="col-span-2 p-xs font-data-mono text-data-mono text-right text-error italic">8,60,000.00</div>
+<div class="col-span-2 p-xs font-data-mono text-data-mono text-right">—</div>
+<div class="col-span-1 p-xs flex justify-center items-center"><span class="material-symbols-outlined text-error !text-[12px]">warning</span></div>
+</div>
+<div class="grid grid-cols-12 divide-x divide-outline-variant border-b border-outline-variant/30 hover:bg-primary-container/5 cursor-pointer group">
+<div class="col-span-1 p-xs font-data-mono text-data-mono text-outline text-center">004</div>
+<div class="col-span-6 p-xs font-body-sm text-body-sm text-on-surface">Stock on 1.4.0019</div>
+<div class="col-span-2 p-xs font-data-mono text-data-mono text-right text-primary">6,90,000.00</div>
+<div class="col-span-2 p-xs font-data-mono text-data-mono text-right">—</div>
+<div class="col-span-1 p-xs flex justify-center items-center"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span></div>
+</div>
+<div class="grid grid-cols-12 divide-x divide-outline-variant border-b border-outline-variant/30 hover:bg-primary-container/5 cursor-pointer group">
+<div class="col-span-1 p-xs font-data-mono text-data-mono text-outline text-center">005</div>
+<div class="col-span-6 p-xs font-body-sm text-body-sm text-on-surface">Furniture &amp; Fixtures</div>
+<div class="col-span-2 p-xs font-data-mono text-data-mono text-right text-primary">2,14,000.00</div>
+<div class="col-span-2 p-xs font-data-mono text-data-mono text-right">—</div>
+<div class="col-span-1 p-xs flex justify-center items-center"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span></div>
+</div>
+<div class="grid grid-cols-12 divide-x divide-outline-variant border-b border-outline-variant/30 hover:bg-primary-container/5 cursor-pointer group">
+<div class="col-span-1 p-xs font-data-mono text-data-mono text-outline text-center">006</div>
+<div class="col-span-6 p-xs font-body-sm text-body-sm text-on-surface">Sundry Creditors</div>
+<div class="col-span-2 p-xs font-data-mono text-data-mono text-right">—</div>
+<div class="col-span-2 p-xs font-data-mono text-data-mono text-right text-tertiary">4,30,000.00</div>
+<div class="col-span-1 p-xs flex justify-center items-center"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span></div>
+</div>
+<div class="grid grid-cols-12 divide-x divide-outline-variant border-b border-outline-variant/30 hover:bg-primary-container/5 cursor-pointer group">
+<div class="col-span-1 p-xs font-data-mono text-data-mono text-outline text-center">007</div>
+<div class="col-span-6 p-xs font-body-sm text-body-sm text-on-surface">Loan from Viswanath</div>
+<div class="col-span-2 p-xs font-data-mono text-data-mono text-right">—</div>
+<div class="col-span-2 p-xs font-data-mono text-data-mono text-right text-tertiary">3,00,000.00</div>
+<div class="col-span-1 p-xs flex justify-center items-center"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span></div>
+</div>
+<div class="grid grid-cols-12 divide-x divide-outline-variant border-b border-outline-variant/30 hover:bg-primary-container/5 cursor-pointer group">
+<div class="col-span-1 p-xs font-data-mono text-data-mono text-outline text-center">008</div>
+<div class="col-span-6 p-xs font-body-sm text-body-sm text-on-surface">Purchases</div>
+<div class="col-span-2 p-xs font-data-mono text-data-mono text-right text-primary">14,00,000.00</div>
+<div class="col-span-2 p-xs font-data-mono text-data-mono text-right">—</div>
+<div class="col-span-1 p-xs flex justify-center items-center"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span></div>
+</div>
+<div class="grid grid-cols-12 divide-x divide-outline-variant border-b border-outline-variant/30 hover:bg-primary-container/5 cursor-pointer group">
+<div class="col-span-1 p-xs font-data-mono text-data-mono text-outline text-center">009</div>
+<div class="col-span-6 p-xs font-body-sm text-body-sm text-on-surface">Sales</div>
+<div class="col-span-2 p-xs font-data-mono text-data-mono text-right">—</div>
+<div class="col-span-2 p-xs font-data-mono text-data-mono text-right text-tertiary">23,00,000.00</div>
+<div class="col-span-1 p-xs flex justify-center items-center"><span class="w-1.5 h-1.5 rounded-full bg-primary"></span></div>
+</div>
+</div>
+<!-- Terminal Input for Entry -->
+<div class="sticky bottom-0 bg-surface-container-low border-t border-outline p-xs flex items-center gap-sm">
+<span class="font-data-mono text-primary text-data-mono ml-sm">CMD&gt;</span>
+<input class="flex-1 bg-transparent border-none font-data-mono text-data-mono text-on-surface placeholder:text-outline-variant focus:ring-0 terminal-input" placeholder="Add entry or apply filter [ CMD+K ]" type="text">
+</div>
+</div>
+</div>
+</section>
+<!-- Telemetry Lane (Right) -->
+<aside class="w-[320px] bg-surface-container-low flex flex-col divide-y divide-outline-variant overflow-y-auto custom-scrollbar">
+<!-- Operation Status -->
+<div class="p-md">
+<span class="font-label-caps text-label-caps text-outline block mb-sm">REAL_TIME_TELEMETRY</span>
+<div class="bg-surface-container-high border border-outline-variant p-sm flex items-center justify-between">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-outline">SYSTEM_HEALTH</span>
+<span class="font-data-mono text-headline-sm text-primary">OPTIMAL</span>
+</div>
+<span class="material-symbols-outlined text-primary !text-[32px]" style="opacity: 0.642784;">shield</span>
+</div>
+</div>
+<!-- Analysis Sparkline -->
+<div class="p-md">
+<span class="font-label-caps text-label-caps text-outline block mb-sm">OCR_CONFIDENCE_TREND</span>
+<div class="h-16 relative w-full overflow-hidden flex items-end">
+<svg class="w-full h-full" preserveAspectRatio="none" viewBox="0 0 300 100">
+<path d="M0,80 L20,85 L40,70 L60,75 L80,60 L100,55 L120,40 L140,45 L160,30 L180,35 L200,20 L220,25 L240,10 L260,15 L280,5 L300,5" fill="none" stroke="#2a5ee6" stroke-width="1.5"></path>
+</svg>
+<div class="absolute bottom-1 right-1 font-data-mono text-[9px] text-primary">99.1%</div>
+</div>
+</div>
+<!-- Active Tasks List -->
+<div class="p-md flex flex-col gap-sm">
+<span class="font-label-caps text-label-caps text-outline block">OPERATIONAL_QUEUE</span>
+<div class="flex flex-col gap-xs">
+<div class="p-xs bg-surface-container-highest border-l-2 border-primary flex justify-between items-center group cursor-pointer">
+<div class="flex flex-col">
+<span class="font-label-caps text-[10px] text-primary">SCAN_BATCH_22</span>
+<span class="font-body-sm text-on-surface">LEDGER_FY24_RECON</span>
+</div>
+<span class="font-data-mono text-[10px] text-outline">ACTIVE</span>
+</div>
+<div class="p-xs bg-surface-container-lowest opacity-60 flex justify-between items-center hover:bg-surface-container transition-colors cursor-pointer">
+<div class="flex flex-col">
+<span class="font-label-caps text-[10px] text-outline">PENDING</span>
+<span class="font-body-sm text-on-surface">ASSET_MAP_GENT</span>
+</div>
+<span class="material-symbols-outlined !text-[12px]">schedule</span>
+</div>
+<div class="p-xs bg-surface-container-lowest opacity-60 flex justify-between items-center hover:bg-surface-container transition-colors cursor-pointer">
+<div class="flex flex-col">
+<span class="font-label-caps text-[10px] text-outline">PENDING</span>
+<span class="font-body-sm text-on-surface">LOG_STREAM_04</span>
+</div>
+<span class="material-symbols-outlined !text-[12px]">schedule</span>
+</div>
+</div>
+</div>
+<!-- Shortcuts Tooltip Area -->
+<div class="mt-auto p-md">
+<div class="bg-surface-container border border-dashed border-outline-variant p-sm rounded-xs">
+<span class="font-label-caps text-[9px] text-outline block mb-xs">OPERATIONAL_SHORTCUTS</span>
+<div class="flex flex-col gap-xs font-data-mono text-[10px] text-on-surface-variant">
+<div class="flex justify-between"><span>APPROVE_ENTRY</span> <span class="text-primary">[ ENTER ]</span></div>
+<div class="flex justify-between"><span>FLAG_DISCREPANCY</span> <span class="text-primary">[ CMD+F ]</span></div>
+<div class="flex justify-between"><span>SWITCH_PANE</span> <span class="text-primary">[ TAB ]</span></div>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</main>
+<!-- Overlay Command Palette (Hidden by Default) -->
+<div class="fixed inset-0 bg-background/80 backdrop-blur-sm z-[100] hidden items-start justify-center pt-[100px]" id="command-palette">
+<div class="w-full max-w-xl bg-surface-container-high border border-outline shadow-2xl rounded-xs overflow-hidden">
+<div class="p-md flex items-center gap-sm border-b border-outline-variant bg-surface-container-highest">
+<span class="material-symbols-outlined text-primary">search</span>
+<input class="flex-1 bg-transparent border-none text-headline-sm font-headline-sm focus:ring-0 text-on-surface" placeholder="Type a command or search nodes..." type="text">
+<span class="font-label-caps text-label-caps text-outline">[ ESC ]</span>
+</div>
+<div class="p-sm flex flex-col gap-xs">
+<div class="px-sm py-2 hover:bg-primary-container/20 cursor-pointer flex justify-between items-center group">
+<span class="font-body-md text-on-surface group-hover:text-primary">Navigate to Traffic Monitor</span>
+<span class="font-label-caps text-[9px] text-outline">G + T</span>
+</div>
+<div class="px-sm py-2 hover:bg-primary-container/20 cursor-pointer flex justify-between items-center group">
+<span class="font-body-md text-on-surface group-hover:text-primary">Re-scan Active Document</span>
+<span class="font-label-caps text-[9px] text-outline">CMD + R</span>
+</div>
+<div class="px-sm py-2 hover:bg-primary-container/20 cursor-pointer flex justify-between items-center group">
+<span class="font-body-md text-on-surface group-hover:text-primary">Open System Logs</span>
+<span class="font-label-caps text-[9px] text-outline">L + O</span>
+</div>
+</div>
+</div>
+</div>
+<script>
+        // Micro-interactions and effects
+        document.addEventListener('keydown', (e) => {
+            if (e.metaKey && e.key === 'k') {
+                e.preventDefault();
+                const palette = document.getElementById('command-palette');
+                palette.classList.toggle('hidden');
+                palette.classList.toggle('flex');
+            }
+            if (e.key === 'Escape') {
+                const palette = document.getElementById('command-palette');
+                palette.classList.add('hidden');
+                palette.classList.remove('flex');
+            }
+        });
+
+        // Atmospheric Pulsing effect for the optimal status
+        const statusPulse = document.querySelector('.material-symbols-outlined.text-primary');
+        setInterval(() => {
+            statusPulse.style.opacity = (Math.sin(Date.now() / 1000) * 0.2 + 0.8).toString();
+        }, 50);
+    </script>
+</body></html>

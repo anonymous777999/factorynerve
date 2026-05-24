@@ -1,0 +1,237 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>DPR.ai | Access Restricted</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "outline-variant": "#434655",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "on-primary-container": "#e6e9ff",
+                        "on-primary": "#00287c",
+                        "background": "#121416",
+                        "inverse-surface": "#e2e2e5",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed": "#0b1c30",
+                        "tertiary-fixed-dim": "#ffb597",
+                        "surface-container-high": "#282a2c",
+                        "inverse-primary": "#1652da",
+                        "tertiary": "#ffb597",
+                        "surface-container-highest": "#333537",
+                        "surface-bright": "#38393c",
+                        "surface-variant": "#333537",
+                        "on-surface": "#e2e2e5",
+                        "surface-container-lowest": "#0c0e10",
+                        "inverse-on-surface": "#2f3133",
+                        "surface-tint": "#b5c4ff",
+                        "primary-fixed": "#dce1ff",
+                        "on-surface-variant": "#c3c5d7",
+                        "surface": "#121416",
+                        "on-tertiary-fixed": "#360f00",
+                        "primary-container": "#2a5ee6",
+                        "on-background": "#e2e2e5",
+                        "primary-fixed-dim": "#b5c4ff",
+                        "on-tertiary-container": "#ffe5db",
+                        "on-tertiary": "#591d00",
+                        "surface-dim": "#121416",
+                        "on-secondary": "#213145",
+                        "on-error-container": "#ffdad6",
+                        "on-error": "#690005",
+                        "on-secondary-container": "#a9bad3",
+                        "primary": "#b5c4ff",
+                        "on-primary-fixed": "#00164e",
+                        "error-container": "#93000a",
+                        "secondary": "#b7c8e1",
+                        "surface-container": "#1e2022",
+                        "on-tertiary-fixed-variant": "#7e2c00",
+                        "outline": "#8d90a0",
+                        "on-primary-fixed-variant": "#003bae",
+                        "surface-container-low": "#1a1c1e",
+                        "tertiary-fixed": "#ffdbcd",
+                        "secondary-fixed": "#d3e4fe",
+                        "secondary-container": "#3a4a5f",
+                        "tertiary-container": "#b74400"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "xs": "4px",
+                        "unit": "8px",
+                        "gutter": "1px",
+                        "sm": "8px",
+                        "md": "16px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"],
+                        "label-caps": ["JetBrains Mono"],
+                        "data-mono": ["JetBrains Mono"],
+                        "headline-sm": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "body-md": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "label-caps": ["10px", {"lineHeight": "12px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "data-mono": ["12px", {"lineHeight": "16px", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                        "headline-sm": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .industrial-grid {
+            background-image: radial-gradient(circle, #434655 0.5px, transparent 0.5px);
+            background-size: 16px 16px;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-md overflow-hidden">
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full h-[48px] bg-surface border-b border-outline-variant flex justify-between items-center px-md z-50">
+<div class="flex items-center gap-md">
+<span class="font-headline-sm text-headline-sm font-bold text-primary tracking-tighter">DPR.ai</span>
+<nav class="hidden md:flex gap-md">
+<a class="text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-highest transition-colors duration-150 px-2 py-1" href="#">Operations</a>
+<a class="text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-highest transition-colors duration-150 px-2 py-1" href="#">Inventory</a>
+<a class="text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-highest transition-colors duration-150 px-2 py-1" href="#">Analytics</a>
+<a class="text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-highest transition-colors duration-150 px-2 py-1" href="#">Logistics</a>
+</nav>
+</div>
+<div class="flex items-center gap-sm">
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-highest p-1">terminal</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-highest p-1">search</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-highest p-1">notifications</button>
+<button class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-highest p-1">settings</button>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-[48px] h-[calc(100vh-48px)] w-[64px] bg-surface-container-low border-r border-outline-variant flex flex-col items-center py-md gap-sm z-40">
+<div class="flex flex-col items-center gap-xs mb-md">
+<div class="w-8 h-8 bg-surface-container-high border border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-primary text-[20px]" style="font-variation-settings: 'FILL' 1;">admin_panel_settings</span>
+</div>
+<span class="font-label-caps text-[8px] text-on-surface-variant">ADM</span>
+</div>
+<div class="flex flex-col items-center gap-sm w-full">
+<button class="w-full py-2 flex flex-col items-center gap-1 hover:bg-surface-container transition-all duration-75">
+<span class="material-symbols-outlined text-on-surface-variant opacity-70">hub</span>
+<span class="font-label-caps text-[8px] opacity-70">Nodes</span>
+</button>
+<button class="w-full py-2 flex flex-col items-center gap-1 hover:bg-surface-container transition-all duration-75">
+<span class="material-symbols-outlined text-on-surface-variant opacity-70">inventory_2</span>
+<span class="font-label-caps text-[8px] opacity-70">Assets</span>
+</button>
+<button class="w-full py-2 flex flex-col items-center gap-1 hover:bg-surface-container transition-all duration-75">
+<span class="material-symbols-outlined text-on-surface-variant opacity-70">lan</span>
+<span class="font-label-caps text-[8px] opacity-70">Traffic</span>
+</button>
+<button class="w-full py-2 flex flex-col items-center gap-1 hover:bg-surface-container transition-all duration-75">
+<span class="material-symbols-outlined text-on-surface-variant opacity-70">receipt_long</span>
+<span class="font-label-caps text-[8px] opacity-70">Logs</span>
+</button>
+<button class="w-full py-2 flex flex-col items-center gap-1 border-l-2 border-primary bg-surface-container-high text-primary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">admin_panel_settings</span>
+<span class="font-label-caps text-[8px]">Admin</span>
+</button>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-[64px] mt-[48px] h-[calc(100vh-48px)] industrial-grid flex items-center justify-center p-md">
+<!-- Operational Modal -->
+<section class="w-full max-w-[600px] bg-surface-container-low border border-outline-variant flex flex-col">
+<!-- Modal Header -->
+<div class="flex items-center justify-between px-md py-sm bg-surface-container border-b border-outline-variant">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-tertiary-container" style="font-variation-settings: 'FILL' 1;">warning</span>
+<span class="font-label-caps text-label-caps text-tertiary">SYSTEM CRITICAL: SECURITY PROTOCOL</span>
+</div>
+<span class="font-data-mono text-data-mono text-on-surface-variant opacity-50">[ PID: 403-E ]</span>
+</div>
+<!-- Content Area -->
+<div class="p-lg flex flex-col gap-lg">
+<div class="flex items-start gap-md">
+<div class="p-md bg-tertiary-container/10 border border-tertiary-container/30">
+<span class="material-symbols-outlined text-tertiary text-[48px]" style="font-variation-settings: 'FILL' 1;">lock</span>
+</div>
+<div class="flex flex-col gap-xs">
+<h1 class="font-headline-sm text-headline-sm text-on-surface font-bold uppercase tracking-tight">Access Restricted</h1>
+<p class="text-on-surface-variant font-body-md max-w-sm">Current authorization levels do not permit access to this encrypted terminal. High-level encryption keys are required for further progression.</p>
+</div>
+</div>
+<!-- Telemetry Data Strip -->
+<div class="grid grid-cols-2 gap-gutter bg-outline-variant border border-outline-variant">
+<div class="bg-surface-container px-md py-sm flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant opacity-60">Role</span>
+<span class="font-data-mono text-data-mono text-on-surface">OWNER</span>
+</div>
+<div class="bg-surface-container px-md py-sm flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant opacity-60">Terminal</span>
+<span class="font-data-mono text-data-mono text-on-surface">STATION-04</span>
+</div>
+<div class="bg-surface-container px-md py-sm flex flex-col col-span-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant opacity-60">Reason</span>
+<span class="font-data-mono text-data-mono text-tertiary">INSUFFICIENT CLEARANCE LEVEL FOR ENCRYPTED FACTORY NODE</span>
+</div>
+</div>
+<!-- Terminal Visualizer -->
+<div class="bg-surface-container-lowest border border-outline-variant p-sm font-data-mono text-data-mono text-primary/50 overflow-hidden h-24 relative">
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest to-transparent pointer-events-none"></div>
+<p class="mb-1 text-[10px]">&gt; Initializing handshake sequence...</p>
+<p class="mb-1 text-[10px]">&gt; Checking kernel permissions for node 'FACTORY_GRID_01'</p>
+<p class="mb-1 text-[10px]">&gt; [ERROR] Security breach attempt logged</p>
+<p class="mb-1 text-[10px]">&gt; [ERROR] Encryption key mismatch (RSA-4096)</p>
+<p class="mb-1 text-[10px]">&gt; Access denied. Returning to local cluster.</p>
+</div>
+</div>
+<!-- Modal Footer (Actions) -->
+<div class="flex items-center justify-end px-md py-md bg-surface border-t border-outline-variant gap-sm">
+<button class="h-[32px] px-md font-label-caps text-label-caps border border-outline-variant text-on-surface hover:bg-surface-container-highest transition-colors">
+                    Back to Dashboard
+                </button>
+<button class="h-[32px] px-md font-label-caps text-label-caps bg-primary text-on-primary hover:opacity-90 transition-opacity">
+                    Request Authorization Escalation
+                </button>
+</div>
+</section>
+<!-- Background Atmospheric Element -->
+<div class="fixed bottom-lg right-lg text-right opacity-20 pointer-events-none hidden lg:block">
+<span class="font-label-caps text-label-caps block mb-1">STATION STATUS</span>
+<div class="flex gap-2">
+<div class="w-1 h-8 bg-primary"></div>
+<div class="w-1 h-8 bg-primary"></div>
+<div class="w-1 h-8 bg-outline-variant"></div>
+<div class="w-1 h-8 bg-outline-variant"></div>
+</div>
+</div>
+</main>
+<script>
+        // Micro-interaction: Periodic "scanning" effect in terminal text
+        setInterval(() => {
+            const terminal = document.querySelector('.bg-surface-container-lowest');
+            const newLog = document.createElement('p');
+            newLog.className = 'mb-1 text-[10px] opacity-30';
+            newLog.innerText = `> ${new Date().toLocaleTimeString()} :: RE-EVALUATING PERMISSION_TOKEN_${Math.floor(Math.random()*1000)}`;
+            terminal.prepend(newLog);
+            if (terminal.children.length > 8) {
+                terminal.removeChild(terminal.lastChild);
+            }
+        }, 3000);
+    </script>
+</body></html>

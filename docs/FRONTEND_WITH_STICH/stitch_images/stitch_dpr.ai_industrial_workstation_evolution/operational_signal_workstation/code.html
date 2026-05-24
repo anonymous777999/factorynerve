@@ -1,0 +1,401 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Operational Signal Dispatcher | DPR.ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&amp;family=Hanken+Grotesk:wght@400;600;800&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        body {
+            background-color: #121416;
+            margin: 0;
+            overflow: hidden;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom Scrollbar for Industrial Aesthetic */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1c1e;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333537;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #434655;
+        }
+        .border-grid {
+            box-shadow: 0 0 0 1px #434655;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary": "#b7c8e1",
+                        "on-tertiary-container": "#ffe5db",
+                        "surface-container": "#1e2022",
+                        "secondary-container": "#3a4a5f",
+                        "on-secondary-fixed": "#0b1c30",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-high": "#282a2c",
+                        "on-secondary": "#213145",
+                        "on-surface": "#e2e2e5",
+                        "tertiary-fixed-dim": "#ffb597",
+                        "surface-container-low": "#1a1c1e",
+                        "primary": "#b5c4ff",
+                        "surface-tint": "#b5c4ff",
+                        "primary-fixed": "#dce1ff",
+                        "on-error": "#690005",
+                        "surface": "#121416",
+                        "on-tertiary-fixed-variant": "#7e2c00",
+                        "error": "#ffb4ab",
+                        "surface-container-lowest": "#0c0e10",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "error-container": "#93000a",
+                        "inverse-on-surface": "#2f3133",
+                        "surface-dim": "#121416",
+                        "inverse-surface": "#e2e2e5",
+                        "background": "#121416",
+                        "tertiary-fixed": "#ffdbcd",
+                        "tertiary-container": "#b74400",
+                        "on-primary-container": "#e6e9ff",
+                        "primary-container": "#2a5ee6",
+                        "on-surface-variant": "#c3c5d7",
+                        "tertiary": "#ffb597",
+                        "surface-variant": "#333537",
+                        "on-secondary-container": "#a9bad3",
+                        "on-primary-fixed": "#00164e",
+                        "primary-fixed-dim": "#b5c4ff",
+                        "outline": "#8d90a0",
+                        "surface-container-highest": "#333537",
+                        "on-primary-fixed-variant": "#003bae",
+                        "surface-bright": "#38393c",
+                        "secondary-fixed": "#d3e4fe",
+                        "outline-variant": "#434655",
+                        "inverse-primary": "#1652da",
+                        "on-tertiary": "#591d00",
+                        "on-tertiary-fixed": "#360f00",
+                        "on-primary": "#00287c",
+                        "on-background": "#e2e2e5"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0px",
+                        "lg": "0px",
+                        "xl": "0px",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "1px",
+                        "xs": "4px",
+                        "md": "16px",
+                        "unit": "8px",
+                        "lg": "24px",
+                        "sm": "8px"
+                    },
+                    "fontFamily": {
+                        "data-mono": ["JetBrains Mono"],
+                        "body-sm": ["Hanken Grotesk"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "label-caps": ["JetBrains Mono"],
+                        "body-md": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "data-mono": ["12px", {"lineHeight": "16px", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "headline-sm": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "label-caps": ["10px", {"lineHeight": "12px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "body-md": ["13px", {"lineHeight": "18px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="font-body-md text-on-surface bg-background flex h-screen overflow-hidden">
+<!-- SIDE NAV RAIL (64px) -->
+<aside class="w-16 h-full border-r border-outline-variant bg-surface-container-low flex flex-col items-center py-md gap-sm">
+<div class="mb-lg">
+<span class="material-symbols-outlined text-primary text-2xl" data-icon="hub">hub</span>
+</div>
+<nav class="flex flex-col gap-xs flex-1">
+<button class="w-12 h-12 flex items-center justify-center bg-secondary-container text-on-secondary-container border-l-2 border-primary transition-all">
+<span class="material-symbols-outlined" data-icon="inventory_2" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-all">
+<span class="material-symbols-outlined" data-icon="traffic">traffic</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-all">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-all">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+</button>
+</nav>
+<div class="flex flex-col gap-xs border-t border-outline-variant pt-md">
+<button class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-all">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-all">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+</button>
+</div>
+</aside>
+<!-- MAIN WORKSPACE -->
+<main class="flex-1 flex flex-col min-w-0">
+<!-- TOP APP BAR -->
+<header class="h-12 border-b border-outline-variant bg-surface-container flex items-center justify-between px-md w-full">
+<div class="flex items-center gap-md">
+<span class="font-headline-sm text-headline-sm font-bold text-primary tracking-tighter">DPR.ai</span>
+<nav class="hidden md:flex items-center h-full gap-0 ml-lg">
+<div class="text-on-surface-variant hover:bg-surface-container-high h-full flex items-center px-4 cursor-pointer font-label-caps text-label-caps transition-colors">OPERATIONS</div>
+<div class="text-on-surface-variant hover:bg-surface-container-high h-full flex items-center px-4 cursor-pointer font-label-caps text-label-caps transition-colors">INVENTORY</div>
+<div class="text-primary border-b-2 border-primary h-full flex items-center px-4 cursor-pointer font-label-caps text-label-caps">ANALYTICS</div>
+<div class="text-on-surface-variant hover:bg-surface-container-high h-full flex items-center px-4 cursor-pointer font-label-caps text-label-caps transition-colors">LOGISTICS</div>
+</nav>
+</div>
+<div class="flex items-center gap-sm">
+<div class="relative">
+<span class="material-symbols-outlined text-on-surface-variant p-2 cursor-pointer" data-icon="notifications">notifications</span>
+<span class="absolute top-2 right-2 w-2 h-2 bg-primary rounded-full"></span>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant p-2 cursor-pointer" data-icon="settings">settings</span>
+<div class="w-8 h-8 rounded-sm bg-outline-variant border border-outline flex items-center justify-center ml-xs overflow-hidden">
+<img alt="DPR Operator" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCxVjOkE7y8Ul4AYmEK-c_BIf7mlUQsAzhExY1fM3alFKDF2KJPK_3ZzY9vsoVhgwVEUpk9gA0qj8NIyqJytWC05bWeLxf6LPuI-tsQJjpUaIeMtot8ZHoAmHWvhi9FI0fjtOmsViLqn_3cssteRBmPVSS2SEhEn-56rhyOig7JI6kN7vu8ffnLjchtrjQ40F2oRC4mAAO8WdxfO7xojO9uTWN9N15RRH6KBIBbuCzLmeEMr01UnlCX12vrieB15BgNg5PcGD-b6b-a">
+</div>
+</div>
+</header>
+<!-- THREE LANE CONTENT AREA -->
+<div class="flex flex-1 overflow-hidden">
+<!-- LEFT LANE: CONFIGURATION (320px) -->
+<section class="w-80 border-r border-outline-variant bg-surface-container-low flex flex-col shrink-0">
+<div class="p-md border-b border-outline-variant bg-surface-container-lowest">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant uppercase mb-xs">Operational Configuration</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant/70">Define report scope and dispatch parameters.</p>
+</div>
+<div class="flex-1 overflow-y-auto p-md flex flex-col gap-lg">
+<!-- Range Selector -->
+<div class="flex flex-col gap-sm">
+<label class="font-label-caps text-label-caps text-primary">REPORTING RANGE</label>
+<div class="grid grid-cols-2 gap-gutter bg-outline-variant border border-outline-variant">
+<button class="bg-primary text-on-primary py-xs font-label-caps text-label-caps">LAST 24H</button>
+<button class="bg-surface-container text-on-surface-variant py-xs font-label-caps text-label-caps hover:bg-surface-container-high">SHIFT B</button>
+</div>
+</div>
+<!-- Recipients -->
+<div class="flex flex-col gap-sm">
+<label class="font-label-caps text-label-caps text-primary">PRIMARY RECIPIENTS</label>
+<div class="flex flex-col gap-xs">
+<div class="flex items-center gap-sm p-sm bg-surface-container-high border border-outline-variant">
+<span class="material-symbols-outlined text-sm" data-icon="mail">mail</span>
+<span class="font-data-mono text-data-mono text-on-surface">ops.leadership@dpr.ai</span>
+<span class="material-symbols-outlined text-sm ml-auto cursor-pointer" data-icon="close">close</span>
+</div>
+<div class="flex items-center gap-sm p-sm bg-surface-container-high border border-outline-variant">
+<span class="material-symbols-outlined text-sm" data-icon="mail">mail</span>
+<span class="font-data-mono text-data-mono text-on-surface">floor.managers@dpr.ai</span>
+<span class="material-symbols-outlined text-sm ml-auto cursor-pointer" data-icon="close">close</span>
+</div>
+<button class="w-full border border-dashed border-outline-variant p-sm flex items-center justify-center gap-xs font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="add">add</span> ADD RECIPIENT
+                            </button>
+</div>
+</div>
+<!-- Dispatch Mode -->
+<div class="flex flex-col gap-sm">
+<label class="font-label-caps text-label-caps text-primary">SIGNAL INTENSITY</label>
+<div class="flex flex-col gap-xs">
+<label class="flex items-center gap-sm cursor-pointer p-sm hover:bg-surface-container transition-colors border border-transparent hover:border-outline-variant">
+<input checked="" class="form-radio bg-surface-container border-outline text-primary focus:ring-0" name="intensity" type="radio">
+<span class="font-body-md text-body-md">Standard Summary</span>
+</label>
+<label class="flex items-center gap-sm cursor-pointer p-sm hover:bg-surface-container transition-colors border border-transparent hover:border-outline-variant">
+<input class="form-radio bg-surface-container border-outline text-primary focus:ring-0" name="intensity" type="radio">
+<span class="font-body-md text-body-md">Exception Only (Critical)</span>
+</label>
+<label class="flex items-center gap-sm cursor-pointer p-sm hover:bg-surface-container transition-colors border border-transparent hover:border-outline-variant">
+<input class="form-radio bg-surface-container border-outline text-primary focus:ring-0" name="intensity" type="radio">
+<span class="font-body-md text-body-md">Full Telemetry Dump</span>
+</label>
+</div>
+</div>
+</div>
+<div class="p-md border-t border-outline-variant">
+<button class="w-full bg-primary-container text-on-primary-container py-md font-label-caps text-label-caps tracking-widest flex items-center justify-center gap-sm active:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined text-md" data-icon="sync">sync</span> GENERATE DRAFT
+                    </button>
+</div>
+</section>
+<!-- CENTER LANE: SUMMARY SNAPSHOT (FLUID) -->
+<section class="flex-1 bg-surface flex flex-col min-w-0 border-r border-outline-variant">
+<div class="p-md border-b border-outline-variant bg-surface-container-low flex items-center justify-between">
+<div>
+<h1 class="font-headline-sm text-headline-sm font-bold">Operational Signal Snapshot</h1>
+<p class="font-data-mono text-data-mono text-primary">[ T-MINUS 00:04:12 SINCE LAST SYNC ]</p>
+</div>
+<span class="font-label-caps text-label-caps border border-outline-variant px-sm py-xs bg-surface-container-high">VERIFIED DATA ONLY</span>
+</div>
+<div class="flex-1 overflow-y-auto p-md">
+<!-- BENTO GRID METRICS -->
+<div class="grid grid-cols-4 gap-gutter bg-outline-variant border border-outline-variant mb-lg">
+<div class="bg-surface-container p-md flex flex-col gap-xs">
+<span class="font-label-caps text-label-caps text-on-surface-variant">TOTAL UNITS</span>
+<span class="font-data-mono text-3xl font-bold text-primary">12,492</span>
+<div class="flex items-center gap-xs text-[10px] text-primary/70">
+<span class="material-symbols-outlined text-[12px]" data-icon="trending_up">trending_up</span> +1.2% VS TARGET
+                            </div>
+</div>
+<div class="bg-surface-container p-md flex flex-col gap-xs">
+<span class="font-label-caps text-label-caps text-on-surface-variant">AVG PERFORMANCE</span>
+<span class="font-data-mono text-3xl font-bold text-primary">94.2%</span>
+<div class="w-full h-1 bg-surface-container-highest mt-unit">
+<div class="bg-primary h-full" style="width: 94.2%;"></div>
+</div>
+</div>
+<div class="bg-surface-container p-md flex flex-col gap-xs">
+<span class="font-label-caps text-label-caps text-on-surface-variant">DOWNTIME (HRS)</span>
+<span class="font-data-mono text-3xl font-bold text-error">01:14</span>
+<div class="flex items-center gap-xs text-[10px] text-error/70">
+<span class="material-symbols-outlined text-[12px]" data-icon="warning">warning</span> BELT SLIPPAGE UNIT-4
+                            </div>
+</div>
+<div class="bg-surface-container p-md flex flex-col gap-xs">
+<span class="font-label-caps text-label-caps text-on-surface-variant">ATTENDANCE</span>
+<span class="font-data-mono text-3xl font-bold text-on-surface">98/102</span>
+<div class="flex items-center gap-xs text-[10px] text-on-surface-variant">
+<span class="material-symbols-outlined text-[12px]" data-icon="groups">groups</span> SHIFT LEAD: CHEN
+                            </div>
+</div>
+</div>
+<!-- OCR FEED & IMAGE ANALYTICS -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
+<!-- OCR Feed -->
+<div class="border border-outline-variant bg-surface-container-low flex flex-col">
+<div class="p-sm bg-surface-container-highest border-b border-outline-variant flex justify-between items-center">
+<span class="font-label-caps text-label-caps">VERIFIED OCR FEED</span>
+<span class="material-symbols-outlined text-sm" data-icon="camera">camera</span>
+</div>
+<div class="p-md font-data-mono text-data-mono text-on-surface-variant leading-relaxed h-64 overflow-y-auto">
+<div class="mb-sm"><span class="text-primary">[08:42]</span> LOG: SCAN_UNIT_09: PASS</div>
+<div class="mb-sm border-l-2 border-primary pl-sm py-xs bg-primary/5">
+<span class="text-primary">[09:15]</span> LOG: BATCH_X44: TEMP_THRESHOLD_EXCEEDED (104.2 C)
+                                </div>
+<div class="mb-sm"><span class="text-primary">[10:02]</span> LOG: SCAN_UNIT_11: PASS</div>
+<div class="mb-sm"><span class="text-primary">[11:58]</span> LOG: OPERATOR_INPUT: "Maintenance required on belt 4 motor housing"</div>
+<div class="mb-sm"><span class="text-primary">[12:15]</span> LOG: SCAN_UNIT_10: PASS</div>
+<div class="mb-sm"><span class="text-primary">[12:44]</span> LOG: SYSTEM_SYNC: COMPLETED</div>
+</div>
+</div>
+<!-- Factory Image Evidence -->
+<div class="border border-outline-variant bg-surface-container-low overflow-hidden relative group">
+<img alt="Factory Overview" class="w-full h-full object-cover opacity-60 grayscale hover:grayscale-0 transition-all duration-700" data-alt="A clinical, wide-angle interior view of a highly automated smart factory. High-key clinical lighting illuminates robotic arms and sleek conveyor belts in a palette of deep slate, electric blue accents, and pristine white surfaces. The atmosphere is quiet, technological, and orderly, emphasizing industrial efficiency and high-precision manufacturing." src="https://lh3.googleusercontent.com/aida-public/AB6AXuApWxS3vtznRjyrWm5HjCOL7akwV_EWlZtY3aGxipu_vPnX3fz6NDmL51ImPhLisQNelMppzBe3X3Swk8042W6UTmsrwWu3uyNZXHzNV3MYbZUEVFe-bIy2Yp6QzMTP6lvnJlDJBJJ3V-3AF7DhnFOPod3QrYTjqQvK3_Q_i2upHv2hLDQPw4dHwZBZodEHxvKM61KTFZML6XbXhcRX5sejJOCRHP8NV6ZxMbNUYZZ_aupg4pps-KNsQvVnDSNY8vn7UfhSAoLRfnp3">
+<div class="absolute inset-0 bg-gradient-to-t from-surface to-transparent pointer-events-none"></div>
+<div class="absolute top-sm left-sm bg-surface-container-highest/80 backdrop-blur-sm border border-outline-variant p-xs font-label-caps text-label-caps text-primary">
+                                CAM_NORTH_01
+                            </div>
+<div class="absolute bottom-md left-md right-md">
+<div class="font-label-caps text-label-caps text-on-surface mb-xs">ANOMALY DETECTED</div>
+<div class="w-full h-1 bg-surface-container">
+<div class="bg-error h-full" style="width: 45%;"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- RIGHT LANE: DRAFT & SEND (400px) -->
+<section class="w-[400px] border-l border-outline-variant bg-surface-container-low flex flex-col shrink-0">
+<div class="p-md border-b border-outline-variant bg-surface-container-lowest flex items-center justify-between">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant uppercase">Draft &amp; Dispatch</h2>
+<span class="font-data-mono text-data-mono text-primary">AI-CO-PILOT: ON</span>
+</div>
+<!-- Email Editor -->
+<div class="flex-1 flex flex-col p-md gap-md overflow-y-auto">
+<div class="flex flex-col gap-xs">
+<label class="font-label-caps text-label-caps text-on-surface-variant">SUBJECT</label>
+<input class="bg-surface border-b border-outline-variant focus:border-primary text-on-surface font-body-md py-sm px-0 ring-0 focus:ring-0 outline-none" type="text" value="Operational Update: Factory Alpha | 2024-05-14">
+</div>
+<div class="flex-1 flex flex-col gap-xs">
+<label class="font-label-caps text-label-caps text-on-surface-variant">MESSAGE BODY</label>
+<div class="flex-1 border border-outline-variant bg-surface p-md font-body-md text-on-surface leading-relaxed overflow-y-auto whitespace-pre-line">
+Team, 
+
+Operational performance for the current shift (24h) is tracking at 94.2%. 
+
+Total throughput recorded at 12,492 units. 
+
+CRITICAL EXCEPTION: Unit-4 belt slippage identified at 09:15 resulting in 1h 14m downtime. Maintenance has been dispatched and the issue is resolved as of 10:30.
+
+All other systems nominal. 
+
+DPR.ai Operational Suite
+                        </div>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="p-md border-t border-outline-variant bg-surface-container flex flex-col gap-sm">
+<div class="grid grid-cols-2 gap-sm">
+<button class="border border-outline-variant bg-surface-container-high py-sm flex items-center justify-center gap-xs font-label-caps text-label-caps hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="edit">edit</span> EDIT DRAFT
+                        </button>
+<button class="border border-outline-variant bg-surface-container-high py-sm flex items-center justify-center gap-xs font-label-caps text-label-caps hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined text-sm" data-icon="open_in_new">open_in_new</span> OPEN GMAIL
+                        </button>
+</div>
+<button class="w-full bg-primary text-on-primary py-md font-label-caps text-label-caps tracking-widest flex items-center justify-center gap-sm active:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined text-md" data-icon="send" style="font-variation-settings: 'FILL' 1;">send</span> DISPATCH SIGNAL
+                    </button>
+<div class="text-center font-data-mono text-[9px] text-on-surface-variant uppercase mt-xs">
+                        Encrypted Dispatch • SHA-256 Verified
+                    </div>
+</div>
+</section>
+</div>
+</main>
+<!-- Floating Command Palette (Keyboard focus hint) -->
+<div class="fixed bottom-lg right-lg bg-surface-container border border-outline-variant p-sm flex items-center gap-md pointer-events-none opacity-50">
+<span class="font-label-caps text-label-caps text-on-surface-variant">OPERATIONAL SHORTCUTS</span>
+<span class="font-data-mono text-data-mono bg-surface-container-highest px-xs py-[2px]">[ CMD+K ] COMMANDS</span>
+<span class="font-data-mono text-data-mono bg-surface-container-highest px-xs py-[2px]">[ G+D ] GEN DRAFT</span>
+</div>
+<script>
+        // Micro-interaction: Periodic "Scanning" animation for the OCR Feed
+        const ocrContainer = document.querySelector('.p-md.font-data-mono');
+        setInterval(() => {
+            const timestamp = new Date().toLocaleTimeString('en-GB', { hour12: false, hour: '2-digit', minute: '2-digit' });
+            const logEntry = document.createElement('div');
+            logEntry.className = 'mb-sm animate-pulse opacity-0';
+            logEntry.innerHTML = `<span class="text-primary">[${timestamp}]</span> LOG: TELEMETRY_PING: OK`;
+            ocrContainer.prepend(logEntry);
+            
+            setTimeout(() => {
+                logEntry.classList.remove('animate-pulse', 'opacity-0');
+            }, 100);
+
+            if(ocrContainer.children.length > 20) {
+                ocrContainer.removeChild(ocrContainer.lastChild);
+            }
+        }, 12000);
+
+        // Simulated Dispatch Effect
+        document.querySelector('button.bg-primary').addEventListener('click', function() {
+            this.innerHTML = `<span class="material-symbols-outlined text-md animate-spin" data-icon="sync">sync</span> DISPATCHING...`;
+            this.classList.add('bg-secondary', 'text-on-secondary');
+            setTimeout(() => {
+                this.innerHTML = `<span class="material-symbols-outlined text-md" data-icon="check_circle">check_circle</span> SIGNAL SENT`;
+                setTimeout(() => {
+                    this.innerHTML = `<span class="material-symbols-outlined text-md" data-icon="send" style="font-variation-settings: 'FILL' 1;">send</span> DISPATCH SIGNAL`;
+                    this.classList.remove('bg-secondary', 'text-on-secondary');
+                }, 2000);
+            }, 1500);
+        });
+    </script>
+</body></html>

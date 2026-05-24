@@ -1,0 +1,354 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>DPR.ai - Control Tower</title>
+<!-- Google Fonts & Icons -->
+<link href="https://fonts.googleapis.com" rel="preconnect">
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+                    "inverse-surface": "#e2e2e5",
+                    "surface": "#121416",
+                    "on-secondary-fixed-variant": "#38485d",
+                    "on-surface": "#e2e2e5",
+                    "secondary-fixed": "#d3e4fe",
+                    "tertiary-fixed": "#ffdbcd",
+                    "outline-variant": "#434655",
+                    "error": "#ffb4ab",
+                    "background": "#121416",
+                    "on-secondary-fixed": "#0b1c30",
+                    "on-secondary": "#213145",
+                    "on-tertiary-container": "#ffe5db",
+                    "primary-fixed-dim": "#b5c4ff",
+                    "inverse-on-surface": "#2f3133",
+                    "tertiary-container": "#b74400",
+                    "secondary": "#b7c8e1",
+                    "on-surface-variant": "#c3c5d7",
+                    "on-secondary-container": "#a9bad3",
+                    "tertiary-fixed-dim": "#ffb597",
+                    "surface-container-highest": "#333537",
+                    "secondary-container": "#3a4a5f",
+                    "error-container": "#93000a",
+                    "on-error": "#690005",
+                    "surface-container-lowest": "#0c0e10",
+                    "on-tertiary": "#591d00",
+                    "tertiary": "#ffb597",
+                    "surface-container-high": "#282a2c",
+                    "surface-dim": "#121416",
+                    "on-background": "#e2e2e5",
+                    "secondary-fixed-dim": "#b7c8e1",
+                    "primary-container": "#2a5ee6",
+                    "primary": "#b5c4ff",
+                    "on-tertiary-fixed": "#360f00",
+                    "surface-tint": "#b5c4ff",
+                    "surface-container": "#1e2022",
+                    "on-tertiary-fixed-variant": "#7e2c00",
+                    "surface-container-low": "#1a1c1e",
+                    "surface-bright": "#38393c",
+                    "inverse-primary": "#1652da",
+                    "primary-fixed": "#dce1ff",
+                    "on-primary-container": "#e6e9ff",
+                    "on-error-container": "#ffdad6",
+                    "outline": "#8d90a0",
+                    "on-primary": "#00287c",
+                    "on-primary-fixed-variant": "#003bae",
+                    "surface-variant": "#333537",
+                    "on-primary-fixed": "#00164e"
+            },
+            borderRadius: {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            spacing: {
+                    "xs": "4px",
+                    "md": "16px",
+                    "sm": "8px",
+                    "gutter": "1px",
+                    "unit": "8px",
+                    "lg": "24px"
+            },
+            fontFamily: {
+                    "label-caps": ["JetBrains Mono"],
+                    "data-mono": ["JetBrains Mono"],
+                    "body-sm": ["Hanken Grotesk"],
+                    "headline-sm": ["Hanken Grotesk"],
+                    "body-md": ["Hanken Grotesk"]
+            },
+            fontSize: {
+                    "label-caps": ["10px", { lineHeight: "12px", letterSpacing: "0.05em", fontWeight: "700" }],
+                    "data-mono": ["12px", { lineHeight: "16px", letterSpacing: "-0.02em", fontWeight: "500" }],
+                    "body-sm": ["12px", { lineHeight: "16px", fontWeight: "400" }],
+                    "headline-sm": ["18px", { lineHeight: "24px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                    "body-md": ["13px", { lineHeight: "18px", fontWeight: "400" }]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .filled-icon {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* Custom scrollbar for data tables */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #434655; border-radius: 0px; }
+        ::-webkit-scrollbar-thumb:hover { background: #8d90a0; }
+    </style>
+</head>
+<body class="bg-background text-on-surface flex overflow-hidden h-screen font-body-md text-body-md antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- Shared Component: SideNavBar -->
+<nav class="fixed left-0 top-0 h-full w-16 border-r border-outline-variant bg-surface-container-low flex flex-col items-center py-md gap-sm transition-all duration-150 ease-in-out z-50">
+<!-- Navigation Tabs -->
+<a class="bg-secondary-container text-on-secondary-container border-l-2 border-primary w-full flex justify-center py-3 mb-2" href="#" title="Nodes">
+<span class="material-symbols-outlined filled-icon">hub</span>
+</a>
+<a class="text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface w-full flex justify-center py-3 border-l-2 border-transparent transition-colors" href="#" title="Assets">
+<span class="material-symbols-outlined">inventory_2</span>
+</a>
+<a class="text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface w-full flex justify-center py-3 border-l-2 border-transparent transition-colors" href="#" title="Traffic">
+<span class="material-symbols-outlined">traffic</span>
+</a>
+<a class="text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface w-full flex justify-center py-3 border-l-2 border-transparent transition-colors" href="#" title="Logs">
+<span class="material-symbols-outlined">terminal</span>
+</a>
+<a class="text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface w-full flex justify-center py-3 border-l-2 border-transparent transition-colors" href="#" title="Admin">
+<span class="material-symbols-outlined">admin_panel_settings</span>
+</a>
+<!-- Spacer -->
+<div class="flex-grow"></div>
+<!-- Footer Tabs -->
+<a class="text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface w-full flex justify-center py-3 border-l-2 border-transparent transition-colors" href="#" title="Help">
+<span class="material-symbols-outlined">help_outline</span>
+</a>
+<a class="text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface w-full flex justify-center py-3 border-l-2 border-transparent transition-colors" href="#" title="Logout">
+<span class="material-symbols-outlined">logout</span>
+</a>
+</nav>
+<!-- Main Workspace -->
+<main class="ml-16 w-[calc(100%-64px)] flex flex-col h-screen overflow-hidden">
+<!-- Shared Component: TopAppBar -->
+<header class="w-full h-12 border-b border-outline-variant bg-surface-container flex items-center justify-between px-md shrink-0">
+<!-- Brand & Nav Group -->
+<div class="flex items-center h-full">
+<div class="font-headline-sm text-headline-sm font-bold text-primary tracking-tighter mr-8 flex items-center h-full">
+                    DPR.ai
+                </div>
+<nav class="flex h-full font-body-md text-body-md">
+<a class="text-primary border-b-2 border-primary h-full flex items-center px-4 cursor-pointer active:bg-surface-container-highest hover:bg-surface-container-high hover:text-on-surface transition-colors" href="#">Operations</a>
+<a class="text-on-surface-variant h-full flex items-center px-4 border-b-2 border-transparent cursor-pointer active:bg-surface-container-highest hover:bg-surface-container-high hover:text-on-surface transition-colors" href="#">Inventory</a>
+<a class="text-on-surface-variant h-full flex items-center px-4 border-b-2 border-transparent cursor-pointer active:bg-surface-container-highest hover:bg-surface-container-high hover:text-on-surface transition-colors" href="#">Analytics</a>
+<a class="text-on-surface-variant h-full flex items-center px-4 border-b-2 border-transparent cursor-pointer active:bg-surface-container-highest hover:bg-surface-container-high hover:text-on-surface transition-colors" href="#">Logistics</a>
+</nav>
+</div>
+<!-- Trailing Icons -->
+<div class="flex items-center gap-2">
+<button class="text-on-surface-variant p-1.5 rounded-none hover:bg-surface-container-high hover:text-on-surface transition-colors focus:outline-none">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+</button>
+<button class="text-on-surface-variant p-1.5 rounded-none hover:bg-surface-container-high hover:text-on-surface transition-colors focus:outline-none">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+</button>
+</div>
+</header>
+<!-- Operational Grid Interface (The 3-Column Workstation) -->
+<!-- "Avoid margins between functional blocks. Instead, use 'border-sharing'" -->
+<div class="flex flex-1 overflow-hidden p-xs">
+<div class="flex flex-1 border border-outline-variant overflow-hidden">
+<!-- Left Lane: Factory Context & Selection (320px) -->
+<div class="w-[320px] shrink-0 border-r border-outline-variant bg-surface flex flex-col">
+<!-- Section Header -->
+<div class="h-10 border-b border-outline-variant bg-surface-container-low flex items-center px-3 justify-between">
+<span class="font-label-caps text-label-caps text-on-surface-variant tracking-widest uppercase">Context Target</span>
+<div class="flex items-center gap-1">
+<div class="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+<span class="font-label-caps text-label-caps text-primary uppercase">Active</span>
+</div>
+</div>
+<div class="p-4 flex flex-col gap-6 overflow-y-auto">
+<!-- Identity Block -->
+<div>
+<h1 class="font-headline-sm text-headline-sm text-on-surface mb-1">RedVortex ORG</h1>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Steel Industry • Steel Core Pack</p>
+</div>
+<!-- Data Grid (Border Sharing Approach) -->
+<div class="grid grid-cols-2 bg-outline-variant gap-px border border-outline-variant">
+<div class="bg-surface p-3 flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Factory Code</span>
+<span class="font-data-mono text-data-mono text-on-surface select-all">QFK721S0</span>
+</div>
+<div class="bg-surface p-3 flex flex-col gap-1">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Members</span>
+<span class="font-data-mono text-data-mono text-on-surface">4</span>
+</div>
+<div class="bg-surface p-3 flex flex-col gap-1 col-span-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Timezone &amp; Locale</span>
+<span class="font-data-mono text-data-mono text-on-surface">Asia/Kolkata (IST)</span>
+</div>
+</div>
+<!-- Starter Modules -->
+<div class="flex flex-col gap-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Starter Modules</span>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-1 border border-outline-variant text-on-surface font-data-mono text-data-mono bg-surface-container-lowest">dpr</span>
+<span class="px-2 py-1 border border-outline-variant text-on-surface font-data-mono text-data-mono bg-surface-container-lowest">traceability</span>
+<span class="px-2 py-1 border border-outline-variant text-on-surface font-data-mono text-data-mono bg-surface-container-lowest">quality</span>
+<span class="px-2 py-1 border border-outline-variant text-on-surface font-data-mono text-data-mono bg-surface-container-lowest">scrap</span>
+<span class="px-2 py-1 border border-outline-variant text-on-surface font-data-mono text-data-mono bg-surface-container-lowest">certificates</span>
+</div>
+</div>
+<!-- Control Actions -->
+<div class="mt-auto flex flex-col gap-3 pt-4 border-t border-outline-variant">
+<div class="flex gap-2">
+<button class="flex-1 h-7 border border-outline-variant bg-surface hover:bg-surface-container-high transition-colors font-label-caps text-label-caps uppercase flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[14px]">view_kanban</span>
+                                    Board
+                                </button>
+<button class="flex-1 h-7 border border-outline-variant bg-surface hover:bg-surface-container-high transition-colors font-label-caps text-label-caps uppercase flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[14px]">login</span>
+                                    Entry
+                                </button>
+</div>
+<button class="w-full h-8 bg-primary-container text-on-primary-container font-label-caps text-label-caps uppercase flex items-center justify-center hover:brightness-110 transition-all border border-transparent">
+                                Enter Context
+                            </button>
+</div>
+</div>
+</div>
+<!-- Center Lane: Operational Map (Dominant) -->
+<div class="flex-1 flex flex-col relative bg-surface-container-lowest overflow-hidden">
+<!-- Map Toolbar -->
+<div class="h-10 border-b border-outline-variant bg-surface/80 backdrop-blur-sm absolute top-0 left-0 w-full z-10 flex items-center px-4 justify-between">
+<div class="flex items-center gap-4">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Facility Telemetry</span>
+<div class="flex items-center h-5 border border-outline-variant rounded-none bg-surface-container-highest">
+<button class="px-3 h-full font-label-caps text-label-caps text-on-primary bg-primary border-r border-outline-variant">Map</button>
+<button class="px-3 h-full font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface">Schema</button>
+</div>
+</div>
+<div class="font-data-mono text-data-mono text-on-surface-variant flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px]">my_location</span>
+<span class="tracking-tight">22.5726° N, 88.3639° E</span>
+</div>
+</div>
+<!-- Map Canvas / Placeholder Grid -->
+<div class="w-full h-full relative" style="background-image: radial-gradient(#434655 1px, transparent 1px); background-size: 24px 24px;">
+<img alt="Map Overlay" class="w-full h-full object-cover opacity-40 mix-blend-screen pointer-events-none" data-alt="A highly detailed, top-down schematic view of an industrial steel factory complex rendered in a dark-mode wireframe aesthetic. The map uses a sophisticated palette of deep blacks, charcoal greys, and crisp neon blue lines to represent building structures, conveyor belts, and logistical nodes. The lighting is extremely flat and technical, simulating a futuristic radar or satellite telemetry display interface without shadows or gradients. Precise geometric shapes indicate operational zones, contributing to a clinical, high-precision industrial stoicism." data-location="Kolkata Steel Complex" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfkycq1DB7KMrENRxWtd4ugkYUF5cu0BhY3t3GkNWTs-y7sEG25inym54PBqGrFVN-sW5RVKMs0Z1OimiOzM0qGWvLj9pjj9fCi0DRvkAeLRNPx8skdac_xzWwV9v00ivwEkA83LY0UELKP1xVk6gO0DHz1JYdIIIYCOtAbc5JUxYR0TARbBLKxXhVARWtM3QOjl4lK96ODJHlI4BjnL3KGxStBOHYrMliQnMzhohubDi4wnsyEhwRxZGbEoZxM51qbylGH-W4OLL3">
+<!-- Floating Node Indicator -->
+<div class="absolute top-[40%] left-[50%] -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
+<div class="w-3 h-3 border border-primary bg-primary/20 flex items-center justify-center mb-1">
+<div class="w-1 h-1 bg-primary"></div>
+</div>
+<div class="bg-surface-container border border-outline-variant px-2 py-1 shadow-none flex flex-col items-center">
+<span class="font-label-caps text-label-caps text-primary uppercase">Core Furnace</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant text-[10px]">TEMP: 1450°C</span>
+</div>
+</div>
+</div>
+<!-- Bottom Command Bar Placeholder -->
+<div class="absolute bottom-4 left-1/2 -translate-x-1/2 border border-outline-variant bg-surface-container px-4 py-1.5 flex items-center gap-4">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">keyboard_command_key</span> CMD+K to search entities</span>
+</div>
+</div>
+<!-- Right Lane: Network Status Telemetry (320px) -->
+<div class="w-[320px] shrink-0 border-l border-outline-variant bg-surface flex flex-col">
+<div class="h-10 border-b border-outline-variant bg-surface-container-low flex items-center px-3 justify-between">
+<span class="font-label-caps text-label-caps text-on-surface-variant tracking-widest uppercase">Network Status</span>
+<button class="text-on-surface-variant hover:text-on-surface flex items-center">
+<span class="material-symbols-outlined text-[16px]">refresh</span>
+</button>
+</div>
+<div class="flex flex-col h-full overflow-y-auto">
+<!-- Telemetry Grid -->
+<div class="grid grid-cols-2 bg-outline-variant gap-px border-b border-outline-variant">
+<div class="bg-surface p-3 flex flex-col justify-between h-[80px]">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">router</span> Node Uptime</span>
+<span class="font-data-mono text-data-mono text-on-surface text-lg">99.98%</span>
+</div>
+<div class="bg-surface p-3 flex flex-col justify-between h-[80px]">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">sync_alt</span> Sync Delay</span>
+<span class="font-data-mono text-data-mono text-primary text-lg">14ms</span>
+</div>
+<div class="bg-surface p-3 flex flex-col justify-between h-[80px] col-span-2 relative overflow-hidden group">
+<div class="flex justify-between items-center w-full z-10 relative">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase flex items-center gap-1"><span class="material-symbols-outlined text-[12px]">memory</span> System Load</span>
+<span class="font-data-mono text-data-mono text-on-surface">32%</span>
+</div>
+<!-- Mock Sparkline -->
+<div class="absolute bottom-0 left-0 w-full h-8 opacity-40 flex items-end gap-[2px] px-3 pb-2 z-0">
+<div class="w-full h-[40%] bg-outline-variant"></div>
+<div class="w-full h-[30%] bg-outline-variant"></div>
+<div class="w-full h-[60%] bg-outline-variant"></div>
+<div class="w-full h-[50%] bg-outline-variant"></div>
+<div class="w-full h-[80%] bg-primary"></div>
+<div class="w-full h-[30%] bg-outline-variant"></div>
+<div class="w-full h-[40%] bg-outline-variant"></div>
+</div>
+</div>
+</div>
+<!-- Jobs / Logs List (Zebra Striping) -->
+<div class="flex flex-col flex-1">
+<div class="px-3 py-2 border-b border-outline-variant bg-surface-container flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Recent Jobs</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant text-[10px] bg-surface border border-outline-variant px-1">0 pending</span>
+</div>
+<!-- Log Items -->
+<div class="flex flex-col font-data-mono text-data-mono">
+<div class="flex items-center gap-3 px-3 py-2 border-b border-outline-variant bg-surface">
+<span class="text-primary material-symbols-outlined text-[14px]">check_circle</span>
+<div class="flex flex-col w-full">
+<div class="flex justify-between w-full">
+<span class="text-on-surface truncate w-32">Data Sync Job</span>
+<span class="text-on-surface-variant text-[10px]">Just now</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 border-b border-outline-variant bg-surface-container-lowest">
+<span class="text-primary material-symbols-outlined text-[14px]">check_circle</span>
+<div class="flex flex-col w-full">
+<div class="flex justify-between w-full">
+<span class="text-on-surface truncate w-32">Inventory Index</span>
+<span class="text-on-surface-variant text-[10px]">2m ago</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 border-b border-outline-variant bg-surface">
+<span class="text-error material-symbols-outlined text-[14px]">warning</span>
+<div class="flex flex-col w-full">
+<div class="flex justify-between w-full">
+<span class="text-error truncate w-32">Traceability Pull</span>
+<span class="text-on-surface-variant text-[10px]">15m ago</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-3 px-3 py-2 border-b border-outline-variant bg-surface-container-lowest">
+<span class="text-primary material-symbols-outlined text-[14px]">check_circle</span>
+<div class="flex flex-col w-full">
+<div class="flex justify-between w-full">
+<span class="text-on-surface truncate w-32">Module Refresh</span>
+<span class="text-on-surface-variant text-[10px]">1h ago</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</body></html>

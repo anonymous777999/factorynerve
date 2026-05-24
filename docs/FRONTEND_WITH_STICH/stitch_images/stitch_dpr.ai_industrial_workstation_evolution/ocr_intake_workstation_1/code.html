@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>OCR Intake Workstation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&amp;family=Hanken+Grotesk:wght@400;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            colors: {
+                "on-surface-variant": "#c3c5d7",
+                "error": "#ffb4ab",
+                "inverse-on-surface": "#2f3133",
+                "on-surface": "#e2e2e5",
+                "secondary": "#b7c8e1",
+                "on-tertiary": "#591d00",
+                "primary-container": "#2a5ee6",
+                "secondary-container": "#3a4a5f",
+                "tertiary-fixed-dim": "#ffb597",
+                "surface-dim": "#121416",
+                "surface-container-high": "#282a2c",
+                "on-tertiary-fixed-variant": "#7e2c00",
+                "surface-container-highest": "#333537",
+                "tertiary-container": "#b74400",
+                "surface-container-low": "#1a1c1e",
+                "on-secondary-container": "#a9bad3",
+                "on-secondary": "#213145",
+                "tertiary-fixed": "#ffdbcd",
+                "secondary-fixed-dim": "#b7c8e1",
+                "on-primary-fixed-variant": "#003bae",
+                "surface-container-lowest": "#0c0e10",
+                "surface": "#121416",
+                "primary-fixed": "#dce1ff",
+                "on-secondary-fixed": "#0b1c30",
+                "inverse-surface": "#e2e2e5",
+                "surface-tint": "#b5c4ff",
+                "primary-fixed-dim": "#b5c4ff",
+                "on-primary": "#00287c",
+                "surface-container": "#1e2022",
+                "surface-bright": "#38393c",
+                "on-error-container": "#ffdad6",
+                "surface-variant": "#333537",
+                "secondary-fixed": "#d3e4fe",
+                "on-tertiary-fixed": "#360f00",
+                "inverse-primary": "#1652da",
+                "tertiary": "#ffb597",
+                "on-primary-fixed": "#00164e",
+                "primary": "#b5c4ff",
+                "outline-variant": "#434655",
+                "on-primary-container": "#e6e9ff",
+                "on-background": "#e2e2e5",
+                "on-error": "#690005",
+                "error-container": "#93000a",
+                "on-tertiary-container": "#ffe5db",
+                "background": "#121416",
+                "outline": "#8d90a0",
+                "on-secondary-fixed-variant": "#38485d"
+            },
+            borderRadius: {
+                "DEFAULT": "0.25rem",
+                "lg": "0.5rem",
+                "xl": "0.75rem",
+                "full": "9999px"
+            },
+            spacing: {
+                "lg": "24px",
+                "gutter": "1px",
+                "sm": "8px",
+                "xs": "4px",
+                "md": "16px",
+                "unit": "8px"
+            },
+            fontFamily: {
+                "label-caps": ["JetBrains Mono"],
+                "headline-sm": ["Hanken Grotesk"],
+                "body-md": ["Hanken Grotesk"],
+                "body-sm": ["Hanken Grotesk"],
+                "data-mono": ["JetBrains Mono"]
+            },
+            fontSize: {
+                "label-caps": ["10px", { "lineHeight": "12px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                "headline-sm": ["18px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                "body-md": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                "body-sm": ["12px", { "lineHeight": "16px", "fontWeight": "400" }],
+                "data-mono": ["12px", { "lineHeight": "16px", "letterSpacing": "-0.02em", "fontWeight": "500" }]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body { background-color: theme('colors.background'); color: theme('colors.on-background'); margin: 0; overflow: hidden; }
+        .material-symbols-outlined { font-family: 'Material Symbols Outlined'; font-weight: normal; font-style: normal; font-size: 20px; display: inline-block; line-height: 1; text-transform: none; letter-spacing: normal; word-wrap: normal; white-space: nowrap; direction: ltr; }
+        .border-grid { border-color: theme('colors.surface-container-high'); border-width: 1px; border-style: solid; }
+        .terminal-input::placeholder { color: theme('colors.on-surface-variant'); }
+        .dashed-dropzone { background-image: linear-gradient(theme('colors.surface-container-high') 50%, transparent 50%), linear-gradient(theme('colors.surface-container-high') 50%, transparent 50%), linear-gradient(90deg, theme('colors.surface-container-high') 50%, transparent 50%), linear-gradient(90deg, theme('colors.surface-container-high') 50%, transparent 50%); background-size: 1px 8px, 1px 8px, 8px 1px, 8px 1px; background-position: 0 0, 100% 0, 0 0, 0 100%; background-repeat: repeat-y, repeat-y, repeat-x, repeat-x; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: theme('colors.background'); }
+        ::-webkit-scrollbar-thumb { background: theme('colors.surface-container-high'); }
+        ::-webkit-scrollbar-thumb:hover { background: theme('colors.outline'); }
+    </style>
+</head>
+<body class="flex flex-col h-screen font-body-md text-body-md antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopNavBar -->
+<nav class="flex justify-between items-center px-md w-full h-12 bg-surface border-b border-outline-variant flex-shrink-0 z-50">
+<div class="flex items-center gap-md">
+<span class="font-headline-sm text-headline-sm font-bold text-primary">DPR.ai</span>
+<div class="h-6 w-px bg-outline-variant mx-sm"></div>
+<span class="font-label-caps text-label-caps text-on-surface-variant tracking-widest">OCR INTAKE</span>
+</div>
+<div class="flex items-center gap-sm">
+<button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors rounded">
+<span class="material-symbols-outlined" style="font-size: 18px;">settings</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors rounded relative">
+<span class="material-symbols-outlined" style="font-size: 18px;">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"></span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-colors rounded">
+<span class="material-symbols-outlined" style="font-size: 18px;">account_tree</span>
+</button>
+<div class="h-4 w-px bg-outline-variant mx-xs"></div>
+<button class="h-[28px] px-sm bg-primary-container text-on-primary-container font-label-caps text-label-caps border border-outline-variant hover:bg-primary hover:text-on-primary transition-colors flex items-center gap-xs ml-sm">
+                Deploy
+            </button>
+</div>
+</nav>
+<!-- Main Workspace -->
+<div class="flex flex-1 overflow-hidden">
+<!-- SideNavBar (Left Rail) -->
+<aside class="fixed left-0 top-12 bottom-0 w-16 flex flex-col items-center py-unit bg-surface-container-low border-r border-outline-variant z-40">
+<div class="flex flex-col gap-2 w-full px-1 flex-1">
+<button class="w-full aspect-square flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-all duration-150 rounded" title="Dashboard">
+<span class="material-symbols-outlined mb-1" style="font-size: 20px;">dashboard</span>
+<span class="font-label-caps text-[8px] leading-[10px]">DASH</span>
+</button>
+<button class="w-full aspect-square flex flex-col items-center justify-center border-l-2 border-primary bg-secondary-container text-on-secondary-container transition-all duration-150 rounded-r" title="Inventory">
+<span class="material-symbols-outlined mb-1" style="font-size: 20px;">inventory_2</span>
+<span class="font-label-caps text-[8px] leading-[10px]">INTAKE</span>
+</button>
+<button class="w-full aspect-square flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-all duration-150 rounded" title="Logistics">
+<span class="material-symbols-outlined mb-1" style="font-size: 20px;">local_shipping</span>
+<span class="font-label-caps text-[8px] leading-[10px]">QUEUE</span>
+</button>
+<button class="w-full aspect-square flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-all duration-150 rounded" title="Analytics">
+<span class="material-symbols-outlined mb-1" style="font-size: 20px;">analytics</span>
+<span class="font-label-caps text-[8px] leading-[10px]">STATS</span>
+</button>
+</div>
+<div class="flex flex-col gap-2 w-full px-1 pb-10">
+<button class="w-full aspect-square flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-container-high transition-all duration-150 rounded" title="Support">
+<span class="material-symbols-outlined mb-1" style="font-size: 20px;">help</span>
+</button>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="ml-16 flex-1 flex w-full">
+<!-- Context Lane (Pipeline Stages) -->
+<div class="w-64 border-r border-outline-variant bg-surface flex flex-col flex-shrink-0">
+<div class="h-10 border-b border-outline-variant flex items-center px-sm bg-surface-container-low">
+<span class="font-label-caps text-label-caps text-on-surface-variant">PIPELINE STAGES</span>
+</div>
+<div class="p-sm flex flex-col gap-sm">
+<!-- Stage 1 -->
+<div class="p-sm border border-outline-variant bg-surface-container-lowest">
+<div class="flex justify-between items-center mb-sm">
+<div class="flex items-center gap-xs text-primary">
+<span class="material-symbols-outlined" style="font-size: 14px;">check_circle</span>
+<span class="font-label-caps text-label-caps">PRE-PROCESS</span>
+</div>
+<span class="font-data-mono text-data-mono text-on-surface-variant">100%</span>
+</div>
+<div class="w-full h-1 bg-surface-container-high">
+<div class="h-full bg-primary w-full"></div>
+</div>
+</div>
+<!-- Stage 2 (Active) -->
+<div class="p-sm border border-primary bg-secondary-container bg-opacity-20 relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-[2px] bg-primary"></div>
+<div class="flex justify-between items-center mb-sm">
+<div class="flex items-center gap-xs text-primary">
+<span class="material-symbols-outlined animate-spin" style="font-size: 14px; animation-duration: 3s;">sync</span>
+<span class="font-label-caps text-label-caps">OCR ENGINE</span>
+</div>
+<span class="font-data-mono text-data-mono text-primary">IN_PROG</span>
+</div>
+<div class="w-full h-1 bg-surface-container-high">
+<div class="h-full bg-primary w-1/3 animate-pulse"></div>
+</div>
+</div>
+<!-- Stage 3 -->
+<div class="p-sm border border-outline-variant bg-surface opacity-50">
+<div class="flex justify-between items-center mb-sm">
+<div class="flex items-center gap-xs text-on-surface-variant">
+<span class="material-symbols-outlined" style="font-size: 14px;">radio_button_unchecked</span>
+<span class="font-label-caps text-label-caps">VALIDATION</span>
+</div>
+<span class="font-data-mono text-data-mono text-on-surface-variant">PEND</span>
+</div>
+<div class="w-full h-1 bg-surface-container-high"></div>
+</div>
+</div>
+</div>
+<!-- Operational Lane (Center Work) -->
+<div class="flex-1 flex flex-col min-w-0 bg-surface-container-lowest relative pb-8">
+<div class="h-10 border-b border-outline-variant flex items-center justify-between px-md bg-surface-container-low flex-shrink-0">
+<span class="font-label-caps text-label-caps text-on-surface-variant">WORKSPACE // UPLOAD ZONE</span>
+<div class="flex items-center gap-sm">
+<span class="font-label-caps text-label-caps text-on-surface-variant opacity-50">[ CMD+U ]</span>
+</div>
+</div>
+<div class="flex-1 flex flex-col p-md gap-md overflow-y-auto">
+<!-- Upload Dropzone -->
+<div class="h-48 dashed-dropzone bg-surface-container-low hover:bg-surface-container-high transition-colors flex flex-col items-center justify-center cursor-pointer group">
+<div class="w-12 h-12 bg-surface-container-highest border border-outline-variant flex items-center justify-center mb-sm group-hover:border-primary transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors" style="font-size: 24px;">upload_file</span>
+</div>
+<span class="font-headline-sm text-headline-sm text-on-surface mb-xs">INITIALIZE BATCH UPLOAD</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant">SUPPORTED FORMATS: PDF, TIFF, PNG // MAX 500MB</span>
+</div>
+<!-- Recent Uploads Table -->
+<div class="flex-1 border border-outline-variant bg-surface flex flex-col min-h-[250px]">
+<div class="h-8 border-b border-outline-variant flex items-center justify-between px-sm bg-surface-container-low flex-shrink-0">
+<span class="font-label-caps text-label-caps text-on-surface-variant">ACTIVE QUEUE</span>
+<div class="flex gap-xs">
+<button class="h-6 px-2 border border-outline-variant flex items-center justify-center bg-surface hover:bg-surface-container-high">
+<span class="material-symbols-outlined" style="font-size: 14px;">filter_list</span>
+</button>
+</div>
+</div>
+<div class="flex-1 overflow-auto">
+<table class="w-full text-left border-collapse">
+<thead class="sticky top-0 bg-surface-container-low border-b border-outline-variant z-10">
+<tr>
+<th class="py-xs px-sm font-label-caps text-label-caps text-on-surface-variant w-8">#</th>
+<th class="py-xs px-sm font-label-caps text-label-caps text-on-surface-variant">FILE_ID</th>
+<th class="py-xs px-sm font-label-caps text-label-caps text-on-surface-variant">PAGES</th>
+<th class="py-xs px-sm font-label-caps text-label-caps text-on-surface-variant">SIZE</th>
+<th class="py-xs px-sm font-label-caps text-label-caps text-on-surface-variant text-right">STATUS</th>
+</tr>
+</thead>
+<tbody>
+<tr class="border-b border-surface-container-highest hover:bg-surface-container-low">
+<td class="py-1 px-sm font-data-mono text-data-mono text-on-surface-variant">01</td>
+<td class="py-1 px-sm font-data-mono text-data-mono text-primary">INV-2023-8991.pdf</td>
+<td class="py-1 px-sm font-data-mono text-data-mono text-on-surface">12</td>
+<td class="py-1 px-sm font-data-mono text-data-mono text-on-surface">2.4MB</td>
+<td class="py-1 px-sm text-right">
+<span class="inline-block px-1 border border-outline-variant text-[10px] font-label-caps text-on-surface">PROCESSED</span>
+</td>
+</tr>
+<tr class="border-b border-surface-container-highest bg-surface-container-lowest hover:bg-surface-container-low">
+<td class="py-1 px-sm font-data-mono text-data-mono text-on-surface-variant">02</td>
+<td class="py-1 px-sm font-data-mono text-data-mono text-primary">WL-MANIFEST-X9.tiff</td>
+<td class="py-1 px-sm font-data-mono text-data-mono text-on-surface">1</td>
+<td class="py-1 px-sm font-data-mono text-data-mono text-on-surface">8.1MB</td>
+<td class="py-1 px-sm text-right">
+<span class="inline-block px-1 border border-primary text-[10px] font-label-caps text-primary animate-pulse">EXTRACTING</span>
+</td>
+</tr>
+<tr class="border-b border-surface-container-highest hover:bg-surface-container-low">
+<td class="py-1 px-sm font-data-mono text-data-mono text-on-surface-variant">03</td>
+<td class="py-1 px-sm font-data-mono text-data-mono text-on-surface-variant line-through">CORRUPT_SCAN_001.png</td>
+<td class="py-1 px-sm font-data-mono text-data-mono text-on-surface-variant">-</td>
+<td class="py-1 px-sm font-data-mono text-data-mono text-on-surface-variant">0.1MB</td>
+<td class="py-1 px-sm text-right">
+<span class="inline-block px-1 border border-error text-[10px] font-label-caps text-error">FAILED</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Terminal Input Bar -->
+<div class="absolute bottom-0 left-0 right-0 h-8 border-t border-outline-variant bg-surface flex items-center px-sm">
+<span class="font-data-mono text-data-mono text-primary mr-sm">CMD&gt;</span>
+<input autocomplete="off" class="flex-1 bg-transparent border-none p-0 focus:ring-0 font-data-mono text-data-mono text-on-surface terminal-input h-full" placeholder="Enter batch command (e.g., /run_ocr --queue=active)" type="text"/>
+</div>
+</div>
+<!-- Telemetry Lane (Right Panel) -->
+<div class="w-80 border-l border-outline-variant bg-surface flex flex-col flex-shrink-0">
+<div class="h-10 border-b border-outline-variant flex items-center px-md bg-surface-container-low">
+<span class="font-label-caps text-label-caps text-on-surface-variant">TELEMETRY</span>
+</div>
+<div class="p-md flex flex-col gap-sm overflow-y-auto">
+<!-- Telemetry Tile 1 -->
+<div class="border border-outline-variant bg-surface-container-lowest p-sm">
+<div class="flex justify-between items-start mb-sm">
+<span class="font-label-caps text-label-caps text-on-surface-variant">ENGINE_HEALTH</span>
+<div class="w-2 h-2 rounded-full bg-[#4ade80] mt-1 shadow-[0_0_8px_#4ade80]"></div>
+</div>
+<div class="font-data-mono text-[24px] leading-none text-on-surface">NOMINAL</div>
+<div class="mt-sm h-4 flex items-end gap-[2px]">
+<div class="w-1/6 bg-primary opacity-40 h-[40%]"></div>
+<div class="w-1/6 bg-primary opacity-60 h-[60%]"></div>
+<div class="w-1/6 bg-primary opacity-80 h-[50%]"></div>
+<div class="w-1/6 bg-primary opacity-40 h-[30%]"></div>
+<div class="w-1/6 bg-primary opacity-100 h-[80%]"></div>
+<div class="w-1/6 bg-primary opacity-60 h-[50%]"></div>
+</div>
+</div>
+<!-- Telemetry Tile 2 -->
+<div class="border border-outline-variant bg-surface-container-lowest p-sm flex flex-col gap-xs">
+<span class="font-label-caps text-label-caps text-on-surface-variant">CONFIDENCE_SCORE</span>
+<div class="flex items-end justify-between">
+<span class="font-data-mono text-[24px] leading-none text-primary">98.4%</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant">AVG_LAST_1H</span>
+</div>
+</div>
+<!-- Log Output -->
+<div class="flex-1 min-h-[150px] border border-outline-variant bg-surface-container-lowest flex flex-col">
+<div class="px-sm py-1 border-b border-outline-variant bg-surface-container-low flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant">SYSTEM_LOG</span>
+<span class="material-symbols-outlined text-on-surface-variant" style="font-size: 12px;">open_in_full</span>
+</div>
+<div class="p-sm flex-1 overflow-auto font-data-mono text-[10px] leading-tight text-on-surface-variant space-y-1">
+<div><span class="text-primary">[10:42:01]</span> SYS_INIT complete</div>
+<div><span class="text-primary">[10:42:05]</span> Connecting to ML cluster... OK</div>
+<div><span class="text-primary">[10:45:12]</span> Received POST /upload</div>
+<div><span class="text-primary">[10:45:13]</span> Chunking file INV-2023-8991.pdf (12 pages)</div>
+<div><span class="text-primary">[10:45:20]</span> OCR pass complete. Conf: 0.98</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

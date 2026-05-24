@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -21,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select } from "@/components/ui/select";
 import { USE_TANSTACK_TABLE } from "@/config/featureFlags";
 import { formatApiErrorMessage } from "@/lib/api";
+import { warmBackendConnection } from "@/lib/auth";
 import { pushAppToast } from "@/lib/toast";
 import { transferBlob } from "@/lib/blob-transfer";
 import { rasterizeDocumentForOcr } from "@/lib/document-rasterize";
@@ -53,8 +53,11 @@ import {
   exportRowsToJson,
 } from "@/lib/ocr-export";
 import {
+  clearOcrUiState,
+  loadOcrUiState,
+  saveOcrUiState,
 } from "@/lib/ocr-ui-state";
-import { warmBackendConnection } from "@/lib/auth";
+import { useOcrScanRouteState } from "@/hooks/use-ocr-scan-route-state";
 import { queryKeys } from "@/lib/query-keys";
 import { useSession } from "@/lib/use-session";
 import { signalWorkflowRefresh } from "@/lib/workflow-sync";
@@ -587,14 +590,11 @@ function statusBannerClass(tone: "error" | "success" | "warning") {
 
 export default function OcrScanPage() {
   const queryClient = useQueryClient();
-  const pathname = usePathname();
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const route = useOcrScanRouteState();
   const { user, loading, error: sessionError } = useSession();
   const { isMobile, ready: deviceReady } = useOcrDevice();
 
   const [step, setStep] = useState<OcrFlowStep>("upload");
-  const [cameraOpen, setCameraOpen] = useState(false);
   const [processingStage, setProcessingStage] = useState<ProcessingStage>("uploaded");
   const [busy, setBusy] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
@@ -648,16 +648,9 @@ export default function OcrScanPage() {
   const [, setHistoryVersion] = useState(0);
 
   const canUseOcr = canUseOcrScan(user?.role);
-  const requestedStep = useMemo(
-    () => normalizeOcrFlowStep(searchParams.get("step")),
-    [searchParams],
-  );
-  const requestedVerificationId = useMemo(() => {
-    const raw = searchParams.get("verification_id");
-    if (!raw) return null;
-    const parsed = Number(raw);
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-  }, [searchParams]);
+  const requestedStep = route.step;
+  const requestedVerificationId = route.verificationId;
+  const cameraOpen = route.panel === "camera";
   const displayPreviewUrl = preparedPreviewUrl || originalUrl;
   const rerunSourceFile = originalFile || preparedPreviewFile || finalUploadFile;
   const canRerunWithSelectedModel = Boolean(rerunSourceFile);
@@ -731,22 +724,6 @@ export default function OcrScanPage() {
     if (!canUseOcr) return;
     void loadRecentRecords();
   }, [canUseOcr, loadRecentRecords]);
-
-  const replaceWorkflowRoute = useCallback((nextStep: OcrFlowStep, verificationId: number | null) => {
-    const next = new URLSearchParams(searchParams.toString());
-    next.set("step", nextStep);
-    if (verificationId != null) {
-      next.set("verification_id", String(verificationId));
-    } else {
-      next.delete("verification_id");
-    }
-    const query = next.toString();
-    const nextHref = query ? `${pathname}?${query}` : pathname;
-    const currentHref = searchParams.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
-    if (nextHref !== currentHref) {
-      router.replace(nextHref, { scroll: false });
-    }
-  }, [pathname, router, searchParams]);
 
   useEffect(() => {
     if (!originalUrl || !originalUrl.startsWith("blob:")) return;
@@ -822,30 +799,100 @@ export default function OcrScanPage() {
     }
   }, [resetHistory]);
 
+  const restorePersistedDraft = useCallback(async () => {
+    const persisted = loadOcrUiState();
+    if (!persisted) {
+      setStep("upload");
+      return;
+    }
+
+    if (persisted.savedId) {
+      await openRecentRecord(persisted.savedId, {
+        statusMessage: `Recovered OCR draft #${persisted.savedId}.`,
+        targetStep: normalizeOcrFlowStep(persisted.step) ?? "preview",
+      });
+      return;
+    }
+
+    const restoredStep = normalizeOcrFlowStep(persisted.step) ?? "upload";
+    const safeStep =
+      restoredStep === "processing" && !persisted.rows?.length
+        ? "upload"
+        : restoredStep;
+
+    setStep(safeStep);
+    setSourceFilename(persisted.fileName || "");
+    setOriginalUrl(persisted.imageDataUrl?.startsWith("data:") ? persisted.imageDataUrl : "");
+    setPreparedPreviewUrl(
+      persisted.preparedImageDataUrl?.startsWith("data:") ? persisted.preparedImageDataUrl : "",
+    );
+    setResultPreview(
+      persisted.headers?.length || persisted.rows?.length
+        ? {
+            type: persisted.resultType || "table",
+            title: persisted.title || persisted.fileName || "OCR Extraction",
+            headers: persisted.headers || [],
+            rows: cloneRows((persisted.rows as OcrCell[][] | undefined) || []),
+            rawText: persisted.rawText ?? null,
+            language: persisted.language || "auto",
+            avgConfidence: persisted.confidence ?? null,
+            warnings: persisted.warnings || [],
+            scanQuality: persisted.scanQuality ?? null,
+            routingMeta: persisted.routingMeta ?? null,
+            routingLabel: persisted.routingMeta?.model_tier ?? null,
+            tokenUsage: persisted.tokenUsage ?? null,
+            debug: persisted.debug ?? null,
+            reused: false,
+          }
+        : null,
+    );
+    setEditableHeaders(persisted.headers || []);
+    setEditableRows(cloneRows((persisted.rows as OcrCell[][] | undefined) || []));
+    setColumnTypes(persisted.columnTypes || []);
+    setHeaderRowEnabled(Boolean(persisted.headerRowEnabled));
+    setShowLowConfidence(persisted.showLowConfidence ?? true);
+    setDocumentHash(persisted.documentHash ?? null);
+    setSelectedModel(toModelOption(persisted.selectedModel));
+    setViewMode("spreadsheet");
+    setStatus(
+      safeStep === "upload" && restoredStep === "processing"
+        ? "Previous OCR processing was interrupted. Re-run the document when ready."
+        : persisted.status || "Recovered local OCR draft.",
+    );
+    setStatusTone(safeStep === "upload" && restoredStep === "processing" ? "warning" : "success");
+    resetHistory({
+      headers: persisted.headers || [],
+      rows: cloneRows((persisted.rows as OcrCell[][] | undefined) || []),
+      columnTypes: persisted.columnTypes || inferColumnTypes((persisted.rows as OcrCell[][] | undefined) || [], (persisted.headers || []).length),
+      headerRowEnabled: Boolean(persisted.headerRowEnabled),
+    });
+  }, [openRecentRecord, resetHistory]);
+
   useEffect(() => {
     if (restored || typeof window === "undefined") return;
     if (requestedVerificationId != null) {
       void openRecentRecord(requestedVerificationId, {
         statusMessage: `Opened OCR draft #${requestedVerificationId}.`,
-        targetStep: requestedStep ?? undefined,
+        targetStep: requestedStep,
       }).finally(() => {
         setRestored(true);
       });
       return;
     }
-    setStep(requestedStep || "upload");
-    setRestored(true);
-  }, [openRecentRecord, requestedStep, requestedVerificationId, resetHistory, restored]);
+
+    void restorePersistedDraft().finally(() => {
+      setRestored(true);
+    });
+  }, [openRecentRecord, requestedStep, requestedVerificationId, restorePersistedDraft, restored]);
 
   useEffect(() => {
     if (!restored) return;
-    replaceWorkflowRoute(step, savedId);
-  }, [replaceWorkflowRoute, restored, savedId, step]);
+    route.replaceStep(step, savedId);
+  }, [restored, route, savedId, step]);
 
   const resetFlow = useCallback(() => {
     setStep("upload");
     setBusy(false);
-    setCameraOpen(false);
     setProcessingStage("uploaded");
     setStatus("");
     setRemoteUrl("");
@@ -873,7 +920,9 @@ export default function OcrScanPage() {
     setShareExpiresAt(null);
     historyRef.current = [];
     historyIndexRef.current = -1;
-  }, []);
+    clearOcrUiState();
+    route.closeCamera();
+  }, [route]);
 
   const persistDraftMutation = useMutation<
     OcrVerificationRecord,
@@ -973,6 +1022,63 @@ export default function OcrScanPage() {
     }, 800);
     return () => window.clearTimeout(timer);
   }, [draftDirty, persistStructuredDraft, resultPreview]);
+
+  useEffect(() => {
+    if (!restored) {
+      return;
+    }
+
+    const shouldPersistLocally = !savedId || draftDirty || step === "processing";
+    if (!shouldPersistLocally) {
+      clearOcrUiState();
+      return;
+    }
+
+    saveOcrUiState({
+      step,
+      fileName: sourceFilename || originalFile?.name || "",
+      fileType: originalFile?.type || "",
+      imageDataUrl: originalUrl.startsWith("data:") ? originalUrl : null,
+      preparedImageDataUrl: preparedPreviewUrl.startsWith("data:") ? preparedPreviewUrl : null,
+      headers: editableHeaders,
+      rows: editableRows,
+      columnTypes,
+      title: resultPreview?.title,
+      resultType: resultPreview?.type,
+      rawText: resultPreview?.rawText ?? null,
+      language: resultPreview?.language ?? null,
+      confidence: resultPreview?.avgConfidence ?? null,
+      warnings: resultPreview?.warnings || [],
+      scanQuality: resultPreview?.scanQuality ?? null,
+      routingMeta: resultPreview?.routingMeta ?? null,
+      tokenUsage: resultPreview?.tokenUsage ?? null,
+      debug: resultPreview?.debug ?? null,
+      documentHash,
+      savedId,
+      status,
+      selectedModel,
+      showLowConfidence,
+      headerRowEnabled,
+    });
+  }, [
+    columnTypes,
+    documentHash,
+    draftDirty,
+    editableHeaders,
+    editableRows,
+    headerRowEnabled,
+    originalFile,
+    originalUrl,
+    preparedPreviewUrl,
+    restored,
+    resultPreview,
+    savedId,
+    selectedModel,
+    showLowConfidence,
+    sourceFilename,
+    status,
+    step,
+  ]);
 
   const processFile = useCallback(async (file: File, sourceName: string, model: ModelOption = "auto", forceRefresh = false) => {
     setBusy(true);
@@ -1204,6 +1310,7 @@ export default function OcrScanPage() {
     }
 
     const nextUrl = URL.createObjectURL(workingFile);
+    route.closeCamera();
     setSourceFilename(file.name);
     setOriginalFile(workingFile);
     setOriginalUrl(nextUrl);
@@ -1214,7 +1321,7 @@ export default function OcrScanPage() {
     setConfidenceMatrix([]);
     setDraftDirty(false);
     void processFile(workingFile, file.name, selectedModel);
-  }, [originalUrl, preparedPreviewUrl, processFile, selectedModel]);
+  }, [originalUrl, preparedPreviewUrl, processFile, route, selectedModel]);
 
   const handleRerunWithSelectedModel = useCallback((forceRefresh?: boolean) => {
     if (!rerunSourceFile) {
@@ -1535,7 +1642,7 @@ export default function OcrScanPage() {
     <>
       {cameraOpen ? (
         <CameraCapture
-          onClose={() => setCameraOpen(false)}
+          onClose={() => route.closeCamera()}
           onCapture={chooseFile}
           onUploadInstead={() => uploadInputRef.current?.click()}
         />
@@ -1624,7 +1731,7 @@ export default function OcrScanPage() {
               <div className="mx-auto max-w-lg">
                 <MobileEntry
                   recentCount={recentRecords.length}
-                  onOpenCamera={() => setCameraOpen(true)}
+                  onOpenCamera={() => route.openCamera()}
                   onOpenUpload={() => uploadInputRef.current?.click()}
                 />
                 {recentRecords.length ? (

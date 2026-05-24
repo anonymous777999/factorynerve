@@ -3,16 +3,21 @@
 import Link from "next/link";
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
 
+import { ActionDock } from "@/components/ui/action-dock";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
+import { EmptyOperationalState } from "@/components/ui/empty-operational-state";
 import { Field, HelperText, Label } from "@/components/ui/field";
+import { FilterBar } from "@/components/ui/filter-bar";
 import { Input } from "@/components/ui/input";
+import { LoadingBoundary } from "@/components/ui/loading-boundary";
+import { QueueWorkspaceLayout } from "@/components/ui/queue-workspace-layout";
 import { RecoveryBanner } from "@/components/ui/recovery-banner";
 import { Select } from "@/components/ui/select";
-import { StickyActionBar } from "@/components/ui/sticky-action-bar";
+import { SectionPanel } from "@/components/ui/section-panel";
+import { WorkstationShell } from "@/components/ui/workstation-shell";
 import { ErrorBanner } from "@/components/ocr/error-banner";
-import { OcrShell } from "@/components/ocr/ocr-shell";
+import { OcrVerificationQueueTable } from "@/components/ocr/verification-v2/ocr-verification-queue-table";
 import { OcrReviewWorkspace } from "@/components/ocr/verification-v2/ocr-review-workspace";
 import { formatApiErrorMessage } from "@/lib/api";
 import { type OcrVerifyStatusFilter, type OcrVerifyStep } from "@/lib/ocr-verify-route";
@@ -286,6 +291,30 @@ export default function OcrVerificationV2Page() {
     return [...issues, ...(activeRecord.warnings ?? []).slice(0, Math.max(0, 8 - issues.length))];
   }, [activeRecord, draftRows, headers]);
 
+  const queueRows = useMemo(
+    () =>
+      queue.map((verification) => ({
+        id: `ocr-${verification.id}`,
+        verificationId: verification.id,
+        document: verification.source_filename || `Document #${verification.id}`,
+        template: verification.template_name || "No template",
+        status: verification.status,
+        warnings: verification.warnings.length
+          ? `${verification.warnings.length} warning${verification.warnings.length === 1 ? "" : "s"}`
+          : "Clean read",
+        updatedAt: formatTimestamp(verification.updated_at),
+        reviewState:
+          verification.status === "approved"
+            ? "Trusted export"
+            : verification.status === "pending"
+              ? "Awaiting approval"
+              : verification.status === "rejected"
+                ? "Sent back"
+                : "Draft in review",
+      })),
+    [queue],
+  );
+
   const isBusy =
     createMutation.isPending ||
     updateMutation.isPending ||
@@ -296,6 +325,7 @@ export default function OcrVerificationV2Page() {
   const queueError = queueQuery.error ? formatApiErrorMessage(queueQuery.error, "Could not load OCR verification queue.") : "";
   const detailError = detailQuery.error ? formatApiErrorMessage(detailQuery.error, "Could not load the requested OCR draft.") : "";
   const templatesError = templatesQuery.error ? formatApiErrorMessage(templatesQuery.error, "Could not load OCR templates.") : "";
+  const combinedError = localError || queueError || detailError || templatesError;
 
   const focusQueue = useEffectEvent(() => {
     queueSearchRef.current?.focus();
@@ -665,6 +695,220 @@ export default function OcrVerificationV2Page() {
     route.step,
   ]);
 
+  const queueFilters = (
+    <FilterBar
+      title="Queue filters"
+      resultCount={`${queueRows.length} visible drafts`}
+      fields={[
+        {
+          id: "search",
+          label: "Search",
+          type: "text" as const,
+          value: route.search,
+          placeholder: "Document, template, warning",
+          onValueChange: route.setSearch,
+        },
+        {
+          id: "status",
+          label: "Status",
+          type: "select" as const,
+          value: route.status,
+          options: [
+            { label: "All", value: "all" },
+            { label: "Draft", value: "draft" },
+            { label: "Pending", value: "pending" },
+            { label: "Rejected", value: "rejected" },
+            { label: "Approved", value: "approved" },
+          ],
+          onValueChange: (value) => route.setStatus(value as OcrVerifyStatusFilter),
+        },
+      ]}
+      onClearAll={() => {
+        route.setSearch("");
+        route.setStatus("all");
+      }}
+      activeFilters={[
+        ...(route.search ? [{ id: "search", label: "Search", value: route.search, onClear: () => route.setSearch("") }] : []),
+        ...(route.status !== "all"
+          ? [{ id: "status", label: "Status", value: route.status, onClear: () => route.setStatus("all") }]
+          : []),
+      ]}
+      actions={
+        <Button variant="outline" size="compact" onClick={() => void queueQuery.refetch()}>
+          Refresh
+        </Button>
+      }
+      footer="Queue filters stay in the URL so refresh and back navigation preserve the same slice."
+    />
+  );
+
+  const queuePanel = (
+    <LoadingBoundary
+      isLoading={queueQuery.isLoading}
+      hasData={queueRows.length > 0}
+      isEmpty={!queueQuery.isLoading && queueRows.length === 0}
+      isError={Boolean(queueError)}
+      error={queueQuery.error instanceof Error ? queueQuery.error : null}
+      emptyTitle="No OCR drafts"
+      emptyMessage="Adjust the queue filters or create a new OCR intake draft."
+      onRetry={() => void queueQuery.refetch()}
+    >
+      <div className="space-y-md">
+        {queueFilters}
+        <OcrVerificationQueueTable
+          rows={queueRows}
+          activeVerificationId={route.id}
+          onOpenRecord={(verificationId) => {
+            const record = queue.find((item) => item.id === verificationId);
+            const targetStep: OcrVerifyStep =
+              record?.status === "pending" || record?.status === "approved" ? 4 : 3;
+            route.openVerification(verificationId, targetStep, "workspace");
+          }}
+        />
+      </div>
+    </LoadingBoundary>
+  );
+
+  const intakePanel = (
+    <SectionPanel
+      eyebrow="Intake"
+      title="Create OCR draft"
+      description="Start a route-owned OCR draft so refresh and approval handoff stay stable."
+      tone="processing"
+      toneLabel="Intake active"
+      actions={[
+        {
+          id: "create-draft",
+          label: isBusy ? "Creating..." : "Create draft",
+          onAction: () => {
+            void handleCreateDraft();
+          },
+          disabled: isBusy,
+        },
+        {
+          id: "back-queue",
+          label: "Back to queue",
+          variant: "outline",
+          onAction: () => route.openQueue(),
+        },
+      ]}
+    >
+      <div className="grid gap-4 md:grid-cols-2">
+        <Field>
+          <Label htmlFor="ocr-document-image">Document image</Label>
+          <Input
+            id="ocr-document-image"
+            className="mt-0"
+            type="file"
+            accept="image/*"
+            onChange={(event) => setFile(event.target.files?.[0] || null)}
+          />
+          <HelperText>Source image.</HelperText>
+        </Field>
+        <Field>
+          <Label htmlFor="ocr-template">OCR template</Label>
+          <Select value={selectedTemplateId} onChange={(event) => setSelectedTemplateId(event.target.value)}>
+            <option value="">No template</option>
+            {templates.map((template) => (
+              <option key={template.id} value={String(template.id)}>
+                {template.name}
+              </option>
+            ))}
+          </Select>
+          <HelperText>Optional structure.</HelperText>
+        </Field>
+        <Field>
+          <Label htmlFor="ocr-columns">Expected columns</Label>
+          <Input
+            id="ocr-columns"
+            className="mt-0"
+            type="number"
+            min={1}
+            max={16}
+            value={columns}
+            onChange={(event) => setColumns(Math.max(1, Number(event.target.value) || 1))}
+          />
+          <HelperText>Expected width.</HelperText>
+        </Field>
+        <Field>
+          <Label htmlFor="ocr-language">Language hint</Label>
+          <Select value={language} onChange={(event) => setLanguage(event.target.value)}>
+            {PREVIEW_LANGUAGES.map((value) => (
+              <option key={value} value={value}>
+                {value}
+              </option>
+            ))}
+          </Select>
+          <HelperText>Optional hint.</HelperText>
+        </Field>
+      </div>
+    </SectionPanel>
+  );
+
+  const reviewPanel = (
+    <LoadingBoundary
+      isLoading={detailQuery.isLoading && route.id != null}
+      hasData={Boolean(activeRecord)}
+      isEmpty={!detailQuery.isLoading && !activeRecord}
+      isError={Boolean(detailError)}
+      error={detailQuery.error instanceof Error ? detailQuery.error : null}
+      emptyTitle="Open a draft first"
+      emptyMessage="Choose a queue item or start OCR intake to continue."
+      onRetry={() => void detailQuery.refetch()}
+    >
+      {activeRecord ? (
+        <OcrReviewWorkspace
+          activeRecord={activeRecord}
+          detailFetching={detailQuery.isFetching}
+          imageUrl={sourceImageUrl}
+          headers={headers}
+          rows={draftRows}
+          reviewSignals={reviewSignals}
+          reviewerNotes={reviewerNotes}
+          rejectionReason={rejectionReason}
+          onHeaderChange={(columnIndex, value) => {
+            setDraftHeaders((current) => {
+              const next = [...current];
+              next[columnIndex] = value;
+              return next;
+            });
+            setDirty(true);
+          }}
+          onCellChange={(rowIndex, columnIndex, value) => {
+            setDraftRows((current) =>
+              current.map((currentRow, index) =>
+                index === rowIndex
+                  ? currentRow.map((cell, cellIndex) => (cellIndex === columnIndex ? value : cell))
+                  : currentRow,
+              ),
+            );
+            setDirty(true);
+          }}
+          onReviewerNotesChange={(value) => {
+            setReviewerNotes(value);
+            setDirty(true);
+          }}
+          onRejectionReasonChange={(value) => {
+            setRejectionReason(value);
+            setDirty(true);
+          }}
+          onFocusTable={() => focusGrid()}
+          previewRef={previewPaneRef}
+          notesRef={reviewerNotesRef}
+          tableRef={reviewTableRef}
+        />
+      ) : (
+        <EmptyOperationalState
+          eyebrow="Review workspace"
+          title="Select the next OCR draft"
+          description="Queue selection and route state restore the exact review step after refresh."
+          tone="default"
+          toneLabel="Idle"
+        />
+      )}
+    </LoadingBoundary>
+  );
+
   if (loading) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-surface-app text-label-dense text-text-secondary">
@@ -717,53 +961,78 @@ export default function OcrVerificationV2Page() {
   }
 
   return (
-    <OcrShell
-      title="OCR verification"
-      subtitle="Queue-owned review workflow."
-      step={route.step === 1 ? "entry" : route.step === 2 ? "prepare" : route.step === 3 ? "processing" : "result"}
-      sideContent={
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Route</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-sm text-label-dense text-text-secondary">
-              <div>Draft: {route.id ?? "new intake"}</div>
-              <div>Step: {route.step}</div>
-              <div>{getStepLabel(route.step)}</div>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Filters</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Input
-                ref={queueSearchRef}
-                value={route.search}
-                onChange={(event) => route.setSearch(event.target.value)}
-                placeholder="Search OCR queue"
-                className="mt-0"
-              />
-              <Select
-                value={route.status}
-                onChange={(event) => route.setStatus(event.target.value as OcrVerifyStatusFilter)}
-              >
-                <option value="all">All</option>
-                <option value="draft">Drafts</option>
-                <option value="pending">Pending</option>
-                <option value="rejected">Rejected</option>
-                <option value="approved">Approved</option>
-              </Select>
-            </CardContent>
-          </Card>
-        </div>
+    <WorkstationShell
+      eyebrow="OCR verification"
+      title="OCR workstation"
+      description="Queue-owned OCR review with refresh-safe routing, review continuity, and mobile-safe back navigation."
+      tone={route.step === 4 ? "warning" : route.step === 3 ? "processing" : "default"}
+      toneLabel={`${getStepLabel(route.step)} step`}
+      actions={[
+        {
+          id: "queue",
+          label: "Queue",
+          variant: route.step === 1 ? "primary" : "outline",
+          onAction: () => route.openQueue(),
+        },
+        {
+          id: "intake",
+          label: "Intake",
+          variant: route.step === 2 ? "primary" : "outline",
+          onAction: () => route.openIntake(),
+        },
+        {
+          id: "review",
+          label: "Review",
+          variant: route.step === 3 ? "primary" : "outline",
+          onAction: () => activeRecord && route.openVerification(activeRecord.id, 3, "workspace"),
+        },
+        {
+          id: "decision",
+          label: "Decision",
+          variant: route.step === 4 ? "primary" : "outline",
+          onAction: () => activeRecord && route.openVerification(activeRecord.id, 4, "workspace"),
+        },
+      ]}
+      metrics={[
+        { id: "step", label: "Route step", value: getStepLabel(route.step), detail: `Draft ${route.id ?? "new"}`, tone: "processing" },
+        { id: "queue", label: "Queue", value: queue.length, detail: `${queueRows.length} visible`, tone: "approval" },
+        {
+          id: "signals",
+          label: "Review signals",
+          value: reviewSignals.length,
+          detail: activeRecord ? `Draft #${activeRecord.id}` : "No active draft",
+          tone: reviewSignals.length ? "warning" : "synced",
+        },
+        {
+          id: "continuity",
+          label: "Mobile pane",
+          value: route.pane,
+          detail: `Tab ${route.tab}`,
+          tone: route.pane === "workspace" ? "processing" : "default",
+        },
+      ]}
+      filters={route.pane === "queue" ? queueFilters : undefined}
+      rail={
+        <SectionPanel
+          eyebrow="Continuity"
+          title="Route state"
+          description="Back, refresh, and queue filters should reopen the same OCR context."
+          tone="processing"
+          toneLabel="URL-owned"
+        >
+          <div className="space-y-sm text-label-dense text-text-secondary">
+            <div>Draft: {route.id ?? "new intake"}</div>
+            <div>Step: {route.step}</div>
+            <div>Pane: {route.pane}</div>
+            <div>Tab: {route.tab}</div>
+          </div>
+        </SectionPanel>
       }
     >
-      <div className="space-y-4">
-        {localError || queueError || detailError || templatesError ? (
+      <div className="space-y-md">
+        {combinedError ? (
           <ErrorBanner
-            message={localError || queueError || detailError || templatesError}
+            message={combinedError}
             actionLabel="Retry"
             onAction={() => {
               setLocalError("");
@@ -782,279 +1051,122 @@ export default function OcrVerificationV2Page() {
           />
         ) : null}
 
-        <div className="flex flex-wrap gap-2">
-          <Button variant={route.step === 1 ? "primary" : "outline"} onClick={() => route.openQueue()}>
-            Queue
-          </Button>
-          <Button variant={route.step === 2 ? "primary" : "outline"} onClick={() => route.openIntake()}>
-            Intake
-          </Button>
-          <Button
-            variant={route.step === 3 ? "primary" : "outline"}
-            onClick={() => activeRecord && route.openVerification(activeRecord.id, 3)}
-            disabled={!activeRecord}
-          >
-            Review
-          </Button>
-          <Button
-            variant={route.step === 4 ? "primary" : "outline"}
-            onClick={() => activeRecord && route.openVerification(activeRecord.id, 4)}
-            disabled={!activeRecord}
-          >
-            Decision
-          </Button>
+        <div className="hidden xl:block">
+          <QueueWorkspaceLayout
+            queueTitle="OCR queue"
+            workspaceTitle={route.step === 2 ? "OCR intake" : "Review workspace"}
+            queue={queuePanel}
+            workspace={
+              route.step === 1 ? (
+                <SectionPanel
+                  eyebrow="Workflow"
+                  title="Select OCR work"
+                  description="Open a draft from the queue or start a new OCR intake draft."
+                  tone="default"
+                  toneLabel="Awaiting selection"
+                  actions={[
+                    { id: "start-intake", label: "Start intake", onAction: () => route.openIntake() },
+                    ...(queue[0]
+                      ? [{
+                          id: "open-latest",
+                          label: "Open latest draft",
+                          variant: "outline" as const,
+                          onAction: () => route.openVerification(queue[0].id, 3, "workspace"),
+                        }]
+                      : []),
+                  ]}
+                >
+                  <EmptyOperationalState
+                    eyebrow="OCR review"
+                    title="Choose the next OCR task"
+                    description="Route-driven queue selection keeps the same draft, step, and filter state after refresh."
+                    tone="default"
+                    toneLabel="Queue ready"
+                  />
+                </SectionPanel>
+              ) : route.step === 2 ? intakePanel : reviewPanel
+            }
+          />
         </div>
 
-        <div className="grid gap-4 xl:grid-cols-[22rem_minmax(0,1fr)]">
-          <Card className="xl:sticky xl:top-6 xl:self-start">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0">
-              <CardTitle>OCR queue</CardTitle>
-              <Button variant="outline" onClick={() => void queueQuery.refetch()}>
-                Refresh
-              </Button>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {queueQuery.isLoading ? <div className="text-sm text-[var(--muted)]">Loading queue...</div> : null}
-              {!queueQuery.isLoading && queue.length === 0 ? (
-                <EmptyState
-                  title="No drafts"
-                  description="Adjust filters or start intake."
-                  status="draft"
-                  statusLabel="Queue clear"
+        <div className="xl:hidden">
+          {route.pane === "queue" ? (
+            <SectionPanel
+              eyebrow="Mobile queue"
+              title="OCR queue"
+              description="Choose a draft or open OCR intake."
+              tone="default"
+              toneLabel={`${queueRows.length} visible`}
+              actions={[
+                { id: "mobile-intake", label: "Start intake", onAction: () => route.openIntake() },
+              ]}
+            >
+              {queuePanel}
+            </SectionPanel>
+          ) : (
+            <div className="space-y-md">
+              <SectionPanel
+                eyebrow="Mobile workspace"
+                title={route.step === 2 ? "OCR intake" : activeRecord?.source_filename || "OCR review workspace"}
+                description="Browser back returns to the queue without dropping the active draft."
+                tone={route.step === 2 ? "processing" : route.step === 4 ? "warning" : "processing"}
+                toneLabel={route.step === 2 ? "Intake" : getRecordStatusLabel(activeRecord)}
+                actions={[
+                  {
+                    id: "mobile-back",
+                    label: "Back to queue",
+                    variant: "outline",
+                    onAction: () => route.setPane("queue", "push"),
+                  },
+                ]}
+              >
+                {route.step === 2 ? intakePanel : reviewPanel}
+              </SectionPanel>
+              {activeRecord ? (
+                <ActionDock
+                  tone={dirty ? "default" : getRecordStatusTone(activeRecord) === "error" ? "error" : getRecordStatusTone(activeRecord) === "processing" ? "processing" : getRecordStatusTone(activeRecord) === "synced" ? "synced" : "default"}
+                  statusLabel={dirty ? "Unsaved changes" : getRecordStatusLabel(activeRecord)}
+                  title={activeRecord.source_filename || `Draft #${activeRecord.id}`}
+                  description="Draft actions stay pinned on mobile."
+                  meta={`Draft ${activeRecord.id} | ${reviewSignals.length} signal${reviewSignals.length === 1 ? "" : "s"}`}
+                  primaryAction={primaryAction ?? undefined}
+                  secondaryAction={secondaryAction ?? undefined}
+                  tertiaryAction={tertiaryAction ?? undefined}
                 />
               ) : null}
-              {queue.map((verification) => {
-                const targetStep: OcrVerifyStep =
-                  verification.status === "pending" || verification.status === "approved" ? 4 : 3;
-                const isActive = verification.id === route.id;
-                return (
-                  <button
-                    key={verification.id}
-                    type="button"
-                    onClick={() => route.openVerification(verification.id, targetStep)}
-                    className={`w-full rounded-panel border px-md py-md text-left transition-[background-color,border-color,box-shadow] duration-fast ease-standard ${
-                      isActive
-                        ? "border-border-focus bg-surface-selected shadow-xs"
-                        : "border-border-default bg-surface-panel hover:border-border-strong hover:bg-surface-hover"
-                    }`}
-                  >
-                    <div className="font-semibold text-text-primary">
-                      {verification.source_filename || `Document #${verification.id}`}
-                    </div>
-                    <div className="mt-xs text-label-dense text-text-secondary">
-                      {verification.status} | {formatTimestamp(verification.updated_at)}
-                    </div>
-                    <div className="mt-sm text-label-dense text-text-secondary">
-                      {verification.warnings.length
-                        ? `${verification.warnings.length} warning${verification.warnings.length === 1 ? "" : "s"}`
-                        : "No warnings"}
-                    </div>
-                  </button>
-                );
-              })}
-            </CardContent>
-          </Card>
-
-          <div className="space-y-4">
-            {route.step === 1 ? (
-                <Card>
-                  <CardHeader>
-                  <CardTitle>Select workflow</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-md text-body text-text-secondary">
-                  <p>Open a draft or start intake.</p>
-                  <div className="flex gap-3">
-                    <Button onClick={() => route.openIntake()}>Start intake</Button>
-                    {queue[0] ? (
-                      <Button variant="outline" onClick={() => route.openVerification(queue[0].id, 3)}>
-                        Open latest draft
-                      </Button>
-                    ) : null}
-                  </div>
-                </CardContent>
-              </Card>
-            ) : null}
-
-            {route.step === 2 ? (
-                <Card>
-                  <CardHeader>
-                  <CardTitle>Create draft</CardTitle>
-                  </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <Field>
-                      <Label htmlFor="ocr-document-image">Document image</Label>
-                      <Input
-                        id="ocr-document-image"
-                        className="mt-0"
-                        type="file"
-                        accept="image/*"
-                        onChange={(event) => setFile(event.target.files?.[0] || null)}
-                      />
-                      <HelperText>Source image.</HelperText>
-                    </Field>
-                    <Field>
-                      <Label htmlFor="ocr-template">OCR template</Label>
-                      <Select value={selectedTemplateId} onChange={(event) => setSelectedTemplateId(event.target.value)}>
-                        <option value="">No template</option>
-                        {templates.map((template) => (
-                          <option key={template.id} value={String(template.id)}>
-                            {template.name}
-                          </option>
-                        ))}
-                      </Select>
-                      <HelperText>Optional structure.</HelperText>
-                    </Field>
-                    <Field>
-                      <Label htmlFor="ocr-columns">Expected columns</Label>
-                      <Input
-                        id="ocr-columns"
-                        className="mt-0"
-                        type="number"
-                        min={1}
-                        max={16}
-                        value={columns}
-                        onChange={(event) => setColumns(Math.max(1, Number(event.target.value) || 1))}
-                      />
-                      <HelperText>Expected width.</HelperText>
-                    </Field>
-                    <Field>
-                      <Label htmlFor="ocr-language">Language hint</Label>
-                      <Select value={language} onChange={(event) => setLanguage(event.target.value)}>
-                        {PREVIEW_LANGUAGES.map((value) => (
-                          <option key={value} value={value}>
-                            {value}
-                          </option>
-                        ))}
-                      </Select>
-                      <HelperText>Optional hint.</HelperText>
-                    </Field>
-                  </div>
-                  <div className="flex gap-3">
-                    <Button onClick={() => void handleCreateDraft()} disabled={isBusy}>
-                      {isBusy ? "Creating..." : "Create draft"}
-                    </Button>
-                    <Button variant="outline" onClick={() => route.openQueue()}>
-                      Back to queue
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : null}
-
-            {(route.step === 3 || route.step === 4) ? (
-              <div className="space-y-md">
-                <Card>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0">
-                    <CardTitle>
-                      {activeRecord?.source_filename || "OCR review workspace"}
-                    </CardTitle>
-                    {detailQuery.isFetching ? <div className="text-label-dense text-text-secondary">Refreshing draft...</div> : null}
-                  </CardHeader>
-                  <CardContent className="space-y-md">
-                    {!activeRecord && !detailQuery.isLoading ? (
-                      <RecoveryBanner
-                        kind="unsaved-draft"
-                        statusLabel="Draft required"
-                        title="Open a draft first"
-                        description="Open queue or start intake."
-                        primaryAction={{
-                          id: "open-queue",
-                          label: "Open queue",
-                          onAction: () => route.openQueue(),
-                        }}
-                        secondaryAction={{
-                          id: "open-intake",
-                          label: "Start intake",
-                          variant: "outline",
-                          onAction: () => route.openIntake(),
-                        }}
-                      />
-                    ) : null}
-                    {activeRecord ? (
-                      <>
-                        <OcrReviewWorkspace
-                          activeRecord={activeRecord}
-                          detailFetching={detailQuery.isFetching}
-                          imageUrl={sourceImageUrl}
-                          headers={headers}
-                          rows={draftRows}
-                          reviewSignals={reviewSignals}
-                          reviewerNotes={reviewerNotes}
-                          rejectionReason={rejectionReason}
-                          onHeaderChange={(columnIndex, value) => {
-                            setDraftHeaders((current) => {
-                              const next = [...current];
-                              next[columnIndex] = value;
-                              return next;
-                            });
-                            setDirty(true);
-                          }}
-                          onCellChange={(rowIndex, columnIndex, value) => {
-                            setDraftRows((current) =>
-                              current.map((currentRow, index) =>
-                                index === rowIndex
-                                  ? currentRow.map((cell, cellIndex) =>
-                                      cellIndex === columnIndex ? value : cell,
-                                    )
-                                  : currentRow,
-                              ),
-                            );
-                            setDirty(true);
-                          }}
-                          onReviewerNotesChange={(value) => {
-                            setReviewerNotes(value);
-                            setDirty(true);
-                          }}
-                          onRejectionReasonChange={(value) => {
-                            setRejectionReason(value);
-                            setDirty(true);
-                          }}
-                          onFocusTable={() => focusGrid()}
-                          previewRef={previewPaneRef}
-                          notesRef={reviewerNotesRef}
-                          tableRef={reviewTableRef}
-                        />
-                      </>
-                    ) : null}
-                  </CardContent>
-                </Card>
-                {activeRecord ? (
-                  <StickyActionBar
-                    status={dirty ? "draft" : getRecordStatusTone(activeRecord)}
-                    statusLabel={dirty ? "Unsaved changes" : getRecordStatusLabel(activeRecord)}
-                    title={activeRecord.source_filename || `Draft #${activeRecord.id}`}
-                    description="Actions stay pinned in review."
-                    meta={`Draft ${activeRecord.id} | ${reviewSignals.length} signal${reviewSignals.length === 1 ? "" : "s"} | Alt+1 queue | Alt+2 preview | Alt+3 grid`}
-                    primaryAction={primaryAction ?? undefined}
-                    secondaryAction={secondaryAction ?? undefined}
-                    tertiaryAction={tertiaryAction ?? undefined}
-                  />
-                ) : null}
-                {activeRecord && canApprove ? (
-                  <div className="flex flex-wrap gap-sm">
-                    <Button variant="outline" onClick={() => void handleApprove()} disabled={isBusy}>
-                      Approve
-                    </Button>
-                    <Button variant="outline" onClick={() => void handleReject()} disabled={isBusy}>
-                      Reject
-                    </Button>
-                    <Button variant="outline" onClick={handleDownloadCsv}>
-                      Download CSV
-                    </Button>
-                    <Button variant="outline" onClick={() => void handleDownloadPdf()}>
-                      Download PDF
-                    </Button>
-                    <Button variant="outline" onClick={() => void handleCopyMarkdown()}>
-                      Copy Markdown
-                    </Button>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
+            </div>
+          )}
         </div>
+
+        {activeRecord && (
+          <div className="hidden xl:block">
+            <ActionDock
+              tone={dirty ? "default" : getRecordStatusTone(activeRecord) === "error" ? "error" : getRecordStatusTone(activeRecord) === "processing" ? "processing" : getRecordStatusTone(activeRecord) === "synced" ? "synced" : "default"}
+              statusLabel={dirty ? "Unsaved changes" : getRecordStatusLabel(activeRecord)}
+              title={activeRecord.source_filename || `Draft #${activeRecord.id}`}
+              description="Actions stay pinned in review."
+              meta={`Draft ${activeRecord.id} | ${reviewSignals.length} signal${reviewSignals.length === 1 ? "" : "s"} | Alt+1 queue | Alt+2 preview | Alt+3 grid`}
+              primaryAction={primaryAction ?? undefined}
+              secondaryAction={secondaryAction ?? undefined}
+              tertiaryAction={tertiaryAction ?? undefined}
+            />
+          </div>
+        )}
+
+        {activeRecord && canApprove ? (
+          <div className="flex flex-wrap gap-sm">
+            <Button variant="outline" onClick={() => void handleDownloadCsv()}>
+              Download CSV
+            </Button>
+            <Button variant="outline" onClick={() => void handleDownloadPdf()}>
+              Download PDF
+            </Button>
+            <Button variant="outline" onClick={() => void handleCopyMarkdown()}>
+              Copy Markdown
+            </Button>
+          </div>
+        ) : null}
       </div>
-    </OcrShell>
+    </WorkstationShell>
   );
 }

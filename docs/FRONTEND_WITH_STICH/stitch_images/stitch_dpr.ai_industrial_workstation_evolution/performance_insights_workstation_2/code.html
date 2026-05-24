@@ -1,0 +1,529 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>DPR.ai | Performance Insights Workstation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#93000a",
+                        "on-error": "#690005",
+                        "background": "#121416",
+                        "on-secondary-container": "#a9bad3",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "primary-fixed-dim": "#b5c4ff",
+                        "on-tertiary": "#591d00",
+                        "on-primary": "#00287c",
+                        "tertiary-fixed": "#ffdbcd",
+                        "primary-fixed": "#dce1ff",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "on-secondary-fixed": "#0b1c30",
+                        "surface-container-lowest": "#0c0e10",
+                        "on-background": "#e2e2e5",
+                        "surface-dim": "#121416",
+                        "surface-container-low": "#1a1c1e",
+                        "outline-variant": "#434655",
+                        "on-surface-variant": "#c3c5d7",
+                        "tertiary": "#ffb597",
+                        "primary": "#b5c4ff",
+                        "primary-container": "#2a5ee6",
+                        "tertiary-container": "#b74400",
+                        "outline": "#8d90a0",
+                        "secondary-fixed": "#d3e4fe",
+                        "inverse-primary": "#1652da",
+                        "surface-tint": "#b5c4ff",
+                        "tertiary-fixed-dim": "#ffb597",
+                        "surface-container-highest": "#333537",
+                        "on-tertiary-container": "#ffe5db",
+                        "inverse-surface": "#e2e2e5",
+                        "inverse-on-surface": "#2f3133",
+                        "on-error-container": "#ffdad6",
+                        "error": "#ffb4ab",
+                        "surface-bright": "#38393c",
+                        "on-tertiary-fixed-variant": "#7e2c00",
+                        "on-surface": "#e2e2e5",
+                        "on-primary-fixed": "#00164e",
+                        "surface": "#121416",
+                        "secondary-container": "#3a4a5f",
+                        "on-primary-fixed-variant": "#003bae",
+                        "on-tertiary-fixed": "#360f00",
+                        "on-primary-container": "#e6e9ff",
+                        "surface-container-high": "#282a2c",
+                        "secondary": "#b7c8e1",
+                        "on-secondary": "#213145",
+                        "surface-variant": "#333537",
+                        "surface-container": "#1e2022"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "unit": "8px",
+                        "sm": "8px",
+                        "lg": "24px",
+                        "gutter": "1px",
+                        "xs": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Hanken Grotesk"],
+                        "body-sm": ["Hanken Grotesk"],
+                        "label-caps": ["JetBrains Mono"],
+                        "body-md": ["Hanken Grotesk"],
+                        "data-mono": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "label-caps": ["10px", {"lineHeight": "12px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "body-md": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "data-mono": ["12px", {"lineHeight": "16px", "letterSpacing": "-0.02em", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-size: 18px;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #434655; border-radius: 2px; }
+        
+        /* Grid share border logic */
+        .grid-container > div {
+            border-right: 1px solid #434655;
+            border-bottom: 1px solid #434655;
+        }
+        
+        .sparkline-svg {
+            stroke: #b5c4ff;
+            stroke-width: 1.5;
+            fill: none;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md selection:bg-primary selection:text-on-primary"><svg class="inline-defs-container" aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"></svg>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>DPR.ai | Performance Insights Workstation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "error-container": "#93000a",
+                        "on-error": "#690005",
+                        "background": "#121416",
+                        "on-secondary-container": "#a9bad3",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "primary-fixed-dim": "#b5c4ff",
+                        "on-tertiary": "#591d00",
+                        "on-primary": "#00287c",
+                        "tertiary-fixed": "#ffdbcd",
+                        "primary-fixed": "#dce1ff",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "on-secondary-fixed": "#0b1c30",
+                        "surface-container-lowest": "#0c0e10",
+                        "on-background": "#e2e2e5",
+                        "surface-dim": "#121416",
+                        "surface-container-low": "#1a1c1e",
+                        "outline-variant": "#434655",
+                        "on-surface-variant": "#c3c5d7",
+                        "tertiary": "#ffb597",
+                        "primary": "#b5c4ff",
+                        "primary-container": "#2a5ee6",
+                        "tertiary-container": "#b74400",
+                        "outline": "#8d90a0",
+                        "secondary-fixed": "#d3e4fe",
+                        "inverse-primary": "#1652da",
+                        "surface-tint": "#b5c4ff",
+                        "tertiary-fixed-dim": "#ffb597",
+                        "surface-container-highest": "#333537",
+                        "on-tertiary-container": "#ffe5db",
+                        "inverse-surface": "#e2e2e5",
+                        "inverse-on-surface": "#2f3133",
+                        "on-error-container": "#ffdad6",
+                        "error": "#ffb4ab",
+                        "surface-bright": "#38393c",
+                        "on-tertiary-fixed-variant": "#7e2c00",
+                        "on-surface": "#e2e2e5",
+                        "on-primary-fixed": "#00164e",
+                        "surface": "#121416",
+                        "secondary-container": "#3a4a5f",
+                        "on-primary-fixed-variant": "#003bae",
+                        "on-tertiary-fixed": "#360f00",
+                        "on-primary-container": "#e6e9ff",
+                        "surface-container-high": "#282a2c",
+                        "secondary": "#b7c8e1",
+                        "on-secondary": "#213145",
+                        "surface-variant": "#333537",
+                        "surface-container": "#1e2022"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "unit": "8px",
+                        "sm": "8px",
+                        "lg": "24px",
+                        "gutter": "1px",
+                        "xs": "4px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Hanken Grotesk"],
+                        "body-sm": ["Hanken Grotesk"],
+                        "label-caps": ["JetBrains Mono"],
+                        "body-md": ["Hanken Grotesk"],
+                        "data-mono": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "label-caps": ["10px", {"lineHeight": "12px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "body-md": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "data-mono": ["12px", {"lineHeight": "16px", "letterSpacing": "-0.02em", "fontWeight": "500"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            font-size: 18px;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #434655; border-radius: 2px; }
+        
+        /* Grid share border logic */
+        .grid-container > div {
+            border-right: 1px solid #434655;
+            border-bottom: 1px solid #434655;
+        }
+        
+        .sparkline-svg {
+            stroke: #b5c4ff;
+            stroke-width: 1.5;
+            fill: none;
+        }
+    </style>
+
+
+<!-- TopNavBar -->
+<header class="fixed top-0 w-full h-12 bg-surface flex justify-between items-center px-md z-50 border-b border-outline-variant">
+<div class="flex items-center gap-md">
+<span class="font-headline-sm text-headline-sm font-bold text-primary">DPR.ai</span>
+<div class="h-6 w-px bg-outline-variant mx-xs"></div>
+<nav class="flex gap-md font-label-caps text-label-caps">
+<span class="text-on-surface-variant cursor-pointer hover:text-primary transition-colors">WORKSPACE</span>
+<span class="text-primary border-b-2 border-primary pb-1">ANALYTICS / PERFORMANCE</span>
+</nav>
+</div>
+<div class="flex items-center gap-unit">
+<div class="flex items-center gap-xs px-unit py-xs bg-surface-container-high rounded border border-outline-variant">
+<span class="material-symbols-outlined text-primary" style="font-size: 14px;">sync</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">AUTO-REFRESH: ACTIVE</span>
+</div>
+<div class="flex gap-xs items-center px-sm py-xs hover:bg-surface-container-high transition-colors cursor-pointer rounded">
+<span class="material-symbols-outlined text-on-surface-variant">search</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">[ CMD+K ]</span>
+</div>
+<button class="h-8 px-md bg-primary-container text-on-primary-container font-label-caps text-label-caps rounded flex items-center gap-xs hover:bg-opacity-90 transition-all">
+<span class="material-symbols-outlined" style="font-size: 14px;">description</span>
+                GENERATE REPORT
+            </button>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer p-xs hover:bg-surface-container-high rounded transition-colors">account_tree</span>
+</div>
+</header>
+<!-- SideNavBar -->
+<aside class="fixed left-0 top-12 bottom-0 w-16 bg-surface-container-low flex flex-col items-center py-unit z-40 border-r border-outline-variant">
+<div class="flex flex-col gap-unit w-full items-center">
+<!-- Nav Item: Analytics (Active) -->
+<div class="w-12 h-12 flex items-center justify-center border-l-2 border-primary bg-secondary-container text-on-secondary-container cursor-pointer transition-all duration-150">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">analytics</span>
+</div>
+<div class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high cursor-pointer transition-all duration-150 rounded">
+<span class="material-symbols-outlined">dashboard</span>
+</div>
+<div class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high cursor-pointer transition-all duration-150 rounded">
+<span class="material-symbols-outlined">inventory_2</span>
+</div>
+<div class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high cursor-pointer transition-all duration-150 rounded">
+<span class="material-symbols-outlined">local_shipping</span>
+</div>
+<div class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high cursor-pointer transition-all duration-150 rounded">
+<span class="material-symbols-outlined">precision_manufacturing</span>
+</div>
+<div class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high cursor-pointer transition-all duration-150 rounded">
+<span class="material-symbols-outlined">engineering</span>
+</div>
+</div>
+<div class="mt-auto flex flex-col gap-unit w-full items-center mb-md">
+<div class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high cursor-pointer transition-all duration-150 rounded">
+<span class="material-symbols-outlined">terminal</span>
+</div>
+<div class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high cursor-pointer transition-all duration-150 rounded">
+<span class="material-symbols-outlined">help</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Grid -->
+<main class="ml-16 mt-12 flex h-[calc(100vh-48px)] overflow-hidden">
+<!-- Work Lane (Primary) -->
+<section class="flex-1 overflow-y-auto custom-scrollbar flex flex-col">
+<!-- Dashboard Hero Section -->
+<div class="p-lg border-b border-outline-variant bg-surface-container-low">
+<div class="flex justify-between items-start mb-md">
+<div>
+<h2 class="font-headline-sm text-headline-sm text-on-surface mb-xs">Performance Insights</h2>
+<p class="font-body-sm text-on-surface-variant">Real-time production metrics for RedVortex Steel Core Pack. Steel Industry v2.4.1</p>
+</div>
+<div class="flex gap-xs bg-surface-container rounded p-xs border border-outline-variant">
+<button class="px-md py-1 bg-primary text-on-primary font-label-caps text-label-caps rounded">WEEKLY</button>
+<button class="px-md py-1 text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-high rounded transition-colors">MONTHLY</button>
+</div>
+</div>
+<!-- Main Chart Area -->
+<div class="h-64 bg-surface-container-lowest border border-outline-variant rounded relative group overflow-hidden">
+<!-- Overlay Grid for background aesthetic -->
+<div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(circle, #434655 1px, transparent 1px); background-size: 24px 24px;"></div>
+<div class="absolute top-4 left-4 z-10 flex gap-md">
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="font-label-caps text-label-caps text-on-surface">OUTPUT SIGNAL</span>
+</div>
+<div class="flex items-center gap-xs opacity-50">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="font-label-caps text-label-caps text-on-surface">SCRAP RATE</span>
+</div>
+<div class="flex items-center gap-xs opacity-50">
+<span class="w-2 h-2 rounded-full bg-on-secondary-container"></span>
+<span class="font-label-caps text-label-caps text-on-surface">EFFICIENCY</span>
+</div>
+</div>
+<!-- Placeholder Visual for Chart -->
+<div class="w-full h-full flex items-end px-md pb-md">
+<svg class="w-full h-4/5" preserveAspectRatio="none" viewBox="0 0 1000 100">
+<path d="M0,80 L50,75 L100,85 L150,60 L200,65 L250,40 L300,45 L350,30 L400,35 L450,20 L500,25 L550,15 L600,20 L650,5 L700,10 L750,15 L800,10 L850,5 L900,0 L950,5 L1000,0" fill="none" stroke="#b5c4ff" stroke-width="2"></path>
+<path d="M0,80 L50,75 L100,85 L150,60 L200,65 L250,40 L300,45 L350,30 L400,35 L450,20 L500,25 L550,15 L600,20 L650,5 L700,10 L750,15 L800,10 L850,5 L900,0 L950,5 L1000,0 L1000,100 L0,100 Z" fill="url(#grad1)" opacity="0.1"></path>
+<defs>
+<linearGradient id="grad1" x1="0%" x2="0%" y1="0%" y2="100%">
+<stop offset="0%" style="stop-color:#b5c4ff;stop-opacity:1"></stop>
+<stop offset="100%" style="stop-color:#b5c4ff;stop-opacity:0"></stop>
+</linearGradient>
+</defs>
+</svg>
+</div>
+<!-- Data Labels -->
+<div class="absolute bottom-4 left-4 font-data-mono text-data-mono text-primary flex gap-lg">
+<span>MIN: 84.2%</span>
+<span>MAX: 99.8%</span>
+<span>AVG: 94.1%</span>
+</div>
+</div>
+</div>
+<!-- Trend Diagnostics Grid -->
+<div class="flex-1 p-lg bg-background">
+<div class="flex items-center justify-between mb-md">
+<h3 class="font-label-caps text-label-caps text-on-surface-variant tracking-widest">TREND DIAGNOSTICS &amp; ANOMALY DETECTION</h3>
+<span class="font-label-caps text-label-caps text-primary cursor-pointer hover:underline">VIEW ALL ALERTS</span>
+</div>
+<div class="grid grid-cols-2 lg:grid-cols-3 gap-gutter bg-outline-variant border border-outline-variant">
+<!-- Diagnostic Tile 1 -->
+<div class="bg-surface-container p-md flex flex-col gap-sm">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant">SIG-0422 / THERMAL FLUX</span>
+<span class="text-[10px] px-xs py-0.5 bg-error-container text-on-error-container font-label-caps rounded">CRITICAL</span>
+</div>
+<div class="flex flex-col">
+<span class="font-data-mono text-data-mono text-error">+4.2°C DEVIATION</span>
+<span class="font-body-sm text-on-surface-variant">Sudden increase in furnace node 4. Check coolant levels immediately.</span>
+</div>
+</div>
+<!-- Diagnostic Tile 2 -->
+<div class="bg-surface-container p-md flex flex-col gap-sm">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant">SIG-0423 / THROUGHPUT</span>
+<span class="text-[10px] px-xs py-0.5 bg-secondary-container text-on-secondary-container font-label-caps rounded">STABLE</span>
+</div>
+<div class="flex flex-col">
+<span class="font-data-mono text-data-mono text-primary">842 UNITS/HR</span>
+<span class="font-body-sm text-on-surface-variant">Steady output aligned with baseline. Performance within tolerance.</span>
+</div>
+</div>
+<!-- Diagnostic Tile 3 -->
+<div class="bg-surface-container p-md flex flex-col gap-sm">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-on-surface-variant">SIG-0424 / SCRAP RATIO</span>
+<span class="text-[10px] px-xs py-0.5 bg-tertiary-container text-on-tertiary-container font-label-caps rounded">WARNING</span>
+</div>
+<div class="flex flex-col">
+<span class="font-data-mono text-data-mono text-tertiary">1.2% INCREASE</span>
+<span class="font-body-sm text-on-surface-variant">Minor uptick in defect detection on line B. Recalibration suggested.</span>
+</div>
+</div>
+</div>
+<!-- Industrial Content Placeholder -->
+<div class="mt-lg rounded border border-outline-variant overflow-hidden">
+<img alt="Production Floor Visual" class="w-full h-48 object-cover grayscale opacity-50 brightness-50" data-alt="A high-contrast, industrial workspace view showing a clean, modern steel processing facility. The lighting is cold and clinical, emphasizing a dark, minimalist aesthetic. The scene features precision machinery and structural steel elements, illuminated by sharp blue and white functional lighting. The overall mood is focused, utilitarian, and technologically advanced, perfectly aligned with the dark industrial design system of the UI." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAlt-cBHJG6E8NB-Bdx8p5GTebGfvYE34a7dLC4HNDNY9A9uchaF-dMz_abCph8F4zM8o_aSrg47pz-joIMezlQuZ1ybUyCLeZYcVhw5TmsGQwEreNKCSRlaAw07Choy4LcBBZ5rv7LxsyGhXB_xfFZd_Daf5_rTJQDbL_h7x_S-iHVrpqvDaSttx5HHpmOg_4dBevIL1FwmSZUOWRGz6QKS8iHJ0vN1-wt2j__goRGDGs0MxPsSYN_c77apJfVOzZF3FBwaWnFQme">
+<div class="p-md bg-surface-container-high flex items-center justify-between">
+<span class="font-body-sm text-on-surface-variant">LIVE FEED: MAIN PRODUCTION FLOOR - SECTOR 7</span>
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+<span class="font-label-caps text-label-caps text-primary">LIVE TRANSMISSION</span>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Telemetry Lane (Right) -->
+<aside class="w-80 border-l border-outline-variant bg-surface-container-lowest flex flex-col">
+<!-- Header -->
+<div class="p-md border-b border-outline-variant bg-surface-container-low">
+<h3 class="font-label-caps text-label-caps text-on-surface tracking-widest flex items-center gap-xs">
+<span class="material-symbols-outlined" style="font-size: 14px;">vital_signs</span>
+                    OPERATIONAL PULSE
+                </h3>
+</div>
+<!-- Pulse Stats List -->
+<div class="flex flex-col flex-1 overflow-y-auto custom-scrollbar">
+<!-- Shift Stats -->
+<div class="p-md border-b border-outline-variant hover:bg-surface-container-high transition-colors">
+<div class="flex justify-between items-center mb-xs">
+<span class="font-label-caps text-label-caps text-on-surface-variant">SHIFT PERFORMANCE</span>
+<span class="font-data-mono text-data-mono text-primary">98.2%</span>
+</div>
+<svg class="w-full h-8 sparkline-svg" preserveAspectRatio="none" viewBox="0 0 100 20">
+<polyline points="0,15 10,12 20,18 30,5 40,8 50,2 60,10 70,5 80,12 90,8 100,10"></polyline>
+</svg>
+</div>
+<div class="p-md border-b border-outline-variant hover:bg-surface-container-high transition-colors">
+<div class="flex justify-between items-center mb-xs">
+<span class="font-label-caps text-label-caps text-on-surface-variant">UPTIME LOG</span>
+<span class="font-data-mono text-data-mono text-primary">242H 12M</span>
+</div>
+<div class="flex gap-[2px] h-4">
+<div class="flex-1 bg-primary"></div>
+<div class="flex-1 bg-primary"></div>
+<div class="flex-1 bg-primary"></div>
+<div class="flex-1 bg-primary"></div>
+<div class="flex-1 bg-error"></div>
+<div class="flex-1 bg-primary"></div>
+<div class="flex-1 bg-primary"></div>
+<div class="flex-1 bg-primary"></div>
+<div class="flex-1 bg-primary"></div>
+<div class="flex-1 bg-primary"></div>
+<div class="flex-1 bg-primary"></div>
+<div class="flex-1 bg-primary"></div>
+</div>
+</div>
+<!-- Backlog Signal -->
+<div class="p-md border-b border-outline-variant">
+<h4 class="font-label-caps text-label-caps text-on-surface mb-md">BACKLOG SIGNAL</h4>
+<div class="flex flex-col gap-xs">
+<div class="flex items-center justify-between bg-surface-container p-xs border border-outline-variant">
+<span class="font-body-sm text-on-surface">P1 TICKETS</span>
+<span class="font-data-mono text-data-mono text-error">02</span>
+</div>
+<div class="flex items-center justify-between bg-surface-container p-xs border border-outline-variant">
+<span class="font-body-sm text-on-surface">P2 TICKETS</span>
+<span class="font-data-mono text-data-mono text-tertiary">14</span>
+</div>
+<div class="flex items-center justify-between bg-surface-container p-xs border border-outline-variant">
+<span class="font-body-sm text-on-surface">P3 TICKETS</span>
+<span class="font-data-mono text-data-mono text-on-surface-variant">41</span>
+</div>
+</div>
+</div>
+<!-- System Logs (Simulated Data Density) -->
+<div class="p-md bg-surface-container-lowest">
+<h4 class="font-label-caps text-label-caps text-on-surface mb-sm">SYSTEM LOGS</h4>
+<div class="font-data-mono text-[9px] text-on-surface-variant space-y-1 opacity-80 leading-tight">
+<p>[ 12:44:01 ] DB_CONN: STABLE (0.4ms)</p>
+<p>[ 12:44:02 ] AUTH_WASH: SUCCESS (User: Oper_04)</p>
+<p>[ 12:44:05 ] <span class="text-error">W_SIGNAL: THERMAL_HIGH (N-04)</span></p>
+<p>[ 12:44:10 ] AUTO_REFRESH: PUSHED_TO_MAIN</p>
+<p>[ 12:44:12 ] TRACE: ASSET_FETCH (Inventory_2)</p>
+<p>[ 12:44:15 ] DB_CONN: STABLE (0.3ms)</p>
+<p>[ 12:44:20 ] CRON_EXEC: REPORT_GEN_PREP</p>
+<p>[ 12:44:25 ] ANALYTICS_PUMP: BUFFER_CLEARED</p></div>
+</div>
+</div>
+<!-- Footer Meta -->
+<div class="p-md border-t border-outline-variant bg-surface-container-low flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant">V2.4.1 STABLE</span>
+<div class="flex gap-xs">
+<div class="w-1.5 h-1.5 bg-primary rounded-full"></div>
+<div class="w-1.5 h-1.5 bg-primary rounded-full"></div>
+<div class="w-1.5 h-1.5 bg-outline-variant rounded-full"></div>
+</div>
+</div>
+</aside>
+</main>
+<!-- Floating Help Trigger -->
+<div class="fixed bottom-lg right-lg z-50">
+<button class="bg-surface-container-highest border border-outline text-on-surface py-xs px-md rounded flex items-center gap-xs font-label-caps text-label-caps hover:bg-surface-bright transition-all">
+<span class="material-symbols-outlined" style="font-size: 16px;">help</span>
+            HELP [ F1 ]
+        </button>
+</div>
+<!-- Interaction Script -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Micro-interaction for tiles
+            const tiles = document.querySelectorAll('.bg-surface-container');
+            tiles.forEach(tile => {
+                tile.addEventListener('mouseenter', () => {
+                    tile.classList.add('border-primary');
+                    tile.classList.remove('border-outline-variant');
+                });
+                tile.addEventListener('mouseleave', () => {
+                    tile.classList.remove('border-primary');
+                    tile.classList.add('border-outline-variant');
+                });
+            });
+
+            // Log simulator
+            const logsContainer = document.querySelector('.space-y-1');
+            const logEntries = [
+                "[ 12:44:25 ] ANALYTICS_PUMP: BUFFER_CLEARED",
+                "[ 12:44:30 ] ASYNC_PULL: PERFORMANCE_DATA",
+                "[ 12:44:35 ] HEARTBEAT: NODES_ACTIVE(14)",
+                "[ 12:44:40 ] UI_THREAD: RENDER_COMPLETED"
+            ];
+            let logIdx = 0;
+
+            setInterval(() => {
+                const newLog = document.createElement('p');
+                newLog.innerHTML = logEntries[logIdx];
+                logsContainer.appendChild(newLog);
+                if (logsContainer.children.length > 12) {
+                    logsContainer.removeChild(logsContainer.children[0]);
+                }
+                logIdx = (logIdx + 1) % logEntries.length;
+            }, 5000);
+        });
+    </script>
+</body></html>

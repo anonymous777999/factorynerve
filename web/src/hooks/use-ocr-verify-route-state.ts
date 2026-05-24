@@ -4,9 +4,13 @@ import { startTransition, useCallback, useMemo } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import {
+  isValidOcrVerifyPane,
   isValidOcrVerifyStatusFilter,
+  isValidOcrVerifyTab,
+  type OcrVerifyPane,
   type OcrVerifyStatusFilter,
   type OcrVerifyStep,
+  type OcrVerifyTab,
 } from "@/lib/ocr-verify-route";
 
 type RouteStatePatch = {
@@ -14,6 +18,8 @@ type RouteStatePatch = {
   step?: OcrVerifyStep;
   search?: string;
   status?: OcrVerifyStatusFilter;
+  pane?: OcrVerifyPane;
+  tab?: OcrVerifyTab;
 };
 
 export function useOcrVerifyRouteState() {
@@ -38,12 +44,21 @@ export function useOcrVerifyRouteState() {
     const status = isValidOcrVerifyStatusFilter(rawStatus)
       ? ((rawStatus as OcrVerifyStatusFilter) || "all")
       : "all";
+    const defaultPane: OcrVerifyPane = id != null && step >= 3 ? "workspace" : "queue";
+    const pane = isValidOcrVerifyPane(searchParams.get("pane"))
+      ? ((searchParams.get("pane") as OcrVerifyPane) || defaultPane)
+      : defaultPane;
+    const tab = isValidOcrVerifyTab(searchParams.get("tab"))
+      ? ((searchParams.get("tab") as OcrVerifyTab) || "issues")
+      : "issues";
 
     return {
       id,
+      pane,
       step,
       search: searchParams.get("q")?.trim() ?? "",
       status,
+      tab,
     };
   }, [searchParams]);
 
@@ -80,6 +95,22 @@ export function useOcrVerifyRouteState() {
         }
       }
 
+      if (patch.pane !== undefined) {
+        if (patch.pane === "queue") {
+          next.delete("pane");
+        } else {
+          next.set("pane", patch.pane);
+        }
+      }
+
+      if (patch.tab !== undefined) {
+        if (patch.tab === "issues") {
+          next.delete("tab");
+        } else {
+          next.set("tab", patch.tab);
+        }
+      }
+
       const href = `${pathname}?${next.toString()}`;
       startTransition(() => {
         if (history === "replace") {
@@ -101,19 +132,25 @@ export function useOcrVerifyRouteState() {
       navigate({ status }, "replace");
     },
     openQueue() {
-      navigate({ id: null, step: 1 }, "push");
+      navigate({ id: null, pane: "queue", step: 1 }, "push");
     },
     openIntake() {
-      navigate({ id: null, step: 2 }, "push");
+      navigate({ id: null, pane: "workspace", step: 2 }, "push");
     },
-    openVerification(id: number, step: OcrVerifyStep = 3) {
-      navigate({ id, step }, "push");
+    openVerification(id: number, step: OcrVerifyStep = 3, pane: OcrVerifyPane = "workspace") {
+      navigate({ id, pane, step }, "push");
     },
-    replaceVerification(id: number, step: OcrVerifyStep = 3) {
-      navigate({ id, step }, "replace");
+    replaceVerification(id: number, step: OcrVerifyStep = 3, pane: OcrVerifyPane = "workspace") {
+      navigate({ id, pane, step }, "replace");
     },
     setStep(step: OcrVerifyStep, history: "push" | "replace" = "push") {
       navigate({ step }, history);
+    },
+    setPane(pane: OcrVerifyPane, history: "push" | "replace" = "replace") {
+      navigate({ pane }, history);
+    },
+    setTab(tab: OcrVerifyTab, history: "push" | "replace" = "replace") {
+      navigate({ tab }, history);
     },
   };
 }

@@ -30,6 +30,7 @@ type LoadingBoundaryProps = {
   loadingRows?: number;
   className?: string;
   contentClassName?: string;
+  eyebrow?: string;
 };
 
 type LoadingStateSkeletonProps = React.HTMLAttributes<HTMLDivElement> & {
@@ -117,6 +118,7 @@ function LoadingNotice({
 }
 
 export function LoadingBoundary({
+  eyebrow,
   children,
   className,
   contentClassName,
@@ -150,7 +152,7 @@ export function LoadingBoundary({
         {loadingFallback ?? (
           <LoadingStateSkeleton
             rows={loadingRows}
-            title={loadingTitle}
+            title={loadingTitle ?? eyebrow ?? "Loading workspace"}
             description={loadingMessage}
           />
         )}
@@ -186,6 +188,13 @@ export function LoadingBoundary({
           <EmptyState
             title={emptyTitle}
             description={emptyMessage}
+            icon={
+              eyebrow ? (
+                <span className="text-label-dense font-semibold uppercase tracking-wide text-text-secondary">
+                  {eyebrow}
+                </span>
+              ) : undefined
+            }
           />
         )}
       </div>

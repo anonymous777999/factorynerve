@@ -91,3 +91,11 @@ export const BackgroundRefreshFailure: Story = {
     isFetching: true,
   },
 };
+
+export const Mobile: Story = {
+  parameters: {
+    viewport: {
+      value: "mobile1",
+    },
+  },
+};
