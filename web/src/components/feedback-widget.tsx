@@ -391,12 +391,12 @@ export function FeedbackWidget({
         data-feedback-ignore-action="true"
         aria-label="Open feedback"
       >
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(62,166,255,0.16)] text-xs">
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-xs text-[var(--text-secondary)]">
           ?
         </span>
         {!immersiveScannerRoute ? <span>Help</span> : null}
         {queuedCount > 0 ? (
-          <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-bold text-[#08101D]">
+          <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--action-primary-text)]">
             {queuedCount}
           </span>
         ) : null}

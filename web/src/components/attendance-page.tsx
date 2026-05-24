@@ -244,7 +244,7 @@ export default function AttendancePage() {
         label: t("attendance.action.punch_in", "Punch In"),
         action: "in" as const,
         disabled: false,
-        className: "bg-emerald-400 text-[#08101D] hover:brightness-110",
+        className: "bg-[var(--action-primary)] text-[var(--action-primary-text)] hover:bg-[var(--action-primary-hover)]",
       };
     }
 
@@ -253,7 +253,7 @@ export default function AttendancePage() {
         label: t("attendance.action.punch_out", "Punch Out"),
         action: "out" as const,
         disabled: false,
-        className: "bg-rose-500 text-white hover:bg-rose-400",
+        className: "bg-[var(--action-primary)] text-[var(--action-primary-text)] hover:bg-[var(--action-primary-hover)]",
       };
     }
 
@@ -262,7 +262,7 @@ export default function AttendancePage() {
         label: t("attendance.action.needs_review", "Needs Review"),
         action: null as "in" | "out" | null,
         disabled: true,
-        className: "border border-rose-400/20 bg-rose-500/15 text-rose-100",
+        className: "border border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-fg)]",
       };
     }
 

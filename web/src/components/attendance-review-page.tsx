@@ -423,7 +423,7 @@ function ReviewDetailPanel({
               className={cn(
                 "rounded-full px-4 py-2 text-sm font-semibold transition",
                 detailTab === tab.id
-                  ? "bg-[var(--accent)] text-[#0b0e14]"
+                  ? "bg-[var(--accent)] text-[var(--action-primary-text)]"
                   : "border border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)] hover:text-[var(--text)]",
               )}
             >
@@ -446,20 +446,20 @@ function ReviewDetailPanel({
                 { label: "Worked time", value: formatMinutes(item.worked_minutes) },
                 { label: "Late / Overtime", value: `${formatMinutes(item.late_minutes)} / ${formatMinutes(item.overtime_minutes)}` },
               ].map((row) => (
-                <div key={row.label} className="rounded-2xl border border-[var(--border)] bg-[rgba(10,14,24,0.78)] p-4">
+                <div key={row.label} className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] p-4">
                   <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">{row.label}</div>
                   <div className="mt-2 text-sm font-semibold text-[var(--text)]">{row.value}</div>
                 </div>
               ))}
             </div>
 
-            <div className="rounded-2xl border border-[var(--border)] bg-[rgba(10,14,24,0.78)] p-4">
+            <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] p-4">
               <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Review reason</div>
               <div className="mt-2 text-sm leading-6 text-[var(--text)]">{item.review_reason}</div>
             </div>
 
             {item.regularization ? (
-              <div className="rounded-2xl border border-[var(--border)] bg-[rgba(10,14,24,0.78)] p-4">
+              <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-elevated)] p-4">
                 <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Requested correction</div>
                 <div className="mt-2 text-sm leading-6 text-[var(--text)]">
                   {ISSUE_TYPE_LABELS[item.regularization.request_type as ReviewIssueType] || formatRole(item.regularization.request_type)}

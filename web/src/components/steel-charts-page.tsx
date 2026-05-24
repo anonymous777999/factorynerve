@@ -166,44 +166,39 @@ export function SteelChartsPage() {
   const chartRecordCoverage = batchCount + invoiceCount + dispatchCount;
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#fafaf9_0%,#f5f5f4_52%,#fafaf9_100%)] px-4 py-8 text-[#111111] md:px-8">
+    <main className="min-h-screen bg-surface-app px-4 py-8 text-text-primary md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-[#e7e5e4] bg-[linear-gradient(135deg,#ffffff,#fafaf9)] p-6 shadow-[0_22px_55px_rgba(15,23,42,0.08)]">
+        <section className="rounded-[2rem] border border-border-subtle bg-surface-panel p-6 shadow-[var(--shadow-sm)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.28em] text-[#78716c]">Steel Charts</div>
-              <h1 className="mt-2 text-2xl font-semibold text-[#111111] md:text-4xl">
+              <div className="text-sm uppercase tracking-[0.28em] text-text-tertiary">Steel Charts</div>
+              <h1 className="mt-2 text-2xl font-semibold text-text-primary md:text-4xl">
                 Track steel trends without leaving the chart board
               </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[#57534e]">
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-text-secondary">
                 Use the chart board below to compare ranges, trace drift, and investigate over-time patterns in {activeFactory?.name || "your factory"}.
               </p>
               <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full border border-[#e7e5e4] bg-white px-3 py-1 text-[#57534e]">
+                <span className="rounded-full bg-surface-card px-3 py-1 text-text-secondary">
                   Factory {activeFactory?.name || "not selected"}
                 </span>
-                <span className="rounded-full border border-[#e7e5e4] bg-white px-3 py-1 text-[#57534e]">
+                <span className="rounded-full bg-surface-card px-3 py-1 text-text-secondary">
                   {chartRecordCoverage} recent records feeding charts
                 </span>
-                <span className="rounded-full border border-[#e7e5e4] bg-white px-3 py-1 text-[#57534e]">
+                <span className="rounded-full bg-surface-card px-3 py-1 text-text-secondary">
                   {overview?.financial_access ? "Financial view enabled" : "Financial view restricted"}
                 </span>
-                <span className="rounded-full border border-[#e7e5e4] bg-white px-3 py-1 text-[#57534e]">
+                <span className="rounded-full bg-surface-card px-3 py-1 text-text-secondary">
                   Highest loss day {topLossDay}
                 </span>
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button
-                variant="outline"
-                className="!border-[#111111] !bg-none !bg-[#111111] !text-white hover:!border-[#2f2f2f] hover:!bg-none hover:!bg-[#2f2f2f]"
-                disabled={refreshing}
-                onClick={() => void handleRefresh()}
-              >
+              <Button variant="primary" disabled={refreshing} onClick={() => void handleRefresh()}>
                 {refreshing ? "Refreshing..." : "Refresh"}
               </Button>
               <Link href="/steel">
-                <Button variant="ghost" className="!border-[#d6d3d1] !bg-none !bg-[#f5f5f4] !text-[#111111] hover:!border-[#a8a29e] hover:!bg-none hover:!bg-[#e7e5e4]">
+                <Button variant="ghost">
                   Open steel hub
                 </Button>
               </Link>
@@ -212,7 +207,7 @@ export function SteelChartsPage() {
         </section>
 
         {error || sessionError ? (
-          <div className="rounded-2xl border border-[#fecaca] bg-[#fff7f7] px-4 py-3 text-sm text-[#991b1b]">
+          <div className="rounded-2xl border border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">
             {error || sessionError}
           </div>
         ) : null}
@@ -220,9 +215,9 @@ export function SteelChartsPage() {
         <section className="space-y-3">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
-              <div className="text-sm uppercase tracking-[0.22em] text-[#78716c]">Interactive Board</div>
-              <h2 className="mt-1 text-2xl font-semibold text-[#111111]">Read trends, filter patterns, and investigate drift</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-[#57534e]">
+              <div className="text-sm uppercase tracking-[0.22em] text-text-tertiary">Interactive Board</div>
+              <h2 className="mt-1 text-2xl font-semibold text-text-primary">Read trends, filter patterns, and investigate drift</h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-text-secondary">
                 The chart workspace below is the primary analytical surface. Stay here to compare ranges, isolate drift,
                 and drill into the historical context behind steel performance.
               </p>
@@ -240,12 +235,12 @@ export function SteelChartsPage() {
               showDecisionPrompts={false}
             />
           ) : (
-            <Card className="rounded-[1.6rem] !border-[#e7e5e4] !bg-none !bg-white shadow-[0_18px_40px_rgba(15,23,42,0.06)]">
+            <Card className="rounded-[1.6rem] bg-surface-card shadow-[var(--shadow-xs)]">
               <CardHeader>
-                <div className="text-sm text-[#78716c]">Chart board</div>
-                <CardTitle className="text-xl text-[#111111]">Chart data is not available yet</CardTitle>
+                <div className="text-sm text-text-tertiary">Chart board</div>
+                <CardTitle className="text-xl text-text-primary">Chart data is not available yet</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm text-[#57534e]">
+              <CardContent className="space-y-3 text-sm text-text-secondary">
                 <div>We could not build the steel chart board from live data in this session.</div>
                 <div>Data confidence is low. Check factory access, steel records, or API connectivity, then refresh again.</div>
               </CardContent>
