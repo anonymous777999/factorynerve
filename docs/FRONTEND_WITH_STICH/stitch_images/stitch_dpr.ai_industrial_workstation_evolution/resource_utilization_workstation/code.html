@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Resource Utilization Workstation</title>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Theme Configuration -->
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "secondary": "#b7c8e1",
+                        "on-tertiary-fixed": "#360f00",
+                        "inverse-surface": "#e2e2e5",
+                        "surface": "#121416",
+                        "on-primary-fixed": "#00164e",
+                        "on-surface-variant": "#c3c5d7",
+                        "on-secondary-fixed": "#0b1c30",
+                        "on-background": "#e2e2e5",
+                        "surface-variant": "#333537",
+                        "surface-container-high": "#282a2c",
+                        "on-primary-fixed-variant": "#003bae",
+                        "secondary-fixed": "#d3e4fe",
+                        "surface-bright": "#38393c",
+                        "on-primary": "#00287c",
+                        "surface-container-low": "#1a1c1e",
+                        "surface-tint": "#b5c4ff",
+                        "primary-fixed-dim": "#b5c4ff",
+                        "on-error-container": "#ffdad6",
+                        "on-surface": "#e2e2e5",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "error": "#ffb4ab",
+                        "primary": "#b5c4ff",
+                        "secondary-container": "#3a4a5f",
+                        "on-secondary-container": "#a9bad3",
+                        "tertiary-fixed": "#ffdbcd",
+                        "on-tertiary-container": "#ffe5db",
+                        "primary-container": "#2a5ee6",
+                        "tertiary-fixed-dim": "#ffb597",
+                        "inverse-on-surface": "#2f3133",
+                        "on-primary-container": "#e6e9ff",
+                        "error-container": "#93000a",
+                        "on-tertiary-fixed-variant": "#7e2c00",
+                        "tertiary-container": "#b74400",
+                        "on-tertiary": "#591d00",
+                        "background": "#121416",
+                        "surface-container-lowest": "#0c0e10",
+                        "on-error": "#690005",
+                        "surface-container-highest": "#333537",
+                        "outline": "#8d90a0",
+                        "surface-dim": "#121416",
+                        "surface-container": "#1e2022",
+                        "outline-variant": "#434655",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "primary-fixed": "#dce1ff",
+                        "on-secondary": "#213145",
+                        "tertiary": "#ffb597",
+                        "inverse-primary": "#1652da"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    spacing: {
+                        "unit": "8px",
+                        "gutter": "1px",
+                        "sm": "8px",
+                        "md": "16px",
+                        "xs": "4px",
+                        "lg": "24px"
+                    },
+                    fontFamily: {
+                        "body-sm": ["Hanken Grotesk"],
+                        "data-mono": ["JetBrains Mono"],
+                        "label-caps": ["JetBrains Mono"],
+                        "headline-sm": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"]
+                    },
+                    fontSize: {
+                        "body-sm": ["12px", { lineHeight: "16px", fontWeight: "400" }],
+                        "data-mono": ["12px", { lineHeight: "16px", letterSpacing: "-0.02em", fontWeight: "500" }],
+                        "label-caps": ["10px", { lineHeight: "12px", letterSpacing: "0.05em", fontWeight: "700" }],
+                        "headline-sm": ["18px", { lineHeight: "24px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                        "body-md": ["13px", { lineHeight: "18px", fontWeight: "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface font-body-md text-body-md h-screen w-screen overflow-hidden flex flex-col md:flex-row antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- Mobile TopAppBar -->
+<header class="md:hidden w-full h-12 border-b border-outline-variant bg-surface-container flex items-center justify-between px-md shrink-0">
+<div class="font-headline-sm text-headline-sm font-bold text-primary tracking-tighter uppercase">DPR.ai</div>
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary text-[20px] cursor-pointer hover:text-primary-fixed transition-colors">notifications</span>
+<span class="material-symbols-outlined text-primary text-[20px] cursor-pointer hover:text-primary-fixed transition-colors">settings</span>
+</div>
+</header>
+<!-- Web SideNavBar -->
+<nav class="hidden md:flex flex-col items-center py-md gap-sm w-16 bg-surface-container-low border-r border-outline-variant h-full shrink-0 transition-all duration-150 ease-in-out">
+<!-- Tabs -->
+<div class="flex flex-col gap-xs w-full px-xs">
+<div class="w-full aspect-square flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-colors cursor-pointer rounded-sm" title="Nodes">
+<span class="material-symbols-outlined text-[20px]">hub</span>
+</div>
+<div class="w-full aspect-square flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-colors cursor-pointer rounded-sm" title="Assets">
+<span class="material-symbols-outlined text-[20px]">inventory_2</span>
+</div>
+<div class="w-full aspect-square flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-colors cursor-pointer rounded-sm" title="Traffic">
+<span class="material-symbols-outlined text-[20px]">traffic</span>
+</div>
+<div class="w-full aspect-square flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-colors cursor-pointer rounded-sm" title="Logs">
+<span class="material-symbols-outlined text-[20px]">terminal</span>
+</div>
+<!-- Active Tab: Admin (Settings/Usage) -->
+<div class="w-full aspect-square flex items-center justify-center bg-secondary-container text-on-secondary-container border-l-2 border-primary cursor-pointer rounded-r-sm" title="Admin">
+<span class="material-symbols-outlined text-[20px]" style="font-variation-settings: 'FILL' 1;">admin_panel_settings</span>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="mt-auto flex flex-col gap-xs w-full px-xs">
+<div class="w-full aspect-square flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-colors cursor-pointer rounded-sm" title="Help">
+<span class="material-symbols-outlined text-[20px]">help_outline</span>
+</div>
+<div class="w-full aspect-square flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-colors cursor-pointer rounded-sm" title="Logout">
+<span class="material-symbols-outlined text-[20px]">logout</span>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col lg:flex-row h-full overflow-hidden bg-background">
+<!-- Dominant Lane: Data Grids -->
+<section class="flex-1 flex flex-col h-full overflow-hidden p-md gap-md border-r border-outline-variant">
+<!-- Header Block -->
+<div class="flex items-end justify-between border-b border-outline-variant pb-sm shrink-0">
+<div class="flex flex-col gap-xs">
+<h1 class="font-headline-sm text-headline-sm text-on-surface tracking-tight">Resource Utilization Workstation</h1>
+<div class="flex items-center gap-sm">
+<div class="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+<span class="font-data-mono text-data-mono text-on-surface-variant uppercase">Telemetry active • Last sync: 00:00:02</span>
+</div>
+</div>
+<div class="flex items-center gap-xs">
+<button class="h-[28px] px-sm flex items-center gap-xs bg-transparent border border-outline-variant hover:bg-surface-container-highest transition-colors cursor-pointer rounded-none text-on-surface group">
+<span class="material-symbols-outlined text-[14px] group-hover:text-primary transition-colors">download</span>
+<span class="font-label-caps text-label-caps uppercase">Export</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant ml-sm opacity-50 hidden sm:inline-block">[ CMD+E ]</span>
+</button>
+<button class="h-[28px] px-sm flex items-center gap-xs bg-primary text-on-primary border border-primary hover:bg-primary-fixed transition-colors cursor-pointer rounded-none">
+<span class="material-symbols-outlined text-[14px]">add</span>
+<span class="font-label-caps text-label-caps uppercase">Increase Quota</span>
+</button>
+</div>
+</div>
+<!-- Terminal/Command Input Placeholder -->
+<div class="w-full flex items-center border-b border-outline-variant pb-xs shrink-0 group focus-within:border-primary transition-colors">
+<span class="material-symbols-outlined text-on-surface-variant text-[16px] mr-sm">terminal</span>
+<input class="w-full bg-transparent border-none outline-none font-data-mono text-data-mono text-on-surface placeholder:text-on-surface-variant p-0 focus:ring-0" placeholder="Filter resources... (e.g., service:compute &gt; 80%)" type="text"/>
+</div>
+<!-- Detailed Quota Grids -->
+<div class="flex-1 overflow-y-auto pr-xs custom-scrollbar flex flex-col gap-lg">
+<!-- Table Group 1 -->
+<div class="flex flex-col">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant uppercase mb-xs px-xs">Compute &amp; Storage Volumes</h2>
+<div class="border border-outline-variant bg-surface-container-lowest">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container border-b border-outline-variant font-label-caps text-label-caps text-on-surface-variant">
+<th class="p-xs font-normal">SRV_ID</th>
+<th class="p-xs font-normal">TYPE</th>
+<th class="p-xs font-normal">ALLOCATION</th>
+<th class="p-xs font-normal">CONSUMED</th>
+<th class="p-xs font-normal text-right">UTILIZATION</th>
+</tr>
+</thead>
+<tbody class="font-data-mono text-data-mono text-on-surface">
+<tr class="border-b border-outline-variant bg-surface-container-lowest hover:bg-surface-container transition-colors">
+<td class="p-xs">CMP-001</td>
+<td class="p-xs text-on-surface-variant">A100 Cluster</td>
+<td class="p-xs">5,000 hrs</td>
+<td class="p-xs">4,892 hrs</td>
+<td class="p-xs text-right text-error">97.8%</td>
+</tr>
+<tr class="border-b border-outline-variant bg-surface-container-low hover:bg-surface-container transition-colors">
+<td class="p-xs">CMP-002</td>
+<td class="p-xs text-on-surface-variant">V100 Node</td>
+<td class="p-xs">10,000 hrs</td>
+<td class="p-xs">2,104 hrs</td>
+<td class="p-xs text-right text-primary">21.0%</td>
+</tr>
+<tr class="border-b border-outline-variant bg-surface-container-lowest hover:bg-surface-container transition-colors">
+<td class="p-xs">STR-S3</td>
+<td class="p-xs text-on-surface-variant">Object Store</td>
+<td class="p-xs">500.0 TB</td>
+<td class="p-xs">342.1 TB</td>
+<td class="p-xs text-right text-primary">68.4%</td>
+</tr>
+<tr class="border-b border-outline-variant bg-surface-container-low hover:bg-surface-container transition-colors">
+<td class="p-xs">STR-NVME</td>
+<td class="p-xs text-on-surface-variant">Block Store</td>
+<td class="p-xs">50.0 TB</td>
+<td class="p-xs">48.2 TB</td>
+<td class="p-xs text-right text-tertiary">96.4%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Table Group 2 -->
+<div class="flex flex-col">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant uppercase mb-xs px-xs">API &amp; Network Bandwidth</h2>
+<div class="border border-outline-variant bg-surface-container-lowest">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container border-b border-outline-variant font-label-caps text-label-caps text-on-surface-variant">
+<th class="p-xs font-normal">RSC_ID</th>
+<th class="p-xs font-normal">ENDPOINT</th>
+<th class="p-xs font-normal">LIMIT</th>
+<th class="p-xs font-normal">USED</th>
+<th class="p-xs font-normal text-right">UTILIZATION</th>
+</tr>
+</thead>
+<tbody class="font-data-mono text-data-mono text-on-surface">
+<tr class="border-b border-outline-variant bg-surface-container-lowest hover:bg-surface-container transition-colors">
+<td class="p-xs">NET-EGR</td>
+<td class="p-xs text-on-surface-variant">Global CDN</td>
+<td class="p-xs">1.0 PB</td>
+<td class="p-xs">0.2 PB</td>
+<td class="p-xs text-right text-primary">20.0%</td>
+</tr>
+<tr class="border-b border-outline-variant bg-surface-container-low hover:bg-surface-container transition-colors">
+<td class="p-xs">API-INF</td>
+<td class="p-xs text-on-surface-variant">Inference API</td>
+<td class="p-xs">10M req</td>
+<td class="p-xs">8.4M req</td>
+<td class="p-xs text-right text-tertiary">84.0%</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</section>
+<!-- Secondary Lane: Telemetry & Lifecycle -->
+<aside class="w-full lg:w-[320px] bg-surface-container flex flex-col h-full shrink-0 overflow-y-auto p-md gap-md">
+<div class="flex flex-col gap-xs border-b border-outline-variant pb-sm">
+<h3 class="font-label-caps text-label-caps text-on-surface uppercase tracking-widest">Billing Lifecycle</h3>
+<div class="flex items-center justify-between font-data-mono text-data-mono">
+<span class="text-on-surface-variant">Cycle Ends:</span>
+<span class="text-on-surface">14 Days</span>
+</div>
+</div>
+<!-- Monochromatic Progress Bars -->
+<div class="flex flex-col gap-sm">
+<div class="flex flex-col gap-xs">
+<div class="flex justify-between font-label-caps text-label-caps uppercase">
+<span class="text-on-surface-variant">Aggregate Compute</span>
+<span class="text-on-surface">87%</span>
+</div>
+<div class="w-full h-[4px] bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-secondary-fixed w-[87%]"></div>
+</div>
+<div class="flex justify-between font-data-mono text-[10px] text-on-surface-variant">
+<span>0</span>
+<span>15k HRS</span>
+</div>
+</div>
+<div class="flex flex-col gap-xs mt-sm">
+<div class="flex justify-between font-label-caps text-label-caps uppercase">
+<span class="text-on-surface-variant">Aggregate Storage</span>
+<span class="text-on-surface">71%</span>
+</div>
+<div class="w-full h-[4px] bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-secondary w-[71%]"></div>
+</div>
+<div class="flex justify-between font-data-mono text-[10px] text-on-surface-variant">
+<span>0</span>
+<span>550 TB</span>
+</div>
+</div>
+</div>
+<!-- Financial Projections Tile -->
+<div class="border border-outline-variant bg-surface-container-low p-sm flex flex-col gap-sm mt-sm">
+<div class="font-label-caps text-label-caps text-on-surface-variant uppercase">Current Projection</div>
+<div class="font-data-mono text-[24px] leading-none text-on-surface tracking-tighter">$14,290.00</div>
+<div class="flex items-center gap-xs font-label-caps text-label-caps">
+<span class="material-symbols-outlined text-[14px] text-error">trending_up</span>
+<span class="text-error uppercase">+12% vs last cycle</span>
+</div>
+</div>
+<!-- Legacy Reference Image (Required by Prompt) -->
+<div class="mt-auto pt-md border-t border-outline-variant flex flex-col gap-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Legacy View Model</span>
+<span class="material-symbols-outlined text-[14px] text-on-surface-variant cursor-help" title="Reference image for previous usage settings layout">info</span>
+</div>
+<div class="w-full aspect-[1.57] bg-surface-container-highest border border-outline-variant overflow-hidden group relative">
+<!-- The image reference must be preserved exactly -->
+<img alt="Legacy Usage Settings" class="w-full h-full object-cover opacity-40 grayscale mix-blend-luminosity group-hover:opacity-100 group-hover:grayscale-0 group-hover:mix-blend-normal transition-all duration-500" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBHGupYfDQHeABhHm3YxYi9CLmgCcbAKxNoCSYrvEYMVfvVDDVzN8DR9-fV4ThKg1D3B9cUEER4Jl_ZfctZuYOHeDh8pxJ7C9aEakpVyvDwHolBh_E_1Hs1uFpu0ZNeqXu5bwtuRlO4-SIuH7sfw0_6GpCZwNLmebyv24Gm8tKD8RlpHwwpwCk5IMnNDMnY-mmbmlKBEyjALH1gFiCY5l9tUfLnENLi6Cdl9caeYAO6bJ1EEnO2qgm1qh74ATbRsITyTwCzDZtMFxZM"/>
+<div class="absolute inset-0 bg-surface/20 group-hover:bg-transparent transition-colors pointer-events-none"></div>
+</div>
+</div>
+</aside>
+</main>
+<style>
+        /* Custom scrollbar for rigid industrial feel */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #121416; 
+            border-left: 1px solid #434655;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #333537; 
+            border: 1px solid #434655;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #434655; 
+        }
+    </style>
+</body></html>

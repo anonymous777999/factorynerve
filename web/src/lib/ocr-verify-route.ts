@@ -1,5 +1,7 @@
 export type OcrVerifyStep = 1 | 2 | 3 | 4;
 export type OcrVerifyStatusFilter = "all" | "draft" | "pending" | "rejected" | "approved";
+export type OcrVerifyPane = "queue" | "workspace";
+export type OcrVerifyTab = "document" | "issues" | "fix";
 
 const VALID_STATUS_FILTERS = new Set<OcrVerifyStatusFilter>([
   "all",
@@ -8,6 +10,8 @@ const VALID_STATUS_FILTERS = new Set<OcrVerifyStatusFilter>([
   "rejected",
   "approved",
 ]);
+const VALID_PANES = new Set<OcrVerifyPane>(["queue", "workspace"]);
+const VALID_TABS = new Set<OcrVerifyTab>(["document", "issues", "fix"]);
 
 function toSingleValue(value?: string | string[]) {
   if (Array.isArray(value)) {
@@ -23,6 +27,8 @@ export function buildCanonicalOcrVerifyHref(input: Record<string, string | strin
   const requestedStep = toSingleValue(input.step);
   const search = toSingleValue(input.q);
   const status = toSingleValue(input.status);
+  const pane = toSingleValue(input.pane);
+  const tab = toSingleValue(input.tab);
 
   const params = new URLSearchParams();
   const parsedId = idValue ? Number(idValue) : Number.NaN;
@@ -54,9 +60,32 @@ export function buildCanonicalOcrVerifyHref(input: Record<string, string | strin
     params.set("status", normalizedStatus);
   }
 
+  const defaultPane: OcrVerifyPane = id != null && step >= 3 ? "workspace" : "queue";
+  if (VALID_PANES.has((pane as OcrVerifyPane) || defaultPane)) {
+    const normalizedPane = (pane as OcrVerifyPane) || defaultPane;
+    if (normalizedPane !== "queue") {
+      params.set("pane", normalizedPane);
+    }
+  }
+
+  if (VALID_TABS.has((tab as OcrVerifyTab) || "issues")) {
+    const normalizedTab = (tab as OcrVerifyTab) || "issues";
+    if (normalizedTab !== "issues") {
+      params.set("tab", normalizedTab);
+    }
+  }
+
   return `/ocr/verify?${params.toString()}`;
 }
 
 export function isValidOcrVerifyStatusFilter(value: string | null): value is OcrVerifyStatusFilter {
   return VALID_STATUS_FILTERS.has((value as OcrVerifyStatusFilter) || "all");
+}
+
+export function isValidOcrVerifyPane(value: string | null): value is OcrVerifyPane {
+  return VALID_PANES.has((value as OcrVerifyPane) || "queue");
+}
+
+export function isValidOcrVerifyTab(value: string | null): value is OcrVerifyTab {
+  return VALID_TABS.has((value as OcrVerifyTab) || "issues");
 }

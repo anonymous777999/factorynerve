@@ -1,0 +1,442 @@
+<!DOCTYPE html><html lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Admin &amp; Factory Settings Workstation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<style data-purpose="custom-styles">
+    body {
+      background-color: #111318;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    
+    .panel {
+      background-color: #1a1d24;
+      border: 1px solid #2d3748;
+      border-radius: 0.5rem;
+    }
+    
+    .input-field {
+      background-color: #111318;
+      border: 1px solid #4a5568;
+      color: #e2e8f0;
+    }
+    
+    .input-field:focus {
+      outline: none;
+      border-color: #63b3ed;
+      box-shadow: 0 0 0 1px #63b3ed;
+    }
+
+    .btn-primary {
+      background-color: #ffffff;
+      color: #1a202c;
+    }
+
+    .btn-primary:hover {
+      background-color: #e2e8f0;
+    }
+
+    .btn-secondary {
+      background-color: transparent;
+      border: 1px solid #4a5568;
+      color: #e2e8f0;
+    }
+
+    .btn-secondary:hover {
+      background-color: #2d3748;
+    }
+
+    .tab-active {
+      border-bottom: 2px solid #ffffff;
+      color: #ffffff;
+    }
+
+    .tab-inactive {
+      color: #a0aec0;
+    }
+    
+    .tab-inactive:hover {
+      color: #e2e8f0;
+    }
+
+    /* Scrollbar styling for webkit */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #111318;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #4a5568;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #718096;
+    }
+  </style>
+</head>
+<body class="h-screen flex overflow-hidden text-sm">
+<!-- BEGIN: Sidebar -->
+<aside class="w-64 border-r border-gray-800 flex flex-col h-full bg-[#111318] z-20 flex-shrink-0">
+<div class="p-4 border-b border-gray-800">
+<div class="font-bold text-lg text-white">DPR.AI</div>
+<div class="text-gray-400">RedVortex ORG</div>
+<div class="text-xs text-gray-500 mt-1">Steel Industry • free plan</div>
+<div class="flex gap-2 mt-3">
+<span class="px-2 py-1 text-[10px] uppercase font-semibold border border-gray-700 rounded text-gray-300">ADMIN</span>
+<span class="px-2 py-1 text-[10px] uppercase font-semibold border border-gray-700 rounded text-gray-300">STEEL CORE PACK</span>
+</div>
+<div class="mt-2">
+<span class="px-2 py-1 text-[10px] uppercase font-semibold border border-gray-700 rounded text-gray-300 inline-block">REDVORTEX ORG</span>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto py-4 px-3 space-y-6">
+<!-- Pinned -->
+<div>
+<h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Pinned</h3>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md group" href="#">
+<svg class="w-4 h-4 text-gray-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Approvals</span>
+<svg class="w-3 h-3 ml-auto text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md group" href="#">
+<svg class="w-4 h-4 text-gray-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Reports &amp; Exports</span>
+<svg class="w-3 h-3 ml-auto text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md group" href="#">
+<svg class="w-4 h-4 text-gray-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Performance</span>
+<svg class="w-3 h-3 ml-auto text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md group" href="#">
+<svg class="w-4 h-4 text-gray-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 4v16m8-8H4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Attendance Admin</span>
+<svg class="w-3 h-3 ml-auto text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-white bg-gray-800 border-l-2 border-blue-500 group" href="#">
+<svg class="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Factory Admin</span>
+<svg class="w-3 h-3 ml-auto text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+</a>
+</li>
+</ul>
+</div>
+<!-- Today -->
+<div>
+<h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Today</h3>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md group" href="#">
+<svg class="w-4 h-4 text-gray-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Today Board</span>
+</a>
+</li>
+</ul>
+</div>
+<!-- Review -->
+<div>
+<h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Review</h3>
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 px-3 py-2 text-gray-300 hover:bg-gray-800 rounded-md group" href="#">
+<svg class="w-4 h-4 text-gray-400 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span>Approvals</span>
+<svg class="w-3 h-3 ml-auto text-gray-500" fill="currentColor" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"></path></svg>
+</a>
+</li>
+</ul>
+</div>
+<!-- Management -->
+<div>
+<h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2 px-2">Management</h3>
+</div>
+</div>
+<!-- Account Footer -->
+<div class="p-4 border-t border-gray-800">
+<div class="flex items-center justify-between cursor-pointer group">
+<div>
+<div class="text-xs font-bold text-gray-500 uppercase">Account</div>
+<div class="text-sm text-gray-300 group-hover:text-white leading-tight mt-1">Profile, language, and sign-out tools</div>
+</div>
+<svg class="w-4 h-4 text-gray-500 group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+</div>
+</aside>
+<!-- END: Sidebar -->
+<!-- BEGIN: Main Content -->
+<main class="flex-1 flex flex-col min-w-0 bg-[#15171e] overflow-hidden relative">
+<!-- BEGIN: Top Header -->
+<header class="h-14 border-b border-gray-800 flex items-center justify-between px-4 bg-[#111318] flex-shrink-0">
+<div class="flex items-center gap-4">
+<button class="text-gray-400 hover:text-white text-sm">Hide Nav</button>
+<div class="flex items-center gap-2 text-sm">
+<span class="font-bold text-white uppercase tracking-wide">REDVORTEX ORG</span>
+<span class="px-2 py-0.5 bg-gray-800 border border-gray-700 rounded text-gray-300 text-xs">Factory Admin</span>
+</div>
+</div>
+<div class="flex items-center gap-6 text-sm text-gray-400">
+<div class="flex items-center gap-1 cursor-pointer hover:text-white">
+<span>Factories, users, templates, and organization controls</span>
+</div>
+<div class="flex items-center gap-4">
+<span class="hover:text-white cursor-pointer">Alerts 0</span>
+<span class="hover:text-white cursor-pointer">Review 0</span>
+</div>
+<div class="flex items-center gap-2 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-400 hover:text-gray-300 cursor-pointer">
+<span>Command Palette</span>
+<span class="text-gray-500">(Ctrl/Cmd+K)</span>
+</div>
+<div class="text-gray-300 text-xs uppercase tracking-wider font-semibold border border-gray-700 px-2 py-1 rounded">Workspace</div>
+</div>
+</header>
+<!-- END: Top Header -->
+<!-- BEGIN: Page Content -->
+<div class="flex-1 overflow-y-auto p-8 relative">
+<!-- Sticky Help Button -->
+<button class="fixed right-6 bottom-6 w-12 h-12 bg-gray-800 border border-gray-700 rounded-full flex items-center justify-center text-white hover:bg-gray-700 z-50 shadow-lg">
+<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+<div class="max-w-7xl mx-auto space-y-6">
+<!-- Header Section -->
+<div>
+<h2 class="text-blue-500 text-xs font-bold uppercase tracking-widest mb-1">Settings</h2>
+<h1 class="text-3xl font-bold text-white mb-2">Keep factory setup and team control in one admin lane</h1>
+<p class="text-gray-400">Update factory setup, manage people, and check plan posture without leaving the admin workspace.</p>
+</div>
+<!-- Admin Tools Tabs -->
+<div class="panel p-4">
+<h3 class="text-white font-semibold mb-4">Admin tools</h3>
+<div class="flex border-b border-gray-700">
+<button class="px-6 py-2 tab-inactive hover:bg-gray-800 font-medium text-sm">Board</button>
+<button class="px-6 py-2 bg-white text-gray-900 font-medium text-sm rounded-t-md">Reports</button>
+<button class="px-6 py-2 tab-inactive hover:bg-gray-800 font-medium text-sm">Plans</button>
+<button class="px-6 py-2 tab-inactive hover:bg-gray-800 font-medium text-sm">Billing</button>
+</div>
+</div>
+<!-- Summary Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+<div class="panel p-5">
+<div class="text-xs text-gray-500 mb-1">Current Factory</div>
+<div class="text-2xl font-bold text-white mb-1">RedVortex ORG</div>
+<div class="text-sm text-gray-400">Steel Industry · Steel Core Pack</div>
+</div>
+<div class="panel p-5">
+<div class="text-xs text-gray-500 mb-1">Factory Network</div>
+<div class="text-2xl font-bold text-white mb-1">1</div>
+<div class="text-sm text-gray-400">Steel Industry: 1</div>
+</div>
+<div class="panel p-5">
+<div class="text-xs text-gray-500 mb-1">Active Users</div>
+<div class="text-2xl font-bold text-white mb-1">2</div>
+<div class="text-sm text-gray-400">Plan free · Billing status: active</div>
+</div>
+</div>
+<!-- Secondary Navigation (Main Tabs) -->
+<div class="flex border-b border-gray-800 gap-6 px-2">
+<!-- In a real app, JS would toggle these. Showing 'Factory' view as default structure based on prompt priority, but including elements for others to demonstrate density -->
+<button class="py-3 px-1 tab-active font-medium text-sm">Factory</button>
+<button class="py-3 px-1 tab-inactive font-medium text-sm">Users</button>
+<button class="py-3 px-1 tab-inactive font-medium text-sm">Usage</button>
+<button class="py-3 px-1 tab-inactive font-medium text-sm">Alerts</button>
+</div>
+<!-- BEGIN: Tab Content Area -->
+<div class="mt-6" id="tab-content-container">
+<!-- TAB: Factory (Active state shown here based on IMAGE_55) -->
+<div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+<!-- Left Column: Factory Settings -->
+<div class="xl:col-span-2 space-y-6">
+<!-- Factory Profile -->
+<div class="panel p-0 overflow-hidden">
+<div class="p-4 border-b border-gray-800 font-semibold text-white text-lg">Factory Profile</div>
+<div class="p-6 space-y-6">
+<div class="grid grid-cols-2 gap-6">
+<div>
+<label class="block text-xs text-gray-400 mb-2">Factory Name</label>
+<input class="w-full input-field p-2.5 text-sm rounded" type="text" value="RedVortex ORG">
+</div>
+<div>
+<label class="block text-xs text-gray-400 mb-2">Industry Profile</label>
+<select class="w-full input-field p-2.5 text-sm rounded appearance-none">
+<option>Steel Industry</option>
+</select>
+<p class="text-xs text-gray-500 mt-2 leading-relaxed">Traceability-first profile for heats, scrap, quality release, and line performance.</p>
+</div>
+</div>
+<div>
+<label class="block text-xs text-gray-400 mb-2">Workflow Template</label>
+<select class="w-full max-w-md input-field p-2.5 text-sm rounded appearance-none">
+<option>Steel Core Pack</option>
+</select>
+<p class="text-xs text-gray-500 mt-2 max-w-md leading-relaxed">Steel starter template focused on production traceability, scrap, and quality release readiness.</p>
+</div>
+<div>
+<label class="block text-xs text-gray-400 mb-2">Address</label>
+<input class="w-full input-field p-2.5 text-sm rounded" type="text" value="India , maharashtra , panvel , raigad 410208">
+</div>
+</div>
+</div>
+<!-- Starter Modules -->
+<div class="panel p-0 overflow-hidden">
+<div class="p-6">
+<h3 class="text-white font-semibold mb-4">Starter Modules</h3>
+<div class="flex flex-wrap gap-2 mb-6">
+<span class="px-3 py-1 bg-gray-800 text-blue-300 border border-gray-700 rounded-full text-xs font-medium">Dpr</span>
+<span class="px-3 py-1 bg-[#1c2e1f] text-green-400 border border-[#274a2f] rounded-full text-xs font-medium">Quality</span>
+<span class="px-3 py-1 bg-gray-800 text-blue-300 border border-gray-700 rounded-full text-xs font-medium">Traceability</span>
+<span class="px-3 py-1 bg-[#3a2a18] text-yellow-500 border border-[#5c401f] rounded-full text-xs font-medium">Scrap</span>
+<span class="px-3 py-1 bg-[#1c2e1f] text-green-400 border border-[#274a2f] rounded-full text-xs font-medium">Certificates</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<!-- Shift Handover Card -->
+<div class="bg-[#111318] border border-gray-800 rounded-lg p-5">
+<h4 class="text-white font-medium mb-2">Shift Handover</h4>
+<p class="text-xs text-gray-400 mb-4 leading-relaxed">Production, staffing, and downtime summary captured at the end of every shift.</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs">Shift Date</span>
+<span class="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs">Shift</span>
+<span class="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs">Units Target</span>
+<span class="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs">Units Produced</span>
+<span class="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs">Manpower Present</span>
+<span class="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs">Downtime Minutes</span>
+</div>
+</div>
+<!-- Quality Gate Card -->
+<div class="bg-[#111318] border border-gray-800 rounded-lg p-5">
+<h4 class="text-white font-medium mb-2">Quality Gate</h4>
+<p class="text-xs text-gray-400 mb-4 leading-relaxed">Shared quality capture block for defects, holds, and release notes.</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs">Quality Issues</span>
+<span class="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs">Quality Details</span>
+<span class="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs">Materials Used</span>
+</div>
+</div>
+<!-- Heat and Lot Traceability Card -->
+<div class="bg-[#111318] border border-gray-800 rounded-lg p-5 md:col-span-2">
+<h4 class="text-white font-medium mb-2">Heat and Lot Traceability</h4>
+<p class="text-xs text-gray-400 mb-4 leading-relaxed">Trace steel production against heat, lot, and certificate references.</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs">Heat Number</span>
+<span class="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs">Lot Number</span>
+<span class="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs">Scrap (kg)</span>
+<span class="px-3 py-1 bg-gray-800 text-gray-300 rounded-full text-xs">Certificate Reference</span>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-6 mt-6 pt-6 border-t border-gray-800">
+<div>
+<label class="block text-xs text-gray-400 mb-2">Morning Target</label>
+<input class="w-full input-field p-2.5 text-sm rounded" type="text" value="0">
+</div>
+<div>
+<label class="block text-xs text-gray-400 mb-2">Evening Target</label>
+<input class="w-full input-field p-2.5 text-sm rounded" type="text" value="0">
+</div>
+<div>
+<label class="block text-xs text-gray-400 mb-2">Night Target</label>
+<input class="w-full input-field p-2.5 text-sm rounded" type="text" value="0">
+</div>
+</div>
+<div class="mt-6">
+<button class="btn-primary font-medium py-2 px-4 rounded text-sm">Save profile</button>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Create Factory & Snapshots -->
+<div class="space-y-6">
+<!-- Create Factory -->
+<div class="panel p-0 overflow-hidden border-gray-700">
+<div class="p-4 border-b border-gray-700 flex justify-between items-center bg-[#1a1d24]">
+<h3 class="text-white font-semibold text-lg">Create Factory</h3>
+<button class="text-gray-400 hover:text-white flex items-center gap-1 text-xs bg-gray-800 px-2 py-1 rounded border border-gray-700">
+<span class="bg-gray-700 rounded-full w-4 h-4 flex items-center justify-center text-[10px]">?</span> Help
+                  </button>
+</div>
+<div class="p-4 space-y-4 bg-[#111318]">
+<div>
+<label class="block text-xs text-gray-500 mb-1">Factory Name</label>
+<input class="w-full bg-[#1a1d24] border-b border-gray-700 text-white p-2 text-sm focus:outline-none focus:border-blue-500 rounded-t" type="text">
+</div>
+<div>
+<label class="block text-xs text-gray-500 mb-1">Industry Profile</label>
+<select class="w-full bg-[#1a1d24] border-b border-gray-700 text-white p-2 text-sm focus:outline-none focus:border-blue-500 appearance-none rounded-t">
+<option>General Manufacturing</option>
+</select>
+</div>
+<div>
+<label class="block text-xs text-gray-500 mb-1">Workflow Template</label>
+<select class="w-full bg-[#1a1d24] border-b border-gray-700 text-white p-2 text-sm focus:outline-none focus:border-blue-500 appearance-none rounded-t">
+<option>General Operations Pack</option>
+</select>
+<p class="text-xs text-gray-500 mt-1">Starter operating template for standard production, manpower, downtime, quality, and dispatch.</p>
+</div>
+<div>
+<label class="block text-xs text-gray-500 mb-1">Location</label>
+<input class="w-full bg-[#1a1d24] border-b border-gray-700 text-white p-2 text-sm focus:outline-none focus:border-blue-500 rounded-t" type="text">
+</div>
+<div>
+<label class="block text-xs text-gray-500 mb-1">Address</label>
+<textarea class="w-full bg-[#1a1d24] border-b border-gray-700 text-white p-2 text-sm h-16 resize-none focus:outline-none focus:border-blue-500 rounded-t"></textarea>
+</div>
+<div class="mt-4 border border-gray-700 rounded p-4 bg-[#1a1d24]">
+<h4 class="text-white text-sm font-medium mb-1">Pack Preview</h4>
+<p class="text-xs text-gray-400 mb-3">Shared industrial modules that will be enabled first for this factory.</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-0.5 bg-gray-800 text-blue-300 border border-gray-700 rounded-full text-[10px] font-medium">Dpr</span>
+<span class="px-2 py-0.5 bg-[#3a2a18] text-yellow-500 border border-[#5c401f] rounded-full text-[10px] font-medium">Downtime</span>
+<span class="px-2 py-0.5 bg-[#1c2e1f] text-green-400 border border-[#274a2f] rounded-full text-[10px] font-medium">Quality</span>
+<span class="px-2 py-0.5 bg-gray-800 text-gray-300 border border-gray-700 rounded-full text-[10px] font-medium">Dispatch</span>
+<span class="px-2 py-0.5 bg-gray-800 text-gray-300 border border-gray-700 rounded-full text-[10px] font-medium">Manpower</span>
+</div>
+</div>
+<div class="pt-2">
+<button class="btn-primary font-medium py-2 px-4 rounded text-sm">Create Factory</button>
+</div>
+</div>
+</div>
+<!-- Control Tower Snapshot -->
+<div class="panel p-0 overflow-hidden border-gray-700">
+<div class="p-4 border-b border-gray-700 bg-[#1a1d24]">
+<h3 class="text-white font-semibold text-lg">Control Tower Snapshot</h3>
+<p class="text-xs text-gray-400">Org: RedVortex ORG | Plan free</p>
+</div>
+<div class="p-4 bg-[#111318]">
+<div class="bg-[#1a1d24] border border-gray-700 rounded p-4 flex justify-between items-start">
+<div>
+<div class="text-white font-medium mb-1">RedVortex ORG</div>
+<div class="text-xs text-gray-400 mb-2">Steel Industry | Steel Core Pack</div>
+<div class="text-xs text-gray-500">Code QFK721S0 | Members 4 | Role admin</div>
+</div>
+<span class="px-3 py-1 bg-[#1c2e1f] text-green-400 border border-[#274a2f] rounded text-xs font-bold tracking-wider">ACTIVE</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- END TAB: Factory -->
+</div>
+<!-- END: Tab Content Area -->
+</div>
+</div>
+<!-- END: Page Content -->
+<!-- Global search/commands overlay placeholder -->
+<div class="absolute bottom-4 right-4 bg-gray-900 border border-gray-700 rounded-md px-3 py-2 text-xs text-gray-400 flex items-center gap-2 shadow-lg z-40 hidden">
+<span class="font-mono bg-gray-800 px-1 rounded">Jobs</span>
+<span>0 recent</span>
+</div>
+</main>
+<!-- END: Main Content -->
+</body></html>

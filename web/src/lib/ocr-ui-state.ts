@@ -3,6 +3,8 @@
 import type { OcrCell, OcrDebugPayload, OcrRoutingMeta, OcrScanQuality, OcrTokenUsage } from "@/lib/ocr";
 
 const MAX_STORED_IMAGE_BYTES = 1_400_000;
+const OCR_UI_STATE_STORAGE_KEY = "dpr:ocr-scan-ui-state:v2";
+const MAX_STORED_STATE_BYTES = 550_000;
 
 export type RawCell = OcrCell;
 
@@ -35,14 +37,60 @@ export type PersistedOcrUiState = {
 };
 
 export function loadOcrUiState() {
-  return null;
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  try {
+    const raw = window.sessionStorage.getItem(OCR_UI_STATE_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+    return JSON.parse(raw) as PersistedOcrUiState;
+  } catch {
+    return null;
+  }
 }
 
 export function saveOcrUiState(value: PersistedOcrUiState) {
-  void value;
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const writeState = (state: PersistedOcrUiState) => {
+    window.sessionStorage.setItem(OCR_UI_STATE_STORAGE_KEY, JSON.stringify(state));
+  };
+
+  try {
+    writeState(value);
+  } catch {
+    const reduced: PersistedOcrUiState = {
+      ...value,
+      debug: null,
+      imageDataUrl: null,
+      preparedImageDataUrl: null,
+      rawText: null,
+      tokenUsage: null,
+    };
+
+    try {
+      const serialized = JSON.stringify(reduced);
+      if (serialized.length <= MAX_STORED_STATE_BYTES) {
+        window.sessionStorage.setItem(OCR_UI_STATE_STORAGE_KEY, serialized);
+      } else {
+        clearOcrUiState();
+      }
+    } catch {
+      clearOcrUiState();
+    }
+  }
 }
 
 export function clearOcrUiState() {
+  if (typeof window === "undefined") {
+    return;
+  }
+  window.sessionStorage.removeItem(OCR_UI_STATE_STORAGE_KEY);
 }
 
 export async function fileToDataUrl(file: File | null) {

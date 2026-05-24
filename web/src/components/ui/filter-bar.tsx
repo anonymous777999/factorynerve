@@ -42,19 +42,42 @@ export type FilterBarProps = {
   activeFilters?: ActiveFilterPill[];
   className?: string;
   onClearAll?: () => void;
+  title?: string;
+  resultCount?: React.ReactNode;
+  actions?: React.ReactNode;
+  footer?: React.ReactNode;
 };
 
 export function FilterBar({
   activeFilters = [],
+  actions,
   className,
+  footer,
   fields,
   onClearAll,
+  resultCount,
+  title,
 }: FilterBarProps) {
   return (
     <div className={cn("rounded-panel border border-border-subtle bg-surface-shell", className)}>
-      <div className="flex flex-wrap items-end gap-sm px-md py-sm">
+      {title || resultCount != null || actions ? (
+        <div className="flex flex-wrap items-center justify-between gap-sm border-b border-border-subtle px-md py-sm">
+          <div className="min-w-0">
+            {title ? (
+              <p className="text-label-dense font-semibold uppercase tracking-wide text-text-secondary">
+                {title}
+              </p>
+            ) : null}
+            {resultCount != null ? (
+              <p className="text-label-dense text-text-secondary">{resultCount}</p>
+            ) : null}
+          </div>
+          {actions}
+        </div>
+      ) : null}
+      <div className="grid gap-sm px-md py-sm md:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_auto] xl:items-end">
         {fields.map((field) => (
-          <div key={field.id} className="min-w-[12rem] flex-1">
+          <div key={field.id} className="min-w-0">
             <label className="ui-no-select ui-no-callout mb-xs block text-label-dense font-medium uppercase tracking-wide text-text-secondary">
               {field.label}
             </label>
@@ -81,7 +104,7 @@ export function FilterBar({
           </div>
         ))}
         {onClearAll ? (
-          <Button size="compact" variant="ghost" onClick={onClearAll}>
+          <Button size="compact" variant="ghost" onClick={onClearAll} className="xl:self-end">
             Clear all filters
           </Button>
         ) : null}
@@ -102,6 +125,7 @@ export function FilterBar({
           ))}
         </div>
       ) : null}
+      {footer ? <div className="border-t border-border-subtle px-md py-sm">{footer}</div> : null}
     </div>
   );
 }

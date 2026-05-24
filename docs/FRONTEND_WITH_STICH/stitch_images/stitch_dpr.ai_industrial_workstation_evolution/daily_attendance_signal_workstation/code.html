@@ -1,0 +1,466 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>DPR.ai | Daily Attendance Signal</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        body {
+            background-color: #121416;
+            color: #e2e2e5;
+            overflow-x: hidden;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #1a1c1e;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #434655;
+        }
+        .border-sharing {
+            box-shadow: 0 0 0 1px #434655;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#121416",
+                        "on-tertiary-fixed": "#360f00",
+                        "primary-container": "#2a5ee6",
+                        "surface-container-lowest": "#0c0e10",
+                        "inverse-on-surface": "#2f3133",
+                        "surface-tint": "#b5c4ff",
+                        "primary-fixed": "#dce1ff",
+                        "on-surface-variant": "#c3c5d7",
+                        "tertiary-fixed-dim": "#ffb597",
+                        "surface-container-high": "#282a2c",
+                        "inverse-primary": "#1652da",
+                        "on-secondary-fixed": "#0b1c30",
+                        "tertiary": "#ffb597",
+                        "surface-container-highest": "#333537",
+                        "surface-bright": "#38393c",
+                        "surface-variant": "#333537",
+                        "on-surface": "#e2e2e5",
+                        "on-primary-container": "#e6e9ff",
+                        "on-primary": "#00287c",
+                        "background": "#121416",
+                        "outline-variant": "#434655",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "error": "#ffb4ab",
+                        "inverse-surface": "#e2e2e5",
+                        "on-tertiary-fixed-variant": "#7e2c00",
+                        "outline": "#8d90a0",
+                        "surface-container-low": "#1a1c1e",
+                        "on-primary-fixed-variant": "#003bae",
+                        "tertiary-container": "#b74400",
+                        "tertiary-fixed": "#ffdbcd",
+                        "secondary-fixed": "#d3e4fe",
+                        "secondary-container": "#3a4a5f",
+                        "error-container": "#93000a",
+                        "primary": "#b5c4ff",
+                        "on-primary-fixed": "#00164e",
+                        "secondary": "#b7c8e1",
+                        "surface-container": "#1e2022",
+                        "on-error": "#690005",
+                        "on-secondary-container": "#a9bad3",
+                        "on-background": "#e2e2e5",
+                        "primary-fixed-dim": "#b5c4ff",
+                        "on-tertiary-container": "#ffe5db",
+                        "on-tertiary": "#591d00",
+                        "on-secondary": "#213145",
+                        "on-error-container": "#ffdad6",
+                        "surface-dim": "#121416"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "md": "16px",
+                        "lg": "24px",
+                        "xs": "4px",
+                        "unit": "8px",
+                        "sm": "8px",
+                        "gutter": "1px"
+                    },
+                    "fontFamily": {
+                        "headline-sm": ["Hanken Grotesk"],
+                        "data-mono": ["JetBrains Mono"],
+                        "label-caps": ["JetBrains Mono"],
+                        "body-sm": ["Hanken Grotesk"],
+                        "body-md": ["Hanken Grotesk"]
+                    },
+                    "fontSize": {
+                        "headline-sm": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "data-mono": ["12px", {"lineHeight": "16px", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+                        "label-caps": ["10px", {"lineHeight": "12px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "body-md": ["13px", {"lineHeight": "18px", "fontWeight": "400"}]
+                    }
+                },
+            },
+        }
+    </script>
+</head>
+<body class="font-body-md text-on-surface select-none">
+<!-- Top Navigation Anchor -->
+<header class="flex justify-between items-center w-full px-md h-12 sticky top-0 z-50 bg-surface-container dark:bg-surface-container border-b border-outline-variant dark:border-outline-variant">
+<div class="flex items-center gap-md">
+<span class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary">DPR.ai</span>
+<nav class="hidden md:flex gap-md items-center">
+<a class="text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-high transition-colors px-2 py-1" href="#">Operations</a>
+<a class="text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-high transition-colors px-2 py-1" href="#">Inventory</a>
+<a class="text-primary border-b-2 border-primary pb-1 font-label-caps text-label-caps" href="#">Analytics</a>
+<a class="text-on-surface-variant font-label-caps text-label-caps hover:bg-surface-container-high transition-colors px-2 py-1" href="#">Logistics</a>
+</nav>
+</div>
+<div class="flex items-center gap-sm">
+<div class="relative flex items-center bg-surface-container-low border border-outline-variant px-sm h-8">
+<span class="material-symbols-outlined text-on-surface-variant text-[18px]">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-data-mono text-xs w-48" placeholder="CMD+K" type="text">
+</div>
+<button class="material-symbols-outlined p-2 text-on-surface-variant hover:bg-surface-container-high">settings</button>
+<button class="material-symbols-outlined p-2 text-on-surface-variant hover:bg-surface-container-high">terminal</button>
+<button class="material-symbols-outlined p-2 text-on-surface-variant hover:bg-surface-container-high">account_circle</button>
+</div>
+</header>
+<div class="flex h-[calc(100vh-48px)]">
+<!-- Side Navigation Rail -->
+<aside class="fixed left-0 top-12 h-[calc(100vh-48px)] w-16 flex flex-col items-center py-md z-40 bg-surface-container-low dark:bg-surface-container-low border-r border-outline-variant dark:border-outline-variant">
+<div class="flex flex-col gap-xs w-full items-center">
+<button class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">dashboard</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">precision_manufacturing</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center border-l-2 border-primary bg-secondary-container text-on-secondary-container">
+<span class="material-symbols-outlined">monitoring</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">schema</span>
+</button>
+<button class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">receipt_long</span>
+</button>
+<div class="mt-auto">
+<button class="w-12 h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">admin_panel_settings</span>
+</button>
+</div>
+</div>
+</aside>
+<!-- Main Workstation Layout -->
+<main class="ml-16 w-full flex flex-row overflow-hidden">
+<!-- Central Operational Lane -->
+<section class="flex-1 flex flex-col border-r border-outline-variant bg-surface custom-scrollbar overflow-y-auto">
+<!-- Page Header & Global Controls -->
+<div class="p-lg border-b border-outline-variant">
+<div class="flex justify-between items-start mb-md">
+<div>
+<span class="font-label-caps text-label-caps text-primary uppercase tracking-widest block mb-xs">Attendance Reports</span>
+<h1 class="font-headline-sm text-[28px] font-bold leading-tight">Daily attendance signal across the selected range</h1>
+</div>
+<button class="flex items-center gap-xs px-md h-8 bg-primary-container text-on-primary-container font-label-caps text-label-caps hover:brightness-110 transition-all">
+<span class="material-symbols-outlined text-[16px]">ios_share</span>
+                            EXPORT REPORT
+                        </button>
+</div>
+<!-- Toolbar -->
+<div class="flex flex-wrap items-center gap-gutter bg-outline-variant p-[1px]">
+<div class="bg-surface-container px-md h-10 flex items-center flex-1 min-w-[200px]">
+<span class="font-label-caps text-[9px] text-on-surface-variant mr-sm">DATE FROM</span>
+<span class="font-data-mono text-sm">05/17/2026</span>
+<span class="material-symbols-outlined ml-auto text-on-surface-variant text-[18px]">calendar_today</span>
+</div>
+<div class="bg-surface-container px-md h-10 flex items-center flex-1 min-w-[200px]">
+<span class="font-label-caps text-[9px] text-on-surface-variant mr-sm">DATE TO</span>
+<span class="font-data-mono text-sm">05/23/2026</span>
+<span class="material-symbols-outlined ml-auto text-on-surface-variant text-[18px]">calendar_today</span>
+</div>
+<button class="bg-primary px-md h-10 text-on-primary font-label-caps text-label-caps hover:bg-primary-fixed transition-colors">
+                            UPDATE SIGNAL
+                        </button>
+</div>
+</div>
+<!-- Telemetry Row (Top) -->
+<div class="grid grid-cols-4 gap-gutter bg-outline-variant p-[1px] border-b border-outline-variant">
+<div class="bg-surface-container-low p-md flex flex-col justify-between h-24">
+<div class="flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant">PRESENT RECORDS</span>
+<span class="material-symbols-outlined text-primary text-[16px]">how_to_reg</span>
+</div>
+<div class="flex items-baseline gap-xs">
+<span class="font-data-mono text-[32px] font-bold leading-none">1</span>
+<span class="text-primary text-[10px] font-label-caps">▲ 12%</span>
+</div>
+<span class="text-body-sm text-[10px] text-on-surface-variant">Punch-ins recorded in range</span>
+</div>
+<div class="bg-surface-container-low p-md flex flex-col justify-between h-24">
+<div class="flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant">COMPLETED</span>
+<span class="material-symbols-outlined text-secondary text-[16px]">check_circle</span>
+</div>
+<span class="font-data-mono text-[32px] font-bold leading-none">0</span>
+<span class="text-body-sm text-[10px] text-on-surface-variant">Closed attendance records</span>
+</div>
+<div class="bg-surface-container-low p-md flex flex-col justify-between h-24">
+<div class="flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant">PENDING REVIEW</span>
+<span class="material-symbols-outlined text-tertiary text-[16px]">pending_actions</span>
+</div>
+<span class="font-data-mono text-[32px] font-bold leading-none">0</span>
+<span class="text-body-sm text-[10px] text-on-surface-variant">Supervisor review load</span>
+</div>
+<div class="bg-surface-container-low p-md flex flex-col justify-between h-24">
+<div class="flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-error">LATE / OVERTIME</span>
+<span class="material-symbols-outlined text-error text-[16px]">alarm_on</span>
+</div>
+<div class="flex items-baseline gap-xs">
+<span class="font-data-mono text-[32px] font-bold leading-none">1</span>
+<span class="text-error text-[10px] font-label-caps">SIGNAL</span>
+</div>
+<span class="text-body-sm text-[10px] text-on-surface-variant">1 late, 0 overtime rows</span>
+</div>
+</div>
+<!-- Daily Breakdown Workspace -->
+<div class="p-lg">
+<div class="flex items-center justify-between mb-sm">
+<h2 class="font-label-caps text-label-caps text-on-surface-variant">DAILY BREAKDOWN: 17 MAY TO 23 MAY 2026</h2>
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse" style="opacity: 0.6;"></span>
+<span class="text-[9px] font-data-mono text-on-surface-variant">REAL-TIME SYNC ACTIVE</span>
+</div>
+</div>
+<div class="border border-outline-variant overflow-hidden">
+<table class="w-full border-collapse">
+<thead class="bg-surface-container-high border-b border-outline-variant">
+<tr>
+<th class="px-md py-xs text-left font-label-caps text-[9px] text-on-surface-variant">DATE</th>
+<th class="px-md py-xs text-center font-label-caps text-[9px] text-on-surface-variant">ASSIGNED</th>
+<th class="px-md py-xs text-center font-label-caps text-[9px] text-on-surface-variant">PUNCHED IN</th>
+<th class="px-md py-xs text-center font-label-caps text-[9px] text-on-surface-variant">COMPLETED</th>
+<th class="px-md py-xs text-center font-label-caps text-[9px] text-on-surface-variant">NOT PUNCHED</th>
+<th class="px-md py-xs text-center font-label-caps text-[9px] text-on-surface-variant">REVIEW</th>
+<th class="px-md py-xs text-center font-label-caps text-[9px] text-on-surface-variant">LATE</th>
+<th class="px-md py-xs text-center font-label-caps text-[9px] text-on-surface-variant">OVERTIME</th>
+</tr>
+</thead>
+<tbody class="text-data-mono divide-y divide-outline-variant/30">
+<tr class="hover:bg-surface-container-highest transition-colors cursor-pointer group">
+<td class="px-md py-sm text-on-surface text-xs font-bold">17 MAY 2026</td>
+<td class="px-md py-sm text-center">2</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center text-error">2</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">0</td>
+</tr>
+<tr class="bg-surface-container-lowest/30 hover:bg-surface-container-highest transition-colors cursor-pointer">
+<td class="px-md py-sm text-on-surface text-xs font-bold">18 MAY 2026</td>
+<td class="px-md py-sm text-center">2</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">2</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">0</td>
+</tr>
+<tr class="hover:bg-surface-container-highest transition-colors cursor-pointer">
+<td class="px-md py-sm text-on-surface text-xs font-bold">19 MAY 2026</td>
+<td class="px-md py-sm text-center">2</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">2</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">0</td>
+</tr>
+<tr class="bg-surface-container-lowest/30 hover:bg-surface-container-highest transition-colors cursor-pointer">
+<td class="px-md py-sm text-on-surface text-xs font-bold">20 MAY 2026</td>
+<td class="px-md py-sm text-center">2</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">2</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">0</td>
+</tr>
+<tr class="hover:bg-surface-container-highest transition-colors cursor-pointer">
+<td class="px-md py-sm text-on-surface text-xs font-bold">21 MAY 2026</td>
+<td class="px-md py-sm text-center">2</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">2</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">0</td>
+</tr>
+<tr class="bg-surface-container-lowest/30 hover:bg-surface-container-highest transition-colors cursor-pointer">
+<td class="px-md py-sm text-on-surface text-xs font-bold">22 MAY 2026</td>
+<td class="px-md py-sm text-center">2</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">2</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">0</td>
+</tr>
+<tr class="hover:bg-surface-container-highest transition-colors cursor-pointer bg-primary/5">
+<td class="px-md py-sm text-on-surface text-xs font-bold">23 MAY 2026</td>
+<td class="px-md py-sm text-center">2</td>
+<td class="px-md py-sm text-center text-primary">1</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center">1</td>
+<td class="px-md py-sm text-center">0</td>
+<td class="px-md py-sm text-center text-error">1</td>
+<td class="px-md py-sm text-center">0</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="mt-md p-md bg-surface-container border border-outline-variant flex items-center justify-between">
+<div class="flex items-center gap-md">
+<div class="flex flex-col">
+<span class="font-label-caps text-[9px] text-on-surface-variant">ACTIVE JOBS</span>
+<span class="font-data-mono text-sm">1 / 0 RECENT</span>
+</div>
+</div>
+<div class="flex items-center gap-xs">
+<span class="text-body-sm text-on-surface-variant mr-sm">Page 1 of 1</span>
+<button class="w-8 h-8 flex items-center justify-center border border-outline-variant hover:bg-surface-container-high material-symbols-outlined">chevron_left</button>
+<button class="w-8 h-8 flex items-center justify-center border border-outline-variant hover:bg-surface-container-high material-symbols-outlined">chevron_right</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Telemetry Lane (Right) -->
+<aside class="w-80 h-full bg-surface-container-low flex flex-col">
+<div class="p-md border-b border-outline-variant bg-surface-container">
+<span class="font-label-caps text-label-caps text-on-surface-variant">TREND DIAGNOSTICS</span>
+</div>
+<div class="flex-1 custom-scrollbar overflow-y-auto">
+<!-- Diagnostic Tile: Activity Map -->
+<div class="p-md border-b border-outline-variant">
+<div class="flex justify-between items-center mb-sm">
+<span class="text-body-sm font-semibold">PEAK PUNCH-IN WINDOW</span>
+<span class="material-symbols-outlined text-[14px] text-primary">insights</span>
+</div>
+<div class="h-32 bg-surface-container-lowest border border-outline-variant relative overflow-hidden group">
+<div class="absolute inset-0 flex items-end gap-1 px-2 py-1">
+<div class="w-2 bg-primary/20 h-[10%]"></div>
+<div class="w-2 bg-primary/20 h-[15%]"></div>
+<div class="w-2 bg-primary/40 h-[45%]"></div>
+<div class="w-2 bg-primary/80 h-[90%]"></div>
+<div class="w-2 bg-primary/60 h-[70%]"></div>
+<div class="w-2 bg-primary/30 h-[25%]"></div>
+<div class="w-2 bg-primary/20 h-[10%]"></div>
+</div>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest to-transparent opacity-50"></div>
+<img class="w-full h-full object-cover opacity-10 group-hover:opacity-20 transition-opacity" data-alt="A macro close-up of a high-tech data visualization interface with glowing blue neon lines and microscopic grid patterns. The image emphasizes precision and digital accuracy with a shallow depth of field. The background is a dark, sleek charcoal gray, matching a professional industrial operating system aesthetic with subtle cyan light leaks." src="https://lh3.googleusercontent.com/aida-public/AB6AXuACqNTzuL5zsXGe5fmnNsV3KRhtLNTVnH_jDqR_UebEH4XnITIBPjLVZMDuciEG_dkrgHZvjvyf6tH5sT-_lkAN-VtFYQkbsAYJbLd8VQnHSOQvghoPCr8tkdqLkrHgancU7oVPkK2VO3CQYBBC79feFLIhOLcixvEzNa70s6v2roWywp6VzSteG-lB5LrX4bX2bOwcwg3xuyzxS4QyJvKujta_df5gD0zlzON86onUrCjMcNFFWi6ElCYbRq-2G1vKj_Fvc6tPe1RS">
+</div>
+<div class="mt-sm flex justify-between font-data-mono text-[9px] text-on-surface-variant">
+<span>06:00</span>
+<span>09:00 (PEAK)</span>
+<span>12:00</span>
+</div>
+</div>
+<!-- Diagnostic Tile: Contextual Insights -->
+<div class="p-md border-b border-outline-variant space-y-md">
+<div>
+<span class="font-label-caps text-[9px] text-on-surface-variant uppercase mb-xs block">AI SUMMARY</span>
+<p class="text-body-sm leading-relaxed text-on-surface italic">
+                                "Overall attendance signal is nominal. Exception detected on May 23: Late punch-in (Operator-04) suggests transport delay. 17 May shows high 'Not Punched' count—verify schedule alignment."
+                            </p>
+</div>
+<div class="space-y-sm">
+<div class="flex items-start gap-sm p-sm bg-error-container/10 border-l-2 border-error">
+<span class="material-symbols-outlined text-error text-[18px]">warning</span>
+<div>
+<span class="text-xs font-bold block">1 LATE RECORD</span>
+<span class="text-[10px] text-on-surface-variant">Review required by EOD.</span>
+</div>
+</div>
+<div class="flex items-start gap-sm p-sm bg-surface-container border-l-2 border-outline">
+<span class="material-symbols-outlined text-outline text-[18px]">info</span>
+<div>
+<span class="text-xs font-bold block">REPORT UPDATED</span>
+<span class="text-[10px] text-on-surface-variant">Synced with Terminal-A logs.</span>
+</div>
+</div>
+</div>
+</div>
+<!-- User Meta -->
+<div class="p-md mt-auto">
+<div class="p-sm bg-surface-container-highest border border-outline-variant flex items-center gap-sm">
+<div class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-on-secondary font-bold text-xs">O4</div>
+<div class="flex flex-col">
+<span class="text-xs font-bold">Operator-04</span>
+<span class="text-[10px] text-on-surface-variant">Terminal-A • Active</span>
+</div>
+<button class="material-symbols-outlined ml-auto text-on-surface-variant text-[16px]">more_vert</button>
+</div>
+</div>
+</div>
+</aside>
+</main>
+</div>
+<!-- Floating Quick Commands -->
+<div class="fixed bottom-lg right-lg z-50">
+<button class="bg-surface-container-highest border border-outline text-on-surface h-10 px-md flex items-center gap-sm font-label-caps text-label-caps hover:bg-surface-bright transition-all shadow-xl">
+<span class="material-symbols-outlined text-[18px]">keyboard_command_key</span>
+            WORKSPACE COMMANDS
+            <span class="text-[9px] opacity-50 ml-xs">[ / ]</span>
+</button>
+</div>
+<!-- Contextual Help FAB (Suppressed per logic, but shown for UI completeness if needed) -->
+<div class="fixed bottom-4 right-4 flex flex-col items-end gap-2 group pointer-events-none md:pointer-events-auto">
+<div class="bg-secondary-container text-on-secondary-container px-sm py-xs rounded text-[10px] font-label-caps opacity-0 group-hover:opacity-100 transition-opacity">TERMINAL HELP</div>
+<button class="w-10 h-10 bg-surface-container-highest border border-outline text-on-surface flex items-center justify-center hover:bg-primary transition-all">
+<span class="material-symbols-outlined">question_mark</span>
+</button>
+</div>
+<script>
+        // Micro-interactions and data formatting logic
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+                e.preventDefault();
+                document.querySelector('input').focus();
+            }
+        });
+
+        // Simple table row interaction
+        const rows = document.querySelectorAll('tbody tr');
+        rows.forEach(row => {
+            row.addEventListener('click', () => {
+                rows.forEach(r => r.classList.remove('bg-primary/20'));
+                row.classList.add('bg-primary/20');
+            });
+        });
+
+        // Ambient pulse for sync indicator
+        setInterval(() => {
+            const syncIcon = document.querySelector('.animate-pulse');
+            if (syncIcon) {
+                syncIcon.style.opacity = Math.random() > 0.5 ? '1' : '0.6';
+            }
+        }, 1500);
+    </script>
+</body></html>

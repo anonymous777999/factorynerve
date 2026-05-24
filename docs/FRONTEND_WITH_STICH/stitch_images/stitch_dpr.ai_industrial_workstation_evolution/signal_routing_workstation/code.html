@@ -1,0 +1,333 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Signal Routing Workstation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+        .material-symbols-outlined {
+            font-family: 'Material Symbols Outlined';
+            font-weight: normal;
+            font-style: normal;
+            font-size: 20px;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary": "#b7c8e1",
+                        "on-tertiary-fixed": "#360f00",
+                        "inverse-surface": "#e2e2e5",
+                        "surface": "#121416",
+                        "on-primary-fixed": "#00164e",
+                        "on-surface-variant": "#c3c5d7",
+                        "on-secondary-fixed": "#0b1c30",
+                        "on-background": "#e2e2e5",
+                        "surface-variant": "#333537",
+                        "surface-container-high": "#282a2c",
+                        "on-primary-fixed-variant": "#003bae",
+                        "secondary-fixed": "#d3e4fe",
+                        "surface-bright": "#38393c",
+                        "on-primary": "#00287c",
+                        "surface-container-low": "#1a1c1e",
+                        "surface-tint": "#b5c4ff",
+                        "primary-fixed-dim": "#b5c4ff",
+                        "on-error-container": "#ffdad6",
+                        "on-surface": "#e2e2e5",
+                        "secondary-fixed-dim": "#b7c8e1",
+                        "error": "#ffb4ab",
+                        "primary": "#b5c4ff",
+                        "secondary-container": "#3a4a5f",
+                        "on-secondary-container": "#a9bad3",
+                        "tertiary-fixed": "#ffdbcd",
+                        "on-tertiary-container": "#ffe5db",
+                        "primary-container": "#2a5ee6",
+                        "tertiary-fixed-dim": "#ffb597",
+                        "inverse-on-surface": "#2f3133",
+                        "on-primary-container": "#e6e9ff",
+                        "error-container": "#93000a",
+                        "on-tertiary-fixed-variant": "#7e2c00",
+                        "tertiary-container": "#b74400",
+                        "on-tertiary": "#591d00",
+                        "background": "#121416",
+                        "surface-container-lowest": "#0c0e10",
+                        "on-error": "#690005",
+                        "surface-container-highest": "#333537",
+                        "outline": "#8d90a0",
+                        "surface-dim": "#121416",
+                        "surface-container": "#1e2022",
+                        "outline-variant": "#434655",
+                        "on-secondary-fixed-variant": "#38485d",
+                        "primary-fixed": "#dce1ff",
+                        "on-secondary": "#213145",
+                        "tertiary": "#ffb597",
+                        "inverse-primary": "#1652da"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "unit": "8px",
+                        "gutter": "1px",
+                        "sm": "8px",
+                        "md": "16px",
+                        "xs": "4px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "body-sm": [
+                            "Hanken Grotesk"
+                        ],
+                        "data-mono": [
+                            "JetBrains Mono"
+                        ],
+                        "label-caps": [
+                            "JetBrains Mono"
+                        ],
+                        "headline-sm": [
+                            "Hanken Grotesk"
+                        ],
+                        "body-md": [
+                            "Hanken Grotesk"
+                        ]
+                    },
+                    "fontSize": {
+                        "body-sm": [
+                            "12px",
+                            {
+                                "lineHeight": "16px",
+                                "fontWeight": "400"
+                            }
+                        ],
+                        "data-mono": [
+                            "12px",
+                            {
+                                "lineHeight": "16px",
+                                "letterSpacing": "-0.02em",
+                                "fontWeight": "500"
+                            }
+                        ],
+                        "label-caps": [
+                            "10px",
+                            {
+                                "lineHeight": "12px",
+                                "letterSpacing": "0.05em",
+                                "fontWeight": "700"
+                            }
+                        ],
+                        "headline-sm": [
+                            "18px",
+                            {
+                                "lineHeight": "24px",
+                                "letterSpacing": "-0.01em",
+                                "fontWeight": "600"
+                            }
+                        ],
+                        "body-md": [
+                            "13px",
+                            {
+                                "lineHeight": "18px",
+                                "fontWeight": "400"
+                            }
+                        ]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-on-surface font-body-md min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="w-full h-12 border-b border-outline-variant bg-surface-container flex items-center justify-between px-md flex-shrink-0 z-50">
+<div class="flex items-center gap-md h-full">
+<div class="font-headline-sm text-headline-sm font-bold text-primary tracking-tighter">DPR.ai</div>
+<nav class="flex items-center h-full ml-lg">
+<a class="text-on-surface-variant h-full flex items-center px-4 hover:bg-surface-container-high hover:text-on-surface transition-colors cursor-pointer active:bg-surface-container-highest" href="#">Operations</a>
+<a class="text-on-surface-variant h-full flex items-center px-4 hover:bg-surface-container-high hover:text-on-surface transition-colors cursor-pointer active:bg-surface-container-highest" href="#">Inventory</a>
+<a class="text-on-surface-variant h-full flex items-center px-4 hover:bg-surface-container-high hover:text-on-surface transition-colors cursor-pointer active:bg-surface-container-highest" href="#">Analytics</a>
+<a class="text-on-surface-variant h-full flex items-center px-4 hover:bg-surface-container-high hover:text-on-surface transition-colors cursor-pointer active:bg-surface-container-highest" href="#">Logistics</a>
+</nav>
+</div>
+<div class="flex items-center gap-sm">
+<button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded">
+<span class="material-symbols-outlined text-[20px]" data-icon="notifications">notifications</span>
+</button>
+<button class="w-8 h-8 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors rounded">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden relative">
+<!-- SideNavBar -->
+<nav class="fixed left-0 top-12 bottom-0 w-16 border-r border-outline-variant bg-surface-container-low flex flex-col items-center py-md gap-sm z-40">
+<div class="flex-1 flex flex-col gap-sm w-full">
+<a class="w-full h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-all duration-150 ease-in-out cursor-pointer" href="#" title="Nodes">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+</a>
+<a class="w-full h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-all duration-150 ease-in-out cursor-pointer" href="#" title="Assets">
+<span class="material-symbols-outlined" data-icon="inventory_2">inventory_2</span>
+</a>
+<a class="w-full h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-all duration-150 ease-in-out cursor-pointer" href="#" title="Traffic">
+<span class="material-symbols-outlined" data-icon="traffic">traffic</span>
+</a>
+<a class="w-full h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-all duration-150 ease-in-out cursor-pointer" href="#" title="Logs">
+<span class="material-symbols-outlined" data-icon="terminal">terminal</span>
+</a>
+<a class="w-full h-12 flex items-center justify-center bg-secondary-container text-on-secondary-container border-l-2 border-primary transition-all duration-150 ease-in-out cursor-pointer" href="#" title="Admin">
+<span class="material-symbols-outlined" data-icon="admin_panel_settings">admin_panel_settings</span>
+</a>
+</div>
+<div class="flex flex-col gap-sm w-full border-t border-outline-variant pt-sm">
+<a class="w-full h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-all duration-150 ease-in-out cursor-pointer" href="#" title="Help">
+<span class="material-symbols-outlined" data-icon="help_outline">help_outline</span>
+</a>
+<a class="w-full h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest hover:text-on-surface transition-all duration-150 ease-in-out cursor-pointer" href="#" title="Logout">
+<span class="material-symbols-outlined" data-icon="logout">logout</span>
+</a>
+</div>
+</nav>
+<!-- Main Workstation Area -->
+<main class="flex-1 ml-16 flex overflow-hidden">
+<!-- Pane 1: Recipient Directory -->
+<section class="w-64 border-r border-outline-variant flex flex-col bg-surface-dim">
+<header class="h-12 border-b border-outline-variant flex items-center px-sm bg-surface-container">
+<span class="font-label-caps text-label-caps text-on-surface-variant">RECIPIENT DIRECTORY</span>
+</header>
+<div class="p-sm flex-1 overflow-y-auto">
+<div class="relative mb-sm">
+<span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-on-surface-variant text-[16px]">search</span>
+<input class="w-full bg-transparent border-b border-outline-variant text-body-sm pl-7 py-xs focus:outline-none focus:border-primary text-on-surface placeholder-on-surface-variant" placeholder="Filter recipients..." type="text">
+</div>
+<ul class="flex flex-col gap-[1px]">
+<li class="p-xs bg-surface-container-low hover:bg-surface-container cursor-pointer flex items-center justify-between border-l-2 border-transparent">
+<span class="font-data-mono text-data-mono">sys_admin_team</span>
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+</li>
+<li class="p-xs bg-surface-container hover:bg-surface-container cursor-pointer flex items-center justify-between border-l-2 border-primary">
+<span class="font-data-mono text-data-mono text-primary">devops_oncall</span>
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+</li>
+<li class="p-xs bg-surface-container-low hover:bg-surface-container cursor-pointer flex items-center justify-between border-l-2 border-transparent">
+<span class="font-data-mono text-data-mono">sec_ops</span>
+<span class="w-2 h-2 rounded-full bg-surface-variant"></span>
+</li>
+<li class="p-xs bg-surface-container-low hover:bg-surface-container cursor-pointer flex items-center justify-between border-l-2 border-transparent">
+<span class="font-data-mono text-data-mono">data_science_alerts</span>
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+</li>
+</ul>
+</div>
+</section>
+<!-- Pane 2: Routing Rules Matrix -->
+<section class="flex-1 flex flex-col min-w-[500px] border-r border-outline-variant bg-surface">
+<header class="h-12 border-b border-outline-variant flex items-center justify-between px-md bg-surface-container">
+<span class="font-headline-sm text-headline-sm">Routing Rules Matrix</span>
+<button class="h-[28px] px-sm border border-outline-variant flex items-center gap-xs hover:bg-surface-container-highest">
+<span class="material-symbols-outlined text-[16px]">add</span>
+<span class="font-label-caps text-label-caps">NEW RULE</span>
+</button>
+</header>
+<div class="flex-1 overflow-auto p-sm">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-outline-variant">
+<th class="py-xs px-sm font-label-caps text-label-caps text-on-surface-variant font-normal">RULE ID</th>
+<th class="py-xs px-sm font-label-caps text-label-caps text-on-surface-variant font-normal">SOURCE METRIC</th>
+<th class="py-xs px-sm font-label-caps text-label-caps text-on-surface-variant font-normal">CONDITION</th>
+<th class="py-xs px-sm font-label-caps text-label-caps text-on-surface-variant font-normal">PRIORITY</th>
+<th class="py-xs px-sm font-label-caps text-label-caps text-on-surface-variant font-normal">ACTIONS</th>
+</tr>
+</thead>
+<tbody class="font-data-mono text-data-mono">
+<tr class="border-b border-surface-container bg-surface-container-lowest hover:bg-surface-container-low transition-colors group">
+<td class="py-xs px-sm">RL-092</td>
+<td class="py-xs px-sm">cpu_utilization</td>
+<td class="py-xs px-sm">&gt; 85% for 5m</td>
+<td class="py-xs px-sm"><span class="px-xs py-[2px] bg-error-container text-on-error-container rounded-sm">HIGH</span></td>
+<td class="py-xs px-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] cursor-pointer hover:text-primary">edit</span>
+</td>
+</tr>
+<tr class="border-b border-surface-container bg-surface hover:bg-surface-container-low transition-colors group">
+<td class="py-xs px-sm">RL-093</td>
+<td class="py-xs px-sm">memory_usage</td>
+<td class="py-xs px-sm">&gt; 90% for 1m</td>
+<td class="py-xs px-sm"><span class="px-xs py-[2px] bg-error-container text-on-error-container rounded-sm">CRITICAL</span></td>
+<td class="py-xs px-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] cursor-pointer hover:text-primary">edit</span>
+</td>
+</tr>
+<tr class="border-b border-surface-container bg-surface-container-lowest hover:bg-surface-container-low transition-colors group">
+<td class="py-xs px-sm text-primary border-l-2 border-primary -ml-[2px] pl-[calc(0.5rem-2px)]">RL-094</td>
+<td class="py-xs px-sm">disk_io_wait</td>
+<td class="py-xs px-sm">&gt; 500ms</td>
+<td class="py-xs px-sm"><span class="px-xs py-[2px] bg-surface-variant text-on-surface-variant rounded-sm">MED</span></td>
+<td class="py-xs px-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] cursor-pointer hover:text-primary">edit</span>
+</td>
+</tr>
+<tr class="border-b border-surface-container bg-surface hover:bg-surface-container-low transition-colors group">
+<td class="py-xs px-sm">RL-095</td>
+<td class="py-xs px-sm">network_latency</td>
+<td class="py-xs px-sm">&gt; 100ms avg</td>
+<td class="py-xs px-sm"><span class="px-xs py-[2px] bg-surface-variant text-on-surface-variant rounded-sm">MED</span></td>
+<td class="py-xs px-sm text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] cursor-pointer hover:text-primary">edit</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</section>
+<!-- Pane 3: Audit/Delivery Log -->
+<section class="w-80 flex flex-col bg-surface-dim">
+<header class="h-12 border-b border-outline-variant flex items-center px-sm bg-surface-container justify-between">
+<span class="font-label-caps text-label-caps text-on-surface-variant">AUDIT LOG</span>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant cursor-pointer hover:text-primary">filter_list</span>
+</header>
+<div class="flex-1 overflow-y-auto p-sm flex flex-col gap-[1px]">
+<div class="p-sm bg-surface-container-low border-l border-primary">
+<div class="flex justify-between items-start mb-xs">
+<span class="font-data-mono text-data-mono text-primary">RL-094 Triggered</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">10:42:01</span>
+</div>
+<div class="text-body-sm text-on-surface-variant">Routed to devops_oncall via PagerDuty. Status: Delivered.</div>
+</div>
+<div class="p-sm bg-surface-container-lowest border-l border-surface-variant">
+<div class="flex justify-between items-start mb-xs">
+<span class="font-data-mono text-data-mono text-on-surface">RL-092 Triggered</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">09:15:22</span>
+</div>
+<div class="text-body-sm text-on-surface-variant">Routed to sys_admin_team via Slack. Status: Delivered.</div>
+</div>
+<div class="p-sm bg-surface-container-low border-l border-error">
+<div class="flex justify-between items-start mb-xs">
+<span class="font-data-mono text-data-mono text-error">RL-093 Delivery Failed</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">08:50:00</span>
+</div>
+<div class="text-body-sm text-on-surface-variant">Failed routing to devops_oncall via SMS. Retrying...</div>
+</div>
+</div>
+<!-- Reference Image Container -->
+<div class="p-sm border-t border-outline-variant">
+<img alt="" class="w-full h-auto opacity-50 border border-outline-variant filter grayscale" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDuiS9PlLuT302OGs3bEQcy8_xE42OZnf180XgLt44jH59NSLITOXNypu9h6QlgCPfky4soR2FjSCdr1hpJzXK9Kvlzo7L61hhVCZIJFp-Zj7iHG62YsRh0PtmiqoOPHAHuZJKbutCqx3Mm4PcZYFDOukyQge-KvM7jakngrK8DCmdxoa8mdA8Z7ST6kih_NsDdXsnHwUNEkTHIGVuxifVAtNAR6vMQpUN3_PlQ3nE7a8UnT6RgXuGAp4vUOoB0hMWwank0LQugBapM">
+</div>
+</section>
+</main>
+</div>
+</body></html>

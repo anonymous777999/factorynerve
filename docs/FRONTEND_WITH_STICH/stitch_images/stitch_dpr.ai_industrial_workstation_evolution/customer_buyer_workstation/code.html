@@ -1,0 +1,477 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>DPR.ai | Customer Ledger</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<style>
+    body {
+      background-color: #121416;
+      color: #e2e2e5;
+      -webkit-font-smoothing: antialiased;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 4px;
+      height: 4px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #1a1c1e;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #434655;
+    }
+    .border-grid {
+      box-shadow: 0 0 0 1px #434655;
+    }
+    .material-symbols-outlined {
+      font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+    }
+  </style>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+            "tertiary": "#ffb597",
+            "background": "#121416",
+            "secondary": "#b7c8e1",
+            "inverse-on-surface": "#2f3133",
+            "on-tertiary-container": "#ffe5db",
+            "inverse-surface": "#e2e2e5",
+            "error-container": "#93000a",
+            "secondary-fixed": "#d3e4fe",
+            "primary-container": "#2a5ee6",
+            "on-surface-variant": "#c3c5d7",
+            "tertiary-fixed": "#ffdbcd",
+            "on-tertiary-fixed": "#360f00",
+            "tertiary-container": "#b74400",
+            "secondary-container": "#3a4a5f",
+            "surface-dim": "#121416",
+            "tertiary-fixed-dim": "#ffb597",
+            "surface-tint": "#b5c4ff",
+            "outline": "#8d90a0",
+            "surface-bright": "#38393c",
+            "secondary-fixed-dim": "#b7c8e1",
+            "error": "#ffb4ab",
+            "on-primary-fixed-variant": "#003bae",
+            "inverse-primary": "#1652da",
+            "on-primary-container": "#e6e9ff",
+            "surface-container-lowest": "#0c0e10",
+            "surface": "#121416",
+            "primary-fixed": "#dce1ff",
+            "on-error": "#690005",
+            "surface-container-highest": "#333537",
+            "on-tertiary-fixed-variant": "#7e2c00",
+            "surface-variant": "#333537",
+            "outline-variant": "#434655",
+            "primary": "#b5c4ff",
+            "on-tertiary": "#591d00",
+            "on-primary": "#00287c",
+            "surface-container-high": "#282a2c",
+            "on-error-container": "#ffdad6",
+            "primary-fixed-dim": "#b5c4ff",
+            "on-secondary-fixed-variant": "#38485d",
+            "on-secondary-container": "#a9bad3",
+            "on-background": "#e2e2e5",
+            "on-secondary-fixed": "#0b1c30",
+            "surface-container-low": "#1a1c1e",
+            "on-surface": "#e2e2e5",
+            "on-primary-fixed": "#00164e",
+            "surface-container": "#1e2022",
+            "on-secondary": "#213145"
+          },
+          "spacing": {
+            "lg": "24px",
+            "unit": "8px",
+            "gutter": "1px",
+            "xs": "4px",
+            "sm": "8px",
+            "md": "16px"
+          },
+          "fontFamily": {
+            "data-mono": ["JetBrains Mono"],
+            "body-md": ["Hanken Grotesk"],
+            "label-caps": ["JetBrains Mono"],
+            "headline-sm": ["Hanken Grotesk"],
+            "body-sm": ["Hanken Grotesk"]
+          },
+          "fontSize": {
+            "data-mono": ["12px", {"lineHeight": "16px", "letterSpacing": "-0.02em", "fontWeight": "500"}],
+            "body-md": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+            "label-caps": ["10px", {"lineHeight": "12px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+            "headline-sm": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+            "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}]
+          }
+        }
+      }
+    }
+  </script>
+</head>
+<body class="flex min-h-screen overflow-hidden">
+<!-- SideNavBar Anchor -->
+<nav class="fixed left-0 top-0 h-full w-16 flex flex-col items-center py-md z-40 bg-surface-container-low border-r border-outline-variant duration-75 ease-in">
+<div class="mb-lg">
+<span class="material-symbols-outlined text-primary text-[24px]">terminal</span>
+</div>
+<div class="flex flex-col gap-sm w-full">
+<!-- Dashboard (Inactive) -->
+<button class="w-full h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">dashboard</span>
+</button>
+<!-- Units (Active) - Mapped to Operations/Inventory Context -->
+<button class="w-full h-12 flex items-center justify-center border-l-2 border-primary bg-secondary-container text-on-secondary-container">
+<span class="material-symbols-outlined">precision_manufacturing</span>
+</button>
+<button class="w-full h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">schema</span>
+</button>
+<button class="w-full h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">monitoring</span>
+</button>
+<button class="w-full h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">receipt_long</span>
+</button>
+<button class="w-full h-12 flex items-center justify-center text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">admin_panel_settings</span>
+</button>
+</div>
+<div class="mt-auto flex flex-col items-center gap-md">
+<div class="w-8 h-8 rounded-full bg-surface-container-highest border border-outline-variant flex items-center justify-center overflow-hidden">
+<span class="material-symbols-outlined text-sm">account_circle</span>
+</div>
+</div>
+</nav>
+<!-- Main Workspace -->
+<main class="ml-16 flex-1 flex flex-col h-screen overflow-hidden">
+<!-- TopAppBar Anchor -->
+<header class="flex justify-between items-center w-full px-md h-12 sticky top-0 z-50 bg-surface-container border-b border-outline-variant">
+<div class="flex items-center gap-lg">
+<span class="font-headline-sm text-headline-sm font-bold text-primary">DPR.ai</span>
+<nav class="hidden md:flex gap-md">
+<a class="text-primary border-b-2 border-primary pb-1 font-label-caps text-label-caps" href="#">Operations</a>
+<a class="text-on-surface-variant font-label-caps text-label-caps hover:text-on-surface transition-colors" href="#">Inventory</a>
+<a class="text-on-surface-variant font-label-caps text-label-caps hover:text-on-surface transition-colors" href="#">Analytics</a>
+<a class="text-on-surface-variant font-label-caps text-label-caps hover:text-on-surface transition-colors" href="#">Logistics</a>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<div class="relative group">
+<span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-sm text-outline">search</span>
+<input class="bg-surface-container-low border border-outline-variant rounded h-8 pl-9 pr-md text-body-sm w-64 focus:border-primary focus:ring-0 outline-none" placeholder="Search operational data..." type="text">
+<span class="absolute right-3 top-1/2 -translate-y-1/2 text-label-caps text-outline-variant opacity-50">[ CMD+K ]</span>
+</div>
+<div class="flex gap-xs">
+<button class="p-2 hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-on-surface-variant">settings</span></button>
+<button class="p-2 hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-on-surface-variant">terminal</span></button>
+<button class="p-2 hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-on-surface-variant">account_circle</span></button>
+</div>
+</div>
+</header>
+<!-- Operational Canvas -->
+<div class="flex-1 overflow-auto custom-scrollbar bg-background p-0">
+<!-- Command Bar / Breadcrumbs -->
+<div class="px-md py-sm border-b border-outline-variant flex justify-between items-center bg-surface-container-low">
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-primary tracking-[0.1em] uppercase">Steel Customer Ledger</span>
+<div class="flex items-center gap-xs font-body-sm text-on-surface-variant">
+<span>Customers</span>
+<span class="material-symbols-outlined text-[12px]">chevron_right</span>
+<span class="text-on-surface font-semibold">Add Buyer</span>
+</div>
+</div>
+<div class="flex gap-xs">
+<button class="px-md h-7 bg-surface-container border border-outline-variant text-label-caps hover:bg-surface-container-highest transition-colors">Steel Hub</button>
+<button class="px-md h-7 bg-surface-container border border-outline-variant text-label-caps hover:bg-surface-container-highest transition-colors">Invoices</button>
+<button class="px-md h-7 bg-surface-container border border-outline-variant text-label-caps hover:bg-surface-container-highest transition-colors">Dispatches</button>
+</div>
+</div>
+<!-- Hero Section -->
+<div class="px-md py-lg border-b border-outline-variant">
+<h1 class="font-headline-sm text-[28px] leading-tight font-bold text-on-surface max-w-2xl">
+          Add the buyer before receivables start moving
+        </h1>
+<p class="mt-xs text-on-surface-variant font-body-md max-w-xl">
+          Keep buyer setup, receivables, and recovery context in one place before invoices and dispatches stack up.
+        </p>
+</div>
+<!-- Header Metrics (High Density) -->
+<div class="grid grid-cols-5 border-b border-outline-variant bg-surface-container-low">
+<div class="p-md border-r border-outline-variant">
+<p class="font-label-caps text-label-caps text-outline uppercase">Customers</p>
+<p class="font-data-mono text-[24px] text-on-surface mt-xs">01</p>
+</div>
+<div class="p-md border-r border-outline-variant">
+<p class="font-label-caps text-label-caps text-outline uppercase">Outstanding</p>
+<p class="font-data-mono text-[24px] text-on-surface mt-xs">₹3,18,302</p>
+</div>
+<div class="p-md border-r border-outline-variant">
+<p class="font-label-caps text-label-caps text-outline uppercase">Overdue</p>
+<p class="font-data-mono text-[24px] text-on-surface mt-xs">₹0</p>
+</div>
+<div class="p-md border-r border-outline-variant">
+<p class="font-label-caps text-label-caps text-outline uppercase">High Risk</p>
+<p class="font-data-mono text-[24px] text-error mt-xs">0</p>
+</div>
+<div class="p-md">
+<p class="font-label-caps text-label-caps text-outline uppercase">Open Follow-up</p>
+<p class="font-data-mono text-[24px] text-primary mt-xs">0</p>
+</div>
+</div>
+<!-- Main Operational Lane: Dual Pane Layout -->
+<div class="flex h-full min-h-[800px]">
+<!-- Left Pane: Add Buyer Profile -->
+<section class="w-1/2 border-r border-outline-variant p-lg">
+<div class="mb-lg">
+<h2 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Add buyer profile</h2>
+<p class="text-body-sm text-outline">New entity registration</p>
+</div>
+<form class="space-y-md">
+<!-- Basic Info -->
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">Customer Name</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded h-10 px-md text-body-md focus:border-primary focus:ring-0 outline-none" placeholder="Buyer / customer name" type="text">
+</div>
+<!-- Contact Row -->
+<div class="grid grid-cols-2 gap-md">
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">Contact Person</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded h-10 px-md text-body-md focus:border-primary focus:ring-0 outline-none" placeholder="Primary contact person" type="text">
+</div>
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">Designation</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded h-10 px-md text-body-md focus:border-primary focus:ring-0 outline-none" placeholder="Purchase manager / owner" type="text">
+</div>
+</div>
+<!-- Comm Row -->
+<div class="grid grid-cols-2 gap-md">
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">Phone</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded h-10 px-md text-body-md focus:border-primary focus:ring-0 outline-none" placeholder="9876543210" type="text">
+</div>
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">Email</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded h-10 px-md text-body-md focus:border-primary focus:ring-0 outline-none" placeholder="buyer@example.com" type="email">
+</div>
+</div>
+<!-- Address -->
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">Address</label>
+<textarea class="w-full bg-surface-container-lowest border border-outline-variant rounded p-md text-body-md focus:border-primary focus:ring-0 outline-none resize-none" placeholder="Billing / delivery address" rows="3"></textarea>
+</div>
+<!-- Region -->
+<div class="grid grid-cols-2 gap-md">
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">City</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded h-10 px-md text-body-md focus:border-primary focus:ring-0 outline-none" type="text" value="Mumbai">
+</div>
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">State</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded h-10 px-md text-body-md focus:border-primary focus:ring-0 outline-none" type="text" value="Maharashtra">
+</div>
+</div>
+<!-- Tax Grid -->
+<div class="grid grid-cols-3 gap-md">
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">GST</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded h-10 px-md text-body-md focus:border-primary focus:ring-0 outline-none" placeholder="22AAAAA0000A1Z5" type="text">
+</div>
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">PAN</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded h-10 px-md text-body-md focus:border-primary focus:ring-0 outline-none" placeholder="ABCDE1234F" type="text">
+</div>
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">Legacy ID</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded h-10 px-md text-body-md focus:border-primary focus:ring-0 outline-none" type="text">
+</div>
+</div>
+<!-- Terms -->
+<div class="grid grid-cols-2 gap-md">
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">Credit Limit</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded h-10 px-md text-body-md focus:border-primary focus:ring-0 outline-none" type="number" value="500000">
+</div>
+<div class="space-y-xs">
+<label class="font-label-caps text-label-caps text-on-surface-variant uppercase">Payment Terms (Days)</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded h-10 px-md text-body-md focus:border-primary focus:ring-0 outline-none" type="number" value="30">
+</div>
+</div>
+<div class="pt-lg border-t border-outline-variant flex justify-between items-center">
+<button class="text-label-caps text-error px-md py-sm hover:underline" type="reset">Clear Entry</button>
+<button class="bg-primary text-on-primary font-label-caps text-label-caps h-10 px-lg rounded flex items-center gap-sm active:scale-[0.98] transition-transform" type="submit">
+<span class="material-symbols-outlined text-md">save</span>
+                Create customer
+              </button>
+</div>
+</form>
+</section>
+<!-- Right Pane: Receivables at a Glance -->
+<section class="w-1/2 p-lg bg-surface-container-lowest overflow-auto custom-scrollbar">
+<div class="flex justify-between items-center mb-lg">
+<div>
+<h2 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Receivables and recovery at a glance</h2>
+<p class="text-body-sm text-outline">Active ledger monitoring</p>
+</div>
+<button class="flex items-center gap-sm px-md h-8 border border-outline-variant bg-surface-container text-label-caps hover:bg-surface-container-high transition-colors">
+              View Directory <span class="material-symbols-outlined text-[14px]">arrow_forward</span>
+</button>
+</div>
+<!-- High Density Directory Table -->
+<div class="border border-outline-variant overflow-hidden">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container border-b border-outline-variant">
+<th class="p-sm font-label-caps text-label-caps text-outline uppercase">Customer</th>
+<th class="p-sm font-label-caps text-label-caps text-outline uppercase">Risk</th>
+<th class="p-sm font-label-caps text-label-caps text-outline uppercase">Lifecycle</th>
+<th class="p-sm font-label-caps text-label-caps text-outline uppercase">Outstanding</th>
+<th class="p-sm font-label-caps text-label-caps text-outline uppercase">Credit</th>
+<th class="p-sm font-label-caps text-label-caps text-outline uppercase">Action</th>
+</tr>
+</thead>
+<tbody class="bg-surface">
+<!-- Row 1 -->
+<tr class="border-b border-outline-variant hover:bg-surface-container-low transition-colors group">
+<td class="p-sm">
+<div class="flex flex-col">
+<span class="text-body-md font-bold text-on-surface">SHIVAM GAUTAM</span>
+<span class="text-[10px] font-data-mono text-outline">CUST-00001 | Pending</span>
+<span class="inline-flex mt-1 text-[9px] px-1 bg-surface-container-highest text-on-surface-variant w-fit rounded uppercase">Draft</span>
+</div>
+</td>
+<td class="p-sm align-middle">
+<div class="flex flex-col">
+<span class="inline-flex px-2 py-0.5 bg-green-900/30 text-green-400 text-[10px] rounded w-fit font-bold uppercase">Low</span>
+<span class="text-label-caps text-outline mt-1">0 overdue days</span>
+</div>
+</td>
+<td class="p-sm align-middle">
+<div class="flex flex-col">
+<span class="text-body-sm text-on-surface font-semibold">Clear</span>
+<span class="text-label-caps text-outline">No follow-up</span>
+</div>
+</td>
+<td class="p-sm align-middle">
+<div class="flex flex-col">
+<span class="text-data-mono text-on-surface font-bold">₹3,18,302</span>
+<span class="text-label-caps text-error">Overdue ₹0</span>
+</div>
+</td>
+<td class="p-sm align-middle">
+<div class="flex flex-col">
+<span class="text-body-sm text-on-surface">No limit</span>
+<span class="text-label-caps text-outline">30 day terms</span>
+</div>
+</td>
+<td class="p-sm align-middle">
+<button class="p-1 hover:bg-surface-container-highest rounded text-primary">
+<span class="material-symbols-outlined text-sm">more_vert</span>
+</button>
+</td>
+</tr>
+<!-- Repeat Zebra Row -->
+<tr class="border-b border-outline-variant hover:bg-surface-container-low transition-colors group bg-surface-container-lowest">
+<td class="p-sm">
+<div class="flex flex-col">
+<span class="text-body-md font-bold text-on-surface">REDOX LOGISTICS</span>
+<span class="text-[10px] font-data-mono text-outline">CUST-00042 | Active</span>
+</div>
+</td>
+<td class="p-sm align-middle">
+<div class="flex flex-col">
+<span class="inline-flex px-2 py-0.5 bg-tertiary-container text-on-tertiary-container text-[10px] rounded w-fit font-bold uppercase">Med</span>
+<span class="text-label-caps text-outline mt-1">12 overdue days</span>
+</div>
+</td>
+<td class="p-sm align-middle">
+<div class="flex flex-col">
+<span class="text-body-sm text-error font-semibold">Flagged</span>
+<span class="text-label-caps text-outline">Contacted</span>
+</div>
+</td>
+<td class="p-sm align-middle">
+<div class="flex flex-col">
+<span class="text-data-mono text-on-surface font-bold">₹12,45,000</span>
+<span class="text-label-caps text-error">Overdue ₹12,450</span>
+</div>
+</td>
+<td class="p-sm align-middle">
+<div class="flex flex-col">
+<span class="text-body-sm text-on-surface">₹20L</span>
+<span class="text-label-caps text-outline">15 day terms</span>
+</div>
+</td>
+<td class="p-sm align-middle">
+<button class="p-1 hover:bg-surface-container-highest rounded text-primary">
+<span class="material-symbols-outlined text-sm">more_vert</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Bottom Telemetry Tiles -->
+<div class="mt-lg grid grid-cols-2 gap-md">
+<div class="bg-surface-container p-md border border-outline-variant">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-outline uppercase">Recent Jobs</span>
+<span class="text-data-mono text-on-surface-variant">0 recent</span>
+</div>
+<div class="mt-md h-24 flex items-center justify-center border border-dashed border-outline-variant">
+<span class="text-label-caps text-outline">No background tasks</span>
+</div>
+</div>
+<div class="bg-surface-container p-md border border-outline-variant">
+<div class="flex justify-between items-start">
+<span class="font-label-caps text-label-caps text-outline uppercase">Exposure Trend</span>
+<span class="text-data-mono text-primary">+2.4%</span>
+</div>
+<div class="mt-md h-24 flex items-end gap-1 px-sm">
+<!-- Mock Sparkline -->
+<div class="flex-1 bg-primary/20 h-[30%]"></div>
+<div class="flex-1 bg-primary/30 h-[45%]"></div>
+<div class="flex-1 bg-primary/20 h-[35%]"></div>
+<div class="flex-1 bg-primary/40 h-[60%]"></div>
+<div class="flex-1 bg-primary/50 h-[80%]"></div>
+<div class="flex-1 bg-primary/40 h-[65%]"></div>
+<div class="flex-1 bg-primary/70 h-[95%]"></div>
+</div>
+</div>
+</div>
+</section>
+</div>
+</div>
+</main>
+<!-- Help Floating Action Button Suppression (Contextual Check) -->
+<!-- Redering only help overlay in corner as per screenshot request -->
+<div class="fixed bottom-lg right-lg z-50">
+<button class="flex items-center gap-sm px-md h-10 bg-secondary-container text-on-secondary-container rounded-full border border-outline-variant shadow-lg hover:brightness-110 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-md">help</span>
+<span class="font-label-caps text-label-caps">Operational Help</span>
+</button>
+</div>
+<script>
+    // Micro-interaction for form inputs
+    const inputs = document.querySelectorAll('input, textarea');
+    inputs.forEach(input => {
+      input.addEventListener('focus', () => {
+        input.parentElement.classList.add('opacity-100');
+      });
+      input.addEventListener('blur', () => {
+        if (!input.value) {
+          // Subtle feedback if needed
+        }
+      });
+    });
+
+    // Keyboard shortcut listener mock
+    window.addEventListener('keydown', (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        alert('Command Palette initialized (Industrial ERP Mock)');
+      }
+    });
+  </script>
+</body></html>
