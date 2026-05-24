@@ -158,6 +158,9 @@
   --surface-selected:       hsl(213 46% 91%);
   --surface-skeleton:       hsl(210 12% 90%);
   --surface-skeleton-shine: hsl(210 14% 94%);
+  --surface-industrial-deep:    hsl(210 16% 95%);
+  --surface-industrial-raised:  hsl(210 14% 97%);
+  --surface-industrial-card:    hsl(210 12% 99%);
 
   /* --- Border System --- */
   --border-subtle:          hsl(210 12% 84%);
@@ -277,22 +280,31 @@
   --shadow-none:    none;
 
   /* Inset — for pressed states, sunken inputs */
-  --shadow-inset:   none;
+  --shadow-inset:   inset 0 1px 2px hsl(220 30% 5% / 0.4);
 
   /* XS — subtle card lift, table header sticky boundary */
-  --shadow-xs:      none;
+  --shadow-xs:      0 1px 2px hsl(220 30% 5% / 0.25);
 
   /* SM — panels, sidebar separators */
-  --shadow-sm:      none;
+  --shadow-sm:      0 1px 3px hsl(220 30% 5% / 0.3), 0 1px 2px hsl(220 30% 5% / 0.2);
 
   /* MD — dropdowns, command palette, floating toolbars */
-  --shadow-md:      none;
+  --shadow-md:      0 4px 6px hsl(220 30% 5% / 0.3), 0 2px 4px hsl(220 30% 5% / 0.2);
 
   /* LG — modals, operational drawers */
-  --shadow-lg:      none;
+  --shadow-lg:      0 10px 15px hsl(220 30% 5% / 0.35), 0 4px 6px hsl(220 30% 5% / 0.2);
 
   /* XL — full-screen overlays, command bar */
-  --shadow-xl:      none;
+  --shadow-xl:      0 20px 25px hsl(220 30% 5% / 0.4), 0 8px 10px hsl(220 30% 5% / 0.2);
+}
+
+[data-theme="light"] {
+  --shadow-inset:   inset 0 1px 2px hsl(210 12% 60% / 0.2);
+  --shadow-xs:      0 1px 2px hsl(210 12% 60% / 0.15);
+  --shadow-sm:      0 1px 3px hsl(210 12% 60% / 0.18), 0 1px 2px hsl(210 12% 60% / 0.1);
+  --shadow-md:      0 4px 6px hsl(210 12% 60% / 0.15), 0 2px 4px hsl(210 12% 60% / 0.1);
+  --shadow-lg:      0 10px 15px hsl(210 12% 60% / 0.18), 0 4px 6px hsl(210 12% 60% / 0.1);
+  --shadow-xl:      0 20px 25px hsl(210 12% 60% / 0.2), 0 8px 10px hsl(210 12% 60% / 0.1);
 }
 
 
@@ -549,17 +561,20 @@
   --text-warning:           hsl(var(--_prim-amber-200));
 
   /* Surfaces */
-  --surface-app:            hsl(220 22% 8%);
-  --surface-shell:          hsl(220 20% 10%);
-  --surface-panel:          hsl(220 18% 13%);
-  --surface-card:           hsl(220 16% 12%);
-  --surface-elevated:       hsl(220 16% 15%);
+  --surface-app:            hsl(218 22% 9%);
+  --surface-shell:          hsl(216 20% 11%);
+  --surface-panel:          hsl(215 18% 13%);
+  --surface-card:           hsl(213 16% 15%);
+  --surface-elevated:       hsl(212 15% 18%);
   --surface-overlay:        hsl(220 18% 16%);
-  --surface-hover:          hsl(220 16% 15%);
-  --surface-active:         hsl(220 16% 18%);
+  --surface-hover:          hsl(213 16% 17%);
+  --surface-active:         hsl(213 18% 19%);
   --surface-selected:       hsl(213 46% 20%);
   --surface-skeleton:       hsl(220 14% 16%);
   --surface-skeleton-shine: hsl(220 14% 19%);
+  --surface-industrial-deep:    hsl(218 24% 8%);
+  --surface-industrial-raised:  hsl(215 20% 11%);
+  --surface-industrial-card:    hsl(213 18% 14%);
 
   /* Borders */
   --border-subtle:          hsl(220 12% 22%);
@@ -638,11 +653,11 @@
   --workflow-ai-bg:         hsl(240 50% 14%);
 
   /* Shadows — heavier in dark for legibility */
-  --shadow-xs:    none;
-  --shadow-sm:    none;
-  --shadow-md:    none;
-  --shadow-lg:    none;
-  --shadow-xl:    none;
+  --shadow-xs:    0 1px 2px hsl(220 30% 5% / 0.25);
+  --shadow-sm:    0 1px 3px hsl(220 30% 5% / 0.3), 0 1px 2px hsl(220 30% 5% / 0.2);
+  --shadow-md:    0 4px 6px hsl(220 30% 5% / 0.3), 0 2px 4px hsl(220 30% 5% / 0.2);
+  --shadow-lg:    0 10px 15px hsl(220 30% 5% / 0.35), 0 4px 6px hsl(220 30% 5% / 0.2);
+  --shadow-xl:    0 20px 25px hsl(220 30% 5% / 0.4), 0 8px 10px hsl(220 30% 5% / 0.2);
 }
 
 

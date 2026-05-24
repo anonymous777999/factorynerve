@@ -2,10 +2,12 @@
 
 import { useMemo } from "react";
 
+import { getChartTheme } from "@/components/charts/industrial-chart-theme";
 import type { ReportInsights } from "@/lib/reports";
 import type { SteelOverview } from "@/lib/steel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useUiPreferences } from "@/providers/ui-preferences-provider";
 
 function formatDate(value: string) {
   const parsed = new Date(value);
@@ -74,6 +76,8 @@ export default function ReportInsightsBoard({
   role?: string;
   steelOverview?: SteelOverview | null;
 }) {
+  const { theme: appTheme } = useUiPreferences();
+  const chartTheme = useMemo(() => getChartTheme(), [appTheme]);
   const canSeeCharts = Boolean(role && ["supervisor", "manager", "admin", "owner"].includes(role));
 
   const maxDailyUnits = useMemo(
@@ -93,6 +97,10 @@ export default function ReportInsightsBoard({
       insights?.employee_trend.flatMap((row) => row.points.map((point) => point.performance_percent)) || [1];
     return Math.max(...values, 1);
   }, [insights]);
+  const hasDailyOutput = useMemo(
+    () => Boolean(insights?.daily_series.some((point) => point.units_produced > 0 || point.units_target > 0)),
+    [insights],
+  );
 
   if (!canSeeCharts) {
     return (
@@ -181,44 +189,55 @@ export default function ReportInsightsBoard({
                 </div>
                 <div className="text-xs text-[var(--muted)]">Bars compare actual output to target for each day.</div>
               </div>
-              <div className="space-y-3 md:hidden">
-                {insights.daily_series.slice(-7).map((point) => (
-                  <div key={point.date} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div className="text-sm font-semibold text-[var(--text)]">{formatDate(point.date)}</div>
-                      <div className="text-xs font-semibold text-[var(--text)]">{point.performance_percent.toFixed(0)}%</div>
-                    </div>
-                    <div className="mt-3 space-y-2">
-                      <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                        <div className="h-full rounded-full bg-[linear-gradient(90deg,#3ea6ff,#60a5fa)]" style={{ width: clampPercent((point.units_target / maxDailyUnits) * 100) }} />
+              {hasDailyOutput ? (
+                <>
+                  <div className="space-y-3 md:hidden">
+                    {insights.daily_series.slice(-7).map((point) => (
+                      <div key={point.date} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="text-sm font-semibold text-[var(--text)]">{formatDate(point.date)}</div>
+                          <div className="text-xs font-semibold text-[var(--text)]">{point.performance_percent.toFixed(0)}%</div>
+                        </div>
+                        <div className="mt-3 space-y-2">
+                          <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                            <div className="h-full rounded-full" style={{ background: chartTheme.series.primary, width: clampPercent((point.units_target / maxDailyUnits) * 100) }} />
+                          </div>
+                          <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                            <div className="h-full rounded-full" style={{ background: chartTheme.series.success, width: clampPercent((point.units_produced / maxDailyUnits) * 100) }} />
+                          </div>
+                        </div>
                       </div>
-                      <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                        <div className="h-full rounded-full bg-[linear-gradient(90deg,#2dd4bf,#10b981)]" style={{ width: clampPercent((point.units_produced / maxDailyUnits) * 100) }} />
+                    ))}
+                  </div>
+                  <div className="hidden gap-3 md:grid md:grid-cols-10 xl:grid-cols-14">
+                    {insights.daily_series.slice(-14).map((point) => (
+                      <div key={point.date} className="space-y-2 text-center">
+                        <div className="flex h-44 items-end justify-center gap-1 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
+                          <div
+                            className="w-full rounded-full"
+                            style={{ background: chartTheme.series.primary, height: clampPercent((point.units_target / maxDailyUnits) * 100) }}
+                            title={`Target: ${point.units_target}`}
+                          />
+                          <div
+                            className="w-full rounded-full"
+                            style={{ background: chartTheme.series.success, height: clampPercent((point.units_produced / maxDailyUnits) * 100) }}
+                            title={`Produced: ${point.units_produced}`}
+                          />
+                        </div>
+                        <div className="text-[11px] text-[var(--muted)]">{formatDate(point.date)}</div>
+                        <div className="text-xs font-semibold text-[var(--text)]">{point.performance_percent.toFixed(0)}%</div>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div className="hidden gap-3 md:grid md:grid-cols-10 xl:grid-cols-14">
-                {insights.daily_series.slice(-14).map((point) => (
-                  <div key={point.date} className="space-y-2 text-center">
-                    <div className="flex h-44 items-end justify-center gap-1 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
-                      <div
-                        className="w-full rounded-full bg-[linear-gradient(180deg,#3ea6ff,#60a5fa)]"
-                        style={{ height: clampPercent((point.units_target / maxDailyUnits) * 100) }}
-                        title={`Target: ${point.units_target}`}
-                      />
-                      <div
-                        className="w-full rounded-full bg-[linear-gradient(180deg,#2dd4bf,#10b981)]"
-                        style={{ height: clampPercent((point.units_produced / maxDailyUnits) * 100) }}
-                        title={`Produced: ${point.units_produced}`}
-                      />
-                    </div>
-                    <div className="text-[11px] text-[var(--muted)]">{formatDate(point.date)}</div>
-                    <div className="text-xs font-semibold text-[var(--text)]">{point.performance_percent.toFixed(0)}%</div>
+                </>
+              ) : (
+                <div className="mt-5 rounded-2xl border border-dashed border-[var(--border)] bg-[var(--surface-elevated)] px-5 py-10 text-center">
+                  <div className="text-sm font-semibold text-[var(--text)]">No daily output records yet</div>
+                  <div className="mt-2 text-sm leading-6 text-[var(--text-tertiary)]">
+                    Daily output bars appear after reports with units produced or target values are available in the selected range.
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
             </div>
 
             <div className="rounded-[1.75rem] border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-5">
@@ -232,7 +251,7 @@ export default function ReportInsightsBoard({
                       <div className="text-sm text-[var(--muted)]">{shift.performance_percent.toFixed(1)}%</div>
                     </div>
                     <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                      <div className="h-full rounded-full bg-[linear-gradient(90deg,#60a5fa,#2dd4bf)]" style={{ width: clampPercent(shift.performance_percent) }} />
+                      <div className="h-full rounded-full" style={{ background: chartTheme.series.processing, width: clampPercent(shift.performance_percent) }} />
                     </div>
                     <div className="mt-3 flex flex-wrap justify-between gap-3 text-xs text-[var(--muted)]">
                       <span>{formatNumber(shift.units_produced)} units</span>
@@ -263,7 +282,7 @@ export default function ReportInsightsBoard({
                       </div>
                     </div>
                     <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                      <div className="h-full rounded-full bg-[linear-gradient(90deg,#22c55e,#2dd4bf)]" style={{ width: clampPercent((employee.units_produced / maxEmployeeUnits) * 100) }} />
+                      <div className="h-full rounded-full" style={{ background: chartTheme.series.success, width: clampPercent((employee.units_produced / maxEmployeeUnits) * 100) }} />
                     </div>
                     <div className="mt-3 grid gap-2 text-xs text-[var(--muted)] md:grid-cols-4">
                       <span>{formatNumber(employee.entries_count)} reports</span>
@@ -291,8 +310,11 @@ export default function ReportInsightsBoard({
                     </div>
                     <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
                       <div
-                        className="h-full rounded-full bg-[linear-gradient(90deg,#f59e0b,#ef4444)]"
-                        style={{ width: clampPercent((employee.attention_score / maxSupportScore) * 100) }}
+                        className="h-full rounded-full"
+                        style={{
+                          background: `linear-gradient(90deg, ${chartTheme.series.warning}, ${chartTheme.series.danger})`,
+                          width: clampPercent((employee.attention_score / maxSupportScore) * 100),
+                        }}
                       />
                     </div>
                     <div className="mt-3 flex flex-wrap gap-3 text-xs text-[var(--muted)]">
@@ -365,8 +387,11 @@ export default function ReportInsightsBoard({
                               title={`${formatWeekLabel(point.week_start, point.week_end)} - ${point.performance_percent.toFixed(1)}%`}
                             >
                               <div
-                                className="w-full rounded-full bg-[linear-gradient(180deg,#60a5fa,#c084fc)]"
-                                style={{ height: clampPercent((point.performance_percent / maxTrendPerformance) * 100) }}
+                                className="w-full rounded-full"
+                                style={{
+                                  background: `linear-gradient(180deg, ${chartTheme.series.processing}, ${chartTheme.series.primary})`,
+                                  height: clampPercent((point.performance_percent / maxTrendPerformance) * 100),
+                                }}
                               />
                             </div>
                             <div className="text-[11px] text-[var(--muted)]">{formatDate(point.week_start)}</div>
@@ -437,8 +462,11 @@ export default function ReportInsightsBoard({
                       </div>
                       <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
                         <div
-                          className="h-full rounded-full bg-[linear-gradient(90deg,#f97316,#ef4444)]"
-                          style={{ width: clampPercent((row.highest_anomaly_score / Math.max(steelOverview.anomaly_summary.highest_anomaly_score, 1)) * 100) }}
+                          className="h-full rounded-full"
+                          style={{
+                            background: `linear-gradient(90deg, ${chartTheme.series.warning}, ${chartTheme.series.danger})`,
+                            width: clampPercent((row.highest_anomaly_score / Math.max(steelOverview.anomaly_summary.highest_anomaly_score, 1)) * 100),
+                          }}
                         />
                       </div>
                     </div>
@@ -464,7 +492,13 @@ export default function ReportInsightsBoard({
                         </div>
                       </div>
                       <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                        <div className="h-full rounded-full bg-[linear-gradient(90deg,#fb7185,#ef4444)]" style={{ width: clampPercent(row.anomaly_score) }} />
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            background: `linear-gradient(90deg, ${chartTheme.series.warning}, ${chartTheme.series.danger})`,
+                            width: clampPercent(row.anomaly_score),
+                          }}
+                        />
                       </div>
                     </div>
                   ))}

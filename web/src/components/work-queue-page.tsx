@@ -1028,7 +1028,7 @@ export default function WorkQueuePage() {
 
   if (isWorkerQueue) {
     return (
-      <main className="min-h-screen bg-[#0B0F19] px-4 py-6 md:px-6 lg:py-8">
+    <main className="min-h-screen bg-[var(--surface-industrial-deep)] px-4 py-6 md:px-6 lg:py-8">
         <div className="mx-auto max-w-6xl space-y-4">
           {error ? (
             <div className="rounded-[20px] border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">

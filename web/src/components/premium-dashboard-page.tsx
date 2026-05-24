@@ -779,7 +779,9 @@ export default function PremiumDashboardPage() {
               <CardTitle>Owner Intelligence Plan Gate</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="text-sm text-[var(--muted)]">{locked}</div>
+              <div className="rounded-2xl border border-status-info-border bg-status-info-bg px-4 py-3 text-sm text-status-info-fg">
+                {locked}
+              </div>
               <div className="grid gap-3 md:grid-cols-3">
                 {[
                   "Money-at-risk cards with INR exposure",

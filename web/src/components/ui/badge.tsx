@@ -24,37 +24,37 @@ export type BadgeProps = React.HTMLAttributes<HTMLSpanElement> & {
 };
 
 const baseClassName =
-  "ui-no-select ui-no-callout inline-flex max-w-full items-center rounded-badge border font-medium";
+  "ui-no-select ui-no-callout inline-flex max-w-full items-center whitespace-nowrap rounded-[4px] border text-[length:var(--text-xs)] font-medium tracking-[var(--tracking-wide)]";
 
 const sizeClassNames: Record<BadgeSize, string> = {
-  compact: "px-2 py-0.5 text-[11px]",
-  standard: "px-2.5 py-1 text-[12px]",
+  compact: "px-[8px] py-[2px]",
+  standard: "px-[8px] py-[2px]",
 };
 
 const statusClassNames: Record<BadgeStatus, string> = {
   success: "border-status-success-border bg-status-success-bg text-status-success-fg",
   warning: "border-status-warning-border bg-status-warning-bg text-status-warning-fg",
   info: "border-status-processing-border bg-status-processing-bg text-status-processing-fg",
-  secondary: "border-status-draft-border bg-status-draft-bg text-status-draft-fg",
-  destructive: "border-status-danger-border bg-status-danger-bg text-status-danger-fg",
+  secondary: "border-status-inactive-border bg-status-inactive-bg text-status-inactive-fg",
+  destructive: "border-status-danger-border border-l-[3px] bg-status-danger-bg pl-[6px] pr-[8px] text-status-danger-fg",
   processing:
     "border-status-processing-border bg-status-processing-bg text-status-processing-fg",
   paused: "border-status-paused-border bg-status-paused-bg text-status-paused-fg",
-  draft: "border-status-draft-border bg-status-draft-bg text-status-draft-fg",
-  synced: "border-status-synced-border bg-status-synced-bg text-status-synced-fg",
-  error: "border-status-danger-border bg-status-danger-bg text-status-danger-fg",
+  draft: "border-status-inactive-border bg-status-inactive-bg text-status-inactive-fg",
+  synced: "border-status-success-border bg-status-success-bg text-status-success-fg",
+  error: "border-status-danger-border border-l-[3px] bg-status-danger-bg pl-[6px] pr-[8px] text-status-danger-fg",
 };
 
 const indicatorClassNames: Record<BadgeStatus, string> = {
   success: "bg-status-success-icon",
   warning: "bg-status-warning-icon",
   info: "bg-status-processing-icon",
-  secondary: "bg-status-draft-icon",
+  secondary: "bg-status-inactive-icon",
   destructive: "bg-status-danger-icon",
   processing: "bg-status-processing-icon",
   paused: "bg-status-paused-icon",
-  draft: "bg-status-draft-icon",
-  synced: "bg-status-synced-icon",
+  draft: "bg-status-inactive-icon",
+  synced: "bg-status-success-icon",
   error: "bg-status-danger-icon",
 };
 
@@ -85,7 +85,7 @@ export function Badge({
           className={cn("h-2 w-2 shrink-0 rounded-full", indicatorClassNames[status])}
         />
       ) : null}
-      {children ? <span className="truncate">{children}</span> : null}
+      {children ? <span className={cn("truncate", showIndicator ? "ml-1.5" : "")}>{children}</span> : null}
     </span>
   );
 }

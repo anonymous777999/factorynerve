@@ -1372,7 +1372,7 @@ export default function DashboardHome() {
 
   if (isOperatorHome) {
     return (
-      <main className="min-h-screen bg-[#0B0F19] px-4 py-6 md:px-6 lg:py-8">
+      <main className="min-h-screen bg-[var(--surface-industrial-deep)] px-4 py-6 md:px-6 lg:py-8">
         <div className="mx-auto max-w-6xl space-y-4">
           {status ? (
             <div className="rounded-[20px] border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
@@ -1416,7 +1416,7 @@ export default function DashboardHome() {
                 <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Main Action</div>
                 <Link
                   href={workerPrimaryAction.href}
-                  className="mt-3 inline-flex h-20 w-full items-center justify-center rounded-[28px] bg-[linear-gradient(90deg,#22d3ee,#60a5fa)] px-6 text-xl font-semibold text-[#08101D] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F19]"
+                  className="mt-3 inline-flex h-20 w-full items-center justify-center rounded-[28px] border border-transparent bg-[var(--action-primary)] px-6 text-xl font-semibold text-[var(--action-primary-text)] transition hover:bg-[var(--action-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-industrial-deep)]"
                 >
                   {workerPrimaryAction.label}
                 </Link>
@@ -1430,7 +1430,7 @@ export default function DashboardHome() {
                     <Link
                       key={action.key}
                       href={action.href}
-                      className={`${action.key === "tasks" ? "col-span-2 sm:col-span-1" : ""} rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 text-center transition hover:border-cyan-300/25 hover:bg-white/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F19]`}
+                      className={`${action.key === "tasks" ? "col-span-2 sm:col-span-1" : ""} rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 text-center transition hover:border-cyan-300/25 hover:bg-white/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-industrial-deep)]`}
                     >
                       <div className="text-base font-semibold text-white">{action.label}</div>
                       <div className="mt-1 text-xs text-slate-400">{action.meta}</div>
@@ -1442,11 +1442,11 @@ export default function DashboardHome() {
               <div className="mt-8 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
                 <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Today Summary</div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-[20px] border border-white/10 bg-[#0E1524]/80 px-4 py-3">
+                  <div className="rounded-[20px] border border-white/10 bg-[var(--surface-industrial-raised)] px-4 py-3">
                     <div className="text-xs text-slate-400">Completed</div>
                     <div className="mt-2 text-2xl font-semibold text-white">{completedShifts}</div>
                   </div>
-                  <div className="rounded-[20px] border border-white/10 bg-[#0E1524]/80 px-4 py-3">
+                  <div className="rounded-[20px] border border-white/10 bg-[var(--surface-industrial-raised)] px-4 py-3">
                     <div className="text-xs text-slate-400">Pending</div>
                     <div className="mt-2 text-2xl font-semibold text-white">{pendingShifts}</div>
                   </div>
@@ -1512,7 +1512,7 @@ export default function DashboardHome() {
                       className={`flex items-center justify-between rounded-[20px] border px-4 py-3 ${
                         entry
                           ? "border-emerald-400/20 bg-emerald-500/10"
-                          : "border-white/10 bg-[#0E1524]/80"
+                          : "border-white/10 bg-[var(--surface-industrial-raised)]"
                       }`}
                     >
                       <span className="text-sm font-medium text-white">{formatShift(shift)}</span>
@@ -1566,7 +1566,7 @@ export default function DashboardHome() {
         </section>
 
         {/* AUDIT: BUTTON_CLUTTER - move board maintenance actions into a secondary tray so the main work lane stays obvious. */}
-        <details className="route-panel">
+        <details className="route-panel mt-[var(--space-xl)]">
           <summary className="route-panel__header cursor-pointer list-none marker:hidden">
             <div>
               <div className="route-panel__eyebrow">Board tools</div>
@@ -1590,7 +1590,7 @@ export default function DashboardHome() {
         </details>
 
         {roleLaunchGuide ? (
-          <section className="route-metrics-grid lg:grid-cols-3">
+          <section className="route-metrics-grid mt-[var(--space-xl)] lg:grid-cols-3">
             {roleLaunchGuide.steps.map((step, index) => (
               <Link
                 key={`${step.href}-${index}`}
@@ -1604,7 +1604,7 @@ export default function DashboardHome() {
           </section>
         ) : null}
 
-        <section className="route-grid-main xl:grid-cols-[1.1fr_0.9fr_1fr]">
+        <section className="route-grid-main mt-[var(--space-xl)] xl:grid-cols-[1.1fr_0.9fr_1fr]">
             <Card className="border border-[var(--border)] bg-surface-panel">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
@@ -1820,11 +1820,11 @@ export default function DashboardHome() {
         </section>
 
         {/* AUDIT: BUTTON_CLUTTER — Organization and deep analytics context now sit behind a compact reveal so the operational home stays action-first. */}
-        <details className="rounded-[1.5rem] border border-[var(--border)] bg-[rgba(16,20,32,0.82)] p-4">
+        <details className="mt-[var(--space-xl)] rounded-[1.5rem] border border-[var(--border)] bg-[rgba(16,20,32,0.82)] p-4">
           <summary className="cursor-pointer list-none text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
             {t("dashboard.section.advanced", "Context")}
           </summary>
-          <div className="mt-5 space-y-6">
+          <div className="mt-[var(--space-md)] space-y-6">
         {organization || activeFactory ? (
           <section className="grid gap-4 lg:grid-cols-3">
             <Card>
@@ -1861,7 +1861,7 @@ export default function DashboardHome() {
           </section>
         ) : null}
 
-        <section className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <section className="mt-[var(--space-xl)] grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
           <Card>
             <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
@@ -1895,7 +1895,7 @@ export default function DashboardHome() {
                         </div>
                         <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
                           <div
-                            className="h-full rounded-full bg-[linear-gradient(90deg,#3ea6ff,#2dd4bf)]"
+                            className="h-full rounded-full bg-[var(--action-primary)]"
                             style={{ width: `${Math.max(8, Math.min(100, point.production_percent))}%` }}
                           />
                         </div>
@@ -1907,7 +1907,7 @@ export default function DashboardHome() {
                       <div key={point.date} className="space-y-2 text-center">
                         <div className="flex h-36 items-end justify-center rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
                           <div
-                            className="w-full rounded-full bg-[linear-gradient(180deg,#3ea6ff,#2dd4bf)]"
+                            className="w-full rounded-full bg-[var(--action-primary)]"
                             style={{ height: `${Math.max(8, Math.min(100, point.production_percent))}%` }}
                           />
                         </div>
@@ -1972,7 +1972,7 @@ export default function DashboardHome() {
                     </div>
                   <div className="h-2 rounded-full bg-[var(--card-strong)]">
                     <div
-                      className="h-2 rounded-full bg-[linear-gradient(90deg,#3ea6ff,#2dd4bf)]"
+                      className="h-2 rounded-full bg-[var(--action-primary)]"
                       style={{ width: `${progressPercent(state.usage?.credits_used, state.usage?.max_credits)}%` }}
                     />
                   </div>
@@ -1998,7 +1998,7 @@ export default function DashboardHome() {
           </Card>
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+        <section className="mt-[var(--space-xl)] grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
           <Card>
             <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
@@ -2085,7 +2085,7 @@ export default function DashboardHome() {
           </div>
         </details>
 
-        <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <section className="mt-[var(--space-xl)] grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>

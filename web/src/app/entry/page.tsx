@@ -807,7 +807,7 @@ export default function EntryPage() {
       : "Next";
 
   return (
-    <main className="min-h-screen bg-[#0B0F19] px-4 pb-28 pt-6 text-white md:px-6 lg:pb-10 lg:pt-8">
+    <main className="min-h-screen bg-[var(--surface-industrial-deep)] px-4 pb-28 pt-6 text-white md:px-6 lg:pb-10 lg:pt-8">
       <div className="mx-auto max-w-7xl">
         <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
@@ -842,7 +842,7 @@ export default function EntryPage() {
             Entry tools
           </summary>
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <span className="rounded-full border border-white/10 bg-[#0E1524]/80 px-4 py-2 text-xs text-slate-200">
+            <span className="rounded-full border border-white/10 bg-[var(--surface-industrial-raised)] px-4 py-2 text-xs text-slate-200">
               Queue {queueCount}
             </span>
             <Link href="/dashboard">
@@ -872,7 +872,7 @@ export default function EntryPage() {
                 </div>
                 <div className="mt-2 h-2 rounded-full bg-white/10">
                   <div
-                    className="h-full rounded-full bg-[linear-gradient(90deg,#22d3ee,#8b5cf6)] transition-all duration-300"
+                    className="h-full rounded-full bg-[var(--action-primary)] transition-all duration-300"
                     style={{ width: `${clampProgress(progressPercent)}%` }}
                   />
                 </div>
@@ -940,7 +940,7 @@ export default function EntryPage() {
               ) : null}
             </div>
 
-            <div className="mt-6 rounded-[28px] border border-white/10 bg-[#0E1524]/90 p-5 md:p-6">
+            <div className="mt-6 rounded-[28px] border border-white/10 bg-[var(--surface-industrial-raised)] p-5 md:p-6">
               {activeStep === 0 ? (
                 <div className="space-y-6">
                   <div className="grid gap-5 md:grid-cols-2">
@@ -1059,7 +1059,7 @@ export default function EntryPage() {
                     </div>
                     <div className="mt-4 h-2 rounded-full bg-white/10">
                       <div
-                        className="h-full rounded-full bg-[linear-gradient(90deg,#22d3ee,#8b5cf6)] transition-all duration-300"
+                        className="h-full rounded-full bg-[var(--action-primary)] transition-all duration-300"
                         style={{ width: `${clampProgress(performance)}%` }}
                       />
                     </div>
@@ -1222,7 +1222,7 @@ export default function EntryPage() {
                                       ))}
                                     </Select>
                                   ) : inputType === "boolean" ? (
-                                    <label className="mt-2 flex items-center gap-3 rounded-[20px] border border-white/10 bg-[#0E1524]/80 px-4 py-3 text-sm text-slate-200">
+                                    <label className="mt-2 flex items-center gap-3 rounded-[20px] border border-white/10 bg-[var(--surface-industrial-raised)] px-4 py-3 text-sm text-slate-200">
                                       <input
                                         type="checkbox"
                                         checked={Boolean(value)}
@@ -1316,7 +1316,7 @@ export default function EntryPage() {
                 </div>
                 <div className="mt-4 h-2 rounded-full bg-white/10">
                   <div
-                    className="h-full rounded-full bg-[linear-gradient(90deg,#22d3ee,#8b5cf6)] transition-all duration-300"
+                    className="h-full rounded-full bg-[var(--action-primary)] transition-all duration-300"
                     style={{ width: `${clampProgress(performance)}%` }}
                   />
                 </div>
@@ -1409,7 +1409,7 @@ export default function EntryPage() {
                       {traceabilitySummary.map((item) => (
                         <span
                           key={item.label}
-                          className="rounded-full border border-white/10 bg-[#0E1524]/80 px-3 py-1 text-xs text-slate-200"
+                          className="rounded-full border border-white/10 bg-[var(--surface-industrial-raised)] px-3 py-1 text-xs text-slate-200"
                         >
                           {item.label}: {item.value}
                         </span>
@@ -1425,7 +1425,7 @@ export default function EntryPage() {
                       {submittedShifts.map(([shift, entryId]) => (
                         <span
                           key={shift}
-                          className="rounded-full border border-white/10 bg-[#0E1524]/80 px-3 py-1 text-xs text-slate-200"
+                          className="rounded-full border border-white/10 bg-[var(--surface-industrial-raised)] px-3 py-1 text-xs text-slate-200"
                         >
                           {formatShiftLabel(shift as ShiftValue)} #{entryId}
                         </span>
@@ -1460,7 +1460,7 @@ export default function EntryPage() {
         </div>
       </div>
 
-      <div className="safe-bottom-inset fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[#08101D]/95 px-4 py-4 backdrop-blur lg:hidden">
+      <div className="safe-bottom-inset fixed inset-x-0 bottom-0 z-20 border-t border-white/10 bg-[var(--surface-industrial-deep)] px-4 py-4 backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-xl items-center gap-3">
           <button
             type="button"
