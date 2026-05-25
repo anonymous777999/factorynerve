@@ -23,11 +23,11 @@ export function ChartCard({
   isEmpty?: boolean;
 }) {
   return (
-    <Card className="h-full rounded-[1.9rem] border-border-subtle bg-surface-card text-text-primary shadow-sm">
+    <Card className="surface-panel h-full rounded-[1.95rem] !bg-none">
       <CardHeader>
-        <div className="text-xs uppercase tracking-[0.22em] text-text-tertiary">Industrial Signal</div>
-        <CardTitle className="mt-2 text-lg text-text-primary md:text-xl">{title}</CardTitle>
-        <p className="mt-2 text-sm leading-6 text-text-secondary">{description}</p>
+        <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">Industrial Signal</div>
+        <CardTitle className="mt-2 text-lg text-[var(--text)] md:text-xl">{title}</CardTitle>
+        <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{description}</p>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -36,9 +36,9 @@ export function ChartCard({
             <Skeleton className="h-[280px] w-full" />
           </div>
         ) : isEmpty ? (
-          <div className="rounded-[1.5rem] border border-dashed border-border-subtle bg-surface-elevated px-5 py-10 text-center">
-            <div className="text-sm font-semibold text-text-primary">{emptyTitle || "No chart data yet"}</div>
-            <div className="mt-2 text-sm leading-6 text-text-tertiary">
+          <div className="rounded-[1.55rem] border border-dashed border-[var(--border)] bg-[rgba(10,15,24,0.58)] px-5 py-10 text-center">
+            <div className="text-sm font-semibold text-[var(--text)]">{emptyTitle || "No chart data yet"}</div>
+            <div className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
               {emptyDescription || "Add the first steel records to unlock this view."}
             </div>
           </div>

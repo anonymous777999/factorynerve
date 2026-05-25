@@ -6,7 +6,7 @@ export function Card({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
   return (
     <div
       className={cn(
-        "rounded-panel border border-border-subtle bg-surface-card text-text-primary shadow-[var(--shadow-xs)]",
+        "surface-panel rounded-panel text-text-primary",
         className,
       )}
       {...props}
@@ -19,7 +19,7 @@ export function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDiv
 }
 
 export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h1 className={cn("ui-no-select ui-no-callout text-panel-title font-semibold text-text-primary", className)} {...props} />;
+  return <h1 className={cn("ui-no-select ui-no-callout text-panel-title font-semibold tracking-[-0.024em] text-text-primary", className)} {...props} />;
 }
 
 export function CardContent({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
