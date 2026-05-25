@@ -23,11 +23,11 @@ export function ChartCard({
   isEmpty?: boolean;
 }) {
   return (
-    <Card className="h-full rounded-[1.9rem] !border-[#e7e5e4] !bg-none !bg-white !text-[#111111] shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
+    <Card className="surface-panel h-full rounded-[1.95rem] !bg-none">
       <CardHeader>
-        <div className="text-xs uppercase tracking-[0.22em] text-[#78716c]">Industrial Signal</div>
-        <CardTitle className="mt-2 text-lg text-[#111111] md:text-xl">{title}</CardTitle>
-        <p className="mt-2 text-sm leading-6 text-[#57534e]">{description}</p>
+        <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">Industrial Signal</div>
+        <CardTitle className="mt-2 text-lg text-[var(--text)] md:text-xl">{title}</CardTitle>
+        <p className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">{description}</p>
       </CardHeader>
       <CardContent>
         {loading ? (
@@ -36,9 +36,9 @@ export function ChartCard({
             <Skeleton className="h-[280px] w-full" />
           </div>
         ) : isEmpty ? (
-          <div className="rounded-[1.5rem] border border-dashed border-[#d6d3d1] bg-[#fafaf9] px-5 py-10 text-center">
-            <div className="text-sm font-semibold text-[#111111]">{emptyTitle || "No chart data yet"}</div>
-            <div className="mt-2 text-sm leading-6 text-[#57534e]">
+          <div className="rounded-[1.55rem] border border-dashed border-[var(--border)] bg-[rgba(10,15,24,0.58)] px-5 py-10 text-center">
+            <div className="text-sm font-semibold text-[var(--text)]">{emptyTitle || "No chart data yet"}</div>
+            <div className="mt-2 text-sm leading-6 text-[var(--text-secondary)]">
               {emptyDescription || "Add the first steel records to unlock this view."}
             </div>
           </div>

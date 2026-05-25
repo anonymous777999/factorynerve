@@ -562,8 +562,8 @@ function navLinkClasses(active: boolean) {
   return cn(
     "ui-no-select ui-no-callout group block rounded-xl border px-3.5 py-2.5 transition",
     active
-      ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)] shadow-[0_0_0_1px_rgba(62,166,255,0.15)]"
-      : "border-[var(--border)] bg-[rgba(20,24,36,0.7)] hover:border-[rgba(62,166,255,0.28)] hover:bg-[rgba(28,34,51,0.82)]",
+      ? "border-[rgba(197,109,45,0.36)] bg-[linear-gradient(180deg,rgba(197,109,45,0.12),rgba(20,24,36,0.82))] shadow-[0_10px_24px_rgba(3,8,18,0.18)]"
+      : "border-[var(--border)] bg-[rgba(16,20,30,0.68)] hover:border-[rgba(197,109,45,0.22)] hover:bg-[rgba(24,30,44,0.8)]",
   );
 }
 
@@ -740,7 +740,7 @@ function NavIcon({ href, active }: { href: string; active: boolean }) {
   const iconName = getNavIconName(href);
   const iconClassName = cn(
     "h-[18px] w-[18px] shrink-0",
-    active ? "text-sky-100" : "text-[var(--muted)] group-hover:text-[var(--text)]",
+    active ? "text-[rgb(255,236,220)]" : "text-[var(--muted)] group-hover:text-[var(--text)]",
   );
 
   switch (iconName) {
