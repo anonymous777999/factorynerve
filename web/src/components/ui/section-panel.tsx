@@ -41,8 +41,8 @@ export function SectionPanel({
   toneLabel,
 }: SectionPanelProps) {
   return (
-    <section className={cn("rounded-panel border border-border-default bg-surface-panel", className)}>
-      <header className="border-b border-border-subtle px-md py-md">
+    <section className={cn("rounded-overlay border border-border-subtle bg-surface-panel shadow-[var(--shadow-xs)]", className)}>
+      <header className="border-b border-border-subtle px-lg py-md">
         <div className="flex flex-col gap-md lg:flex-row lg:items-start lg:justify-between">
           <div className="min-w-0 space-y-sm">
             <div className="flex flex-wrap items-center gap-sm">
@@ -78,8 +78,8 @@ export function SectionPanel({
           ) : null}
         </div>
       </header>
-      <div className={cn("px-md py-md", bodyClassName)}>{children}</div>
-      {footer ? <footer className="border-t border-border-subtle px-md py-sm">{footer}</footer> : null}
+      <div className={cn("px-lg py-lg", bodyClassName)}>{children}</div>
+      {footer ? <footer className="border-t border-border-subtle px-lg py-md">{footer}</footer> : null}
     </section>
   );
 }

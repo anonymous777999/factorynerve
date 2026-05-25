@@ -147,14 +147,14 @@
   /* --- Surface Hierarchy ---
      Rule: each level must be visually distinguishable from its neighbors.
      app-bg < shell < panel < card < elevated < overlay */
-  --surface-app:            hsl(210 16% 95%);
-  --surface-shell:          hsl(210 12% 92%);
-  --surface-panel:          hsl(210 14% 97%);
-  --surface-card:           hsl(210 13% 96%);
-  --surface-elevated:       hsl(210 16% 98%);
-  --surface-overlay:        hsl(210 16% 98%);
-  --surface-hover:          hsl(210 14% 94%);
-  --surface-active:         hsl(210 13% 90%);
+  --surface-app:            hsl(210 17% 96%);
+  --surface-shell:          hsl(210 13% 93%);
+  --surface-panel:          hsl(210 17% 97%);
+  --surface-card:           hsl(210 18% 98%);
+  --surface-elevated:       hsl(210 20% 99%);
+  --surface-overlay:        hsl(210 20% 99%);
+  --surface-hover:          hsl(210 15% 95%);
+  --surface-active:         hsl(210 14% 92%);
   --surface-selected:       hsl(213 46% 91%);
   --surface-skeleton:       hsl(210 12% 90%);
   --surface-skeleton-shine: hsl(210 14% 94%);
@@ -163,9 +163,9 @@
   --surface-industrial-card:    hsl(210 12% 99%);
 
   /* --- Border System --- */
-  --border-subtle:          hsl(210 12% 84%);
-  --border-default:         hsl(210 10% 78%);
-  --border-strong:          hsl(210 9% 64%);
+  --border-subtle:          hsl(210 14% 86%);
+  --border-default:         hsl(210 11% 80%);
+  --border-strong:          hsl(210 10% 69%);
   --border-focus:           hsl(var(--_prim-blue-400));     /* keyboard focus rings */
   --border-danger:          hsl(var(--_prim-red-400));      /* error state inputs */
   --border-success:         hsl(var(--_prim-green-400));    /* valid/synced inputs */
@@ -502,11 +502,11 @@
 
 :root {
   --radius-none:    0px;
-  --radius-xs:      2px;   /* tight: badge, table cell chip */
-  --radius-sm:      2px;   /* inputs, buttons, small cards */
-  --radius-md:      4px;   /* panels, modals, drawers */
-  --radius-lg:      6px;   /* cards, popovers, dropdowns */
-  --radius-xl:      8px;   /* large overlays */
+  --radius-xs:      3px;   /* tight: badge, table cell chip */
+  --radius-sm:      4px;   /* inputs, buttons, small cards */
+  --radius-md:      6px;   /* panels, modals, drawers */
+  --radius-lg:      8px;   /* cards, popovers, dropdowns */
+  --radius-xl:      10px;  /* large overlays */
   --radius-full:    9999px; /* pills, avatars, toggles */
 }
 
@@ -561,25 +561,25 @@
   --text-warning:           #FBBF24;
 
   /* Surfaces */
-  --surface-app:            #080C14;
-  --surface-shell:          #0D1321;
-  --surface-panel:          #111927;
-  --surface-card:           #162030;
-  --surface-elevated:       #1C2A3E;
-  --surface-overlay:        #21324B;
-  --surface-hover:          #1A2537;
-  --surface-active:         #203048;
-  --surface-selected:       #152842;
-  --surface-skeleton:       #111A28;
-  --surface-skeleton-shine: #172334;
-  --surface-industrial-deep:    #080C14;
-  --surface-industrial-raised:  #0D1321;
-  --surface-industrial-card:    #111927;
+  --surface-app:            #09111B;
+  --surface-shell:          #0D1523;
+  --surface-panel:          #111B2B;
+  --surface-card:           #152131;
+  --surface-elevated:       #1B293B;
+  --surface-overlay:        #203148;
+  --surface-hover:          #182335;
+  --surface-active:         #1D2C40;
+  --surface-selected:       #14273E;
+  --surface-skeleton:       #101927;
+  --surface-skeleton-shine: #172435;
+  --surface-industrial-deep:    #09111B;
+  --surface-industrial-raised:  #0D1523;
+  --surface-industrial-card:    #111B2B;
 
   /* Borders */
-  --border-subtle:          #1E2D42;
-  --border-default:         #243550;
-  --border-strong:          #2E4465;
+  --border-subtle:          #1B2A3F;
+  --border-default:         #23344C;
+  --border-strong:          #314865;
   --border-focus:           #1D6EEB;
   --border-danger:          #EF4444;
   --border-success:         #22C55E;

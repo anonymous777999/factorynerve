@@ -291,13 +291,13 @@ function AppShellFrame({
       <div
         className={cn(
           "flex min-h-screen min-w-0 flex-1 flex-col bg-surface-shell transition-[padding-left] duration-300 ease-out",
-          shell.immersiveScannerRoute ? "lg:pl-[18rem]" : shell.sidebarOpen ? "lg:pl-[18rem]" : "lg:pl-0",
+          shell.immersiveScannerRoute ? "lg:pl-[14.5rem]" : shell.sidebarOpen ? "lg:pl-[14.5rem]" : "lg:pl-0",
         )}
       >
         <div className={cn("min-w-0 flex-1 bg-surface-shell", shell.shellLayout.mobileBottomNav ? "pb-24 lg:pb-0" : "")}>
           {!shell.immersiveScannerRoute ? (
-            <div className="sticky top-0 z-sticky hidden border-b border-border-subtle bg-surface-panel shadow-[var(--shadow-xs)] lg:block">
-              <div className={cn("flex items-center justify-between gap-md px-md", focusMode ? "py-xs" : "py-sm")}>
+            <div className="sticky top-0 z-sticky hidden border-b border-border-subtle bg-surface-shell lg:block">
+              <div className={cn("flex items-center justify-between gap-md px-lg", focusMode ? "py-xs" : "py-sm")}>
                 <div className="flex min-w-0 items-center gap-sm">
                   <Button
                     size="compact"
@@ -307,27 +307,31 @@ function AppShellFrame({
                   >
                     {shell.sidebarOpen ? "Hide Nav" : "Show Nav"}
                   </Button>
-                  <div className="min-w-0">
+                  <div className="min-w-0 space-y-[2px]">
                     <div className="flex flex-wrap items-center gap-sm">
-                      <span className="text-label-dense font-semibold uppercase tracking-wide text-text-secondary">
+                      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
                         {factoryName}
                       </span>
-                      <Badge status="processing">{shell.currentItem.label}</Badge>
                     </div>
-                    <p className="truncate text-label-dense text-text-secondary">
-                      {shell.currentItem.description}
-                    </p>
+                    <div className="flex min-w-0 flex-wrap items-center gap-sm">
+                      <span className="truncate text-sm font-semibold text-text-primary">
+                        {shell.currentItem.label}
+                      </span>
+                      <span className="hidden truncate text-label-dense text-text-secondary xl:inline">
+                        {shell.currentItem.description}
+                      </span>
+                    </div>
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-sm">
                   {!focusMode ? (
                     <div className="hidden items-center gap-sm xl:flex">
-                      <span className="text-label-dense text-text-secondary">Alerts {shell.navBadgeCounts.alerts}</span>
-                      <span className="text-label-dense text-text-secondary">Review {shell.navBadgeCounts.approvals}</span>
+                      <Badge status="draft">Alerts {shell.navBadgeCounts.alerts}</Badge>
+                      <Badge status="draft">Review {shell.navBadgeCounts.approvals}</Badge>
                     </div>
                   ) : null}
                   <Button size="compact" variant="outline" onClick={() => setCommandPaletteOpen(true)}>
-                    {focusMode ? "Workspace Commands" : "Command Palette (Ctrl/Cmd+K)"}
+                    {focusMode ? "Workspace Commands" : "Commands"}
                   </Button>
                 </div>
               </div>
@@ -335,7 +339,7 @@ function AppShellFrame({
           ) : null}
           {!shell.immersiveScannerRoute && !focusMode ? <WorkflowReminderStrip /> : null}
           {shell.shellLayout.desktopRail === "context" ? (
-            <div className={cn("min-h-full", shell.showDesktopContextRail ? "xl:grid xl:grid-cols-[minmax(0,1fr)_19rem]" : "")}>
+            <div className={cn("min-h-full", shell.showDesktopContextRail ? "xl:grid xl:grid-cols-[minmax(0,1fr)_16.5rem]" : "")}>
               <div className="min-w-0 bg-surface-shell">{children}</div>
               <AppDesktopContextRail
                 visible={shell.showDesktopContextRail}
