@@ -297,7 +297,7 @@ function AppShellFrame({
         <div className={cn("min-w-0 flex-1 bg-surface-shell", shell.shellLayout.mobileBottomNav ? "pb-24 lg:pb-0" : "")}>
           {!shell.immersiveScannerRoute ? (
             <div className="sticky top-0 z-sticky hidden border-b border-border-subtle bg-surface-shell lg:block">
-              <div className={cn("flex items-center justify-between gap-md px-lg", focusMode ? "py-xs" : "py-sm")}>
+              <div className={cn("flex flex-wrap items-center justify-between gap-3 px-lg", focusMode ? "py-xs" : "py-sm")}>
                 <div className="flex min-w-0 items-center gap-sm">
                   <Button
                     size="compact"

@@ -684,10 +684,10 @@ export default function ReportsPage() {
   return (
     <main className="min-h-screen px-4 py-8 md:px-8" data-component="reports-page">
       <div className="mx-auto max-w-7xl">
-        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
-          <div>
+        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur overflow-hidden">
+          <div className="min-w-0">
             <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("reports.title", "Reports")}</div>
-            <h1 className="mt-2 text-3xl font-semibold">{t("reports.hero.title", "Factory reports")}</h1>
+            <h1 className="mt-2 text-3xl font-semibold break-words max-w-full">{t("reports.hero.title", "Factory reports")}</h1>
             {/* AUDIT: TEXT_NOISE - The hero now states the outcome once and lets the step strip explain the workflow. */}
             <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
               {t("reports.hero.subtitle", "Set range. Export trusted output.")}
@@ -701,8 +701,8 @@ export default function ReportsPage() {
               </span>
             </div>
           </div>
-          <div className="space-y-3">
-            <div className="flex flex-wrap gap-3">
+          <div className="min-w-0 space-y-3">
+            <div className="flex flex-wrap items-center gap-3">
               {/* AUDIT: BUTTON_CLUTTER - Kept the main export launch visible and moved route-jump utilities into a compact tray. */}
               <Button onClick={handleRangeExcelJob} disabled={busy}>
                 {busy ? t("reports.actions.working", "Working...") : t("reports.actions.export_excel", "Export Excel")}
@@ -757,14 +757,14 @@ export default function ReportsPage() {
           <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">Connected lanes</summary>
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
             {reportHubCards.map((card) => (
-              <Card key={card.title} className={reportInsetClass}>
-                <CardHeader>
+              <Card key={card.title} className={`${reportInsetClass} min-w-0`}>
+                <CardHeader className="min-w-0">
                   <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">{card.eyebrow}</div>
-                  <CardTitle className="text-xl">{card.title}</CardTitle>
+                  <CardTitle className="text-xl break-words">{card.title}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 min-w-0">
                   <div className="text-2xl font-semibold">{card.metric}</div>
-                  <div className="text-sm leading-6 text-[var(--muted)]">{card.detail}</div>
+                  <div className="text-sm leading-6 text-[var(--muted)] break-words">{card.detail}</div>
                   <Link href={card.href}>
                     <Button variant="ghost">{card.action}</Button>
                   </Link>
@@ -875,7 +875,7 @@ export default function ReportsPage() {
 
           <Card className={reportPanelClass}>
             <CardHeader>
-                <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">{t("reports.step_two", "Export")}</div>
+              <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">{t("reports.step_two", "Export")}</div>
               <CardTitle className="mt-2 text-xl">{t("reports.export_report", "Export report")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -939,7 +939,7 @@ export default function ReportsPage() {
           <div className="mt-[var(--space-md)] space-y-6">
             <ReportInsightsBoard insights={insights} loading={loadingInsights} role={user.role} steelOverview={steelOverview} />
             {ocrSummary ? (
-            <Card className="rounded-[1.5rem] border-[0.5px] border-cyan-400/20 bg-[rgba(var(--color-border-info),0.08)]">
+              <Card className="rounded-[1.5rem] border-[0.5px] border-cyan-400/20 bg-[rgba(var(--color-border-info),0.08)]">
                 <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div>
                     <div className="text-sm uppercase tracking-[0.22em] text-cyan-200">OCR Trust</div>
@@ -950,7 +950,7 @@ export default function ReportsPage() {
                   </div>
                   <div className="flex flex-wrap gap-3">
                     <Link href="/ocr/verify">
-                    <Button variant="ghost">Review OCR</Button>
+                      <Button variant="ghost">Review OCR</Button>
                     </Link>
                     <Link href="/approvals">
                       <Button variant="ghost">Review Queue</Button>
@@ -996,8 +996,8 @@ export default function ReportsPage() {
                   {executiveBusy ? "Generating..." : "Generate Summary"}
                 </Button>
               </CardHeader>
-              <CardContent className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
-                <div className={`${reportInsetClass} p-4`}>
+              <CardContent className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr] min-w-0">
+                <div className={`${reportInsetClass} p-4 min-w-0`}>
                   <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Summary</div>
                   <div className="mt-3 text-sm leading-7 text-[var(--text)]">
                     {executiveSummary?.summary || "Generate a management summary for the currently selected date range."}
@@ -1056,8 +1056,8 @@ export default function ReportsPage() {
 
         {!isAccountant ? (
           <Card className={reportPanelClass}>
-            <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
+            <CardHeader className="flex min-w-0 flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <div className="min-w-0">
                 <div className="text-sm text-[var(--muted)]">{t("reports.results", "Results")}</div>
                 <CardTitle className="text-xl">{filteredRows.length} rows on this page</CardTitle>
               </div>
