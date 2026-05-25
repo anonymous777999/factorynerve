@@ -33,6 +33,7 @@ import { cn } from "@/lib/utils";
 import { useCommandRegistry } from "@/providers/command-registry-provider";
 
 export { getVisibleNavSections };
+
 function isEditableTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) {
     return false;

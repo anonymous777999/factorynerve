@@ -57,6 +57,8 @@
   --card: #172028;
   --card-strong: #202b35;
   --card-elevated: #293642;
+  --card-ghost: rgba(10, 15, 24, 0.72);
+  --card-glow: rgba(245, 166, 35, 0.08);
 
   /* --- Text hierarchy (File A warm primary + File B semantic scale) --- */
   --text-primary: #ece7df;     /* File A — warm off-white vs B's cool #f3f4f6 */
@@ -72,9 +74,9 @@
   /* --- Shadow scale (merged — File A's richer lg/md + File B's xs/sm/xl/2xl) --- */
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 14px 36px rgba(2, 6, 23, 0.26);   /* File A — deeper blur */
-  --shadow-lg: 0 26px 70px rgba(2, 6, 23, 0.36);   /* File A — cinematic */
-  --shadow-xl: 0 34px 72px rgba(3, 8, 18, 0.3);
+  --shadow-md: 0 18px 42px rgba(2, 6, 23, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.03);
+  --shadow-lg: 0 28px 78px rgba(2, 6, 23, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --shadow-xl: 0 36px 88px rgba(3, 8, 18, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.05);
   --shadow-2xl: 0 42px 90px rgba(3, 8, 18, 0.34);
 
   /* --- Warm industrial accent (File A — the visual DNA) --- */
@@ -133,9 +135,10 @@ body {
   min-height: 100vh;
   /* Warm industrial atmosphere — File A gradient (cinematic soul) */
   background:
-    radial-gradient(circle at 12% 14%, rgba(197, 109, 45, 0.22), transparent 34%),
+    radial-gradient(circle at 12% 14%, rgba(197, 109, 45, 0.24), transparent 34%),
     radial-gradient(circle at 82% 18%, rgba(31, 138, 120, 0.14), transparent 32%),
-    radial-gradient(circle at 48% 120%, rgba(245, 158, 11, 0.1), transparent 28%),
+    radial-gradient(circle at 50% 108%, rgba(245, 158, 11, 0.12), transparent 30%),
+    radial-gradient(circle at 50% -10%, rgba(255, 255, 255, 0.035), transparent 28%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 18%),
     linear-gradient(180deg, #0b1116 0%, #111820 46%, #0c1319 100%);
   color: var(--text-primary);
@@ -295,7 +298,9 @@ input[type="checkbox"] {
   .surface-panel {
     border: 1px solid var(--border);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.018)),
+      radial-gradient(circle at top, rgba(255, 255, 255, 0.055), transparent 58%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.055), rgba(255, 255, 255, 0.016)),
+      linear-gradient(180deg, rgba(197, 109, 45, 0.045), transparent 44%),
       var(--card);
     box-shadow: var(--shadow-md);
     backdrop-filter: blur(22px);
@@ -304,7 +309,9 @@ input[type="checkbox"] {
   .surface-panel-strong {
     border: 1px solid var(--border-strong);
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.022)),
+      radial-gradient(circle at top, rgba(255, 255, 255, 0.07), transparent 58%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)),
+      linear-gradient(180deg, rgba(197, 109, 45, 0.06), transparent 46%),
       var(--card-elevated);
     box-shadow: var(--shadow-lg);
     backdrop-filter: blur(24px);
@@ -312,15 +319,19 @@ input[type="checkbox"] {
 
   .surface-panel-soft {
     border: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.04);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.045), rgba(255, 255, 255, 0.018)),
+      rgba(10, 15, 24, 0.74);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 12px 28px rgba(3, 8, 18, 0.18);
     backdrop-filter: blur(18px);
   }
 
   .surface-pill {
     border: 1px solid var(--border);
-    background: rgba(255, 255, 255, 0.045);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.018)),
+      rgba(10, 15, 24, 0.72);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), 0 10px 24px rgba(3, 8, 18, 0.14);
     backdrop-filter: blur(18px);
   }
 
