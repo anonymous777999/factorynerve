@@ -63,7 +63,7 @@ export function AppHeader({
               variant="ghost"
               size="compact"
               aria-label={translate ? translate("shell.command_palette", "Open command palette") : "Open command palette"}
-              className="h-input min-w-[3.5rem] shrink-0 px-sm"
+              className="h-input min-w-[3rem] shrink-0 px-2.5"
               onClick={onOpenCommandPalette}
             >
               K

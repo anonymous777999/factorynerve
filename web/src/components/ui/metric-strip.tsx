@@ -20,13 +20,13 @@ export type MetricStripProps = {
 
 export function MetricStrip({ className, compact = false, items }: MetricStripProps) {
   return (
-    <div className={cn("grid gap-sm md:grid-cols-2 xl:grid-cols-4", className)}>
+    <div className={cn("grid gap-md md:grid-cols-2 xl:grid-cols-4", className)}>
       {items.map((item) => (
         <section
           key={item.id}
           className={cn(
-            "rounded-panel border border-border-default bg-surface-panel px-md py-md",
-            compact ? "space-y-xs" : "space-y-sm",
+            "rounded-overlay border border-border-subtle bg-surface-card px-lg shadow-[var(--shadow-xs)]",
+            compact ? "space-y-xs py-md" : "space-y-sm py-lg",
           )}
         >
           <div className="flex items-start justify-between gap-sm">

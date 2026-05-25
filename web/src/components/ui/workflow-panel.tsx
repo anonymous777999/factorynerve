@@ -53,7 +53,7 @@ export type WorkflowPanelProps = {
 const stepStatusClassNames: Record<WorkflowPanelStepStatus, string> = {
   complete: "border-status-synced-border bg-status-synced-bg text-status-synced-fg",
   current: "border-workflow-active bg-workflow-active-bg text-workflow-active",
-  upcoming: "border-border-default bg-surface-shell text-text-secondary",
+  upcoming: "border-border-subtle bg-surface-card text-text-secondary",
   blocked: "border-status-danger-border bg-status-danger-bg text-status-danger-fg",
 };
 
@@ -68,7 +68,7 @@ function WorkflowPanelStepRail({ steps = [] }: { steps?: WorkflowPanelStep[] }) 
         <div
           key={step.id}
           className={cn(
-            "rounded-panel border px-md py-sm",
+            "rounded-overlay border px-md py-sm shadow-[var(--shadow-xs)]",
             stepStatusClassNames[step.status],
           )}
           aria-current={step.status === "current" ? "step" : undefined}
@@ -98,7 +98,7 @@ function WorkflowPanelNotes({ notes = [] }: { notes?: WorkflowPanelNote[] }) {
       {notes.map((note) => (
         <div
           key={note.id}
-          className="rounded-panel border border-border-subtle bg-surface-shell px-md py-sm"
+          className="rounded-overlay border border-border-subtle bg-surface-card px-md py-sm shadow-[var(--shadow-xs)]"
         >
           <div className="flex items-center gap-sm">
             <Badge status={note.status ?? "draft"}>{note.label}</Badge>
@@ -164,8 +164,8 @@ export function WorkflowPanel({
   title,
 }: WorkflowPanelProps) {
   return (
-    <section className={cn("grid gap-density-gap xl:grid-cols-[minmax(0,1fr)_20rem]", className)}>
-      <Card className="border-border-default bg-surface-panel">
+    <section className={cn("grid gap-lg xl:grid-cols-[minmax(0,1fr)_18rem]", className)}>
+      <Card className="border-border-subtle bg-surface-panel">
         <CardHeader className="border-b border-border-subtle pb-md">
           <div className="flex flex-col gap-md xl:flex-row xl:items-start xl:justify-between">
             <div className="min-w-0 space-y-sm">
@@ -194,7 +194,7 @@ export function WorkflowPanel({
           {footer ? <div className="border-t border-border-subtle pt-md">{footer}</div> : null}
         </CardContent>
       </Card>
-      <aside className={cn("space-y-md xl:sticky xl:top-lg xl:self-start", sidebarClassName)}>
+      <aside className={cn("space-y-lg xl:sticky xl:top-lg xl:self-start", sidebarClassName)}>
         <WorkflowPanelStepRail steps={steps} />
         <WorkflowPanelNotes notes={notes} />
         {sidebar}
