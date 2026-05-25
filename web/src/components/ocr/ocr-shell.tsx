@@ -33,16 +33,16 @@ export function OcrShell({
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#0d1218_0%,#111820_100%)] px-4 py-4 md:px-6 md:py-6">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
-        <section className="rounded-[32px] border border-black/10 bg-[#f8f8f6] px-5 py-5 text-[#101418] shadow-[0_24px_80px_rgba(3,8,20,0.22)] md:px-7 md:py-6">
+        <section className="surface-panel-strong rounded-[32px] px-5 py-5 text-[var(--text)] md:px-7 md:py-6">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-3xl">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6b7280]">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
                 OCR Workspace
               </div>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#0f1720] md:text-[2.1rem]">
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--text)] md:text-[2.1rem]">
                 {title}
               </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#66707c]">{subtitle}</p>
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">{subtitle}</p>
             </div>
             <div className="grid grid-cols-4 gap-2 sm:min-w-[26rem]">
               {STEP_LABELS.map((item, index) => {
@@ -54,10 +54,10 @@ export function OcrShell({
                     className={cn(
                       "rounded-[18px] border px-3 py-3 text-center transition duration-200",
                       state === "done"
-                        ? "border-[#d0d7dd] bg-white text-[#111827]"
+                        ? "border-[rgba(197,109,45,0.26)] bg-[rgba(197,109,45,0.14)] text-[var(--text)]"
                         : state === "current"
-                          ? "border-[#111827] bg-[#111827] text-white"
-                          : "border-[#e7eaee] bg-[#f3f4f6] text-[#8a93a0]",
+                          ? "border-[rgba(197,109,45,0.46)] bg-[linear-gradient(135deg,rgba(197,109,45,0.34),rgba(140,66,24,0.74))] text-[#fff7ef] shadow-[0_18px_36px_rgba(140,66,24,0.24)]"
+                          : "border-[var(--border)] bg-[rgba(10,15,24,0.62)] text-[var(--text-tertiary)]",
                     )}
                   >
                     <div className="text-[10px] font-semibold uppercase tracking-[0.14em]">
@@ -81,7 +81,7 @@ export function OcrShell({
             className,
           )}
         >
-          <div className="rounded-[32px] border border-black/10 bg-[#f8f8f6] p-4 shadow-[0_20px_60px_rgba(3,8,20,0.18)] md:p-6">
+          <div className="surface-panel rounded-[32px] p-4 md:p-6">
             {children}
           </div>
           {sideContent ? (

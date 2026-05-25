@@ -385,10 +385,10 @@ export function WorkflowReminderStrip({ className }: { className?: string }) {
 
   return (
     <section className={cn("px-4 pt-4 lg:px-6 lg:pt-5", className)}>
-      <div className="rounded-[1.6rem] border border-[var(--border)] bg-[rgba(14,18,28,0.92)] px-4 py-4 shadow-[0_18px_50px_rgba(3,8,20,0.18)]">
+      <div className="surface-panel rounded-[1.7rem] px-4 py-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(62,166,255,0.88)]">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
               Live Reminders
             </div>
             <div className="mt-1 text-sm text-[var(--muted)]">
@@ -400,7 +400,7 @@ export function WorkflowReminderStrip({ className }: { className?: string }) {
               <div
                 key={reminder.id}
                 className={cn(
-                  "min-w-0 rounded-[1.3rem] border px-4 py-3 lg:min-w-[18rem]",
+                  "min-w-0 rounded-[1.35rem] border px-4 py-3 shadow-[0_12px_24px_rgba(3,8,18,0.12)] lg:min-w-[18rem]",
                   toneClasses(reminder.tone),
                 )}
               >
