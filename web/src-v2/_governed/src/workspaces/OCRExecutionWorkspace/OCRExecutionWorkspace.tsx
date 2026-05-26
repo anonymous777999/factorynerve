@@ -90,13 +90,30 @@ const QUEUE_COLUMNS: QueueColumnConfig[] = [
 ];
 
 interface OCRExecutionWorkspaceProps {
+  bannerSlot?: ReactNode | ((record: OCRExecutionRecord) => ReactNode);
+  bottomRailSlot?: (context: {
+    escalationItems: FeedbackItem[];
+    record: OCRExecutionRecord;
+    workflowItems: FeedbackItem[];
+  }) => ReactNode;
+  documentSlot?: (record: OCRExecutionRecord) => ReactNode;
   loading?: boolean;
   onApplyFieldCorrection?: (recordId: string, fieldId: string) => void | Promise<void>;
   onApproveDocuments?: (recordIds: Iterable<string>) => void | Promise<void>;
   onCompleteActiveReview?: (recordId: string) => void | Promise<void>;
   onEscalateDocument?: (recordId: string) => void | Promise<void>;
   onSelectDocument?: (recordId: string) => void;
+  queueSearchInputId?: string;
   records?: OCRExecutionRecord[];
+  reviewSlot?: (record: OCRExecutionRecord) => ReactNode;
+  sidePanelSlot?: (context: {
+    aiItems: FeedbackItem[];
+    escalationItems: FeedbackItem[];
+    onApplyFieldCorrection: (recordId: string, fieldId: string) => void;
+    onCompleteReview: () => void;
+    onEscalateDocument: (recordId: string) => void;
+    record: OCRExecutionRecord;
+  }) => ReactNode;
   selectedDocumentId?: string;
   emptyStateSlot?: ReactNode;
 }
@@ -155,16 +172,20 @@ function OCRExecutionWorkspaceInner(props: OCRExecutionWorkspaceProps) {
               />
             </Toolbar>
 
-            <WorkflowBanner
-              title={`${workspace.selectedRecord.queue.title} active in OCR execution`}
-              description={`${workspace.selectedRecord.queue.completedFields} of ${workspace.selectedRecord.queue.fieldCount} fields are operationally ready. AI confidence is ${Math.round(workspace.selectedRecord.queue.confidence * 100)}%.`}
-              priority={workspace.selectedRecord.queue.anomalyCount > 0 ? "warning" : "operational"}
-              action={
-                <button type="button" className="fn-btn fn-btn-primary fn-btn-sm" onClick={() => workspace.actions.completeActiveReview()}>
-                  Complete Review
-                </button>
-              }
-            />
+            {typeof props.bannerSlot === "function"
+              ? props.bannerSlot(workspace.selectedRecord)
+              : props.bannerSlot ?? (
+                <WorkflowBanner
+                  title={`${workspace.selectedRecord.queue.title} active in OCR execution`}
+                  description={`${workspace.selectedRecord.queue.completedFields} of ${workspace.selectedRecord.queue.fieldCount} fields are operationally ready. AI confidence is ${Math.round(workspace.selectedRecord.queue.confidence * 100)}%.`}
+                  priority={workspace.selectedRecord.queue.anomalyCount > 0 ? "warning" : "operational"}
+                  action={
+                    <button type="button" className="fn-btn fn-btn-primary fn-btn-sm" onClick={() => workspace.actions.completeActiveReview()}>
+                      Complete Review
+                    </button>
+                  }
+                />
+              )}
 
             <OCRWorkspaceProvider
               key={workspace.selectedRecord.queue.id}
@@ -184,6 +205,7 @@ function OCRExecutionWorkspaceInner(props: OCRExecutionWorkspaceProps) {
                     activeDocumentId={workspace.selectedRecord.queue.id}
                     filterChips={workspace.filterChips}
                     filters={workspace.filters}
+                    searchInputId={props.queueSearchInputId}
                     records={workspace.filteredRecords}
                     onApproveDocuments={workspace.actions.approveDocuments}
                     onEscalateDocument={workspace.actions.escalateDocument}
@@ -197,7 +219,11 @@ function OCRExecutionWorkspaceInner(props: OCRExecutionWorkspaceProps) {
                 <WorkspaceLayoutRegion grow direction="vertical">
                   <WorkspaceLayoutRegion grow direction="horizontal">
                     <WorkspaceLayoutRegion grow>
-                      <OCROperationalCenter record={workspace.selectedRecord} />
+                      <OCROperationalCenter
+                        documentSlot={props.documentSlot?.(workspace.selectedRecord)}
+                        record={workspace.selectedRecord}
+                        reviewSlot={props.reviewSlot?.(workspace.selectedRecord)}
+                      />
                     </WorkspaceLayoutRegion>
 
                     <DockRegion
@@ -208,14 +234,23 @@ function OCRExecutionWorkspaceInner(props: OCRExecutionWorkspaceProps) {
                       resizable
                       className="border-l border-[var(--color-border-default)] bg-[var(--color-surface-primary)]"
                     >
-                      <OCRAIReviewPanel
-                        aiItems={workspace.panels.aiItems}
-                        escalationItems={workspace.panels.escalationItems}
-                        onApplyFieldCorrection={workspace.actions.applyFieldCorrection}
-                        onCompleteReview={workspace.actions.completeActiveReview}
-                        onEscalateDocument={workspace.actions.escalateDocument}
-                        record={workspace.selectedRecord}
-                      />
+                      {props.sidePanelSlot?.({
+                        aiItems: workspace.panels.aiItems,
+                        escalationItems: workspace.panels.escalationItems,
+                        onApplyFieldCorrection: workspace.actions.applyFieldCorrection,
+                        onCompleteReview: workspace.actions.completeActiveReview,
+                        onEscalateDocument: workspace.actions.escalateDocument,
+                        record: workspace.selectedRecord,
+                      }) ?? (
+                        <OCRAIReviewPanel
+                          aiItems={workspace.panels.aiItems}
+                          escalationItems={workspace.panels.escalationItems}
+                          onApplyFieldCorrection={workspace.actions.applyFieldCorrection}
+                          onCompleteReview={workspace.actions.completeActiveReview}
+                          onEscalateDocument={workspace.actions.escalateDocument}
+                          record={workspace.selectedRecord}
+                        />
+                      )}
                     </DockRegion>
                   </WorkspaceLayoutRegion>
 
@@ -227,11 +262,17 @@ function OCRExecutionWorkspaceInner(props: OCRExecutionWorkspaceProps) {
                     maxSize={320}
                     className="border-t border-[var(--color-border-default)] bg-[var(--color-surface-primary)]"
                   >
-                    <OCRBottomRail
-                      escalationItems={workspace.panels.escalationItems}
-                      record={workspace.selectedRecord}
-                      workflowItems={workspace.panels.workflowItems}
-                    />
+                    {props.bottomRailSlot?.({
+                      escalationItems: workspace.panels.escalationItems,
+                      record: workspace.selectedRecord,
+                      workflowItems: workspace.panels.workflowItems,
+                    }) ?? (
+                      <OCRBottomRail
+                        escalationItems={workspace.panels.escalationItems}
+                        record={workspace.selectedRecord}
+                        workflowItems={workspace.panels.workflowItems}
+                      />
+                    )}
                   </ResizeRegion>
                 </WorkspaceLayoutRegion>
               </WorkspaceLayoutRegion>
@@ -257,6 +298,7 @@ function OCRQueuePanel({
   activeDocumentId,
   filterChips,
   filters,
+  searchInputId,
   records,
   onApproveDocuments,
   onEscalateDocument,
@@ -268,6 +310,7 @@ function OCRQueuePanel({
   activeDocumentId: string;
   filterChips: Array<{ id: string; label: string; value?: string; tone?: "default" | "active" | "ai" }>;
   filters: { anomaliesOnly: boolean; query: string; queueFilter: OCRExecutionQueueFilter };
+  searchInputId?: string;
   records: OCRExecutionRecord[];
   onApproveDocuments: (recordIds: Iterable<string>) => void;
   onEscalateDocument: (recordId: string) => void;
@@ -299,7 +342,7 @@ function OCRQueuePanel({
         />
         <Toolbar aria-label="OCR queue controls">
           <ToolbarSection>
-            <ToolbarSearch value={filters.query} onValueChange={onQueryChange} placeholder="Search OCR IDs, suppliers, or documents" />
+            <ToolbarSearch inputId={searchInputId} value={filters.query} onValueChange={onQueryChange} placeholder="Search OCR IDs, suppliers, or documents" />
           </ToolbarSection>
           <ToolbarSection grow overflow="clip">
             <ToolbarFilters activeFilters={filterChips}>
@@ -708,7 +751,15 @@ function QueueActionsCell({
   );
 }
 
-function OCROperationalCenter({ record }: { record: OCRExecutionRecord }) {
+function OCROperationalCenter({
+  documentSlot,
+  record,
+  reviewSlot,
+}: {
+  documentSlot?: ReactNode;
+  record: OCRExecutionRecord;
+  reviewSlot?: ReactNode;
+}) {
   return (
     <OCRWorkspace
       title={record.document.title}
@@ -717,8 +768,8 @@ function OCROperationalCenter({ record }: { record: OCRExecutionRecord }) {
     >
       <DocumentSplitView
         className="h-full"
-        documentSlot={<DocumentViewport />}
-        reviewSlot={<ExtractionReviewPanel />}
+        documentSlot={documentSlot ?? <DocumentViewport />}
+        reviewSlot={reviewSlot ?? <ExtractionReviewPanel />}
       />
     </OCRWorkspace>
   );

@@ -181,7 +181,7 @@ export function mapOcrVerificationToWorkspace(record: OcrVerificationRecord): Go
 
   return {
     verificationId: record.id,
-    editableInLegacy: true,
+    editableInLegacy: false,
     sourceRecord: record,
     queue: {
       id: String(record.id),
