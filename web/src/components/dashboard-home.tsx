@@ -115,17 +115,17 @@ function formatMinutes(value: number) {
 function attendanceStatusTone(status?: AttendanceStatus | null) {
   switch (status) {
     case "working":
-      return "border-emerald-400/30 bg-[rgba(34,197,94,0.12)] text-emerald-100";
+      return "border-[var(--status-success-border)] bg-[var(--status-success-bg)] text-[var(--status-success-fg)]";
     case "late":
     case "half_day":
-      return "border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100";
+      return "border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] text-[var(--status-warning-fg)]";
     case "missed_punch":
     case "absent":
-      return "border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100";
+      return "border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-fg)]";
     case "completed":
-      return "border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100";
+      return "border-[var(--status-info-border)] bg-[var(--status-info-bg)] text-[var(--status-info-fg)]";
     default:
-      return "border-white/10 bg-[rgba(255,255,255,0.04)] text-slate-200";
+      return "border-[var(--border-subtle)] bg-[var(--surface-hover)] text-[var(--text-secondary)]";
   }
 }
 
@@ -138,11 +138,11 @@ function todayValue() {
 function severityTone(severity?: string) {
   switch ((severity || "").toLowerCase()) {
     case "high":
-      return "border-[var(--danger)]/40 bg-[rgba(239,68,68,0.12)] text-red-200";
+      return "border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-fg)]";
     case "medium":
-      return "border-[var(--warning)]/40 bg-[rgba(245,158,11,0.12)] text-amber-100";
+      return "border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] text-[var(--status-warning-fg)]";
     default:
-      return "border-[var(--success)]/30 bg-[rgba(34,197,94,0.12)] text-emerald-100";
+      return "border-[var(--status-success-border)] bg-[var(--status-success-bg)] text-[var(--status-success-fg)]";
   }
 }
 
@@ -382,35 +382,35 @@ export default function DashboardHome() {
             ? `Decision view is ready, ${user.name}`
             : user?.role === "admin"
               ? `System control is ready, ${user.name}`
-        : user?.role === "owner"
-          ? `${t("dashboard.header.owner_ready", "Owner review is ready")}, ${user.name}`
-          : `${t("dashboard.header.default", "Good to see you")}, ${user?.name || t("dashboard.header.there", "there")}`;
+              : user?.role === "owner"
+                ? `${t("dashboard.header.owner_ready", "Owner review is ready")}, ${user.name}`
+                : `${t("dashboard.header.default", "Good to see you")}, ${user?.name || t("dashboard.header.there", "there")}`;
   const headerCopy =
     user?.role === "operator"
       ? t(
-          "dashboard.copy.operator",
-          "Open your shift entry fast, capture problems early, and keep work moving even when the network drops.",
-        )
+        "dashboard.copy.operator",
+        "Open your shift entry fast, capture problems early, and keep work moving even when the network drops.",
+      )
       : user?.role === "supervisor"
         ? t(
-            "dashboard.copy.supervisor",
-            "Watch pending work, clear approvals quickly, and stay ahead of stock, document, and loss signals.",
-          )
+          "dashboard.copy.supervisor",
+          "Watch pending work, clear approvals quickly, and stay ahead of stock, document, and loss signals.",
+        )
         : user?.role === "accountant"
           ? "Use reporting as the primary desk, then move into customer, invoice, and outbound summary work without leaving trusted data."
           : user?.role === "manager"
             ? "Start from the next decision, then jump into reports, review load, and factory control without opening extra screens."
             : user?.role === "admin"
               ? "Start from settings, access, and workflow health. Use reports and approvals when live issues need proof."
-        : user?.role === "owner"
-          ? t(
-              "dashboard.copy.owner",
-              "Track profit, loss, stock trust, and dispatch exposure from one board without digging through admin screens.",
-            )
-          : t(
-              "dashboard.copy.default",
-          "Use this board as the safe jump point between daily work, approvals, and business review.",
-        );
+              : user?.role === "owner"
+                ? t(
+                  "dashboard.copy.owner",
+                  "Track profit, loss, stock trust, and dispatch exposure from one board without digging through admin screens.",
+                )
+                : t(
+                  "dashboard.copy.default",
+                  "Use this board as the safe jump point between daily work, approvals, and business review.",
+                );
   const anomalyCount = state.anomalyPreview?.items?.length || 0;
   const topAnomaly = state.anomalyPreview?.items?.[0] || null;
   const roleFocusCards = useMemo(() => {
@@ -455,13 +455,13 @@ export default function DashboardHome() {
           detail:
             activeFactory?.industry_type === "steel"
               ? t(
-                  "dashboard.card.supervisor.steel_detail",
-                  "Stay on top of steel reconciliation and confidence.",
-                )
+                "dashboard.card.supervisor.steel_detail",
+                "Stay on top of steel reconciliation and confidence.",
+              )
               : t(
-                  "dashboard.card.supervisor.default_detail",
-                  "Review floor signals before they become exceptions.",
-                ),
+                "dashboard.card.supervisor.default_detail",
+                "Review floor signals before they become exceptions.",
+              ),
           href: activeFactory?.industry_type === "steel" ? "/steel/reconciliations" : "/reports",
           action:
             activeFactory?.industry_type === "steel"
@@ -474,13 +474,13 @@ export default function DashboardHome() {
           detail:
             activeFactory?.industry_type === "steel"
               ? t(
-                  "dashboard.card.supervisor.escalate_steel_detail",
-                  "Jump straight into reconciliation and dispatch follow-through.",
-                )
+                "dashboard.card.supervisor.escalate_steel_detail",
+                "Jump straight into reconciliation and dispatch follow-through.",
+              )
               : t(
-                  "dashboard.card.supervisor.escalate_default_detail",
-                  "Use the operations board to coordinate the next action.",
-                ),
+                "dashboard.card.supervisor.escalate_default_detail",
+                "Use the operations board to coordinate the next action.",
+              ),
           href: activeFactory?.industry_type === "steel" ? "/steel/reconciliations" : "/dashboard",
           action:
             activeFactory?.industry_type === "steel"
@@ -623,9 +623,9 @@ export default function DashboardHome() {
         detail: canReview
           ? t("dashboard.card.business.control_detail_review", "Supervisory work is grouped into one inbox now.")
           : t(
-              "dashboard.card.business.control_detail_default",
-              "Approval tools stay available when your role needs them.",
-            ),
+            "dashboard.card.business.control_detail_default",
+            "Approval tools stay available when your role needs them.",
+          ),
         href: canReview ? "/approvals" : "/dashboard",
         action: canReview
           ? t("dashboard.card.supervisor.approval_action", "Open Approval Inbox")
@@ -636,13 +636,13 @@ export default function DashboardHome() {
         title: t("dashboard.card.business.grow_title", "Move between operations and company control"),
         detail: canSeeControlTower
           ? t(
-              "dashboard.card.business.grow_detail_tower",
-              "Jump from control tower to billing and settings without leaving the main workflow.",
-            )
+            "dashboard.card.business.grow_detail_tower",
+            "Jump from control tower to billing and settings without leaving the main workflow.",
+          )
           : t(
-              "dashboard.card.business.grow_detail_default",
-              "Stay focused on operational performance and reporting.",
-            ),
+            "dashboard.card.business.grow_detail_default",
+            "Stay focused on operational performance and reporting.",
+          ),
         href: canSeeControlTower ? "/control-tower" : "/analytics",
         action: canSeeControlTower
           ? t("dashboard.action.open_control_tower", "Open Control Tower")
@@ -1359,7 +1359,7 @@ export default function DashboardHome() {
                 <Button variant="outline">{t("dashboard.action.register", "Register")}</Button>
               </Link>
             </div>
-            {sessionError ? <div className="text-sm text-red-400">{sessionError}</div> : null}
+            {sessionError ? <div className="text-sm text-[var(--status-danger-fg)]">{sessionError}</div> : null}
           </CardContent>
         </Card>
       </main>
@@ -1375,28 +1375,27 @@ export default function DashboardHome() {
       <main className="min-h-screen bg-[var(--surface-industrial-deep)] px-4 py-6 md:px-6 lg:py-8">
         <div className="mx-auto max-w-6xl space-y-4">
           {status ? (
-            <div className="rounded-[20px] border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+            <div className="rounded-[20px] border border-[var(--status-success-border)] bg-[var(--status-success-bg)] px-4 py-3 text-sm text-[var(--status-success-fg)]">
               {status}
             </div>
           ) : null}
           {error || sessionError ? (
-            <div className="rounded-[20px] border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+            <div className="rounded-[20px] border border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] px-4 py-3 text-sm text-[var(--status-danger-fg)]">
               {error || sessionError}
             </div>
           ) : null}
 
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-            <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(17,25,40,0.96),rgba(11,15,25,0.98))] p-6 shadow-[0_24px_80px_rgba(6,10,18,0.48)]">
+            <section className="rounded-[32px] border border-[var(--border)] bg-[var(--surface-panel)] p-6 shadow-[0_24px_80px_rgba(6,10,18,0.48)]">
               <div className="flex items-center justify-between gap-3">
-                <div className="text-base font-semibold text-slate-100">
+                <div className="text-base font-semibold text-[var(--text-primary)]">
                   {activeFactory?.name || user.factory_name || "-"}
                 </div>
                 <span
-                  className={`rounded-full border px-3 py-1 text-xs ${
-                    online
-                      ? "border-emerald-400/20 bg-emerald-500/10 text-emerald-100"
-                      : "border-amber-400/20 bg-amber-500/10 text-amber-100"
-                  }`}
+                  className={`rounded-full border px-3 py-1 text-xs ${online
+                    ? "border-[var(--status-success-border)] bg-[var(--status-success-bg)] text-[var(--status-success-fg)]"
+                    : "border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] text-[var(--status-warning-fg)]"
+                    }`}
                 >
                   {online ? "Online" : "Offline"}
                 </span>
@@ -1409,66 +1408,66 @@ export default function DashboardHome() {
                   Status: {workerStatus.label}
                 </div>
                 <div className="mt-5 text-2xl font-semibold md:text-3xl">{workerStatus.title}</div>
-                <div className="mt-2 text-sm text-slate-300">{workerStatus.detail}</div>
+                <div className="mt-2 text-sm text-[var(--text-secondary)]">{workerStatus.detail}</div>
               </div>
 
               <div className="mt-8">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Main Action</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Main Action</div>
                 <Link
                   href={workerPrimaryAction.href}
                   className="mt-3 inline-flex h-20 w-full items-center justify-center rounded-[28px] border border-transparent bg-[var(--action-primary)] px-6 text-xl font-semibold text-[var(--action-primary-text)] transition hover:bg-[var(--action-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-industrial-deep)]"
                 >
                   {workerPrimaryAction.label}
                 </Link>
-                <div className="mt-3 text-sm text-slate-300">{workerPrimaryAction.detail}</div>
+                <div className="mt-3 text-sm text-[var(--text-secondary)]">{workerPrimaryAction.detail}</div>
               </div>
 
               <div className="mt-8">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Quick Actions</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Quick Actions</div>
                 <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {workerQuickActions.map((action) => (
                     <Link
                       key={action.key}
                       href={action.href}
-                      className={`${action.key === "tasks" ? "col-span-2 sm:col-span-1" : ""} rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 text-center transition hover:border-cyan-300/25 hover:bg-white/8 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-industrial-deep)]`}
+                      className={`${action.key === "tasks" ? "col-span-2 sm:col-span-1" : ""} rounded-[24px] border border-[var(--border)] bg-[var(--surface-industrial-raised)] px-4 py-4 text-center transition hover:border-[var(--action-primary)] hover:bg-[var(--surface-overlay)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--action-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-industrial-deep)]`}
                     >
-                      <div className="text-base font-semibold text-white">{action.label}</div>
-                      <div className="mt-1 text-xs text-slate-400">{action.meta}</div>
+                      <div className="text-base font-semibold text-[var(--text-inverse)]">{action.label}</div>
+                      <div className="mt-1 text-xs text-[var(--text-tertiary)]">{action.meta}</div>
                     </Link>
                   ))}
                 </div>
               </div>
 
-              <div className="mt-8 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Today Summary</div>
+              <div className="mt-8 rounded-[24px] border border-[var(--border)] bg-[var(--surface-industrial-raised)] px-4 py-4">
+                <div className="text-xs uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Today Summary</div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-[20px] border border-white/10 bg-[var(--surface-industrial-raised)] px-4 py-3">
-                    <div className="text-xs text-slate-400">Completed</div>
-                    <div className="mt-2 text-2xl font-semibold text-white">{completedShifts}</div>
+                  <div className="rounded-[20px] border border-[var(--border)] bg-[var(--surface-industrial-raised)] px-4 py-3">
+                    <div className="text-xs text-[var(--text-tertiary)]">Completed</div>
+                    <div className="mt-2 text-2xl font-semibold text-[var(--text-inverse)]">{completedShifts}</div>
                   </div>
-                  <div className="rounded-[20px] border border-white/10 bg-[var(--surface-industrial-raised)] px-4 py-3">
-                    <div className="text-xs text-slate-400">Pending</div>
-                    <div className="mt-2 text-2xl font-semibold text-white">{pendingShifts}</div>
+                  <div className="rounded-[20px] border border-[var(--border)] bg-[var(--surface-industrial-raised)] px-4 py-3">
+                    <div className="text-xs text-[var(--text-tertiary)]">Pending</div>
+                    <div className="mt-2 text-2xl font-semibold text-[var(--text-inverse)]">{pendingShifts}</div>
                   </div>
                 </div>
               </div>
             </section>
 
             <aside className="space-y-4">
-              <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(14,21,36,0.96),rgba(11,15,25,0.98))] p-5 shadow-[0_20px_60px_rgba(6,10,18,0.32)]">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Today Summary</div>
-                <div className="mt-4 space-y-3 text-sm text-slate-300">
+              <div className="rounded-[28px] border border-[var(--border)] bg-[var(--surface-panel)] p-5 shadow-[0_20px_60px_rgba(6,10,18,0.32)]">
+                <div className="text-xs uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Today Summary</div>
+                <div className="mt-4 space-y-3 text-sm text-[var(--text-secondary)]">
                   <div className="flex items-center justify-between">
                     <span>Completed</span>
-                    <span className="font-semibold text-white">{completedShifts}</span>
+                    <span className="font-semibold text-[var(--text-inverse)]">{completedShifts}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Pending</span>
-                    <span className="font-semibold text-white">{pendingShifts}</span>
+                    <span className="font-semibold text-[var(--text-inverse)]">{pendingShifts}</span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span>Offline</span>
-                    <span className="font-semibold text-white">{queueCount}</span>
+                    <span className="font-semibold text-[var(--text-inverse)]">{queueCount}</span>
                   </div>
                 </div>
                 {queueCount > 0 ? (
@@ -1478,8 +1477,8 @@ export default function DashboardHome() {
                 ) : null}
               </div>
 
-              <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Alerts</div>
+              <div className="rounded-[28px] border border-[var(--border)] bg-[var(--surface-industrial-raised)] p-5">
+                <div className="text-xs uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Alerts</div>
                 {workerAlerts.length ? (
                   <div className="mt-4 space-y-3">
                     {workerAlerts.slice(0, 2).map((alert) => (
@@ -1497,26 +1496,25 @@ export default function DashboardHome() {
                     ))}
                   </div>
                 ) : (
-                  <div className="mt-4 rounded-[20px] border border-emerald-400/15 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
+                  <div className="mt-4 rounded-[20px] border border-[var(--status-success-border)] bg-[var(--status-success-bg)] px-4 py-3 text-sm text-[var(--status-success-fg)]">
                     No alerts right now.
                   </div>
                 )}
               </div>
 
-              <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Shift Status</div>
+              <div className="rounded-[28px] border border-[var(--border)] bg-[var(--surface-industrial-raised)] p-5">
+                <div className="text-xs uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Shift Status</div>
                 <div className="mt-4 space-y-3">
                   {todayShiftCards.map(({ shift, entry }) => (
                     <div
                       key={shift}
-                      className={`flex items-center justify-between rounded-[20px] border px-4 py-3 ${
-                        entry
-                          ? "border-emerald-400/20 bg-emerald-500/10"
-                          : "border-white/10 bg-[var(--surface-industrial-raised)]"
-                      }`}
+                      className={`flex items-center justify-between rounded-[20px] border px-4 py-3 ${entry
+                        ? "border-[var(--status-success-border)] bg-[var(--status-success-bg)]"
+                        : "border-[var(--border)] bg-[var(--surface-industrial-raised)]"
+                        }`}
                     >
-                      <span className="text-sm font-medium text-white">{formatShift(shift)}</span>
-                      <span className={`text-xs font-semibold uppercase tracking-[0.18em] ${entry ? "text-emerald-100" : "text-slate-400"}`}>
+                      <span className="text-sm font-medium text-[var(--text-inverse)]">{formatShift(shift)}</span>
+                      <span className={`text-xs font-semibold uppercase tracking-[0.18em] ${entry ? "text-[var(--status-success-fg)]" : "text-[var(--text-tertiary)]"}`}>
                         {entry ? "Done" : "Pending"}
                       </span>
                     </div>
@@ -1554,14 +1552,14 @@ export default function DashboardHome() {
                 </div>
               </div>
             </div>
-          {/* AUDIT: BUTTON_CLUTTER — The hero now keeps only the immediate board actions; logout and report navigation stay available from the shell and secondary routes below. */}
-          <div className="route-header__actions">
-            {primaryAction ? (
-              <Link href={primaryAction.href}>
-                <Button>{primaryAction.action}</Button>
-              </Link>
-            ) : null}
-          </div>
+            {/* AUDIT: BUTTON_CLUTTER — The hero now keeps only the immediate board actions; logout and report navigation stay available from the shell and secondary routes below. */}
+            <div className="route-header__actions">
+              {primaryAction ? (
+                <Link href={primaryAction.href}>
+                  <Button>{primaryAction.action}</Button>
+                </Link>
+              ) : null}
+            </div>
           </div>
         </section>
 
@@ -1605,7 +1603,7 @@ export default function DashboardHome() {
         ) : null}
 
         <section className="route-grid-main mt-[var(--space-xl)] xl:grid-cols-[1.1fr_0.9fr_1fr]">
-            <Card className="border border-[var(--border)] bg-surface-panel">
+          <Card className="border border-[var(--border)] bg-surface-panel">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
                 {t("dashboard.section.now", "Now")}
@@ -1631,7 +1629,7 @@ export default function DashboardHome() {
             </CardContent>
           </Card>
 
-            <Card className="border border-[var(--border)] bg-surface-panel">
+          <Card className="border border-[var(--border)] bg-surface-panel">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
                 {t("dashboard.section.attention", "Attention")}
@@ -1660,23 +1658,23 @@ export default function DashboardHome() {
                 </div>
               ) : null}
               {state.ocrSummary ? (
-                <div className="rounded-2xl border border-cyan-400/30 bg-[rgba(34,211,238,0.08)] p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-cyan-100">Trusted OCR</div>
+                <div className="rounded-2xl border border-[var(--status-info-border)] bg-[var(--status-info-bg)] p-4">
+                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--status-info-fg)]">Trusted OCR</div>
                   <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-xl border border-cyan-400/20 bg-[rgba(8,18,28,0.42)] p-3">
-                      <div className="text-[11px] text-cyan-100/80">Approved docs</div>
-                      <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary.trusted_documents}</div>
+                    <div className="rounded-xl border border-[var(--status-info-border)] bg-[var(--surface-panel)] p-3">
+                      <div className="text-[11px] text-[var(--status-info-fg)]/80">Approved docs</div>
+                      <div className="mt-1 text-lg font-semibold text-[var(--text-inverse)]">{state.ocrSummary.trusted_documents}</div>
                     </div>
-                    <div className="rounded-xl border border-cyan-400/20 bg-[rgba(8,18,28,0.42)] p-3">
-                      <div className="text-[11px] text-cyan-100/80">Trusted rows</div>
-                      <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary.trusted_rows}</div>
+                    <div className="rounded-xl border border-[var(--status-info-border)] bg-[var(--surface-panel)] p-3">
+                      <div className="text-[11px] text-[var(--status-info-fg)]/80">Trusted rows</div>
+                      <div className="mt-1 text-lg font-semibold text-[var(--text-inverse)]">{state.ocrSummary.trusted_rows}</div>
                     </div>
-                    <div className="rounded-xl border border-cyan-400/20 bg-[rgba(8,18,28,0.42)] p-3">
-                      <div className="text-[11px] text-cyan-100/80">Pending docs</div>
-                      <div className="mt-1 text-lg font-semibold text-white">{state.ocrSummary.pending_documents}</div>
+                    <div className="rounded-xl border border-[var(--status-info-border)] bg-[var(--surface-panel)] p-3">
+                      <div className="text-[11px] text-[var(--status-info-fg)]/80">Pending docs</div>
+                      <div className="mt-1 text-lg font-semibold text-[var(--text-inverse)]">{state.ocrSummary.pending_documents}</div>
                     </div>
                   </div>
-                  <div className="mt-3 text-xs text-cyan-50/80">
+                  <div className="mt-3 text-xs text-[var(--status-info-fg)]/80">
                     {state.ocrSummary.trust_note} Last approved OCR update: {formatDateTime(state.ocrSummary.last_trusted_at || undefined, locale)}.
                   </div>
                 </div>
@@ -1698,7 +1696,7 @@ export default function DashboardHome() {
             </CardContent>
           </Card>
 
-            <Card className="border border-[var(--border)] bg-surface-panel">
+          <Card className="border border-[var(--border)] bg-surface-panel">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
                 {t("dashboard.section.quick_actions", "Quick Actions")}
@@ -1718,7 +1716,7 @@ export default function DashboardHome() {
                 </div>
               ))}
               {secondaryActions.length > 3 || dashboardQuickLinks.length ? (
-                <details className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,24,0.62)] p-3">
+                <details className="rounded-2xl border border-[var(--border)] bg-[var(--surface-panel)] p-3">
                   <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
                     More routes
                   </summary>
@@ -1750,7 +1748,7 @@ export default function DashboardHome() {
         </section>
 
         {activeFactory?.industry_type === "steel" && ["supervisor", "manager", "owner"].includes(user?.role || "") ? (
-            <Card className="border border-[var(--border)] bg-surface-panel">
+          <Card className="border border-[var(--border)] bg-surface-panel">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
                 {t("dashboard.steel.section", "Steel Control")}
@@ -1820,268 +1818,268 @@ export default function DashboardHome() {
         </section>
 
         {/* AUDIT: BUTTON_CLUTTER — Organization and deep analytics context now sit behind a compact reveal so the operational home stays action-first. */}
-        <details className="mt-[var(--space-xl)] rounded-[1.5rem] border border-[var(--border)] bg-[rgba(16,20,32,0.82)] p-4">
+        <details className="mt-[var(--space-xl)] rounded-[1.5rem] border border-[var(--border)] bg-[var(--surface-overlay)] p-4">
           <summary className="cursor-pointer list-none text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
             {t("dashboard.section.advanced", "Context")}
           </summary>
           <div className="mt-[var(--space-md)] space-y-6">
-        {organization || activeFactory ? (
-          <section className="grid gap-4 lg:grid-cols-3">
-            <Card>
-              <CardHeader>
-                <div className="text-sm text-[var(--muted)]">{t("dashboard.factory.active", "Active Factory")}</div>
-                <CardTitle>{activeFactory?.name || user.factory_name || "-"}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-[var(--muted)]">
-                {activeFactory?.industry_label || t("dashboard.factory.general", "General Manufacturing")}
-                {activeFactory?.workflow_template_label ? ` - ${activeFactory.workflow_template_label}` : ""}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <div className="text-sm text-[var(--muted)]">{t("dashboard.organization.title", "Organization")}</div>
-                <CardTitle>{organization?.name || t("dashboard.organization.current", "Current organization")}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-[var(--muted)]">
-                {t("common.plan", "Plan")} {organization?.plan || state.usage?.plan || "-"} - {t("shell.accessible_factories", "accessible factories")} {organization?.accessible_factories || factories.length || 1}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <div className="text-sm text-[var(--muted)]">{t("dashboard.control_tower.title", "Control Tower")}</div>
-                <CardTitle>{organization?.total_factories || factories.length || 1}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-[var(--muted)]">
-                {t(
-                  "dashboard.control_tower.copy",
-                  "Switch factory from the left rail to move across sites without leaving the current workflow.",
-                )}
-              </CardContent>
-            </Card>
-          </section>
-        ) : null}
-
-        <section className="mt-[var(--space-xl)] grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-          <Card>
-            <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="text-sm text-[var(--muted)]">{t("dashboard.production_trend", "Production Trend")}</div>
-                <CardTitle className="text-xl">{t("dashboard.last_7_days", "Last 7 Days")}</CardTitle>
-              </div>
-              {state.usage?.plan ? (
-                <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
-                  {state.usage.plan}
-                </span>
-              ) : null}
-            </CardHeader>
-            <CardContent>
-              {state.analyticsLocked ? (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  {t(
-                    "dashboard.analytics.plan_gated",
-                    "Weekly analytics are plan-gated. The dashboard handles that cleanly and keeps the rest of the page live.",
-                  )}
-                </div>
-              ) : state.weekly.length ? (
-                <div className="space-y-3">
-                  <div className="space-y-3 md:hidden">
-                    {state.weekly.map((point) => (
-                      <div key={point.date} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div className="text-sm font-semibold text-[var(--text)]">
-                            {formatDate(point.date, locale).split(" ").slice(0, 2).join(" ")}
-                          </div>
-                          <div className="text-sm font-semibold text-[var(--text)]">{point.production_percent.toFixed(0)}%</div>
-                        </div>
-                        <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                          <div
-                            className="h-full rounded-full bg-[var(--action-primary)]"
-                            style={{ width: `${Math.max(8, Math.min(100, point.production_percent))}%` }}
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="hidden gap-2 md:grid md:grid-cols-7">
-                    {state.weekly.map((point) => (
-                      <div key={point.date} className="space-y-2 text-center">
-                        <div className="flex h-36 items-end justify-center rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
-                          <div
-                            className="w-full rounded-full bg-[var(--action-primary)]"
-                            style={{ height: `${Math.max(8, Math.min(100, point.production_percent))}%` }}
-                          />
-                        </div>
-                        <div className="text-xs text-[var(--muted)]">{formatDate(point.date, locale).split(" ").slice(0, 2).join(" ")}</div>
-                        <div className="text-sm font-semibold">{point.production_percent.toFixed(0)}%</div>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="text-xs text-[var(--muted)]">
+            {organization || activeFactory ? (
+              <section className="grid gap-4 lg:grid-cols-3">
+                <Card>
+                  <CardHeader>
+                    <div className="text-sm text-[var(--muted)]">{t("dashboard.factory.active", "Active Factory")}</div>
+                    <CardTitle>{activeFactory?.name || user.factory_name || "-"}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm text-[var(--muted)]">
+                    {activeFactory?.industry_label || t("dashboard.factory.general", "General Manufacturing")}
+                    {activeFactory?.workflow_template_label ? ` - ${activeFactory.workflow_template_label}` : ""}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <div className="text-sm text-[var(--muted)]">{t("dashboard.organization.title", "Organization")}</div>
+                    <CardTitle>{organization?.name || t("dashboard.organization.current", "Current organization")}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm text-[var(--muted)]">
+                    {t("common.plan", "Plan")} {organization?.plan || state.usage?.plan || "-"} - {t("shell.accessible_factories", "accessible factories")} {organization?.accessible_factories || factories.length || 1}
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <div className="text-sm text-[var(--muted)]">{t("dashboard.control_tower.title", "Control Tower")}</div>
+                    <CardTitle>{organization?.total_factories || factories.length || 1}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm text-[var(--muted)]">
                     {t(
-                      "dashboard.analytics.note",
-                      "Attendance and units are available too; richer charts can layer on top of this in the next migration slice.",
+                      "dashboard.control_tower.copy",
+                      "Switch factory from the left rail to move across sites without leaving the current workflow.",
                     )}
-                  </div>
-                </div>
-              ) : (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  {t("dashboard.analytics.empty", "No weekly analytics data yet.")}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                  </CardContent>
+                </Card>
+              </section>
+            ) : null}
 
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">{t("dashboard.plan_limits.title", "Plan & Limits")}</div>
-              <CardTitle className="text-xl">{state.usage?.plan ? `${state.usage.plan} ${t("common.plan", "plan")}` : t("dashboard.usage_summary", "Usage summary")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                <div className="text-sm text-[var(--muted)]">{t("dashboard.current_period", "Current period")}</div>
-                <div className="mt-1 text-lg font-semibold">{state.usage?.period || "-"}</div>
-              </div>
-              <div className="space-y-3">
-                <div>
-                  <div className="mb-2 flex items-center justify-between text-sm">
-                      <span className="text-[var(--muted)]">{t("dashboard.requests", "Requests")}</span>
-                      <span>
-                        {state.usage?.requests_used ?? 0}
-                        {state.usage?.max_requests ? ` / ${state.usage.max_requests}` : ` / ${t("dashboard.unlimited", "Unlimited")}`}
-                      </span>
+            <section className="mt-[var(--space-xl)] grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+              <Card>
+                <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <div className="text-sm text-[var(--muted)]">{t("dashboard.production_trend", "Production Trend")}</div>
+                    <CardTitle className="text-xl">{t("dashboard.last_7_days", "Last 7 Days")}</CardTitle>
+                  </div>
+                  {state.usage?.plan ? (
+                    <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+                      {state.usage.plan}
+                    </span>
+                  ) : null}
+                </CardHeader>
+                <CardContent>
+                  {state.analyticsLocked ? (
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                      {t(
+                        "dashboard.analytics.plan_gated",
+                        "Weekly analytics are plan-gated. The dashboard handles that cleanly and keeps the rest of the page live.",
+                      )}
                     </div>
-                  <div className="h-2 rounded-full bg-[var(--card-strong)]">
-                    <div
-                      className="h-2 rounded-full bg-[var(--accent)]"
-                      style={{ width: `${progressPercent(state.usage?.requests_used, state.usage?.max_requests)}%` }}
-                    />
-                  </div>
-                </div>
-                {usageWarning(state.usage?.requests_used, state.usage?.max_requests) ? (
-                  <div className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.12)] p-3 text-xs text-amber-100">
-                    {usageWarning(state.usage?.requests_used, state.usage?.max_requests)}
-                  </div>
-                ) : null}
-                <div>
-                  <div className="mb-2 flex items-center justify-between text-sm">
-                      <span className="text-[var(--muted)]">{t("dashboard.credits", "Credits")}</span>
-                      <span>
-                        {state.usage?.credits_used ?? 0}
-                        {state.usage?.max_credits ? ` / ${state.usage.max_credits}` : ` / ${t("dashboard.unlimited", "Unlimited")}`}
-                      </span>
+                  ) : state.weekly.length ? (
+                    <div className="space-y-3">
+                      <div className="space-y-3 md:hidden">
+                        {state.weekly.map((point) => (
+                          <div key={point.date} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                            <div className="flex flex-wrap items-center justify-between gap-3">
+                              <div className="text-sm font-semibold text-[var(--text)]">
+                                {formatDate(point.date, locale).split(" ").slice(0, 2).join(" ")}
+                              </div>
+                              <div className="text-sm font-semibold text-[var(--text)]">{point.production_percent.toFixed(0)}%</div>
+                            </div>
+                            <div className="mt-3 h-2 overflow-hidden rounded-full bg-[var(--surface-overlay)]">
+                              <div
+                                className="h-full rounded-full bg-[var(--action-primary)]"
+                                style={{ width: `${Math.max(8, Math.min(100, point.production_percent))}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="hidden gap-2 md:grid md:grid-cols-7">
+                        {state.weekly.map((point) => (
+                          <div key={point.date} className="space-y-2 text-center">
+                            <div className="flex h-36 items-end justify-center rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
+                              <div
+                                className="w-full rounded-full bg-[var(--action-primary)]"
+                                style={{ height: `${Math.max(8, Math.min(100, point.production_percent))}%` }}
+                              />
+                            </div>
+                            <div className="text-xs text-[var(--muted)]">{formatDate(point.date, locale).split(" ").slice(0, 2).join(" ")}</div>
+                            <div className="text-sm font-semibold">{point.production_percent.toFixed(0)}%</div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="text-xs text-[var(--muted)]">
+                        {t(
+                          "dashboard.analytics.note",
+                          "Attendance and units are available too; richer charts can layer on top of this in the next migration slice.",
+                        )}
+                      </div>
                     </div>
-                  <div className="h-2 rounded-full bg-[var(--card-strong)]">
-                    <div
-                      className="h-2 rounded-full bg-[var(--action-primary)]"
-                      style={{ width: `${progressPercent(state.usage?.credits_used, state.usage?.max_credits)}%` }}
-                    />
-                  </div>
-                </div>
-                {usageWarning(state.usage?.credits_used, state.usage?.max_credits) ? (
-                  <div className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.12)] p-3 text-xs text-amber-100">
-                    {usageWarning(state.usage?.credits_used, state.usage?.max_credits)}
-                  </div>
-                ) : null}
-              </div>
-              <div className="flex flex-wrap gap-3">
-                <Link href={usagePrimaryAction.href}>
-                  <Button variant="outline">{usagePrimaryAction.label}</Button>
-                </Link>
-                <Link href="/plans">
-                  <Button variant="ghost">{t("dashboard.action.view_plans", "View Plans")}</Button>
-                </Link>
-                <Link href="/billing">
-                  <Button variant="ghost">{t("dashboard.action.open_billing", "Open Billing")}</Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
-
-        <section className="mt-[var(--space-xl)] grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
-          <Card>
-            <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-              <div>
-                <div className="text-sm text-[var(--muted)]">{t("dashboard.ai.title", "AI Anomaly Radar")}</div>
-                <CardTitle className="text-xl">{t("dashboard.ai.subtitle", "Factory drift preview")}</CardTitle>
-              </div>
-              <Link href="/ai">
-                <Button variant="outline">{t("dashboard.action.open_ai", "Open AI Insights")}</Button>
-              </Link>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {state.anomalyLocked ? (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  {t(
-                    "dashboard.ai.upgrade",
-                    "Anomaly radar is available on Growth and higher plans. Upgrade to surface high-risk output and downtime spikes here.",
+                  ) : (
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                      {t("dashboard.analytics.empty", "No weekly analytics data yet.")}
+                    </div>
                   )}
-                </div>
-              ) : state.anomalyPreview ? (
-                <>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                    {state.anomalyPreview.summary}
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
-                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                        {t("dashboard.metric.signals", "Signals")}
-                      </div>
-                      <div className="mt-2 text-2xl font-semibold">{state.anomalyPreview.items.length}</div>
-                    </div>
-                    <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
-                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
-                        {t("dashboard.window", "Window")}
-                      </div>
-                      <div className="mt-2 text-2xl font-semibold">{state.anomalyPreview.days}d</div>
-                    </div>
-                    <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
-                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{t("dashboard.mode", "Mode")}</div>
-                      <div className="mt-2 text-2xl font-semibold">{t("dashboard.preview", "Preview")}</div>
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  {t("dashboard.ai.empty", "No anomaly preview available yet.")}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-[var(--muted)]">{t("dashboard.top_signals", "Top Signals")}</div>
-              <CardTitle className="text-xl">{t("dashboard.attention.now", "What needs attention right now")}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {state.anomalyPreview?.items?.length ? (
-                state.anomalyPreview.items.slice(0, 4).map((item) => (
-                  <div key={`${item.entry_id}-${item.anomaly_type}`} className={`rounded-2xl border p-4 ${severityTone(item.severity)}`}>
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <div className="text-xs uppercase tracking-[0.2em] opacity-80">
-                          {item.anomaly_type.replaceAll("_", " ")}
+              <Card>
+                <CardHeader>
+                  <div className="text-sm text-[var(--muted)]">{t("dashboard.plan_limits.title", "Plan & Limits")}</div>
+                  <CardTitle className="text-xl">{state.usage?.plan ? `${state.usage.plan} ${t("common.plan", "plan")}` : t("dashboard.usage_summary", "Usage summary")}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
+                    <div className="text-sm text-[var(--muted)]">{t("dashboard.current_period", "Current period")}</div>
+                    <div className="mt-1 text-lg font-semibold">{state.usage?.period || "-"}</div>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <div className="mb-2 flex items-center justify-between text-sm">
+                        <span className="text-[var(--muted)]">{t("dashboard.requests", "Requests")}</span>
+                        <span>
+                          {state.usage?.requests_used ?? 0}
+                          {state.usage?.max_requests ? ` / ${state.usage.max_requests}` : ` / ${t("dashboard.unlimited", "Unlimited")}`}
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-[var(--card-strong)]">
+                        <div
+                          className="h-2 rounded-full bg-[var(--accent)]"
+                          style={{ width: `${progressPercent(state.usage?.requests_used, state.usage?.max_requests)}%` }}
+                        />
+                      </div>
+                    </div>
+                    {usageWarning(state.usage?.requests_used, state.usage?.max_requests) ? (
+                      <div className="rounded-2xl border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] p-3 text-xs text-[var(--status-warning-fg)]">
+                        {usageWarning(state.usage?.requests_used, state.usage?.max_requests)}
+                      </div>
+                    ) : null}
+                    <div>
+                      <div className="mb-2 flex items-center justify-between text-sm">
+                        <span className="text-[var(--muted)]">{t("dashboard.credits", "Credits")}</span>
+                        <span>
+                          {state.usage?.credits_used ?? 0}
+                          {state.usage?.max_credits ? ` / ${state.usage.max_credits}` : ` / ${t("dashboard.unlimited", "Unlimited")}`}
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-[var(--card-strong)]">
+                        <div
+                          className="h-2 rounded-full bg-[var(--action-primary)]"
+                          style={{ width: `${progressPercent(state.usage?.credits_used, state.usage?.max_credits)}%` }}
+                        />
+                      </div>
+                    </div>
+                    {usageWarning(state.usage?.credits_used, state.usage?.max_credits) ? (
+                      <div className="rounded-2xl border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] p-3 text-xs text-[var(--status-warning-fg)]">
+                        {usageWarning(state.usage?.credits_used, state.usage?.max_credits)}
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap gap-3">
+                    <Link href={usagePrimaryAction.href}>
+                      <Button variant="outline">{usagePrimaryAction.label}</Button>
+                    </Link>
+                    <Link href="/plans">
+                      <Button variant="ghost">{t("dashboard.action.view_plans", "View Plans")}</Button>
+                    </Link>
+                    <Link href="/billing">
+                      <Button variant="ghost">{t("dashboard.action.open_billing", "Open Billing")}</Button>
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            </section>
+
+            <section className="mt-[var(--space-xl)] grid gap-6 xl:grid-cols-[0.92fr_1.08fr]">
+              <Card>
+                <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <div className="text-sm text-[var(--muted)]">{t("dashboard.ai.title", "AI Anomaly Radar")}</div>
+                    <CardTitle className="text-xl">{t("dashboard.ai.subtitle", "Factory drift preview")}</CardTitle>
+                  </div>
+                  <Link href="/ai">
+                    <Button variant="outline">{t("dashboard.action.open_ai", "Open AI Insights")}</Button>
+                  </Link>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {state.anomalyLocked ? (
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                      {t(
+                        "dashboard.ai.upgrade",
+                        "Anomaly radar is available on Growth and higher plans. Upgrade to surface high-risk output and downtime spikes here.",
+                      )}
+                    </div>
+                  ) : state.anomalyPreview ? (
+                    <>
+                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                        {state.anomalyPreview.summary}
+                      </div>
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-panel)] p-4">
+                          <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                            {t("dashboard.metric.signals", "Signals")}
+                          </div>
+                          <div className="mt-2 text-2xl font-semibold">{state.anomalyPreview.items.length}</div>
                         </div>
-                        <div className="mt-1 text-sm font-medium">{item.message}</div>
-                        <div className="mt-2 text-xs opacity-70">
-                          {formatDate(item.date, locale)} - {formatShift(item.shift)}
+                        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-panel)] p-4">
+                          <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                            {t("dashboard.window", "Window")}
+                          </div>
+                          <div className="mt-2 text-2xl font-semibold">{state.anomalyPreview.days}d</div>
+                        </div>
+                        <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-panel)] p-4">
+                          <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{t("dashboard.mode", "Mode")}</div>
+                          <div className="mt-2 text-2xl font-semibold">{t("dashboard.preview", "Preview")}</div>
                         </div>
                       </div>
-                      <Link href={`/entry/${item.entry_id}`} className="text-xs underline underline-offset-4">
-                        {t("common.open", "Open")}
-                      </Link>
+                    </>
+                  ) : (
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                      {t("dashboard.ai.empty", "No anomaly preview available yet.")}
                     </div>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                  {t("dashboard.ai.no_signals", "No anomaly signals are active in the current preview window.")}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </section>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <div className="text-sm text-[var(--muted)]">{t("dashboard.top_signals", "Top Signals")}</div>
+                  <CardTitle className="text-xl">{t("dashboard.attention.now", "What needs attention right now")}</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {state.anomalyPreview?.items?.length ? (
+                    state.anomalyPreview.items.slice(0, 4).map((item) => (
+                      <div key={`${item.entry_id}-${item.anomaly_type}`} className={`rounded-2xl border p-4 ${severityTone(item.severity)}`}>
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="text-xs uppercase tracking-[0.2em] opacity-80">
+                              {item.anomaly_type.replaceAll("_", " ")}
+                            </div>
+                            <div className="mt-1 text-sm font-medium">{item.message}</div>
+                            <div className="mt-2 text-xs opacity-70">
+                              {formatDate(item.date, locale)} - {formatShift(item.shift)}
+                            </div>
+                          </div>
+                          <Link href={`/entry/${item.entry_id}`} className="text-xs underline underline-offset-4">
+                            {t("common.open", "Open")}
+                          </Link>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                      {t("dashboard.ai.no_signals", "No anomaly signals are active in the current preview window.")}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </section>
           </div>
         </details>
 
@@ -2174,8 +2172,8 @@ export default function DashboardHome() {
           </Card>
         </section>
 
-        {status ? <div className="text-sm text-green-400">{status}</div> : null}
-        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
+        {status ? <div className="text-sm text-[var(--status-success-fg)]">{status}</div> : null}
+        {error || sessionError ? <div className="text-sm text-[var(--status-danger-fg)]">{error || sessionError}</div> : null}
       </div>
     </main>
   );

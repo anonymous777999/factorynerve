@@ -284,15 +284,15 @@ function buildDerivedReviewItem(item: AttendanceReviewItem): DerivedReviewItem {
 }
 
 function severityClasses(severity: ReviewSeverity) {
-  if (severity === "critical") return "border border-red-400/35 bg-[rgba(239,68,68,0.16)] text-red-100";
-  if (severity === "warning") return "border border-amber-400/35 bg-[rgba(245,158,11,0.14)] text-amber-100";
-  return "border border-sky-400/35 bg-[rgba(56,189,248,0.14)] text-sky-100";
+  if (severity === "critical") return "border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-fg)]";
+  if (severity === "warning") return "border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] text-[var(--status-warning-fg)]";
+  return "border-[var(--status-info-border)] bg-[var(--status-info-bg)] text-[var(--status-info-fg)]";
 }
 
 function infoCardClasses(severity: ReviewSeverity) {
-  if (severity === "critical") return "border-red-400/25 bg-[rgba(239,68,68,0.07)]";
-  if (severity === "warning") return "border-amber-400/25 bg-[rgba(245,158,11,0.07)]";
-  return "border-sky-400/25 bg-[rgba(56,189,248,0.07)]";
+  if (severity === "critical") return "border-[var(--status-danger-border)] bg-[var(--status-danger-bg)]";
+  if (severity === "warning") return "border-[var(--status-warning-border)] bg-[var(--status-warning-bg)]";
+  return "border-[var(--status-info-border)] bg-[var(--status-info-bg)]";
 }
 
 function SummaryCard({ label, value, helper }: { label: string; value: number | string; helper: string }) {
@@ -357,28 +357,28 @@ function ReviewDetailPanel({
   const timeline = [
     item.regularization
       ? {
-          title: "Request raised",
-          timestamp: formatDateTime(item.regularization.created_at),
-          body: item.regularization.reason,
-        }
+        title: "Request raised",
+        timestamp: formatDateTime(item.regularization.created_at),
+        body: item.regularization.reason,
+      }
       : {
-          title: "Attendance flagged",
-          timestamp: formatDate(item.attendance_date),
-          body: item.review_reason,
-        },
+        title: "Attendance flagged",
+        timestamp: formatDate(item.attendance_date),
+        body: item.review_reason,
+      },
     item.regularization?.requested_in_at || item.regularization?.requested_out_at
       ? {
-          title: "Requested timing",
-          timestamp: formatDate(item.attendance_date),
-          body: `In ${formatDateTime(item.regularization?.requested_in_at)} | Out ${formatDateTime(item.regularization?.requested_out_at)}`,
-        }
+        title: "Requested timing",
+        timestamp: formatDate(item.attendance_date),
+        body: `In ${formatDateTime(item.regularization?.requested_in_at)} | Out ${formatDateTime(item.regularization?.requested_out_at)}`,
+      }
       : null,
     item.note
       ? {
-          title: "Current note",
-          timestamp: formatDate(item.attendance_date),
-          body: item.note,
-        }
+        title: "Current note",
+        timestamp: formatDate(item.attendance_date),
+        body: item.note,
+      }
       : null,
   ].filter(Boolean) as Array<{ title: string; timestamp: string; body: string }>;
 
@@ -472,9 +472,9 @@ function ReviewDetailPanel({
 
         {detailTab === "fix" ? (
           <div className="space-y-4">
-            <div className="rounded-2xl border border-cyan-400/20 bg-[rgba(34,211,238,0.08)] p-4">
-              <div className="text-xs uppercase tracking-[0.16em] text-cyan-100/80">Suggested outcome</div>
-              <div className="mt-2 text-sm font-semibold text-cyan-50">{review.suggestedFix}</div>
+            <div className="rounded-2xl border border-[var(--status-info-border)] bg-[var(--status-info-bg)] p-4">
+              <div className="text-xs uppercase tracking-[0.16em] text-[var(--status-info-fg)]/80">Suggested outcome</div>
+              <div className="mt-2 text-sm font-semibold text-[var(--text-primary)]">{review.suggestedFix}</div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -548,7 +548,7 @@ function ReviewDetailPanel({
             </Button>
           </div>
           {!canReject ? (
-            <div className="mt-3 text-xs text-amber-100/80">Add a note before rejecting this attendance record.</div>
+            <div className="mt-3 text-xs text-[var(--status-warning-fg)]/80">Add a note before rejecting this attendance record.</div>
           ) : null}
         </div>
       </CardContent>
@@ -842,8 +842,8 @@ export default function AttendanceReviewPage() {
 
   if (loading || (pageLoading && user && canReview && !hasLoadedOnce)) {
     return (
-    <main className="operational-page">
-      <div className="operational-page__inner">
+      <main className="operational-page">
+        <div className="operational-page__inner">
           <Skeleton className="h-40 rounded-[2rem]" />
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
             {Array.from({ length: 4 }).map((_, index) => (
@@ -868,7 +868,7 @@ export default function AttendanceReviewPage() {
             <CardTitle>Attendance Review</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
+            <div className="text-sm text-[var(--status-danger-fg)]">{sessionError || "Please sign in to continue."}</div>
             {/* AUDIT: FLOW_BROKEN - send reviewers back through the active auth entry instead of the stale login route. */}
             <Link href="/access">
               <Button>Open Access</Button>
@@ -1026,7 +1026,7 @@ export default function AttendanceReviewPage() {
               <span className="rounded-full border border-[var(--border)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text)]">
                 Open {derivedItems.length}
               </span>
-              <span className="rounded-full border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-red-100">
+              <span className="rounded-full border border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--status-danger-fg)]">
                 Critical {highPriorityCount}
               </span>
             </div>
@@ -1242,7 +1242,7 @@ export default function AttendanceReviewPage() {
                                           >
                                             <td className="px-6 py-4 align-top">
                                               <div className="flex items-start gap-3">
-                                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[rgba(34,211,238,0.16)] text-sm font-semibold text-cyan-50">
+                                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--status-info-bg)] text-sm font-semibold text-[var(--status-info-fg)]">
                                                   {getAvatarLabel(review.item.name)}
                                                 </div>
                                                 <div>
