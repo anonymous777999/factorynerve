@@ -792,7 +792,7 @@ export function AppSidebar({
               <div className="mt-1 text-[11px] text-[var(--muted)]">
                 {switchingFactory ? (translate ? translate("shell.switching_factory_context", "Switching factory context...") : "Switching factory context...") : `${factoryChoices.length} factories`}
               </div>
-              {switchError ? <div className="mt-1 text-[11px] text-red-300">{switchError}</div> : null}
+              {switchError ? <div className="mt-1 text-[11px] text-[var(--status-danger-fg)]">{switchError}</div> : null}
             </div>
           ) : null}
         </div>
@@ -831,11 +831,11 @@ export function AppSidebar({
               const active = section.items.some((item) => item.match(currentPath));
               return (
                 <div key={section.title} className="space-y-[var(--space-1)]">
-                    <button
-                      type="button"
-                      className="flex w-full items-center justify-between rounded-panel border border-transparent bg-transparent px-2.5 py-2 text-left transition hover:bg-surface-panel"
-                      onClick={() => onToggleSectionGroup(storageKey)}
-                    >
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between rounded-panel border border-transparent bg-transparent px-2.5 py-2 text-left transition hover:bg-surface-panel"
+                    onClick={() => onToggleSectionGroup(storageKey)}
+                  >
                     <div className="flex items-center gap-2">
                       <div className="text-[length:var(--text-xs)] font-medium uppercase tracking-[var(--tracking-wider)] text-text-tertiary">
                         {localizedSectionTitle(section.title, translate)}
@@ -1187,16 +1187,16 @@ export function AppMobileBottomNav({
                   scanAction
                     ? "mb-1 h-12 w-12 -translate-y-2 rounded-panel border-[0.5px] border-border-focus bg-surface-selected text-text-primary"
                     : cn(
-                        "h-10 w-10 rounded-control border-[0.5px]",
-                        active
-                          ? "border-border-focus bg-surface-selected"
-                          : "border-border-default bg-surface-elevated",
-                      ),
+                      "h-10 w-10 rounded-control border-[0.5px]",
+                      active
+                        ? "border-border-focus bg-surface-selected"
+                        : "border-border-default bg-surface-elevated",
+                    ),
                 )}
               >
                 <NavIcon href={item.href} active={scanAction || active} />
                 {badgeCount > 0 ? (
-                  <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white">
+                  <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--status-danger-bg)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-[var(--text-inverse)]">
                     {formatBadgeCount(badgeCount)}
                   </span>
                 ) : null}

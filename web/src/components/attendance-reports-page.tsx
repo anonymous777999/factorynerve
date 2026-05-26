@@ -163,7 +163,7 @@ export default function AttendanceReportsPage() {
         <Card className="w-full">
           <CardHeader><CardTitle>{t("attendance.reports.title", "Attendance Reports")}</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || t("attendance.reports.sign_in_required", "Please sign in to continue.")}</div>
+            <div className="text-sm text-[var(--status-danger-fg)]">{sessionError || t("attendance.reports.sign_in_required", "Please sign in to continue.")}</div>
             <Link href="/access"><Button>{t("dashboard.action.open_login", "Open Access")}</Button></Link>
           </CardContent>
         </Card>
@@ -230,13 +230,13 @@ export default function AttendanceReportsPage() {
           </div>
         </section>
 
-        {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
+        {error ? <div className="rounded-2xl border border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] px-4 py-3 text-sm text-[var(--status-danger-fg)]">{error}</div> : null}
         {refreshing ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3 text-sm text-[var(--muted)]">
             {t("attendance.reports.refreshing_background", "Refreshing reports...")}
           </div>
         ) : null}
-        {sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{sessionError}</div> : null}
+        {sessionError ? <div className="rounded-2xl border border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] px-4 py-3 text-sm text-[var(--status-danger-fg)]">{sessionError}</div> : null}
 
         <Card>
           <CardHeader className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">

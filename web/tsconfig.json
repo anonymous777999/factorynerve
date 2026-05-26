@@ -1,5 +1,6 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
     "target": "ES2017",
     "lib": [
       "dom",
@@ -23,6 +24,12 @@
       }
     ],
     "paths": {
+      "@/v2": [
+        "./src-v2/index.ts"
+      ],
+      "@/v2/*": [
+        "./src-v2/*"
+      ],
       "@/*": [
         "./src/*"
       ]

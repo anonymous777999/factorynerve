@@ -16,24 +16,24 @@
    ============================================================ */
 
 :root {
-  /* --- Font families (File A — File B referenced these but never defined them) --- */
+  /* --- Font families (not in tokens.css — globals-specific) --- */
   --font-body: "IBM Plex Sans";
   --font-display: "Space Grotesk";
 
-  /* --- Primary color scale (File B — full semantic scale) --- */
+  /* --- Primary color scale (not in tokens.css — globals-specific) --- */
   --color-primary: #3b82f6;
   --color-primary-50: #eef7ff;
   --color-primary-100: #dbeaf8;
   --color-primary-700: #1d4ed8;
   --color-primary-900: #1e40af;
 
-  /* --- Secondary color scale (File B) --- */
+  /* --- Secondary color scale (not in tokens.css — globals-specific) --- */
   --color-secondary: #a78bfa;
   --color-secondary-50: #ecfdf8;
   --color-secondary-700: #7c3aed;
   --color-secondary-900: #5b21b6;
 
-  /* --- Status color scales (File B — full tonal ramp) --- */
+  /* --- Status color scales (not in tokens.css — globals-specific flat values) --- */
   --color-success: #22c55e;
   --color-success-50: #f0fdf4;
   --color-success-700: #15803d;
@@ -50,65 +50,58 @@
   --color-info-50: #f0f9ff;
   --color-info-700: #0891b2;
 
-  /* --- Backgrounds & surfaces (File A — warmer, more atmospheric) --- */
+  /* --- Backgrounds & surfaces (not in tokens.css — warm-industrial dark palette) --- */
   --bg: #0d1218;
-  --bg-soft: #151d24;          /* File A only — mid-depth between bg and card */
-  --bg-secondary: #111827;     /* File B alias kept for component compat */
-  --bg-tertiary: #1f2937;      /* File B alias kept for component compat */
+  --bg-soft: #151d24;
+  --bg-secondary: #111827;
+  --bg-tertiary: #1f2937;
   --card: #172028;
   --card-strong: #202b35;
   --card-elevated: #293642;
   --card-ghost: rgba(10, 15, 24, 0.72);
   --card-glow: rgba(245, 166, 35, 0.08);
 
-  /* --- Text hierarchy (File A warm primary + File B semantic scale) --- */
-  --text-primary: #ece7df;     /* File A — warm off-white vs B's cool #f3f4f6 */
-  --text-secondary: #c2b8ae;
-  --text-tertiary: #9ca3af;
+  /* --- Text muted (tokens.css has --text-primary/secondary/tertiary — those are removed below) --- */
   --text-muted: #6b7280;
 
-  /* --- Borders (File A — warm tone, more visible depth) --- */
+  /* --- Border (not in tokens.css — warm-tone rgba border) --- */
   --border: rgba(171, 154, 137, 0.2);
-  --border-strong: rgba(201, 180, 157, 0.34);
-  --divider: rgba(171, 154, 137, 0.1);  /* File B concept, warm value */
+  --divider: rgba(171, 154, 137, 0.1);
 
-  /* --- Shadow scale (merged — File A's richer lg/md + File B's xs/sm/xl/2xl) --- */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 18px 42px rgba(2, 6, 23, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.03);
-  --shadow-lg: 0 28px 78px rgba(2, 6, 23, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.04);
-  --shadow-xl: 0 36px 88px rgba(3, 8, 18, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  /* --- Shadow 2xl (tokens.css has xs/sm/md/lg/xl — only 2xl is globals-specific) --- */
   --shadow-2xl: 0 42px 90px rgba(3, 8, 18, 0.34);
 
-  /* --- Warm industrial accent (File A — the visual DNA) --- */
+  /* --- Warm industrial accent (not in tokens.css) --- */
   --accent: #c56d2d;
   --accent-strong: #8c4218;
   --accent-soft: rgba(197, 109, 45, 0.18);
-  --accent-quiet: rgba(197, 109, 45, 0.1);  /* File A only */
+  --accent-quiet: rgba(197, 109, 45, 0.1);
 
-  /* --- Operational signals (File A additions) --- */
-  --signal: #1f8a78;   /* teal — distinct from success green */
+  /* --- Operational signals (not in tokens.css) --- */
+  --signal: #1f8a78;
   --success: #22c55e;
   --warning: #f59e0b;
   --danger: #ef4444;
 
-  /* --- Spacing scale (File A — 8px base unit) --- */
-  --space-1: 8px;
-  --space-2: 16px;
-  --space-3: 24px;
-  --space-4: 32px;
-  --space-5: 48px;
-  --space-6: 64px;
-
-  /* --- Scrollbar custom props (File B) --- */
-  --scrollbar-track: transparent;
-  --scrollbar-thumb: rgba(209, 213, 219, 0.3);
-  --scrollbar-thumb-hover: rgba(209, 213, 219, 0.5);
-
   /* --- Legacy aliases — backward compatibility for components using old var names --- */
   --text: var(--text-primary);
   --muted: var(--text-muted);
-  --accent-strong: var(--accent-strong);  /* explicit — not aliased to primary */
+
+  /*
+   * REMOVED — defined in tokens.css (tokens.css wins):
+   *   --text-primary, --text-secondary, --text-tertiary  → tokens.css §2 semantic tokens
+   *   --border-strong                                     → tokens.css §2 border system
+   *   --shadow-xs, --shadow-sm, --shadow-md,
+   *     --shadow-lg, --shadow-xl                          → tokens.css §4 elevation system
+   *   --space-1 … --space-6                              → tokens.css §6 spacing scale
+   *                                                         ⚠ VALUE CHANGE: globals used 8px base
+   *                                                         (--space-1=8px); tokens uses 4px base
+   *                                                         (--space-1=4px). Components using
+   *                                                         --space-1–6 directly will see new values.
+   *                                                         Use --space-sm/md/lg/xl aliases instead.
+   *   --scrollbar-track, --scrollbar-thumb,
+   *     --scrollbar-thumb-hover                           → tokens.css §13 scrollbar tokens
+   */
 }
 
 @layer components {
@@ -366,7 +359,8 @@
 
 @theme inline {
   --color-background: var(--bg);
-  --color-foreground: var(--text-primary);   /* File B — more explicit */
+  --color-foreground: var(--text-primary);
+  /* File B — more explicit */
   --font-sans: var(--font-body);
   --font-display: var(--font-display);
 }
@@ -394,7 +388,8 @@ body {
   font-family: var(--font-body), "IBM Plex Sans", sans-serif;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
-  overflow-x: clip;   /* File B — modern approach, replaces A's width:100% */
+  overflow-x: clip;
+  /* File B — modern approach, replaces A's width:100% */
 }
 
 h1,
@@ -429,7 +424,8 @@ select option:hover,
 select option:focus {
   background:
     linear-gradient(0deg, rgba(197, 109, 45, 0.2), rgba(197, 109, 45, 0.2)),
-    var(--card-elevated);   /* warm accent tint instead of blue */
+    var(--card-elevated);
+  /* warm accent tint instead of blue */
   color: var(--text-primary);
 }
 
@@ -441,7 +437,8 @@ select option:focus {
 
 html {
   color-scheme: dark;
-  overflow-x: clip;   /* File B */
+  overflow-x: clip;
+  /* File B */
 }
 
 /* --- PWA standalone display mode (File B — not in A) --- */
@@ -518,17 +515,20 @@ video,
 canvas,
 svg {
   max-width: 100%;
-  height: auto;  /* File A — File B omitted this */
+  height: auto;
+  /* File A — File B omitted this */
 }
 
 input[type="checkbox"] {
-  accent-color: var(--accent);   /* warm accent, File A */
+  accent-color: var(--accent);
+  /* warm accent, File A */
 }
 
 :where(.overflow-x-auto) {
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
-  overscroll-behavior-x: contain;  /* File A */
+  overscroll-behavior-x: contain;
+  /* File A */
 }
 
 
@@ -610,6 +610,7 @@ input[type="checkbox"] {
     opacity: 0;
     transform: translate3d(0, 24px, 0) scale(0.985);
   }
+
   100% {
     opacity: 1;
     transform: translate3d(0, 0, 0) scale(1);
@@ -621,10 +622,12 @@ input[type="checkbox"] {
     transform: translate3d(0, 0, 0) scale(1);
     filter: hue-rotate(0deg);
   }
+
   50% {
     transform: translate3d(-1.5%, 1.5%, 0) scale(1.04);
     filter: hue-rotate(2deg);
   }
+
   100% {
     transform: translate3d(1.5%, -1%, 0) scale(1.08);
     filter: hue-rotate(-4deg);
@@ -640,6 +643,7 @@ input[type="checkbox"] {
       16px 20px;
     transform: translate3d(0, 0, 0);
   }
+
   100% {
     background-position:
       center,
@@ -651,21 +655,25 @@ input[type="checkbox"] {
 }
 
 @keyframes auth-float {
+
   0%,
   100% {
     transform: translate3d(0, 0, 0) scale(1);
   }
+
   50% {
     transform: translate3d(0, -18px, 0) scale(1.06);
   }
 }
 
 @keyframes auth-beam {
+
   0%,
   100% {
     opacity: 0.28;
     transform: scaleX(0.72);
   }
+
   50% {
     opacity: 1;
     transform: scaleX(1);
@@ -673,8 +681,13 @@ input[type="checkbox"] {
 }
 
 @keyframes feedback-fade-in {
-  0% { opacity: 0; }
-  100% { opacity: 1; }
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
 }
 
 @keyframes feedback-sheet-in {
@@ -682,6 +695,7 @@ input[type="checkbox"] {
     opacity: 0;
     transform: translate3d(0, 16px, 0) scale(0.98);
   }
+
   100% {
     opacity: 1;
     transform: translate3d(0, 0, 0) scale(1);
@@ -726,9 +740,18 @@ input[type="checkbox"] {
   will-change: transform, background-position;
 }
 
-.auth-float-slow    { animation: auth-float 16s ease-in-out infinite; }
-.auth-float-delay   { animation: auth-float 13s ease-in-out infinite reverse; }
-.auth-float-slower  { animation: auth-float 19s ease-in-out infinite; animation-delay: -5s; }
+.auth-float-slow {
+  animation: auth-float 16s ease-in-out infinite;
+}
+
+.auth-float-delay {
+  animation: auth-float 13s ease-in-out infinite reverse;
+}
+
+.auth-float-slower {
+  animation: auth-float 19s ease-in-out infinite;
+  animation-delay: -5s;
+}
 
 .auth-edge-beam {
   background: linear-gradient(90deg, transparent, rgba(154, 226, 255, 0.88), transparent);
@@ -748,6 +771,7 @@ input[type="checkbox"] {
    ============================================================ */
 
 @keyframes ocr-camera-pulse {
+
   0%,
   100% {
     transform: scale(1);
@@ -755,6 +779,7 @@ input[type="checkbox"] {
       0 0 0 0 rgba(255, 255, 255, 0.18),
       0 10px 30px rgba(15, 23, 42, 0.28);
   }
+
   50% {
     transform: scale(1.03);
     box-shadow:
@@ -808,8 +833,7 @@ input[type="checkbox"] {
 }
 
 /* Re-enable selection inside no-select containers for interactive elements */
-.ui-no-select :where(
-  .ui-select-text,
+.ui-no-select :where(.ui-select-text,
   [data-allow-text-selection="true"],
   input,
   textarea,
@@ -817,14 +841,13 @@ input[type="checkbox"] {
   [contenteditable="true"],
   [contenteditable=""],
   pre,
-  code
-) {
+  code) {
   user-select: text;
   -webkit-user-select: text;
   -webkit-touch-callout: default;
 }
 
-.overflow-safe-children > * {
+.overflow-safe-children>* {
   min-width: 0;
 }
 
@@ -902,6 +925,7 @@ input[type="checkbox"] {
    ============================================================ */
 
 @media (prefers-reduced-motion: reduce) {
+
   .auth-rise,
   .auth-ocean-mesh,
   .auth-dot-field,
@@ -934,7 +958,8 @@ input[type="checkbox"] {
   justify-content: center;
   width: 2.75rem;
   height: 2.75rem;
-  border: 1px solid rgba(197, 109, 45, 0.22);   /* warm accent border */
+  border: 1px solid rgba(197, 109, 45, 0.22);
+  /* warm accent border */
   border-radius: 0.95rem;
   background:
     linear-gradient(135deg, rgba(197, 109, 45, 0.28), rgba(31, 138, 120, 0.18)),
@@ -1238,10 +1263,13 @@ input[type="checkbox"] {
    ============================================================ */
 
 @keyframes dashboardStatusPulse {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
     opacity: 0.95;
   }
+
   50% {
     transform: scale(1.12);
     opacity: 1;
