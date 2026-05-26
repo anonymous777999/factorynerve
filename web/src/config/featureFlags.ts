@@ -5,9 +5,10 @@ export const USE_TANSTACK_TABLE =
 // OCR verification v2 is now the default migrated experience.
 export const NEW_OCR_VERIFY = true;
 
-// Explicit opt-in for governed OCR execution workspace migration.
+// Governed OCR execution workspace is enabled by default.
+// Explicitly disable with NEXT_PUBLIC_USE_GOVERNED_OCR_WORKSPACE=false if rollback-only behavior is required.
 export const USE_GOVERNED_OCR_WORKSPACE =
-    process.env.NEXT_PUBLIC_USE_GOVERNED_OCR_WORKSPACE === "true";
+    process.env.NEXT_PUBLIC_USE_GOVERNED_OCR_WORKSPACE !== "false";
 
 // Explicit opt-in for URL param guard redirects on auth token routes.
 export const AUTH_ROUTE_PARAM_GUARDS =
