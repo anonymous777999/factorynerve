@@ -65,6 +65,7 @@ function AppShellFrame({
   const commandRegistry = useCommandRegistry();
   const [commandPaletteOpen, setCommandPaletteOpen] = React.useState(false);
   const focusMode = shell.shellLayout.mode === "focus";
+  const dashboardReferenceRoute = pathname === "/dashboard";
   const factoryName =
     shell.activeFactory?.name ||
     shell.user?.factory_name ||
@@ -294,68 +295,120 @@ function AppShellFrame({
       <div
         className={cn(
           "factory-workstation-frame flex min-h-screen min-w-0 flex-1 flex-col bg-surface-shell transition-[padding-left] duration-300 ease-out",
-          shell.immersiveScannerRoute ? "lg:pl-[14.5rem]" : shell.sidebarOpen ? "lg:pl-[14.5rem]" : "lg:pl-0",
+          shell.immersiveScannerRoute ? "lg:pl-[13.75rem]" : shell.sidebarOpen ? "lg:pl-[13.75rem]" : "lg:pl-0",
         )}
       >
         <div className={cn("factory-workstation-shell min-w-0 flex-1 bg-surface-shell", shell.shellLayout.mobileBottomNav ? "pb-24 lg:pb-0" : "")}>
           {!shell.immersiveScannerRoute ? (
             <div className="factory-workstation-topbar sticky top-0 z-sticky hidden lg:block">
-              <div className={cn("flex min-h-[48px] flex-wrap items-center justify-between gap-3 px-6", focusMode ? "py-2" : "py-2.5")}>
-                <div className="flex min-w-0 items-center gap-3">
-                  <Button
-                    size="compact"
-                    variant="outline"
-                    onClick={shell.toggleSidebar}
-                    aria-label={shell.sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-                    className="h-8 border-border-default bg-surface-elevated px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-text-primary hover:border-border-strong hover:bg-surface-hover"
-                  >
-                    {shell.sidebarOpen ? "Hide Nav" : "Show Nav"}
-                  </Button>
-                  <div className="h-4 w-px bg-border-default" />
-                  <div className="min-w-0 space-y-0.5">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--action-primary)]">
-                        DPR.ai
+              {dashboardReferenceRoute ? (
+                <div className="flex min-h-[48px] items-center justify-between gap-4 px-10">
+                  <div className="flex min-w-0 items-center gap-5">
+                    <button
+                      type="button"
+                      onClick={shell.toggleSidebar}
+                      aria-label={shell.sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+                      className="font-body text-[15px] font-bold text-[var(--action-primary)] transition hover:opacity-90"
+                    >
+                      DPR.ai
+                    </button>
+                    <div className="h-4 w-px bg-border-default" />
+                    <nav className="flex items-center gap-5">
+                      <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-tertiary">
+                        {shell.organization?.name || "Resource Org"}
                       </span>
-                      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-tertiary">
-                        {factoryName}
+                      <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-tertiary">
+                        Profile
                       </span>
-                    </div>
-                    <div className="flex min-w-0 flex-wrap items-center gap-2">
-                      <span className="truncate text-sm font-semibold text-text-primary">
-                        {shell.currentItem.label}
-                      </span>
-                      <span className="hidden truncate font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary xl:inline">
-                        {shell.currentItem.description}
-                      </span>
-                    </div>
+                    </nav>
+                  </div>
+                  <div className="flex items-center gap-3 text-text-tertiary">
+                    <button
+                      type="button"
+                      aria-label="Notifications"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-sm transition hover:bg-surface-hover hover:text-text-primary"
+                    >
+                      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4.5 w-4.5">
+                        <path d="M10 3.5a3 3 0 0 1 3 3V8c0 .7.24 1.38.69 1.91L15 11.5v1H5v-1l1.31-1.59c.45-.53.69-1.2.69-1.91V6.5a3 3 0 0 1 3-3Z" strokeLinecap="round" strokeLinejoin="round" />
+                        <path d="M8.5 14a1.5 1.5 0 0 0 3 0" strokeLinecap="round" />
+                      </svg>
+                    </button>
+                    <button
+                      type="button"
+                      aria-label="Workspace tools"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-sm transition hover:bg-surface-hover hover:text-text-primary"
+                      onClick={() => setCommandPaletteOpen(true)}
+                    >
+                      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4.5 w-4.5">
+                        <path d="M4.5 6.5h11v8h-11z" strokeLinejoin="round" />
+                        <path d="M7 6.5V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1.5" strokeLinecap="round" />
+                      </svg>
+                    </button>
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  {!focusMode ? (
-                    <div className="hidden items-center gap-2 xl:flex">
-                      <Badge status="draft">Alerts {shell.navBadgeCounts.alerts}</Badge>
-                      <Badge status="draft">Review {shell.navBadgeCounts.approvals}</Badge>
+              ) : (
+                <div className={cn("flex min-h-[48px] flex-wrap items-center justify-between gap-3 px-6", focusMode ? "py-2" : "py-2.5")}>
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Button
+                      size="compact"
+                      variant="outline"
+                      onClick={shell.toggleSidebar}
+                      aria-label={shell.sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+                      className="h-8 border-border-default bg-surface-elevated px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-text-primary hover:border-border-strong hover:bg-surface-hover"
+                    >
+                      {shell.sidebarOpen ? "Hide Nav" : "Show Nav"}
+                    </Button>
+                    <div className="h-4 w-px bg-border-default" />
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--action-primary)]">
+                          DPR.ai
+                        </span>
+                        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-tertiary">
+                          {factoryName}
+                        </span>
+                      </div>
+                      <div className="flex min-w-0 flex-wrap items-center gap-2">
+                        <span className="truncate text-sm font-semibold text-text-primary">
+                          {shell.currentItem.label}
+                        </span>
+                        <span className="hidden truncate font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary xl:inline">
+                          {shell.currentItem.description}
+                        </span>
+                      </div>
                     </div>
-                  ) : null}
-                  <Button
-                    size="compact"
-                    variant="outline"
-                    onClick={() => setCommandPaletteOpen(true)}
-                    className="h-8 border-border-default bg-surface-elevated px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-text-primary hover:border-border-strong hover:bg-surface-hover"
-                  >
-                    {focusMode ? "Workspace Commands" : "Commands"}
-                  </Button>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    {!focusMode ? (
+                      <div className="hidden items-center gap-2 xl:flex">
+                        <Badge status="draft">Alerts {shell.navBadgeCounts.alerts}</Badge>
+                        <Badge status="draft">Review {shell.navBadgeCounts.approvals}</Badge>
+                      </div>
+                    ) : null}
+                    <Button
+                      size="compact"
+                      variant="outline"
+                      onClick={() => setCommandPaletteOpen(true)}
+                      className="h-8 border-border-default bg-surface-elevated px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-text-primary hover:border-border-strong hover:bg-surface-hover"
+                    >
+                      {focusMode ? "Workspace Commands" : "Commands"}
+                    </Button>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           ) : null}
-          {!shell.immersiveScannerRoute && !focusMode ? <WorkflowReminderStrip /> : null}
+          {!shell.immersiveScannerRoute && !focusMode && !dashboardReferenceRoute ? <WorkflowReminderStrip /> : null}
           {shell.shellLayout.desktopRail === "context" ? (
-            <div className={cn("min-h-full", shell.showDesktopContextRail ? "xl:grid xl:grid-cols-[minmax(0,1fr)_16.5rem]" : "")}>
+            <div
+              className={cn(
+                "min-h-full",
+                shell.showDesktopContextRail && !dashboardReferenceRoute ? "xl:grid xl:grid-cols-[minmax(0,1fr)_16.5rem]" : "",
+              )}
+            >
               <div className="min-w-0 bg-surface-shell">{children}</div>
               <AppDesktopContextRail
-                visible={shell.showDesktopContextRail}
+                visible={shell.showDesktopContextRail && !dashboardReferenceRoute}
                 hidden={shell.desktopContextRailHidden}
                 currentItem={shell.currentItem}
                 badgeCounts={shell.navBadgeCounts}

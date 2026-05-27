@@ -724,10 +724,11 @@ export function AppSidebar({
   onSwitchAccount: () => void | Promise<void>;
   translate?: TranslateFn;
 }) {
+  const dashboardReferenceRoute = currentPath === "/dashboard";
   return (
     <aside
       className={cn(
-        "factory-sidebar-shell fixed inset-y-0 left-0 z-40 w-[14.5rem] border-r border-border-subtle bg-surface-shell shadow-[var(--shadow-sm)] transition-transform duration-300 ease-out",
+        "factory-sidebar-shell fixed inset-y-0 left-0 z-40 w-[13.75rem] border-r border-border-subtle bg-surface-shell shadow-[var(--shadow-sm)] transition-transform duration-300 ease-out",
         immersiveScannerRoute ? "hidden lg:block lg:translate-x-0" : "",
         !immersiveScannerRoute && (sidebarOpen ? "translate-x-0" : "-translate-x-full"),
       )}
@@ -866,152 +867,177 @@ export function AppSidebar({
         </div>
 
         <div className="mt-3 border-t border-[var(--border)] pt-3">
-          <details className="group rounded-panel border border-border-subtle bg-surface-panel px-3 py-3 shadow-[var(--shadow-xs)]">
-            <summary className="ui-no-select ui-no-callout flex cursor-pointer list-none items-center justify-between gap-3 text-left">
-              <div>
-                <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-                  {translate ? translate("shell.account_title", "Account") : "Account"}
-                </div>
-                <div className="mt-1 text-sm font-semibold text-[var(--text)]">
-                  {translate ? translate("shell.account_subtitle", "Profile and display") : "Profile and display"}
-                </div>
-              </div>
-              <span className="text-[var(--muted)] transition group-open:rotate-180">
-                <ChevronIcon expanded={false} />
-              </span>
-            </summary>
-            <div className="mt-4 space-y-3">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-1.5">
-                  <label className="ui-no-select ui-no-callout block text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-                    {translate ? translate("language.label", "Language") : "Language"}
-                  </label>
-                  <Select
-                    className="h-8 bg-surface-shell text-xs"
-                    value={language}
-                    onChange={(event) => onLanguageChange(event.target.value)}
-                    aria-label={translate ? translate("language.label", "Language") : "Language"}
-                  >
-                    {LANGUAGE_CHOICES.map((choice) => (
-                      <option key={choice.value} value={choice.value}>
-                        {translate ? translate(choice.key, choice.fallback) : choice.fallback}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="ui-no-select ui-no-callout block text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-                    {translate ? translate("shell.theme", "Theme") : "Theme"}
-                  </label>
-                  <Select
-                    className="h-8 bg-surface-shell text-xs"
-                    value={theme}
-                    onChange={(event) => onThemeChange(event.target.value as AppTheme)}
-                    aria-label={translate ? translate("shell.theme", "Theme") : "Theme"}
-                  >
-                    {THEME_CHOICES.map((choice) => (
-                      <option key={choice.value} value={choice.value}>
-                        {translate ? translate(choice.key, choice.fallback) : choice.fallback}
-                      </option>
-                    ))}
-                  </Select>
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <label className="ui-no-select ui-no-callout block text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-                  {translate ? translate("shell.density", "Density") : "Density"}
-                </label>
-                <Select
-                  className="h-8 bg-surface-shell text-xs"
-                  value={density}
-                  onChange={(event) => onDensityChange(event.target.value as AppDensity)}
-                  aria-label={translate ? translate("shell.density", "Density") : "Density"}
-                >
-                  {DENSITY_CHOICES.map((choice) => (
-                    <option key={choice.value} value={choice.value}>
-                      {translate ? translate(choice.key, choice.fallback) : choice.fallback}
-                    </option>
-                  ))}
-                </Select>
-                <div className="text-[11px] text-[var(--muted)]">
-                  {translate
-                    ? translate("shell.density_hint", "Compact keeps dense workflows tight; Default is the operational baseline.")
-                    : "Compact keeps dense workflows tight; Default is the operational baseline."}
-                </div>
-              </div>
-
-              <div className="flex items-center justify-between gap-3 rounded-panel bg-surface-shell px-3 py-2.5">
+          {dashboardReferenceRoute ? (
+            <div className="space-y-4 px-1">
+              <Link
+                href="/profile"
+                className="ui-no-select ui-no-callout inline-flex h-11 w-full items-center justify-center gap-2 rounded-sm border border-border-default bg-surface-elevated px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-text-primary transition hover:border-border-strong hover:bg-surface-hover"
+              >
+                {translate ? translate("shell.account_subtitle", "Account Settings") : "Account Settings"}
+              </Link>
+              <button
+                type="button"
+                onClick={() => void onLogout()}
+                disabled={accountActionBusy !== null}
+                className="ui-no-select ui-no-callout inline-flex items-center gap-2 px-1 font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-text-secondary transition hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {accountActionBusy === "logout"
+                  ? translate
+                    ? translate("shell.logging_out", "Logging out...")
+                    : "Logging out..."
+                  : translate
+                    ? translate("shell.profile_and_signout", "Profile & Sign-out")
+                    : "Profile & Sign-out"}
+              </button>
+            </div>
+          ) : (
+            <details className="group rounded-panel border border-border-subtle bg-surface-panel px-3 py-3 shadow-[var(--shadow-xs)]">
+              <summary className="ui-no-select ui-no-callout flex cursor-pointer list-none items-center justify-between gap-3 text-left">
                 <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-                    {translate ? translate("shell.tips_title", "Tips") : "Tips"}
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                    {translate ? translate("shell.account_title", "Account") : "Account"}
                   </div>
-                  <div className="mt-1 text-xs text-[var(--text)]">
-                    {translate ? translate("shell.tips_subtitle", "Show tips") : "Show tips"}
+                  <div className="mt-1 text-sm font-semibold text-[var(--text)]">
+                    {translate ? translate("shell.account_subtitle", "Profile and display") : "Profile and display"}
                   </div>
                 </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={showTips}
-                  onClick={onToggleTips}
-                  className={cn(
-                    "ui-no-select ui-no-callout inline-flex h-8 w-14 items-center rounded-full border px-1 transition",
-                    showTips
-                      ? "border-border-focus bg-surface-selected text-text-primary"
-                      : "border-border-default bg-surface-elevated text-text-secondary",
-                  )}
-                >
-                  <span
+                <span className="text-[var(--muted)] transition group-open:rotate-180">
+                  <ChevronIcon expanded={false} />
+                </span>
+              </summary>
+              <div className="mt-4 space-y-3">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <label className="ui-no-select ui-no-callout block text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                      {translate ? translate("language.label", "Language") : "Language"}
+                    </label>
+                    <Select
+                      className="h-8 bg-surface-shell text-xs"
+                      value={language}
+                      onChange={(event) => onLanguageChange(event.target.value)}
+                      aria-label={translate ? translate("language.label", "Language") : "Language"}
+                    >
+                      {LANGUAGE_CHOICES.map((choice) => (
+                        <option key={choice.value} value={choice.value}>
+                          {translate ? translate(choice.key, choice.fallback) : choice.fallback}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="ui-no-select ui-no-callout block text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                      {translate ? translate("shell.theme", "Theme") : "Theme"}
+                    </label>
+                    <Select
+                      className="h-8 bg-surface-shell text-xs"
+                      value={theme}
+                      onChange={(event) => onThemeChange(event.target.value as AppTheme)}
+                      aria-label={translate ? translate("shell.theme", "Theme") : "Theme"}
+                    >
+                      {THEME_CHOICES.map((choice) => (
+                        <option key={choice.value} value={choice.value}>
+                          {translate ? translate(choice.key, choice.fallback) : choice.fallback}
+                        </option>
+                      ))}
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="ui-no-select ui-no-callout block text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                    {translate ? translate("shell.density", "Density") : "Density"}
+                  </label>
+                  <Select
+                    className="h-8 bg-surface-shell text-xs"
+                    value={density}
+                    onChange={(event) => onDensityChange(event.target.value as AppDensity)}
+                    aria-label={translate ? translate("shell.density", "Density") : "Density"}
+                  >
+                    {DENSITY_CHOICES.map((choice) => (
+                      <option key={choice.value} value={choice.value}>
+                        {translate ? translate(choice.key, choice.fallback) : choice.fallback}
+                      </option>
+                    ))}
+                  </Select>
+                  <div className="text-[11px] text-[var(--muted)]">
+                    {translate
+                      ? translate("shell.density_hint", "Compact keeps dense workflows tight; Default is the operational baseline.")
+                      : "Compact keeps dense workflows tight; Default is the operational baseline."}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between gap-3 rounded-panel bg-surface-shell px-3 py-2.5">
+                  <div>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                      {translate ? translate("shell.tips_title", "Tips") : "Tips"}
+                    </div>
+                    <div className="mt-1 text-xs text-[var(--text)]">
+                      {translate ? translate("shell.tips_subtitle", "Show tips") : "Show tips"}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={showTips}
+                    onClick={onToggleTips}
                     className={cn(
-                      "inline-flex h-6 w-6 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-panel text-[10px] font-semibold text-text-primary transition",
-                      showTips ? "translate-x-6" : "translate-x-0",
+                      "ui-no-select ui-no-callout inline-flex h-8 w-14 items-center rounded-full border px-1 transition",
+                      showTips
+                        ? "border-border-focus bg-surface-selected text-text-primary"
+                        : "border-border-default bg-surface-elevated text-text-secondary",
                     )}
                   >
-                    {showTips ? "On" : "Off"}
-                  </span>
-                </button>
-              </div>
+                    <span
+                      className={cn(
+                        "inline-flex h-6 w-6 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-panel text-[10px] font-semibold text-text-primary transition",
+                        showTips ? "translate-x-6" : "translate-x-0",
+                      )}
+                    >
+                      {showTips ? "On" : "Off"}
+                    </span>
+                  </button>
+                </div>
 
-              <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
-                <Link
-                  href="/profile"
-                  className="ui-no-select ui-no-callout inline-flex h-8 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-2 text-[11px] font-medium text-text-primary transition hover:border-border-strong hover:bg-surface-hover"
-                >
-                  {translate ? translate("nav.profile.label", "Profile") : "Profile"}
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => void onLogout()}
-                  disabled={accountActionBusy !== null}
-                  className="ui-no-select ui-no-callout inline-flex h-8 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-2 text-[11px] font-medium text-text-primary transition hover:border-border-strong hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {accountActionBusy === "logout"
-                    ? translate
-                      ? translate("shell.logging_out", "Logging out...")
-                      : "Logging out..."
-                    : translate
-                      ? translate("shell.logout", "Logout")
-                      : "Logout"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void onSwitchAccount()}
-                  disabled={accountActionBusy !== null}
-                  className="ui-no-select ui-no-callout inline-flex h-8 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-2 text-[11px] font-medium text-text-primary transition hover:border-border-strong hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {accountActionBusy === "switch"
-                    ? translate
-                      ? translate("shell.switching", "Switching...")
-                      : "Switching..."
-                    : translate
-                      ? translate("shell.switch_account", "Switch")
-                      : "Switch"}
-                </button>
+                <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
+                  <Link
+                    href="/profile"
+                    className="ui-no-select ui-no-callout inline-flex h-8 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-2 text-[11px] font-medium text-text-primary transition hover:border-border-strong hover:bg-surface-hover"
+                  >
+                    {translate ? translate("nav.profile.label", "Profile") : "Profile"}
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => void onLogout()}
+                    disabled={accountActionBusy !== null}
+                    className="ui-no-select ui-no-callout inline-flex h-8 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-2 text-[11px] font-medium text-text-primary transition hover:border-border-strong hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {accountActionBusy === "logout"
+                      ? translate
+                        ? translate("shell.logging_out", "Logging out...")
+                        : "Logging out..."
+                      : translate
+                        ? translate("shell.logout", "Logout")
+                        : "Logout"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void onSwitchAccount()}
+                    disabled={accountActionBusy !== null}
+                    className="ui-no-select ui-no-callout inline-flex h-8 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-2 text-[11px] font-medium text-text-primary transition hover:border-border-strong hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  >
+                    {accountActionBusy === "switch"
+                      ? translate
+                        ? translate("shell.switching", "Switching...")
+                        : "Switching..."
+                      : translate
+                        ? translate("shell.switch_account", "Switch")
+                        : "Switch"}
+                  </button>
+                </div>
               </div>
-            </div>
-          </details>
+            </details>
+          )}
         </div>
       </div>
     </aside>

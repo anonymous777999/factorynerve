@@ -1580,7 +1580,7 @@ export default function DashboardHome() {
 
   return (
     <main className="operational-page" data-component="dashboard-home">
-      <div className="operational-page__inner route-workspace">
+      <div className="operational-page__inner route-workspace mx-auto max-w-[1440px]">
         <section className="factory-dashboard-strip">
           <div className="factory-dashboard-reminder">
             <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--action-primary)]">
@@ -1596,7 +1596,7 @@ export default function DashboardHome() {
                 <div className="inline-flex rounded-sm border border-border-subtle bg-surface-elevated px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-text-secondary">
                   Action now
                 </div>
-                <div className="mt-3 text-base font-semibold text-text-primary">
+                <div className="mt-3 max-w-[14ch] text-[18px] font-semibold leading-[1.35] text-text-primary">
                   {primaryAction?.title || "Keep the next lane moving"}
                 </div>
                 <div className="mt-1 text-sm text-text-secondary">
@@ -1712,11 +1712,13 @@ export default function DashboardHome() {
               <Link
                 key={`${step.href}-${index}`}
                 href={step.href}
-                className="route-metric dashboard-soft-lift transition-colors hover:border-border-strong hover:bg-surface-hover"
+                className="route-metric dashboard-soft-lift min-h-[140px] justify-between transition-colors hover:border-border-strong hover:bg-surface-hover"
               >
-                <div className="route-metric__label">{step.action}</div>
-                <div className="route-metric__value text-sm">{step.title}</div>
-                <div className="text-sm leading-6 text-text-secondary">{step.detail}</div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="route-metric__label">{step.action}</div>
+                  <span className="text-lg leading-none text-text-tertiary">→</span>
+                </div>
+                <div className="route-metric__value mt-auto text-[18px] leading-[1.35]">{step.title}</div>
               </Link>
             ))}
           </section>
