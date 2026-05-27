@@ -1129,6 +1129,171 @@ export default function DashboardHome() {
     ],
     [anomalyCount, pendingShifts, state.alerts.length, state.ocrSummary?.trusted_documents, t],
   );
+  const workflowZones = useMemo(
+    () => [
+      {
+        key: "review",
+        title: "Review Operations",
+        href: canReview ? "/approvals" : "/dashboard",
+        action: canReview ? "Open Review Queue" : "Open Board",
+        detail: canReview
+          ? `${state.alerts.length} live alerts and ${state.ocrSummary?.pending_documents ?? 0} OCR review items are waiting for closure.`
+          : "Track unresolved signals and escalate the next blocker from the board.",
+        metrics: [
+          { label: "Alerts", value: state.alerts.length },
+          { label: "Pending OCR", value: state.ocrSummary?.pending_documents ?? 0 },
+        ],
+        className: "xl:col-span-5 factory-workflow-lane--critical",
+      },
+      {
+        key: "ocr",
+        title: "OCR Operations",
+        href: canReview ? "/ocr/verify" : "/ocr/scan",
+        action: canReview ? "Open OCR Review" : "Open Scan Desk",
+        detail: `${state.ocrSummary?.trusted_documents ?? 0} trusted docs, ${queueCount} queued browser item${queueCount === 1 ? "" : "s"}, and ${state.ocrSummary?.trusted_rows ?? 0} trusted rows are in play.`,
+        metrics: [
+          { label: "Queued", value: queueCount },
+          { label: "Trusted Rows", value: state.ocrSummary?.trusted_rows ?? 0 },
+        ],
+        className: "xl:col-span-4",
+      },
+      {
+        key: "admin",
+        title: "Factory Administration",
+        href: "/settings",
+        action: "Open Factory Admin",
+        detail: `${organization?.accessible_factories || factories.length || 1} factories stay aligned here across setup, users, and workflow rules.`,
+        metrics: [
+          { label: "Factories", value: organization?.accessible_factories || factories.length || 1 },
+          { label: "Role", value: user?.role || "-" },
+        ],
+        className: "xl:col-span-3",
+      },
+      {
+        key: "reports",
+        title: "Reports & Export",
+        href: "/reports",
+        action: "Open Reports",
+        detail: `${monthlyUnits.toLocaleString(locale)} recent units and ${recentEntries.length} recent entries are ready for validation, export, and escalation follow-through.`,
+        metrics: [
+          { label: "Recent Units", value: monthlyUnits },
+          { label: "Entries", value: recentEntries.length },
+        ],
+        className: "xl:col-span-7",
+      },
+      {
+        key: "attendance",
+        title: "Attendance & Shift Monitoring",
+        href: canReview ? "/attendance/review" : "/attendance",
+        action: canReview ? "Open Attendance Review" : "Open Attendance",
+        detail: `${completedShifts} completed shifts, ${pendingShifts} pending shifts, and ${state.attendanceToday?.status || "live shift"} status remain visible for floor follow-through.`,
+        metrics: [
+          { label: "Completed", value: completedShifts },
+          { label: "Pending", value: pendingShifts },
+        ],
+        className: "xl:col-span-5",
+      },
+    ],
+    [
+      canReview,
+      completedShifts,
+      factories.length,
+      locale,
+      monthlyUnits,
+      organization?.accessible_factories,
+      pendingShifts,
+      queueCount,
+      recentEntries.length,
+      state.alerts.length,
+      state.attendanceToday?.status,
+      state.ocrSummary?.pending_documents,
+      state.ocrSummary?.trusted_documents,
+      state.ocrSummary?.trusted_rows,
+      user?.role,
+    ],
+  );
+  const liveFeedItems = useMemo(() => {
+    const items: Array<{
+      key: string;
+      channel: string;
+      title: string;
+      detail: string;
+      time: string;
+      href: string;
+      action: string;
+    }> = [];
+
+    state.alerts.slice(0, 3).forEach((alert) => {
+      items.push({
+        key: `alert-${alert.id}`,
+        channel: "Queue Escalation",
+        title: alert.message,
+        detail: alert.alert_type,
+        time: formatDateTime(alert.created_at, locale),
+        href: "/approvals",
+        action: "Review",
+      });
+    });
+
+    state.anomalyPreview?.items?.slice(0, 2).forEach((item) => {
+      items.push({
+        key: `anomaly-${item.entry_id}-${item.anomaly_type}`,
+        channel: "Shift Anomaly",
+        title: item.message,
+        detail: `${item.anomaly_type.replaceAll("_", " ")} • ${formatShift(item.shift)}`,
+        time: formatDate(item.date, locale),
+        href: `/entry/${item.entry_id}`,
+        action: "Open",
+      });
+    });
+
+    if ((state.ocrSummary?.pending_documents ?? 0) > 0) {
+      items.push({
+        key: "ocr-pending",
+        channel: "OCR Activity",
+        title: `${state.ocrSummary?.pending_documents ?? 0} OCR document${(state.ocrSummary?.pending_documents ?? 0) === 1 ? "" : "s"} pending trust`,
+        detail: state.ocrSummary?.trust_note || "Pending review is affecting downstream trust.",
+        time: formatDateTime(state.ocrSummary?.last_trusted_at || undefined, locale),
+        href: "/ocr/verify",
+        action: "Inspect",
+      });
+    }
+
+    if (queueCount > 0) {
+      items.push({
+        key: "offline-queue",
+        channel: "Failed Scan Queue",
+        title: `${queueCount} queued browser item${queueCount === 1 ? "" : "s"} awaiting sync`,
+        detail: online ? "The network is back; sync can clear the backlog now." : "Offline mode is still holding local work.",
+        time: online ? "Ready now" : "Offline",
+        href: "/ocr/scan",
+        action: "Open",
+      });
+    }
+
+    recentEntries.slice(0, 3).forEach((entry) => {
+      items.push({
+        key: `entry-${entry.id}`,
+        channel: "Production Logged",
+        title: `${entry.department || "Production"} submitted ${entry.units_produced}/${entry.units_target}`,
+        detail: `${formatShift(entry.shift)} • ${entry.downtime_minutes} min downtime`,
+        time: formatDateTime(entry.created_at, locale),
+        href: `/entry/${entry.id}`,
+        action: "Open",
+      });
+    });
+
+    return items.slice(0, 8);
+  }, [locale, online, queueCount, recentEntries, state.alerts, state.anomalyPreview?.items, state.ocrSummary]);
+  const operationalRecommendations = useMemo(() => {
+    const next: string[] = [];
+    if (state.alerts.length > 0) next.push("Clear the live alert queue before exporting or summarizing anything downstream.");
+    if ((state.ocrSummary?.pending_documents ?? 0) > 0) next.push("OCR trust is lagging; route pending documents through review before reports go out.");
+    if (queueCount > 0) next.push("A browser-side queue is building. Sync or reopen scan operations to prevent hidden backlog.");
+    if (anomalyCount > 0) next.push("Anomaly signals are active. Validate the highest-risk shift entry before shifting attention to passive analytics.");
+    if (!next.length) next.push("Core workflow lanes look stable. Use reporting and administration for planned follow-through, not emergency response.");
+    return next.slice(0, 3);
+  }, [anomalyCount, queueCount, state.alerts.length, state.ocrSummary?.pending_documents]);
   const usagePrimaryAction = useMemo(() => {
     if (user?.role === "supervisor") {
       return { href: "/approvals", label: "Open Review Queue" };
@@ -1706,8 +1871,323 @@ export default function DashboardHome() {
           </div>
         </details>
 
+        <section className="factory-zone">
+          <div className="factory-zone__header">
+            <div>
+              <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--action-primary)]">
+                Critical Operational Zone
+              </div>
+              <div className="mt-2 text-lg font-semibold text-text-primary">
+                What requires operator attention right now
+              </div>
+            </div>
+            {topAnomaly ? (
+              <div className={`rounded-sm border px-3 py-2 text-xs ${severityTone(topAnomaly.severity)}`}>
+                {topAnomaly.message}
+              </div>
+            ) : null}
+          </div>
+          <section className="factory-critical-strip">
+            <div className="factory-critical-strip__meta">
+              <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-text-secondary">
+                Unified operational health surface
+              </div>
+              <div className="factory-critical-strip__nodes">
+                {dashboardNodeCards.map((node) => (
+                  <div key={node.label} className="factory-critical-strip__node">
+                    <span className={`inline-flex h-1.5 w-1.5 rounded-full ${node.tone}`} />
+                    <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-secondary">{node.label}</span>
+                    <span className="text-xs text-text-primary">{node.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="factory-critical-strip__body">
+              <div className="factory-critical-strip__metrics">
+                {dashboardTelemetryCards.map((card) => (
+                  <div key={card.label} className="factory-critical-strip__metric">
+                    <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary">{card.label}</div>
+                    <div className={`text-[30px] font-semibold leading-none ${card.accentClass}`}>{card.value}</div>
+                    <div className="text-xs leading-5 text-text-secondary">
+                      {card.label === "Trusted OCR"
+                        ? `${state.ocrSummary?.pending_documents ?? 0} pending trust actions remain in queue.`
+                        : card.label === t("dashboard.metric.pending_shift", "Pending Shift")
+                          ? `${completedShifts} shifts completed; ${pendingShifts} still need closure.`
+                          : card.label === t("dashboard.metric.signals", "System Signals")
+                            ? `${anomalyCount} workflow signal${anomalyCount === 1 ? "" : "s"} are active in the current window.`
+                            : `${state.alerts.length} alert${state.alerts.length === 1 ? "" : "s"} are still unresolved.`}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="factory-critical-strip__aside">
+                <div>
+                  <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary">Queue urgency</div>
+                  <div className="mt-2 text-base font-semibold text-text-primary">
+                    {primaryAction?.title || "Keep the next lane moving"}
+                  </div>
+                  <div className="mt-2 text-sm leading-6 text-text-secondary">
+                    {primaryAction?.detail || "Use the board to clear the next operational blocker without changing context."}
+                  </div>
+                </div>
+                {primaryAction ? (
+                  <Link href={primaryAction.href}>
+                    <Button className="h-10 w-full text-[11px] font-semibold uppercase tracking-[0.18em]">
+                      {primaryAction.action}
+                    </Button>
+                  </Link>
+                ) : null}
+              </div>
+            </div>
+          </section>
+        </section>
+
+        <section className="factory-zone">
+          <div className="factory-zone__header">
+            <div>
+              <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--action-primary)]">
+                Active Workflow Zone
+              </div>
+              <div className="mt-2 text-lg font-semibold text-text-primary">
+                Command lanes for review, OCR, administration, reporting, and shift control
+              </div>
+            </div>
+          </div>
+          <div className="factory-workflow-grid">
+            {workflowZones.map((lane) => (
+              <div key={lane.key} className={`factory-workflow-lane ${lane.className}`}>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-text-tertiary">{lane.action}</div>
+                    <div className="mt-3 text-[20px] font-semibold leading-[1.3] text-text-primary">{lane.title}</div>
+                  </div>
+                  <span className="text-lg leading-none text-text-tertiary">→</span>
+                </div>
+                <div className="text-sm leading-6 text-text-secondary">{lane.detail}</div>
+                <div className="factory-workflow-lane__chips">
+                  {lane.metrics.map((metric) => (
+                    <div key={metric.label} className="factory-workflow-chip">
+                      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">{metric.label}</span>
+                      <span className="text-sm font-semibold text-text-primary">{metric.value}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link href={lane.href}>
+                    <Button variant={lane.key === "review" ? undefined : "outline"} className="px-4 py-2 text-xs">
+                      {lane.action}
+                    </Button>
+                  </Link>
+                  {lane.key === "ocr" && dashboardQuickLinks.length ? (
+                    <Link href={dashboardQuickLinks[0].href}>
+                      <Button variant="ghost" className="px-4 py-2 text-xs">
+                        {dashboardQuickLinks[0].label}
+                      </Button>
+                    </Link>
+                  ) : null}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="factory-zone">
+          <div className="factory-zone__header">
+            <div>
+              <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--action-primary)]">
+                Live Operational Feed
+              </div>
+              <div className="mt-2 text-lg font-semibold text-text-primary">
+                Real-time workflow events across OCR, approvals, queue escalations, and shift anomalies
+              </div>
+            </div>
+          </div>
+          <div className="factory-feed-grid">
+            <div className="factory-feed-panel px-4 py-4">
+              {liveFeedItems.length ? (
+                liveFeedItems.map((item) => (
+                  <div key={item.key} className="factory-feed-item">
+                    <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-tertiary">{item.channel}</div>
+                    <div>
+                      <div className="text-sm font-semibold text-text-primary">{item.title}</div>
+                      <div className="mt-1 text-xs leading-5 text-text-secondary">{item.detail}</div>
+                      <div className="mt-2 text-[11px] text-text-tertiary">{item.time}</div>
+                    </div>
+                    <Link href={item.href} className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--action-primary)]">
+                      {item.action}
+                    </Link>
+                  </div>
+                ))
+              ) : (
+                <div className="text-sm text-text-secondary">No live events are waiting right now.</div>
+              )}
+            </div>
+            <div className="factory-feed-panel px-4 py-4">
+              <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-text-tertiary">Escalation Summary</div>
+              <div className="mt-4 space-y-3">
+                <div className="factory-workflow-chip w-full justify-between">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">Unread Alerts</span>
+                  <span className="text-sm font-semibold text-text-primary">{state.alerts.length}</span>
+                </div>
+                <div className="factory-workflow-chip w-full justify-between">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">OCR Pending</span>
+                  <span className="text-sm font-semibold text-text-primary">{state.ocrSummary?.pending_documents ?? 0}</span>
+                </div>
+                <div className="factory-workflow-chip w-full justify-between">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">Queue Backlog</span>
+                  <span className="text-sm font-semibold text-text-primary">{queueCount}</span>
+                </div>
+                <div className="factory-workflow-chip w-full justify-between">
+                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">Signals</span>
+                  <span className="text-sm font-semibold text-text-primary">{anomalyCount}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="factory-zone">
+          <div className="factory-zone__header">
+            <div>
+              <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--action-primary)]">
+                Operational Intelligence Zone
+              </div>
+              <div className="mt-2 text-lg font-semibold text-text-primary">
+                Production activity, workflow bottlenecks, and operational recommendations
+              </div>
+            </div>
+          </div>
+          <div className="factory-intelligence-grid">
+            <div className="factory-intelligence-panel">
+              <div className="border-b border-border-subtle px-4 py-4">
+                <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary">Live Production Activity</div>
+                <div className="mt-2 text-lg font-semibold text-text-primary">Shift throughput and operational events</div>
+              </div>
+              <div className="px-4 py-4">
+                {recentEntries.length ? (
+                  <ResponsiveScrollArea debugLabel="dashboard-recent-entries">
+                    <table className="min-w-full text-left text-sm">
+                      <thead className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--muted)]">
+                        <tr className="border-b border-[var(--border)]">
+                          <th className="px-3 py-3 font-medium">{t("table.date", "Date")}</th>
+                          <th className="px-3 py-3 font-medium">{t("table.shift", "Shift")}</th>
+                          <th className="px-3 py-3 font-medium">{t("table.department", "Department")}</th>
+                          <th className="px-3 py-3 font-medium">{t("table.units", "Units")}</th>
+                          <th className="px-3 py-3 font-medium">{t("table.downtime", "Downtime")}</th>
+                          <th className="px-3 py-3 font-medium">{t("table.action", "Action")}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {recentEntries.map((entry) => (
+                          <tr key={entry.id} className="border-b border-[var(--border)]/60">
+                            <td className="px-3 py-3">{formatDate(entry.date, locale)}</td>
+                            <td className="px-3 py-3">{formatShift(entry.shift)}</td>
+                            <td className="px-3 py-3">{entry.department || "-"}</td>
+                            <td className="px-3 py-3">{entry.units_produced} / {entry.units_target}</td>
+                            <td className="px-3 py-3">{entry.downtime_minutes} {t("table.min", "min")}</td>
+                            <td className="px-3 py-3">
+                              <Link href={`/entry/${entry.id}`} className="text-[var(--accent)] underline underline-offset-4">
+                                {t("common.open", "Open")}
+                              </Link>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </ResponsiveScrollArea>
+                ) : (
+                  <div className="text-sm text-text-secondary">{t("dashboard.entries.empty", "No entries submitted yet.")}</div>
+                )}
+              </div>
+            </div>
+
+            <div className="factory-intelligence-panel px-4 py-4">
+              <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary">Workflow Bottlenecks</div>
+              <div className="mt-2 text-lg font-semibold text-text-primary">OCR anomalies, review pressure, and pending intelligence</div>
+              <div className="factory-intelligence-stack mt-4">
+                <div className="rounded-sm border border-border-subtle bg-surface-panel px-3 py-3">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">OCR Trust</div>
+                  <div className="mt-2 text-sm text-text-secondary">
+                    {state.ocrSummary
+                      ? `${state.ocrSummary.pending_documents} pending docs, ${state.ocrSummary.trusted_documents} trusted docs, ${state.ocrSummary.trusted_rows} trusted rows.`
+                      : "OCR intelligence is still warming up for this factory."}
+                  </div>
+                </div>
+                <div className="rounded-sm border border-border-subtle bg-surface-panel px-3 py-3">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">Top Signals</div>
+                  <div className="mt-3 space-y-3">
+                    {state.anomalyPreview?.items?.length ? (
+                      state.anomalyPreview.items.slice(0, 3).map((item) => (
+                        <div key={`${item.entry_id}-${item.anomaly_type}`} className="rounded-sm border border-border-subtle bg-surface-elevated px-3 py-3">
+                          <div className="text-sm font-semibold text-text-primary">{item.message}</div>
+                          <div className="mt-1 text-[11px] text-text-tertiary">
+                            {item.anomaly_type.replaceAll("_", " ")} • {formatDate(item.date, locale)} • {formatShift(item.shift)}
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="text-sm text-text-secondary">{t("dashboard.ai.no_signals", "No anomaly signals are active in the current preview window.")}</div>
+                    )}
+                  </div>
+                </div>
+                <div className="rounded-sm border border-border-subtle bg-surface-panel px-3 py-3">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">Pending Review Intelligence</div>
+                  <div className="mt-2 text-sm text-text-secondary">
+                    {canReview
+                      ? `Review lanes should absorb ${state.alerts.length} alerts and ${state.ocrSummary?.pending_documents ?? 0} OCR exceptions before downstream exports.`
+                      : "This role monitors active exceptions here while escalations move through authorized review lanes."}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="factory-intelligence-panel px-4 py-4">
+              <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary">Operational Recommendations</div>
+              <div className="mt-2 text-lg font-semibold text-text-primary">Usage, escalation summary, and recommended next moves</div>
+              <div className="factory-intelligence-stack mt-4">
+                <div className="rounded-sm border border-border-subtle bg-surface-panel px-3 py-3">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">Usage Snapshot</div>
+                  <div className="mt-2 text-sm text-text-secondary">
+                    {state.usage?.plan ? `${state.usage.plan} plan • ${state.usage.period || "Current period"}` : "Usage summary is available when plan data resolves."}
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {dashboardSnapshotCards.slice(0, 3).map((card) => (
+                      <div key={card.label} className="factory-workflow-chip w-full justify-between">
+                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">{card.label}</span>
+                        <span className="text-sm font-semibold text-text-primary">{card.value}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="rounded-sm border border-border-subtle bg-surface-panel px-3 py-3">
+                  <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">Recommendations</div>
+                  <div className="mt-3 space-y-3">
+                    {operationalRecommendations.map((recommendation, index) => (
+                      <div key={index} className="text-sm leading-6 text-text-secondary">
+                        {recommendation}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Link href={usagePrimaryAction.href}>
+                    <Button variant="outline" className="px-4 py-2 text-xs">
+                      {usagePrimaryAction.label}
+                    </Button>
+                  </Link>
+                  <Link href="/ai">
+                    <Button variant="ghost" className="px-4 py-2 text-xs">
+                      {t("dashboard.action.open_ai", "Open AI Insights")}
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {roleLaunchGuide ? (
-          <section className="route-metrics-grid lg:grid-cols-3">
+          <section className="hidden route-metrics-grid lg:grid-cols-3">
             {roleLaunchGuide.steps.map((step, index) => (
               <Link
                 key={`${step.href}-${index}`}
@@ -1724,8 +2204,8 @@ export default function DashboardHome() {
           </section>
         ) : null}
 
-        <section className="route-grid-main xl:grid-cols-[1.1fr_0.9fr_1fr]">
-          <Card className="factory-dashboard-card border border-[var(--border)] bg-surface-panel">
+        <section className="hidden route-grid-main xl:grid-cols-[1.1fr_0.9fr_1fr]">
+          <Card className="hidden factory-dashboard-card border border-[var(--border)] bg-surface-panel">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
                 {t("dashboard.section.now", "Now")}
@@ -1751,7 +2231,7 @@ export default function DashboardHome() {
             </CardContent>
           </Card>
 
-          <Card className="factory-dashboard-card border border-[var(--border)] bg-surface-panel">
+          <Card className="hidden factory-dashboard-card border border-[var(--border)] bg-surface-panel">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
                 {t("dashboard.section.attention", "Attention")}
@@ -1870,7 +2350,7 @@ export default function DashboardHome() {
         </section>
 
         {activeFactory?.industry_type === "steel" && ["supervisor", "manager", "owner"].includes(user?.role || "") ? (
-          <Card className="factory-dashboard-card border border-[var(--border)] bg-surface-panel">
+          <Card className="hidden factory-dashboard-card border border-[var(--border)] bg-surface-panel">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
                 {t("dashboard.steel.section", "Steel Control")}
@@ -1907,7 +2387,7 @@ export default function DashboardHome() {
           </Card>
         ) : null}
 
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <section className="hidden grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {dashboardSnapshotCards.map((card, index) => (
             <Card key={`${card.label}-${card.href}`} className="factory-dashboard-card">
               <CardHeader>
@@ -1940,7 +2420,7 @@ export default function DashboardHome() {
         </section>
 
         {/* AUDIT: BUTTON_CLUTTER — Organization and deep analytics context now sit behind a compact reveal so the operational home stays action-first. */}
-        <details className="rounded-[0.35rem] border border-[var(--border)] bg-[var(--surface-overlay)] p-4">
+        <details className="hidden rounded-[0.35rem] border border-[var(--border)] bg-[var(--surface-overlay)] p-4">
           <summary className="cursor-pointer list-none text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
             {t("dashboard.section.advanced", "Context")}
           </summary>
@@ -2205,7 +2685,7 @@ export default function DashboardHome() {
           </div>
         </details>
 
-        <section className="mt-[var(--space-xl)] grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <section className="hidden mt-[var(--space-xl)] grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
           <Card className="factory-dashboard-card">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
