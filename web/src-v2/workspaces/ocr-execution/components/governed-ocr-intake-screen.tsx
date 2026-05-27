@@ -49,7 +49,7 @@ export function GovernedOcrIntakeScreen({
   templateOptions,
 }: GovernedOcrIntakeScreenProps) {
   return (
-    <main className="dpr-governed-ocr min-h-screen bg-[#0f141b]">
+    <main className="dpr-governed-ocr factory-ocr-scope min-h-screen px-4 py-4 md:px-6 md:py-5">
       {error ? (
         <div className="border-b border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{error}</div>
       ) : null}
@@ -62,8 +62,41 @@ export function GovernedOcrIntakeScreen({
           Open legacy intake lane
         </Link>
       </div>
-      <WorkspaceViewport surface="canvas" className="min-h-screen">
-        <div className="mx-auto flex min-h-screen w-full max-w-5xl items-center px-4 py-10">
+      <div className="factory-ocr-shell">
+        <section className="factory-ocr-header">
+          <div className="factory-ocr-header__meta">
+            <div className="max-w-4xl">
+              <div className="factory-ocr-header__eyebrow">Governed OCR Intake</div>
+              <h1 className="factory-ocr-header__title">Create route-owned verification draft</h1>
+              <p className="factory-ocr-header__subtitle">
+                This intake lane feeds the governed OCR queue directly so the same operator can move from upload into correction without losing context.
+              </p>
+            </div>
+            <div className="factory-ocr-telemetry">
+              <div className="factory-ocr-telemetry__item">
+                <div className="factory-ocr-telemetry__label">Templates</div>
+                <div className="factory-ocr-telemetry__value">{templateOptions.length} available</div>
+              </div>
+              <div className="factory-ocr-telemetry__item">
+                <div className="factory-ocr-telemetry__label">Language hint</div>
+                <div className="factory-ocr-telemetry__value">{language}</div>
+              </div>
+              <div className="factory-ocr-telemetry__item">
+                <div className="factory-ocr-telemetry__label">Expected columns</div>
+                <div className="factory-ocr-telemetry__value">{columns}</div>
+              </div>
+            </div>
+          </div>
+          <div className="factory-ocr-stagebar">
+            <div className="factory-ocr-stagepill" data-state="done"><span className="factory-ocr-stagepill__index">1</span><span className="factory-ocr-stagepill__label">Upload</span></div>
+            <div className="factory-ocr-stagepill" data-state="current"><span className="factory-ocr-stagepill__index">2</span><span className="factory-ocr-stagepill__label">Prepare</span></div>
+            <div className="factory-ocr-stagepill" data-state="idle"><span className="factory-ocr-stagepill__index">3</span><span className="factory-ocr-stagepill__label">Review</span></div>
+            <div className="factory-ocr-stagepill" data-state="idle"><span className="factory-ocr-stagepill__index">4</span><span className="factory-ocr-stagepill__label">Export</span></div>
+          </div>
+        </section>
+
+        <WorkspaceViewport surface="canvas" className="min-h-[72vh]">
+        <div className="mx-auto flex w-full max-w-6xl items-center py-4">
           <Panel variant="workspace" padding="none" className="w-full overflow-hidden">
             <PanelHeader
               title="Governed OCR intake"
@@ -158,7 +191,8 @@ export function GovernedOcrIntakeScreen({
             </PanelBody>
           </Panel>
         </div>
-      </WorkspaceViewport>
+        </WorkspaceViewport>
+      </div>
     </main>
   );
 }

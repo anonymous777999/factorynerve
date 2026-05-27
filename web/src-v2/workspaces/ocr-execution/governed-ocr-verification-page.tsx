@@ -235,7 +235,7 @@ export function GovernedOcrVerificationPage() {
   }
 
   return (
-    <main className="dpr-governed-ocr min-h-screen bg-[#0f141b]">
+    <main className="dpr-governed-ocr factory-ocr-scope min-h-screen px-4 py-4 md:px-6 md:py-5">
       {messages.error ? (
         <div className="border-b border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{messages.error}</div>
       ) : null}
@@ -248,6 +248,39 @@ export function GovernedOcrVerificationPage() {
           Open legacy rollback lane
         </Link>
       </div>
+      <div className="factory-ocr-shell">
+        <section className="factory-ocr-header">
+          <div className="factory-ocr-header__meta">
+            <div className="max-w-4xl">
+              <div className="factory-ocr-header__eyebrow">Governed OCR Review Console</div>
+              <h1 className="factory-ocr-header__title">Queue to preview to correction to approval</h1>
+              <p className="factory-ocr-header__subtitle">
+                Persistent queue context, live document preview, correction rail, and action lane stay on one industrial workstation so operators can clear OCR backlog without route switching.
+              </p>
+            </div>
+            <div className="factory-ocr-telemetry">
+              <div className="factory-ocr-telemetry__item">
+                <div className="factory-ocr-telemetry__label">Queue slice</div>
+                <div className="factory-ocr-telemetry__value">{review.workspaceRecords.length} records</div>
+              </div>
+              <div className="factory-ocr-telemetry__item">
+                <div className="factory-ocr-telemetry__label">Active signals</div>
+                <div className="factory-ocr-telemetry__value">{review.reviewSignals.length}</div>
+              </div>
+              <div className="factory-ocr-telemetry__item">
+                <div className="factory-ocr-telemetry__label">Workflow stage</div>
+                <div className="factory-ocr-telemetry__value">{route.step === 4 ? "Approval" : "Review"}</div>
+              </div>
+            </div>
+          </div>
+          <div className="factory-ocr-stagebar">
+            <div className="factory-ocr-stagepill" data-state="done"><span className="factory-ocr-stagepill__index">1</span><span className="factory-ocr-stagepill__label">Upload</span></div>
+            <div className="factory-ocr-stagepill" data-state="done"><span className="factory-ocr-stagepill__index">2</span><span className="factory-ocr-stagepill__label">Prepare</span></div>
+            <div className="factory-ocr-stagepill" data-state={route.step === 4 ? "done" : "current"}><span className="factory-ocr-stagepill__index">3</span><span className="factory-ocr-stagepill__label">Review</span></div>
+            <div className="factory-ocr-stagepill" data-state={route.step === 4 ? "current" : "idle"}><span className="factory-ocr-stagepill__index">4</span><span className="factory-ocr-stagepill__label">Export</span></div>
+          </div>
+        </section>
+
       <OCRExecutionWorkspace
         bannerSlot={(record) => (
           <WorkflowBanner
@@ -351,6 +384,7 @@ export function GovernedOcrVerificationPage() {
           />
         )}
       />
+      </div>
     </main>
   );
 }

@@ -33,16 +33,16 @@ function ActionCard({
       onClick={onClick}
       disabled={busy}
       className={cn(
-        "rounded-[24px] border px-5 py-5 text-left transition duration-200 disabled:cursor-not-allowed disabled:opacity-60",
+        "border px-5 py-5 text-left transition duration-200 disabled:cursor-not-allowed disabled:opacity-60",
         primary
-          ? "border-[#185FA5] bg-[#185FA5] text-white shadow-[0_20px_42px_rgba(24,95,165,0.24)] hover:bg-[#164f8a]"
-          : "border-[#dfe6ed] bg-white text-[#101828] hover:border-[#185FA5]/35 hover:shadow-[0_14px_30px_rgba(15,23,42,0.06)]",
+          ? "factory-ocr-button-primary"
+          : "factory-ocr-button-secondary",
       )}
     >
-      <div className={cn("text-sm", primary ? "text-white/85" : "text-[#667085]")}>
+      <div className={cn("font-mono text-[10px] font-semibold uppercase tracking-[0.14em]", primary ? "text-[var(--action-primary-text)]/70" : "text-text-tertiary")}>
         {primary ? "Primary export" : "Secondary export"}
       </div>
-      <div className="mt-2 text-lg font-semibold tracking-tight">
+      <div className="mt-2 text-lg font-semibold tracking-tight text-inherit">
         {label}
       </div>
     </button>
@@ -64,24 +64,27 @@ export function ExportPanel({
 }: ExportPanelProps) {
   return (
     <div className="space-y-5">
-      <div className="rounded-[24px] border border-emerald-200 bg-emerald-50 px-5 py-4 text-sm text-emerald-900">
+      <div className="factory-ocr-status" data-tone="success">
         <span className="font-medium">Extraction complete</span>
-        <span className="text-emerald-900/80">
-          {" "}
-          - {rowCount} rows, {columnCount} columns, {correctionCount} corrections made
+        <span className="opacity-90">
+          {rowCount} rows / {columnCount} columns / {correctionCount} corrected cells
         </span>
       </div>
 
       <ActionCard label={primaryLabel} onClick={onDownloadExcel} primary busy={busy} />
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="factory-ocr-panel-grid factory-ocr-panel-grid--four">
         <ActionCard label="CSV" onClick={onDownloadCsv} />
         <ActionCard label="JSON" onClick={onDownloadJson} />
         <ActionCard label="Copy to clipboard" onClick={onCopyClipboard} />
-        {shareCard ? <div>{shareCard}</div> : <div className="rounded-[24px] border border-[#dfe6ed] bg-white px-5 py-5" />}
+        {shareCard ? (
+          <div className="factory-ocr-console--subtle border border-border-subtle p-4">{shareCard}</div>
+        ) : (
+          <div className="factory-ocr-console--subtle border border-border-subtle p-4" />
+        )}
       </div>
 
-      {status ? <div className="text-sm text-[#667085]">{status}</div> : null}
+      {status ? <div className="text-sm text-text-secondary">{status}</div> : null}
     </div>
   );
 }
