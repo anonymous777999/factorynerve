@@ -1628,7 +1628,8 @@ input[type="checkbox"] {
   border: 1px solid var(--border-default);
   border-radius: 0.25rem;
   background: var(--surface-elevated);
-  padding: 1rem 1rem 1rem 1.25rem;
+  min-height: 12rem;
+  padding: 1.15rem 1.2rem 1.15rem 1.45rem;
 }
 
 .factory-dashboard-reminder::before {
@@ -1657,11 +1658,13 @@ input[type="checkbox"] {
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0.75rem 0.9rem;
+  min-height: 3.35rem;
+  padding: 0.8rem 0.9rem;
 }
 
 .factory-telemetry-card {
-  padding: 0.9rem 1rem;
+  min-height: 7.7rem;
+  padding: 1rem;
 }
 
 .factory-dashboard-toolbar {
@@ -1682,6 +1685,16 @@ input[type="checkbox"] {
     linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0)),
     var(--surface-elevated);
   box-shadow: var(--shadow-xs);
+}
+
+.factory-dashboard-card .card-header,
+.factory-dashboard-table .card-header {
+  padding: 1.1rem 1.25rem 0.9rem;
+}
+
+.factory-dashboard-card .card-content,
+.factory-dashboard-table .card-content {
+  padding: 0 1.25rem 1.25rem;
 }
 
 .factory-dashboard-table {
@@ -1708,6 +1721,10 @@ input[type="checkbox"] {
   .factory-dashboard-strip {
     grid-template-columns: minmax(0, 1.1fr) minmax(20rem, 0.9fr);
     align-items: stretch;
+  }
+
+  .factory-dashboard-strip > :last-child {
+    min-width: 0;
   }
 
   .factory-node-grid {
