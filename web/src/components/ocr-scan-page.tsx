@@ -583,9 +583,9 @@ function buildBoundingBox(
 }
 
 function statusBannerClass(tone: "error" | "success" | "warning") {
-  if (tone === "success") return "border-emerald-200 bg-emerald-50 text-emerald-900";
-  if (tone === "warning") return "border-amber-200 bg-amber-50 text-amber-900";
-  return "border-red-200 bg-red-50 text-red-900";
+  if (tone === "success") return "factory-ocr-status";
+  if (tone === "warning") return "factory-ocr-status";
+  return "factory-ocr-status";
 }
 
 export default function OcrScanPage() {
@@ -1594,7 +1594,7 @@ export default function OcrScanPage() {
 
   if (loading || !deviceReady || !restored) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#f4f7fb] text-sm text-[#667085]">
+      <main className="factory-ocr-scope flex min-h-screen items-center justify-center text-sm text-text-secondary">
         Loading OCR workspace...
       </main>
     );
@@ -1659,47 +1659,58 @@ export default function OcrScanPage() {
         }}
       />
 
-      <main className="bg-[#f4f7fb] px-4 py-4 md:px-6 md:py-6">
-        <div className="mx-auto max-w-[1800px] space-y-5">
-          <div className="rounded-[28px] border border-[#e3e8ef] bg-white px-4 py-4 shadow-[0_24px_64px_rgba(15,23,42,0.06)] md:px-5">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+      <main className="factory-ocr-scope px-4 py-4 md:px-6 md:py-5">
+        <div className="factory-ocr-shell">
+          <div className="factory-ocr-header">
+            <div className="factory-ocr-header__meta">
               <div className="max-w-3xl">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#667085]">
+                <div className="factory-ocr-header__eyebrow">
                   Document Scan
                 </div>
-                <h1 className="mt-2 text-[2rem] font-semibold tracking-tight text-[#101828] md:text-[2.35rem]">
+                <h1 className="factory-ocr-header__title">
                   Scan & Review
                 </h1>
+                <p className="factory-ocr-header__subtitle">
+                  Queue-first OCR intake with persistent source context, extraction telemetry, and operator correction flow.
+                </p>
               </div>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {STEP_LABELS.map((item, index) => {
+              <div className="factory-ocr-telemetry">
+                <div className="factory-ocr-telemetry__item">
+                  <div className="factory-ocr-telemetry__label">Queue visibility</div>
+                  <div className="factory-ocr-telemetry__value">{recentRecords.length} recent drafts</div>
+                </div>
+                <div className="factory-ocr-telemetry__item">
+                  <div className="factory-ocr-telemetry__label">Correction focus</div>
+                  <div className="factory-ocr-telemetry__value">{visibleLowConfidenceCount} low-confidence cells</div>
+                </div>
+                <div className="factory-ocr-telemetry__item">
+                  <div className="factory-ocr-telemetry__label">Stage state</div>
+                  <div className="factory-ocr-telemetry__value">{STEP_LABELS.find((item) => item.key === step)?.label}</div>
+                </div>
+              </div>
+            </div>
+            <div className="factory-ocr-stagebar">
+              {STEP_LABELS.map((item, index) => {
                   const activeIndex = STEP_LABELS.findIndex((stepItem) => stepItem.key === step);
                   const state = index < activeIndex ? "done" : index === activeIndex ? "current" : "idle";
                   return (
                     <div
                       key={item.key}
-                      className={[
-                        "rounded-[18px] border px-3 py-3 text-center transition duration-200",
-                        state === "done"
-                          ? "border-[#cfe0f0] bg-[#f7fbff] text-[#185FA5]"
-                          : state === "current"
-                            ? "border-[#185FA5] bg-[#185FA5] text-white"
-                            : "border-[#e7edf3] bg-[#f8fafc] text-[#98a2b3]",
-                      ].join(" ")}
+                      className="factory-ocr-stagepill"
+                      data-state={state}
                     >
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em]">
+                      <div className="factory-ocr-stagepill__index">
                         {index + 1}
                       </div>
-                      <div className="mt-1 text-sm font-medium">{item.label}</div>
+                      <div className="factory-ocr-stagepill__label">{item.label}</div>
                     </div>
                   );
                 })}
-              </div>
             </div>
           </div>
 
           {status ? (
-            <div className={`rounded-[22px] border px-4 py-3 text-sm ${statusBannerClass(statusTone)}`}>
+            <div className={statusBannerClass(statusTone)} data-tone={statusTone}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span>{status}</span>
                 {statusTone === "error" ? (
@@ -1721,7 +1732,7 @@ export default function OcrScanPage() {
             </div>
           ) : null}
           {draftSaveError ? (
-            <div className="rounded-[22px] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <div className="factory-ocr-status" data-tone="error">
               Autosave issue: {draftSaveError}
             </div>
           ) : null}
@@ -1814,8 +1825,8 @@ export default function OcrScanPage() {
 
           {(step === "preview" || step === "export") && resultPreview ? (
             <div className="space-y-5">
-              <div className="grid gap-5 xl:grid-cols-[35%_65%] xl:items-start">
-                <div className="overflow-hidden rounded-[28px] border border-[#e3e8ef] bg-white shadow-[0_20px_54px_rgba(15,23,42,0.05)] xl:max-h-[85vh]">
+              <div className="factory-ocr-stage-grid factory-ocr-stage-grid--review">
+                <div className="factory-ocr-console overflow-hidden rounded-[0.45rem] xl:max-h-[85vh]">
                   <div className="flex items-center justify-between border-b border-[#edf1f5] px-4 py-3">
                     <div>
                       <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#667085]">
@@ -1897,7 +1908,7 @@ export default function OcrScanPage() {
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="factory-ocr-review-pane space-y-4">
                   <div className="flex items-center justify-between gap-3">
                     <EditToolbar
                       canUndo={canUndo}
@@ -1983,7 +1994,7 @@ export default function OcrScanPage() {
                             setViewMode("raw");
                           }}
                         >
-                          <div className="overflow-hidden rounded-[28px] border border-[#e3e8ef] bg-white shadow-[0_18px_54px_rgba(15,23,42,0.05)]">
+                          <div className="ocr-review-surface overflow-hidden rounded-[0.4rem]">
                             <div className="overflow-auto">
                               <table className="min-w-full border-collapse">
                                 <thead>
@@ -2069,44 +2080,44 @@ export default function OcrScanPage() {
                       />
 
                       {resultPreview.tokenUsage ? (
-                        <div className="rounded-[24px] border border-[#e3e8ef] bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
-                          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]">Token usage</div>
-                          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                            <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
-                              <div className="text-xs text-[#667085]">Model</div>
-                              <div className="mt-1 text-sm font-semibold text-[#101828]">
+                        <div className="ocr-review-surface p-4">
+                          <div className="factory-ocr-card-title">Token usage</div>
+                          <div className="factory-ocr-token-grid mt-3">
+                            <div className="factory-ocr-data-card">
+                              <div className="factory-ocr-data-card__label">Model</div>
+                              <div className="factory-ocr-data-card__value">
                                 {formatSelectedModelLabel(resultPreview.routingMeta, resultPreview.tokenUsage)}
                               </div>
                             </div>
-                            <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
-                              <div className="text-xs text-[#667085]">Estimated cost</div>
-                              <div className="mt-1 text-sm font-semibold text-[#101828]">
+                            <div className="factory-ocr-data-card">
+                              <div className="factory-ocr-data-card__label">Estimated cost</div>
+                              <div className="factory-ocr-data-card__value">
                                 {formatUsd(resultPreview.tokenUsage.estimated_cost)}
                               </div>
                             </div>
-                            <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
-                              <div className="text-xs text-[#667085]">Input tokens</div>
-                              <div className="mt-1 text-sm font-semibold text-[#101828]">
+                            <div className="factory-ocr-data-card">
+                              <div className="factory-ocr-data-card__label">Input tokens</div>
+                              <div className="factory-ocr-data-card__value">
                                 {formatTokenCount(resultPreview.tokenUsage.input_tokens)}
                               </div>
                             </div>
-                            <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
-                              <div className="text-xs text-[#667085]">Output tokens</div>
-                              <div className="mt-1 text-sm font-semibold text-[#101828]">
+                            <div className="factory-ocr-data-card">
+                              <div className="factory-ocr-data-card__label">Output tokens</div>
+                              <div className="factory-ocr-data-card__value">
                                 {formatTokenCount(resultPreview.tokenUsage.output_tokens)}
                               </div>
                             </div>
                           </div>
-                          <div className="mt-3 rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
+                          <div className="factory-ocr-data-card mt-3">
                             <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                              <span className="text-[#667085]">Total tokens</span>
-                              <span className="font-semibold text-[#101828]">
+                              <span className="text-text-secondary">Total tokens</span>
+                              <span className="font-semibold text-text-primary">
                                 {formatTokenCount(resultPreview.tokenUsage.total_tokens)}
                               </span>
                             </div>
                             <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
-                              <span className="text-[#667085]">Processing time</span>
-                              <span className="font-medium text-[#101828]">
+                              <span className="text-text-secondary">Processing time</span>
+                              <span className="font-medium text-text-primary">
                                 {formatDurationMs(
                                   resultPreview.debug?.processing_time_ms
                                   ?? resultPreview.tokenUsage.processing_time_ms
@@ -2116,13 +2127,13 @@ export default function OcrScanPage() {
                             </div>
                           </div>
                           {resultPreview.debug ? (
-                            <details className="mt-3 rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
-                              <summary className="cursor-pointer text-sm font-medium text-[#344054]">Debug details</summary>
-                              <div className="mt-3 space-y-3 text-xs text-[#475467]">
+                            <details className="factory-ocr-data-card mt-3">
+                              <summary className="cursor-pointer text-sm font-medium text-text-primary">Debug details</summary>
+                              <div className="mt-3 space-y-3 text-xs text-text-secondary">
                                 <div>Requested model: {resultPreview.debug.requested_model || "auto"}</div>
                                 <div>Selected model: {resultPreview.debug.selected_model || "Not reported"}</div>
                                 <div>Final model used: {resultPreview.debug.final_model_used || formatModelUsed(resultPreview.routingMeta, resultPreview.tokenUsage, resultPreview.debug)}</div>
-                                <pre className="overflow-auto rounded-[16px] bg-[#101828] p-3 text-[11px] text-[#f8fafc]">
+                                <pre className="overflow-auto bg-surface-app p-3 text-[11px] text-text-primary">
                                   {JSON.stringify(
                                     {
                                       token_usage: resultPreview.debug.token_usage,
@@ -2139,19 +2150,19 @@ export default function OcrScanPage() {
                         </div>
                       ) : null}
 
-                      <div className="rounded-[24px] border border-[#dbe3eb] bg-[#f8fbff] p-4">
+                      <div className="ocr-review-surface p-4">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                           <div className="max-w-2xl">
-                            <div className="text-sm font-semibold text-[#101828]">Need a cleaner Excel report?</div>
-                            <p className="mt-1 text-sm leading-6 text-[#667085]">
+                            <div className="text-sm font-semibold text-text-primary">Need a cleaner Excel report?</div>
+                            <p className="mt-1 text-sm leading-6 text-text-secondary">
                               If the extracted sheet still looks wrong, choose a stronger model and re-run this scan before exporting again.
                             </p>
-                            <div className="mt-2 text-xs text-[#667085]">
-                              Current result: <span className="font-medium text-[#344054]">{formatModelUsed(resultPreview.routingMeta, resultPreview.tokenUsage, resultPreview.debug)}</span>
+                            <div className="mt-2 text-xs text-text-secondary">
+                              Current result: <span className="font-medium text-text-primary">{formatModelUsed(resultPreview.routingMeta, resultPreview.tokenUsage, resultPreview.debug)}</span>
                             </div>
                           </div>
                           <div className="w-full max-w-sm">
-                            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]" htmlFor="ocr-model">
+                            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-text-tertiary" htmlFor="ocr-model">
                               Extraction model
                             </label>
                             <Select
@@ -2168,14 +2179,14 @@ export default function OcrScanPage() {
                             </Select>
                             <button
                               type="button"
-                              className="mt-3 w-full rounded-full bg-[#185FA5] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(24,95,165,0.16)] transition hover:bg-[#164f8a] disabled:cursor-not-allowed disabled:bg-[#98a2b3] disabled:shadow-none"
+                              className="factory-ocr-button-primary mt-3 w-full px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                               disabled={busy || !canRerunWithSelectedModel}
                               onClick={() => handleRerunWithSelectedModel()}
                             >
                               Re-run with {MODEL_LABELS[selectedModel]}
                             </button>
                             {!canRerunWithSelectedModel ? (
-                              <p className="mt-2 text-xs text-[#667085]">
+                              <p className="mt-2 text-xs text-text-secondary">
                                 Re-run is only available while the uploaded source file is still in this session.
                               </p>
                             ) : null}
@@ -2184,15 +2195,15 @@ export default function OcrScanPage() {
                       </div>
 
                       {step === "preview" ? (
-                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-[#e3e8ef] bg-white p-4">
-                          <div className="flex flex-wrap items-center gap-2 text-sm text-[#667085]">
+                        <div className="ocr-review-surface flex flex-wrap items-center justify-between gap-3 p-4">
+                          <div className="flex flex-wrap items-center gap-2 text-sm text-text-secondary">
                             {resultPreview.scanQuality?.confidence_band === "low" ? (
-                              <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-800">
+                              <span className="factory-ocr-chip factory-ocr-chip--warning">
                                 Low quality
                               </span>
                             ) : null}
                             {resultPreview.warnings.map((warning) => (
-                              <span key={warning} className="rounded-full border border-[#e4eaf0] bg-[#f8fafc] px-3 py-1">
+                              <span key={warning} className="factory-ocr-chip">
                                 {warning.replaceAll("_", " ")}
                               </span>
                             ))}
@@ -2200,7 +2211,7 @@ export default function OcrScanPage() {
                           <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
-                              className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
+                              className="factory-ocr-button-secondary px-4 py-2 text-sm font-medium"
                               disabled={!activeCell}
                               onClick={handleDeleteSelectedRow}
                             >
@@ -2208,14 +2219,14 @@ export default function OcrScanPage() {
                             </button>
                             <button
                               type="button"
-                              className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
+                              className="factory-ocr-button-secondary px-4 py-2 text-sm font-medium"
                               onClick={resetFlow}
                             >
                               Try another image
                             </button>
                             <button
                               type="button"
-                              className="rounded-full bg-[#185FA5] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(24,95,165,0.2)] transition hover:bg-[#164f8a]"
+                              className="factory-ocr-button-primary px-5 py-2.5 text-sm font-semibold"
                               onClick={async () => {
                                 if (draftDirty) {
                                   await persistStructuredDraft();
@@ -2234,7 +2245,7 @@ export default function OcrScanPage() {
               </div>
 
               {step === "export" ? (
-                <div className="rounded-[28px] border border-[#e3e8ef] bg-white p-5 shadow-[0_18px_54px_rgba(15,23,42,0.05)] md:p-6">
+                <div className="factory-ocr-console rounded-[0.45rem] p-5 md:p-6">
                   <ExportPanel
                     rowCount={editableRows.length}
                     columnCount={editableHeaders.length}
@@ -2258,28 +2269,28 @@ export default function OcrScanPage() {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
+                      className="factory-ocr-button-secondary px-4 py-2 text-sm font-medium"
                       onClick={() => setStep("preview")}
                     >
                       Back to edit
                     </button>
                     <button
                       type="button"
-                      className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
+                      className="factory-ocr-button-secondary px-4 py-2 text-sm font-medium"
                       onClick={() => void handleDownloadPdf()}
                     >
                       Download PDF
                     </button>
                     {savedId ? (
                       <Link href={`/ocr/verify?verification_id=${savedId}`}>
-                        <span className="inline-flex rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]">
+                        <span className="factory-ocr-button-secondary inline-flex px-4 py-2 text-sm font-medium">
                           Open review workflow
                         </span>
                       </Link>
                     ) : null}
                     <button
                       type="button"
-                      className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
+                      className="factory-ocr-button-secondary px-4 py-2 text-sm font-medium"
                       onClick={resetFlow}
                     >
                       Scan another image

@@ -16,15 +16,9 @@ type OcrShellProps = {
 const STEP_LABELS: Array<{ key: OcrShellProps["step"]; label: string }> = [
   { key: "entry", label: "Upload" },
   { key: "prepare", label: "Prepare" },
-  { key: "processing", label: "Process" },
+  { key: "processing", label: "Review" },
   { key: "result", label: "Export" },
 ];
-
-const stepStatusClassNames: Record<"done" | "current" | "idle", string> = {
-  done: "border-status-synced-border bg-status-synced-bg text-status-synced-fg",
-  current: "border-workflow-active bg-workflow-active-bg text-workflow-active",
-  idle: "border-border-default bg-surface-shell text-text-secondary",
-};
 
 const shellStatusMap: Record<OcrShellProps["step"], { label: string; status: BadgeStatus }> = {
   entry: { label: "Intake ready", status: "draft" },
@@ -39,71 +33,65 @@ export function OcrShell({
   step,
   children,
   sideContent,
-  mobile = false,
   className,
 }: OcrShellProps) {
   const activeIndex = STEP_LABELS.findIndex((item) => item.key === step);
   const shellStatus = shellStatusMap[step];
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#0d1218_0%,#111820_100%)] px-4 py-4 md:px-6 md:py-6">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
-        <section className="surface-panel-strong rounded-[32px] px-5 py-5 text-[var(--text)] md:px-7 md:py-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
+    <main className="factory-ocr-scope px-4 py-4 md:px-6 md:py-5">
+      <div className="factory-ocr-shell">
+        <section className="factory-ocr-header">
+          <div className="factory-ocr-header__meta">
+            <div className="max-w-4xl">
               <div className="flex flex-wrap items-center gap-3">
-                <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
-                  OCR Workspace
-                </span>
+                <span className="factory-ocr-header__eyebrow">OCR Workstation</span>
                 <Badge status={shellStatus.status}>{shellStatus.label}</Badge>
               </div>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[var(--text)] md:text-[2.1rem]">
-                {title}
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--text-secondary)]">{subtitle}</p>
+              <h1 className="factory-ocr-header__title">{title}</h1>
+              <p className="factory-ocr-header__subtitle">{subtitle}</p>
             </div>
-            <div className="grid grid-cols-2 gap-2 sm:min-w-[26rem] sm:grid-cols-4">
-              {STEP_LABELS.map((item, index) => {
-                const state =
-                  index < activeIndex ? "done" : index === activeIndex ? "current" : "idle";
-                return (
-                  <div
-                    key={item.key}
-                    className={cn(
-                      "rounded-[18px] border px-3 py-3 text-center transition duration-200",
-                      state === "done"
-                        ? "border-[rgba(197,109,45,0.26)] bg-[rgba(197,109,45,0.14)] text-[var(--text)]"
-                        : state === "current"
-                          ? "border-[rgba(197,109,45,0.46)] bg-[linear-gradient(135deg,rgba(197,109,45,0.34),rgba(140,66,24,0.74))] text-[#fff7ef] shadow-[0_18px_36px_rgba(140,66,24,0.24)]"
-                          : "border-[var(--border)] bg-[rgba(10,15,24,0.62)] text-[var(--text-tertiary)]",
-                    )}
-                  >
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em]">
-                      {index + 1}
-                    </div>
-                    <div className="mt-1 text-sm font-medium">{item.label}</div>
-                  </div>
-                );
-              })}
+            <div className="factory-ocr-telemetry">
+              <div className="factory-ocr-telemetry__item">
+                <div className="factory-ocr-telemetry__label">Mode</div>
+                <div className="factory-ocr-telemetry__value">Queue-oriented review</div>
+              </div>
+              <div className="factory-ocr-telemetry__item">
+                <div className="factory-ocr-telemetry__label">Priority</div>
+                <div className="factory-ocr-telemetry__value">Operator throughput</div>
+              </div>
+              <div className="factory-ocr-telemetry__item">
+                <div className="factory-ocr-telemetry__label">State</div>
+                <div className="factory-ocr-telemetry__value">{shellStatus.label}</div>
+              </div>
             </div>
+          </div>
+          <div className="factory-ocr-stagebar">
+            {STEP_LABELS.map((item, index) => {
+              const state = index < activeIndex ? "done" : index === activeIndex ? "current" : "idle";
+              return (
+                <div key={item.key} className="factory-ocr-stagepill" data-state={state}>
+                  <span className="factory-ocr-stagepill__index">{index + 1}</span>
+                  <span className="factory-ocr-stagepill__label">{item.label}</span>
+                </div>
+              );
+            })}
           </div>
         </section>
 
         <section
           className={cn(
-            "grid gap-4",
-            sideContent
-              ? "xl:grid-cols-[minmax(0,1fr)_20rem]"
-              : "",
-            mobile ? "" : "",
+            "factory-ocr-history-layout",
             className,
           )}
         >
-          <div className="surface-panel rounded-[32px] p-4 md:p-6">
+          <div className="factory-ocr-console rounded-[0.45rem] p-4 md:p-5">
             {children}
           </div>
           {sideContent ? (
-            <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">{sideContent}</aside>
+            <aside className="space-y-4">
+              {sideContent}
+            </aside>
           ) : null}
         </section>
       </div>
