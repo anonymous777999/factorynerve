@@ -1244,6 +1244,174 @@ input[type="checkbox"] {
   color: rgba(220, 230, 242, 0.86);
 }
 
+.factory-auth-scope {
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #64748b;
+  --text-link: #ffb868;
+  --text-link-hover: #e08c0f;
+  --surface-app: #111318;
+  --surface-shell: #161a21;
+  --surface-panel: #1e2025;
+  --surface-card: #1c2029;
+  --surface-elevated: #212633;
+  --surface-overlay: #252b36;
+  --surface-hover: #252a33;
+  --surface-active: #2b313b;
+  --surface-selected: #2c2419;
+  --surface-industrial-deep: #0a0b0d;
+  --surface-industrial-raised: #161a21;
+  --surface-industrial-card: #1c2029;
+  --border-subtle: #252b36;
+  --border-default: #333b48;
+  --border-strong: #4a5568;
+  --border-focus: #ffb868;
+  --action-primary: #ffb868;
+  --action-primary-hover: #e08c0f;
+  --action-primary-active: #c97709;
+  --action-primary-text: #2b1700;
+  --action-secondary: #1c2029;
+  --action-secondary-hover: #252b36;
+  --action-secondary-border: #333b48;
+  --action-secondary-text: #f1f5f9;
+  --action-ghost-hover: #252b36;
+  --focus-ring: 0 0 0 1px rgba(255, 184, 104, 0.9);
+  background:
+    radial-gradient(circle at 14% 12%, rgba(255, 184, 104, 0.14), transparent 24%),
+    radial-gradient(circle at 82% 20%, rgba(98, 223, 125, 0.06), transparent 18%),
+    linear-gradient(180deg, #0d1015 0%, #111318 56%, #0d1015 100%);
+}
+
+.factory-auth-shell {
+  min-height: 100vh;
+  min-width: 1280px;
+  overflow-x: auto;
+  color: var(--text-primary);
+}
+
+.factory-auth-topbar {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-strong);
+  background: var(--surface-shell);
+  padding-inline: 2rem;
+}
+
+.factory-auth-grid {
+  position: relative;
+  z-index: 10;
+  display: grid;
+  min-height: calc(100vh - 48px);
+  grid-template-columns: minmax(500px, 1.03fr) minmax(560px, 0.97fr);
+  gap: 2.5rem;
+  padding: 2.5rem 2rem;
+}
+
+.factory-auth-left {
+  display: flex;
+  min-height: 100%;
+  flex-direction: column;
+  justify-content: space-between;
+  border-right: 1px solid var(--border-default);
+  padding-right: 2.5rem;
+}
+
+.factory-auth-card {
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+    var(--surface-panel);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.factory-auth-card--support {
+  background:
+    linear-gradient(180deg, rgba(255, 184, 104, 0.04), rgba(255, 255, 255, 0.01)),
+    var(--surface-industrial-deep);
+}
+
+.factory-auth-panel {
+  width: 100%;
+  max-width: 620px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-xl);
+  background:
+    linear-gradient(180deg, rgba(255, 184, 104, 0.04), rgba(255, 255, 255, 0.01)),
+    linear-gradient(180deg, var(--surface-panel), var(--surface-card));
+  padding: 1.5rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.03),
+    0 30px 72px rgba(0, 0, 0, 0.42);
+}
+
+.factory-auth-metadata {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.factory-auth-step-index {
+  display: inline-flex;
+  height: 2rem;
+  width: 2rem;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  background: var(--surface-elevated);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-primary);
+}
+
+.factory-auth-input {
+  border-color: var(--border-default);
+  background: var(--surface-elevated);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.02),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.01);
+}
+
+.factory-auth-input:focus {
+  border-color: var(--border-focus) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 184, 104, 0.6),
+    0 0 0 4px rgba(255, 184, 104, 0.08);
+}
+
+.factory-auth-provider {
+  border: 1px solid var(--border-default);
+  background: var(--surface-card);
+  box-shadow: var(--shadow-sm);
+}
+
+.factory-auth-provider:hover:not(:disabled) {
+  border-color: var(--border-strong);
+  background: var(--surface-hover);
+}
+
+.factory-auth-cta {
+  background: var(--action-primary);
+  color: var(--action-primary-text);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 16px 34px rgba(255, 184, 104, 0.18);
+}
+
+.factory-auth-cta:hover:not(:disabled) {
+  background: var(--action-primary-hover);
+}
+
 @media (max-width: 640px) {
   .industrial-auth-card {
     border-radius: 1.65rem;
