@@ -1412,6 +1412,313 @@ input[type="checkbox"] {
   background: var(--action-primary-hover);
 }
 
+.factory-workstation-scope {
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --text-tertiary: #64748b;
+  --text-link: #ffb868;
+  --text-link-hover: #e08c0f;
+  --surface-app: #0f1115;
+  --surface-shell: #15181e;
+  --surface-panel: #1b1f26;
+  --surface-card: #1e232c;
+  --surface-elevated: #222833;
+  --surface-overlay: #262d38;
+  --surface-hover: #272d37;
+  --surface-active: #2c3440;
+  --surface-selected: #2a2318;
+  --surface-industrial-deep: #090b0e;
+  --surface-industrial-raised: #14181f;
+  --surface-industrial-card: #1a1f28;
+  --border-subtle: #272d37;
+  --border-default: #35404d;
+  --border-strong: #455260;
+  --border-focus: #ffb868;
+  --action-primary: #ffb868;
+  --action-primary-hover: #ec9f42;
+  --action-primary-active: #c97709;
+  --action-primary-text: #281500;
+  --action-secondary: #1b1f26;
+  --action-secondary-hover: #272d37;
+  --action-secondary-border: #35404d;
+  --action-secondary-text: #f1f5f9;
+  --action-ghost-hover: #242a34;
+  --focus-ring: 0 0 0 1px rgba(255, 184, 104, 0.9);
+  background:
+    radial-gradient(circle at 14% 8%, rgba(255, 184, 104, 0.08), transparent 22%),
+    radial-gradient(circle at 82% 12%, rgba(98, 223, 125, 0.04), transparent 16%),
+    linear-gradient(180deg, #0d1015 0%, #101318 56%, #0b0d11 100%);
+}
+
+.factory-workstation-scope .operational-page {
+  padding: 1.5rem 1.5rem 2rem;
+}
+
+.factory-workstation-scope .operational-page__inner {
+  gap: 1rem;
+}
+
+.factory-workstation-shell {
+  min-width: 0;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0)),
+    var(--surface-app);
+}
+
+.factory-workstation-topbar {
+  border-bottom: 1px solid var(--border-default);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+    var(--surface-shell);
+}
+
+.factory-workstation-frame {
+  background:
+    radial-gradient(circle at top, rgba(255, 184, 104, 0.02), transparent 24%),
+    var(--surface-shell);
+}
+
+.factory-sidebar-shell {
+  border-right: 1px solid var(--border-default);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+    var(--surface-industrial-deep);
+  box-shadow: 18px 0 42px rgba(0, 0, 0, 0.22);
+}
+
+.factory-sidebar-header {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  background:
+    radial-gradient(circle at top left, rgba(255, 184, 104, 0.06), transparent 32%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
+    var(--surface-panel);
+}
+
+.factory-sidebar-header::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 184, 104, 0.7), transparent);
+  opacity: 0.9;
+}
+
+.factory-nav-link {
+  border-radius: 0.35rem;
+  border: 1px solid transparent;
+  background: transparent;
+}
+
+.factory-nav-link:hover {
+  border-color: var(--border-subtle);
+  background: var(--surface-panel);
+}
+
+.factory-nav-link-active {
+  border-color: var(--border-default);
+  border-left-color: var(--action-primary);
+  background:
+    linear-gradient(90deg, rgba(255, 184, 104, 0.12), transparent 26%),
+    var(--surface-panel);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+}
+
+.factory-context-rail {
+  border-left: 1px solid var(--border-subtle);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0)),
+    var(--surface-shell);
+}
+
+.factory-rail-card {
+  border: 1px solid var(--border-subtle);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0)),
+    var(--surface-panel);
+  box-shadow: var(--shadow-xs);
+}
+
+.factory-workstation-scope .route-header,
+.factory-workstation-scope .route-panel,
+.factory-workstation-scope .route-table-anchor,
+.factory-workstation-scope .telemetry-rail,
+.factory-workstation-scope .surface-muted {
+  border-color: var(--border-default);
+  border-radius: 0.35rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0)),
+    var(--surface-elevated);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+}
+
+.factory-workstation-scope .route-header {
+  position: relative;
+  padding: 1.5rem;
+  background:
+    radial-gradient(circle at top right, rgba(255, 184, 104, 0.08), transparent 22%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0)),
+    var(--surface-elevated);
+}
+
+.factory-workstation-scope .route-header__eyebrow,
+.factory-workstation-scope .route-panel__eyebrow,
+.factory-workstation-scope .route-metric__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--text-tertiary);
+}
+
+.factory-workstation-scope .route-header__title {
+  max-width: 18ch;
+  font-family: var(--font-body);
+  font-size: clamp(2rem, 2.2vw, 2.35rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.factory-workstation-scope .route-header__body {
+  max-width: 54rem;
+  font-size: 0.92rem;
+  line-height: 1.65;
+}
+
+.factory-workstation-scope .route-header__meta-item {
+  min-height: 2rem;
+  border-color: var(--border-default);
+  border-radius: 0.25rem;
+  background: var(--surface-panel);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.factory-workstation-scope .route-header__meta-item strong {
+  font-family: var(--font-body);
+  font-size: 0.8rem;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.factory-workstation-scope .route-metric {
+  gap: 0.85rem;
+  padding: 1rem;
+  border-color: var(--border-default);
+  border-radius: 0.35rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+    var(--surface-elevated);
+}
+
+.factory-workstation-scope .route-metric__value {
+  font-size: 1rem;
+}
+
+.factory-dashboard-strip {
+  display: grid;
+  gap: 0.875rem;
+}
+
+.factory-dashboard-reminder {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: 0.25rem;
+  background: var(--surface-elevated);
+  padding: 1rem 1rem 1rem 1.25rem;
+}
+
+.factory-dashboard-reminder::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--action-primary);
+}
+
+.factory-node-grid,
+.factory-telemetry-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.factory-node-card,
+.factory-telemetry-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.25rem;
+  background: var(--surface-panel);
+}
+
+.factory-node-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
+}
+
+.factory-telemetry-card {
+  padding: 0.9rem 1rem;
+}
+
+.factory-dashboard-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: 0.25rem;
+  background: var(--surface-panel);
+  padding: 0.75rem 1rem;
+}
+
+.factory-dashboard-card {
+  border: 1px solid var(--border-default);
+  border-radius: 0.25rem;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.024), rgba(255, 255, 255, 0)),
+    var(--surface-elevated);
+  box-shadow: var(--shadow-xs);
+}
+
+.factory-dashboard-table {
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+  border-radius: 0.25rem;
+  background: var(--surface-elevated);
+  box-shadow: var(--shadow-xs);
+}
+
+.factory-dashboard-table thead tr {
+  background: var(--surface-panel);
+}
+
+.factory-dashboard-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+@media (min-width: 768px) {
+  .factory-workstation-scope .operational-page {
+    padding: 1.75rem;
+  }
+
+  .factory-dashboard-strip {
+    grid-template-columns: minmax(0, 1.1fr) minmax(20rem, 0.9fr);
+    align-items: stretch;
+  }
+
+  .factory-node-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .factory-telemetry-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 @media (max-width: 640px) {
   .industrial-auth-card {
     border-radius: 1.65rem;
