@@ -233,7 +233,10 @@ function AppShellFrame({
   }, [router, shell]);
 
   return (
-    <div className="relative flex min-h-screen overflow-hidden bg-surface-app text-text-primary" data-component="app-shell">
+    <div
+      className="factory-workstation-scope relative flex min-h-screen overflow-hidden bg-surface-app text-text-primary"
+      data-component="app-shell"
+    >
       <FeedbackActivityTracker pathname={pathname} />
       <AppMobileMenu isOpen={shell.sidebarOpen} onClose={shell.closeSidebar} translate={shell.t} />
       <AppHeader
@@ -290,47 +293,57 @@ function AppShellFrame({
 
       <div
         className={cn(
-          "flex min-h-screen min-w-0 flex-1 flex-col bg-surface-shell transition-[padding-left] duration-300 ease-out",
+          "factory-workstation-frame flex min-h-screen min-w-0 flex-1 flex-col bg-surface-shell transition-[padding-left] duration-300 ease-out",
           shell.immersiveScannerRoute ? "lg:pl-[14.5rem]" : shell.sidebarOpen ? "lg:pl-[14.5rem]" : "lg:pl-0",
         )}
       >
-        <div className={cn("min-w-0 flex-1 bg-surface-shell", shell.shellLayout.mobileBottomNav ? "pb-24 lg:pb-0" : "")}>
+        <div className={cn("factory-workstation-shell min-w-0 flex-1 bg-surface-shell", shell.shellLayout.mobileBottomNav ? "pb-24 lg:pb-0" : "")}>
           {!shell.immersiveScannerRoute ? (
-            <div className="sticky top-0 z-sticky hidden border-b border-border-subtle bg-surface-shell lg:block">
-              <div className={cn("flex flex-wrap items-center justify-between gap-3 px-lg", focusMode ? "py-xs" : "py-sm")}>
-                <div className="flex min-w-0 items-center gap-sm">
+            <div className="factory-workstation-topbar sticky top-0 z-sticky hidden lg:block">
+              <div className={cn("flex min-h-[48px] flex-wrap items-center justify-between gap-3 px-6", focusMode ? "py-2" : "py-2.5")}>
+                <div className="flex min-w-0 items-center gap-3">
                   <Button
                     size="compact"
                     variant="outline"
                     onClick={shell.toggleSidebar}
                     aria-label={shell.sidebarOpen ? "Hide sidebar" : "Show sidebar"}
+                    className="h-8 border-border-default bg-surface-elevated px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-text-primary hover:border-border-strong hover:bg-surface-hover"
                   >
                     {shell.sidebarOpen ? "Hide Nav" : "Show Nav"}
                   </Button>
-                  <div className="min-w-0 space-y-[2px]">
-                    <div className="flex flex-wrap items-center gap-sm">
-                      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                  <div className="h-4 w-px bg-border-default" />
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--action-primary)]">
+                        DPR.ai
+                      </span>
+                      <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-tertiary">
                         {factoryName}
                       </span>
                     </div>
-                    <div className="flex min-w-0 flex-wrap items-center gap-sm">
+                    <div className="flex min-w-0 flex-wrap items-center gap-2">
                       <span className="truncate text-sm font-semibold text-text-primary">
                         {shell.currentItem.label}
                       </span>
-                      <span className="hidden truncate text-label-dense text-text-secondary xl:inline">
+                      <span className="hidden truncate font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary xl:inline">
                         {shell.currentItem.description}
                       </span>
                     </div>
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-sm">
+                <div className="flex shrink-0 items-center gap-2">
                   {!focusMode ? (
-                    <div className="hidden items-center gap-sm xl:flex">
+                    <div className="hidden items-center gap-2 xl:flex">
                       <Badge status="draft">Alerts {shell.navBadgeCounts.alerts}</Badge>
                       <Badge status="draft">Review {shell.navBadgeCounts.approvals}</Badge>
                     </div>
                   ) : null}
-                  <Button size="compact" variant="outline" onClick={() => setCommandPaletteOpen(true)}>
+                  <Button
+                    size="compact"
+                    variant="outline"
+                    onClick={() => setCommandPaletteOpen(true)}
+                    className="h-8 border-border-default bg-surface-elevated px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-text-primary hover:border-border-strong hover:bg-surface-hover"
+                  >
                     {focusMode ? "Workspace Commands" : "Commands"}
                   </Button>
                 </div>

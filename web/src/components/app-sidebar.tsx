@@ -357,9 +357,9 @@ const DENSITY_CHOICES: Array<{ value: AppDensity; key: string; fallback: string 
 
 function navLinkClasses(active: boolean) {
   return cn(
-    "ui-no-select ui-no-callout group block rounded-panel px-2.5 py-2 transition",
+    "factory-nav-link ui-no-select ui-no-callout group block rounded-panel px-2.5 py-2 transition",
     active
-      ? "border border-border-subtle border-l-[3px] border-l-border-focus bg-surface-panel pl-[calc(var(--space-2-5)-2px)]"
+      ? "factory-nav-link-active border border-border-subtle border-l-[3px] border-l-border-focus bg-surface-panel pl-[calc(var(--space-2-5)-2px)]"
       : "border border-transparent bg-transparent hover:bg-surface-panel",
   );
 }
@@ -727,21 +727,21 @@ export function AppSidebar({
   return (
     <aside
       className={cn(
-        "fixed inset-y-0 left-0 z-40 w-[14.5rem] border-r border-border-subtle bg-surface-shell shadow-[var(--shadow-sm)] transition-transform duration-300 ease-out",
+        "factory-sidebar-shell fixed inset-y-0 left-0 z-40 w-[14.5rem] border-r border-border-subtle bg-surface-shell shadow-[var(--shadow-sm)] transition-transform duration-300 ease-out",
         immersiveScannerRoute ? "hidden lg:block lg:translate-x-0" : "",
         !immersiveScannerRoute && (sidebarOpen ? "translate-x-0" : "-translate-x-full"),
       )}
       data-nav-count={navItems.length}
     >
       <div className="flex h-full flex-col px-2.5 py-2.5">
-        <div className="rounded-panel border border-border-subtle bg-surface-panel p-3 shadow-[var(--shadow-xs)]">
+        <div className="factory-sidebar-header rounded-panel border border-border-subtle bg-surface-panel p-3 shadow-[var(--shadow-xs)]">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-[9px] font-semibold uppercase tracking-[0.24em] text-text-secondary">DPR.ai</div>
+              <div className="font-mono text-[9px] font-semibold uppercase tracking-[0.24em] text-[var(--action-primary)]">DPR.ai</div>
               <div className="mt-1 truncate text-sm font-semibold leading-5 text-text-primary">
                 {activeFactoryName}
               </div>
-              <div className="mt-0.5 text-[11px] leading-4 text-text-secondary">
+              <div className="mt-0.5 font-mono text-[10px] leading-4 uppercase tracking-[0.14em] text-text-secondary">
                 {activeIndustryLabel || (translate ? translate("shell.factory_context", "Factory context") : "Factory context")}
                 {organizationPlan ? ` • ${organizationPlan} ${translate ? translate("common.plan", "plan") : "plan"}` : ""}
               </div>
@@ -757,16 +757,16 @@ export function AppSidebar({
           </div>
 
           <div className="mt-3 flex flex-wrap gap-1.5">
-            <span className="rounded-badge border border-transparent bg-surface-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-secondary">
+            <span className="rounded-badge border border-border-subtle bg-surface-elevated px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-text-secondary">
               {roleLabel(resolvedRole, translate)}
             </span>
             {workflowTemplateLabel ? (
-              <span className="rounded-badge border border-transparent bg-surface-shell px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-tertiary">
+              <span className="rounded-badge border border-border-subtle bg-surface-shell px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
                 {workflowTemplateLabel}
               </span>
             ) : null}
             {organizationName ? (
-              <span className="truncate rounded-badge border border-transparent bg-surface-shell px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-text-tertiary">
+              <span className="truncate rounded-badge border border-border-subtle bg-surface-shell px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
                 {organizationName}
               </span>
             ) : null}
@@ -1048,12 +1048,12 @@ export function AppDesktopContextRail({
   return (
     <>
       {visible ? (
-        <aside className="hidden w-[16.5rem] shrink-0 xl:block">
+        <aside className="factory-context-rail hidden w-[16.5rem] shrink-0 xl:block">
           <div className="sticky top-4 space-y-3 px-3 py-3">
-            <div className="rounded-panel border border-border-subtle bg-surface-panel p-4 shadow-[var(--shadow-xs)]">
+            <div className="factory-rail-card rounded-panel border border-border-subtle bg-surface-panel p-4 shadow-[var(--shadow-xs)]">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">Workspace</div>
+                  <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">Workspace</div>
                   <div className="mt-2 text-lg font-semibold text-text-primary">{currentItem.label}</div>
                 </div>
                 <button
@@ -1069,40 +1069,40 @@ export function AppDesktopContextRail({
               <div className="mt-2 text-sm leading-6 text-text-secondary">{currentItem.description}</div>
             </div>
 
-            <div className="rounded-panel border border-border-subtle bg-surface-panel p-4 shadow-[var(--shadow-xs)]">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">Factory Context</div>
+            <div className="factory-rail-card rounded-panel border border-border-subtle bg-surface-panel p-4 shadow-[var(--shadow-xs)]">
+              <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">Factory Context</div>
               <div className="mt-4 space-y-3 text-sm text-[var(--muted)]">
                 <div className="rounded-panel bg-surface-shell px-3 py-3">
-                  <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Factory</div>
+                  <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Factory</div>
                   <div className="mt-1 font-semibold text-[var(--text)]">{factoryName}</div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="rounded-panel bg-surface-shell px-3 py-3">
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Role</div>
+                    <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Role</div>
                     <div className="mt-1 font-semibold text-[var(--text)]">{roleLabel(role, translate)}</div>
                   </div>
                   <div className="rounded-panel bg-surface-shell px-3 py-3">
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Alerts</div>
+                    <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Alerts</div>
                     <div className="mt-1 font-semibold text-[var(--text)]">{badgeCounts.alerts}</div>
                   </div>
                 </div>
                 <div className="rounded-panel bg-surface-shell px-3 py-3">
-                  <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Review Load</div>
+                  <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Review Load</div>
                   <div className="mt-1 font-semibold text-[var(--text)]">{badgeCounts.approvals}</div>
                   <div className="mt-1 text-xs text-[var(--muted)]">{organizationName || "Active organization context"}</div>
                 </div>
               </div>
             </div>
 
-            <div className="rounded-panel border border-border-subtle bg-surface-panel p-4 shadow-[var(--shadow-xs)]">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">Primary Flow</div>
+            <div className="factory-rail-card rounded-panel border border-border-subtle bg-surface-panel p-4 shadow-[var(--shadow-xs)]">
+              <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">Primary Flow</div>
               <div className="mt-3 rounded-panel bg-surface-shell px-3 py-3">
                 <div className="text-sm font-semibold text-[var(--text)]">{workflowHint.title}</div>
               </div>
             </div>
 
-            <div className="rounded-panel border border-border-subtle bg-surface-panel p-4 shadow-[var(--shadow-xs)]">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">Quick Jump</div>
+            <div className="factory-rail-card rounded-panel border border-border-subtle bg-surface-panel p-4 shadow-[var(--shadow-xs)]">
+              <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">Quick Jump</div>
               <div className="mt-4 space-y-2">
                 {quickLinks.map((item) => {
                   const translatedItem = localizedItemText(item, translate);

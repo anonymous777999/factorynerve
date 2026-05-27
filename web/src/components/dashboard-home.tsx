@@ -1079,6 +1079,56 @@ export default function DashboardHome() {
     user?.role,
     weeklyAverage,
   ]);
+  const dashboardNodeCards = useMemo(
+    () => [
+      {
+        label: "Node Alpha",
+        status: online ? "Online" : "Offline",
+        tone: online ? "bg-[var(--status-success-fg)]" : "bg-[var(--status-danger-fg)]",
+      },
+      {
+        label: "Node Beta",
+        status: dashboardLoading ? "Syncing" : "Stable",
+        tone: dashboardLoading ? "bg-[var(--status-warning-fg)]" : "bg-[var(--status-success-fg)]",
+      },
+      {
+        label: "Node Gamma",
+        status: state.alerts.length ? "Watching" : "Quiet",
+        tone: state.alerts.length ? "bg-[var(--status-warning-fg)]" : "bg-[var(--status-success-fg)]",
+      },
+      {
+        label: "Node Delta",
+        status: queueCount > 0 ? "Queued" : "Ready",
+        tone: queueCount > 0 ? "bg-[var(--action-primary)]" : "bg-[var(--status-success-fg)]",
+      },
+    ],
+    [dashboardLoading, online, queueCount, state.alerts.length],
+  );
+  const dashboardTelemetryCards = useMemo(
+    () => [
+      {
+        label: t("dashboard.metric.alerts", "Active Alerts"),
+        value: state.alerts.length,
+        accentClass: "text-text-primary",
+      },
+      {
+        label: t("dashboard.metric.signals", "System Signals"),
+        value: anomalyCount,
+        accentClass: "text-text-primary",
+      },
+      {
+        label: t("dashboard.metric.pending_shift", "Pending Shift"),
+        value: pendingShifts,
+        accentClass: "text-[var(--action-primary)]",
+      },
+      {
+        label: "Trusted OCR",
+        value: state.ocrSummary?.trusted_documents ?? 0,
+        accentClass: "text-text-primary",
+      },
+    ],
+    [anomalyCount, pendingShifts, state.alerts.length, state.ocrSummary?.trusted_documents, t],
+  );
   const usagePrimaryAction = useMemo(() => {
     if (user?.role === "supervisor") {
       return { href: "/approvals", label: "Open Review Queue" };
@@ -1531,6 +1581,42 @@ export default function DashboardHome() {
   return (
     <main className="operational-page" data-component="dashboard-home">
       <div className="operational-page__inner route-workspace">
+        <section className="factory-dashboard-strip">
+          <div className="factory-dashboard-reminder">
+            <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--action-primary)]">
+              Live Reminders
+            </div>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-text-secondary">
+              The next actions are synced across attendance, entry, scan, review, and queue.
+            </p>
+          </div>
+          <div className="factory-dashboard-reminder">
+            <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+              <div>
+                <div className="inline-flex rounded-sm border border-border-subtle bg-surface-elevated px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-text-secondary">
+                  Action now
+                </div>
+                <div className="mt-3 text-base font-semibold text-text-primary">
+                  {primaryAction?.title || "Keep the next lane moving"}
+                </div>
+                <div className="mt-1 text-sm text-text-secondary">
+                  {primaryAction?.detail || "Use the board to clear the next operational blocker without changing context."}
+                </div>
+              </div>
+              {primaryAction ? (
+                <Link href={primaryAction.href}>
+                  <Button
+                    variant="outline"
+                    className="h-10 border-border-default bg-surface-elevated px-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-primary hover:border-border-strong hover:bg-surface-hover"
+                  >
+                    {primaryAction.action}
+                  </Button>
+                </Link>
+              ) : null}
+            </div>
+          </div>
+        </section>
+
         <section className="route-header">
           <div className="route-header__grid">
             <div className="route-header__copy">
@@ -1550,28 +1636,61 @@ export default function DashboardHome() {
                   <span>Alerts</span>
                   <strong>{state.alerts.length}</strong>
                 </div>
+                <div className="route-header__meta-item ml-auto">
+                  <span className="inline-flex h-2 w-2 rounded-full bg-[var(--status-success-fg)] shadow-[0_0_10px_rgba(34,197,94,0.55)]" />
+                  <strong>System: Ready</strong>
+                </div>
               </div>
             </div>
             {/* AUDIT: BUTTON_CLUTTER — The hero now keeps only the immediate board actions; logout and report navigation stay available from the shell and secondary routes below. */}
             <div className="route-header__actions">
               {primaryAction ? (
                 <Link href={primaryAction.href}>
-                  <Button>{primaryAction.action}</Button>
+                  <Button className="h-10 px-5 text-[11px] font-semibold uppercase tracking-[0.18em]">
+                    {primaryAction.action}
+                  </Button>
                 </Link>
               ) : null}
             </div>
           </div>
         </section>
 
-        {/* AUDIT: BUTTON_CLUTTER - move board maintenance actions into a secondary tray so the main work lane stays obvious. */}
-        <details className="route-panel mt-[var(--space-xl)]">
-          <summary className="route-panel__header cursor-pointer list-none marker:hidden">
-            <div>
-              <div className="route-panel__eyebrow">Board tools</div>
-              <div className="route-panel__hint">Refresh and sync controls stay nearby without crowding the primary lane.</div>
+        <section className="factory-node-grid">
+          {dashboardNodeCards.map((node) => (
+            <div key={node.label} className="factory-node-card">
+              <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                {node.label}
+              </span>
+              <div className="flex items-center gap-2">
+                <span className={`inline-flex h-1.5 w-1.5 rounded-full ${node.tone}`} />
+                <span className="text-sm font-medium text-text-primary">{node.status}</span>
+              </div>
             </div>
+          ))}
+        </section>
+
+        <section className="factory-telemetry-grid">
+          {dashboardTelemetryCards.map((card) => (
+            <div key={card.label} className="factory-telemetry-card">
+              <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">
+                {card.label}
+              </span>
+              <div className={`mt-4 text-[32px] font-bold leading-none ${card.accentClass}`}>{card.value}</div>
+            </div>
+          ))}
+        </section>
+
+        {/* AUDIT: BUTTON_CLUTTER - move board maintenance actions into a secondary tray so the main work lane stays obvious. */}
+        <details className="route-panel">
+          <summary className="factory-dashboard-toolbar cursor-pointer list-none marker:hidden">
+            <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
+              Board Tools
+            </div>
+            <span className="text-sm text-text-secondary">
+              Refresh and sync controls stay nearby without crowding the primary lane.
+            </span>
           </summary>
-          <div className="route-panel__body flex flex-wrap gap-3 pt-0">
+          <div className="route-panel__body flex flex-wrap gap-3 border-t-0 px-4 pb-4 pt-0">
             <Button variant="outline" onClick={() => loadDashboard()}>
               {dashboardLoading
                 ? t("dashboard.action.refreshing", "Refreshing...")
@@ -1588,22 +1707,23 @@ export default function DashboardHome() {
         </details>
 
         {roleLaunchGuide ? (
-          <section className="route-metrics-grid mt-[var(--space-xl)] lg:grid-cols-3">
+          <section className="route-metrics-grid lg:grid-cols-3">
             {roleLaunchGuide.steps.map((step, index) => (
               <Link
                 key={`${step.href}-${index}`}
                 href={step.href}
-                className="route-metric transition-colors hover:border-border-strong hover:bg-surface-hover"
+                className="route-metric dashboard-soft-lift transition-colors hover:border-border-strong hover:bg-surface-hover"
               >
                 <div className="route-metric__label">{step.action}</div>
                 <div className="route-metric__value text-sm">{step.title}</div>
+                <div className="text-sm leading-6 text-text-secondary">{step.detail}</div>
               </Link>
             ))}
           </section>
         ) : null}
 
-        <section className="route-grid-main mt-[var(--space-xl)] xl:grid-cols-[1.1fr_0.9fr_1fr]">
-          <Card className="border border-[var(--border)] bg-surface-panel">
+        <section className="route-grid-main xl:grid-cols-[1.1fr_0.9fr_1fr]">
+          <Card className="factory-dashboard-card border border-[var(--border)] bg-surface-panel">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
                 {t("dashboard.section.now", "Now")}
@@ -1629,7 +1749,7 @@ export default function DashboardHome() {
             </CardContent>
           </Card>
 
-          <Card className="border border-[var(--border)] bg-surface-panel">
+          <Card className="factory-dashboard-card border border-[var(--border)] bg-surface-panel">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
                 {t("dashboard.section.attention", "Attention")}
@@ -1696,7 +1816,7 @@ export default function DashboardHome() {
             </CardContent>
           </Card>
 
-          <Card className="border border-[var(--border)] bg-surface-panel">
+          <Card className="factory-dashboard-card border border-[var(--border)] bg-surface-panel">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
                 {t("dashboard.section.quick_actions", "Quick Actions")}
@@ -1748,7 +1868,7 @@ export default function DashboardHome() {
         </section>
 
         {activeFactory?.industry_type === "steel" && ["supervisor", "manager", "owner"].includes(user?.role || "") ? (
-          <Card className="border border-[var(--border)] bg-surface-panel">
+          <Card className="factory-dashboard-card border border-[var(--border)] bg-surface-panel">
             <CardHeader>
               <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
                 {t("dashboard.steel.section", "Steel Control")}
@@ -1787,9 +1907,9 @@ export default function DashboardHome() {
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {dashboardSnapshotCards.map((card, index) => (
-            <Card key={`${card.label}-${card.href}`}>
+            <Card key={`${card.label}-${card.href}`} className="factory-dashboard-card">
               <CardHeader>
-                <div className="text-sm text-[var(--muted)]">{card.label}</div>
+                <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">{card.label}</div>
                 <CardTitle>{card.value}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-[var(--muted)]">
@@ -1818,7 +1938,7 @@ export default function DashboardHome() {
         </section>
 
         {/* AUDIT: BUTTON_CLUTTER — Organization and deep analytics context now sit behind a compact reveal so the operational home stays action-first. */}
-        <details className="mt-[var(--space-xl)] rounded-[1.5rem] border border-[var(--border)] bg-[var(--surface-overlay)] p-4">
+        <details className="rounded-[0.35rem] border border-[var(--border)] bg-[var(--surface-overlay)] p-4">
           <summary className="cursor-pointer list-none text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
             {t("dashboard.section.advanced", "Context")}
           </summary>
@@ -2084,7 +2204,7 @@ export default function DashboardHome() {
         </details>
 
         <section className="mt-[var(--space-xl)] grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-          <Card>
+          <Card className="factory-dashboard-card">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <div className="text-sm text-[var(--muted)]">{t("dashboard.unread_alerts", "Unread Alerts")}</div>
@@ -2122,7 +2242,7 @@ export default function DashboardHome() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="factory-dashboard-table">
             <CardHeader>
               <div className="text-sm text-[var(--muted)]">{t("dashboard.recent_entries", "Recent Entries")}</div>
               <CardTitle className="text-xl">{t("dashboard.recent_activity", "Latest production activity")}</CardTitle>
@@ -2131,7 +2251,7 @@ export default function DashboardHome() {
               {recentEntries.length ? (
                 <ResponsiveScrollArea debugLabel="dashboard-recent-entries">
                   <table className="min-w-full text-left text-sm">
-                    <thead className="text-[var(--muted)]">
+                    <thead className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">
                         <th className="px-3 py-3 font-medium">{t("table.date", "Date")}</th>
                         <th className="px-3 py-3 font-medium">{t("table.shift", "Shift")}</th>
