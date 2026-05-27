@@ -145,6 +145,10 @@ function OCRExecutionWorkspaceInner(props: OCRExecutionWorkspaceProps) {
     return props.emptyStateSlot ?? null;
   }
 
+  const criticalCount = workspace.filteredRecords.filter((record) => record.queue.priority === "critical").length;
+  const pendingCount = workspace.filteredRecords.filter((record) => record.queue.workflowState !== "approved").length;
+  const failedCount = workspace.filteredRecords.filter((record) => record.queue.reviewState === "anomaly").length;
+
   return (
     <ViewportProvider boundaryId="factorynerve.ocr.execution.viewport">
       <div className="h-screen w-full bg-[var(--color-surface-canvas)] text-[var(--color-text-secondary)]">
@@ -154,10 +158,10 @@ function OCRExecutionWorkspaceInner(props: OCRExecutionWorkspaceProps) {
               <ToolbarSection>
                 <div className="flex min-w-0 flex-col">
                   <span className="text-[11px] uppercase tracking-[0.06em] text-[var(--color-text-muted)]">
-                    OCR Execution Workspace
+                    OCR Command Center
                   </span>
                   <span className="truncate text-[14px] font-medium text-[var(--color-text-primary)]">
-                    Operational intake, extraction review, and approval lane
+                    Review queue, document preview, correction rail, and approval lane
                   </span>
                 </div>
               </ToolbarSection>
@@ -171,6 +175,32 @@ function OCRExecutionWorkspaceInner(props: OCRExecutionWorkspaceProps) {
                 ]}
               />
             </Toolbar>
+
+            <div className="border-b border-[var(--color-border-default)] bg-[rgba(7,10,15,0.72)] px-[var(--spacing-4)] py-[var(--spacing-3)]">
+              <div className="flex flex-wrap items-center gap-[var(--spacing-5)] text-[12px]">
+                <div className="flex items-center gap-[var(--spacing-2)]">
+                  <span className={`h-2 w-2 rounded-full ${failedCount > 0 ? "bg-[var(--color-status-critical)]" : "bg-[var(--color-status-ok)]"}`} />
+                  <div className="flex flex-col">
+                    <span className="text-[10px] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">Queue Health</span>
+                    <span className="font-medium text-[var(--color-text-primary)]">
+                      {failedCount > 0 ? "Intervention required" : "Stable"}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">Pending Reviews</span>
+                  <span className="font-medium text-[var(--color-accent-operational-muted)]">{formatIndianNumber(pendingCount)}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">Failed Scans</span>
+                  <span className="font-medium text-[var(--color-status-critical-text)]">{formatIndianNumber(failedCount)}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">Critical Queue</span>
+                  <span className="font-medium text-[var(--color-text-primary)]">{formatIndianNumber(criticalCount)}</span>
+                </div>
+              </div>
+            </div>
 
             {typeof props.bannerSlot === "function"
               ? props.bannerSlot(workspace.selectedRecord)
@@ -319,6 +349,9 @@ function OCRQueuePanel({
   onSelectDocument: (recordId: string) => void;
   onToggleAnomaliesOnly: () => void;
 }) {
+  const criticalCount = records.filter((record) => record.queue.priority === "critical").length;
+  const reviewRequiredCount = records.filter((record) => record.queue.reviewState === "anomaly").length;
+
   return (
     <DataTableEngineProvider
       columns={QUEUE_COLUMNS.map((column) => ({
@@ -336,8 +369,8 @@ function OCRQueuePanel({
     >
       <Panel variant="workspace" padding="none" className="h-full rounded-none border-none">
         <PanelHeader
-          title="OCR intake queue"
-          subtitle="Operational review lane"
+          title="OCR Documents"
+          subtitle="Review, correct, and approve extracted telemetry and tabular data."
           meta={`${records.length} documents in current view`}
         />
         <Toolbar aria-label="OCR queue controls">
@@ -382,6 +415,31 @@ function OCRQueuePanel({
           </ToolbarActions>
           <QueueDensityControls />
         </Toolbar>
+        {(criticalCount > 0 || reviewRequiredCount > 0) ? (
+          <div className="border-b border-[var(--color-border-default)] bg-[rgba(255,184,104,0.08)] px-[var(--spacing-4)] py-[var(--spacing-3)]">
+            <div className="flex items-center justify-between gap-[var(--spacing-3)]">
+              <div>
+                <div className="text-[10px] uppercase tracking-[0.1em] text-[var(--color-accent-operational-muted)]">
+                  Live Intervention Required
+                </div>
+                <div className="mt-[var(--spacing-1)] text-[13px] text-[var(--color-text-primary)]">
+                  {reviewRequiredCount > 0
+                    ? `${reviewRequiredCount} low-confidence or anomaly document${reviewRequiredCount === 1 ? "" : "s"} require operator review before workflow closes.`
+                    : `${criticalCount} critical queue item${criticalCount === 1 ? "" : "s"} are pinned for immediate attention.`}
+                </div>
+              </div>
+              {reviewRequiredCount > 0 ? (
+                <button
+                  type="button"
+                  className="fn-btn fn-btn-secondary fn-btn-sm"
+                  onClick={onToggleAnomaliesOnly}
+                >
+                  Review anomalies
+                </button>
+              ) : null}
+            </div>
+          </div>
+        ) : null}
         <OCRQueueTable
           activeDocumentId={activeDocumentId}
           records={records}
@@ -389,6 +447,10 @@ function OCRQueuePanel({
           onEscalateDocument={onEscalateDocument}
           onSelectDocument={onSelectDocument}
         />
+        <PanelFooter className="flex items-center justify-between text-[12px] text-[var(--color-text-muted)]">
+          <span>Showing {records.length} OCR document{records.length === 1 ? "" : "s"} in the current governed slice</span>
+          <span>{criticalCount} critical / {reviewRequiredCount} review required</span>
+        </PanelFooter>
       </Panel>
     </DataTableEngineProvider>
   );
@@ -741,10 +803,10 @@ function QueueActionsCell({
     <DataTableCell ref={navigation.ref} tabIndex={navigation.tabIndex} onFocus={navigation.onFocus} align="right">
       <div className="flex items-center justify-end gap-[var(--spacing-1)]">
         <button type="button" className="fn-btn fn-btn-secondary fn-btn-sm" onClick={() => onSelectDocument(record.queue.id)}>
-          Open
+          Review
         </button>
         <button type="button" className="fn-btn fn-btn-ai fn-btn-sm" onClick={() => onEscalateDocument(record.queue.id)}>
-          Escalate
+          Fix Now
         </button>
       </div>
     </DataTableCell>

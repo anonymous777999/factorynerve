@@ -62,6 +62,13 @@ export default function OcrHistoryPage() {
 
   const historyQuery = useOcrHistoryQuery(search, Boolean(user) && canAccess);
   const records = useMemo(() => historyQuery.data ?? [], [historyQuery.data]);
+  const summary = useMemo(() => {
+    const approved = records.filter((record) => record.status === "approved").length;
+    const pending = records.filter((record) => record.status === "pending").length;
+    const rejected = records.filter((record) => record.status === "rejected").length;
+    const latest = records[0]?.updated_at ? formatTimestamp(records[0].updated_at) : "No activity";
+    return { approved, pending, rejected, latest };
+  }, [records]);
 
   const handleDownload = async (recordId: number) => {
     setBusyId(recordId);
@@ -210,22 +217,59 @@ export default function OcrHistoryPage() {
       subtitle="Reopen past runs, check their status, and download the latest export."
       step="result"
       sideContent={
-        <div className="space-y-md">
-          <EmptyState
-            title="Scan another document"
-            description="Jump back into OCR intake without losing access to reviewed history."
-            status="processing"
-            statusLabel="Next action"
-            action={
+        <div className="space-y-4">
+          <div className="factory-ocr-console factory-ocr-console--subtle rounded-[0.45rem] p-4">
+            <div className="factory-ocr-card-title">Archive telemetry</div>
+            <div className="mt-3 factory-ocr-panel-grid">
+              <div className="factory-ocr-data-card">
+                <div className="factory-ocr-data-card__label">Approved exports</div>
+                <div className="factory-ocr-data-card__value">{summary.approved}</div>
+              </div>
+              <div className="factory-ocr-data-card">
+                <div className="factory-ocr-data-card__label">Pending review</div>
+                <div className="factory-ocr-data-card__value">{summary.pending}</div>
+              </div>
+              <div className="factory-ocr-data-card">
+                <div className="factory-ocr-data-card__label">Rejected drafts</div>
+                <div className="factory-ocr-data-card__value">{summary.rejected}</div>
+              </div>
+              <div className="factory-ocr-data-card">
+                <div className="factory-ocr-data-card__label">Last updated</div>
+                <div className="factory-ocr-data-card__value">{summary.latest}</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="factory-ocr-console factory-ocr-console--subtle rounded-[0.45rem] p-4">
+            <div className="factory-ocr-card-title">Next action</div>
+            <div className="mt-3 text-sm leading-6 text-text-secondary">
+              Reopen a record to continue governed review, or start a fresh intake without leaving the OCR lifecycle.
+            </div>
+            <div className="mt-4 flex flex-col gap-2">
               <Link href="/ocr/scan">
-                <Button size="compact">Open OCR scan</Button>
+                <Button size="compact" className="w-full">Open OCR scan</Button>
               </Link>
-            }
-          />
+              <Link href="/ocr/verify">
+                <Button size="compact" variant="outline" className="w-full">Open review queue</Button>
+              </Link>
+            </div>
+          </div>
+
+          <div className="factory-ocr-console factory-ocr-console--subtle rounded-[0.45rem] p-4">
+            <div className="factory-ocr-card-title">Export posture</div>
+            <div className="mt-3 space-y-3 text-sm leading-6 text-text-secondary">
+              <div className="border border-border-subtle bg-surface-shell px-3 py-3">
+                Use this archive surface for reopen, export download, and downstream audit checks.
+              </div>
+              <div className="border border-border-subtle bg-surface-shell px-3 py-3">
+                Real export actions remain tied to stored OCR verification records only.
+              </div>
+            </div>
+          </div>
         </div>
       }
     >
-      <div className="space-y-md">
+      <div className="space-y-4">
         {statusMessage ? <ErrorBanner tone="success" message={statusMessage} /> : null}
         {localError ? (
           <ErrorBanner
@@ -237,6 +281,25 @@ export default function OcrHistoryPage() {
             }}
           />
         ) : null}
+
+        <div className="factory-ocr-panel-grid factory-ocr-panel-grid--four">
+          <div className="factory-ocr-data-card">
+            <div className="factory-ocr-data-card__label">Documents tracked</div>
+            <div className="factory-ocr-data-card__value">{records.length}</div>
+          </div>
+          <div className="factory-ocr-data-card">
+            <div className="factory-ocr-data-card__label">Approved</div>
+            <div className="factory-ocr-data-card__value">{summary.approved}</div>
+          </div>
+          <div className="factory-ocr-data-card">
+            <div className="factory-ocr-data-card__label">Pending review</div>
+            <div className="factory-ocr-data-card__value">{summary.pending}</div>
+          </div>
+          <div className="factory-ocr-data-card">
+            <div className="factory-ocr-data-card__label">Rejected</div>
+            <div className="factory-ocr-data-card__value">{summary.rejected}</div>
+          </div>
+        </div>
 
         <LoadingBoundary
           hasData={records.length > 0}
