@@ -14,6 +14,7 @@ import {
   User2,
 } from "lucide-react";
 
+import { AuthWorkstationShell } from "@/components/auth-workstation-shell";
 import { register, resendEmailVerification, type RegisterResponse } from "@/lib/auth";
 import { ApiError } from "@/lib/api";
 import { useI18n, useI18nNamespaces } from "@/lib/i18n";
@@ -87,19 +88,6 @@ function FieldLabel({ htmlFor, children }: { htmlFor: string; children: string }
   );
 }
 
-function StatRail({ active }: { active?: boolean }) {
-  return (
-    <div
-      className={cn(
-        "h-1 flex-1 rounded-full border border-border-subtle/70",
-        active
-          ? "bg-[linear-gradient(90deg,var(--status-success-bg),var(--status-success-icon))] shadow-[var(--shadow-sm)]"
-          : "bg-surface-elevated",
-      )}
-    />
-  );
-}
-
 function IdentityField({
   id,
   label,
@@ -121,7 +109,7 @@ function IdentityField({
         <Input
           id={id}
           {...props}
-          className="min-h-[40px] border-border-default bg-surface-elevated pl-10 pr-3 text-sm text-text-primary placeholder:text-text-tertiary focus:border-border-focus"
+          className="factory-auth-input min-h-[40px] border-border-default bg-surface-elevated pl-10 pr-3 text-sm text-text-primary placeholder:text-text-tertiary focus:border-border-focus"
         />
       </div>
     </div>
@@ -159,7 +147,7 @@ function PasswordInput({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          className="min-h-[40px] border-border-default bg-surface-elevated pl-10 pr-20 text-sm text-text-primary placeholder:text-text-tertiary focus:border-border-focus"
+          className="factory-auth-input min-h-[40px] border-border-default bg-surface-elevated pl-10 pr-20 text-sm text-text-primary placeholder:text-text-tertiary focus:border-border-focus"
           required
         />
         <button
@@ -339,133 +327,51 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="min-h-screen min-w-[1280px] overflow-x-auto bg-surface-app text-text-primary">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,color-mix(in_srgb,var(--surface-elevated)_68%,transparent),transparent_34%)]" />
-
-      <header className="relative z-10 flex h-14 items-center justify-between border-b border-border-strong bg-surface-shell px-8">
-        <Link href="/" className="inline-flex items-center gap-3 text-text-primary">
-          <div className="inline-flex h-8 w-8 items-center justify-center rounded-control border border-border-default bg-surface-panel">
-            <Building2 className="h-4 w-4 text-[var(--accent)]" />
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-page-title font-semibold tracking-tight">DPR.ai</span>
-          </div>
-        </Link>
-
-        <div className="flex items-center gap-8 text-[11px] font-medium uppercase tracking-[0.24em] text-text-secondary">
-          <span>Steel Industry</span>
-          <span className="text-[var(--accent)]">Factory OS</span>
-        </div>
-      </header>
-
-      <section className="relative z-10 grid min-h-[calc(100vh-56px)] grid-cols-[minmax(520px,1.05fr)_minmax(560px,0.95fr)] gap-10 px-8 py-10">
-        <aside className="flex min-h-full flex-col justify-between border-r border-border-default pr-10">
-          <div className="space-y-8">
-            <div className="space-y-4">
-              <div className="text-[11px] font-medium uppercase tracking-[0.24em] text-text-secondary">
-                Factory onboarding channel
-              </div>
-              <h1 className="max-w-[16ch] text-[clamp(2.75rem,3.6vw,4.25rem)] font-semibold leading-[0.94] tracking-[-0.04em] text-text-primary">
-                Establish Factory Access
-              </h1>
-              <p className="max-w-xl text-sm leading-6 text-text-secondary">
-                Register the operating organization, bind the first control user, and prepare the desktop workspace before the line teams enter production.
-              </p>
-            </div>
-
-            <div className="rounded-panel border border-border-default bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-panel)_96%,transparent),color-mix(in_srgb,var(--surface-shell)_92%,transparent))] p-5">
-              <div className="flex items-center gap-3 border-b border-border-subtle pb-3">
-                <ShieldCheck className="h-4 w-4 text-status-success-icon" />
-                <div className="text-label-dense font-medium uppercase tracking-[0.2em] text-status-success-fg">
-                  Secure connection active
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-4 text-sm text-text-secondary">
-                <div className="flex gap-3">
-                  <Lock className="mt-0.5 h-4 w-4 shrink-0 text-text-tertiary" />
-                  <div>Credential submission stays bound to verified inbox activation before workstation access opens.</div>
-                </div>
-                <div className="flex gap-3">
-                  <Building2 className="mt-0.5 h-4 w-4 shrink-0 text-text-tertiary" />
-                  <div>Factory metadata, company code, and initial operator role are logged as the baseline operational identity.</div>
-                </div>
-                <div className="flex gap-3">
-                  <Mail className="mt-0.5 h-4 w-4 shrink-0 text-text-tertiary" />
-                  <div>Verification delivery remains mandatory so unauthorized signups never become live floor credentials.</div>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-[1.25fr_0.9fr] gap-4">
-              <div className="rounded-panel border border-border-default bg-surface-panel p-5">
-                <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
-                  Onboarding sequence
-                </div>
-                <div className="mt-4 space-y-4">
-                  {[
-                    ["01", "Register company identity", "Capture organization, admin contact, and role authority."],
-                    ["02", "Verify operational inbox", "Only the inbox owner can unlock the real DPR.ai account."],
-                    ["03", "Initialize factory workspace", `After verification, continue into ${nextDestination}.`],
-                  ].map(([step, title, description]) => (
-                    <div key={step} className="flex gap-3">
-                      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-control border border-border-default bg-surface-elevated font-mono text-[11px] text-text-primary">
-                        {step}
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-text-primary">{title}</div>
-                        <div className="mt-1 text-sm leading-6 text-text-secondary">{description}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="rounded-panel border border-border-default bg-surface-panel p-5">
-                <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
-                  Core systems status
-                </div>
-                <div className="mt-5 flex gap-2">
-                  <StatRail active />
-                  <StatRail active />
-                  <StatRail />
-                </div>
-                <div className="mt-6 space-y-4 text-sm text-text-secondary">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[0.18em] text-text-tertiary">Verification mode</div>
-                    <div className="mt-1 text-sm font-medium text-text-primary">
-                      {isPreviewMode ? "Preview link exposed" : "Email-gated activation"}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] uppercase tracking-[0.18em] text-text-tertiary">Provisioning role</div>
-                    <div className="mt-1 text-sm font-medium text-text-primary">{roleLabel(selectedRole)}</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="pt-8 text-[11px] uppercase tracking-[0.22em] text-text-secondary">
-            Emergency sysadmin: ext 4092
-          </div>
-        </aside>
-
-        <section className="flex min-h-full items-center justify-center">
-          <div className="w-full max-w-[620px] rounded-overlay border border-border-strong bg-[linear-gradient(180deg,color-mix(in_srgb,var(--surface-panel)_97%,transparent),color-mix(in_srgb,var(--surface-elevated)_96%,transparent))] p-6 shadow-lg">
-            <div className="border-b border-border-subtle pb-5">
-              <div className="text-center text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
-                Factory access provisioning
-              </div>
-              <h2 className="mt-3 text-center text-[2rem] font-semibold tracking-[-0.03em] text-text-primary">
-                Identify Setup Operator
-              </h2>
-              <p className="mx-auto mt-3 max-w-[46ch] text-center text-sm leading-6 text-text-secondary">
-                Configure the first organization profile, assign the initial role, then complete inbox verification before desktop access is released.
-              </p>
-            </div>
-
-            <div className="mt-6">
+    <AuthWorkstationShell
+      badge="Factory access provisioning"
+      title="Identify Setup Operator"
+      description="Configure the first organization profile, assign the initial role, then complete inbox verification before desktop access is released."
+      leftEyebrow="Factory onboarding channel"
+      leftTitle="Establish Factory Access"
+      leftDescription="Register the operating organization, bind the first control user, and prepare the desktop workspace before the line teams enter production."
+      steps={[
+        {
+          title: "Register company identity",
+          description: "Capture organization, admin contact, and role authority.",
+        },
+        {
+          title: "Verify operational inbox",
+          description: "Only the inbox owner can unlock the real DPR.ai account.",
+        },
+        {
+          title: "Initialize factory workspace",
+          description: `After verification, continue into ${nextDestination}.`,
+        },
+      ]}
+      supportTitle={roleLabel(selectedRole)}
+      supportDescription={
+        isPreviewMode ? "Preview verification is exposed locally." : "Email verification remains mandatory before live access opens."
+      }
+      supportItems={[
+        {
+          icon: <Lock className="h-4 w-4" />,
+          text: "Credential submission stays bound to verified inbox activation before workstation access opens.",
+        },
+        {
+          icon: <Building2 className="h-4 w-4" />,
+          text: "Factory metadata, company code, and initial operator role are logged as the baseline operational identity.",
+        },
+        {
+          icon: <Mail className="h-4 w-4" />,
+          text: "Verification delivery remains mandatory so unauthorized signups never become live floor credentials.",
+        },
+      ]}
+      metrics={[
+        { label: "Verification mode", value: isPreviewMode ? "Preview link exposed" : "Email-gated activation" },
+        { label: "Provisioning role", value: roleLabel(selectedRole) },
+      ]}
+      contentClassName="space-y-5"
+    >
               {success ? (
                 <div className="space-y-4">
                   {hasRedirectTarget ? (
@@ -602,7 +508,7 @@ export default function RegisterPage() {
                             id="role"
                             value={selectedRole}
                             onChange={(event) => setSelectedRole(event.target.value as RoleOption["value"])}
-                            className="min-h-[40px] border-border-default bg-surface-elevated px-3 pr-10 text-sm text-text-primary focus:border-border-focus"
+                            className="factory-auth-input min-h-[40px] border-border-default bg-surface-elevated px-3 pr-10 text-sm text-text-primary focus:border-border-focus"
                           >
                             {roleOptions.map((option) => (
                               <option key={option.value} value={option.value}>
@@ -671,7 +577,7 @@ export default function RegisterPage() {
                       type="submit"
                       isBusy={loading}
                       busyLabel={t("auth.register.submitting", "Creating...")}
-                      className="h-[42px] w-full border-transparent bg-[var(--accent)] text-[var(--action-primary-text)] hover:bg-[var(--action-primary-hover)]"
+                      className="factory-auth-cta h-[42px] w-full border-transparent"
                     >
                       Factory Setup Initialization
                     </Button>
@@ -689,10 +595,6 @@ export default function RegisterPage() {
                   </form>
                 </div>
               )}
-            </div>
-          </div>
-        </section>
-      </section>
-    </main>
+    </AuthWorkstationShell>
   );
 }

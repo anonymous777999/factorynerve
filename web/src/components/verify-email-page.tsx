@@ -177,7 +177,7 @@ export default function VerifyEmailPage() {
               <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell p-4 text-sm text-text-primary">
                 {t("auth.verify.prep", "Confirm this link once, then return to sign in with the same registration email.")}
               </div>
-              <Button type="button" onClick={onVerify} disabled={loading} className="w-full">
+              <Button type="button" onClick={onVerify} disabled={loading} className="factory-auth-cta w-full border-transparent">
                 {loading ? t("auth.verify.loading", "Verifying...") : isPendingSignupToken ? t("auth.verify.activate_account", "Activate account") : t("auth.verify.action", "Verify email")}
               </Button>
             </>

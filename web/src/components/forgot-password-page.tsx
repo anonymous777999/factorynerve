@@ -126,10 +126,11 @@ export default function ForgotPasswordPage() {
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
                 required
+                className="factory-auth-input min-h-[40px]"
               />
             </div>
             {error ? <div className="rounded-panel border-[0.5px] border-status-danger-border bg-status-danger-bg px-3 py-3 text-sm text-status-danger-fg">{error}</div> : null}
-            <Button type="submit" disabled={loading} className="w-full">
+            <Button type="submit" disabled={loading} className="factory-auth-cta w-full border-transparent">
               {loading ? t("auth.forgot.submitting", "Preparing...") : t("auth.forgot.submit", "Send link")}
             </Button>
           </form>
