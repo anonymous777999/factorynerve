@@ -256,7 +256,7 @@ export function DataTableGrid({
           </thead>
           <tbody>
             {normalizedRows.map((row, rowIndex) => (
-              <tr key={`row-${rowIndex}`} onMouseEnter={() => onActiveCellChange?.({ row: rowIndex, column: selectedCell?.column ?? 0 })}>
+              <tr key={`row-${rowIndex}`}>
                 <td className="sticky left-0 z-10 border-b border-r border-border-default bg-surface-shell px-2 py-cell-y text-center text-[11px] font-semibold text-text-tertiary">
                   {rowIndex + 1}
                 </td>
@@ -281,7 +281,6 @@ export function DataTableGrid({
                         "border-b border-border-subtle px-cell-x py-cell-y align-top",
                         showLowConfidence || confidenceTier === "high" ? getConfidenceClass(confidenceTier) : "",
                       )}
-                      onMouseEnter={() => onActiveCellChange?.({ row: rowIndex, column: columnIndex })}
                     >
                       {isEditing ? (
                         <input

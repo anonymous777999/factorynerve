@@ -4,6 +4,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Eye, EyeOff } from "lucide-react";
 
 import { CameraCapture } from "@/components/ocr/camera-capture";
 import { EditToolbar } from "@/components/ocr/edit-toolbar";
@@ -643,6 +644,7 @@ export default function OcrScanPage() {
   const [restored, setRestored] = useState(false);
   // TODO: requires backend endpoint for persistence
   const [viewMode, setViewMode] = useState<ViewMode>("spreadsheet");
+  const [reviewRailCollapsed, setReviewRailCollapsed] = useState(false);
   const [imageLoadError, setImageLoadError] = useState(false);
   const [imageRetryCount, setImageRetryCount] = useState(0);
 
@@ -1937,7 +1939,7 @@ export default function OcrScanPage() {
 
           {(step === "preview" || step === "export") && resultPreview ? (
             <div className="space-y-3">
-              <div className="ocr-workstation-grid">
+              <div className={cn("ocr-workstation-grid", reviewRailCollapsed && "ocr-workstation-grid--rail-collapsed")}>
                 <section className="ocr-workstation-panel ocr-source-workspace">
                   <div className="ocr-workstation-panel__header">
                     <div>
@@ -2070,7 +2072,7 @@ export default function OcrScanPage() {
                         OCR spreadsheet
                       </div>
                       <div className="mt-1 text-sm text-text-secondary">
-                        Hover or select cells to align source and table context.
+                        Select cells to align source and table context without interrupting scroll.
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -2152,7 +2154,7 @@ export default function OcrScanPage() {
                             </thead>
                             <tbody>
                               {sheet.rows.map((row, rowIndex) => (
-                                <tr key={`sheet-row-${rowIndex}`} onMouseEnter={() => setActiveCell({ row: rowIndex, column: 0 })}>
+                                <tr key={`sheet-row-${rowIndex}`}>
                                   <td className="sticky left-0 z-10 border border-border-default bg-surface-shell px-2 py-2 text-center text-xs font-semibold text-text-tertiary">
                                     {rowIndex + 1}
                                   </td>
@@ -2165,7 +2167,7 @@ export default function OcrScanPage() {
                                           ? "bg-surface-selected ring-1 ring-border-focus"
                                           : "bg-surface-shell hover:bg-surface-panel",
                                       )}
-                                      onMouseEnter={() => setActiveCell({ row: rowIndex, column: columnIndex })}
+                                      onClick={() => setActiveCell({ row: rowIndex, column: columnIndex })}
                                     >
                                       {stringifySheetCell(cell)}
                                     </td>
@@ -2229,6 +2231,18 @@ export default function OcrScanPage() {
                   />
                 </section>
 
+                {reviewRailCollapsed ? (
+                  <button
+                    type="button"
+                    className="ocr-rail-peek"
+                    onClick={() => setReviewRailCollapsed(false)}
+                    aria-label="Show review rail"
+                    title="Show review rail"
+                  >
+                    <Eye aria-hidden="true" size={16} />
+                    <span>Review rail</span>
+                  </button>
+                ) : (
                 <aside className="ocr-workstation-panel ocr-review-rail">
                   <div className="ocr-workstation-panel__header">
                     <div>
@@ -2239,6 +2253,15 @@ export default function OcrScanPage() {
                         {step === "export" ? "Ready for export" : "Verification active"}
                       </div>
                     </div>
+                    <button
+                      type="button"
+                      className="ocr-panel-eye-button"
+                      onClick={() => setReviewRailCollapsed(true)}
+                      aria-label="Hide review rail"
+                      title="Hide review rail"
+                    >
+                      <EyeOff aria-hidden="true" size={16} />
+                    </button>
                   </div>
                   <div className="ocr-review-rail__body">
                     <div className="ocr-rail-metric" data-tone="success">
@@ -2343,6 +2366,7 @@ export default function OcrScanPage() {
                     </div>
                   </div>
                 </aside>
+                )}
               </div>
 
               {step === "export" ? (
