@@ -124,7 +124,6 @@ export function OcrSpreadsheetGrid({
         return (
           <div
             className={`flex h-full w-full cursor-text items-center gap-2 truncate px-3 py-2 text-text-primary ${getConfidenceClass(confidenceTier)} ${isSelected ? "ring-1 ring-inset ring-border-focus" : ""} ${isNumeric ? "text-right font-variant-numeric-tabular" : ""}`}
-            onMouseEnter={() => onActiveCellChange?.({ row: rowIndex, column: columnIndex })}
             onClick={() => {
               onActiveCellChange?.({ row: rowIndex, column: columnIndex });
               if (!isReadOnly) {
@@ -226,7 +225,6 @@ export function OcrSpreadsheetGrid({
                 <tr
                   key={row.id}
                   className={`transition-colors hover:bg-surface-selected ${isEvenRow ? "bg-surface-shell" : "bg-surface-panel"}`}
-                  onMouseEnter={() => onActiveCellChange?.({ row: virtualRow.index, column: activeCell?.column ?? 0 })}
                 >
                   <td className="sticky left-0 z-10 border border-border-default bg-surface-shell px-2 text-center text-xs font-semibold text-text-tertiary">
                     {virtualRow.index + 1}
