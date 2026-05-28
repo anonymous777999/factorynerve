@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 
 import { normalizeOcrConfidence, type OcrVerificationRecord } from "@/lib/ocr";
 import {
@@ -85,7 +85,7 @@ export function GovernedOcrCorrectionRail({
 }: GovernedOcrCorrectionRailProps) {
   const workspace = useOCRWorkspace();
   const ownsRecord = activeRecord != null && String(activeRecord.id) === record.queue.id;
-  const selectField = (fieldId: string | null) => {
+  const selectField = useCallback((fieldId: string | null) => {
     if (!fieldId) {
       return;
     }
@@ -94,7 +94,7 @@ export function GovernedOcrCorrectionRail({
     if (field?.boundingBoxId) {
       workspace.setSelectionId(field.boundingBoxId);
     }
-  };
+  }, [record.extractionFields, workspace]);
 
   const data = useMemo<CorrectionRow[]>(
     () => rows.map((cells, rowIndex) => ({ cells, id: `${record.queue.id}-row-${rowIndex}`, rowIndex })),
@@ -259,6 +259,7 @@ export function GovernedOcrCorrectionRail({
     ownsRecord,
     record.queue.id,
     rowSignalCounts,
+    selectField,
     signalMap,
     workspace,
   ]);
