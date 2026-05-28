@@ -183,15 +183,11 @@ export function DataTableGrid({
   };
 
   return (
-    <div className="overflow-hidden rounded-panel border border-border-default bg-surface-panel shadow-xs">
-      <div className="border-b border-border-subtle px-md py-sm">
-        <div className="text-label-dense font-semibold uppercase tracking-[0.16em] text-text-secondary">
-          Preview & edit
-        </div>
-        <div className="mt-1 text-label text-text-secondary">Inline edits only. No popups.</div>
-      </div>
-
-      <div className="overflow-auto" onKeyDown={(event) => {
+    <div className="flex h-full min-h-0 flex-col overflow-hidden border border-border-default bg-surface-panel shadow-xs">
+      <div
+        className="min-h-0 flex-1 overflow-auto"
+        tabIndex={0}
+        onKeyDown={(event) => {
         if (!selectedCell || readOnly) return;
         if (event.key === "F2") {
           event.preventDefault();
@@ -220,10 +216,14 @@ export function DataTableGrid({
           setEditingCell(selectedCell);
           setDraftValue(event.key);
         }
-      }}>
+      }}
+      >
         <table className="min-w-full border-separate border-spacing-0 text-table-density">
           <thead className="sticky top-0 z-10 bg-surface-panel">
             <tr>
+              <th className="sticky left-0 z-20 w-12 min-w-12 border-b border-r border-border-default bg-surface-panel px-2 py-cell-y text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">
+                Row
+              </th>
               {normalizedHeaders.map((header, columnIndex) => (
                 <th
                   key={`head-${columnIndex}`}
@@ -256,7 +256,10 @@ export function DataTableGrid({
           </thead>
           <tbody>
             {normalizedRows.map((row, rowIndex) => (
-              <tr key={`row-${rowIndex}`}>
+              <tr key={`row-${rowIndex}`} onMouseEnter={() => onActiveCellChange?.({ row: rowIndex, column: selectedCell?.column ?? 0 })}>
+                <td className="sticky left-0 z-10 border-b border-r border-border-default bg-surface-shell px-2 py-cell-y text-center text-[11px] font-semibold text-text-tertiary">
+                  {rowIndex + 1}
+                </td>
                 {row.map((currentCell, columnIndex) => {
                   const cellData = normalizeCell(currentCell);
                   const isSelected =
@@ -278,6 +281,7 @@ export function DataTableGrid({
                         "border-b border-border-subtle px-cell-x py-cell-y align-top",
                         showLowConfidence || confidenceTier === "high" ? getConfidenceClass(confidenceTier) : "",
                       )}
+                      onMouseEnter={() => onActiveCellChange?.({ row: rowIndex, column: columnIndex })}
                     >
                       {isEditing ? (
                         <input

@@ -33,18 +33,13 @@ function ActionCard({
       onClick={onClick}
       disabled={busy}
       className={cn(
-        "border px-5 py-5 text-left transition duration-200 disabled:cursor-not-allowed disabled:opacity-60",
+        "inline-flex min-h-10 items-center justify-center border px-4 py-2 text-sm font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-60",
         primary
           ? "factory-ocr-button-primary"
           : "factory-ocr-button-secondary",
       )}
     >
-      <div className={cn("font-mono text-[10px] font-semibold uppercase tracking-[0.14em]", primary ? "text-[var(--action-primary-text)]/70" : "text-text-tertiary")}>
-        {primary ? "Primary export" : "Secondary export"}
-      </div>
-      <div className="mt-2 text-lg font-semibold tracking-tight text-inherit">
-        {label}
-      </div>
+      {label}
     </button>
   );
 }
@@ -63,28 +58,18 @@ export function ExportPanel({
   shareCard,
 }: ExportPanelProps) {
   return (
-    <div className="space-y-5">
-      <div className="factory-ocr-status" data-tone="success">
+    <div className="flex flex-wrap items-center gap-3">
+      <div className="factory-ocr-status min-h-10" data-tone="success">
         <span className="font-medium">Extraction complete</span>
-        <span className="opacity-90">
-          {rowCount} rows / {columnCount} columns / {correctionCount} corrected cells
-        </span>
+        <span className="opacity-90">{rowCount}r / {columnCount}c / {correctionCount} edits</span>
       </div>
 
       <ActionCard label={primaryLabel} onClick={onDownloadExcel} primary busy={busy} />
-
-      <div className="factory-ocr-panel-grid factory-ocr-panel-grid--four">
-        <ActionCard label="CSV" onClick={onDownloadCsv} />
-        <ActionCard label="JSON" onClick={onDownloadJson} />
-        <ActionCard label="Copy to clipboard" onClick={onCopyClipboard} />
-        {shareCard ? (
-          <div className="factory-ocr-console--subtle border border-border-subtle p-4">{shareCard}</div>
-        ) : (
-          <div className="factory-ocr-console--subtle border border-border-subtle p-4" />
-        )}
-      </div>
-
-      {status ? <div className="text-sm text-text-secondary">{status}</div> : null}
+      <ActionCard label="Export CSV" onClick={onDownloadCsv} />
+      <ActionCard label="Export JSON" onClick={onDownloadJson} />
+      <ActionCard label="Copy data" onClick={onCopyClipboard} />
+      {status ? <div className="text-xs text-text-secondary">{status}</div> : null}
+      {shareCard ? <div className="min-w-[15rem] flex-1 border-l border-border-subtle pl-3">{shareCard}</div> : null}
     </div>
   );
 }
