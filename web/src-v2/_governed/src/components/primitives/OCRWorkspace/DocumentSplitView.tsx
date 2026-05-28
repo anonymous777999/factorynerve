@@ -16,8 +16,8 @@ export function DocumentSplitView({ documentSlot, reviewSlot, className, ...prop
 
   return (
     <WorkspaceLayoutRegion direction="horizontal" grow className={cx("min-h-0", className)} {...props}>
-      <WorkspaceLayoutRegion grow>{documentSlot}</WorkspaceLayoutRegion>
-      <WorkspaceLayoutRegion className="w-[360px] min-w-[320px] max-w-[420px] shrink-0 border-l border-[var(--color-border-default)]">
+      <WorkspaceLayoutRegion className="min-w-[360px] flex-[0_1_46%]">{documentSlot}</WorkspaceLayoutRegion>
+      <WorkspaceLayoutRegion className="min-w-[520px] flex-[1_1_54%] border-l border-[var(--color-border-default)]">
         {reviewSlot}
       </WorkspaceLayoutRegion>
     </WorkspaceLayoutRegion>

@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 
-import { DocumentViewport, OCRExecutionWorkspace, ResizeRegion, WorkflowBanner, WorkflowFeedbackPanel, WorkspaceLayoutRegion, type FeedbackItem } from "@/v2/_governed";
+import { DocumentViewport, OCRExecutionWorkspace, WorkflowBanner, WorkspaceLayoutRegion } from "@/v2/_governed";
 import { GovernedOcrActionPanel } from "@/v2/workspaces/ocr-execution/components/governed-ocr-action-panel";
 import { GovernedOcrCorrectionRail } from "@/v2/workspaces/ocr-execution/components/governed-ocr-correction-rail";
 import { GovernedOcrIntakeScreen } from "@/v2/workspaces/ocr-execution/components/governed-ocr-intake-screen";
@@ -72,49 +72,6 @@ export function GovernedOcrVerificationPage() {
 
   const legacyHref = buildLegacyHref(route);
   const workspaceRecordId = route.id != null ? String(route.id) : review.workspaceRecords[0]?.queue.id;
-
-  const governedSignalItems = useMemo<FeedbackItem[]>(() => {
-    if (review.reviewSignals.length === 0) {
-      return [
-        {
-          id: "governed-clean",
-          title: "Governed review surface is clear",
-          description: "No blocking manual review signals are active in the current OCR draft.",
-          priority: "operational",
-          category: "workflow",
-        },
-      ];
-    }
-
-    return review.reviewSignals.map((signal) => ({
-      id: signal.id,
-      title: signal.message,
-      description:
-        signal.rowIndex != null && signal.columnIndex != null
-          ? `Row ${signal.rowIndex + 1}, column ${signal.columnIndex + 1}`
-          : "Document-level OCR signal",
-      priority:
-        signal.tone === "critical"
-          ? "critical"
-          : signal.tone === "warning"
-            ? "warning"
-            : "informational",
-      category: "ocr",
-    }));
-  }, [review.reviewSignals]);
-
-  const workflowFeedItems = useMemo<FeedbackItem[]>(() => {
-    return [
-      ...governedSignalItems,
-      {
-        id: "governed-shortcuts",
-        title: "Operational keyboard flow",
-        description: "Alt+1 queue, Alt+2 document, Alt+3 correction rail, Ctrl/Cmd+S save, Ctrl/Cmd+Enter advance workflow.",
-        priority: "informational",
-        category: "workflow",
-      },
-    ];
-  }, [governedSignalItems]);
 
   useEffect(() => {
     if (!(route.step === 3 || route.step === 4) || !draft.activeRecord) {
@@ -235,20 +192,20 @@ export function GovernedOcrVerificationPage() {
   }
 
   return (
-    <main className="dpr-governed-ocr factory-ocr-scope min-h-screen px-4 py-4 md:px-6 md:py-5">
+    <main className="dpr-governed-ocr factory-ocr-scope flex h-[calc(100vh-var(--app-topbar-height,0px))] min-h-[720px] flex-col overflow-hidden px-4 py-4 md:px-6 md:py-5">
       {messages.error ? (
         <div className="border-b border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-100">{messages.error}</div>
       ) : null}
       {messages.status ? (
         <div className="border-b border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">{messages.status}</div>
       ) : null}
-      <div className="border-b border-white/10 bg-black/20 px-4 py-3 text-xs uppercase tracking-[0.16em] text-white/60">
+      <div className="shrink-0 border-b border-white/10 bg-black/20 px-4 py-2 text-xs uppercase tracking-[0.16em] text-white/60">
         Governed OCR workspace now owns correction, send-back, approval, and export actions.{" "}
         <Link href={legacyHref} className="text-amber-300 underline underline-offset-4">
           Open legacy rollback lane
         </Link>
       </div>
-      <div className="factory-ocr-shell">
+      <div className="factory-ocr-shell flex min-h-0 flex-1 flex-col">
         <section className="factory-ocr-header">
           <div className="factory-ocr-header__meta">
             <div className="max-w-4xl">
@@ -298,43 +255,57 @@ export function GovernedOcrVerificationPage() {
             }
           />
         )}
-        bottomRailSlot={({ escalationItems, record, workflowItems }) => (
-          <WorkspaceLayoutRegion direction="horizontal" className="h-full">
-            <ResizeRegion
-              defaultSize={760}
-              minSize={520}
-              maxSize={980}
-              position="left"
-              className="border-r border-[var(--color-border-default)]"
-            >
-              <GovernedOcrCorrectionRail
-                activeRecord={draft.activeRecord}
-                busy={review.workspaceBusy}
-                headers={draft.headers}
-                inputIdPrefix={CORRECTION_INPUT_PREFIX}
-                onApplySafeCleanup={actions.applySafeCleanup}
-                onCellChange={actions.setCellValue}
-                onHeaderChange={actions.setHeaderValue}
-                onOpenDocument={handleOpenDocument}
-                onRestoreRowFromSource={actions.restoreRowFromSource}
-                record={record}
-                reviewSignals={review.reviewSignals}
-                rows={draft.rows}
-                tableRegionId={CORRECTION_GRID_REGION_ID}
-              />
-            </ResizeRegion>
-            <WorkspaceLayoutRegion grow className="border-r border-[var(--color-border-default)]">
-              <WorkflowFeedbackPanel items={governedSignalItems} title="Governed review signals" className="h-full rounded-none border-none" />
-            </WorkspaceLayoutRegion>
-            <ResizeRegion defaultSize={360} minSize={320} maxSize={440} position="right">
-              <WorkflowFeedbackPanel items={[...workflowItems, ...escalationItems, ...workflowFeedItems]} title="Workflow feed" className="h-full rounded-none border-none" />
-            </ResizeRegion>
+        bottomRailSlot={({ record }) => (
+          <WorkspaceLayoutRegion direction="horizontal" className="h-full items-center gap-[var(--spacing-2)] px-[var(--spacing-3)]">
+            <div className="flex min-w-0 flex-1 items-center gap-[var(--spacing-3)] text-[11px] uppercase tracking-[0.08em] text-[var(--color-text-muted)]">
+              <span className="truncate text-[var(--color-text-primary)]">{record.queue.title}</span>
+              <span>{draft.rows.length} rows</span>
+              <span>{draft.headers.length} columns</span>
+              <span className={review.reviewSignals.length > 0 ? "text-[var(--color-status-warning-text)]" : "text-[var(--color-status-ok-text)]"}>
+                {review.reviewSignals.length} unresolved
+              </span>
+              <span>{review.dirty ? "Unsaved edits" : "Saved"}</span>
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center justify-end gap-[var(--spacing-2)]">
+              <button type="button" className="fn-btn fn-btn-secondary fn-btn-sm" onClick={() => void actions.downloadExcel()} disabled={review.workspaceBusy}>
+                Export XLSX
+              </button>
+              <button type="button" className="fn-btn fn-btn-secondary fn-btn-sm" onClick={() => void actions.downloadCsv()} disabled={review.workspaceBusy}>
+                Export CSV
+              </button>
+              <button type="button" className="fn-btn fn-btn-secondary fn-btn-sm" onClick={() => void actions.copyMarkdown()} disabled={review.workspaceBusy}>
+                Copy data
+              </button>
+              <button type="button" className="fn-btn fn-btn-ai fn-btn-sm" onClick={() => void actions.saveDraft()} disabled={review.workspaceBusy}>
+                Save review
+              </button>
+              <button type="button" className="fn-btn fn-btn-primary fn-btn-sm" onClick={() => void handleCompleteReview()} disabled={review.workspaceBusy}>
+                {route.step === 4 && access.canApprove ? "Approve extraction" : "Request verification"}
+              </button>
+            </div>
           </WorkspaceLayoutRegion>
         )}
         documentSlot={() => (
           <div id={DOCUMENT_REGION_ID} tabIndex={-1} className="h-full outline-none">
             <DocumentViewport />
           </div>
+        )}
+        reviewSlot={(record) => (
+          <GovernedOcrCorrectionRail
+            activeRecord={draft.activeRecord}
+            busy={review.workspaceBusy}
+            headers={draft.headers}
+            inputIdPrefix={CORRECTION_INPUT_PREFIX}
+            onApplySafeCleanup={actions.applySafeCleanup}
+            onCellChange={actions.setCellValue}
+            onHeaderChange={actions.setHeaderValue}
+            onOpenDocument={handleOpenDocument}
+            onRestoreRowFromSource={actions.restoreRowFromSource}
+            record={record}
+            reviewSignals={review.reviewSignals}
+            rows={draft.rows}
+            tableRegionId={CORRECTION_GRID_REGION_ID}
+          />
         )}
         emptyStateSlot={
           <div className="flex h-full items-center justify-center p-8 text-center text-sm text-[var(--color-text-muted)]">
@@ -350,6 +321,7 @@ export function GovernedOcrVerificationPage() {
         queueSearchInputId={QUEUE_SEARCH_INPUT_ID}
         records={review.workspaceRecords}
         selectedDocumentId={workspaceRecordId}
+        showQueuePanel={false}
         sidePanelSlot={({ aiItems, escalationItems, onApplyFieldCorrection, record }) => (
           <GovernedOcrActionPanel
             activeRecord={draft.activeRecord}
