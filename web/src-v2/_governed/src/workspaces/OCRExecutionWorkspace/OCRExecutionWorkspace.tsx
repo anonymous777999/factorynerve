@@ -116,6 +116,7 @@ interface OCRExecutionWorkspaceProps {
   }) => ReactNode;
   selectedDocumentId?: string;
   emptyStateSlot?: ReactNode;
+  showQueuePanel?: boolean;
 }
 
 function OCRExecutionWorkspaceInner(props: OCRExecutionWorkspaceProps) {
@@ -134,7 +135,7 @@ function OCRExecutionWorkspaceInner(props: OCRExecutionWorkspaceProps) {
   if (props.loading) {
     return (
       <ViewportProvider boundaryId="factorynerve.ocr.execution.viewport">
-        <div className="flex h-screen w-full items-center justify-center bg-[var(--color-surface-canvas)] text-[var(--color-text-secondary)]">
+        <div className="flex h-full min-h-[560px] w-full items-center justify-center bg-[var(--color-surface-canvas)] text-[var(--color-text-secondary)]">
           Loading governed OCR workspace...
         </div>
       </ViewportProvider>
@@ -151,7 +152,7 @@ function OCRExecutionWorkspaceInner(props: OCRExecutionWorkspaceProps) {
 
   return (
     <ViewportProvider boundaryId="factorynerve.ocr.execution.viewport">
-      <div className="h-screen w-full bg-[var(--color-surface-canvas)] text-[var(--color-text-secondary)]">
+      <div className="h-full min-h-[620px] w-full bg-[var(--color-surface-canvas)] text-[var(--color-text-secondary)]">
         <ViewportBoundary className="h-full">
           <WorkspaceViewport surface="canvas">
             <Toolbar aria-label="OCR execution workspace">
@@ -224,27 +225,29 @@ function OCRExecutionWorkspaceInner(props: OCRExecutionWorkspaceProps) {
               extractionFields={workspace.selectedRecord.extractionFields}
             >
               <WorkspaceLayoutRegion direction="horizontal" grow>
-                <ResizeRegion
-                  defaultSize={360}
-                  minSize={320}
-                  maxSize={460}
-                  position="left"
-                  className="border-r border-[var(--color-border-default)] bg-[var(--color-surface-elevated)]"
-                >
-                  <OCRQueuePanel
-                    activeDocumentId={workspace.selectedRecord.queue.id}
-                    filterChips={workspace.filterChips}
-                    filters={workspace.filters}
-                    searchInputId={props.queueSearchInputId}
-                    records={workspace.filteredRecords}
-                    onApproveDocuments={workspace.actions.approveDocuments}
-                    onEscalateDocument={workspace.actions.escalateDocument}
-                    onQueueFilterChange={workspace.actions.setQueueFilter}
-                    onQueryChange={workspace.actions.setQuery}
-                    onSelectDocument={workspace.actions.selectDocument}
-                    onToggleAnomaliesOnly={workspace.actions.toggleAnomaliesOnly}
-                  />
-                </ResizeRegion>
+                {props.showQueuePanel === false ? null : (
+                  <ResizeRegion
+                    defaultSize={280}
+                    minSize={236}
+                    maxSize={340}
+                    position="left"
+                    className="border-r border-[var(--color-border-default)] bg-[var(--color-surface-elevated)]"
+                  >
+                    <OCRQueuePanel
+                      activeDocumentId={workspace.selectedRecord.queue.id}
+                      filterChips={workspace.filterChips}
+                      filters={workspace.filters}
+                      searchInputId={props.queueSearchInputId}
+                      records={workspace.filteredRecords}
+                      onApproveDocuments={workspace.actions.approveDocuments}
+                      onEscalateDocument={workspace.actions.escalateDocument}
+                      onQueueFilterChange={workspace.actions.setQueueFilter}
+                      onQueryChange={workspace.actions.setQuery}
+                      onSelectDocument={workspace.actions.selectDocument}
+                      onToggleAnomaliesOnly={workspace.actions.toggleAnomaliesOnly}
+                    />
+                  </ResizeRegion>
+                )}
 
                 <WorkspaceLayoutRegion grow direction="vertical">
                   <WorkspaceLayoutRegion grow direction="horizontal">
@@ -287,9 +290,9 @@ function OCRExecutionWorkspaceInner(props: OCRExecutionWorkspaceProps) {
                   <ResizeRegion
                     axis="vertical"
                     position="bottom"
-                    defaultSize={240}
-                    minSize={200}
-                    maxSize={320}
+                    defaultSize={72}
+                    minSize={64}
+                    maxSize={120}
                     className="border-t border-[var(--color-border-default)] bg-[var(--color-surface-primary)]"
                   >
                     {props.bottomRailSlot?.({

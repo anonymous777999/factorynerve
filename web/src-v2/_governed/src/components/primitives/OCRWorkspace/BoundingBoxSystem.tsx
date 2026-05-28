@@ -4,19 +4,27 @@ import { getInteractionAttributes, getInteractionClassName } from "../Interactio
 import { useOCRWorkspace } from "./hooks";
 
 export function BoundingBoxSystem({ box, className, ...props }: BoundingBoxSystemProps) {
-  const { activeSelectionId, setSelectionId } = useOCRWorkspace();
+  const { activeSelectionId, extractionFields, selectedFieldId, setSelectedFieldId, setSelectionId } = useOCRWorkspace();
+  const linkedField = extractionFields.find((field) => field.boundingBoxId === box.id);
   const selected = activeSelectionId === box.id;
+  const fieldSelected = linkedField?.id === selectedFieldId;
   const warning = typeof box.confidence === "number" && box.confidence < 0.72;
   const critical = box.reviewState === "failed" || box.anomaly;
+  const selectBox = () => {
+    setSelectionId(selected ? null : box.id);
+    if (linkedField) {
+      setSelectedFieldId(linkedField.id);
+    }
+  };
 
   return (
     <div
       role="button"
       tabIndex={0}
-      aria-pressed={selected}
+      aria-pressed={selected || fieldSelected}
       {...getInteractionAttributes({
         hover: true,
-        selected,
+        selected: selected || fieldSelected,
         warning,
         critical,
         reviewed: box.reviewState === "reviewed",
@@ -29,6 +37,7 @@ export function BoundingBoxSystem({ box, className, ...props }: BoundingBoxSyste
           states: ["hover", "selected", "warning", "critical", "reviewed", "ai-active"],
           target: "surface",
         }),
+        (selected || fieldSelected) && "shadow-[inset_0_0_0_2px_var(--color-accent-operational)]",
         className
       )}
       style={{
@@ -37,11 +46,11 @@ export function BoundingBoxSystem({ box, className, ...props }: BoundingBoxSyste
         width: `${box.width}%`,
         height: `${box.height}%`,
       }}
-      onClick={() => setSelectionId(selected ? null : box.id)}
+      onClick={selectBox}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
-          setSelectionId(selected ? null : box.id);
+          selectBox();
         }
       }}
       {...props}

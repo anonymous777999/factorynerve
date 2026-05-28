@@ -43,7 +43,7 @@ export function ProductionDataTable<TData>({
   return (
     <div ref={scrollRef} className="h-full overflow-auto">
       <DataTable density={mapDensityToFoundationDensity(resolvedDensity)} aria-rowcount={table.getRowModel().rows.length}>
-        <DataTableHeader>
+        <DataTableHeader className="sticky top-0 z-[var(--z-raised)] bg-[var(--table-header-bg)]">
           {table.getHeaderGroups().map((headerGroup) => (
             <DataTableRow key={headerGroup.id} interactive={false}>
               {headerGroup.headers.map((header) => (

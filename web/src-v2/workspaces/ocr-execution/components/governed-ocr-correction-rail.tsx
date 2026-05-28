@@ -57,15 +57,15 @@ function resolveSignalTone(signals: GovernedReviewSignal[]) {
 
 function cellInputClassName(selected: boolean, tone: "critical" | "warning" | "info" | "default") {
   if (tone === "critical") {
-    return `w-full rounded-[var(--radius-sm)] border border-[var(--color-status-critical-border)] bg-[var(--color-status-critical-surface)] px-[var(--spacing-2)] py-[var(--spacing-2)] text-[12px] text-[var(--color-status-critical-text)] outline-none ${selected ? "ring-2 ring-[var(--color-status-critical-border)]/40" : ""}`;
+    return `h-7 w-full rounded-[var(--radius-sm)] border border-[var(--color-status-critical-border)] bg-[var(--color-status-critical-surface)] px-[var(--spacing-2)] py-[var(--spacing-1)] font-[var(--font-mono)] text-[12px] text-[var(--color-status-critical-text)] outline-none ${selected ? "ring-2 ring-[var(--color-status-critical-border)]/40" : ""}`;
   }
   if (tone === "warning") {
-    return `w-full rounded-[var(--radius-sm)] border border-[var(--color-status-warning-border)] bg-[var(--color-status-warning-surface)] px-[var(--spacing-2)] py-[var(--spacing-2)] text-[12px] text-[var(--color-status-warning-text)] outline-none ${selected ? "ring-2 ring-[var(--color-status-warning-border)]/40" : ""}`;
+    return `h-7 w-full rounded-[var(--radius-sm)] border border-[var(--color-status-warning-border)] bg-[var(--color-status-warning-surface)] px-[var(--spacing-2)] py-[var(--spacing-1)] font-[var(--font-mono)] text-[12px] text-[var(--color-status-warning-text)] outline-none ${selected ? "ring-2 ring-[var(--color-status-warning-border)]/40" : ""}`;
   }
   if (tone === "info") {
-    return `w-full rounded-[var(--radius-sm)] border border-[var(--color-accent-ai-border)] bg-[var(--color-accent-ai-surface)] px-[var(--spacing-2)] py-[var(--spacing-2)] text-[12px] text-[var(--color-accent-ai-muted)] outline-none ${selected ? "ring-2 ring-[var(--color-accent-ai-border)]/40" : ""}`;
+    return `h-7 w-full rounded-[var(--radius-sm)] border border-[var(--color-accent-ai-border)] bg-[var(--color-accent-ai-surface)] px-[var(--spacing-2)] py-[var(--spacing-1)] font-[var(--font-mono)] text-[12px] text-[var(--color-accent-ai-muted)] outline-none ${selected ? "ring-2 ring-[var(--color-accent-ai-border)]/40" : ""}`;
   }
-  return `w-full rounded-[var(--radius-sm)] border border-[var(--color-border-default)] bg-[var(--color-surface-elevated)] px-[var(--spacing-2)] py-[var(--spacing-2)] text-[12px] text-[var(--color-text-primary)] outline-none ${selected ? "ring-2 ring-[var(--color-accent-operational-border)]/40" : ""}`;
+  return `h-7 w-full rounded-[var(--radius-sm)] border border-[var(--color-border-default)] bg-[var(--color-surface-elevated)] px-[var(--spacing-2)] py-[var(--spacing-1)] font-[var(--font-mono)] text-[12px] text-[var(--color-text-primary)] outline-none ${selected ? "ring-2 ring-[var(--color-accent-operational-border)]/40" : ""}`;
 }
 
 export function GovernedOcrCorrectionRail({
@@ -85,6 +85,16 @@ export function GovernedOcrCorrectionRail({
 }: GovernedOcrCorrectionRailProps) {
   const workspace = useOCRWorkspace();
   const ownsRecord = activeRecord != null && String(activeRecord.id) === record.queue.id;
+  const selectField = (fieldId: string | null) => {
+    if (!fieldId) {
+      return;
+    }
+    workspace.setSelectedFieldId(fieldId);
+    const field = record.extractionFields.find((item) => item.id === fieldId);
+    if (field?.boundingBoxId) {
+      workspace.setSelectionId(field.boundingBoxId);
+    }
+  };
 
   const data = useMemo<CorrectionRow[]>(
     () => rows.map((cells, rowIndex) => ({ cells, id: `${record.queue.id}-row-${rowIndex}`, rowIndex })),
@@ -140,12 +150,13 @@ export function GovernedOcrCorrectionRail({
             <button
               type="button"
               className="flex w-full flex-col items-start rounded-[var(--radius-sm)] border border-transparent px-[var(--spacing-2)] py-[var(--spacing-2)] text-left transition hover:border-[var(--color-border-default)] hover:bg-[var(--color-surface-elevated)]"
+              onMouseEnter={() => selectField(primaryFieldId)}
               onClick={() => {
                 if (!primaryFieldId) {
                   onOpenDocument(record.queue.id);
                   return;
                 }
-                workspace.setSelectedFieldId(primaryFieldId);
+                selectField(primaryFieldId);
                 window.setTimeout(() => {
                   document.getElementById(`${inputIdPrefix}${row.rowIndex}-0`)?.focus();
                 }, 40);
@@ -169,10 +180,24 @@ export function GovernedOcrCorrectionRail({
           const cellSignals = signalMap.get(`${row.rowIndex}-${columnIndex}`) ?? [];
           const confidence = normalizeOcrConfidence(activeRecord?.cell_confidence?.[row.rowIndex]?.[columnIndex]);
           const selected = fieldId != null && workspace.selectedFieldId === fieldId;
-          const tone = resolveSignalTone(cellSignals);
+          const tone =
+            resolveSignalTone(cellSignals) === "default" && confidence != null && confidence >= 0.9
+              ? "info"
+              : resolveSignalTone(cellSignals);
+          const stateLabel =
+            tone === "critical"
+              ? "Low confidence"
+              : tone === "warning"
+                ? "Needs verification"
+                : confidence != null && confidence >= 0.9
+                  ? "Verified"
+                  : "Unreviewed";
 
           return (
-            <div className="space-y-[var(--spacing-1)] py-[var(--spacing-1)]">
+            <div
+              className="space-y-[var(--spacing-1)] py-[var(--spacing-1)]"
+              onMouseEnter={() => selectField(fieldId)}
+            >
               <input
                 id={`${inputIdPrefix}${row.rowIndex}-${columnIndex}`}
                 className={cellInputClassName(selected, tone)}
@@ -180,29 +205,15 @@ export function GovernedOcrCorrectionRail({
                 disabled={!ownsRecord || busy}
                 onChange={(event) => onCellChange(row.rowIndex, columnIndex, event.target.value)}
                 onFocus={() => {
-                  if (!fieldId) {
-                    return;
-                  }
-                  workspace.setSelectedFieldId(fieldId);
+                  selectField(fieldId);
                 }}
                 onClick={() => {
-                  if (!fieldId) {
-                    return;
-                  }
-                  workspace.setSelectedFieldId(fieldId);
+                  selectField(fieldId);
                 }}
               />
               <div className="flex items-center justify-between gap-[var(--spacing-2)] text-[10px] uppercase tracking-[0.06em] text-[var(--color-text-muted)]">
                 <span>{confidence == null ? "No confidence" : `${Math.round(confidence * 100)}% confidence`}</span>
-                <span>
-                  {cellSignals.length > 0
-                    ? cellSignals[0]?.tone === "critical"
-                      ? "Critical"
-                      : cellSignals[0]?.tone === "warning"
-                        ? "Review"
-                        : "Check"
-                    : "Clean"}
-                </span>
+                <span>{stateLabel}</span>
               </div>
             </div>
           );
@@ -275,8 +286,8 @@ export function GovernedOcrCorrectionRail({
     >
       <Panel variant="workspace" padding="none" className="h-full rounded-none border-none">
         <PanelHeader
-          title="Governed correction rail"
-          subtitle="Inline OCR edits, row actions, and header fixes"
+          title="OCR spreadsheet"
+          subtitle="Inline cell editing with source-linked review focus"
           meta={`${rows.length} row${rows.length === 1 ? "" : "s"} / ${headers.length} column${headers.length === 1 ? "" : "s"}`}
         />
         <Toolbar aria-label="Governed correction tools">
