@@ -1,6 +1,13 @@
 export type OcrVerifyQueueFilters = {
   search: string;
   status: "all" | "draft" | "pending" | "rejected" | "approved";
+  exportState?: "all" | "pending" | "exported" | "failed" | "json_generated";
+  documentType?: string | null;
+  reviewerId?: number | null;
+  minConfidence?: number | null;
+  maxConfidence?: number | null;
+  updatedAfter?: string | null;
+  updatedBefore?: string | null;
 };
 
 export type AttendanceLiveFilters = {
@@ -16,6 +23,12 @@ function normalizeQueueFilters(filters: OcrVerifyQueueFilters) {
   return {
     search: filters.search.trim().toLowerCase(),
     status: filters.status,
+    exportState: filters.exportState ?? "all",
+    documentType: filters.documentType?.trim().toLowerCase() || null,
+    reviewerId: filters.reviewerId ?? null,
+    minConfidence: filters.minConfidence ?? null,
+    updatedAfter: filters.updatedAfter || null,
+    updatedBefore: filters.updatedBefore || null,
   };
 }
 

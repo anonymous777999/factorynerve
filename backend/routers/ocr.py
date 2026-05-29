@@ -25,7 +25,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field
-from sqlalchemy import false
+from sqlalchemy import false, func, or_
 from sqlalchemy.orm import Session
 from anthropic import AuthenticationError, BadRequestError
 
@@ -41,7 +41,7 @@ from backend.ledger_scan import (
 from backend.table_scan import build_table_excel_bytes, generate_excel_from_sections
 from backend.models.report import AuditLog
 from backend.models.ocr_template import OcrTemplate
-from backend.models.ocr_verification import OcrVerification
+from backend.models.ocr_verification import OcrAuditEvent, OcrVerification
 from backend.models.factory import Factory
 from backend.ocr_utils import (
     analyze_image_quality,
@@ -1688,9 +1688,23 @@ def _serialize_verification(db: Session, verification: OcrVerification) -> dict:
             template_name = template.name
     actor_ids = {
         actor_id
-        for actor_id in {verification.user_id, verification.approved_by, verification.rejected_by}
+        for actor_id in {
+            verification.user_id,
+            verification.approved_by,
+            verification.rejected_by,
+            verification.reviewed_by,
+            verification.exported_by,
+        }
         if actor_id
     }
+    recent_events = (
+        db.query(OcrAuditEvent)
+        .filter(OcrAuditEvent.document_id == verification.id)
+        .order_by(OcrAuditEvent.created_at.desc(), OcrAuditEvent.id.desc())
+        .limit(12)
+        .all()
+    )
+    actor_ids.update(event.actor_user_id for event in recent_events if event.actor_user_id)
     actor_map = {}
     if actor_ids:
         actor_map = {
@@ -1738,6 +1752,25 @@ def _serialize_verification(db: Session, verification: OcrVerification) -> dict:
         "cell_boxes": cell_boxes,            # NEW: Review metadata layer
         "cell_sources": cell_sources,        # NEW: Review metadata layer
         "status": verification.status,
+        "current_status": verification.status,
+        "export_state": verification.export_state or ("exported" if verification.exported_by else "pending"),
+        "last_action": verification.last_action or verification.status,
+        "reviewed_by": verification.reviewed_by,
+        "reviewed_by_name": actor_map.get(verification.reviewed_by) if verification.reviewed_by else None,
+        "exported_by": verification.exported_by,
+        "exported_by_name": actor_map.get(verification.exported_by) if verification.exported_by else None,
+        "audit_events": [
+            {
+                "id": event.id,
+                "document_id": event.document_id,
+                "event_type": event.event_type,
+                "actor": event.actor or actor_map.get(event.actor_user_id),
+                "actor_user_id": event.actor_user_id,
+                "event_metadata": event.event_metadata or {},
+                "created_at": event.created_at.isoformat() if event.created_at else None,
+            }
+            for event in recent_events
+        ],
         "reviewer_notes": verification.reviewer_notes,
         "rejection_reason": verification.rejection_reason,
         "submitted_at": verification.submitted_at.isoformat() if verification.submitted_at else None,
@@ -2327,6 +2360,50 @@ def _log_ocr_event(
     )
 
 
+def _ocr_actor_label(current_user: User | None) -> str | None:
+    if current_user is None:
+        return None
+    return getattr(current_user, "name", None) or getattr(current_user, "email", None) or f"user:{current_user.id}"
+
+
+def _record_ocr_audit_event(
+    db: Session,
+    *,
+    verification: OcrVerification,
+    event_type: str,
+    current_user: User | None,
+    metadata: dict[str, Any] | None = None,
+) -> None:
+    db.add(
+        OcrAuditEvent(
+            document_id=verification.id,
+            event_type=event_type,
+            actor=_ocr_actor_label(current_user),
+            actor_user_id=current_user.id if current_user else None,
+            event_metadata=metadata or {},
+            created_at=datetime.now(timezone.utc),
+        )
+    )
+
+
+def _update_ocr_lifecycle(
+    verification: OcrVerification,
+    *,
+    last_action: str,
+    export_state: str | None = None,
+    reviewed_by: int | None = None,
+    exported_by: int | None = None,
+) -> None:
+    verification.last_action = last_action
+    if export_state is not None:
+        verification.export_state = export_state
+    if reviewed_by is not None:
+        verification.reviewed_by = reviewed_by
+    if exported_by is not None:
+        verification.exported_by = exported_by
+    verification.updated_at = datetime.now(timezone.utc)
+
+
 def _run_ocr_with_fallback(
     image_bytes: bytes,
     *,
@@ -2570,16 +2647,68 @@ def deactivate_template(
 @router.get("/verifications", status_code=status.HTTP_200_OK)
 def list_verifications(
     verification_status: str | None = None,
+    export_state: str | None = None,
+    document_type: str | None = None,
+    reviewed_by: int | None = None,
+    search: str | None = None,
+    min_confidence: float | None = None,
+    max_confidence: float | None = None,
+    updated_after: str | None = None,
+    updated_before: str | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
     _require_ocr_access(current_user)
     query = _verification_query(db, current_user)
+
     if verification_status:
         normalized = (sanitize_text(verification_status, max_length=20, preserve_newlines=False) or "").lower()
         if normalized not in _ALLOWED_VERIFICATION_STATUSES:
             raise HTTPException(status_code=400, detail="Invalid verification status filter.")
         query = query.filter(OcrVerification.status == normalized)
+
+    if export_state:
+        normalized_export = (sanitize_text(export_state, max_length=30, preserve_newlines=False) or "").lower()
+        if normalized_export not in {"pending", "exported", "failed", "json_generated"}:
+            raise HTTPException(status_code=400, detail="Invalid export state filter.")
+        query = query.filter(OcrVerification.export_state == normalized_export)
+
+    if document_type:
+        normalized_doc_type = sanitize_text(document_type, max_length=80, preserve_newlines=False)
+        if normalized_doc_type:
+            query = query.filter(func.lower(OcrVerification.doc_type_hint) == normalized_doc_type.lower())
+
+    if reviewed_by is not None:
+        query = query.filter(OcrVerification.reviewed_by == reviewed_by)
+
+    if search:
+        normalized_search = f"%{sanitize_text(search, max_length=120, preserve_newlines=False).lower()}%"
+        query = query.filter(
+            or_(
+                func.lower(OcrVerification.source_filename).like(normalized_search),
+                func.lower(OcrVerification.doc_type_hint).like(normalized_search),
+                func.lower(OcrVerification.status).like(normalized_search),
+                func.lower(OcrVerification.last_action).like(normalized_search),
+            )
+        )
+
+    if min_confidence is not None:
+        query = query.filter(OcrVerification.avg_confidence >= min_confidence)
+
+    if max_confidence is not None:
+        query = query.filter(OcrVerification.avg_confidence <= max_confidence)
+
+    def parse_datetime_param(value: str, name: str) -> datetime:
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid {name} format; use ISO 8601.") from exc
+
+    if updated_after:
+        query = query.filter(OcrVerification.updated_at >= parse_datetime_param(updated_after, "updated_after"))
+    if updated_before:
+        query = query.filter(OcrVerification.updated_at <= parse_datetime_param(updated_before, "updated_before"))
+
     records = query.order_by(OcrVerification.updated_at.desc(), OcrVerification.id.desc()).limit(100).all()
     return [_serialize_verification(db, record) for record in records]
 
@@ -2732,11 +2861,26 @@ async def create_verification(
         reviewed_rows=parsed_reviewed_rows,
         raw_column_added=bool(raw_column_added),
         status="draft",
+        export_state="pending",
+        last_action="uploaded",
         reviewer_notes=sanitize_text(reviewer_notes, max_length=5000),
     )
     db.add(verification)
     db.commit()
     db.refresh(verification)
+    _record_ocr_audit_event(
+        db,
+        verification=verification,
+        event_type="uploaded",
+        current_user=current_user,
+        metadata={
+            "status": verification.status,
+            "confidence_score": verification.avg_confidence,
+            "document_type": verification.doc_type_hint,
+            "filename": verification.source_filename,
+            "rows": len(parsed_reviewed_rows or parsed_original_rows),
+        },
+    )
     if request is not None:
         _log_ocr_event(
             db,
@@ -2753,6 +2897,8 @@ async def create_verification(
             org_id=verification.org_id,
             factory_id=verification.factory_id,
         )
+        db.commit()
+    else:
         db.commit()
     return _serialize_verification(db, verification)
 
@@ -2809,7 +2955,41 @@ def export_verification_excel(
     verification = _get_verification_or_404(db, verification_id, current_user)
     rows = _verification_export_rows(verification)
     headers = _verification_export_headers(verification, rows)
+    blockers, validation_warnings = _verification_export_validation(verification, headers, rows)
+    if blockers:
+        _update_ocr_lifecycle(verification, last_action="export_failed", export_state="failed")
+        _record_ocr_audit_event(
+            db,
+            verification=verification,
+            event_type="failed",
+            current_user=current_user,
+            metadata={"stage": "export", "blockers": blockers, "warnings": validation_warnings},
+        )
+        db.commit()
+        raise HTTPException(
+            status_code=409,
+            detail="Reviewed sheet has blocking validation issues and must be corrected before export.",
+        )
     trusted_export = verification.status == "approved"
+    _update_ocr_lifecycle(
+        verification,
+        last_action="exported",
+        export_state="exported" if trusted_export else "json_generated",
+        exported_by=current_user.id,
+    )
+    _record_ocr_audit_event(
+        db,
+        verification=verification,
+        event_type="exported",
+        current_user=current_user,
+        metadata={
+            "status": verification.status,
+            "trusted_export": trusted_export,
+            "export_source": _verification_export_source(verification),
+            "rows": len(rows),
+            "columns": len(headers),
+        },
+    )
     _log_ocr_event(
         db,
         action="OCR_VERIFICATION_EXCEL_EXPORT",
@@ -2921,6 +3101,24 @@ def update_verification(
         verification.rejected_by = None
         verification.rejection_reason = None
 
+    _update_ocr_lifecycle(
+        verification,
+        last_action="corrected",
+        export_state="pending",
+        reviewed_by=current_user.id,
+    )
+    _record_ocr_audit_event(
+        db,
+        verification=verification,
+        event_type="corrected",
+        current_user=current_user,
+        metadata={
+            "status": verification.status,
+            "confidence_score": verification.avg_confidence,
+            "corrections": (verification.scan_quality or {}).get("correction_count", 0),
+            "warnings": verification.warnings or [],
+        },
+    )
     db.commit()
     _log_ocr_event(
         db,
@@ -2962,7 +3160,19 @@ def submit_verification(
     verification.rejection_reason = None
     if payload.reviewer_notes is not None:
         verification.reviewer_notes = sanitize_text(payload.reviewer_notes, max_length=5000)
-    verification.updated_at = datetime.now(timezone.utc)
+    _update_ocr_lifecycle(
+        verification,
+        last_action="review_opened",
+        export_state="pending",
+        reviewed_by=current_user.id,
+    )
+    _record_ocr_audit_event(
+        db,
+        verification=verification,
+        event_type="review_opened",
+        current_user=current_user,
+        metadata={"status": verification.status, "submitted_at": verification.submitted_at.isoformat()},
+    )
     db.commit()
     db.refresh(verification)
     return _serialize_verification(db, verification)
@@ -2987,7 +3197,19 @@ def approve_verification(
     verification.rejection_reason = None
     if payload.reviewer_notes is not None:
         verification.reviewer_notes = sanitize_text(payload.reviewer_notes, max_length=5000)
-    verification.updated_at = datetime.now(timezone.utc)
+    _update_ocr_lifecycle(
+        verification,
+        last_action="approved",
+        export_state="pending",
+        reviewed_by=current_user.id,
+    )
+    _record_ocr_audit_event(
+        db,
+        verification=verification,
+        event_type="approved",
+        current_user=current_user,
+        metadata={"status": verification.status, "confidence_score": verification.avg_confidence},
+    )
     db.commit()
     db.refresh(verification)
     return _serialize_verification(db, verification)
@@ -3015,7 +3237,19 @@ def reject_verification(
     verification.approved_by = None
     if payload.reviewer_notes is not None:
         verification.reviewer_notes = sanitize_text(payload.reviewer_notes, max_length=5000)
-    verification.updated_at = datetime.now(timezone.utc)
+    _update_ocr_lifecycle(
+        verification,
+        last_action="failed",
+        export_state="failed",
+        reviewed_by=current_user.id,
+    )
+    _record_ocr_audit_event(
+        db,
+        verification=verification,
+        event_type="failed",
+        current_user=current_user,
+        metadata={"stage": "review", "status": verification.status, "reason": rejection_reason},
+    )
     db.commit()
     db.refresh(verification)
     return _serialize_verification(db, verification)
