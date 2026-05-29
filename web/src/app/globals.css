@@ -2606,7 +2606,6 @@ input[type="checkbox"] {
   gap: 1rem;
   grid-template-columns: minmax(0, 1fr) 19rem;
   min-height: 0;
-  overflow: hidden;
 }
 
 .factory-ocr-history-layout>.factory-ocr-console {

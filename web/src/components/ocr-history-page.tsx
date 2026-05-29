@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/data-table/data-table-types";
 import { DataTableToolbar } from "@/components/ui/data-table/data-table-toolbar";
 import { EmptyState } from "@/components/ui/empty-state";
-import { LoadingBoundary } from "@/components/ui/loading-boundary";
 import { useOcrHistoryQuery } from "@/hooks/use-ocr-verify-queries";
 import { canUseOcrScan } from "@/lib/ocr-access";
 import { type OcrVerifyQueueFilters } from "@/lib/query-keys";
@@ -499,15 +498,6 @@ export default function OcrHistoryPage() {
         </div>
 
         <div className="flex flex-1 flex-col">
-          {/* Debug info */}
-          <div className="mb-2 text-xs text-text-secondary">
-            Debug: Loading={historyQuery.isLoading ? 'true' : 'false'},
-            Error={historyQuery.isError ? 'true' : 'false'},
-            Records={records.length},
-            User={user ? 'logged in' : 'not logged in'},
-            CanAccess={canAccess ? 'true' : 'false'}
-          </div>
-
           {historyQuery.isLoading ? (
             <div className="flex flex-1 items-center justify-center bg-surface-elevated rounded-[0.45rem] border border-border-subtle">
               <div className="text-text-secondary">Loading OCR history...</div>
