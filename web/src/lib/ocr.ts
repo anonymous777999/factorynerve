@@ -261,6 +261,32 @@ export type OcrVerificationRecord = {
   updated_at?: string | null;
 };
 
+export type OcrHistoryItem = {
+  id: number;
+  source_filename?: string | null;
+  doc_type_hint?: string | null;
+  status: "draft" | "pending" | "approved" | "rejected";
+  export_state: string;
+  avg_confidence: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+  reviewed_by?: number | null;
+  reviewed_by_name?: string | null;
+  approved_by?: number | null;
+  approved_by_name?: string | null;
+  exported_by?: number | null;
+  exported_by_name?: string | null;
+  last_action?: string | null;
+  warnings: string[];
+  scan_quality?: OcrScanQuality | null;
+};
+
+export type OcrHistoryPage = {
+  items: OcrHistoryItem[];
+  next_cursor?: string | null;
+  has_more: boolean;
+};
+
 export type OcrVerificationListFilters = {
   search?: string;
   status?: string;
@@ -648,6 +674,51 @@ export async function listOcrVerifications(
 
   const queryString = params.toString();
   return apiFetch<OcrVerificationRecord[]>(`/ocr/verifications${queryString ? `?${queryString}` : ""}`, {
+    signal: options.signal,
+  });
+}
+
+export async function listOcrHistory(
+  filters: OcrVerificationListFilters = {},
+  cursor?: string | null,
+  limit: number = 50,
+  options: OcrRequestOptions = {},
+) {
+  const params = new URLSearchParams();
+  if (cursor) {
+    params.set("cursor", cursor);
+  }
+  params.set("limit", String(limit));
+  if (filters.search) {
+    params.set("search", filters.search);
+  }
+  if (filters.status && filters.status !== "all") {
+    params.set("verification_status", filters.status);
+  }
+  if (filters.exportState && filters.exportState !== "all") {
+    params.set("export_state", filters.exportState);
+  }
+  if (filters.documentType) {
+    params.set("document_type", filters.documentType);
+  }
+  if (filters.reviewerId != null) {
+    params.set("reviewed_by", String(filters.reviewerId));
+  }
+  if (filters.minConfidence != null) {
+    params.set("min_confidence", String(filters.minConfidence));
+  }
+  if (filters.maxConfidence != null) {
+    params.set("max_confidence", String(filters.maxConfidence));
+  }
+  if (filters.updatedAfter) {
+    params.set("updated_after", filters.updatedAfter);
+  }
+  if (filters.updatedBefore) {
+    params.set("updated_before", filters.updatedBefore);
+  }
+
+  const queryString = params.toString();
+  return apiFetch<OcrHistoryPage>(`/ocr/history${queryString ? `?${queryString}` : ""}`, {
     signal: options.signal,
   });
 }
