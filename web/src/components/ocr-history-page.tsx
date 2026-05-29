@@ -359,8 +359,8 @@ export default function OcrHistoryPage() {
         </div>
       }
     >
-      <div className="flex min-h-0 flex-1 flex-col gap-4">
-        <div className="factory-ocr-panel-grid factory-ocr-panel-grid--four flex-shrink-0">
+      <div className="flex min-h-0 flex-1 flex-col gap-4" style={{ border: "3px solid cyan", background: "rgba(0,255,255,0.1)" }}>
+        <div className="factory-ocr-panel-grid factory-ocr-panel-grid--four flex-shrink-0" style={{ border: "2px solid yellow", background: "rgba(255,255,0,0.1)" }}>
           <div className="factory-ocr-data-card">
             <div className="factory-ocr-data-card__label">Documents tracked</div>
             <div className="factory-ocr-data-card__value">{records.length}</div>
@@ -379,7 +379,7 @@ export default function OcrHistoryPage() {
           </div>
         </div>
 
-        <div className="flex-shrink-0 rounded-[0.45rem] border border-border-subtle bg-surface-shell p-4">
+        <div className="flex-shrink-0 rounded-[0.45rem] border border-border-subtle bg-surface-shell p-4" style={{ border: "2px solid lime", background: "rgba(0,255,0,0.1)" }}>
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <label className="space-y-2 text-sm text-text-secondary">
               <span className="text-text-primary">Status</span>
@@ -498,7 +498,7 @@ export default function OcrHistoryPage() {
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col h-full" style={{ border: "3px solid magenta", background: "rgba(255,0,255,0.1)", minHeight: "200px" }}>
           <LoadingBoundary
             hasData={records.length > 0}
             isLoading={historyQuery.isLoading}
@@ -507,10 +507,10 @@ export default function OcrHistoryPage() {
             onRetry={() => void historyQuery.refetch()}
             emptyTitle="No OCR history yet"
             emptyMessage="Scanned and reviewed OCR documents will appear here automatically."
-            className="flex flex-1 flex-col"
-            contentClassName="flex flex-1 flex-col"
+            className="flex flex-1 flex-col h-full"
+            contentClassName="flex flex-1 flex-col h-full"
           >
-            <div className="flex-1 rounded-[0.45rem] border border-border-subtle bg-surface-shell">
+            <div className="h-full flex-1 rounded-[0.45rem] border border-border-subtle bg-surface-shell" style={{ border: "4px solid red", background: "rgba(255,0,0,0.2)", minHeight: "100px" }}>
               <DataTable<OcrVerificationRecord>
                 ariaLabel="OCR history"
                 columns={columns}
@@ -522,8 +522,8 @@ export default function OcrHistoryPage() {
                 enableStickyFirstColumn
                 enableVirtualization={records.length > 20}
                 overscan={5}
-                className="h-full"
-                viewportClassName="h-full overflow-y-auto"
+                className="h-full w-full"
+                viewportClassName="h-full w-full overflow-y-auto"
                 viewportSize="lg"
                 emptyTitle="No OCR documents match the current filters"
                 emptyMessage="Adjust the search term or scan a new document to continue the workflow."
