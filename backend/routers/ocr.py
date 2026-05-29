@@ -25,7 +25,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field
-from sqlalchemy import false, func, or_
+from sqlalchemy import and_, false, func, or_
 from sqlalchemy.orm import Session
 from anthropic import AuthenticationError, BadRequestError
 
@@ -2644,6 +2644,59 @@ def deactivate_template(
     return {"message": "Template archived."}
 
 
+def _encode_history_cursor(updated_at: datetime, record_id: int) -> str:
+    payload = f"{updated_at.isoformat()}|{record_id}"
+    return base64.urlsafe_b64encode(payload.encode("utf-8")).decode("utf-8")
+
+
+def _decode_history_cursor(cursor: str) -> tuple[datetime, int]:
+    try:
+        decoded = base64.urlsafe_b64decode(cursor.encode("utf-8")).decode("utf-8")
+        timestamp_text, record_id_text = decoded.split("|", 1)
+        return (datetime.fromisoformat(timestamp_text.replace("Z", "+00:00")), int(record_id_text))
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid history cursor.") from exc
+
+
+def _serialize_history_item(db: Session, verification: OcrVerification) -> dict:
+    reviewer_name = None
+    exported_name = None
+    approved_name = None
+    reviewed_by = verification.reviewed_by
+    exported_by = verification.exported_by
+    approved_by = verification.approved_by
+    actor_ids = {id_ for id_ in (reviewed_by, exported_by, approved_by) if id_}
+    if actor_ids:
+        actor_map = {
+            actor.id: actor.name
+            for actor in db.query(User).filter(User.id.in_(actor_ids)).all()
+        }
+        reviewer_name = actor_map.get(reviewed_by)
+        exported_name = actor_map.get(exported_by)
+        approved_name = actor_map.get(approved_by)
+
+    return {
+        "id": verification.id,
+        "source_filename": verification.source_filename,
+        "doc_type_hint": verification.doc_type_hint,
+        "status": verification.status,
+        "export_state": verification.export_state or ("exported" if verification.exported_by else "pending"),
+        "avg_confidence": normalize_confidence(verification.avg_confidence) or 0.0,
+        "created_at": verification.created_at.isoformat() if verification.created_at else None,
+        "updated_at": verification.updated_at.isoformat() if verification.updated_at else None,
+        "reviewed_by": reviewed_by,
+        "reviewed_by_name": reviewer_name,
+        "approved_by": approved_by,
+        "approved_by_name": approved_name,
+        "exported_by": exported_by,
+        "exported_by_name": exported_name,
+        "last_action": verification.last_action or verification.status,
+        "warnings": verification.warnings or [],
+        "scan_quality": verification.scan_quality or None,
+        "template_name": None,
+    }
+
+
 @router.get("/verifications", status_code=status.HTTP_200_OK)
 def list_verifications(
     verification_status: str | None = None,
@@ -2711,6 +2764,103 @@ def list_verifications(
 
     records = query.order_by(OcrVerification.updated_at.desc(), OcrVerification.id.desc()).limit(100).all()
     return [_serialize_verification(db, record) for record in records]
+
+
+@router.get("/history", status_code=status.HTTP_200_OK)
+def list_history(
+    cursor: str | None = None,
+    limit: int | None = None,
+    verification_status: str | None = None,
+    export_state: str | None = None,
+    document_type: str | None = None,
+    reviewed_by: int | None = None,
+    search: str | None = None,
+    min_confidence: float | None = None,
+    max_confidence: float | None = None,
+    updated_after: str | None = None,
+    updated_before: str | None = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    _require_ocr_access(current_user)
+    query = _verification_query(db, current_user)
+
+    if verification_status:
+        normalized = (sanitize_text(verification_status, max_length=20, preserve_newlines=False) or "").lower()
+        if normalized not in _ALLOWED_VERIFICATION_STATUSES:
+            raise HTTPException(status_code=400, detail="Invalid verification status filter.")
+        query = query.filter(OcrVerification.status == normalized)
+
+    if export_state:
+        normalized_export = (sanitize_text(export_state, max_length=30, preserve_newlines=False) or "").lower()
+        if normalized_export not in {"pending", "exported", "failed", "json_generated"}:
+            raise HTTPException(status_code=400, detail="Invalid export state filter.")
+        query = query.filter(OcrVerification.export_state == normalized_export)
+
+    if document_type:
+        normalized_doc_type = sanitize_text(document_type, max_length=80, preserve_newlines=False)
+        if normalized_doc_type:
+            query = query.filter(func.lower(OcrVerification.doc_type_hint) == normalized_doc_type.lower())
+
+    if reviewed_by is not None:
+        query = query.filter(OcrVerification.reviewed_by == reviewed_by)
+
+    if search:
+        normalized_search = f"%{sanitize_text(search, max_length=120, preserve_newlines=False).lower()}%"
+        query = query.filter(
+            or_(
+                func.lower(OcrVerification.source_filename).like(normalized_search),
+                func.lower(OcrVerification.doc_type_hint).like(normalized_search),
+                func.lower(OcrVerification.status).like(normalized_search),
+                func.lower(OcrVerification.last_action).like(normalized_search),
+            )
+        )
+
+    if min_confidence is not None:
+        query = query.filter(OcrVerification.avg_confidence >= min_confidence)
+
+    if max_confidence is not None:
+        query = query.filter(OcrVerification.avg_confidence <= max_confidence)
+
+    def parse_datetime_param(value: str, name: str) -> datetime:
+        try:
+            return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=f"Invalid {name} format; use ISO 8601.") from exc
+
+    if updated_after:
+        query = query.filter(OcrVerification.updated_at >= parse_datetime_param(updated_after, "updated_after"))
+    if updated_before:
+        query = query.filter(OcrVerification.updated_at <= parse_datetime_param(updated_before, "updated_before"))
+
+    if cursor:
+        cursor_updated_at, cursor_id = _decode_history_cursor(cursor)
+        query = query.filter(
+            or_(
+                OcrVerification.updated_at < cursor_updated_at,
+                and_(
+                    OcrVerification.updated_at == cursor_updated_at,
+                    OcrVerification.id < cursor_id,
+                ),
+            )
+        )
+
+    page_limit = min(max(limit or 50, 10), 100)
+    ordered = query.order_by(OcrVerification.updated_at.desc(), OcrVerification.id.desc())
+    items = ordered.limit(page_limit + 1).all()
+    has_more = len(items) > page_limit
+    page_items = items[:page_limit]
+    next_cursor = (
+        _encode_history_cursor(page_items[-1].updated_at or datetime.now(timezone.utc), page_items[-1].id)
+        if has_more and page_items
+        else None
+    )
+
+    return {
+        "items": [_serialize_history_item(db, record) for record in page_items],
+        "next_cursor": next_cursor,
+        "has_more": has_more,
+    }
 
 
 @router.get("/verifications/summary", status_code=status.HTTP_200_OK)
