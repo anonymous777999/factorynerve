@@ -2613,7 +2613,6 @@ input[type="checkbox"] {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  overflow: hidden;
 }
 
 .factory-ocr-history-layout>aside {
