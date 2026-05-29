@@ -498,7 +498,7 @@ export default function OcrHistoryPage() {
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col h-full" style={{ border: "3px solid magenta", background: "rgba(255,0,255,0.1)", minHeight: "200px" }}>
+        <div className="flex flex-1 flex-col min-h-0" style={{ border: "3px solid magenta", background: "rgba(255,0,255,0.1)", minHeight: "200px" }}>
           <LoadingBoundary
             hasData={records.length > 0}
             isLoading={historyQuery.isLoading}
@@ -507,10 +507,10 @@ export default function OcrHistoryPage() {
             onRetry={() => void historyQuery.refetch()}
             emptyTitle="No OCR history yet"
             emptyMessage="Scanned and reviewed OCR documents will appear here automatically."
-            className="flex flex-1 flex-col h-full"
-            contentClassName="flex flex-1 flex-col h-full"
+            className="flex flex-1 flex-col min-h-0"
+            contentClassName="flex flex-1 flex-col min-h-0"
           >
-            <div className="h-full flex-1 rounded-[0.45rem] border border-border-subtle bg-surface-shell" style={{ border: "4px solid red", background: "rgba(255,0,0,0.2)", minHeight: "100px" }}>
+            <div className="flex-1 min-h-0 rounded-[0.45rem] border border-border-subtle bg-surface-shell" style={{ border: "4px solid red", background: "rgba(255,0,0,0.2)", minHeight: "100px" }}>
               <DataTable<OcrVerificationRecord>
                 ariaLabel="OCR history"
                 columns={columns}
