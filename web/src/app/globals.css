@@ -1887,7 +1887,7 @@ input[type="checkbox"] {
     align-items: stretch;
   }
 
-  .factory-dashboard-strip > :last-child {
+  .factory-dashboard-strip> :last-child {
     min-width: 0;
   }
 
@@ -2049,7 +2049,7 @@ input[type="checkbox"] {
   gap: 0.625rem;
 }
 
-.factory-ocr-shell > section + * {
+.factory-ocr-shell>section+* {
   min-height: 0;
   flex: 1 1 auto;
 }
@@ -2349,7 +2349,7 @@ input[type="checkbox"] {
   color: var(--text-primary);
 }
 
-.factory-ocr-review-pane > * + * {
+.factory-ocr-review-pane>*+* {
   margin-top: 0.9rem;
 }
 
@@ -2600,9 +2600,18 @@ input[type="checkbox"] {
   display: grid;
   gap: 1rem;
   grid-template-columns: minmax(0, 1fr) 19rem;
+  overflow: hidden;
+}
+
+.factory-ocr-history-layout>.factory-ocr-console {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
 }
 
 @media (max-width: 1280px) {
+
   .factory-ocr-stage-grid--review,
   .factory-ocr-upload-grid,
   .factory-ocr-history-layout {
