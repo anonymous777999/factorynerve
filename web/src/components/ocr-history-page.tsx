@@ -506,8 +506,10 @@ export default function OcrHistoryPage() {
           onRetry={() => void historyQuery.refetch()}
           emptyTitle="No OCR history yet"
           emptyMessage="Scanned and reviewed OCR documents will appear here automatically."
+          className="min-h-0 flex flex-1 flex-col"
+          contentClassName="min-h-0 flex flex-1 flex-col"
         >
-          <div className="min-h-0 flex flex-1 flex-col overflow-hidden rounded-[0.45rem] border border-border-subtle bg-surface-shell">
+          <div className="min-h-0 flex flex-1 flex-col overflow-y-auto overflow-x-hidden rounded-[0.45rem] border border-border-subtle bg-surface-shell">
             <DataTable<OcrVerificationRecord>
               ariaLabel="OCR history"
               columns={columns}
