@@ -15,297 +15,225 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { cn } from "@/lib/utils";
 import { useSession } from "@/lib/use-session";
 
-// Mock data types for the approval queue
+// Mock data types matching the reference design
 type ApprovalItem = {
     id: string;
-    type: "attendance" | "dpr" | "ocr" | "reconciliation";
-    status: "pending" | "approved" | "rejected";
-    severity: "critical" | "high" | "warning" | "info";
-    title: string;
-    submitter: string;
-    department: string;
+    type: "OCR Validation" | "Attendance";
+    severity: "Critical" | "High" | "Warning" | "Low";
     age: string;
-    slaStatus: "breach" | "warning" | "normal";
-    lastActivity: string;
+    status: "pending" | "approved" | "rejected";
+    itemId: string;
 };
 
-// Mock data
+// Mock data matching the reference
 const mockApprovalItems: ApprovalItem[] = [
     {
-        id: "ATT-001",
-        type: "attendance",
+        id: "1",
+        itemId: "#OCR-992",
+        type: "OCR Validation",
+        severity: "High",
+        age: "4h 12m",
         status: "pending",
-        severity: "critical",
-        title: "Missed punch - John Doe",
-        submitter: "John Doe",
-        department: "Production",
-        age: "8h 24m",
-        slaStatus: "breach",
-        lastActivity: "2024-05-30T08:30:00Z",
     },
     {
-        id: "DPR-002",
-        type: "dpr",
-        status: "pending",
-        severity: "high",
-        title: "Quality issue - Line A",
-        submitter: "Supervisor A",
-        department: "Quality",
-        age: "4h 15m",
-        slaStatus: "warning",
-        lastActivity: "2024-05-30T12:45:00Z",
+        id: "2",
+        itemId: "#ATT-104",
+        type: "Attendance",
+        severity: "Low",
+        age: "1h 05m",
+        status: "approved",
     },
     {
-        id: "OCR-003",
-        type: "ocr",
-        status: "pending",
-        severity: "warning",
-        title: "Invoice verification - INV-2024-001",
-        submitter: "OCR System",
-        department: "Finance",
-        age: "2h 30m",
-        slaStatus: "normal",
-        lastActivity: "2024-05-30T14:30:00Z",
+        id: "3",
+        itemId: "#ATT-105",
+        type: "Attendance",
+        severity: "Low",
+        age: "1h 10m",
+        status: "approved",
     },
     {
-        id: "REC-004",
-        type: "reconciliation",
+        id: "4",
+        itemId: "#OCR-990",
+        type: "OCR Validation",
+        severity: "Critical",
+        age: "93h 40m",
         status: "pending",
-        severity: "critical",
-        title: "Steel batch variance - B240530001",
-        submitter: "Operator B",
-        department: "Steel Production",
-        age: "12h 45m",
-        slaStatus: "breach",
-        lastActivity: "2024-05-30T04:15:00Z",
-    },
-    {
-        id: "ATT-005",
-        type: "attendance",
-        status: "pending",
-        severity: "high",
-        title: "Late entry - Sarah Wilson",
-        submitter: "Sarah Wilson",
-        department: "Assembly",
-        age: "6h 10m",
-        slaStatus: "warning",
-        lastActivity: "2024-05-30T10:50:00Z",
-    },
-    {
-        id: "DPR-006",
-        type: "dpr",
-        status: "pending",
-        severity: "warning",
-        title: "Downtime report - Line C",
-        submitter: "Supervisor C",
-        department: "Production",
-        age: "3h 20m",
-        slaStatus: "normal",
-        lastActivity: "2024-05-30T13:40:00Z",
-    },
-    {
-        id: "OCR-007",
-        type: "ocr",
-        status: "pending",
-        severity: "high",
-        title: "Purchase order - PO-2024-0892",
-        submitter: "OCR System",
-        department: "Procurement",
-        age: "5h 55m",
-        slaStatus: "warning",
-        lastActivity: "2024-05-30T11:05:00Z",
-    },
-    {
-        id: "ATT-008",
-        type: "attendance",
-        status: "pending",
-        severity: "info",
-        title: "Overtime request - Mike Chen",
-        submitter: "Mike Chen",
-        department: "Maintenance",
-        age: "1h 15m",
-        slaStatus: "normal",
-        lastActivity: "2024-05-30T15:45:00Z",
     },
 ];
 
 const columnHelper = createDataTableColumnHelper<ApprovalItem>();
 
-function getStatusBadgeStatus(status: ApprovalItem["status"]) {
+function getSeverityIcon(severity: ApprovalItem["severity"]) {
+    switch (severity) {
+        case "Critical":
+            return "⚠️";
+        case "High":
+            return "🔴";
+        case "Warning":
+            return "⚠️";
+        case "Low":
+            return "✅";
+        default:
+            return "⚪";
+    }
+}
+
+function getSeverityColor(severity: ApprovalItem["severity"]) {
+    switch (severity) {
+        case "Critical":
+            return "text-red-400";
+        case "High":
+            return "text-orange-400";
+        case "Warning":
+            return "text-yellow-400";
+        case "Low":
+            return "text-green-400";
+        default:
+            return "text-gray-400";
+    }
+}
+
+function getStatusIcon(status: ApprovalItem["status"]) {
     switch (status) {
         case "approved":
-            return "synced" as const;
-        case "pending":
-            return "processing" as const;
+            return "✅";
         case "rejected":
-            return "error" as const;
+            return "❌";
+        case "pending":
+            return "🔴";
         default:
-            return "draft" as const;
+            return "⚪";
     }
-}
-
-function getSeverityBadgeStatus(severity: ApprovalItem["severity"]) {
-    switch (severity) {
-        case "critical":
-            return "error" as const;
-        case "high":
-            return "warning" as const;
-        case "warning":
-            return "paused" as const;
-        default:
-            return "draft" as const;
-    }
-}
-
-function getTypeBadgeStatus(type: ApprovalItem["type"]) {
-    switch (type) {
-        case "attendance":
-            return "processing" as const;
-        case "dpr":
-            return "synced" as const;
-        case "ocr":
-            return "draft" as const;
-        case "reconciliation":
-            return "paused" as const;
-        default:
-            return "draft" as const;
-    }
-}
-
-function formatDateTime(value: string) {
-    const date = new Date(value);
-    return date.toLocaleString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        hour: "2-digit",
-        minute: "2-digit",
-    });
 }
 
 export default function ApprovalQueueWorkspace() {
     const { user, loading } = useSession();
-    const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+    const [selectedItemId, setSelectedItemId] = useState<string>("1"); // Default to first item
+    const [selectedItems, setSelectedItems] = useState<string[]>(["1"]);
     const [search, setSearch] = useState("");
-    const [statusFilter, setStatusFilter] = useState<"all" | "pending" | "approved" | "rejected">("all");
-    const [typeFilter, setTypeFilter] = useState<"all" | "attendance" | "dpr" | "ocr" | "reconciliation">("all");
-    const [severityFilter, setSeverityFilter] = useState<"all" | "critical" | "high" | "warning" | "info">("all");
-
-    // Filter data based on current filters
-    const filteredItems = useMemo(() => {
-        return mockApprovalItems.filter((item) => {
-            if (statusFilter !== "all" && item.status !== statusFilter) return false;
-            if (typeFilter !== "all" && item.type !== typeFilter) return false;
-            if (severityFilter !== "all" && item.severity !== severityFilter) return false;
-            if (search && !item.title.toLowerCase().includes(search.toLowerCase())) return false;
-            return true;
-        });
-    }, [search, statusFilter, typeFilter, severityFilter]);
 
     const selectedItem = useMemo(
-        () => filteredItems.find((item) => item.id === selectedItemId) || filteredItems[0] || null,
-        [filteredItems, selectedItemId]
+        () => mockApprovalItems.find((item) => item.id === selectedItemId) || mockApprovalItems[0],
+        [selectedItemId]
     );
 
-    // KPI calculations
-    const kpis = useMemo(() => {
-        const total = mockApprovalItems.length;
-        const pending = mockApprovalItems.filter(item => item.status === "pending").length;
-        const slaBreaches = mockApprovalItems.filter(item => item.slaStatus === "breach").length;
-        const critical = mockApprovalItems.filter(item => item.severity === "critical").length;
-        const high = mockApprovalItems.filter(item => item.severity === "high").length;
-        const avgAge = "4h 32m"; // Mock average
+    const handleItemSelect = useCallback((itemId: string) => {
+        setSelectedItemId(itemId);
+        if (!selectedItems.includes(itemId)) {
+            setSelectedItems([...selectedItems, itemId]);
+        }
+    }, [selectedItems]);
 
-        return { total, pending, slaBreaches, critical, high, avgAge };
+    const handleClearSelection = useCallback(() => {
+        setSelectedItems([]);
     }, []);
 
     const columns = useMemo(
         () => [
-            columnHelper.accessor("id", {
-                header: "ID",
+            columnHelper.display({
+                id: "select",
+                header: "",
                 cell: (info) => (
-                    <div className="font-mono text-xs text-text-primary">
-                        {info.getValue()}
-                    </div>
+                    <input
+                        type="checkbox"
+                        checked={selectedItems.includes(info.row.original.id)}
+                        onChange={() => {
+                            const id = info.row.original.id;
+                            if (selectedItems.includes(id)) {
+                                setSelectedItems(selectedItems.filter(i => i !== id));
+                            } else {
+                                setSelectedItems([...selectedItems, id]);
+                            }
+                        }}
+                        className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-orange-500 focus:ring-orange-500"
+                    />
                 ),
                 meta: {
-                    isRowHeader: true,
-                    sticky: "left",
+                    align: "center",
                 },
+            }),
+            columnHelper.display({
+                id: "status",
+                header: "STS",
+                cell: (info) => (
+                    <span className="text-lg">
+                        {getStatusIcon(info.row.original.status)}
+                    </span>
+                ),
+                meta: {
+                    align: "center",
+                },
+            }),
+            columnHelper.accessor("itemId", {
+                header: "Item ID",
+                cell: (info) => (
+                    <span className="font-mono text-blue-300 font-medium">
+                        {info.getValue()}
+                    </span>
+                ),
             }),
             columnHelper.accessor("type", {
                 header: "Type",
                 cell: (info) => (
-                    <Badge status={getTypeBadgeStatus(info.getValue())}>
-                        {info.getValue().toUpperCase()}
-                    </Badge>
+                    <span className="text-gray-300">
+                        {info.getValue()}
+                    </span>
                 ),
             }),
             columnHelper.accessor("severity", {
                 header: "Severity",
                 cell: (info) => (
-                    <Badge status={getSeverityBadgeStatus(info.getValue())}>
-                        {info.getValue().toUpperCase()}
-                    </Badge>
-                ),
-            }),
-            columnHelper.accessor("title", {
-                header: "Item",
-                cell: (info) => (
-                    <div className="min-w-0">
-                        <div className="truncate text-body font-medium text-text-primary">
-                            {info.getValue()}
-                        </div>
-                        <div className="mt-xs text-label-dense text-text-secondary">
-                            {info.row.original.submitter} • {info.row.original.department}
-                        </div>
-                    </div>
-                ),
-            }),
-            columnHelper.accessor("status", {
-                header: "Status",
-                cell: (info) => (
-                    <Badge status={getStatusBadgeStatus(info.getValue())}>
+                    <span className={cn("font-medium", getSeverityColor(info.getValue()))}>
                         {info.getValue()}
-                    </Badge>
+                    </span>
                 ),
             }),
             columnHelper.accessor("age", {
                 header: "Age",
                 cell: (info) => (
-                    <div className={cn(
-                        "text-xs font-medium",
-                        info.row.original.slaStatus === "breach" ? "text-error" :
-                            info.row.original.slaStatus === "warning" ? "text-warning" :
-                                "text-text-secondary"
-                    )}>
+                    <span className="text-gray-400 font-mono text-sm">
                         {info.getValue()}
-                    </div>
+                    </span>
                 ),
             }),
             columnHelper.display({
                 id: "actions",
-                header: "Actions",
-                cell: (info) => (
-                    <div className="flex gap-xs">
-                        <Button size="compact" variant="outline">
-                            Approve
-                        </Button>
-                        <Button size="compact" variant="ghost">
-                            Reject
-                        </Button>
-                    </div>
-                ),
+                header: "Action",
+                cell: (info) => {
+                    const item = info.row.original;
+                    return (
+                        <div className="flex gap-2">
+                            {item.severity === "High" || item.severity === "Critical" ? (
+                                <Button
+                                    size="compact"
+                                    className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 text-xs"
+                                    onClick={() => handleItemSelect(item.id)}
+                                >
+                                    Review →
+                                </Button>
+                            ) : (
+                                <Button
+                                    size="compact"
+                                    variant="outline"
+                                    className="border-gray-600 text-gray-300 hover:bg-gray-700 px-3 py-1 text-xs"
+                                >
+                                    Open
+                                </Button>
+                            )}
+                        </div>
+                    );
+                },
                 meta: {
                     align: "right",
                 },
             }),
         ] as DataTableColumnDef<ApprovalItem>[],
-        []
+        [selectedItems, handleItemSelect]
     );
 
     if (loading) {
         return (
-            <main className="flex min-h-screen items-center justify-center bg-surface-app text-label-dense text-text-secondary">
+            <main className="flex min-h-screen items-center justify-center bg-gray-900 text-gray-300">
                 Loading approval queue...
             </main>
         );
@@ -313,348 +241,256 @@ export default function ApprovalQueueWorkspace() {
 
     if (!user) {
         return (
-            <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-md">
-                <EmptyState
-                    className="w-full"
-                    title="Approval queue requires sign-in"
-                    description="Access required to continue into the approval workflow."
-                    status="error"
-                    statusLabel="Access required"
-                    action={
-                        <Link href="/access">
-                            <Button>Open Access</Button>
-                        </Link>
-                    }
-                />
+            <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 bg-gray-900">
+                <div className="w-full max-w-md p-6 bg-gray-800 rounded-lg border border-gray-700">
+                    <h1 className="text-xl font-semibold text-white mb-4">Approval Queue</h1>
+                    <p className="text-gray-400 mb-4">Access required to continue into the approval workflow.</p>
+                    <Link href="/access">
+                        <Button className="w-full bg-orange-600 hover:bg-orange-700">Open Access</Button>
+                    </Link>
+                </div>
             </main>
         );
     }
 
     return (
-        <main className="approval-queue-scope flex min-h-screen flex-col bg-surface-app">
-            {/* ZONE 1: PRIMARY REVIEW WORKSPACE */}
-            <div className="approval-queue-workspace flex min-h-0 flex-1">
-                <div className="approval-queue-main min-h-0 flex-1 flex flex-col">
-
-                    {/* Queue Header */}
-                    <section className="approval-queue-header flex-shrink-0 border-b border-border-subtle bg-surface-shell px-6 py-4">
+        <main className="min-h-screen bg-gray-900 text-gray-100">
+            {/* Main Layout */}
+            <div className="flex min-h-screen">
+                {/* Main Content Area */}
+                <div className="flex-1 flex flex-col">
+                    {/* Header */}
+                    <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
                         <div className="flex items-center justify-between">
                             <div>
-                                <div className="flex items-center gap-3">
-                                    <span className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                                        DPR.ai Approval Queue
-                                    </span>
-                                    <Badge status="processing">Active</Badge>
-                                </div>
-                                <h1 className="mt-1 text-2xl font-semibold text-text-primary">
-                                    Operational Review Workspace
-                                </h1>
-                                <p className="mt-1 text-sm text-text-secondary">
-                                    Enterprise approval queue for attendance, DPR, OCR, and reconciliation workflows
+                                <h1 className="text-2xl font-semibold text-white">Approval Queue</h1>
+                                <p className="text-gray-400 text-sm mt-1">
+                                    Close the next review first, then work down the backlog.
                                 </p>
                             </div>
                             <div className="flex items-center gap-3">
-                                <Button size="compact" variant="outline">
-                                    Refresh Queue
+                                <Button variant="outline" size="compact" className="border-gray-600 text-gray-300">
+                                    🔄 Refresh
                                 </Button>
-                                <Button size="compact">
+                                <Button className="bg-orange-600 hover:bg-orange-700 text-white">
                                     Review Next
                                 </Button>
                             </div>
                         </div>
-                    </section>
+                    </header>
 
-                    {/* Operational Alert Banner */}
-                    <section className="approval-queue-alerts flex-shrink-0 border-b border-border-subtle bg-status-warning-bg px-6 py-3">
+                    {/* Alert Banner */}
+                    <div className="bg-red-900/20 border-b border-red-800/50 px-6 py-3">
                         <div className="flex items-center gap-3">
-                            <div className="h-2 w-2 rounded-full bg-warning"></div>
-                            <span className="text-sm font-medium text-warning">
-                                {kpis.slaBreaches} items breaching SLA • {kpis.critical} critical reviews pending
-                            </span>
+                            <span className="text-red-400">⚠️</span>
+                            <span className="text-red-300 font-medium">Urgent Decision Required:</span>
+                            <span className="text-gray-300">3 high-risk exceptions identified in morning shift.</span>
                         </div>
-                    </section>
+                    </div>
 
                     {/* KPI Cards */}
-                    <section className="approval-queue-kpis flex-shrink-0 border-b border-border-subtle bg-surface-shell px-6 py-4">
+                    <div className="px-6 py-4 bg-gray-800 border-b border-gray-700">
                         <div className="grid grid-cols-4 gap-4">
-                            <div className="operational-kpi-card rounded-lg border border-border-subtle bg-surface-card p-4">
-                                <div className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                                    Total Items
-                                </div>
-                                <div className="mt-1 text-2xl font-bold text-text-primary">{kpis.total}</div>
+                            <div className="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                                <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Open Items</div>
+                                <div className="text-3xl font-bold text-blue-400">124</div>
                             </div>
-                            <div className="operational-kpi-card rounded-lg border border-border-subtle bg-surface-card p-4">
-                                <div className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                                    Pending Review
-                                </div>
-                                <div className="mt-1 text-2xl font-bold text-warning">{kpis.pending}</div>
+                            <div className="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                                <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Urgent</div>
+                                <div className="text-3xl font-bold text-orange-400">3</div>
                             </div>
-                            <div className="operational-kpi-card rounded-lg border border-border-subtle bg-surface-card p-4">
-                                <div className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                                    SLA Breaches
-                                </div>
-                                <div className="mt-1 text-2xl font-bold text-error">{kpis.slaBreaches}</div>
+                            <div className="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                                <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">SLA Breaches</div>
+                                <div className="text-3xl font-bold text-red-400">1</div>
                             </div>
-                            <div className="operational-kpi-card rounded-lg border border-border-subtle bg-surface-card p-4">
-                                <div className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                                    Critical Items
-                                </div>
-                                <div className="mt-1 text-2xl font-bold text-error">{kpis.critical}</div>
+                            <div className="bg-gray-700 rounded-lg p-4 border border-gray-600">
+                                <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Pending Review</div>
+                                <div className="text-3xl font-bold text-gray-300">45</div>
                             </div>
                         </div>
-                    </section>
+                    </div>
 
                     {/* Priority Focus Cards */}
-                    <section className="approval-queue-focus flex-shrink-0 border-b border-border-subtle bg-surface-shell px-6 py-4">
-                        <div className="grid grid-cols-3 gap-4">
-                            <div className="operational-focus-card rounded-lg border border-border-default bg-surface-elevated p-4">
-                                <div className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                                    Attendance Review
-                                </div>
-                                <div className="mt-2 text-sm text-text-primary">
-                                    2 missed punches requiring immediate attention
-                                </div>
-                            </div>
-                            <div className="operational-focus-card rounded-lg border border-border-default bg-surface-elevated p-4">
-                                <div className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                                    OCR Validation
-                                </div>
-                                <div className="mt-2 text-sm text-text-primary">
-                                    5 documents with confidence below 85%
+                    <div className="px-6 py-4 bg-gray-800 border-b border-gray-700">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-red-900/20 border border-red-800/50 rounded-lg p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="text-red-400 text-sm font-medium">93H Waiting • Critical</div>
+                                        <div className="text-white font-semibold">Attendance Review</div>
+                                    </div>
+                                    <div className="text-xs text-red-300 bg-red-900/30 px-2 py-1 rounded">
+                                        Focus 8h+
+                                    </div>
                                 </div>
                             </div>
-                            <div className="operational-focus-card rounded-lg border border-border-default bg-surface-elevated p-4">
-                                <div className="text-xs font-semibold uppercase tracking-wide text-text-secondary">
-                                    Escalation Focus
-                                </div>
-                                <div className="mt-2 text-sm text-text-primary">
-                                    3 items requiring manager approval
+                            <div className="bg-orange-900/20 border border-orange-800/50 rounded-lg p-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <div className="text-orange-400 text-sm font-medium">24H+ Breached • Warning</div>
+                                        <div className="text-white font-semibold">OCR Validation</div>
+                                    </div>
+                                    <div className="text-xs text-orange-300 bg-orange-900/30 px-2 py-1 rounded">
+                                        Focus 24h+
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </section>
+                    </div>
 
-                    {/* Filter & Bulk Action Workspace */}
-                    <section className="approval-queue-filters flex-shrink-0 border-b border-border-subtle bg-surface-shell px-6 py-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-4">
-                                <select
-                                    className="input text-sm"
-                                    value={statusFilter}
-                                    onChange={(e) => setStatusFilter(e.target.value as any)}
-                                >
-                                    <option value="all">All Status</option>
-                                    <option value="pending">Pending</option>
-                                    <option value="approved">Approved</option>
-                                    <option value="rejected">Rejected</option>
-                                </select>
-                                <select
-                                    className="input text-sm"
-                                    value={typeFilter}
-                                    onChange={(e) => setTypeFilter(e.target.value as any)}
-                                >
-                                    <option value="all">All Types</option>
-                                    <option value="attendance">Attendance</option>
-                                    <option value="dpr">DPR</option>
-                                    <option value="ocr">OCR</option>
-                                    <option value="reconciliation">Reconciliation</option>
-                                </select>
-                                <select
-                                    className="input text-sm"
-                                    value={severityFilter}
-                                    onChange={(e) => setSeverityFilter(e.target.value as any)}
-                                >
-                                    <option value="all">All Severity</option>
-                                    <option value="critical">Critical</option>
-                                    <option value="high">High</option>
-                                    <option value="warning">Warning</option>
-                                    <option value="info">Info</option>
-                                </select>
+                    {/* Filters and Bulk Actions */}
+                    <div className="px-6 py-4 bg-gray-800 border-b border-gray-700">
+                        <div className="flex items-center justify-between mb-4">
+                            <div>
+                                <div className="text-sm text-gray-400 mb-2">Presets & Filters</div>
+                                <div className="flex gap-2">
+                                    <Button className="bg-orange-600 hover:bg-orange-700 text-white text-xs px-3 py-1">All</Button>
+                                    <Button variant="outline" className="border-gray-600 text-gray-300 text-xs px-3 py-1">Today</Button>
+                                    <Button variant="outline" className="border-gray-600 text-gray-300 text-xs px-3 py-1">8h+</Button>
+                                    <Button variant="outline" className="border-gray-600 text-gray-300 text-xs px-3 py-1">24h+</Button>
+                                    <Button variant="outline" className="border-gray-600 text-gray-300 text-xs px-3 py-1">OCR only</Button>
+                                    <Button variant="outline" className="border-gray-600 text-gray-300 text-xs px-3 py-1">Attendance</Button>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <span className="text-sm text-text-secondary">
-                                    {filteredItems.length} items • 2 selected
+                            <div className="text-sm text-gray-400">
+                                Selected {selectedItems.length}
+                            </div>
+                        </div>
+
+                        {selectedItems.length > 0 && (
+                            <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg border border-gray-600">
+                                <span className="text-sm text-gray-300">
+                                    {selectedItems.length} item{selectedItems.length > 1 ? 's' : ''} selected
                                 </span>
-                                <Button size="compact" variant="outline">
-                                    Bulk Approve
+                                <Button
+                                    variant="outline"
+                                    size="compact"
+                                    onClick={handleClearSelection}
+                                    className="border-gray-600 text-gray-300 text-xs"
+                                >
+                                    Clear selection
                                 </Button>
-                                <Button size="compact" variant="ghost">
-                                    Bulk Reject
+                                <Button
+                                    variant="outline"
+                                    size="compact"
+                                    className="border-red-600 text-red-300 hover:bg-red-900/20 text-xs"
+                                >
+                                    Reject Selected
+                                </Button>
+                                <Button
+                                    size="compact"
+                                    className="bg-orange-600 hover:bg-orange-700 text-white text-xs"
+                                >
+                                    Approve Selected
                                 </Button>
                             </div>
-                        </div>
-                    </section>
+                        )}
+                    </div>
 
-                    {/* Main Approval Table */}
-                    <section className="approval-queue-table min-h-0 flex-1 bg-surface-app p-6">
-                        <div className="min-h-0 flex-1 rounded-lg border border-border-subtle bg-surface-shell">
+                    {/* Data Table */}
+                    <div className="flex-1 px-6 py-4 bg-gray-900">
+                        <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
                             <DataTable<ApprovalItem>
                                 ariaLabel="Approval queue"
                                 columns={columns}
-                                data={filteredItems}
+                                data={mockApprovalItems}
                                 getRowId={(row) => row.id}
                                 selectedRowId={selectedItemId}
                                 onRowClick={(row) => setSelectedItemId(row.id)}
-                                enableGlobalSearch
-                                enableStickyFirstColumn
-                                enableVirtualization={filteredItems.length > 20}
-                                overscan={5}
-                                className="h-full w-full"
-                                viewportClassName="h-full w-full overflow-y-auto"
+                                enableGlobalSearch={false}
+                                enableStickyFirstColumn={false}
+                                enableVirtualization={false}
+                                className="h-full w-full bg-gray-800"
+                                viewportClassName="bg-gray-800"
                                 viewportSize="lg"
-                                emptyTitle="No approval items match the current filters"
-                                emptyMessage="Adjust the filters or check back later for new items."
-                                renderToolbar={
-                                    <DataTableToolbar
-                                        searchPlaceholder="Search by ID, title, submitter, or department"
-                                        searchValue={search}
-                                        onSearchChange={setSearch}
-                                        onClear={() => setSearch("")}
-                                    />
-                                }
-                                searchValue={search}
-                                onSearchChange={setSearch}
+                                emptyTitle="No approval items"
+                                emptyMessage="No items match the current filters."
                             />
                         </div>
-                    </section>
+                    </div>
                 </div>
 
-                {/* ZONE 2: REVIEW INTELLIGENCE SIDEBAR */}
-                <aside className="approval-queue-intelligence w-80 flex-shrink-0 border-l border-border-subtle bg-surface-shell">
-                    <div className="flex h-full flex-col">
-                        <div className="border-b border-border-subtle px-6 py-4">
-                            <h2 className="text-lg font-semibold text-text-primary">Review Intelligence</h2>
-                            <p className="mt-1 text-sm text-text-secondary">
-                                Active review summary and extracted data
-                            </p>
+                {/* Right Sidebar - Active Review */}
+                <aside className="w-80 bg-gray-800 border-l border-gray-700 flex flex-col">
+                    <div className="p-4 border-b border-gray-700">
+                        <div className="flex items-center justify-between mb-2">
+                            <h2 className="text-lg font-semibold text-white">Active Review</h2>
+                            <span className="text-orange-400 font-mono text-sm">{selectedItem?.itemId}</span>
+                        </div>
+                        <div className="inline-flex items-center px-2 py-1 bg-orange-900/30 border border-orange-800/50 rounded text-xs text-orange-300">
+                            High Priority
+                        </div>
+                    </div>
+
+                    <div className="flex-1 p-4 space-y-4">
+                        {/* Source Document Crop */}
+                        <div className="bg-gray-700 rounded-lg border border-gray-600 p-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <h3 className="text-sm font-medium text-white">Source Document Crop</h3>
+                                <button className="text-gray-400 hover:text-white">
+                                    ⛶
+                                </button>
+                            </div>
+                            <div className="bg-gray-900 rounded border border-gray-600 p-4 h-32 flex items-center justify-center">
+                                <div className="text-center">
+                                    <div className="text-2xl mb-2">📄</div>
+                                    <div className="text-xs text-gray-400">SHIPPING_MANIFEST_A42.pdf</div>
+                                    <div className="text-xs text-red-400 mt-1">LOW CONFIDENCE: 42%</div>
+                                </div>
+                            </div>
                         </div>
 
-                        <div className="min-h-0 flex-1 overflow-y-auto p-6">
-                            {selectedItem ? (
-                                <div className="space-y-6">
-                                    {/* Active Review Summary */}
-                                    <div className="rounded-lg border border-border-subtle bg-surface-card p-4">
-                                        <h3 className="text-sm font-semibold text-text-primary">Active Review</h3>
-                                        <div className="mt-3 space-y-2">
-                                            <div className="text-xs text-text-secondary">ID</div>
-                                            <div className="font-mono text-sm text-text-primary">{selectedItem.id}</div>
-
-                                            <div className="text-xs text-text-secondary">Title</div>
-                                            <div className="text-sm text-text-primary">{selectedItem.title}</div>
-
-                                            <div className="text-xs text-text-secondary">Submitter</div>
-                                            <div className="text-sm text-text-primary">{selectedItem.submitter}</div>
-
-                                            <div className="text-xs text-text-secondary">Department</div>
-                                            <div className="text-sm text-text-primary">{selectedItem.department}</div>
-                                        </div>
-                                    </div>
-
-                                    {/* OCR Preview (if OCR type) */}
-                                    {selectedItem.type === "ocr" && (
-                                        <div className="rounded-lg border border-border-subtle bg-surface-card p-4">
-                                            <h3 className="text-sm font-semibold text-text-primary">OCR Preview</h3>
-                                            <div className="mt-3 rounded border border-border-subtle bg-surface-shell p-3">
-                                                <div className="text-xs text-text-secondary">Document preview would appear here</div>
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Extracted Metadata */}
-                                    <div className="rounded-lg border border-border-subtle bg-surface-card p-4">
-                                        <h3 className="text-sm font-semibold text-text-primary">Extracted Data</h3>
-                                        <div className="mt-3 space-y-2">
-                                            <div className="flex justify-between">
-                                                <span className="text-xs text-text-secondary">Severity</span>
-                                                <Badge status={getSeverityBadgeStatus(selectedItem.severity)}>
-                                                    {selectedItem.severity}
-                                                </Badge>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-xs text-text-secondary">Age</span>
-                                                <span className="text-xs text-text-primary">{selectedItem.age}</span>
-                                            </div>
-                                            <div className="flex justify-between">
-                                                <span className="text-xs text-text-secondary">SLA Status</span>
-                                                <span className={cn(
-                                                    "text-xs font-medium",
-                                                    selectedItem.slaStatus === "breach" ? "text-error" :
-                                                        selectedItem.slaStatus === "warning" ? "text-warning" :
-                                                            "text-success"
-                                                )}>
-                                                    {selectedItem.slaStatus}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* DPR.ai Interpretation */}
-                                    <div className="rounded-lg border border-border-subtle bg-surface-card p-4">
-                                        <h3 className="text-sm font-semibold text-text-primary">DPR.ai Interpretation</h3>
-                                        <div className="mt-3 text-sm text-text-secondary">
-                                            This {selectedItem.type} review requires {selectedItem.severity} priority attention.
-                                            The item has been pending for {selectedItem.age} and
-                                            {selectedItem.slaStatus === "breach" ? " is breaching SLA requirements." :
-                                                selectedItem.slaStatus === "warning" ? " is approaching SLA limits." :
-                                                    " is within normal SLA parameters."}
-                                        </div>
-                                    </div>
-
-                                    {/* Approval Actions */}
-                                    <div className="rounded-lg border border-border-subtle bg-surface-card p-4">
-                                        <h3 className="text-sm font-semibold text-text-primary">Approval Actions</h3>
-                                        <div className="mt-3 space-y-2">
-                                            <Button className="w-full" size="compact">
-                                                Approve Item
-                                            </Button>
-                                            <Button className="w-full" variant="ghost" size="compact">
-                                                Reject Item
-                                            </Button>
-                                            <Button className="w-full" variant="outline" size="compact">
-                                                Escalate to Manager
-                                            </Button>
-                                        </div>
+                        {/* Extracted Data */}
+                        <div className="bg-gray-700 rounded-lg border border-gray-600 p-4">
+                            <h3 className="text-sm font-medium text-white mb-3">Extracted Data</h3>
+                            <div className="space-y-3">
+                                <div>
+                                    <div className="text-xs text-gray-400">Vendor ID</div>
+                                    <div className="text-sm text-white font-mono">VND-8834-X</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-gray-400">Date</div>
+                                    <div className="text-sm text-white">2023-10-27</div>
+                                </div>
+                                <div>
+                                    <div className="text-xs text-gray-400">Discrepancy Detected (Total Amount)</div>
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-sm text-red-400 line-through">$14,500.00</span>
+                                        <span className="text-gray-400">→</span>
+                                        <span className="text-sm text-orange-400 font-semibold">$1,450.00</span>
                                     </div>
                                 </div>
-                            ) : (
-                                <div className="flex h-full items-center justify-center">
-                                    <div className="text-center">
-                                        <div className="text-sm text-text-secondary">
-                                            Select an item from the table to view review intelligence
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+                            </div>
                         </div>
+
+                        {/* DPR.ai Interpretation */}
+                        <div className="bg-gray-700 rounded-lg border border-gray-600 p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                                <span className="text-blue-400">🤖</span>
+                                <h3 className="text-sm font-medium text-white">DPR.ai Interpretation</h3>
+                            </div>
+                            <div className="space-y-2 text-xs text-gray-300">
+                                <div>• <strong>Anomaly:</strong> Decimal point placement unclear due to document stain.</div>
+                                <div>• <strong>Pattern:</strong> Matches known hardware latency issue with scanner bay 4.</div>
+                                <div>• <strong>Recommendation:</strong> Manual verification of PO total required against ERP record.</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="p-4 border-t border-gray-700 space-y-2">
+                        <Button className="w-full bg-green-600 hover:bg-green-700 text-white">
+                            ✅ Regularize (Approve)
+                        </Button>
+                        <Button variant="outline" className="w-full border-red-600 text-red-300 hover:bg-red-900/20">
+                            Reject (Mark Late)
+                        </Button>
+                        <Button variant="outline" className="w-full border-gray-600 text-gray-300 hover:bg-gray-700">
+                            Escalate to HR
+                        </Button>
                     </div>
                 </aside>
             </div>
-
-            {/* ZONE 3: FIXED ACTION FOOTER */}
-            <footer className="approval-queue-footer flex-shrink-0 border-t border-border-subtle bg-surface-shell px-6 py-4">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <span className="text-sm text-text-secondary">
-                            Queue Status: {filteredItems.length} items visible
-                        </span>
-                        <div className="flex items-center gap-2">
-                            <div className="h-2 w-2 rounded-full bg-success"></div>
-                            <span className="text-xs text-text-secondary">System operational</span>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        <Button variant="outline" size="compact">
-                            Export Queue
-                        </Button>
-                        <Button variant="outline" size="compact">
-                            Queue Settings
-                        </Button>
-                        <Button size="compact">
-                            Process Next Batch
-                        </Button>
-                    </div>
-                </div>
-            </footer>
         </main>
     );
 }

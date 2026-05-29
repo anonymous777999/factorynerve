@@ -71,10 +71,10 @@ export function SettingsUsersTab({
   onDeactivateUser,
 }: SettingsUsersTabProps) {
   return (
-    <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-      <Card className="min-w-0">
+    <div className="control-center-workspace grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+      <Card className="min-w-0 bg-[#151b24] border-cyan-900/30">
         <CardHeader>
-          <CardTitle className="text-xl">Users</CardTitle>
+          <CardTitle className="text-xl font-mono text-cyan-400 uppercase tracking-wider">GOVERNANCE_REGISTRY</CardTitle>
         </CardHeader>
         <CardContent className="min-w-0 space-y-4">
           {users.length ? (
@@ -83,48 +83,48 @@ export function SettingsUsersTab({
                 {users.map((row) => (
                   <div
                     key={row.id}
-                    className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4"
+                    className="min-w-0 rounded-2xl border border-cyan-900/30 bg-[#0a0e14] p-4"
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
-                          User #{row.user_code}
+                        <div className="text-xs uppercase tracking-[0.16em] text-gray-500 font-mono">
+                          USER_ID #{row.user_code}
                         </div>
-                        <SafeText as="div" className="mt-1 text-sm font-semibold">
+                        <SafeText as="div" className="mt-1 text-sm font-semibold font-mono text-cyan-300">
                           {row.name}
                         </SafeText>
-                        <SafeText as="div" className="mt-1 text-xs text-[var(--muted)]">
+                        <SafeText as="div" className="mt-1 text-xs text-gray-400 font-mono">
                           {row.email}
                         </SafeText>
                       </div>
-                      <span className="rounded-full bg-[var(--color-background-secondary)] px-3 py-1 text-[12px] font-medium text-[var(--color-text-secondary)]">
+                      <span className="rounded-full bg-cyan-900/30 border border-cyan-700 px-3 py-1 text-[12px] font-medium text-cyan-300 font-mono uppercase">
                         {row.role}
                       </span>
                     </div>
                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                      <div className="rounded-2xl border border-[var(--border)]/70 bg-[rgba(15,23,42,0.34)] p-3">
-                        <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">
-                          Factory Access
+                      <div className="rounded-2xl border border-cyan-900/30 bg-[#151b24] p-3">
+                        <div className="text-[11px] uppercase tracking-[0.14em] text-gray-500 font-mono">
+                          FACTORY_ACCESS
                         </div>
-                        <div className="mt-1 text-sm font-medium">
-                          {row.factory_count === 1 ? "1 factory" : `${row.factory_count} factories`}
+                        <div className="mt-1 text-sm font-medium font-mono text-cyan-300">
+                          {row.factory_count === 1 ? "1 FACTORY" : `${row.factory_count} FACTORIES`}
                         </div>
-                        <SafeText as="div" className="mt-1 text-xs text-[var(--muted)]">
+                        <SafeText as="div" className="mt-1 text-xs text-gray-400 font-mono">
                           {row.factory_name}
                         </SafeText>
                       </div>
                       <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="rounded-2xl border border-[var(--border)]/70 bg-[rgba(15,23,42,0.34)] p-3">
-                          <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">
-                            Plan
+                        <div className="rounded-2xl border border-cyan-900/30 bg-[#151b24] p-3">
+                          <div className="text-[11px] uppercase tracking-[0.14em] text-gray-500 font-mono">
+                            PLAN
                           </div>
-                          <div className="mt-1 text-sm font-medium">{row.plan}</div>
+                          <div className="mt-1 text-sm font-medium font-mono text-cyan-300">{row.plan}</div>
                         </div>
-                        <div className="rounded-2xl border border-[var(--border)]/70 bg-[rgba(15,23,42,0.34)] p-3">
-                          <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">
-                            Active
+                        <div className="rounded-2xl border border-cyan-900/30 bg-[#151b24] p-3">
+                          <div className="text-[11px] uppercase tracking-[0.14em] text-gray-500 font-mono">
+                            STATUS
                           </div>
-                          <div className="mt-1 text-sm font-medium">{row.is_active ? "Yes" : "No"}</div>
+                          <div className="mt-1 text-sm font-medium font-mono text-cyan-300">{row.is_active ? "ACTIVE" : "INACTIVE"}</div>
                         </div>
                       </div>
                     </div>
@@ -138,37 +138,37 @@ export function SettingsUsersTab({
                   viewportClassName="-mx-1 px-1 pb-2"
                   innerClassName="min-w-[860px]"
                 >
-                  <table className="min-w-full text-left text-sm">
-                    <thead className="text-[var(--muted)]">
-                      <tr className="border-b border-[var(--border)]">
-                        <th className="px-3 py-3 font-medium">User ID</th>
-                        <th className="px-3 py-3 font-medium">Name</th>
-                        <th className="px-3 py-3 font-medium">Email</th>
-                        <th className="px-3 py-3 font-medium">Role</th>
-                        <th className="px-3 py-3 font-medium">Factory Access</th>
-                        <th className="px-3 py-3 font-medium">Plan</th>
-                        <th className="px-3 py-3 font-medium">Active</th>
+                  <table className="min-w-full text-left text-sm font-mono">
+                    <thead className="text-gray-500">
+                      <tr className="border-b border-cyan-900/30">
+                        <th className="px-3 py-3 font-medium text-xs uppercase tracking-wider">USER_ID</th>
+                        <th className="px-3 py-3 font-medium text-xs uppercase tracking-wider">NAME</th>
+                        <th className="px-3 py-3 font-medium text-xs uppercase tracking-wider">EMAIL</th>
+                        <th className="px-3 py-3 font-medium text-xs uppercase tracking-wider">ROLE</th>
+                        <th className="px-3 py-3 font-medium text-xs uppercase tracking-wider">FACTORY_ACCESS</th>
+                        <th className="px-3 py-3 font-medium text-xs uppercase tracking-wider">PLAN</th>
+                        <th className="px-3 py-3 font-medium text-xs uppercase tracking-wider">STATUS</th>
                       </tr>
                     </thead>
                     <tbody>
                       {users.map((row) => (
-                        <tr key={row.id} className="border-b border-[var(--border)]/60 align-top">
-                          <td className="px-3 py-3 font-semibold">{row.user_code}</td>
-                          <td className="px-3 py-3">
+                        <tr key={row.id} className="border-b border-cyan-900/30 align-top">
+                          <td className="px-3 py-3 font-semibold text-cyan-400">#{row.user_code}</td>
+                          <td className="px-3 py-3 text-cyan-300">
                             <SafeText>{row.name}</SafeText>
                           </td>
-                          <td className="px-3 py-3">
+                          <td className="px-3 py-3 text-gray-400">
                             <SafeText>{row.email}</SafeText>
                           </td>
-                          <td className="px-3 py-3">{row.role}</td>
+                          <td className="px-3 py-3 text-cyan-300 uppercase">{row.role}</td>
                           <td className="px-3 py-3">
-                            <div>{row.factory_count === 1 ? "1 factory" : `${row.factory_count} factories`}</div>
-                            <SafeText as="div" className="mt-1 text-xs text-[var(--muted)]">
+                            <div className="text-cyan-300">{row.factory_count === 1 ? "1 FACTORY" : `${row.factory_count} FACTORIES`}</div>
+                            <SafeText as="div" className="mt-1 text-xs text-gray-500">
                               {row.factory_name}
                             </SafeText>
                           </td>
-                          <td className="px-3 py-3">{row.plan}</td>
-                          <td className="px-3 py-3">{row.is_active ? "Yes" : "No"}</td>
+                          <td className="px-3 py-3 text-cyan-300">{row.plan}</td>
+                          <td className="px-3 py-3 text-cyan-300">{row.is_active ? "ACTIVE" : "INACTIVE"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -177,74 +177,95 @@ export function SettingsUsersTab({
               </div>
             </>
           ) : (
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-              No managed users found.
+            <div className="rounded-2xl border border-cyan-900/30 bg-[#0a0e14] p-4 text-sm text-gray-400 font-mono">
+              NO_USERS_FOUND
             </div>
           )}
         </CardContent>
       </Card>
 
       <div className="min-w-0 space-y-6">
-        <Card className="min-w-0">
+        <Card className="min-w-0 bg-[#151b24] border-cyan-900/30">
           <CardHeader>
-            <CardTitle className="text-xl">Invite User</CardTitle>
+            <CardTitle className="text-xl font-mono text-cyan-400 uppercase tracking-wider">INVITE_NEW_USER</CardTitle>
           </CardHeader>
           <CardContent className="min-w-0 space-y-4">
             <Field>
-              <Label>Name</Label>
-              <Input value={inviteName} onChange={(e) => onInviteNameChange(e.target.value)} />
+              <Label className="font-mono text-xs uppercase tracking-wider text-gray-400">USER_NAME</Label>
+              <Input
+                value={inviteName}
+                onChange={(e) => onInviteNameChange(e.target.value)}
+                className="bg-[#0a0e14] border-cyan-900/30 text-cyan-300 font-mono focus:border-cyan-500"
+              />
             </Field>
             <Field>
-              <Label>Email</Label>
-              <Input type="email" value={inviteEmail} onChange={(e) => onInviteEmailChange(e.target.value)} />
+              <Label className="font-mono text-xs uppercase tracking-wider text-gray-400">EMAIL_ADDRESS</Label>
+              <Input
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => onInviteEmailChange(e.target.value)}
+                className="bg-[#0a0e14] border-cyan-900/30 text-cyan-300 font-mono focus:border-cyan-500"
+              />
             </Field>
             <Field>
-              <Label>Role</Label>
-              <Select value={inviteRole} onChange={(e) => onInviteRoleChange(e.target.value)}>
+              <Label className="font-mono text-xs uppercase tracking-wider text-gray-400">SYSTEM_ROLE</Label>
+              <Select
+                value={inviteRole}
+                onChange={(e) => onInviteRoleChange(e.target.value)}
+                className="bg-[#0a0e14] border-cyan-900/30 text-cyan-300 font-mono focus:border-cyan-500"
+              >
                 {assignableRoles.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
+                  <option key={role} value={role} className="bg-[#0a0e14] text-cyan-300">
+                    {role.toUpperCase()}
                   </option>
                 ))}
               </Select>
             </Field>
-            <Button onClick={onInviteUser} disabled={busy} className="w-full sm:w-auto">
-              Invite User
+            <Button
+              onClick={onInviteUser}
+              disabled={busy}
+              className="w-full sm:w-auto bg-cyan-600 hover:bg-cyan-700 text-white font-mono uppercase tracking-wider"
+            >
+              GENERATE_INVITATION
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="min-w-0">
+        <Card className="min-w-0 bg-[#151b24] border-cyan-900/30">
           <CardHeader>
-            <CardTitle className="text-xl">Factory Access</CardTitle>
+            <CardTitle className="text-xl font-mono text-cyan-400 uppercase tracking-wider">FACTORY_ACCESS</CardTitle>
           </CardHeader>
           <CardContent className="min-w-0 space-y-4">
             {canManageFactoryAccess ? (
               <>
                 <Field>
-                  <Label>User</Label>
-                  <Select value={accessUserId} onChange={(e) => onAccessUserIdChange(e.target.value)}>
-                    <option value="">Select a user</option>
+                  <Label className="font-mono text-xs uppercase tracking-wider text-gray-400">SELECT_USER</Label>
+                  <Select
+                    value={accessUserId}
+                    onChange={(e) => onAccessUserIdChange(e.target.value)}
+                    className="bg-[#0a0e14] border-cyan-900/30 text-cyan-300 font-mono focus:border-cyan-500"
+                  >
+                    <option value="" className="bg-[#0a0e14]">SELECT_USER</option>
                     {users.map((managedUser) => (
-                      <option key={managedUser.id} value={managedUser.id}>
-                        #{managedUser.user_code} {managedUser.name} - {managedUser.role}
+                      <option key={managedUser.id} value={managedUser.id} className="bg-[#0a0e14] text-cyan-300">
+                        #{managedUser.user_code} {managedUser.name} - {managedUser.role.toUpperCase()}
                       </option>
                     ))}
                   </Select>
                 </Field>
                 {accessLoading ? (
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
-                    Loading factory access...
+                  <div className="rounded-2xl border border-cyan-900/30 bg-[#0a0e14] p-4 text-sm text-gray-400 font-mono">
+                    LOADING_ACCESS_DATA...
                   </div>
                 ) : accessSnapshot ? (
                   <>
-                    <div className="min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                      <SafeText as="div" className="text-sm font-semibold">
+                    <div className="min-w-0 rounded-2xl border border-cyan-900/30 bg-[#0a0e14] p-4">
+                      <SafeText as="div" className="text-sm font-semibold font-mono text-cyan-300">
                         {accessSnapshot.user.name}
                       </SafeText>
-                      <div className="mt-1 overflow-safe-text text-xs text-[var(--muted)]">
-                        #{accessSnapshot.user.user_code} - {accessSnapshot.user.role} -{" "}
-                        {accessSnapshot.user.factory_count} assigned
+                      <div className="mt-1 overflow-safe-text text-xs text-gray-400 font-mono">
+                        #{accessSnapshot.user.user_code} - {accessSnapshot.user.role.toUpperCase()} -{" "}
+                        {accessSnapshot.user.factory_count} ASSIGNED
                       </div>
                     </div>
                     <div className="space-y-3">
@@ -253,18 +274,18 @@ export function SettingsUsersTab({
                         return (
                           <label
                             key={factoryOption.factory_id}
-                            className="flex min-w-0 flex-col gap-4 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 sm:flex-row sm:items-start sm:justify-between"
+                            className="flex min-w-0 flex-col gap-4 rounded-2xl border border-cyan-900/30 bg-[#0a0e14] p-4 sm:flex-row sm:items-start sm:justify-between"
                           >
                             <div className="min-w-0 flex-1">
-                              <SafeText as="div" className="text-sm font-semibold">
+                              <SafeText as="div" className="text-sm font-semibold font-mono text-cyan-300">
                                 {factoryOption.name}
                               </SafeText>
-                              <div className="mt-1 overflow-safe-text text-xs text-[var(--muted)]">
-                                {factoryOption.industry_label} - Members {factoryOption.member_count}
-                                {factoryOption.is_primary ? " - Primary context" : ""}
+                              <div className="mt-1 overflow-safe-text text-xs text-gray-400 font-mono">
+                                {factoryOption.industry_label} - MEMBERS: {factoryOption.member_count}
+                                {factoryOption.is_primary ? " - PRIMARY_NODE" : ""}
                               </div>
                               {factoryOption.location ? (
-                                <SafeText as="div" className="mt-1 text-xs text-[var(--muted)]">
+                                <SafeText as="div" className="mt-1 text-xs text-gray-500 font-mono">
                                   {factoryOption.location}
                                 </SafeText>
                               ) : null}
@@ -273,7 +294,7 @@ export function SettingsUsersTab({
                               type="checkbox"
                               checked={checked}
                               onChange={() => onToggleAccessFactory(factoryOption.factory_id)}
-                              className="mt-1 h-4 w-4 shrink-0 accent-[var(--accent)]"
+                              className="mt-1 h-4 w-4 shrink-0 accent-cyan-600"
                             />
                           </label>
                         );
@@ -343,14 +364,14 @@ export function SettingsUsersTab({
             <div className="border-t border-[var(--border)] pt-4">
               <Field>
                 <Label>Deactivate User Code or ID</Label>
-              <Input
-                type="number"
-                min={1}
-                step={1}
-                inputMode="numeric"
-                value={deactivateUserId}
-                onChange={(e) => onDeactivateUserIdChange(e.target.value)}
-              />
+                <Input
+                  type="number"
+                  min={1}
+                  step={1}
+                  inputMode="numeric"
+                  value={deactivateUserId}
+                  onChange={(e) => onDeactivateUserIdChange(e.target.value)}
+                />
               </Field>
               <div className="mt-3">
                 <Button

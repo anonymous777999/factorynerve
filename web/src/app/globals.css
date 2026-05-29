@@ -2861,3 +2861,401 @@ input[type="checkbox"] {
 .operational-card .text-info {
   color: rgb(6, 182, 212);
 }
+
+/* ============================================================
+   APPROVAL QUEUE WORKSPACE - DARK THEME MATCHING REFERENCE
+   ============================================================ */
+
+/* Dark theme base colors matching the reference design */
+.approval-queue-dark {
+  --bg-primary: #1a1a1a;
+  --bg-secondary: #2d2d2d;
+  --bg-tertiary: #374151;
+  --border-primary: #404040;
+  --border-secondary: #4b5563;
+  --text-primary: #ffffff;
+  --text-secondary: #e5e7eb;
+  --text-tertiary: #9ca3af;
+  --text-muted: #6b7280;
+  --accent-orange: #ea580c;
+  --accent-orange-hover: #c2410c;
+  --accent-orange-light: rgba(234, 88, 12, 0.1);
+  --status-critical: #ef4444;
+  --status-high: #f97316;
+  --status-warning: #eab308;
+  --status-low: #22c55e;
+  --status-success: #16a34a;
+}
+
+/* Override DataTable styling for dark theme */
+.approval-queue-workspace .operational-table {
+  background: var(--bg-secondary) !important;
+  border: 1px solid var(--border-primary) !important;
+  color: var(--text-secondary) !important;
+}
+
+.approval-queue-workspace .operational-table th {
+  background: var(--bg-tertiary) !important;
+  color: var(--text-tertiary) !important;
+  border-bottom: 1px solid var(--border-secondary) !important;
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  padding: 0.75rem !important;
+}
+
+.approval-queue-workspace .operational-table td {
+  background: var(--bg-secondary) !important;
+  color: var(--text-secondary) !important;
+  border-bottom: 1px solid var(--bg-tertiary) !important;
+  padding: 0.75rem !important;
+}
+
+.approval-queue-workspace .operational-table tr:hover td {
+  background: var(--bg-tertiary) !important;
+}
+
+.approval-queue-workspace .operational-table tbody tr[aria-selected="true"] td {
+  background: rgba(234, 88, 12, 0.1) !important;
+  border-color: rgba(234, 88, 12, 0.3) !important;
+}
+
+/* Dark scrollbar for approval queue */
+.approval-queue-workspace * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-secondary) transparent;
+}
+
+.approval-queue-workspace *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.approval-queue-workspace *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.approval-queue-workspace *::-webkit-scrollbar-thumb {
+  background: var(--border-secondary);
+  border-radius: 4px;
+}
+
+.approval-queue-workspace *::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* Status icon colors */
+.status-icon-critical {
+  color: var(--status-critical);
+}
+
+.status-icon-high {
+  color: var(--accent-orange);
+}
+
+.status-icon-warning {
+  color: var(--status-warning);
+}
+
+.status-icon-low {
+  color: var(--status-low);
+}
+
+/* Severity text colors */
+.severity-critical {
+  color: var(--status-critical);
+  font-weight: 600;
+}
+
+.severity-high {
+  color: var(--accent-orange);
+  font-weight: 600;
+}
+
+.severity-warning {
+  color: var(--status-warning);
+  font-weight: 600;
+}
+
+.severity-low {
+  color: var(--status-low);
+  font-weight: 600;
+}
+
+/* Priority focus cards */
+.priority-focus-critical {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.priority-focus-warning {
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+}
+
+/* Orange accent buttons */
+.btn-orange-primary {
+  background: var(--accent-orange);
+  color: white;
+  border: 1px solid var(--accent-orange);
+  font-weight: 500;
+}
+
+.btn-orange-primary:hover {
+  background: var(--accent-orange-hover);
+  border-color: var(--accent-orange-hover);
+}
+
+/* Selection checkbox styling */
+.approval-checkbox {
+  width: 1rem;
+  height: 1rem;
+  border-radius: 0.25rem;
+  border: 1px solid var(--border-secondary);
+  background: var(--bg-secondary);
+  color: var(--accent-orange);
+}
+
+.approval-checkbox:focus {
+  ring: 2px;
+  ring-color: var(--accent-orange);
+  ring-opacity: 0.5;
+}
+
+/* Sidebar document preview */
+.document-preview-container {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-secondary);
+  border-radius: 0.375rem;
+  padding: 1rem;
+  min-height: 8rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Extracted data styling */
+.extracted-data-grid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.extracted-data-item {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--bg-tertiary);
+}
+
+.extracted-data-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.extracted-data-label {
+  color: var(--text-tertiary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.25rem;
+}
+
+.extracted-data-value {
+  color: var(--text-secondary);
+  font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+  font-size: 0.875rem;
+}
+
+/* Discrepancy highlighting */
+.discrepancy-old {
+  color: var(--status-critical);
+  text-decoration: line-through;
+}
+
+.discrepancy-new {
+  color: var(--accent-orange);
+  font-weight: 600;
+}
+
+/* AI interpretation styling */
+.ai-interpretation-panel {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-secondary);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.ai-interpretation-header {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.ai-interpretation-icon {
+  color: #60a5fa;
+  font-size: 1rem;
+}
+
+.ai-interpretation-title {
+  color: var(--text-primary);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.ai-interpretation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.ai-interpretation-item {
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+
+.ai-interpretation-item strong {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Action buttons */
+.action-button-approve {
+  background: var(--status-success);
+  color: white;
+  border: 1px solid var(--status-success);
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.action-button-approve:hover {
+  background: #15803d;
+  border-color: #15803d;
+}
+
+.action-button-reject {
+  background: transparent;
+  color: #f87171;
+  border: 1px solid #dc2626;
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+}
+
+.action-button-reject:hover {
+  background: rgba(220, 38, 38, 0.1);
+}
+
+.action-button-escalate {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-secondary);
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  font-weight: 500;
+}
+
+.action-button-escalate:hover {
+  background: var(--bg-tertiary);
+}
+
+
+/* ============================================================
+   INDUSTRIAL OS THEME — SETTINGS CONTROL CENTER
+   Terminal-style interface with cyan/blue accents
+   ============================================================ */
+
+.control-center-workspace {
+  --cc-bg-primary: #0a0e14;
+  --cc-bg-secondary: #151b24;
+  --cc-bg-tertiary: #0f1419;
+  --cc-border-primary: rgba(0, 217, 255, 0.3);
+  --cc-border-secondary: rgba(0, 217, 255, 0.15);
+  --cc-text-primary: #e6edf3;
+  --cc-text-secondary: #8b949e;
+  --cc-text-tertiary: #6e7681;
+  --cc-accent-cyan: #00d9ff;
+  --cc-accent-blue: #58a6ff;
+  --cc-accent-green: #3fb950;
+  --cc-accent-red: #f85149;
+}
+
+/* Override DataTable styling for control center theme */
+.control-center-workspace .operational-table {
+  background: var(--cc-bg-secondary) !important;
+  border: 1px solid var(--cc-border-primary) !important;
+  font-family: 'Courier New', Courier, monospace !important;
+}
+
+.control-center-workspace .operational-table th {
+  background: var(--cc-bg-tertiary) !important;
+  color: var(--cc-text-tertiary) !important;
+  font-family: 'Courier New', Courier, monospace !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  border-bottom: 1px solid var(--cc-border-secondary) !important;
+}
+
+.control-center-workspace .operational-table td {
+  background: var(--cc-bg-secondary) !important;
+  color: var(--cc-text-secondary) !important;
+  font-family: 'Courier New', Courier, monospace !important;
+  font-size: 13px !important;
+  border-bottom: 1px solid var(--cc-border-secondary) !important;
+}
+
+.control-center-workspace .operational-table tr:hover td {
+  background: var(--cc-bg-tertiary) !important;
+}
+
+.control-center-workspace .operational-table tbody tr[aria-selected="true"] td {
+  background: rgba(0, 217, 255, 0.1) !important;
+  border-color: rgba(0, 217, 255, 0.3) !important;
+}
+
+/* Terminal scrollbar for control center */
+.control-center-workspace * {
+  scrollbar-width: thin;
+  scrollbar-color: var(--cc-border-secondary) transparent;
+}
+
+.control-center-workspace *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.control-center-workspace *::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.control-center-workspace *::-webkit-scrollbar-thumb {
+  background: var(--cc-border-secondary);
+  border-radius: 4px;
+}
+
+.control-center-workspace *::-webkit-scrollbar-thumb:hover {
+  background: var(--cc-border-primary);
+}
+
+/* Terminal input styling */
+.control-center-workspace input[type="text"],
+.control-center-workspace input[type="email"],
+.control-center-workspace input[type="number"],
+.control-center-workspace select,
+.control-center-workspace textarea {
+  font-family: 'Courier New', Courier, monospace !important;
+}
+
+/* Monospace font for all text in control center */
+.control-center-workspace {
+  font-family: 'Courier New', Courier, monospace;
+}
