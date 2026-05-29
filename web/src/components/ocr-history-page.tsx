@@ -359,8 +359,8 @@ export default function OcrHistoryPage() {
         </div>
       }
     >
-      <div className="flex min-h-0 flex-1 flex-col gap-4" style={{ border: "3px solid cyan", background: "rgba(0,255,255,0.1)" }}>
-        <div className="factory-ocr-panel-grid factory-ocr-panel-grid--four flex-shrink-0" style={{ border: "2px solid yellow", background: "rgba(255,255,0,0.1)" }}>
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
+        <div className="factory-ocr-panel-grid factory-ocr-panel-grid--four flex-shrink-0">
           <div className="factory-ocr-data-card">
             <div className="factory-ocr-data-card__label">Documents tracked</div>
             <div className="factory-ocr-data-card__value">{records.length}</div>
@@ -379,7 +379,7 @@ export default function OcrHistoryPage() {
           </div>
         </div>
 
-        <div className="flex-shrink-0 rounded-[0.45rem] border border-border-subtle bg-surface-shell p-4" style={{ border: "2px solid lime", background: "rgba(0,255,0,0.1)" }}>
+        <div className="flex-shrink-0 rounded-[0.45rem] border border-border-subtle bg-surface-shell p-4">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <label className="space-y-2 text-sm text-text-secondary">
               <span className="text-text-primary">Status</span>
@@ -498,7 +498,7 @@ export default function OcrHistoryPage() {
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col min-h-0" style={{ border: "3px solid magenta", background: "rgba(255,0,255,0.1)", minHeight: "200px" }}>
+        <div className="flex flex-1 flex-col">
           <LoadingBoundary
             hasData={records.length > 0}
             isLoading={historyQuery.isLoading}
@@ -507,10 +507,10 @@ export default function OcrHistoryPage() {
             onRetry={() => void historyQuery.refetch()}
             emptyTitle="No OCR history yet"
             emptyMessage="Scanned and reviewed OCR documents will appear here automatically."
-            className="flex flex-1 flex-col min-h-0"
-            contentClassName="flex flex-1 flex-col min-h-0"
+            className="flex flex-1 flex-col"
+            contentClassName="flex flex-1 flex-col"
           >
-            <div className="flex-1 rounded-[0.45rem] border border-border-subtle bg-surface-shell" style={{ border: "4px solid red", background: "rgba(255,0,0,0.2)", minHeight: "100px" }}>
+            <div className="flex-1 rounded-[0.45rem] border border-border-subtle bg-surface-shell">
               <DataTable<OcrVerificationRecord>
                 ariaLabel="OCR history"
                 columns={columns}

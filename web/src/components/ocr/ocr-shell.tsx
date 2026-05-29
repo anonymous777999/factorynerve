@@ -50,9 +50,9 @@ export function OcrShell({
   const shellStatus = shellStatusMap[step];
 
   return (
-    <main className="factory-ocr-scope flex flex-1 flex-col px-4 py-4 md:px-6 md:py-5" style={{ border: "3px solid orange", background: "rgba(255,165,0,0.1)" }}>
-      <div className="factory-ocr-shell flex min-h-0 flex-1 flex-col" style={{ border: "3px solid blue", background: "rgba(0,0,255,0.1)" }}>
-        <section className="factory-ocr-header flex-shrink-0" style={{ border: "2px solid green", background: "rgba(0,255,0,0.1)" }}>
+    <main className="factory-ocr-scope flex flex-1 flex-col px-4 py-4 md:px-6 md:py-5">
+      <div className="factory-ocr-shell flex min-h-0 flex-1 flex-col">
+        <section className="factory-ocr-header flex-shrink-0">
           <div className="factory-ocr-header__meta">
             <div className="max-w-4xl">
               <div className="flex flex-wrap items-center gap-3">
@@ -101,9 +101,8 @@ export function OcrShell({
             "factory-ocr-history-layout min-h-0 flex-1",
             className,
           )}
-          style={{ border: "3px solid purple", background: "rgba(128,0,128,0.1)" }}
         >
-          <div className="factory-ocr-console rounded-[0.45rem] p-4 md:p-5" style={{ border: "3px solid pink", background: "rgba(255,192,203,0.2)" }}>
+          <div className="factory-ocr-console rounded-[0.45rem] p-4 md:p-5">
             {children}
           </div>
           {sideContent ? (
