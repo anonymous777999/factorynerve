@@ -498,7 +498,7 @@ export default function OcrHistoryPage() {
           </div>
         </div>
 
-        <div className="min-h-0 flex flex-1 flex-col">
+        <div className="flex flex-1 flex-col">
           <LoadingBoundary
             hasData={records.length > 0}
             isLoading={historyQuery.isLoading}
@@ -507,10 +507,10 @@ export default function OcrHistoryPage() {
             onRetry={() => void historyQuery.refetch()}
             emptyTitle="No OCR history yet"
             emptyMessage="Scanned and reviewed OCR documents will appear here automatically."
-            className="min-h-0 flex flex-1 flex-col"
-            contentClassName="min-h-0 flex flex-1 flex-col"
+            className="flex flex-1 flex-col"
+            contentClassName="flex flex-1 flex-col"
           >
-            <div className="min-h-0 flex-1 rounded-[0.45rem] border border-border-subtle bg-surface-shell">
+            <div className="flex-1 rounded-[0.45rem] border border-border-subtle bg-surface-shell">
               <DataTable<OcrVerificationRecord>
                 ariaLabel="OCR history"
                 columns={columns}
@@ -523,7 +523,7 @@ export default function OcrHistoryPage() {
                 enableVirtualization={records.length > 20}
                 overscan={5}
                 className="h-full"
-                viewportClassName="max-h-full overflow-y-auto"
+                viewportClassName="h-full overflow-y-auto"
                 viewportSize="lg"
                 emptyTitle="No OCR documents match the current filters"
                 emptyMessage="Adjust the search term or scan a new document to continue the workflow."
