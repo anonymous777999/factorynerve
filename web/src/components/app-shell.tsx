@@ -24,7 +24,7 @@ import { ErrorFeedbackPrompt } from "@/components/error-feedback-prompt";
 import { FeedbackWidget } from "@/components/feedback-widget";
 import { JobsDrawer } from "@/components/jobs-drawer";
 import { MicroFeedbackPrompt } from "@/components/micro-feedback-prompt";
-import { WorkflowReminderStrip } from "@/components/workflow-reminder-strip";
+import { NotificationCenter } from "@/components/notification-center";
 import {
   isShellHiddenRoute,
   useAppShellState,
@@ -323,16 +323,7 @@ function AppShellFrame({
                     </nav>
                   </div>
                   <div className="flex items-center gap-3 text-text-tertiary">
-                    <button
-                      type="button"
-                      aria-label="Notifications"
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-sm transition hover:bg-surface-hover hover:text-text-primary"
-                    >
-                      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4.5 w-4.5">
-                        <path d="M10 3.5a3 3 0 0 1 3 3V8c0 .7.24 1.38.69 1.91L15 11.5v1H5v-1l1.31-1.59c.45-.53.69-1.2.69-1.91V6.5a3 3 0 0 1 3-3Z" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M8.5 14a1.5 1.5 0 0 0 3 0" strokeLinecap="round" />
-                      </svg>
-                    </button>
+                    <NotificationCenter />
                     <button
                       type="button"
                       aria-label="Workspace tools"
@@ -398,7 +389,6 @@ function AppShellFrame({
               )}
             </div>
           ) : null}
-          {!shell.immersiveScannerRoute && !focusMode && !dashboardReferenceRoute ? <WorkflowReminderStrip /> : null}
           {shell.shellLayout.desktopRail === "context" ? (
             <div
               className={cn(

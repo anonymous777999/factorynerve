@@ -39,8 +39,8 @@ export function OcrShell({
   const shellStatus = shellStatusMap[step];
 
   return (
-    <main className="factory-ocr-scope px-4 py-4 md:px-6 md:py-5">
-      <div className="factory-ocr-shell">
+    <main className="factory-ocr-scope flex min-h-0 flex-col px-4 py-4 md:px-6 md:py-5">
+      <div className="factory-ocr-shell flex min-h-0 flex-1 flex-col">
         <section className="factory-ocr-header">
           <div className="factory-ocr-header__meta">
             <div className="max-w-4xl">
@@ -81,7 +81,7 @@ export function OcrShell({
 
         <section
           className={cn(
-            "factory-ocr-history-layout",
+            "factory-ocr-history-layout min-h-0 flex-1",
             className,
           )}
         >
