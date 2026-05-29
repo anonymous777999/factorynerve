@@ -2718,3 +2718,146 @@ input[type="checkbox"] {
   min-height: 0;
   height: 100%;
 }
+
+/* ============================================================
+   REPORTS INTELLIGENCE WORKSPACE COMPONENTS
+   ============================================================ */
+
+.reports-intelligence-scope {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.reports-intelligence-header {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+    var(--surface-shell);
+}
+
+.reports-intelligence-reminder {
+  background:
+    linear-gradient(90deg, rgba(59, 130, 246, 0.08), rgba(59, 130, 246, 0.04)),
+    var(--surface-shell);
+}
+
+.reports-intelligence-workspace {
+  min-width: 0;
+  min-height: 0;
+}
+
+.reports-range-controls,
+.manager-reporting-board,
+.production-analytics,
+.steel-owner-signals,
+.ocr-trust-intelligence,
+.executive-ai-summary,
+.report-footer {
+  min-width: 0;
+}
+
+.operational-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0)),
+    var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  transition: all 180ms ease;
+}
+
+.operational-card:hover {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.005)),
+    var(--surface-elevated);
+  border-color: var(--border-default);
+}
+
+.operational-metric-card {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-subtle);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+    var(--surface-shell);
+  transition: all 180ms ease;
+}
+
+.operational-metric-card:hover {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.005)),
+    var(--surface-elevated);
+  border-color: var(--border-default);
+}
+
+.operational-shift-card {
+  padding: 0.75rem;
+  border-radius: 0.375rem;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-shell);
+  transition: all 180ms ease;
+}
+
+.operational-shift-card:hover {
+  background: var(--surface-elevated);
+  border-color: var(--border-default);
+}
+
+.operational-signal-card {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-subtle);
+  background:
+    linear-gradient(180deg, rgba(245, 158, 11, 0.05), rgba(245, 158, 11, 0.02)),
+    var(--surface-shell);
+  transition: all 180ms ease;
+}
+
+.operational-signal-card:hover {
+  background:
+    linear-gradient(180deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.03)),
+    var(--surface-elevated);
+  border-color: var(--border-warning);
+}
+
+.operational-summary-panel {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-shell);
+}
+
+.operational-metrics-panel {
+  padding: 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--border-subtle);
+  background: var(--surface-shell);
+}
+
+/* Ensure proper spacing and density */
+.reports-intelligence-workspace>section {
+  margin-bottom: 1.5rem;
+}
+
+.reports-intelligence-workspace>section:last-child {
+  margin-bottom: 0;
+}
+
+/* Operational typography enhancements */
+.operational-card .text-xs {
+  letter-spacing: 0.05em;
+}
+
+.operational-card .font-semibold {
+  font-weight: 600;
+}
+
+/* Status indicator styling */
+.operational-card .bg-info\/5 {
+  background: rgba(6, 182, 212, 0.05);
+}
+
+.operational-card .border-info {
+  border-color: rgba(6, 182, 212, 0.3);
+}
+
+.operational-card .text-info {
+  color: rgb(6, 182, 212);
+}
