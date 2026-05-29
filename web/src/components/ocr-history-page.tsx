@@ -1,29 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { ErrorBanner } from "@/components/ocr/error-banner";
 import { OcrShell } from "@/components/ocr/ocr-shell";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { DataTable } from "@/components/ui/data-table/data-table";
-import {
-  createDataTableColumnHelper,
-  type DataTableColumnDef,
-} from "@/components/ui/data-table/data-table-types";
-import { DataTableToolbar } from "@/components/ui/data-table/data-table-toolbar";
-import { EmptyState } from "@/components/ui/empty-state";
 import { LoadingBoundary } from "@/components/ui/loading-boundary";
-import { useOcrHistoryQuery } from "@/hooks/use-ocr-verify-queries";
+import {
+  useOcrHistoryInfiniteQuery,
+  useOcrVerificationSummaryQuery,
+  useOcrVerifyDetailQuery,
+} from "@/hooks/use-ocr-verify-queries";
 import { canUseOcrScan } from "@/lib/ocr-access";
 import { type OcrVerifyQueueFilters } from "@/lib/query-keys";
 import {
   downloadOcrVerificationExport,
-  type OcrVerificationRecord,
 } from "@/lib/ocr";
 import { transferBlob } from "@/lib/blob-transfer";
 import { useSession } from "@/lib/use-session";
+
+// New Components
+import { VirtualizedOcrHistoryTable } from "@/components/ocr/history/virtualized-ocr-history-table";
+import { OcrHistoryFilters } from "@/components/ocr/history/ocr-history-filters";
+import { OcrHistorySummaryStats } from "@/components/ocr/history/ocr-history-summary-stats";
+import { OcrHistorySidePanel } from "@/components/ocr/history/ocr-history-side-panel";
+import { EmptyState } from "@/components/ui/empty-state";
 
 function formatTimestamp(value?: string | null) {
   if (!value) return "-";
@@ -38,27 +40,14 @@ function formatTimestamp(value?: string | null) {
   });
 }
 
-const columnHelper = createDataTableColumnHelper<OcrVerificationRecord>();
-
-function getStatusBadgeStatus(status: OcrVerificationRecord["status"]) {
-  switch (status) {
-    case "approved":
-      return "synced" as const;
-    case "pending":
-      return "processing" as const;
-    case "rejected":
-      return "error" as const;
-    default:
-      return "draft" as const;
-  }
-}
-
 export default function OcrHistoryPage() {
   const { user, loading, error: sessionError } = useSession();
   const [busyId, setBusyId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [localError, setLocalError] = useState("");
+
+  // Filter States
   const [statusFilter, setStatusFilter] = useState<OcrVerifyQueueFilters["status"]>("all");
   const [exportStateFilter, setExportStateFilter] = useState<"all" | "pending" | "exported" | "failed" | "json_generated">("all");
   const [documentTypeFilter, setDocumentTypeFilter] = useState<string>("all");
@@ -66,8 +55,11 @@ export default function OcrHistoryPage() {
   const [confidenceFilter, setConfidenceFilter] = useState<"all" | "low" | "medium" | "high">("all");
   const [updatedAfterFilter, setUpdatedAfterFilter] = useState("");
   const [updatedBeforeFilter, setUpdatedBeforeFilter] = useState("");
+
   const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
+
   const canAccess = canUseOcrScan(user?.role);
+  const queryEnabled = Boolean(user) && canAccess;
 
   const confidenceRange = useMemo(() => {
     switch (confidenceFilter) {
@@ -82,7 +74,7 @@ export default function OcrHistoryPage() {
     }
   }, [confidenceFilter]);
 
-  const filters: OcrVerifyQueueFilters = {
+  const filters: OcrVerifyQueueFilters = useMemo(() => ({
     search,
     status: statusFilter,
     exportState: exportStateFilter,
@@ -92,70 +84,43 @@ export default function OcrHistoryPage() {
     maxConfidence: confidenceRange.maxConfidence ?? null,
     updatedAfter: updatedAfterFilter || null,
     updatedBefore: updatedBeforeFilter || null,
-  };
+  }), [search, statusFilter, exportStateFilter, documentTypeFilter, reviewerIdFilter, confidenceRange, updatedAfterFilter, updatedBeforeFilter]);
 
-  const historyQuery = useOcrHistoryQuery(filters, Boolean(user) && canAccess);
-  const records = useMemo(() => historyQuery.data ?? [], [historyQuery.data]);
+  // Infinite Query for the table
+  const historyQuery = useOcrHistoryInfiniteQuery(filters, queryEnabled);
 
-  const summary = useMemo(() => {
-    const approved = records.filter((record) => record.status === "approved").length;
-    const pending = records.filter((record) => record.status === "pending").length;
-    const rejected = records.filter((record) => record.status === "rejected").length;
-    const latest = records[0]?.updated_at ? formatTimestamp(records[0].updated_at) : "No activity";
-    return { approved, pending, rejected, latest };
-  }, [records]);
+  // Summary query for the top stats
+  const summaryQuery = useOcrVerificationSummaryQuery(queryEnabled);
 
-  const documentTypeOptions = useMemo(
-    () => [
-      "all",
-      ...Array.from(
-        new Set(
-          records
-            .map((record) => record.doc_type_hint?.trim().toLowerCase() || "table")
-            .filter(Boolean),
-        ),
-      ).sort(),
-    ],
-    [records],
+  // Detail query for the selected record (Side Panel)
+  const detailQuery = useOcrVerifyDetailQuery(selectedRecordId, queryEnabled);
+
+  const allItems = useMemo(() =>
+    historyQuery.data?.pages.flatMap(page => page.items) ?? [],
+    [historyQuery.data]
   );
 
-  const reviewerOptions = useMemo(
-    () =>
-      Array.from(
-        new Map(
-          records
-            .filter((record) => record.reviewed_by && record.reviewed_by_name)
-            .map((record) => [record.reviewed_by as number, record.reviewed_by_name as string]),
-        ).entries(),
-      ).sort((a, b) => a[1].localeCompare(b[1])),
-    [records],
-  );
+  const documentTypeOptions = useMemo(() => {
+    // We only have options from the current loaded pages, but it's better than nothing
+    // or we could have a dedicated endpoint if needed.
+    const types = new Set<string>();
+    allItems.forEach(item => {
+      if (item.doc_type_hint) types.add(item.doc_type_hint.trim().toLowerCase());
+    });
+    return ["all", ...Array.from(types).sort()];
+  }, [allItems]);
 
-  const activeSelectedRecordId = useMemo(
-    () => (records.some((record) => record.id === selectedRecordId) ? selectedRecordId : records[0]?.id ?? null),
-    [records, selectedRecordId],
-  );
+  const reviewerOptions = useMemo(() => {
+    const reviewers = new Map<number, string>();
+    allItems.forEach(item => {
+      if (item.reviewed_by && item.reviewed_by_name) {
+        reviewers.set(item.reviewed_by, item.reviewed_by_name);
+      }
+    });
+    return Array.from(reviewers.entries()).sort((a, b) => a[1].localeCompare(b[1]));
+  }, [allItems]);
 
-  const selectedRecord = useMemo(
-    () => records.find((record) => record.id === activeSelectedRecordId) || records[0] || null,
-    [records, activeSelectedRecordId],
-  );
-
-  const auditTriage = useMemo(() => {
-    const lowConfidence = records.filter((record) => record.avg_confidence < 60).length;
-    const exportFailures = records.filter((record) => record.export_state === "failed").length;
-    const reviewEvents = records.flatMap((record) => record.audit_events || []);
-    const recentEvents = reviewEvents
-      .sort((left, right) =>
-        new Date(right.created_at || 0).getTime() - new Date(left.created_at || 0).getTime(),
-      )
-      .slice(0, 5);
-    return { lowConfidence, exportFailures, recentEvents };
-  }, [records]);
-
-  const selectedEvents = selectedRecord?.audit_events ?? [];
-
-  const handleDownload = async (recordId: number) => {
+  const handleDownload = useCallback(async (recordId: number) => {
     setBusyId(recordId);
     setLocalError("");
     setStatusMessage("");
@@ -172,83 +137,18 @@ export default function OcrHistoryPage() {
     } finally {
       setBusyId(null);
     }
-  };
+  }, []);
 
-  const columns = useMemo(
-    () => [
-      columnHelper.accessor((record) => record.source_filename || `Document #${record.id}`, {
-        id: "document",
-        header: "Document",
-        cell: (info) => {
-          const record = info.row.original;
-          return (
-            <div className="min-w-0">
-              <div className="truncate text-body font-medium text-text-primary">
-                {info.getValue()}
-              </div>
-              <div className="mt-xs text-label-dense text-text-secondary">
-                {Math.round(record.avg_confidence || 0)}% confidence
-              </div>
-            </div>
-          );
-        },
-        meta: {
-          isRowHeader: true,
-          sticky: "left",
-        },
-      }),
-      columnHelper.accessor("doc_type_hint", {
-        id: "type",
-        header: "Type",
-        cell: (info) => info.getValue() || "table",
-      }),
-      columnHelper.accessor("status", {
-        header: "Status",
-        cell: (info) => (
-          <div className="flex justify-center">
-            <Badge status={getStatusBadgeStatus(info.getValue())}>{info.getValue()}</Badge>
-          </div>
-        ),
-        meta: {
-          align: "center",
-        },
-      }),
-      columnHelper.accessor("updated_at", {
-        id: "updated",
-        header: "Updated",
-        cell: (info) => formatTimestamp(info.getValue()),
-      }),
-      columnHelper.display({
-        id: "actions",
-        header: "Action",
-        cell: (info) => {
-          const record = info.row.original;
-
-          return (
-            <div className="flex justify-end gap-sm">
-              <Link href={`/ocr/verify?verification_id=${record.id}`}>
-                <Button size="compact" variant="outline">
-                  Open
-                </Button>
-              </Link>
-              <Button
-                size="compact"
-                variant="outline"
-                disabled={busyId === record.id}
-                onClick={() => void handleDownload(record.id)}
-              >
-                {busyId === record.id ? "Downloading" : "Excel"}
-              </Button>
-            </div>
-          );
-        },
-        meta: {
-          align: "right",
-        },
-      }),
-    ] as DataTableColumnDef<OcrVerificationRecord>[],
-    [busyId],
-  );
+  const handleResetFilters = useCallback(() => {
+    setStatusFilter("all");
+    setExportStateFilter("all");
+    setDocumentTypeFilter("all");
+    setReviewerIdFilter(null);
+    setConfidenceFilter("all");
+    setUpdatedAfterFilter("");
+    setUpdatedBeforeFilter("");
+    setSearch("");
+  }, []);
 
   if (loading) {
     return (
@@ -279,7 +179,7 @@ export default function OcrHistoryPage() {
 
   if (!canAccess) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-md">
+      <main className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-md">
         <EmptyState
           className="w-full"
           title="OCR history is not available for this role"
@@ -302,59 +202,11 @@ export default function OcrHistoryPage() {
       subtitle="Reopen past runs, check their status, and download the latest export."
       step="result"
       sideContent={
-        <div className="space-y-4">
-          <div className="factory-ocr-console factory-ocr-console--subtle rounded-[0.45rem] p-4">
-            <div className="factory-ocr-card-title">Audit workspace</div>
-            <div className="mt-3 factory-ocr-panel-grid">
-              <div className="factory-ocr-data-card">
-                <div className="factory-ocr-data-card__label">Records tracked</div>
-                <div className="factory-ocr-data-card__value">{records.length}</div>
-              </div>
-              <div className="factory-ocr-data-card">
-                <div className="factory-ocr-data-card__label">Low confidence</div>
-                <div className="factory-ocr-data-card__value">{auditTriage.lowConfidence}</div>
-              </div>
-              <div className="factory-ocr-data-card">
-                <div className="factory-ocr-data-card__label">Export failures</div>
-                <div className="factory-ocr-data-card__value">{auditTriage.exportFailures}</div>
-              </div>
-              <div className="factory-ocr-data-card">
-                <div className="factory-ocr-data-card__label">Latest update</div>
-                <div className="factory-ocr-data-card__value">{summary.latest}</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="factory-ocr-console factory-ocr-console--subtle rounded-[0.45rem] p-4">
-            <div className="factory-ocr-card-title">Selected record</div>
-            <div className="mt-3 space-y-2 text-sm leading-6 text-text-secondary">
-              <div className="font-medium text-text-primary">{selectedRecord?.source_filename || `Document #${selectedRecord?.id}`}</div>
-              <div>Status: {selectedRecord?.status || "—"}</div>
-              <div>Type: {selectedRecord?.doc_type_hint || "table"}</div>
-              <div>Confidence: {Math.round(selectedRecord?.avg_confidence ?? 0)}%</div>
-              {selectedRecord?.reviewed_by_name ? <div>Reviewed by: {selectedRecord.reviewed_by_name}</div> : null}
-            </div>
-          </div>
-
-          <div className="factory-ocr-console factory-ocr-console--subtle rounded-[0.45rem] p-4">
-            <div className="factory-ocr-card-title">Review lineage</div>
-            <div className="mt-3 space-y-3 text-sm leading-6 text-text-secondary">
-              {selectedEvents.length > 0 ? (
-                selectedEvents.slice(0, 6).map((event) => (
-                  <div key={event.id} className="rounded-[0.35rem] border border-border-subtle bg-surface-shell px-3 py-3">
-                    <div className="font-medium text-text-primary">{event.event_type}</div>
-                    <div>{event.actor || "System"}</div>
-                    <div>{formatTimestamp(event.created_at)}</div>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-[0.35rem] border border-border-subtle bg-surface-shell px-3 py-3">
-                  No audit events are available for the selected record.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <OcrHistorySidePanel
+          selectedRecord={detailQuery.data ?? null}
+          totalTracked={summaryQuery.data?.total_documents ?? 0}
+          latestUpdate={summaryQuery.data?.last_trusted_at ? formatTimestamp(summaryQuery.data.last_trusted_at) : "No activity"}
+        />
       }
     >
       <div className="space-y-4">
@@ -370,146 +222,46 @@ export default function OcrHistoryPage() {
           />
         ) : null}
 
-        <div className="factory-ocr-panel-grid factory-ocr-panel-grid--four">
-          <div className="factory-ocr-data-card">
-            <div className="factory-ocr-data-card__label">Documents tracked</div>
-            <div className="factory-ocr-data-card__value">{records.length}</div>
-          </div>
-          <div className="factory-ocr-data-card">
-            <div className="factory-ocr-data-card__label">Approved</div>
-            <div className="factory-ocr-data-card__value">{summary.approved}</div>
-          </div>
-          <div className="factory-ocr-data-card">
-            <div className="factory-ocr-data-card__label">Pending review</div>
-            <div className="factory-ocr-data-card__value">{summary.pending}</div>
-          </div>
-          <div className="factory-ocr-data-card">
-            <div className="factory-ocr-data-card__label">Rejected</div>
-            <div className="factory-ocr-data-card__value">{summary.rejected}</div>
-          </div>
-        </div>
+        <OcrHistorySummaryStats
+          summary={summaryQuery.data}
+          isLoading={summaryQuery.isLoading}
+        />
 
-        <div className="rounded-[0.45rem] border border-border-subtle bg-surface-shell p-4">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <label className="space-y-2 text-sm text-text-secondary">
-              <span className="text-text-primary">Status</span>
-              <select
-                className="input w-full"
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value as OcrVerifyQueueFilters["status"])}
-              >
-                <option value="all">All</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-                <option value="draft">Draft</option>
-              </select>
-            </label>
-
-            <label className="space-y-2 text-sm text-text-secondary">
-              <span className="text-text-primary">Export</span>
-              <select
-                className="input w-full"
-                value={exportStateFilter}
-                onChange={(event) => setExportStateFilter(event.target.value as typeof exportStateFilter)}
-              >
-                <option value="all">All</option>
-                <option value="pending">Pending</option>
-                <option value="exported">Exported</option>
-                <option value="failed">Failed</option>
-                <option value="json_generated">JSON</option>
-              </select>
-            </label>
-
-            <label className="space-y-2 text-sm text-text-secondary">
-              <span className="text-text-primary">Document type</span>
-              <select
-                className="input w-full"
-                value={documentTypeFilter}
-                onChange={(event) => setDocumentTypeFilter(event.target.value)}
-              >
-                {documentTypeOptions.map((type) => (
-                  <option key={type} value={type}>
-                    {type === "all" ? "All" : type}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="space-y-2 text-sm text-text-secondary">
-              <span className="text-text-primary">Reviewer</span>
-              <select
-                className="input w-full"
-                value={reviewerIdFilter ?? "all"}
-                onChange={(event) =>
-                  setReviewerIdFilter(event.target.value === "all" ? null : Number(event.target.value))
-                }
-              >
-                <option value="all">All</option>
-                {reviewerOptions.map(([id, name]) => (
-                  <option key={id} value={id}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <label className="space-y-2 text-sm text-text-secondary">
-              <span className="text-text-primary">Confidence</span>
-              <select
-                className="input w-full"
-                value={confidenceFilter}
-                onChange={(event) => setConfidenceFilter(event.target.value as typeof confidenceFilter)}
-              >
-                <option value="all">All</option>
-                <option value="high">High (85%+)</option>
-                <option value="medium">Medium (60–84%)</option>
-                <option value="low">Low (&lt;60%)</option>
-              </select>
-            </label>
-            <label className="space-y-2 text-sm text-text-secondary">
-              <span className="text-text-primary">Updated after</span>
-              <input
-                className="input w-full"
-                type="date"
-                value={updatedAfterFilter}
-                onChange={(event) => setUpdatedAfterFilter(event.target.value)}
+        <div className="space-y-4">
+          <div className="flex gap-3">
+             <input
+                className="input flex-1"
+                placeholder="Search by file, type, status, or export"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
               />
-            </label>
-            <label className="space-y-2 text-sm text-text-secondary">
-              <span className="text-text-primary">Updated before</span>
-              <input
-                className="input w-full"
-                type="date"
-                value={updatedBeforeFilter}
-                onChange={(event) => setUpdatedBeforeFilter(event.target.value)}
-              />
-            </label>
-            <div className="flex items-end">
-              <Button
-                size="compact"
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  setStatusFilter("all");
-                  setExportStateFilter("all");
-                  setDocumentTypeFilter("all");
-                  setReviewerIdFilter(null);
-                  setConfidenceFilter("all");
-                  setUpdatedAfterFilter("");
-                  setUpdatedBeforeFilter("");
-                }}
-              >
-                Reset filters
-              </Button>
-            </div>
+              <Button variant="outline" onClick={() => setSearch("")} disabled={!search}>Clear</Button>
           </div>
+
+          <OcrHistoryFilters
+            filters={filters}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            exportStateFilter={exportStateFilter}
+            setExportStateFilter={setExportStateFilter}
+            documentTypeFilter={documentTypeFilter}
+            setDocumentTypeFilter={setDocumentTypeFilter}
+            documentTypeOptions={documentTypeOptions}
+            reviewerIdFilter={reviewerIdFilter}
+            setReviewerIdFilter={setReviewerIdFilter}
+            reviewerOptions={reviewerOptions}
+            confidenceFilter={confidenceFilter}
+            setConfidenceFilter={setConfidenceFilter}
+            updatedAfterFilter={updatedAfterFilter}
+            setUpdatedAfterFilter={setUpdatedAfterFilter}
+            updatedBeforeFilter={updatedBeforeFilter}
+            setUpdatedBeforeFilter={setUpdatedBeforeFilter}
+            onReset={handleResetFilters}
+          />
         </div>
 
         <LoadingBoundary
-          hasData={records.length > 0}
+          hasData={allItems.length > 0}
           isLoading={historyQuery.isLoading}
           isError={historyQuery.isError}
           error={historyQuery.error}
@@ -518,32 +270,23 @@ export default function OcrHistoryPage() {
           emptyMessage="Scanned and reviewed OCR documents will appear here automatically."
         >
           <div className="h-[calc(100vh-22rem)] min-h-112 overflow-hidden rounded-[0.45rem] border border-border-subtle bg-surface-shell">
-            <DataTable<OcrVerificationRecord>
-              ariaLabel="OCR history"
-              columns={columns}
-              data={records}
-              getRowId={(row) => String(row.id)}
-              selectedRowId={activeSelectedRecordId ? String(activeSelectedRecordId) : null}
-              onRowClick={(row) => setSelectedRecordId(Number(row.id))}
-              enableGlobalSearch
-              enableStickyFirstColumn
-              enableVirtualization={records.length > 100}
-              className="h-full"
-              viewportClassName="h-full"
-              emptyTitle="No OCR documents match the current filters"
-              emptyMessage="Adjust the search term or scan a new document to continue the workflow."
-              renderToolbar={
-                <DataTableToolbar
-                  searchPlaceholder="Search by file, type, status, or export"
-                  searchValue={search}
-                  onSearchChange={setSearch}
-                  onClear={() => setSearch("")}
-                />
-              }
-              searchValue={search}
-              onSearchChange={setSearch}
+            <VirtualizedOcrHistoryTable
+              items={allItems}
+              isLoading={historyQuery.isLoading}
+              isFetchingNextPage={historyQuery.isFetchingNextPage}
+              hasNextPage={!!historyQuery.hasNextPage}
+              fetchNextPage={historyQuery.fetchNextPage}
+              selectedId={selectedRecordId}
+              onSelect={setSelectedRecordId}
+              onDownload={handleDownload}
+              busyId={busyId}
             />
           </div>
+          {historyQuery.isFetchingNextPage && (
+            <div className="py-2 text-center text-xs text-text-secondary animate-pulse">
+              Loading more records...
+            </div>
+          )}
         </LoadingBoundary>
       </div>
     </OcrShell>

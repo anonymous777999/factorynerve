@@ -131,3 +131,4 @@ pytest==9.0.2
 # DO NOT UPGRADE unless Razorpay integration is modernized.
 
 setuptools==69.5.1
+PyYAML==6.0.2

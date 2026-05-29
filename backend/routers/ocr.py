@@ -2869,8 +2869,39 @@ def get_verification_summary(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     _require_ocr_access(current_user)
-    records = _verification_query(db, current_user).all()
+    base_query = _verification_query(db, current_user)
 
+    # Use SQL aggregate functions to avoid fetching all records into memory
+    # NOTE: JSON length calculation is slightly dialect-dependent, but func.json_array_length
+    # works in SQLite and PostgreSQL with the sqlalchemy json extension or custom func mapping.
+    # For now, we fetch status and avg_confidence which are indexed/simple, and calculate rows
+    # by counting the length of the reviewed_rows or original_rows JSON array in SQL.
+
+    def row_count_expr(col):
+        if db.bind.dialect.name == "postgresql":
+            return func.jsonb_array_length(col)
+        return func.json_array_length(col)
+
+    effective_rows_expr = func.coalesce(
+        row_count_expr(OcrVerification.reviewed_rows),
+        row_count_expr(OcrVerification.original_rows),
+        0,
+    )
+
+    stats = (
+        db.query(
+            OcrVerification.status,
+            func.count(OcrVerification.id).label("doc_count"),
+            func.sum(effective_rows_expr).label("row_count"),
+            func.avg(OcrVerification.avg_confidence).label("avg_conf"),
+            func.max(OcrVerification.approved_at).label("latest_approved"),
+        )
+        .filter(OcrVerification.id.in_(base_query.with_entities(OcrVerification.id)))
+        .group_by(OcrVerification.status)
+        .all()
+    )
+
+    total_documents = 0
     trusted_documents = 0
     trusted_rows = 0
     pending_documents = 0
@@ -2883,24 +2914,26 @@ def get_verification_summary(
     trusted_confidence_count = 0
     last_trusted_at: datetime | None = None
 
-    for record in records:
-        row_count = _verification_row_count(record)
-        if record.status == "approved":
-            trusted_documents += 1
-            trusted_rows += row_count
-            if record.avg_confidence is not None:
-                trusted_confidence_total += float(record.avg_confidence)
-                trusted_confidence_count += 1
-            if record.approved_at and (last_trusted_at is None or record.approved_at > last_trusted_at):
-                last_trusted_at = record.approved_at
-        elif record.status == "pending":
-            pending_documents += 1
-            pending_rows += row_count
-        elif record.status == "rejected":
-            rejected_documents += 1
-            rejected_rows += row_count
+    for status_key, doc_count, row_count, avg_conf, latest_approved in stats:
+        doc_count = int(doc_count or 0)
+        row_count = int(row_count or 0)
+        total_documents += doc_count
+
+        if status_key == "approved":
+            trusted_documents = doc_count
+            trusted_rows = row_count
+            if avg_conf is not None:
+                trusted_confidence_total = float(avg_conf) * doc_count
+                trusted_confidence_count = doc_count
+            last_trusted_at = latest_approved
+        elif status_key == "pending":
+            pending_documents = doc_count
+            pending_rows = row_count
+        elif status_key == "rejected":
+            rejected_documents = doc_count
+            rejected_rows = row_count
         else:
-            draft_documents += 1
+            draft_documents += doc_count
             draft_rows += row_count
 
     decision_denominator = trusted_documents + rejected_documents
@@ -2911,7 +2944,7 @@ def get_verification_summary(
     )
 
     return {
-        "total_documents": len(records),
+        "total_documents": total_documents,
         "trusted_documents": trusted_documents,
         "trusted_rows": trusted_rows,
         "pending_documents": pending_documents,

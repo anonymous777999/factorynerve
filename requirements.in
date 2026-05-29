@@ -39,3 +39,4 @@ passlib[argon2]
 argon2-cffi
 pyotp
 itsdangerous
+PyYAML
