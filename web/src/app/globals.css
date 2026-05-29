@@ -2056,7 +2056,6 @@ input[type="checkbox"] {
 .factory-ocr-shell>section+* {
   min-height: 0;
   flex: 1 1 0;
-  overflow: hidden;
 }
 
 .factory-ocr-header {
@@ -2630,4 +2629,92 @@ input[type="checkbox"] {
   .factory-ocr-panel-grid--four {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+
+/* ============================================================
+   APPROVAL QUEUE WORKSPACE COMPONENTS
+   ============================================================ */
+
+.approval-queue-scope {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.approval-queue-workspace {
+  min-width: 0;
+  min-height: 0;
+}
+
+.approval-queue-main {
+  min-width: 0;
+  min-height: 0;
+}
+
+.approval-queue-header {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+    var(--surface-shell);
+}
+
+.approval-queue-alerts {
+  background:
+    linear-gradient(90deg, rgba(245, 158, 11, 0.08), rgba(245, 158, 11, 0.04)),
+    var(--surface-shell);
+}
+
+.approval-queue-kpis,
+.approval-queue-focus,
+.approval-queue-filters {
+  background: var(--surface-shell);
+}
+
+.operational-kpi-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0)),
+    var(--surface-card);
+  transition: all 180ms ease;
+}
+
+.operational-kpi-card:hover {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.005)),
+    var(--surface-elevated);
+  border-color: var(--border-default);
+}
+
+.operational-focus-card {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+    var(--surface-elevated);
+  transition: all 180ms ease;
+}
+
+.operational-focus-card:hover {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015)),
+    var(--surface-elevated);
+  border-color: var(--border-strong);
+}
+
+.approval-queue-table {
+  min-height: 0;
+}
+
+.approval-queue-intelligence {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0.005)),
+    var(--surface-shell);
+}
+
+.approval-queue-footer {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
+    var(--surface-shell);
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* Ensure proper height propagation for DataTable */
+.approval-queue-table>div {
+  min-height: 0;
+  height: 100%;
 }
