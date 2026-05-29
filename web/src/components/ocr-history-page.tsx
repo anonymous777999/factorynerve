@@ -510,7 +510,7 @@ export default function OcrHistoryPage() {
             className="flex flex-1 flex-col min-h-0"
             contentClassName="flex flex-1 flex-col min-h-0"
           >
-            <div className="flex-1 min-h-0 rounded-[0.45rem] border border-border-subtle bg-surface-shell" style={{ border: "4px solid red", background: "rgba(255,0,0,0.2)", minHeight: "100px" }}>
+            <div className="flex-1 rounded-[0.45rem] border border-border-subtle bg-surface-shell" style={{ border: "4px solid red", background: "rgba(255,0,0,0.2)", minHeight: "100px" }}>
               <DataTable<OcrVerificationRecord>
                 ariaLabel="OCR history"
                 columns={columns}
