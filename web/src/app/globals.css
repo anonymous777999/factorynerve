@@ -2033,7 +2033,8 @@ input[type="checkbox"] {
   min-width: 1320px;
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  flex: 1;
+  min-height: 0;
   color: var(--text-primary);
   background:
     radial-gradient(circle at 12% 8%, rgba(255, 184, 104, 0.08), transparent 18%),
