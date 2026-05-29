@@ -267,7 +267,7 @@ export default function WorkQueuePage() {
           indexes.attendanceReview = tasks.length;
           tasks.push(listAttendanceReview());
           indexes.pendingVerifications = tasks.length;
-          tasks.push(listOcrVerifications("pending"));
+          tasks.push(listOcrVerifications({ status: "pending" }));
 
           if (isSteelFactory) {
             indexes.pendingReconciliations = tasks.length;
@@ -1009,9 +1009,9 @@ export default function WorkQueuePage() {
           <Card>
             <CardHeader>
               <div className="text-sm uppercase tracking-[0.26em] text-[var(--accent)]">{t("queue.title", "Work Queue")}</div>
-            <CardTitle>{t("queue.sign_in_title", "Sign in to open the shared work queue")}</CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-3">
+              <CardTitle>{t("queue.sign_in_title", "Sign in to open the shared work queue")}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-3">
               {/* AUDIT: FLOW_BROKEN - Signed-out recovery should use the current auth entry route instead of a legacy login path. */}
               <Link href="/access">
                 <Button>{t("dashboard.action.open_login", "Open Access")}</Button>
@@ -1028,7 +1028,7 @@ export default function WorkQueuePage() {
 
   if (isWorkerQueue) {
     return (
-    <main className="min-h-screen bg-[var(--surface-industrial-deep)] px-4 py-6 md:px-6 lg:py-8">
+      <main className="min-h-screen bg-[var(--surface-industrial-deep)] px-4 py-6 md:px-6 lg:py-8">
         <div className="mx-auto max-w-6xl space-y-4">
           {error ? (
             <div className="rounded-[20px] border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">
@@ -1213,7 +1213,7 @@ export default function WorkQueuePage() {
       <div className="operational-page__inner">
         {/* AUDIT: FLOW_BROKEN - Added a short operating sequence so the queue reads as process-next work, not a wall of diagnostics. */}
         <section className="grid gap-4 md:grid-cols-3">
-            {[
+          {[
             { step: "1", title: t("queue.steps.one_title", "Pick focus"), detail: t("queue.steps.one_detail", "Switch between today, review, and alert lanes.") },
             { step: "2", title: t("queue.steps.two_title", "Process next"), detail: t("queue.steps.two_detail", "Take the top priority item before scanning the rest of the queue.") },
             { step: "3", title: t("queue.steps.three_title", "Check load"), detail: t("queue.steps.three_detail", "Open queue signals only when you need broader context.") },

@@ -36,7 +36,7 @@ export function BadgeProvider({ children }: { children: React.ReactNode }) {
       const [alertsResult, entryResult, verificationResult, reconciliationResult] = await Promise.allSettled([
         listUnreadAlerts(),
         canReview ? listEntries({ status: ["pending"], page: 1, page_size: 1 }) : Promise.resolve(null),
-        canReview ? listOcrVerifications("pending") : Promise.resolve([]),
+        canReview ? listOcrVerifications({ status: "pending" }) : Promise.resolve([]),
         canReview && steelMode ? listSteelReconciliations({ status: "pending", limit: 100 }) : Promise.resolve({ items: [] }),
       ]);
 

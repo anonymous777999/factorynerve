@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text
 
 from backend.database import Base
 
@@ -33,6 +33,10 @@ class OcrVerification(Base):
     reviewed_rows = Column(JSON, nullable=True)
     raw_column_added = Column(Boolean, nullable=False, default=False)
     status = Column(String(20), nullable=False, default="draft")
+    export_state = Column(String(32), nullable=False, default="pending")
+    last_action = Column(String(40), nullable=False, default="uploaded")
+    reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    exported_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     reviewer_notes = Column(Text, nullable=True)
     rejection_reason = Column(Text, nullable=True)
     submitted_at = Column(DateTime(timezone=True), nullable=True)
@@ -50,4 +54,24 @@ class OcrVerification(Base):
         nullable=False,
         default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+
+class OcrAuditEvent(Base):
+    __tablename__ = "ocr_audit_events"
+    __table_args__ = (
+        Index("ix_ocr_audit_events_document_time", "document_id", "created_at"),
+        Index("ix_ocr_audit_events_event_type", "event_type"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    document_id = Column(Integer, ForeignKey("ocr_verifications.id"), index=True, nullable=False)
+    event_type = Column(String(40), nullable=False)
+    actor = Column(String(120), nullable=True)
+    actor_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    event_metadata = Column(JSON, nullable=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        nullable=False,
+        default=lambda: datetime.now(timezone.utc),
     )

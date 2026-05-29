@@ -1172,7 +1172,7 @@ export default function ApprovalsPage() {
       const tasks: Array<Promise<unknown>> = [
         listAttendanceReview(undefined, 14),
         listEntries({ status: ["pending"], page: 1, page_size: 12 }),
-        listOcrVerifications("pending"),
+        listOcrVerifications({ status: "pending" }),
         listUnreadAlerts(),
       ];
       if (steelMode) {
@@ -1868,17 +1868,17 @@ export default function ApprovalsPage() {
               </div>
             </div>
             <div className="route-header__actions">
-            {nextReviewItem ? (
-              <Button
-                className="px-4 py-2 text-xs"
-                onClick={() => openItem(nextReviewItem.key, typeof window !== "undefined" && window.innerWidth < 1024)}
-              >
-                Review next
+              {nextReviewItem ? (
+                <Button
+                  className="px-4 py-2 text-xs"
+                  onClick={() => openItem(nextReviewItem.key, typeof window !== "undefined" && window.innerWidth < 1024)}
+                >
+                  Review next
+                </Button>
+              ) : null}
+              <Button variant="outline" className="px-4 py-2 text-xs" onClick={() => void loadInbox()}>
+                {busy ? "Refreshing..." : "Refresh"}
               </Button>
-            ) : null}
-            <Button variant="outline" className="px-4 py-2 text-xs" onClick={() => void loadInbox()}>
-              {busy ? "Refreshing..." : "Refresh"}
-            </Button>
             </div>
           </div>
         </section>
@@ -1893,37 +1893,37 @@ export default function ApprovalsPage() {
           primaryAction={
             nextReviewItem
               ? {
-                  id: "review-next-approval",
-                  label: "Review next",
-                  onAction: () => openItem(nextReviewItem.key, typeof window !== "undefined" && window.innerWidth < 1024),
-                }
+                id: "review-next-approval",
+                label: "Review next",
+                onAction: () => openItem(nextReviewItem.key, typeof window !== "undefined" && window.innerWidth < 1024),
+              }
               : undefined
           }
           secondaryAction={
             selectedApproveCount > 0
               ? {
-                  id: "bulk-approve-selection",
-                  label: `Approve ${selectedApproveCount}`,
-                  variant: "outline",
-                  onAction: () => openBulkDecisionConfirm("approve"),
-                }
+                id: "bulk-approve-selection",
+                label: `Approve ${selectedApproveCount}`,
+                variant: "outline",
+                onAction: () => openBulkDecisionConfirm("approve"),
+              }
               : undefined
           }
           tertiaryAction={
             selectedRejectCount > 0
               ? {
-                  id: "bulk-reject-selection",
-                  label: `Reject ${selectedRejectCount}`,
-                  variant: "ghost",
-                  onAction: () => openBulkDecisionConfirm("reject"),
-                }
+                id: "bulk-reject-selection",
+                label: `Reject ${selectedRejectCount}`,
+                variant: "ghost",
+                onAction: () => openBulkDecisionConfirm("reject"),
+              }
               : {
-                  id: "refresh-approvals",
-                  label: busy ? "Refreshing" : "Refresh",
-                  variant: "ghost",
-                  disabled: busy,
-                  onAction: () => void loadInbox(),
-                }
+                id: "refresh-approvals",
+                label: busy ? "Refreshing" : "Refresh",
+                variant: "ghost",
+                disabled: busy,
+                onAction: () => void loadInbox(),
+              }
           }
         />
 

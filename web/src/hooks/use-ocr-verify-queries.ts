@@ -20,6 +20,7 @@ import {
   type OcrTemplate,
   type OcrVerificationRecord,
   type OcrVerificationSavePayload,
+  type OcrVerificationListFilters,
 } from "@/lib/ocr";
 
 function sortVerifications(records: OcrVerificationRecord[]) {
@@ -81,29 +82,23 @@ export function useOcrVerifyQueueQuery(filters: OcrVerifyQueueFilters, enabled: 
   });
 }
 
-export function useOcrHistoryQuery(search: string, enabled: boolean) {
-  return useQuery<OcrVerificationRecord[]>({
-    queryKey: queryKeys.ocrVerify.queue({ search, status: "all" }),
-    queryFn: ({ signal }) => listOcrVerifications(undefined, { signal }),
-    select: (records) => {
-      const sorted = sortVerifications(records);
-      const term = search.trim().toLowerCase();
-      if (!term) {
-        return sorted;
-      }
+export function useOcrHistoryQuery(filters: OcrVerifyQueueFilters, enabled: boolean) {
+  const queryFilters: OcrVerificationListFilters = {
+    search: filters.search || undefined,
+    status: filters.status !== "all" ? filters.status : undefined,
+    exportState: filters.exportState && filters.exportState !== "all" ? filters.exportState : undefined,
+    documentType: filters.documentType || undefined,
+    reviewerId: filters.reviewerId,
+    minConfidence: filters.minConfidence ?? undefined,
+    maxConfidence: filters.maxConfidence ?? undefined,
+    updatedAfter: filters.updatedAfter || undefined,
+    updatedBefore: filters.updatedBefore || undefined,
+  };
 
-      return sorted.filter((verification) =>
-        [
-          verification.source_filename || "",
-          verification.doc_type_hint || "",
-          verification.status,
-          verification.template_name || "",
-        ]
-          .join(" ")
-          .toLowerCase()
-          .includes(term),
-      );
-    },
+  return useQuery<OcrVerificationRecord[]>({
+    queryKey: queryKeys.ocrVerify.queue(filters),
+    queryFn: ({ signal }) => listOcrVerifications(queryFilters, { signal }),
+    select: (records) => sortVerifications(records),
     enabled,
   });
 }

@@ -150,7 +150,7 @@ export function WorkflowReminderStrip({ className }: { className?: string }) {
         indexes.pendingEntries = tasks.length;
         tasks.push(listEntries({ status: ["pending"], page: 1, page_size: 1 }));
         indexes.pendingVerifications = tasks.length;
-        tasks.push(listOcrVerifications("pending"));
+        tasks.push(listOcrVerifications({ status: "pending" }));
       }
 
       const results = await Promise.allSettled(tasks);
