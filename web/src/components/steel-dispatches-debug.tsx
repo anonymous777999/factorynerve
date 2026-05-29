@@ -102,7 +102,7 @@ export function DispatchDebugPanel({
                         <div className="mt-2 font-mono text-white">
                             {lineDrafts.map((draft) => (
                                 <div key={draft.invoice_line_id}>
-                                    Line {draft.invoice_line_id}: weight_kg = "{draft.weight_kg}"
+                                    Line {draft.invoice_line_id}: weight_kg = &quot;{draft.weight_kg}&quot;
                                 </div>
                             ))}
                         </div>
