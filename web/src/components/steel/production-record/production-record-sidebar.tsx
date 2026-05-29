@@ -34,14 +34,14 @@ export function ProductionRecordSidebar({
 
   return (
     <div className="space-y-4">
-      <Card>
-        <CardHeader className="px-md pt-md">
-          <div className="flex items-center justify-between gap-sm">
-            <CardTitle className="text-lg">Live metrics</CardTitle>
+      <Card className="bg-[#1a1f2e] border-gray-800">
+        <CardHeader className="px-6 pt-6">
+          <div className="flex items-center justify-between gap-3">
+            <CardTitle className="text-lg text-white">Live metrics</CardTitle>
             <Badge status={getSeverityBadgeStatus(metrics.severity)}>{metrics.severityLabel}</Badge>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3 px-md pb-md">
+        <CardContent className="space-y-3 px-6 pb-6">
           <MetricTile
             label="Yield"
             value={`${formatOperationalNumber(metrics.yieldPercent)}%`}
@@ -63,32 +63,32 @@ export function ProductionRecordSidebar({
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="px-md pt-md">
-          <CardTitle className="text-lg">Operational review</CardTitle>
+      <Card className="bg-[#1a1f2e] border-gray-800">
+        <CardHeader className="px-6 pt-6">
+          <CardTitle className="text-lg text-white">Operational review</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 px-md pb-md">
-          <div className="rounded-panel border border-border-subtle bg-surface-shell px-md py-sm">
-            <div className="text-label-dense uppercase tracking-wide text-text-tertiary">
+        <CardContent className="space-y-3 px-6 pb-6">
+          <div className="rounded-lg border border-gray-700 bg-[#0f1419] px-4 py-3">
+            <div className="text-xs uppercase tracking-wider text-gray-500">
               Transformation
             </div>
-            <div className="mt-xs text-body font-medium text-text-primary">
+            <div className="mt-2 text-sm font-medium text-white">
               {inputItem ? `${inputItem.item_code} -> ` : "Input -> "}
               {outputItem ? outputItem.item_code : "Output"}
             </div>
-            <div className="mt-xs text-label-dense text-text-secondary">
+            <div className="mt-1 text-xs text-gray-400">
               {inputItem?.name || "Select source material"} to{" "}
               {outputItem?.name || "select finished material"}
             </div>
           </div>
 
-          <div className="rounded-panel border border-border-subtle bg-surface-shell px-md py-sm">
-            <div className="text-label-dense uppercase tracking-wide text-text-tertiary">
+          <div className="rounded-lg border border-gray-700 bg-[#0f1419] px-4 py-3">
+            <div className="text-xs uppercase tracking-wider text-gray-500">
               Severity state
             </div>
-            <div className="mt-xs flex items-center gap-sm">
+            <div className="mt-2 flex items-center gap-2">
               <Badge status={getSeverityBadgeStatus(metrics.severity)}>{metrics.severityLabel}</Badge>
-              <span className="text-label text-text-primary">{metrics.statusLabel}</span>
+              <span className="text-sm text-white">{metrics.statusLabel}</span>
             </div>
           </div>
 
@@ -97,13 +97,13 @@ export function ProductionRecordSidebar({
               metrics.warnings.map((warning, index) => (
                 <div
                   key={`${warning}-${index}`}
-                  className="rounded-control border border-border-subtle bg-surface-panel px-sm py-sm text-label-dense text-text-secondary"
+                  className="rounded-lg border border-gray-700 bg-[#0f1419] px-3 py-2 text-xs text-gray-400"
                 >
                   {warning}
                 </div>
               ))
             ) : (
-              <div className="rounded-control border border-border-subtle bg-surface-panel px-sm py-sm text-label-dense text-text-secondary">
+              <div className="rounded-lg border border-gray-700 bg-[#0f1419] px-3 py-2 text-xs text-gray-400">
                 No watch or critical signals are currently active.
               </div>
             )}

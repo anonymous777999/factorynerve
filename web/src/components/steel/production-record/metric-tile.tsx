@@ -13,18 +13,18 @@ export function MetricTile({
 }) {
   const toneClassName =
     tone === "critical"
-      ? "border-status-danger-border bg-status-danger-bg"
+      ? "border-red-800 bg-red-950/30"
       : tone === "watch"
-        ? "border-status-warning-border bg-status-warning-bg"
-        : "border-border-default bg-surface-panel";
+        ? "border-orange-800 bg-orange-950/30"
+        : "border-gray-700 bg-[#0f1419]";
 
   return (
-    <div className={cn("rounded-panel border px-md py-sm", toneClassName)}>
-      <div className="text-label-dense uppercase tracking-wide text-text-tertiary">{label}</div>
-      <div className="mt-xs font-mono text-[var(--type-numeric-md)] leading-tight text-text-primary">
+    <div className={cn("rounded-lg border px-4 py-3", toneClassName)}>
+      <div className="text-xs uppercase tracking-wider text-gray-500">{label}</div>
+      <div className="mt-2 font-mono text-2xl font-semibold leading-tight text-white">
         {value}
       </div>
-      <div className="mt-xs text-label-dense text-text-secondary">{detail}</div>
+      <div className="mt-1 text-xs text-gray-400">{detail}</div>
     </div>
   );
 }
