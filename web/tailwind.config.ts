@@ -243,7 +243,7 @@ const config: Config = {
         icon: "var(--density-icon-size)",
         "table-sm": "calc(var(--density-row-height-lg) * 8)",
         "table-md": "calc(var(--density-row-height-lg) * 12)",
-        "table-lg": "calc(var(--density-row-height-lg) * 16)",
+        "table-lg": "calc(100dvh - 200px)",
       },
       minHeight: {
         row: "var(--density-row-height)",
@@ -255,7 +255,7 @@ const config: Config = {
       maxHeight: {
         "table-sm": "calc(var(--density-row-height-lg) * 8)",
         "table-md": "calc(var(--density-row-height-lg) * 12)",
-        "table-lg": "calc(var(--density-row-height-lg) * 16)",
+        "table-lg": "calc(100dvh - 200px)",
       },
       transitionDuration: {
         fast: "var(--motion-fast)",
