@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { ErrorBanner } from "@/components/ocr/error-banner";
 import { OcrShell } from "@/components/ocr/ocr-shell";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -57,8 +56,7 @@ export default function OcrHistoryPage() {
   const { user, loading, error: sessionError } = useSession();
   const [busyId, setBusyId] = useState<number | null>(null);
   const [search, setSearch] = useState("");
-  const [statusMessage, setStatusMessage] = useState("");
-  const [localError, setLocalError] = useState("");
+  const [notifications, setNotifications] = useState<Array<{ id: string; message: string; type: "success" | "error" | "info" }>>([]);
   const [statusFilter, setStatusFilter] = useState<OcrVerifyQueueFilters["status"]>("all");
   const [exportStateFilter, setExportStateFilter] = useState<"all" | "pending" | "exported" | "failed" | "json_generated">("all");
   const [documentTypeFilter, setDocumentTypeFilter] = useState<string>("all");
@@ -157,21 +155,23 @@ export default function OcrHistoryPage() {
 
   const handleDownload = async (recordId: number) => {
     setBusyId(recordId);
-    setLocalError("");
-    setStatusMessage("");
     try {
       const download = await downloadOcrVerificationExport(recordId);
       const result = await transferBlob(download.blob, download.filename);
-      setStatusMessage(
-        result === "shared"
-          ? `Shared export for document #${recordId}.`
-          : `Downloaded export for document #${recordId}.`,
-      );
+      const message = result === "shared"
+        ? `Shared export for document #${recordId}.`
+        : `Downloaded export for document #${recordId}.`;
+      setNotifications((prev) => [...prev, { id: Date.now().toString(), message, type: "success" }]);
     } catch (reason) {
-      setLocalError(reason instanceof Error ? reason.message : "Could not download OCR export.");
+      const message = reason instanceof Error ? reason.message : "Could not download OCR export.";
+      setNotifications((prev) => [...prev, { id: Date.now().toString(), message, type: "error" }]);
     } finally {
       setBusyId(null);
     }
+  };
+
+  const handleDismissNotification = (id: string) => {
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
   };
 
   const columns = useMemo(
@@ -301,6 +301,8 @@ export default function OcrHistoryPage() {
       title="Recent OCR documents"
       subtitle="Reopen past runs, check their status, and download the latest export."
       step="result"
+      notifications={notifications}
+      onDismissNotification={handleDismissNotification}
       sideContent={
         <div className="space-y-4">
           <div className="factory-ocr-console factory-ocr-console--subtle rounded-[0.45rem] p-4">
@@ -357,20 +359,8 @@ export default function OcrHistoryPage() {
         </div>
       }
     >
-      <div className="space-y-4">
-        {statusMessage ? <ErrorBanner tone="success" message={statusMessage} /> : null}
-        {localError ? (
-          <ErrorBanner
-            message={localError}
-            actionLabel="Retry history"
-            onAction={() => {
-              setLocalError("");
-              void historyQuery.refetch();
-            }}
-          />
-        ) : null}
-
-        <div className="factory-ocr-panel-grid factory-ocr-panel-grid--four">
+      <div className="flex min-h-0 flex-1 flex-col space-y-4">
+        <div className="factory-ocr-panel-grid factory-ocr-panel-grid--four flex-shrink-0">
           <div className="factory-ocr-data-card">
             <div className="factory-ocr-data-card__label">Documents tracked</div>
             <div className="factory-ocr-data-card__value">{records.length}</div>
@@ -389,7 +379,7 @@ export default function OcrHistoryPage() {
           </div>
         </div>
 
-        <div className="rounded-[0.45rem] border border-border-subtle bg-surface-shell p-4">
+        <div className="flex-shrink-0 rounded-[0.45rem] border border-border-subtle bg-surface-shell p-4">
           <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
             <label className="space-y-2 text-sm text-text-secondary">
               <span className="text-text-primary">Status</span>

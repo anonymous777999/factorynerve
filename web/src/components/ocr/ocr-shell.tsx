@@ -1,7 +1,14 @@
 import type { ReactNode } from "react";
 
 import { Badge, type BadgeStatus } from "@/components/ui/badge";
+import { OcrNotificationDropdown } from "@/components/ocr/ocr-notification-dropdown";
 import { cn } from "@/lib/utils";
+
+type Notification = {
+  id: string;
+  message: string;
+  type: "success" | "error" | "info";
+};
 
 type OcrShellProps = {
   title: string;
@@ -11,6 +18,8 @@ type OcrShellProps = {
   sideContent?: ReactNode;
   mobile?: boolean;
   className?: string;
+  notifications?: Notification[];
+  onDismissNotification?: (id: string) => void;
 };
 
 const STEP_LABELS: Array<{ key: OcrShellProps["step"]; label: string }> = [
@@ -34,6 +43,8 @@ export function OcrShell({
   children,
   sideContent,
   className,
+  notifications = [],
+  onDismissNotification,
 }: OcrShellProps) {
   const activeIndex = STEP_LABELS.findIndex((item) => item.key === step);
   const shellStatus = shellStatusMap[step];
@@ -51,19 +62,25 @@ export function OcrShell({
               <h1 className="factory-ocr-header__title">{title}</h1>
               <p className="factory-ocr-header__subtitle">{subtitle}</p>
             </div>
-            <div className="factory-ocr-telemetry">
-              <div className="factory-ocr-telemetry__item">
-                <div className="factory-ocr-telemetry__label">Mode</div>
-                <div className="factory-ocr-telemetry__value">Queue-oriented review</div>
+            <div className="flex items-start gap-4">
+              <div className="factory-ocr-telemetry">
+                <div className="factory-ocr-telemetry__item">
+                  <div className="factory-ocr-telemetry__label">Mode</div>
+                  <div className="factory-ocr-telemetry__value">Queue-oriented review</div>
+                </div>
+                <div className="factory-ocr-telemetry__item">
+                  <div className="factory-ocr-telemetry__label">Priority</div>
+                  <div className="factory-ocr-telemetry__value">Operator throughput</div>
+                </div>
+                <div className="factory-ocr-telemetry__item">
+                  <div className="factory-ocr-telemetry__label">State</div>
+                  <div className="factory-ocr-telemetry__value">{shellStatus.label}</div>
+                </div>
               </div>
-              <div className="factory-ocr-telemetry__item">
-                <div className="factory-ocr-telemetry__label">Priority</div>
-                <div className="factory-ocr-telemetry__value">Operator throughput</div>
-              </div>
-              <div className="factory-ocr-telemetry__item">
-                <div className="factory-ocr-telemetry__label">State</div>
-                <div className="factory-ocr-telemetry__value">{shellStatus.label}</div>
-              </div>
+              <OcrNotificationDropdown
+                notifications={notifications}
+                onDismiss={onDismissNotification}
+              />
             </div>
           </div>
           <div className="factory-ocr-stagebar">
