@@ -45,15 +45,15 @@ type AlertFormState = {
 
 type AlertPanelState =
   | {
-      open: false;
-      mode: "add" | "edit";
-      recipientId: number | null;
-    }
+    open: false;
+    mode: "add" | "edit";
+    recipientId: number | null;
+  }
   | {
-      open: true;
-      mode: "add" | "edit";
-      recipientId: number | null;
-    };
+    open: true;
+    mode: "add" | "edit";
+    recipientId: number | null;
+  };
 
 type VerificationModalState = {
   open: boolean;
@@ -604,54 +604,54 @@ export default function SettingsAlertsTab({ active }: Props) {
     verificationModal.expiresAt != null ? Math.max(0, Math.ceil((verificationModal.expiresAt - nowTs) / 1000)) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="control-center-workspace space-y-6">
       <section className="grid gap-4 lg:grid-cols-3">
-        <Card>
+        <Card className="bg-[#151b24] border-cyan-900/30">
           <CardHeader>
-            <div className="text-sm text-[var(--muted)]">Active recipients</div>
-            <CardTitle>{recipientPayload?.active_count ?? 0}</CardTitle>
+            <div className="text-sm text-gray-400 font-mono uppercase tracking-wider">ACTIVE_RECIPIENTS</div>
+            <CardTitle className="text-cyan-300 font-mono">{recipientPayload?.active_count ?? 0}</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-[var(--muted)]">
-            {recipientPayload ? `${recipientPayload.plan} plan · ${recipientPayload.limit} active slot${recipientPayload.limit === 1 ? "" : "s"} total` : "Track who can currently receive live alerts."}
+          <CardContent className="text-sm text-gray-400 font-mono">
+            {recipientPayload ? `${recipientPayload.plan.toUpperCase()}_PLAN · ${recipientPayload.limit} ACTIVE_SLOT${recipientPayload.limit === 1 ? "" : "S"}_TOTAL` : "TRACK_WHO_CAN_RECEIVE_LIVE_ALERTS"}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-[#151b24] border-cyan-900/30">
           <CardHeader>
-            <div className="text-sm text-[var(--muted)]">Remaining capacity</div>
-            <CardTitle>
+            <div className="text-sm text-gray-400 font-mono uppercase tracking-wider">REMAINING_CAPACITY</div>
+            <CardTitle className="text-cyan-300 font-mono">
               {recipientPayload ? Math.max(0, recipientPayload.limit - recipientPayload.active_count) : "-"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-[var(--muted)]">
-            Unverified numbers do not count as live delivery targets until they are activated.
+          <CardContent className="text-sm text-gray-400 font-mono">
+            UNVERIFIED_NUMBERS_DO_NOT_COUNT_UNTIL_ACTIVATED
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-[#151b24] border-cyan-900/30">
           <CardHeader>
-            <div className="text-sm text-[var(--muted)]">Last alert sent</div>
-            <CardTitle className="text-xl">{latestAlert ? readableDeliveryStatus(latestAlert.delivery_status) : "No recent alert"}</CardTitle>
+            <div className="text-sm text-gray-400 font-mono uppercase tracking-wider">LAST_ALERT_SENT</div>
+            <CardTitle className="text-xl text-cyan-300 font-mono">{latestAlert ? readableDeliveryStatus(latestAlert.delivery_status).toUpperCase() : "NO_RECENT_ALERT"}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1 text-sm text-[var(--muted)]">
-            <div>{latestAlert ? formatAlertEventTypeLabel(latestAlert.event_type) : "Alert activity will appear here once delivery starts."}</div>
-            <div>{latestAlert ? formatDateTime(latestAlert.timestamp) : "Keep recipients verified and active to build delivery history."}</div>
+          <CardContent className="space-y-1 text-sm text-gray-400 font-mono">
+            <div>{latestAlert ? formatAlertEventTypeLabel(latestAlert.event_type).toUpperCase() : "ALERT_ACTIVITY_WILL_APPEAR_HERE"}</div>
+            <div>{latestAlert ? formatDateTime(latestAlert.timestamp) : "KEEP_RECIPIENTS_VERIFIED_AND_ACTIVE"}</div>
           </CardContent>
         </Card>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <Card className="min-w-0">
+        <Card className="min-w-0 bg-[#151b24] border-cyan-900/30">
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle className="text-xl">WhatsApp Recipients</CardTitle>
-              <div className="mt-2 text-sm text-[var(--muted)]">
-                Decide who receives critical factory alerts, what they get, and whether each route is trusted.
+              <CardTitle className="text-xl text-cyan-300 font-mono uppercase">WHATSAPP_RECIPIENTS</CardTitle>
+              <div className="mt-2 text-sm text-gray-400 font-mono">
+                DECIDE_WHO_RECEIVES_CRITICAL_FACTORY_ALERTS
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button variant="ghost" onClick={() => void loadRecipients()} disabled={recipientsLoading}>
-                {recipientsLoading ? "Refreshing..." : "Refresh"}
+              <Button variant="ghost" onClick={() => void loadRecipients()} disabled={recipientsLoading} className="font-mono uppercase border-cyan-900/30 text-cyan-300">
+                {recipientsLoading ? "REFRESHING..." : "REFRESH"}
               </Button>
-              <Button onClick={openAddModal}>Add Number</Button>
+              <Button onClick={openAddModal} className="bg-cyan-600 hover:bg-cyan-700 text-white font-mono uppercase tracking-wider">ADD_NUMBER</Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
