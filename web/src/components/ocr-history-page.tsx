@@ -359,7 +359,7 @@ export default function OcrHistoryPage() {
         </div>
       }
     >
-      <div className="flex min-h-0 flex-1 flex-col space-y-4">
+      <div className="flex min-h-0 flex-1 flex-col gap-4">
         <div className="factory-ocr-panel-grid factory-ocr-panel-grid--four flex-shrink-0">
           <div className="factory-ocr-data-card">
             <div className="factory-ocr-data-card__label">Documents tracked</div>
@@ -498,46 +498,49 @@ export default function OcrHistoryPage() {
           </div>
         </div>
 
-        <LoadingBoundary
-          hasData={records.length > 0}
-          isLoading={historyQuery.isLoading}
-          isError={historyQuery.isError}
-          error={historyQuery.error}
-          onRetry={() => void historyQuery.refetch()}
-          emptyTitle="No OCR history yet"
-          emptyMessage="Scanned and reviewed OCR documents will appear here automatically."
-          className="min-h-0 flex flex-1 flex-col"
-          contentClassName="min-h-0 flex flex-1 flex-col"
-        >
-          <div className="min-h-0 flex flex-1 flex-col overflow-y-auto overflow-x-hidden rounded-[0.45rem] border border-border-subtle bg-surface-shell">
-            <DataTable<OcrVerificationRecord>
-              ariaLabel="OCR history"
-              columns={columns}
-              data={records}
-              getRowId={(row) => String(row.id)}
-              selectedRowId={activeSelectedRecordId ? String(activeSelectedRecordId) : null}
-              onRowClick={(row) => setSelectedRecordId(Number(row.id))}
-              enableGlobalSearch
-              enableStickyFirstColumn
-              enableVirtualization={records.length > 20}
-              overscan={5}
-              className="min-h-0 h-full"
-              viewportClassName="h-full"
-              emptyTitle="No OCR documents match the current filters"
-              emptyMessage="Adjust the search term or scan a new document to continue the workflow."
-              renderToolbar={
-                <DataTableToolbar
-                  searchPlaceholder="Search by file, type, status, or export"
-                  searchValue={search}
-                  onSearchChange={setSearch}
-                  onClear={() => setSearch("")}
-                />
-              }
-              searchValue={search}
-              onSearchChange={setSearch}
-            />
-          </div>
-        </LoadingBoundary>
+        <div className="min-h-0 flex flex-1 flex-col">
+          <LoadingBoundary
+            hasData={records.length > 0}
+            isLoading={historyQuery.isLoading}
+            isError={historyQuery.isError}
+            error={historyQuery.error}
+            onRetry={() => void historyQuery.refetch()}
+            emptyTitle="No OCR history yet"
+            emptyMessage="Scanned and reviewed OCR documents will appear here automatically."
+            className="min-h-0 flex flex-1 flex-col"
+            contentClassName="min-h-0 flex flex-1 flex-col"
+          >
+            <div className="min-h-0 flex-1 rounded-[0.45rem] border border-border-subtle bg-surface-shell">
+              <DataTable<OcrVerificationRecord>
+                ariaLabel="OCR history"
+                columns={columns}
+                data={records}
+                getRowId={(row) => String(row.id)}
+                selectedRowId={activeSelectedRecordId ? String(activeSelectedRecordId) : null}
+                onRowClick={(row) => setSelectedRecordId(Number(row.id))}
+                enableGlobalSearch
+                enableStickyFirstColumn
+                enableVirtualization={records.length > 20}
+                overscan={5}
+                className="h-full"
+                viewportClassName="max-h-full overflow-y-auto"
+                viewportSize="lg"
+                emptyTitle="No OCR documents match the current filters"
+                emptyMessage="Adjust the search term or scan a new document to continue the workflow."
+                renderToolbar={
+                  <DataTableToolbar
+                    searchPlaceholder="Search by file, type, status, or export"
+                    searchValue={search}
+                    onSearchChange={setSearch}
+                    onClear={() => setSearch("")}
+                  />
+                }
+                searchValue={search}
+                onSearchChange={setSearch}
+              />
+            </div>
+          </LoadingBoundary>
+        </div>
       </div>
     </OcrShell>
   );
