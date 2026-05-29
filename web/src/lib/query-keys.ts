@@ -82,6 +82,9 @@ export const queryKeys = {
     queueRoot: () => [...queryKeys.ocrVerify.root(), "queue"] as const,
     queue: (filters: OcrVerifyQueueFilters) =>
       [...queryKeys.ocrVerify.root(), "queue", normalizeQueueFilters(filters)] as const,
+    historyRoot: () => [...queryKeys.ocrVerify.root(), "history"] as const,
+    history: (filters: OcrVerifyQueueFilters) =>
+      [...queryKeys.ocrVerify.root(), "history", normalizeQueueFilters(filters)] as const,
     detail: (id: number) => [...queryKeys.ocrVerify.root(), "detail", id] as const,
     detailIdle: () => [...queryKeys.ocrVerify.root(), "detail", "idle"] as const,
   },
