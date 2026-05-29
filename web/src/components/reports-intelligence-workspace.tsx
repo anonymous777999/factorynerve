@@ -243,7 +243,7 @@ export default function ReportsIntelligenceWorkspace() {
                                     {["Today", "Last 7d", "This Month"].map((range) => (
                                         <Button
                                             key={range}
-                                            variant={selectedRange === range ? "default" : "outline"}
+                                            variant={selectedRange === range ? "primary" : "outline"}
                                             size="compact"
                                             onClick={() => handleQuickRange(range)}
                                         >
