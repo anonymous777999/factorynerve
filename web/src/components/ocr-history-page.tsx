@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 
 import { OcrShell } from "@/components/ocr/ocr-shell";
 import { Badge } from "@/components/ui/badge";
@@ -153,7 +153,7 @@ export default function OcrHistoryPage() {
 
   const selectedEvents = selectedRecord?.audit_events ?? [];
 
-  const handleDownload = async (recordId: number) => {
+  const handleDownload = useCallback(async (recordId: number) => {
     setBusyId(recordId);
     try {
       const download = await downloadOcrVerificationExport(recordId);
@@ -168,11 +168,11 @@ export default function OcrHistoryPage() {
     } finally {
       setBusyId(null);
     }
-  };
+  }, []);
 
-  const handleDismissNotification = (id: string) => {
+  const handleDismissNotification = useCallback((id: string) => {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
-  };
+  }, []);
 
   const columns = useMemo(
     () => [
@@ -247,7 +247,7 @@ export default function OcrHistoryPage() {
         },
       }),
     ] as DataTableColumnDef<OcrVerificationRecord>[],
-    [busyId],
+    [busyId, handleDownload],
   );
 
   if (loading) {
@@ -519,7 +519,8 @@ export default function OcrHistoryPage() {
               onRowClick={(row) => setSelectedRecordId(Number(row.id))}
               enableGlobalSearch
               enableStickyFirstColumn
-              enableVirtualization={records.length > 100}
+              enableVirtualization={records.length > 20}
+              overscan={5}
               className="min-h-0 h-full"
               viewportClassName="h-full"
               emptyTitle="No OCR documents match the current filters"
