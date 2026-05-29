@@ -497,7 +497,7 @@ export default function OcrHistoryPage() {
           </div>
         </div>
 
-        <div className="flex flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col">
           {historyQuery.isLoading ? (
             <div className="flex flex-1 items-center justify-center bg-surface-elevated rounded-[0.45rem] border border-border-subtle">
               <div className="text-text-secondary">Loading OCR history...</div>
@@ -511,7 +511,7 @@ export default function OcrHistoryPage() {
               <div className="text-text-secondary">No OCR records found</div>
             </div>
           ) : (
-            <div className="flex-1 rounded-[0.45rem] border border-border-subtle bg-surface-shell">
+            <div className="min-h-0 flex-1 rounded-[0.45rem] border border-border-subtle bg-surface-shell">
               <DataTable<OcrVerificationRecord>
                 ariaLabel="OCR history"
                 columns={columns}
