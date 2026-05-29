@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
@@ -12,15 +13,18 @@ import {
   approveOcrVerification,
   createOcrVerification,
   getOcrVerification,
+  listOcrHistory,
   listOcrTemplates,
   listOcrVerifications,
   rejectOcrVerification,
   submitOcrVerification,
   updateOcrVerification,
+  getOcrVerificationSummary,
   type OcrTemplate,
   type OcrVerificationRecord,
   type OcrVerificationSavePayload,
   type OcrVerificationListFilters,
+  type OcrVerificationSummary,
 } from "@/lib/ocr";
 
 function sortVerifications(records: OcrVerificationRecord[]) {
@@ -49,6 +53,33 @@ export function useOcrVerifyTemplatesQuery(enabled: boolean) {
   return useQuery<OcrTemplate[]>({
     queryKey: queryKeys.ocrVerify.templates(),
     queryFn: ({ signal }) => listOcrTemplates({ signal }),
+    enabled,
+  });
+}
+
+export function useOcrHistoryInfiniteQuery(
+  filters: OcrVerifyQueueFilters,
+  enabled: boolean,
+  limit: number = 50,
+) {
+  const queryFilters: OcrVerificationListFilters = {
+    search: filters.search || undefined,
+    status: filters.status !== "all" ? filters.status : undefined,
+    exportState: filters.exportState && filters.exportState !== "all" ? filters.exportState : undefined,
+    documentType: filters.documentType || undefined,
+    reviewerId: filters.reviewerId,
+    minConfidence: filters.minConfidence ?? undefined,
+    maxConfidence: filters.maxConfidence ?? undefined,
+    updatedAfter: filters.updatedAfter || undefined,
+    updatedBefore: filters.updatedBefore || undefined,
+  };
+
+  return useInfiniteQuery({
+    queryKey: [...queryKeys.ocrVerify.queue(filters), "infinite"],
+    queryFn: ({ pageParam, signal }) =>
+      listOcrHistory(queryFilters, pageParam as string | null, limit, { signal }),
+    initialPageParam: null,
+    getNextPageParam: (lastPage) => lastPage.next_cursor ?? undefined,
     enabled,
   });
 }
@@ -108,6 +139,15 @@ export function useOcrVerifyDetailQuery(id: number | null, enabled: boolean) {
     queryKey: id != null ? queryKeys.ocrVerify.detail(id) : queryKeys.ocrVerify.detailIdle(),
     queryFn: ({ signal }) => getOcrVerification(id as number, { signal }),
     enabled: enabled && id != null,
+  });
+}
+
+export function useOcrVerificationSummaryQuery(enabled: boolean) {
+  return useQuery<OcrVerificationSummary>({
+    queryKey: [...queryKeys.ocrVerify.root(), "summary"],
+    queryFn: () => getOcrVerificationSummary(),
+    enabled,
+    staleTime: 30000,
   });
 }
 

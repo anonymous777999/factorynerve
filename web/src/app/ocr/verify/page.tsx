@@ -3,14 +3,30 @@ import "@/v2/systems/styles/factory-nerve.ui.css";
 import { redirect } from "next/navigation";
 
 import { NEW_OCR_VERIFY, USE_GOVERNED_OCR_WORKSPACE } from "@/config/featureFlags";
-import OcrVerificationPage from "@/legacy-ui/ocr/ocr-verification-page";
-import OcrVerificationV2Page from "@/legacy-ui/ocr/ocr-verification-v2-page";
 import { buildCanonicalOcrVerifyHref } from "@/lib/ocr-verify-route";
-import { GovernedOcrVerificationPage } from "@/v2/workspaces/ocr-execution";
+import { Suspense, lazy } from "react";
+
+const GovernedOcrVerificationPage = lazy(() =>
+  import("@/v2/workspaces/ocr-execution").then(m => ({ default: m.GovernedOcrVerificationPage }))
+);
+
+const OcrVerificationPage = lazy(() => import("@/legacy-ui/ocr/ocr-verification-page"));
+const OcrVerificationV2Page = lazy(() => import("@/legacy-ui/ocr/ocr-verification-v2-page"));
 
 type OcrVerifyRoutePageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
+
+function VerifyLoading() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-surface-app text-sm text-text-secondary">
+      <div className="flex flex-col items-center gap-4">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-action-primary border-t-transparent" />
+        Loading OCR workspace...
+      </div>
+    </main>
+  );
+}
 
 export default async function OcrVerifyRoutePage({
   searchParams,
@@ -21,15 +37,27 @@ export default async function OcrVerifyRoutePage({
     : resolvedSearchParams.workspace;
 
   if (!NEW_OCR_VERIFY) {
-    return <OcrVerificationPage />;
+    return (
+      <Suspense fallback={<VerifyLoading />}>
+        <OcrVerificationPage />
+      </Suspense>
+    );
   }
 
   if (workspaceOverride === "legacy") {
-    return <OcrVerificationV2Page />;
+    return (
+      <Suspense fallback={<VerifyLoading />}>
+        <OcrVerificationV2Page />
+      </Suspense>
+    );
   }
 
   if (workspaceOverride === "governed" || USE_GOVERNED_OCR_WORKSPACE || !workspaceOverride) {
-    return <GovernedOcrVerificationPage />;
+    return (
+      <Suspense fallback={<VerifyLoading />}>
+        <GovernedOcrVerificationPage />
+      </Suspense>
+    );
   }
 
   const canonicalHref = buildCanonicalOcrVerifyHref(resolvedSearchParams);
@@ -53,5 +81,9 @@ export default async function OcrVerifyRoutePage({
     redirect(canonicalHref);
   }
 
-  return <OcrVerificationV2Page />;
+  return (
+    <Suspense fallback={<VerifyLoading />}>
+      <OcrVerificationV2Page />
+    </Suspense>
+  );
 }
