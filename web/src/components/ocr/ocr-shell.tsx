@@ -50,9 +50,9 @@ export function OcrShell({
   const shellStatus = shellStatusMap[step];
 
   return (
-    <main className="factory-ocr-scope flex min-h-0 flex-col px-4 py-4 md:px-6 md:py-5">
+    <main className="factory-ocr-scope flex min-h-screen flex-col px-4 py-4 md:px-6 md:py-5">
       <div className="factory-ocr-shell flex min-h-0 flex-1 flex-col">
-        <section className="factory-ocr-header">
+        <section className="factory-ocr-header flex-shrink-0">
           <div className="factory-ocr-header__meta">
             <div className="max-w-4xl">
               <div className="flex flex-wrap items-center gap-3">
