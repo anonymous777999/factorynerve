@@ -294,7 +294,7 @@ function AppShellFrame({
 
       <div
         className={cn(
-          "factory-workstation-frame flex min-h-screen min-w-0 flex-1 flex-col bg-surface-shell transition-[padding-left] duration-300 ease-out",
+          "factory-workstation-frame flex min-h-screen min-w-0 flex-1 flex-col overflow-y-auto bg-surface-shell transition-[padding-left] duration-300 ease-out",
           shell.immersiveScannerRoute ? "lg:pl-[13.75rem]" : shell.sidebarOpen ? "lg:pl-[13.75rem]" : "lg:pl-0",
         )}
       >

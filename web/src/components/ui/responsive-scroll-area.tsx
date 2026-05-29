@@ -12,6 +12,7 @@ type ResponsiveScrollAreaProps = {
   debugLabel?: string;
   showIndicators?: boolean;
   viewportRef?: Ref<HTMLDivElement | null>;
+  scrollableY?: boolean;
 };
 
 function assignRef<TValue>(ref: Ref<TValue | null> | undefined, value: TValue | null) {
@@ -35,6 +36,7 @@ export function ResponsiveScrollArea({
   debugLabel,
   showIndicators = true,
   viewportRef,
+  scrollableY = true,
 }: ResponsiveScrollAreaProps) {
   const internalViewportRef = useRef<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -96,7 +98,11 @@ export function ResponsiveScrollArea({
           internalViewportRef.current = node;
           assignRef(viewportRef, node);
         }}
-        className={cn("responsive-scroll-area__viewport overflow-x-auto overflow-y-hidden", viewportClassName)}
+        className={cn(
+          "responsive-scroll-area__viewport overflow-x-auto",
+          scrollableY ? "overflow-y-auto" : "overflow-y-hidden",
+          viewportClassName
+        )}
       >
         <div className={cn("responsive-scroll-area__inner min-w-full", innerClassName)}>{children}</div>
       </div>
