@@ -499,17 +499,28 @@ export default function OcrHistoryPage() {
         </div>
 
         <div className="flex flex-1 flex-col">
-          <LoadingBoundary
-            hasData={records.length > 0}
-            isLoading={historyQuery.isLoading}
-            isError={historyQuery.isError}
-            error={historyQuery.error}
-            onRetry={() => void historyQuery.refetch()}
-            emptyTitle="No OCR history yet"
-            emptyMessage="Scanned and reviewed OCR documents will appear here automatically."
-            className="flex flex-1 flex-col"
-            contentClassName="flex flex-1 flex-col"
-          >
+          {/* Debug info */}
+          <div className="mb-2 text-xs text-text-secondary">
+            Debug: Loading={historyQuery.isLoading ? 'true' : 'false'},
+            Error={historyQuery.isError ? 'true' : 'false'},
+            Records={records.length},
+            User={user ? 'logged in' : 'not logged in'},
+            CanAccess={canAccess ? 'true' : 'false'}
+          </div>
+
+          {historyQuery.isLoading ? (
+            <div className="flex flex-1 items-center justify-center bg-surface-elevated rounded-[0.45rem] border border-border-subtle">
+              <div className="text-text-secondary">Loading OCR history...</div>
+            </div>
+          ) : historyQuery.isError ? (
+            <div className="flex flex-1 items-center justify-center bg-surface-elevated rounded-[0.45rem] border border-border-subtle">
+              <div className="text-error">Error loading OCR history: {historyQuery.error?.message}</div>
+            </div>
+          ) : records.length === 0 ? (
+            <div className="flex flex-1 items-center justify-center bg-surface-elevated rounded-[0.45rem] border border-border-subtle">
+              <div className="text-text-secondary">No OCR records found</div>
+            </div>
+          ) : (
             <div className="flex-1 rounded-[0.45rem] border border-border-subtle bg-surface-shell">
               <DataTable<OcrVerificationRecord>
                 ariaLabel="OCR history"
@@ -539,7 +550,7 @@ export default function OcrHistoryPage() {
                 onSearchChange={setSearch}
               />
             </div>
-          </LoadingBoundary>
+          )}
         </div>
       </div>
     </OcrShell>
