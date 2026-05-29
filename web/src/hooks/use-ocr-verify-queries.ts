@@ -96,7 +96,7 @@ export function useOcrHistoryQuery(filters: OcrVerifyQueueFilters, enabled: bool
   };
 
   return useQuery<OcrVerificationRecord[]>({
-    queryKey: queryKeys.ocrVerify.queue(filters),
+    queryKey: queryKeys.ocrVerify.history(filters),
     queryFn: ({ signal }) => listOcrVerifications(queryFilters, { signal }),
     select: (records) => sortVerifications(records),
     enabled,
@@ -125,6 +125,7 @@ export function useOcrVerifyRecordMutation<TVariables>(
         await queryClient.invalidateQueries({ queryKey: queryKeys.ocrVerify.detail(record.id) });
       }
       await queryClient.invalidateQueries({ queryKey: queryKeys.ocrVerify.queueRoot() });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.ocrVerify.historyRoot() });
       await options.onSuccess?.(record, variables, onMutateResult, context);
     },
   });
