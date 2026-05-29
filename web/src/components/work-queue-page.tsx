@@ -1209,62 +1209,62 @@ export default function WorkQueuePage() {
   }
 
   return (
-    <main className="operational-page">
+    <main className="operational-page control-center-workspace">
       <div className="operational-page__inner">
         {/* AUDIT: FLOW_BROKEN - Added a short operating sequence so the queue reads as process-next work, not a wall of diagnostics. */}
         <section className="grid gap-4 md:grid-cols-3">
           {[
-            { step: "1", title: t("queue.steps.one_title", "Pick focus"), detail: t("queue.steps.one_detail", "Switch between today, review, and alert lanes.") },
-            { step: "2", title: t("queue.steps.two_title", "Process next"), detail: t("queue.steps.two_detail", "Take the top priority item before scanning the rest of the queue.") },
-            { step: "3", title: t("queue.steps.three_title", "Check load"), detail: t("queue.steps.three_detail", "Open queue signals only when you need broader context.") },
+            { step: "1", title: "PICK_FOCUS", detail: "Switch between today, review, and alert lanes." },
+            { step: "2", title: "PROCESS_NEXT", detail: "Take the top priority item before scanning the rest of the queue." },
+            { step: "3", title: "CHECK_LOAD", detail: "Open queue signals only when you need broader context." },
           ].map((item) => (
             <div
               key={item.step}
-              className="operational-panel px-4 py-4"
+              className="operational-panel px-4 py-4 bg-[#151b24] border-cyan-900/30"
             >
-              <div className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--accent)]">Step {item.step}</div>
-              <div className="mt-2 font-semibold text-[var(--text)]">{item.title}</div>
-              <div className="mt-1 text-sm text-[var(--muted)]">{item.detail}</div>
+              <div className="text-[0.65rem] uppercase tracking-[0.28em] text-cyan-400 font-mono">STEP_{item.step}</div>
+              <div className="mt-2 font-semibold text-cyan-300 font-mono uppercase">{item.title}</div>
+              <div className="mt-1 text-sm text-gray-400 font-mono">{item.detail}</div>
             </div>
           ))}
         </section>
 
-        <section className="operational-hero">
+        <section className="operational-hero bg-[#151b24] border-cyan-900/30">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">{t("queue.daily_coordination", "Daily Coordination")}</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{t("queue.title", "Work Queue")}</h1>
+              <div className="text-sm uppercase tracking-[0.3em] text-cyan-400 font-mono">DAILY_COORDINATION</div>
+              <h1 className="mt-2 text-3xl font-semibold md:text-4xl text-cyan-300 font-mono uppercase">WORK_QUEUE</h1>
               {/* AUDIT: TEXT_NOISE - The hero now states the operating outcome once and leaves the detailed coordination logic to the queue itself. */}
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                {t("queue.hero.subtitle", "See the next task and act fast.")}
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-gray-400 font-mono">
+                See the next task and act fast.
               </p>
             </div>
-            <div className="space-y-3 text-sm text-[var(--muted)]">
+            <div className="space-y-3 text-sm text-gray-400 font-mono">
               <div className="flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
-                  Factory: <span className="font-semibold text-[var(--text)]">{activeFactory?.name || user.factory_name}</span>
+                <span className="rounded-full border border-cyan-900/30 bg-[#0a0e14] px-3 py-1.5 font-mono">
+                  FACTORY: <span className="font-semibold text-cyan-300">{activeFactory?.name || user.factory_name}</span>
                 </span>
-                <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
-                  Org: <span className="font-semibold text-[var(--text)]">{organization?.name || "Current organization"}</span>
+                <span className="rounded-full border border-cyan-900/30 bg-[#0a0e14] px-3 py-1.5 font-mono">
+                  ORG: <span className="font-semibold text-cyan-300">{organization?.name || "Current organization"}</span>
                 </span>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Button
                   variant="outline"
-                  className="px-4 py-2 text-xs"
+                  className="px-4 py-2 text-xs bg-cyan-600 hover:bg-cyan-700 text-white font-mono uppercase tracking-wider border-cyan-500"
                   onClick={() => {
                     void loadQueue({ background: true });
                   }}
                   disabled={refreshing}
                 >
-                  {refreshing ? t("queue.actions.refreshing", "Refreshing...") : t("queue.actions.refresh", "Refresh Queue")}
+                  {refreshing ? "REFRESHING..." : "REFRESH_QUEUE"}
                 </Button>
-                <span className="text-xs text-[var(--muted)]">
+                <span className="text-xs text-gray-400 font-mono">
                   {refreshing
-                    ? t("queue.actions.updating", "Updating queue...")
+                    ? "UPDATING_QUEUE..."
                     : lastUpdatedAt
-                      ? t("queue.actions.updated", "Updated {{value}}", { value: formatDateTime(lastUpdatedAt) })
-                      : t("queue.actions.live_updates", "Live updates every 25 seconds")}
+                      ? `UPDATED_${formatDateTime(lastUpdatedAt)}`
+                      : "LIVE_UPDATES_EVERY_25_SECONDS"}
                 </span>
               </div>
             </div>
@@ -1274,14 +1274,14 @@ export default function WorkQueuePage() {
             <div className="mt-5 flex flex-wrap gap-3">
               {/* AUDIT: BUTTON_CLUTTER - The hero now exposes the next queue action first and moves route shortcuts behind a compact tools tray. */}
               <Link href={nextUpItem.href}>
-                <Button>{nextUpItem.action}</Button>
+                <Button className="bg-cyan-600 hover:bg-cyan-700 text-white font-mono uppercase tracking-wider">{nextUpItem.action}</Button>
               </Link>
-              <details className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-3 py-2 text-sm text-[var(--muted)]">
-                <summary className="cursor-pointer list-none">{t("queue.actions.tools", "Tools")}</summary>
+              <details className="rounded-full border border-cyan-900/30 bg-[#0a0e14] px-3 py-2 text-sm text-gray-400 font-mono">
+                <summary className="cursor-pointer list-none uppercase">TOOLS</summary>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {quickActions.map((action) => (
                     <Link key={action.href} href={action.href}>
-                      <Button variant={action.variant || "outline"}>{action.label}</Button>
+                      <Button variant={action.variant || "outline"} className="font-mono uppercase">{action.label}</Button>
                     </Link>
                   ))}
                 </div>
@@ -1291,18 +1291,18 @@ export default function WorkQueuePage() {
             <div className="mt-5 flex flex-wrap gap-3">
               {quickActions.map((action) => (
                 <Link key={action.href} href={action.href}>
-                  <Button variant={action.variant || "primary"}>{action.label}</Button>
+                  <Button variant={action.variant || "primary"} className="font-mono uppercase">{action.label}</Button>
                 </Link>
               ))}
             </div>
           ) : null}
         </section>
 
-        {error ? <div className="operational-panel border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">{error}</div> : null}
-        {sessionError ? <div className="operational-panel border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">{sessionError}</div> : null}
+        {error ? <div className="operational-panel border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg font-mono">{error}</div> : null}
+        {sessionError ? <div className="operational-panel border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg font-mono">{sessionError}</div> : null}
         {refreshing ? (
-          <div className="surface-muted px-4 py-3 text-sm text-[var(--muted)]">
-            {t("queue.refreshing_background", "Refreshing queue data in the background...")}
+          <div className="surface-muted px-4 py-3 text-sm text-gray-400 font-mono">
+            REFRESHING_QUEUE_DATA_IN_BACKGROUND...
           </div>
         ) : null}
         {sectionErrorEntries.length ? (
@@ -1310,9 +1310,9 @@ export default function WorkQueuePage() {
             {sectionErrorEntries.map(([section, message]) => (
               <div
                 key={section}
-                className="operational-panel border-status-warning-border bg-status-warning-bg px-4 py-3 text-xs text-status-warning-fg"
+                className="operational-panel border-status-warning-border bg-status-warning-bg px-4 py-3 text-xs text-status-warning-fg font-mono"
               >
-                <div className="font-semibold uppercase tracking-[0.14em]">{sectionLabel(section)}</div>
+                <div className="font-semibold uppercase tracking-[0.14em]">{sectionLabel(section).toUpperCase()}</div>
                 <div className="mt-1 leading-5">{message}</div>
               </div>
             ))}
@@ -1320,59 +1320,59 @@ export default function WorkQueuePage() {
         ) : null}
 
         {/* AUDIT: DENSITY_OVERLOAD - Queue totals stay available, but they now sit behind one pulse drawer instead of taking equal weight with the next action lane. */}
-        <details className="telemetry-rail p-4">
-          <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("queue.pulse", "Queue pulse")}</summary>
+        <details className="telemetry-rail p-4 bg-[#151b24] border-cyan-900/30">
+          <summary className="cursor-pointer list-none text-sm font-semibold text-cyan-300 font-mono uppercase">QUEUE_PULSE</summary>
           <section className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            <Card>
+            <Card className="bg-[#0a0e14] border-cyan-900/30">
               <CardHeader>
-                <div className="text-sm text-[var(--muted)]">Open Items</div>
-                <CardTitle>{filterCounts.all}</CardTitle>
+                <div className="text-sm text-gray-400 font-mono uppercase tracking-wider">OPEN_ITEMS</div>
+                <CardTitle className="text-cyan-300 font-mono">{filterCounts.all}</CardTitle>
               </CardHeader>
-              <CardContent className="text-sm text-[var(--muted)]">All lanes</CardContent>
+              <CardContent className="text-sm text-gray-400 font-mono">ALL_LANES</CardContent>
             </Card>
-            <Card>
+            <Card className="bg-[#0a0e14] border-cyan-900/30">
               <CardHeader>
-                <div className="text-sm text-[var(--muted)]">Today</div>
-                <CardTitle>{filterCounts.today}</CardTitle>
+                <div className="text-sm text-gray-400 font-mono uppercase tracking-wider">TODAY</div>
+                <CardTitle className="text-cyan-300 font-mono">{filterCounts.today}</CardTitle>
               </CardHeader>
-              <CardContent className="text-sm text-[var(--muted)]">Today only</CardContent>
+              <CardContent className="text-sm text-gray-400 font-mono">TODAY_ONLY</CardContent>
             </Card>
-            <Card>
+            <Card className="bg-[#0a0e14] border-cyan-900/30">
               <CardHeader>
-                <div className="text-sm text-[var(--muted)]">Review</div>
-                <CardTitle>{filterCounts.review}</CardTitle>
+                <div className="text-sm text-gray-400 font-mono uppercase tracking-wider">REVIEW</div>
+                <CardTitle className="text-cyan-300 font-mono">{filterCounts.review}</CardTitle>
               </CardHeader>
-              <CardContent className="text-sm text-[var(--muted)]">Needs review</CardContent>
+              <CardContent className="text-sm text-gray-400 font-mono">NEEDS_REVIEW</CardContent>
             </Card>
-            <Card>
+            <Card className="bg-[#0a0e14] border-cyan-900/30">
               <CardHeader>
-                <div className="text-sm text-[var(--muted)]">Unread Alerts</div>
-                <CardTitle>{state.alerts.length}</CardTitle>
+                <div className="text-sm text-gray-400 font-mono uppercase tracking-wider">UNREAD_ALERTS</div>
+                <CardTitle className="text-cyan-300 font-mono">{state.alerts.length}</CardTitle>
               </CardHeader>
-              <CardContent className="text-sm text-[var(--muted)]">Unread now</CardContent>
+              <CardContent className="text-sm text-gray-400 font-mono">UNREAD_NOW</CardContent>
             </Card>
           </section>
         </details>
 
         <section className="grid gap-6 xl:grid-cols-[1.08fr_0.92fr]">
-          <Card>
+          <Card className="bg-[#151b24] border-cyan-900/30">
             <CardHeader>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <div className="text-sm text-[var(--muted)]">{t("queue.view", "Queue View")}</div>
-                  <CardTitle className="text-xl">{t("queue.process_next", "Process next")}</CardTitle>
+                  <div className="text-sm text-gray-400 font-mono uppercase tracking-wider">QUEUE_VIEW</div>
+                  <CardTitle className="text-xl text-cyan-300 font-mono uppercase">PROCESS_NEXT</CardTitle>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {([
-                    ["all", "All"],
-                    ["today", "Today"],
-                    ["review", "Review"],
-                    ["alerts", "Alerts"],
+                    ["all", "ALL"],
+                    ["today", "TODAY"],
+                    ["review", "REVIEW"],
+                    ["alerts", "ALERTS"],
                   ] as const).map(([key, label]) => (
                     <Button
                       key={key}
                       variant={filter === key ? "primary" : "outline"}
-                      className="px-4 py-2 text-xs"
+                      className={`px-4 py-2 text-xs font-mono uppercase tracking-wider ${filter === key ? "bg-cyan-600 hover:bg-cyan-700 text-white" : "border-cyan-900/30 text-cyan-300"}`}
                       onClick={() => setFilter(key)}
                     >
                       {label}
@@ -1384,19 +1384,19 @@ export default function WorkQueuePage() {
             <CardContent className="space-y-3">
               {nextUpItem ? (
                 <>
-                  {/* AUDIT: FLOW_BROKEN - The top-priority task now has its own dedicated “next up” treatment instead of blending into the rest of the list. */}
+                  {/* AUDIT: FLOW_BROKEN - The top-priority task now has its own dedicated “NEXT_UP” treatment instead of blending into the rest of the list. */}
                   <div className={`rounded-panel border p-4 shadow-xs ${toneClass(nextUpItem.tone)}`}>
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
                           <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${toneBadgeClass(nextUpItem.tone)}`}>
-                            Next Up
+                            NEXT_UP
                           </span>
-                          <span className="text-xs text-[var(--muted)]">{sectionLabel(nextUpItem.section)}</span>
-                          {nextUpItem.meta ? <span className="text-xs text-[var(--muted)]">{nextUpItem.meta}</span> : null}
+                          <span className="text-xs text-gray-400 font-mono">{sectionLabel(nextUpItem.section)}</span>
+                          {nextUpItem.meta ? <span className="text-xs text-gray-400 font-mono">{nextUpItem.meta}</span> : null}
                         </div>
-                        <div className="text-lg font-semibold text-[var(--text)]">{nextUpItem.title}</div>
-                        <div className="text-sm leading-6 text-[var(--muted)]">{nextUpItem.detail}</div>
+                        <div className="text-lg font-semibold text-cyan-300 font-mono">{nextUpItem.title}</div>
+                        <div className="text-sm leading-6 text-gray-400 font-mono">{nextUpItem.detail}</div>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         <Link href={nextUpItem.href}>
@@ -1411,7 +1411,7 @@ export default function WorkQueuePage() {
                             }}
                             disabled={Boolean(markingAlertIds[nextUpItem.alertId!])}
                           >
-                            {markingAlertIds[nextUpItem.alertId!] ? "Marking..." : "Mark Read"}
+                            {markingAlertIds[nextUpItem.alertId!] ? "MARKING..." : "MARK_READ"}
                           </Button>
                         ) : null}
                       </div>
@@ -1419,40 +1419,40 @@ export default function WorkQueuePage() {
                   </div>
                   {remainingFilteredItems.length ? (
                     // AUDIT: DENSITY_OVERLOAD - Remaining queue items are still accessible, but they now sit behind a secondary reveal so the page can emphasize the immediate next task.
-                    <details className="surface-muted p-4">
-                      <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">
-                        More items ({remainingFilteredItems.length})
+                    <details className="surface-muted p-4 bg-[#0a0e14] border-cyan-900/30">
+                      <summary className="cursor-pointer list-none text-sm font-semibold text-cyan-300 font-mono uppercase">
+                        MORE_ITEMS ({remainingFilteredItems.length})
                       </summary>
                       <div className="mt-4 space-y-3">
                         {remainingFilteredItems.map((item) => (
-                          <div key={item.id} className={`rounded-2xl border p-4 ${toneClass(item.tone)}`}>
+                          <div key={item.id} className={`rounded-2xl border p-4 bg-[#0a0e14] border-cyan-900/30 ${toneClass(item.tone)}`}>
                             <div className="flex flex-wrap items-start justify-between gap-3">
                               <div className="space-y-2">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${toneBadgeClass(item.tone)}`}>
-                                    {sectionLabel(item.section)}
+                                  <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] font-mono ${toneBadgeClass(item.tone)}`}>
+                                    {sectionLabel(item.section).toUpperCase()}
                                   </span>
-                                  {item.meta ? <span className="text-xs text-[var(--muted)]">{item.meta}</span> : null}
+                                  {item.meta ? <span className="text-xs text-gray-400 font-mono">{item.meta}</span> : null}
                                 </div>
-                                <div className="text-sm font-semibold text-[var(--text)]">{item.title}</div>
-                                <div className="text-xs leading-5 text-[var(--muted)]">{item.detail}</div>
+                                <div className="text-sm font-semibold text-cyan-300 font-mono">{item.title}</div>
+                                <div className="text-xs leading-5 text-gray-400 font-mono">{item.detail}</div>
                               </div>
                               <div className="flex flex-wrap gap-2">
                                 <Link href={item.href}>
-                                  <Button variant={item.isOverflow ? "primary" : "outline"} className="px-4 py-2 text-xs">
+                                  <Button variant={item.isOverflow ? "primary" : "outline"} className="px-4 py-2 text-xs bg-cyan-600 hover:bg-cyan-700 text-white font-mono uppercase tracking-wider">
                                     {item.action}
                                   </Button>
                                 </Link>
                                 {typeof item.alertId === "number" ? (
                                   <Button
                                     variant="ghost"
-                                    className="px-4 py-2 text-xs"
+                                    className="px-4 py-2 text-xs font-mono uppercase"
                                     onClick={() => {
                                       void markAlertAsRead(item.alertId!);
                                     }}
                                     disabled={Boolean(markingAlertIds[item.alertId!])}
                                   >
-                                    {markingAlertIds[item.alertId!] ? "Marking..." : "Mark Read"}
+                                    {markingAlertIds[item.alertId!] ? "MARKING..." : "MARK_READ"}
                                   </Button>
                                 ) : null}
                               </div>
@@ -1464,71 +1464,71 @@ export default function WorkQueuePage() {
                   ) : null}
                 </>
               ) : (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-5 text-sm text-[var(--muted)]">
-                  No items are waiting in this queue view right now.
+                <div className="rounded-2xl border border-cyan-900/30 bg-[#0a0e14] p-5 text-sm text-gray-400 font-mono uppercase">
+                  NO_ITEMS_WAITING_IN_QUEUE_VIEW
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <details className="telemetry-rail p-4">
-            <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("queue.signals", "Queue signals")}</summary>
+          <details className="telemetry-rail p-4 bg-[#151b24] border-cyan-900/30">
+            <summary className="cursor-pointer list-none text-sm font-semibold text-cyan-300 font-mono uppercase">QUEUE_SIGNALS</summary>
             <div className="mt-4 space-y-6">
-              <Card>
+              <Card className="bg-[#151b24] border-cyan-900/30">
                 <CardHeader>
-                  <div className="text-sm text-[var(--muted)]">Queue Snapshot</div>
-                  <CardTitle className="text-xl">Where the work is stacking up</CardTitle>
+                  <div className="text-sm text-gray-400 font-mono uppercase tracking-wider">QUEUE_SNAPSHOT</div>
+                  <CardTitle className="text-xl text-cyan-300 font-mono uppercase">WHERE_WORK_IS_STACKING_UP</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 text-sm text-[var(--muted)]">
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="text-xs uppercase tracking-[0.16em]">Pending DPR Review</div>
-                    <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{state.pendingEntryTotal}</div>
+                <CardContent className="space-y-4 text-sm text-gray-400 font-mono">
+                  <div className="rounded-2xl border border-cyan-900/30 bg-[#0a0e14] p-4">
+                    <div className="text-xs uppercase tracking-[0.16em] font-mono">PENDING_DPR_REVIEW</div>
+                    <div className="mt-2 text-2xl font-semibold text-cyan-300 font-mono">{state.pendingEntryTotal}</div>
                   </div>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="text-xs uppercase tracking-[0.16em]">OCR Waiting</div>
-                    <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{state.pendingVerifications.length}</div>
+                  <div className="rounded-2xl border border-cyan-900/30 bg-[#0a0e14] p-4">
+                    <div className="text-xs uppercase tracking-[0.16em] font-mono">OCR_WAITING</div>
+                    <div className="mt-2 text-2xl font-semibold text-cyan-300 font-mono">{state.pendingVerifications.length}</div>
                   </div>
                   {isSteelFactory ? (
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                      <div className="text-xs uppercase tracking-[0.16em]">Stock Reviews</div>
-                      <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{state.pendingReconciliations.length}</div>
+                    <div className="rounded-2xl border border-cyan-900/30 bg-[#0a0e14] p-4">
+                      <div className="text-xs uppercase tracking-[0.16em] font-mono">STOCK_REVIEWS</div>
+                      <div className="mt-2 text-2xl font-semibold text-cyan-300 font-mono">{state.pendingReconciliations.length}</div>
                     </div>
                   ) : null}
                   {canSubmit ? (
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                      <div className="text-xs uppercase tracking-[0.16em]">Open Shifts Today</div>
-                      <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{missingShifts.length}</div>
+                    <div className="rounded-2xl border border-cyan-900/30 bg-[#0a0e14] p-4">
+                      <div className="text-xs uppercase tracking-[0.16em] font-mono">OPEN_SHIFTS_TODAY</div>
+                      <div className="mt-2 text-2xl font-semibold text-cyan-300 font-mono">{missingShifts.length}</div>
                     </div>
                   ) : null}
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="bg-[#151b24] border-cyan-900/30">
                 <CardHeader>
-                  <div className="text-sm text-[var(--muted)]">Recent Signals</div>
-                  <CardTitle className="text-xl">Immediate context</CardTitle>
+                  <div className="text-sm text-gray-400 font-mono uppercase tracking-wider">RECENT_SIGNALS</div>
+                  <CardTitle className="text-xl text-cyan-300 font-mono uppercase">IMMEDIATE_CONTEXT</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="font-semibold text-[var(--text)]">Submitted today</div>
+                <CardContent className="space-y-3 text-sm text-gray-400 font-mono">
+                  <div className="rounded-2xl border border-cyan-900/30 bg-[#0a0e14] p-4">
+                    <div className="font-semibold text-cyan-300 font-mono uppercase">SUBMITTED_TODAY</div>
                     <div className="mt-1">
                       {state.todayEntries.length
-                        ? `${state.todayEntries.length} shift entr${state.todayEntries.length === 1 ? "y has" : "ies have"} already been recorded.`
-                        : "No shift entries have been recorded in this factory today."}
+                        ? `${state.todayEntries.length} SHIFT_ENTR${state.todayEntries.length === 1 ? "Y_HAS" : "IES_HAVE"}_ALREADY_BEEN_RECORDED`
+                        : "NO_SHIFT_ENTRIES_RECORDED_IN_FACTORY_TODAY"}
                     </div>
                   </div>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="font-semibold text-[var(--text)]">Latest alert time</div>
+                  <div className="rounded-2xl border border-cyan-900/30 bg-[#0a0e14] p-4">
+                    <div className="font-semibold text-cyan-300 font-mono uppercase">LATEST_ALERT_TIME</div>
                     <div className="mt-1">
-                      {state.alerts[0]?.created_at ? formatDateTime(state.alerts[0].created_at) : "No recent unread alerts."}
+                      {state.alerts[0]?.created_at ? formatDateTime(state.alerts[0].created_at) : "NO_RECENT_UNREAD_ALERTS"}
                     </div>
                   </div>
-                  <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="font-semibold text-[var(--text)]">Offline status</div>
+                  <div className="rounded-2xl border border-cyan-900/30 bg-[#0a0e14] p-4">
+                    <div className="font-semibold text-cyan-300 font-mono uppercase">OFFLINE_STATUS</div>
                     <div className="mt-1">
                       {state.queueCount > 0
-                        ? `${state.queueCount} item${state.queueCount === 1 ? "" : "s"} still need sync on this device.`
-                        : "This device has no waiting offline work."}
+                        ? `${state.queueCount} ITEM${state.queueCount === 1 ? "" : "S"}_STILL_NEED_SYNC_ON_DEVICE`
+                        : "NO_WAITING_OFFLINE_WORK_ON_DEVICE"}
                     </div>
                   </div>
                 </CardContent>
