@@ -168,7 +168,12 @@ function TimelineChart({ points }: { points: DerivedTimelinePoint[] }) {
 
   return (
     <div className="space-y-4">
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full overflow-visible rounded-3xl border border-[var(--border)] bg-[rgba(10,14,22,0.8)] p-2">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="w-full overflow-visible rounded-3xl border border-[var(--border)] bg-[rgba(10,14,22,0.8)] p-2"
+        role="img"
+        aria-label={`Production trend line chart showing units produced and performance percentage across ${points.length} day${points.length === 1 ? "" : "s"}. A per-day data summary follows below the chart.`}
+      >
         {Array.from({ length: 4 }).map((_, index) => {
           const y = padding + (index * (height - padding * 2)) / 3;
           return (
@@ -229,11 +234,10 @@ function FactoryChart({
             key={item.factoryId}
             type="button"
             onClick={() => onSelect(active ? null : item.factoryId)}
-            className={`w-full rounded-2xl border p-4 text-left transition ${
-              active
+            className={`w-full rounded-2xl border p-4 text-left transition ${active
                 ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)]"
                 : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[rgba(62,166,255,0.25)]"
-            }`}
+              }`}
           >
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -272,11 +276,10 @@ function ShiftChart({
             key={item.shift}
             type="button"
             onClick={() => onSelect(active ? null : item.shift)}
-            className={`rounded-2xl border p-4 text-left transition ${
-              active
+            className={`rounded-2xl border p-4 text-left transition ${active
                 ? "border-[rgba(45,212,191,0.45)] bg-[rgba(45,212,191,0.14)]"
                 : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[rgba(45,212,191,0.28)]"
-            }`}
+              }`}
           >
             <div className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">{shiftLabel(item.shift)}</div>
             <div className="mt-3 text-2xl font-semibold text-[var(--text)]">{item.performance.toFixed(1)}%</div>
@@ -602,56 +605,56 @@ export default function PremiumDashboardPage() {
   const stockTrustHotspots = steelOverview?.low_confidence_items.slice(0, 3) || [];
   const ownerRiskCards = steelOverview
     ? [
-        {
-          label: "Money at risk",
-          value: steelOverview.financial_access
-            ? formatCurrency(steelOverview.anomaly_summary.total_estimated_leakage_value_inr)
-            : "Restricted",
-          helper: `Estimated leakage from ${steelOverview.anomaly_summary.ranked_batch_count} ranked anomaly batch${steelOverview.anomaly_summary.ranked_batch_count === 1 ? "" : "es"}.`,
-          tone: "border-red-400/30 bg-[rgba(239,68,68,0.12)]",
-          href: "/steel?tab=risk",
-          action: "Open Risk Review",
-        },
-        {
-          label: "Stock trust",
-          value: `${Number(steelOverview.confidence_counts.red || 0)} red / ${Number(steelOverview.confidence_counts.yellow || 0)} watch`,
-          helper: `${stockTrustHotspots.length} low-confidence stock hotspot${stockTrustHotspots.length === 1 ? "" : "s"} need owner attention.`,
-          tone: "border-amber-400/30 bg-[rgba(245,158,11,0.12)]",
-          href: "/steel/reconciliations",
-          action: "Open Stock Review",
-        },
-        {
-          label: "Dispatch exposure",
-          value: steelOverview.financial_access
-            ? formatCurrency(steelOverview.profit_summary?.outstanding_invoice_amount_inr)
-            : "Restricted",
-          helper: `${formatKg(steelOverview.profit_summary?.outstanding_invoice_weight_kg)} still not realized from invoices already raised.`,
-          tone: "border-sky-400/30 bg-[rgba(56,189,248,0.12)]",
-          href: "/steel/dispatches",
-          action: "Open Dispatch",
-        },
-        {
-          label: "Repeated anomalies",
-          value: `${Number(steelOverview.anomaly_summary.high_batches || 0) + Number(steelOverview.anomaly_summary.critical_batches || 0)} batch signals`,
-          helper: `Highest anomaly score ${Number(steelOverview.anomaly_summary.highest_anomaly_score || 0).toFixed(1)} across current steel data.`,
-          tone: "border-fuchsia-400/30 bg-[rgba(217,70,239,0.12)]",
-          href: "/steel/charts",
-          action: "Open Steel Charts",
-        },
-        {
-          label: "Top responsibility signal",
-          value:
-            steelOverview.anomaly_summary.highest_risk_operator?.name ||
-            steelOverview.anomaly_summary.highest_loss_day?.date ||
-            "No repeated risk yet",
-          helper: steelOverview.anomaly_summary.highest_risk_operator
-            ? `${steelOverview.anomaly_summary.highest_risk_operator.high_risk_batches} high-risk batch${steelOverview.anomaly_summary.highest_risk_operator.high_risk_batches === 1 ? "" : "es"} linked to the top operator signal.`
-            : "Responsibility analytics will sharpen as more approved steel data flows in.",
-          tone: "border-emerald-400/30 bg-[rgba(34,197,94,0.12)]",
-          href: "/reports",
-          action: "Open Reports",
-        },
-      ]
+      {
+        label: "Money at risk",
+        value: steelOverview.financial_access
+          ? formatCurrency(steelOverview.anomaly_summary.total_estimated_leakage_value_inr)
+          : "Restricted",
+        helper: `Estimated leakage from ${steelOverview.anomaly_summary.ranked_batch_count} ranked anomaly batch${steelOverview.anomaly_summary.ranked_batch_count === 1 ? "" : "es"}.`,
+        tone: "border-red-400/30 bg-[rgba(239,68,68,0.12)]",
+        href: "/steel?tab=risk",
+        action: "Open Risk Review",
+      },
+      {
+        label: "Stock trust",
+        value: `${Number(steelOverview.confidence_counts.red || 0)} red / ${Number(steelOverview.confidence_counts.yellow || 0)} watch`,
+        helper: `${stockTrustHotspots.length} low-confidence stock hotspot${stockTrustHotspots.length === 1 ? "" : "s"} need owner attention.`,
+        tone: "border-amber-400/30 bg-[rgba(245,158,11,0.12)]",
+        href: "/steel/reconciliations",
+        action: "Open Stock Review",
+      },
+      {
+        label: "Dispatch exposure",
+        value: steelOverview.financial_access
+          ? formatCurrency(steelOverview.profit_summary?.outstanding_invoice_amount_inr)
+          : "Restricted",
+        helper: `${formatKg(steelOverview.profit_summary?.outstanding_invoice_weight_kg)} still not realized from invoices already raised.`,
+        tone: "border-sky-400/30 bg-[rgba(56,189,248,0.12)]",
+        href: "/steel/dispatches",
+        action: "Open Dispatch",
+      },
+      {
+        label: "Repeated anomalies",
+        value: `${Number(steelOverview.anomaly_summary.high_batches || 0) + Number(steelOverview.anomaly_summary.critical_batches || 0)} batch signals`,
+        helper: `Highest anomaly score ${Number(steelOverview.anomaly_summary.highest_anomaly_score || 0).toFixed(1)} across current steel data.`,
+        tone: "border-fuchsia-400/30 bg-[rgba(217,70,239,0.12)]",
+        href: "/steel/charts",
+        action: "Open Steel Charts",
+      },
+      {
+        label: "Top responsibility signal",
+        value:
+          steelOverview.anomaly_summary.highest_risk_operator?.name ||
+          steelOverview.anomaly_summary.highest_loss_day?.date ||
+          "No repeated risk yet",
+        helper: steelOverview.anomaly_summary.highest_risk_operator
+          ? `${steelOverview.anomaly_summary.highest_risk_operator.high_risk_batches} high-risk batch${steelOverview.anomaly_summary.highest_risk_operator.high_risk_batches === 1 ? "" : "es"} linked to the top operator signal.`
+          : "Responsibility analytics will sharpen as more approved steel data flows in.",
+        tone: "border-emerald-400/30 bg-[rgba(34,197,94,0.12)]",
+        href: "/reports",
+        action: "Open Reports",
+      },
+    ]
     : [];
 
   return (
@@ -817,7 +820,7 @@ export default function PremiumDashboardPage() {
                     <CardTitle className="text-2xl">{value}</CardTitle>
                   </CardHeader>
                 </Card>
-                ))}
+              ))}
             </section>
 
             {selectedFactoryMismatch ? (

@@ -33,7 +33,7 @@ export default function ControlTowerPage() {
       setPayload(next);
     } catch (err) {
       if (err instanceof ApiError && err.status === 403) {
-          setError("Control Tower is available to manager, admin, and owner accounts for multi-factory oversight.");
+        setError("Control Tower is available to manager, admin, and owner accounts for multi-factory oversight.");
       } else {
         setError(err instanceof Error ? err.message : "Could not load control-tower data.");
       }
@@ -73,7 +73,7 @@ export default function ControlTowerPage() {
 
   return (
     <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+      <div className="mx-auto max-w-7xl space-y-8">
         <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
@@ -171,7 +171,7 @@ export default function ControlTowerPage() {
                       </div>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-6">
                     <div className="grid gap-3 sm:grid-cols-2">
                       <div className="rounded-2xl border border-[var(--border)] px-4 py-3">
                         <div className="text-xs text-[var(--muted)]">Factory Code</div>
@@ -199,7 +199,7 @@ export default function ControlTowerPage() {
                         ))}
                       </div>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-6">
                       <Button
                         onClick={() => void handleSwitch(factory.factory_id)}
                         disabled={switchingFactoryId === factory.factory_id || factory.factory_id === activeFactoryId}

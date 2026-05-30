@@ -1,0 +1,93 @@
+{
+    "version": "1.0.0",
+    "lastUpdated": "2024-01-15",
+    "description": "Reference index for DPR.ai MCP governance system",
+    "governance": {
+        "productMemory": {
+            "visualDoctrine": ".mcp/governance/product-memory/visual-doctrine.md",
+            "emotionalDirection": ".mcp/governance/product-memory/emotional-direction.md",
+            "antiPatterns": ".mcp/governance/product-memory/anti-patterns.md"
+        },
+        "frontendArchitecture": {
+            "appshellDoctrine": ".mcp/governance/frontend-architecture/appshell-doctrine.md",
+            "scrollOwnership": ".mcp/governance/frontend-architecture/scroll-ownership.md"
+        },
+        "designSystem": {
+            "typographyRules": ".mcp/governance/design-system/typography-rules.md",
+            "colorPhilosophy": ".mcp/governance/design-system/color-philosophy.md",
+            "spacingRhythm": ".mcp/governance/design-system/spacing-rhythm.md"
+        },
+        "engineering": {
+            "implementationRules": ".mcp/governance/engineering/implementation-rules.md",
+            "forbiddenMutations": ".mcp/governance/engineering/forbidden-mutations.md"
+        }
+    },
+    "codebase": {
+        "designTokens": "web/src/styles/tokens.css",
+        "globalStyles": "web/src/app/globals.css",
+        "appShell": "web/src/components/app-shell.tsx",
+        "tailwindConfig": "web/tailwind.config.ts"
+    },
+    "referenceProducts": {
+        "primary": [
+            "Linear - Clean, breathable, sentence case, single accent",
+            "Arc Browser - Modern, calm, intelligent surfaces",
+            "Stripe Dashboard - Professional, trustworthy, operational",
+            "Attio - Elegant data density, refined interactions",
+            "Notion - Calm hierarchy, readable typography",
+            "Vercel - Modern developer UX, clean surfaces",
+            "Perplexity - AI-native, intelligent, calm"
+        ],
+        "antiReferences": [
+            "SOC dashboards - Too aggressive, cyberpunk",
+            "SIEM systems - Too dark, hacker aesthetic",
+            "Bootstrap admin panels - Generic, dated",
+            "Old enterprise software - Heavy, rigid, cluttered"
+        ]
+    },
+    "visualRules": {
+        "typography": {
+            "fontFamily": "Inter (UI), JetBrains Mono (code only)",
+            "case": "Sentence case (not UPPERCASE)",
+            "bodySize": "14px",
+            "tableSize": "13px",
+            "pageTitleSize": "18px"
+        },
+        "color": {
+            "accent": "#6366f1 (indigo)",
+            "forbidden": [
+                "#c56d2d (warm orange)",
+                "#ffb868 (amber)",
+                "gradients",
+                "glow effects"
+            ]
+        },
+        "spacing": {
+            "baseScale": "4px",
+            "rowHeight": "40px (default), 36px (compact), 48px (comfortable)",
+            "cardPadding": "20-24px"
+        },
+        "layout": {
+            "scrollOwner": "AppShell (.factory-workstation-frame)",
+            "pageScroll": "FORBIDDEN",
+            "explicitHeight": "REQUIRED for scroll containers"
+        }
+    },
+    "emotionalTarget": {
+        "primary": [
+            "Calm",
+            "Confident",
+            "Intelligent",
+            "Efficient",
+            "Professional",
+            "Modern"
+        ],
+        "avoid": [
+            "Overwhelmed",
+            "Anxious",
+            "Confused",
+            "Frustrated",
+            "Dated"
+        ]
+    }
+}

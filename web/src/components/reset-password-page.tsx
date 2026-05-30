@@ -163,76 +163,76 @@ export default function ResetPasswordPage() {
       guidanceKey="auth-reset-help"
     >
       {resolvedVerifying ? (
-            <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell p-4 text-sm text-text-secondary">
-              {t("auth.reset.verifying", "Verifying your reset link...")}
+        <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell p-4 text-sm text-text-secondary">
+          {t("auth.reset.verifying", "Verifying your reset link...")}
+        </div>
+      ) : null}
+
+      {status ? (
+        <div className="rounded-panel border-[0.5px] border-status-success-border bg-status-success-bg p-4 text-sm text-status-success-fg">
+          <div>{status}</div>
+          {resetFinished ? (
+            <div className="mt-3 rounded-panel border-[0.5px] border-border-default bg-surface-shell p-3 text-xs text-text-primary">
+              {t("auth.reset.next_step", "Next step: use your new password on the sign-in screen. You will be redirected there automatically.")}
             </div>
           ) : null}
+        </div>
+      ) : null}
 
-          {status ? (
-            <div className="rounded-panel border-[0.5px] border-status-success-border bg-status-success-bg p-4 text-sm text-status-success-fg">
-              <div>{status}</div>
-              {resetFinished ? (
-                <div className="mt-3 rounded-panel border-[0.5px] border-border-default bg-surface-shell p-3 text-xs text-text-primary">
-                  {t("auth.reset.next_step", "Next step: use your new password on the sign-in screen. You will be redirected there automatically.")}
-                </div>
-              ) : null}
+      {resolvedError ? (
+        <div className="rounded-panel border-[0.5px] border-status-danger-border bg-status-danger-bg p-4 text-sm text-status-danger-fg">
+          {resolvedError}
+        </div>
+      ) : null}
+
+      {resolvedValid && !resolvedVerifying ? (
+        <div className="space-y-4">
+          {/* AUDIT: DENSITY_OVERLOAD - compress repeated recovery guidance into one compact prep card */}
+          <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell p-4 text-sm text-text-primary">
+            {t("auth.reset.prep", "Enter the new password twice, save it once, then return to sign in with the same email.")}
+            <div className="mt-3 text-xs text-[var(--muted)]">
+              {t("auth.reset.expiry_notice", "This reset link works only once. If it expires, request a new link.")}
             </div>
-          ) : null}
-
-          {resolvedError ? (
-            <div className="rounded-panel border-[0.5px] border-status-danger-border bg-status-danger-bg p-4 text-sm text-status-danger-fg">
-              {resolvedError}
-            </div>
-          ) : null}
-
-          {resolvedValid && !resolvedVerifying ? (
-            <div className="space-y-4">
-              {/* AUDIT: DENSITY_OVERLOAD - compress repeated recovery guidance into one compact prep card */}
-              <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell p-4 text-sm text-text-primary">
-                {t("auth.reset.prep", "Enter the new password twice, save it once, then return to sign in with the same email.")}
-                <div className="mt-3 text-xs text-[var(--muted)]">
-                  {t("auth.reset.expiry_notice", "This reset link works only once. If it expires, request a new link.")}
-                </div>
-              </div>
-              <form onSubmit={onSubmit} className="operational-form">
-                <PasswordField
-                  label={t("auth.reset.new_password", "New Password")}
-                  autoComplete="new-password"
-                  value={password}
-                  onChange={setPassword}
-                  required
-                />
-                <PasswordStrengthMeter password={password} />
-                {/* AUDIT: TEXT_NOISE - reduce inline helper copy because the strength meter already carries most of the guidance */}
-                <div className="text-xs text-text-secondary">{t("auth.reset.password_guidance", "Use 12+ characters with uppercase, lowercase, number, and symbol.")}</div>
-                <PasswordField
-                  label={t("auth.reset.confirm_password", "Confirm Password")}
-                  autoComplete="new-password"
-                  value={confirmPassword}
-                  onChange={setConfirmPassword}
-                  required
-                />
-                <Button type="submit" disabled={loading} className="w-full">
-                  {loading ? t("auth.reset.submitting", "Resetting...") : t("auth.reset.submit", "Reset password")}
-                </Button>
-              </form>
-            </div>
-          ) : null}
-
-          {!resolvedValid && !resolvedVerifying && resolvedError ? (
-            <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell p-4 text-sm text-text-secondary">
-              Use <span className="font-medium text-[var(--text)]">Request New Link</span> below to generate a fresh password reset email. Only the newest valid link should be used.
-            </div>
-          ) : null}
-
-          <div className="flex flex-wrap gap-3">
-            <Link href="/forgot-password">
-              <Button variant="outline">{t("auth.reset.request_new", "New link")}</Button>
-            </Link>
-            <Link href="/access">
-              <Button>{t("auth.reset.sign_in", "Sign in")}</Button>
-            </Link>
           </div>
+          <form onSubmit={onSubmit} className="operational-form">
+            <PasswordField
+              label={t("auth.reset.new_password", "New Password")}
+              autoComplete="new-password"
+              value={password}
+              onChange={setPassword}
+              required
+            />
+            <PasswordStrengthMeter password={password} />
+            {/* AUDIT: TEXT_NOISE - reduce inline helper copy because the strength meter already carries most of the guidance */}
+            <div className="text-xs text-text-secondary">{t("auth.reset.password_guidance", "Use 12+ characters with uppercase, lowercase, number, and symbol.")}</div>
+            <PasswordField
+              label={t("auth.reset.confirm_password", "Confirm Password")}
+              autoComplete="new-password"
+              value={confirmPassword}
+              onChange={setConfirmPassword}
+              required
+            />
+            <Button type="submit" isBusy={loading} busyLabel={t("auth.reset.submitting", "Resetting...")} className="w-full">
+              {t("auth.reset.submit", "Reset password")}
+            </Button>
+          </form>
+        </div>
+      ) : null}
+
+      {!resolvedValid && !resolvedVerifying && resolvedError ? (
+        <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell p-4 text-sm text-text-secondary">
+          Use <span className="font-medium text-[var(--text)]">Request New Link</span> below to generate a fresh password reset email. Only the newest valid link should be used.
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap gap-3">
+        <Link href="/forgot-password">
+          <Button variant="outline">{t("auth.reset.request_new", "New link")}</Button>
+        </Link>
+        <Link href="/access">
+          <Button>{t("auth.reset.sign_in", "Sign in")}</Button>
+        </Link>
+      </div>
     </AuthShell>
   );
 }

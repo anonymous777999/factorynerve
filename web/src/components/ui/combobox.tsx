@@ -149,7 +149,7 @@ export const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(functi
         currentIndex === -1
           ? 0
           : (currentIndex + direction + enabledFilteredOptions.length) %
-            enabledFilteredOptions.length;
+          enabledFilteredOptions.length;
 
       setActiveOptionValue(enabledFilteredOptions[nextIndex]?.value ?? null);
     },
@@ -264,7 +264,7 @@ export const Combobox = React.forwardRef<HTMLInputElement, ComboboxProps>(functi
                   data-combobox-option={option.value}
                   disabled={option.disabled}
                   className={cn(
-                    "flex w-full items-center justify-between gap-sm border-b border-border-subtle px-md py-sm text-left last:border-b-0",
+                    "flex w-full items-center justify-between gap-sm border-b border-border-subtle px-md py-sm text-left last:border-b-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent",
                     isActive ? "bg-surface-selected" : "bg-transparent hover:bg-surface-hover",
                     option.disabled ? "cursor-not-allowed text-text-disabled" : "text-text-primary",
                   )}

@@ -2,6 +2,7 @@ import * as React from "react";
 
 import {
   getFieldControlClassName,
+  useFieldContext,
   type FieldValidationState,
 } from "@/components/ui/field";
 
@@ -12,15 +13,31 @@ export type InputProps = React.InputHTMLAttributes<HTMLInputElement> & {
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Input(
   {
     className,
-    validationState = "default",
+    id: idProp,
+    validationState: validationStateProp,
+    "aria-invalid": ariaInvalidProp,
+    "aria-describedby": ariaDescribedByProp,
     ...props
   },
   ref,
 ) {
+  const fieldContext = useFieldContext();
+  const validationState = validationStateProp ?? fieldContext?.validationState ?? "default";
+  const isInvalid = validationState === "invalid";
+
+  const id = idProp ?? fieldContext?.id;
+  const ariaDescribedBy =
+    ariaDescribedByProp ?? fieldContext?.describedById ?? undefined;
+  const ariaInvalid =
+    ariaInvalidProp !== undefined ? ariaInvalidProp : isInvalid ? true : undefined;
+
   return (
     <input
       ref={ref}
+      id={id}
       className={getFieldControlClassName({ className, validationState })}
+      aria-invalid={ariaInvalid}
+      aria-describedby={ariaDescribedBy}
       {...props}
     />
   );

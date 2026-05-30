@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import Link from "next/link";
 
 import RoleGate from "@/components/role-gate";
@@ -357,10 +358,11 @@ const DENSITY_CHOICES: Array<{ value: AppDensity; key: string; fallback: string 
 
 function navLinkClasses(active: boolean) {
   return cn(
-    "factory-nav-link ui-no-select ui-no-callout group block rounded-panel px-2.5 py-2 transition",
+    "factory-nav-link ui-no-select ui-no-callout group block rounded-panel px-2.5 py-2 min-h-[44px] transition-colors duration-100",
+    "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset",
     active
-      ? "factory-nav-link-active border border-border-subtle border-l-[3px] border-l-border-focus bg-surface-panel pl-[calc(var(--space-2-5)-2px)]"
-      : "border border-transparent bg-transparent hover:bg-surface-panel",
+      ? "factory-nav-link-active border border-border-subtle border-l-[3px] border-l-border-focus bg-accent-soft text-accent pl-[calc(var(--space-2-5)-2px)]"
+      : "border border-transparent bg-transparent hover:bg-surface-panel/90",
   );
 }
 
@@ -468,62 +470,62 @@ function getNavIconName(href: string): NavIconName {
   return navIconByHref.get(href) ?? "profile";
 }
 
+// Decorative navigation icon path data. Each icon is always paired with a
+// visible text label, so the SVG is marked aria-hidden (WCAG 2.1 AA 1.1.1).
+const NAV_ICON_PATHS: Record<NavIconName, ReactNode> = {
+  queue: <path d="M4 5h12M4 10h12M4 15h8" strokeLinecap="round" />,
+  attendance: <path d="M5 4.5h10v11H5zM7 2.5v4M13 2.5v4M5 8.5h10" strokeLinecap="round" strokeLinejoin="round" />,
+  board: <path d="M4.5 5.5h11v9h-11zM8 5.5v9M12 5.5v9" strokeLinecap="round" strokeLinejoin="round" />,
+  day: <path d="M10 3v2.5M10 14.5V17M3 10h2.5M14.5 10H17M5.2 5.2l1.8 1.8M13 13l1.8 1.8M14.8 5.2L13 7M7 13l-1.8 1.8M10 7a3 3 0 1 1 0 6a3 3 0 0 1 0-6Z" strokeLinecap="round" strokeLinejoin="round" />,
+  entry: <path d="M5 4.5h10v11H5zM7.5 8h5M7.5 11h5" strokeLinecap="round" strokeLinejoin="round" />,
+  docs: <path d="M6 3.5h5l3 3V16.5H6zM11 3.5v3h3" strokeLinecap="round" strokeLinejoin="round" />,
+  steel: <path d="M4 6.5h12L13 13.5H7zM7 13.5v2h6v-2" strokeLinecap="round" strokeLinejoin="round" />,
+  customers: <path d="M10 10a2.8 2.8 0 1 0 0-5.6A2.8 2.8 0 0 0 10 10Zm-4.5 5a4.5 4.5 0 0 1 9 0" strokeLinecap="round" strokeLinejoin="round" />,
+  invoice: <path d="M6 3.5h8v13l-2-1.2-2 1.2-2-1.2-2 1.2zM8 7.5h4M8 10.5h4" strokeLinecap="round" strokeLinejoin="round" />,
+  dispatch: <path d="M3.5 6.5h9v6h-9zM12.5 8.5h2l2 2v2h-4zM6.5 14.5a1.5 1.5 0 1 1 0-3a1.5 1.5 0 0 1 0 3Zm7 0a1.5 1.5 0 1 1 0-3a1.5 1.5 0 0 1 0 3Z" strokeLinecap="round" strokeLinejoin="round" />,
+  review: <path d="M4.5 5.5h11v9h-11zM7.5 8.5h5M7.5 11.5h3" strokeLinecap="round" strokeLinejoin="round" />,
+  verify: (
+    <>
+      <path d="m5.5 10 2.3 2.5 6.7-6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 17a7 7 0 1 0 0-14a7 7 0 0 0 0 14Z" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+  stock: <path d="M4.5 6.5 10 3.5l5.5 3v7L10 16.5l-5.5-3zM10 10v6.5M4.5 6.5 10 10l5.5-3.5" strokeLinecap="round" strokeLinejoin="round" />,
+  reports: <path d="M5 15.5V9.5M10 15.5v-11M15 15.5v-7" strokeLinecap="round" strokeLinejoin="round" />,
+  performance: (
+    <>
+      <path d="M4 14.5 8 10l2.5 2.5L16 7" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14 7h2v2" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+  owner: <path d="M10 4.5 6 7v5.5L10 15l4-2.5V7zM10 4.5V15M6 7l4 2.5L14 7" strokeLinecap="round" strokeLinejoin="round" />,
+  network: <path d="M5 5.5h4v4H5zM11 10.5h4v4h-4zM11 3.5h4v4h-4zM9 7.5h2M13 7.5v3M9 12.5h2" strokeLinecap="round" strokeLinejoin="round" />,
+  updates: (
+    <>
+      <path d="M6 6.5h8M6 10h6M6 13.5h8" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4.5 4.5h11v11h-11z" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+  ai: <path d="M10 3.5 12 7l4 .6-2.9 2.8.7 4-3.8-2-3.8 2 .7-4L4 7.6 8 7z" strokeLinecap="round" strokeLinejoin="round" />,
+  settings: <path d="M10 5.5a4.5 4.5 0 1 0 0 9a4.5 4.5 0 0 0 0-9Zm0-2.5v2M10 15v2M5.8 5.8l1.4 1.4M12.8 12.8l1.4 1.4M3 10h2M15 10h2M5.8 14.2l1.4-1.4M12.8 7.2l1.4-1.4" strokeLinecap="round" strokeLinejoin="round" />,
+  subscription: <path d="M10 4.5 15 7v6L10 15.5 5 13V7zM10 4.5V10L15 7" strokeLinecap="round" strokeLinejoin="round" />,
+  billing: <path d="M5 6.5h10v7H5zM5 9.5h10M7.5 12h2" strokeLinecap="round" strokeLinejoin="round" />,
+  profile: <path d="M10 10a2.8 2.8 0 1 0 0-5.6A2.8 2.8 0 0 0 10 10Zm-4.5 5a4.5 4.5 0 0 1 9 0" strokeLinecap="round" strokeLinejoin="round" />,
+};
+
 function NavIcon({ href, active }: { href: string; active: boolean }) {
   const iconName = getNavIconName(href);
   const iconClasses = cn("h-4.5 w-4.5", active ? "text-[var(--accent)]" : "text-[var(--muted)]");
-  switch (iconName) {
-    case "queue":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M4 5h12M4 10h12M4 15h8" strokeLinecap="round" /></svg>;
-    case "attendance":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M5 4.5h10v11H5zM7 2.5v4M13 2.5v4M5 8.5h10" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "board":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M4.5 5.5h11v9h-11zM8 5.5v9M12 5.5v9" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "day":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M10 3v2.5M10 14.5V17M3 10h2.5M14.5 10H17M5.2 5.2l1.8 1.8M13 13l1.8 1.8M14.8 5.2L13 7M7 13l-1.8 1.8M10 7a3 3 0 1 1 0 6a3 3 0 0 1 0-6Z" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "entry":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M5 4.5h10v11H5zM7.5 8h5M7.5 11h5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "docs":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M6 3.5h5l3 3V16.5H6zM11 3.5v3h3" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "steel":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M4 6.5h12L13 13.5H7zM7 13.5v2h6v-2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "customers":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M10 10a2.8 2.8 0 1 0 0-5.6A2.8 2.8 0 0 0 10 10Zm-4.5 5a4.5 4.5 0 0 1 9 0" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "invoice":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M6 3.5h8v13l-2-1.2-2 1.2-2-1.2-2 1.2zM8 7.5h4M8 10.5h4" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "dispatch":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M3.5 6.5h9v6h-9zM12.5 8.5h2l2 2v2h-4zM6.5 14.5a1.5 1.5 0 1 1 0-3a1.5 1.5 0 0 1 0 3Zm7 0a1.5 1.5 0 1 1 0-3a1.5 1.5 0 0 1 0 3Z" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "review":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M4.5 5.5h11v9h-11zM7.5 8.5h5M7.5 11.5h3" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "verify":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="m5.5 10 2.3 2.5 6.7-6" strokeLinecap="round" strokeLinejoin="round" /><path d="M10 17a7 7 0 1 0 0-14a7 7 0 0 0 0 14Z" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "stock":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M4.5 6.5 10 3.5l5.5 3v7L10 16.5l-5.5-3zM10 10v6.5M4.5 6.5 10 10l5.5-3.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "reports":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M5 15.5V9.5M10 15.5v-11M15 15.5v-7" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "performance":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M4 14.5 8 10l2.5 2.5L16 7" strokeLinecap="round" strokeLinejoin="round" /><path d="M14 7h2v2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "owner":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M10 4.5 6 7v5.5L10 15l4-2.5V7zM10 4.5V15M6 7l4 2.5L14 7" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "network":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M5 5.5h4v4H5zM11 10.5h4v4h-4zM11 3.5h4v4h-4zM9 7.5h2M13 7.5v3M9 12.5h2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "updates":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M6 6.5h8M6 10h6M6 13.5h8" strokeLinecap="round" strokeLinejoin="round" /><path d="M4.5 4.5h11v11h-11z" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "ai":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M10 3.5 12 7l4 .6-2.9 2.8.7 4-3.8-2-3.8 2 .7-4L4 7.6 8 7z" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "settings":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M10 5.5a4.5 4.5 0 1 0 0 9a4.5 4.5 0 0 0 0-9Zm0-2.5v2M10 15v2M5.8 5.8l1.4 1.4M12.8 12.8l1.4 1.4M3 10h2M15 10h2M5.8 14.2l1.4-1.4M12.8 7.2l1.4-1.4" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "subscription":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M10 4.5 15 7v6L10 15.5 5 13V7zM10 4.5V10L15 7" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "billing":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M5 6.5h10v7H5zM5 9.5h10M7.5 12h2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-    case "profile":
-      return <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses}><path d="M10 10a2.8 2.8 0 1 0 0-5.6A2.8 2.8 0 0 0 10 10Zm-4.5 5a4.5 4.5 0 0 1 9 0" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-  }
+  return (
+    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={iconClasses} aria-hidden="true" focusable="false">
+      {NAV_ICON_PATHS[iconName]}
+    </svg>
+  );
 }
 
 function FavoriteIcon({ filled }: { filled: boolean }) {
   return (
-    <svg viewBox="0 0 20 20" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.6" className="h-4.5 w-4.5">
+    <svg viewBox="0 0 20 20" fill={filled ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.6" className="h-4.5 w-4.5" aria-hidden="true" focusable="false">
       <path d="m10 3.7 1.8 3.8 4.2.6-3 2.9.7 4.1L10 13l-3.7 2.1.7-4.1-3-2.9 4.2-.6Z" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -537,6 +539,8 @@ function ChevronIcon({ expanded }: { expanded: boolean }) {
       stroke="currentColor"
       strokeWidth="1.8"
       className={cn("h-4 w-4 transition-transform", expanded ? "rotate-180" : "")}
+      aria-hidden="true"
+      focusable="false"
     >
       <path d="m5.5 7.5 4.5 5 4.5-5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
@@ -592,10 +596,10 @@ function NavContent({
                         onFocus={() => onWarm(item.href)}
                         onClick={onNavigate}
                       >
-                        <div className="flex items-start gap-2.5">
+                        <div className="flex items-start gap-2">
                           <div
                             className={cn(
-                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-control border-[0.5px] transition",
+                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-control border-[0.5px] transition-colors duration-100",
                               active
                                 ? "border-border-focus bg-surface-selected"
                                 : "border-border-default bg-surface-shell",
@@ -605,7 +609,7 @@ function NavContent({
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-1.5">
-                              <div className={cn("text-sm font-semibold", active ? "text-[var(--text)]" : "text-[var(--text)]/90")}>
+                              <div className={cn("text-sm", active ? "font-medium text-accent" : "font-semibold text-[var(--text)]/90")}>
                                 {translatedItem.label}
                               </div>
                               {item.badgeKey && badgeCounts[item.badgeKey] > 0 ? (
@@ -623,7 +627,8 @@ function NavContent({
                           aria-label={favorited ? `Unpin ${translatedItem.label}` : `Pin ${translatedItem.label}`}
                           aria-pressed={favorited}
                           className={cn(
-                            "ui-no-select ui-no-callout mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-control border-[0.5px] transition",
+                            "ui-no-select ui-no-callout mt-0.5 inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-control border-[0.5px] transition-colors duration-100",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset",
                             favorited
                               ? "border-status-warning-border bg-status-warning-bg text-status-warning-fg opacity-100"
                               : "border-border-default bg-surface-shell text-text-secondary opacity-0 group-hover/navitem:opacity-100 group-focus-within/navitem:opacity-100 hover:border-border-strong hover:text-text-primary",
@@ -750,7 +755,7 @@ export function AppSidebar({
             <button
               type="button"
               aria-label={translate ? translate("shell.close_sidebar", "Close sidebar") : "Close sidebar"}
-              className="inline-flex h-9 w-9 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated text-base font-semibold text-text-primary transition hover:border-border-strong hover:bg-surface-hover lg:hidden"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated text-base font-semibold text-text-primary transition-colors duration-100 hover:border-border-strong hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset lg:hidden"
               onClick={onClose}
             >
               {"<"}
@@ -779,7 +784,7 @@ export function AppSidebar({
                 {translate ? translate("shell.switch_factory", "Switch Factory") : "Switch Factory"}
               </label>
               <Select
-                className="mt-1.5 h-8 bg-surface-elevated text-xs"
+                className="mt-1.5 h-11 bg-surface-elevated text-xs"
                 value={activeFactoryId || ""}
                 onChange={(event) => void onFactorySwitch(event.target.value)}
                 disabled={switchingFactory}
@@ -834,7 +839,7 @@ export function AppSidebar({
                 <div key={section.title} className="space-y-[var(--space-1)]">
                   <button
                     type="button"
-                    className="flex w-full items-center justify-between rounded-panel border border-transparent bg-transparent px-2.5 py-2 text-left transition hover:bg-surface-panel"
+                    className="flex w-full min-h-[44px] items-center justify-between rounded-panel border border-transparent bg-transparent px-2.5 py-2 text-left transition-colors duration-100 hover:bg-surface-panel/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
                     onClick={() => onToggleSectionGroup(storageKey)}
                   >
                     <div className="flex items-center gap-2">
@@ -871,7 +876,7 @@ export function AppSidebar({
             <div className="space-y-4 px-1">
               <Link
                 href="/profile"
-                className="ui-no-select ui-no-callout inline-flex h-11 w-full items-center justify-center gap-2 rounded-sm border border-border-default bg-surface-elevated px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-text-primary transition hover:border-border-strong hover:bg-surface-hover"
+                className="ui-no-select ui-no-callout inline-flex h-11 w-full items-center justify-center gap-2 rounded-sm border border-border-default bg-surface-elevated px-3 font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-text-primary transition-colors duration-100 hover:border-border-strong hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
               >
                 {translate ? translate("shell.account_subtitle", "Account Settings") : "Account Settings"}
               </Link>
@@ -879,7 +884,7 @@ export function AppSidebar({
                 type="button"
                 onClick={() => void onLogout()}
                 disabled={accountActionBusy !== null}
-                className="ui-no-select ui-no-callout inline-flex items-center gap-2 px-1 font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-text-secondary transition hover:text-text-primary disabled:cursor-not-allowed disabled:opacity-60"
+                className="ui-no-select ui-no-callout inline-flex items-center gap-2 px-1 font-mono text-[11px] font-medium uppercase tracking-[0.14em] text-text-secondary transition-colors duration-100 hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {accountActionBusy === "logout"
                   ? translate
@@ -912,7 +917,7 @@ export function AppSidebar({
                       {translate ? translate("language.label", "Language") : "Language"}
                     </label>
                     <Select
-                      className="h-8 bg-surface-shell text-xs"
+                      className="h-11 bg-surface-shell text-xs"
                       value={language}
                       onChange={(event) => onLanguageChange(event.target.value)}
                       aria-label={translate ? translate("language.label", "Language") : "Language"}
@@ -930,7 +935,7 @@ export function AppSidebar({
                       {translate ? translate("shell.theme", "Theme") : "Theme"}
                     </label>
                     <Select
-                      className="h-8 bg-surface-shell text-xs"
+                      className="h-11 bg-surface-shell text-xs"
                       value={theme}
                       onChange={(event) => onThemeChange(event.target.value as AppTheme)}
                       aria-label={translate ? translate("shell.theme", "Theme") : "Theme"}
@@ -949,7 +954,7 @@ export function AppSidebar({
                     {translate ? translate("shell.density", "Density") : "Density"}
                   </label>
                   <Select
-                    className="h-8 bg-surface-shell text-xs"
+                    className="h-11 bg-surface-shell text-xs"
                     value={density}
                     onChange={(event) => onDensityChange(event.target.value as AppDensity)}
                     aria-label={translate ? translate("shell.density", "Density") : "Density"}
@@ -982,7 +987,8 @@ export function AppSidebar({
                     aria-checked={showTips}
                     onClick={onToggleTips}
                     className={cn(
-                      "ui-no-select ui-no-callout inline-flex h-8 w-14 items-center rounded-full border px-1 transition",
+                      "ui-no-select ui-no-callout inline-flex h-11 w-14 items-center rounded-full border px-1 transition-colors duration-100",
+                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                       showTips
                         ? "border-border-focus bg-surface-selected text-text-primary"
                         : "border-border-default bg-surface-elevated text-text-secondary",
@@ -1002,7 +1008,7 @@ export function AppSidebar({
                 <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-3">
                   <Link
                     href="/profile"
-                    className="ui-no-select ui-no-callout inline-flex h-8 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-2 text-[11px] font-medium text-text-primary transition hover:border-border-strong hover:bg-surface-hover"
+                    className="ui-no-select ui-no-callout inline-flex h-11 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-2 text-[11px] font-medium text-text-primary transition-colors duration-100 hover:border-border-strong hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
                   >
                     {translate ? translate("nav.profile.label", "Profile") : "Profile"}
                   </Link>
@@ -1010,7 +1016,7 @@ export function AppSidebar({
                     type="button"
                     onClick={() => void onLogout()}
                     disabled={accountActionBusy !== null}
-                    className="ui-no-select ui-no-callout inline-flex h-8 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-2 text-[11px] font-medium text-text-primary transition hover:border-border-strong hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+                    className="ui-no-select ui-no-callout inline-flex h-11 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-2 text-[11px] font-medium text-text-primary transition-colors duration-100 hover:border-border-strong hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {accountActionBusy === "logout"
                       ? translate
@@ -1024,7 +1030,7 @@ export function AppSidebar({
                     type="button"
                     onClick={() => void onSwitchAccount()}
                     disabled={accountActionBusy !== null}
-                    className="ui-no-select ui-no-callout inline-flex h-8 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-2 text-[11px] font-medium text-text-primary transition hover:border-border-strong hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-60"
+                    className="ui-no-select ui-no-callout inline-flex h-11 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-2 text-[11px] font-medium text-text-primary transition-colors duration-100 hover:border-border-strong hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset disabled:cursor-not-allowed disabled:opacity-60"
                   >
                     {accountActionBusy === "switch"
                       ? translate
@@ -1086,7 +1092,7 @@ export function AppDesktopContextRail({
                   type="button"
                   aria-label={translate ? translate("shell.hide_workspace", "Hide workspace") : "Hide workspace"}
                   title={translate ? translate("shell.hide_workspace", "Hide workspace") : "Hide workspace"}
-                  className="ui-no-select ui-no-callout inline-flex h-9 shrink-0 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-3 text-xs font-semibold uppercase tracking-[0.14em] text-text-primary transition hover:border-border-strong hover:bg-surface-hover"
+                  className="ui-no-select ui-no-callout inline-flex h-11 shrink-0 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-3 text-xs font-semibold uppercase tracking-[0.14em] text-text-primary transition-colors duration-100 hover:border-border-strong hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
                   onClick={onToggle}
                 >
                   Hide
@@ -1137,11 +1143,11 @@ export function AppDesktopContextRail({
                       key={item.href}
                       href={item.href}
                       prefetch
-                      className="ui-no-select ui-no-callout flex items-start gap-3 rounded-panel bg-surface-shell px-3 py-3 transition hover:bg-surface-hover"
+                      className="ui-no-select ui-no-callout flex items-start gap-3 rounded-panel bg-surface-shell px-3 py-3 transition-colors duration-100 hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
                       onMouseEnter={() => onWarm(item.href)}
                       onFocus={() => onWarm(item.href)}
                     >
-                      <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated">
+                      <div className="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated">
                         <NavIcon href={item.href} active={false} />
                       </div>
                       <div className="min-w-0">
@@ -1161,7 +1167,7 @@ export function AppDesktopContextRail({
           type="button"
           aria-label={translate ? translate("shell.show_workspace", "Show workspace") : "Show workspace"}
           title={translate ? translate("shell.show_workspace", "Show workspace") : "Show workspace"}
-          className="ui-no-select ui-no-callout fixed right-6 top-[calc(env(safe-area-inset-top,0px)+0.75rem)] z-sticky hidden items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-panel px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-text-primary shadow-xs transition hover:border-border-strong hover:bg-surface-hover xl:inline-flex"
+          className="ui-no-select ui-no-callout fixed right-6 top-[calc(env(safe-area-inset-top,0px)+0.75rem)] z-sticky hidden min-h-[44px] items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-panel px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-text-primary shadow-xs transition-colors duration-100 hover:border-border-strong hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 xl:inline-flex"
           onClick={onToggle}
         >
           Workspace
@@ -1213,7 +1219,7 @@ export function AppMobileBottomNav({
                   scanAction
                     ? "mb-1 h-12 w-12 -translate-y-2 rounded-panel border-[0.5px] border-border-focus bg-surface-selected text-text-primary"
                     : cn(
-                      "h-10 w-10 rounded-control border-[0.5px]",
+                      "h-11 w-11 rounded-control border-[0.5px]",
                       active
                         ? "border-border-focus bg-surface-selected"
                         : "border-border-default bg-surface-elevated",

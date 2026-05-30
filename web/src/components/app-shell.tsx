@@ -308,7 +308,7 @@ function AppShellFrame({
                       type="button"
                       onClick={shell.toggleSidebar}
                       aria-label={shell.sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-                      className="font-body text-[15px] font-bold text-[var(--action-primary)] transition hover:opacity-90"
+                      className="rounded-sm font-body text-[15px] font-bold text-[var(--action-primary)] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                     >
                       DPR.ai
                     </button>
@@ -327,10 +327,10 @@ function AppShellFrame({
                     <button
                       type="button"
                       aria-label="Workspace tools"
-                      className="inline-flex h-8 w-8 items-center justify-center rounded-sm transition hover:bg-surface-hover hover:text-text-primary"
+                      className="inline-flex h-8 w-8 items-center justify-center rounded-sm transition hover:bg-surface-hover hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                       onClick={() => setCommandPaletteOpen(true)}
                     >
-                      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4.5 w-4.5">
+                      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4.5 w-4.5" aria-hidden="true" focusable="false">
                         <path d="M4.5 6.5h11v8h-11z" strokeLinejoin="round" />
                         <path d="M7 6.5V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1.5" strokeLinecap="round" />
                       </svg>

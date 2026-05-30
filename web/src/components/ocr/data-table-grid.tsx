@@ -185,38 +185,38 @@ export function DataTableGrid({
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden border border-border-default bg-surface-panel shadow-xs">
       <div
-        className="min-h-0 flex-1 overflow-auto"
+        className="min-h-0 flex-1 overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
         tabIndex={0}
         onKeyDown={(event) => {
-        if (!selectedCell || readOnly) return;
-        if (event.key === "F2") {
-          event.preventDefault();
-          beginEdit(selectedCell);
-          return;
-        }
-        if (editingCell) return;
-        if (event.key === "ArrowRight") {
-          event.preventDefault();
-          moveSelection(selectedCell.row, selectedCell.column + 1);
-        } else if (event.key === "ArrowLeft") {
-          event.preventDefault();
-          moveSelection(selectedCell.row, selectedCell.column - 1);
-        } else if (event.key === "ArrowDown") {
-          event.preventDefault();
-          moveSelection(selectedCell.row + 1, selectedCell.column);
-        } else if (event.key === "ArrowUp") {
-          event.preventDefault();
-          moveSelection(selectedCell.row - 1, selectedCell.column);
-        } else if (event.key === "Enter") {
-          event.preventDefault();
-          beginEdit(selectedCell);
-        } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
-          event.preventDefault();
-          onActiveCellChange?.(selectedCell);
-          setEditingCell(selectedCell);
-          setDraftValue(event.key);
-        }
-      }}
+          if (!selectedCell || readOnly) return;
+          if (event.key === "F2") {
+            event.preventDefault();
+            beginEdit(selectedCell);
+            return;
+          }
+          if (editingCell) return;
+          if (event.key === "ArrowRight") {
+            event.preventDefault();
+            moveSelection(selectedCell.row, selectedCell.column + 1);
+          } else if (event.key === "ArrowLeft") {
+            event.preventDefault();
+            moveSelection(selectedCell.row, selectedCell.column - 1);
+          } else if (event.key === "ArrowDown") {
+            event.preventDefault();
+            moveSelection(selectedCell.row + 1, selectedCell.column);
+          } else if (event.key === "ArrowUp") {
+            event.preventDefault();
+            moveSelection(selectedCell.row - 1, selectedCell.column);
+          } else if (event.key === "Enter") {
+            event.preventDefault();
+            beginEdit(selectedCell);
+          } else if (event.key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+            event.preventDefault();
+            onActiveCellChange?.(selectedCell);
+            setEditingCell(selectedCell);
+            setDraftValue(event.key);
+          }
+        }}
       >
         <table className="min-w-full border-separate border-spacing-0 text-table-density">
           <thead className="sticky top-0 z-10 bg-surface-panel">

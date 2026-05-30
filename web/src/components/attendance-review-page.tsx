@@ -421,7 +421,7 @@ function ReviewDetailPanel({
               type="button"
               onClick={() => onChangeTab(tab.id)}
               className={cn(
-                "rounded-full px-4 py-2 text-sm font-semibold transition",
+                "rounded-full px-4 py-2 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
                 detailTab === tab.id
                   ? "bg-[var(--accent)] text-[var(--action-primary-text)]"
                   : "border border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)] hover:text-[var(--text)]",

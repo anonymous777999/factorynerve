@@ -57,7 +57,7 @@ export function KPIBox({
 }) {
   return (
     <Card className={`rounded-[1.8rem] bg-surface-card text-text-primary ${severityClasses(severity)}`}>
-      <CardContent className="space-y-4 p-5">
+      <CardContent className="space-y-4 p-6">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="text-xs uppercase tracking-[0.22em] text-text-tertiary">{label}</div>
           <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 text-xs font-semibold ${trendTone(trend)}`}>

@@ -431,7 +431,9 @@ export default function SettingsAttendancePage() {
                   <Field><Label>Reporting Manager</Label><Select value={employeeForm.reporting_manager_id} onChange={(event) => setEmployeeForm((current) => ({ ...current, reporting_manager_id: event.target.value }))}><option value="">No reporting manager</option>{managerOptions.map((item) => <option key={item.user_id} value={item.user_id}>{item.name}</option>)}</Select></Field>
                   <Field><Label>Active Status</Label><Select value={employeeForm.is_active ? "active" : "inactive"} onChange={(event) => setEmployeeForm((current) => ({ ...current, is_active: event.target.value === "active" }))}><option value="active">Active</option><option value="inactive">Inactive</option></Select></Field>
                 </div>
-                <Button onClick={() => void handleEmployeeSave()} disabled={busy || !employeeForm.user_id}>{busy ? "Saving..." : "Save profile"}</Button>
+                <Button onClick={() => void handleEmployeeSave()} disabled={!employeeForm.user_id} isBusy={busy} busyLabel="Saving...">
+                  Save profile
+                </Button>
               </CardContent>
             </Card>
           </section>
@@ -473,7 +475,9 @@ export default function SettingsAttendancePage() {
                     <Field className="mb-0"><Label>Active</Label><label className="flex items-center gap-2 rounded-[8px] border-[0.5px] border-[color:var(--color-border-secondary)] px-3 py-2 text-[14px] text-[var(--color-text-primary)]"><input type="checkbox" checked={shiftForm.is_active} onChange={(event) => setShiftForm((current) => ({ ...current, is_active: event.target.checked }))} className="h-4 w-4 accent-[var(--color-text-primary)]" />Enabled</label></Field>
                   </div>
                 </div>
-                <Button onClick={() => void handleShiftSave()} disabled={busy || !shiftForm.shift_name}>{busy ? "Saving..." : "Save shift"}</Button>
+                <Button onClick={() => void handleShiftSave()} disabled={!shiftForm.shift_name} isBusy={busy} busyLabel="Saving...">
+                  Save shift
+                </Button>
               </CardContent>
             </Card>
           </section>

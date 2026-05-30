@@ -262,8 +262,8 @@ export function SteelInventoryPage() {
                         placeholder="Optional"
                       />
                     </div>
-                    <Button type="submit" className="w-full" disabled={busy}>
-                      {busy ? "Creating..." : "Add to Master"}
+                    <Button type="submit" className="w-full" isBusy={busy} busyLabel="Creating...">
+                      Add to Master
                     </Button>
                   </form>
                 </CardContent>

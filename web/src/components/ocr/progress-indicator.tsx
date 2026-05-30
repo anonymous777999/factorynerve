@@ -19,25 +19,26 @@ const STAGES: Array<{
   progress: number;
   detail: string;
 }> = [
-  { key: "uploaded", label: "Source locked", progress: 14, detail: "Image admitted to intake lane." },
-  { key: "preprocess", label: "Pre-process", progress: 32, detail: "Deskewing, contrast pass, orientation checks." },
-  { key: "detect", label: "Layout detect", progress: 56, detail: "Finding tables, fields, and document structure." },
-  { key: "extract", label: "Cell extract", progress: 78, detail: "Reading rows, values, and OCR text blocks." },
-  { key: "confidence", label: "Trust score", progress: 96, detail: "Computing review hotspots and low-confidence regions." },
-];
+    { key: "uploaded", label: "Source locked", progress: 14, detail: "Image admitted to intake lane." },
+    { key: "preprocess", label: "Pre-process", progress: 32, detail: "Deskewing, contrast pass, orientation checks." },
+    { key: "detect", label: "Layout detect", progress: 56, detail: "Finding tables, fields, and document structure." },
+    { key: "extract", label: "Cell extract", progress: 78, detail: "Reading rows, values, and OCR text blocks." },
+    { key: "confidence", label: "Trust score", progress: 96, detail: "Computing review hotspots and low-confidence regions." },
+  ];
 
 function iconForState(state: "pending" | "active" | "done") {
   if (state === "done") {
     return (
       <span className="grid h-5 w-5 place-items-center rounded-full border border-[rgba(98,223,125,0.32)] bg-[rgba(98,223,125,0.16)] text-[var(--status-success-fg,#9ef0ae)]">
-        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5" aria-hidden="true" focusable="false">
           <path d="m3.2 8.1 2.7 2.7 6-6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </span>
     );
   }
   if (state === "active") {
-    return <span className="h-5 w-5 rounded-full border-2 border-[var(--action-primary)] border-t-transparent animate-spin" />;
+    // Calm indigo spinner instead of pulsing/glowing AI indicator (Task 22).
+    return <span className="h-5 w-5 rounded-full border-2 border-ai-processing-fg border-t-transparent animate-spin" />;
   }
   return <span className="h-5 w-5 rounded-full border border-border-default bg-surface-shell" />;
 }
@@ -72,7 +73,7 @@ export function ProgressIndicator({ thumbnailSrc, stage, warning }: ProgressIndi
 
         <div className="mt-5 h-2 overflow-hidden bg-surface-shell">
           <div
-            className="h-full bg-[linear-gradient(90deg,rgba(255,184,104,0.88),rgba(214,133,58,0.96))] transition-[width] duration-300"
+            className="h-full bg-ai-processing-fg transition-[width] duration-300"
             style={{ width: `${activeStage.progress}%` }}
           />
         </div>
@@ -95,27 +96,32 @@ export function ProgressIndicator({ thumbnailSrc, stage, warning }: ProgressIndi
                 <div
                   key={item.key}
                   className={cn(
-                    "flex items-start gap-3 border px-4 py-4 transition duration-200",
+                    "flex items-start gap-3 border p-4 transition-colors duration-[120ms]",
                     state === "active"
-                      ? "border-[rgba(255,184,104,0.34)] bg-[rgba(255,184,104,0.08)]"
+                      ? "border-ai-processing-border bg-ai-processing-bg"
                       : "border-border-subtle bg-surface-shell",
                   )}
                 >
                   {iconForState(state)}
-                  <div className="min-w-0">
-                    <div className={cn("text-sm font-medium", state === "active" ? "text-text-primary" : "text-text-secondary")}>
+                  <div className="min-w-0 space-y-1">
+                    <div
+                      className={cn(
+                        "text-sm font-medium",
+                        state === "active" ? "text-ai-processing-fg" : "text-text-secondary",
+                      )}
+                    >
                       {item.label}
                     </div>
-                    <div className="mt-1 text-xs leading-5 text-text-tertiary">{item.detail}</div>
+                    <div className="text-xs leading-5 text-text-tertiary">{item.detail}</div>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          <div className="factory-ocr-console--subtle rounded-[0.35rem] border border-border-subtle p-4">
+          <div className="factory-ocr-console--subtle space-y-3 rounded-[0.35rem] border border-border-subtle p-4">
             <div className="factory-ocr-card-title">Pipeline telemetry</div>
-            <div className="mt-4 factory-ocr-panel-grid">
+            <div className="factory-ocr-panel-grid">
               <div className="factory-ocr-data-card">
                 <div className="factory-ocr-data-card__label">Active lane</div>
                 <div className="factory-ocr-data-card__value">{activeStage.label}</div>
@@ -130,13 +136,17 @@ export function ProgressIndicator({ thumbnailSrc, stage, warning }: ProgressIndi
               </div>
             </div>
 
-            <div className="mt-5 border border-border-subtle bg-surface-shell p-4">
-              <div className="factory-ocr-card-title">Extraction buffer</div>
-              <div className="mt-4 grid gap-2">
+            <div className="space-y-3 border border-ai-processing-border bg-ai-processing-bg p-4">
+              <div className="factory-ocr-card-title text-ai-processing-fg">Extraction buffer</div>
+              <div className="grid gap-2">
                 {Array.from({ length: 5 }, (_, rowIndex) => (
                   <div key={rowIndex} className="grid grid-cols-4 gap-2">
                     {Array.from({ length: 4 }, (_, columnIndex) => (
-                      <div key={`${rowIndex}-${columnIndex}`} className="h-8 animate-pulse bg-[rgba(255,255,255,0.04)]" />
+                      // No pulsing animation (Task 22 / anti-patterns): static calm placeholder.
+                      <div
+                        key={`${rowIndex}-${columnIndex}`}
+                        className="h-8 bg-[rgba(99,102,241,0.06)]"
+                      />
                     ))}
                   </div>
                 ))}

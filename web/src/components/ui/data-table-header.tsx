@@ -14,9 +14,30 @@ export const DataTableHeader = React.forwardRef<HTMLTableCellElement, DataTableH
     ({ className = "", sortable, sortDirection, onSort, children, ...props }, ref) => (
         <th
             ref={ref}
-            className={`px-4 py-3 text-left text-xs font-semibold text-text-secondary bg-surface-shell border-b border-border-subtle ${sortable ? "cursor-pointer hover:bg-surface-hover" : ""
+            className={`px-4 py-3 text-left text-xs font-semibold text-text-secondary bg-surface-shell border-b border-border-subtle ${sortable ? "cursor-pointer hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent" : ""
                 } ${className}`}
             onClick={sortable ? onSort : undefined}
+            onKeyDown={
+                sortable
+                    ? (event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            onSort?.();
+                        }
+                    }
+                    : undefined
+            }
+            tabIndex={sortable ? 0 : undefined}
+            role={sortable ? "button" : undefined}
+            aria-sort={
+                sortable
+                    ? sortDirection === "asc"
+                        ? "ascending"
+                        : sortDirection === "desc"
+                            ? "descending"
+                            : "none"
+                    : undefined
+            }
             {...props}
         >
             <div className="flex items-center gap-2">

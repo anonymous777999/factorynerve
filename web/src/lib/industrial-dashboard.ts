@@ -290,6 +290,18 @@ export type SmartInsight = {
     href: string;
     label: string;
   };
+  /**
+   * Optional AI confidence indicator (Sprint 2 Task 23).
+   * - high   → strong supporting signal across the dashboard data
+   * - medium → directional signal, worth a manual check
+   * - low    → weak signal, treat as a hint only
+   */
+  confidence?: "high" | "medium" | "low";
+  /**
+   * Brief reasoning text shown alongside the confidence badge.
+   * Should stay within 280 characters; longer values are truncated by the panel.
+   */
+  reasoning?: string;
 };
 
 export type SteelOverallStatusSummary = {
@@ -447,6 +459,9 @@ export function buildSmartInsights(data: IndustrialDashboardData): SmartInsight[
       impactScore: lossDelta > 0 ? Math.round(Math.abs(lossDelta) + latestLoss) : Math.round(Math.abs(lossDelta)),
       nextStep: lossDelta > 0 ? "Open the risk lane and trace the latest loss spike before the next batch closes." : "Keep monitoring the production lane and confirm the improvement holds on the next shift.",
       primaryAction: { href: "/steel?tab=risk", label: "Open Risk Lane" },
+      confidence:
+        Math.abs(lossDelta) >= 8 ? "high" : Math.abs(lossDelta) >= 3 ? "medium" : "low",
+      reasoning: `Loss moved from ${previousLoss} KG to ${latestLoss} KG across the last two windows, a ${lossDelta.toFixed(1)}% shift driving this prompt.`,
     },
     {
       id: "stock",
@@ -457,6 +472,13 @@ export function buildSmartInsights(data: IndustrialDashboardData): SmartInsight[
       impactScore: Math.round(10000 - lowStockCategory.valueKg),
       nextStep: lowStockCategory.valueKg <= 2500 ? "Check inventory confidence and replenish or recount the lowest buffer before production is squeezed." : "Keep inventory checks current so stock trust stays ahead of the next batch cycle.",
       primaryAction: { href: "/steel?tab=inventory", label: "Open Inventory Lane" },
+      confidence:
+        lowStockCategory.valueKg <= 2500
+          ? "high"
+          : lowStockCategory.valueKg <= 5000
+            ? "medium"
+            : "low",
+      reasoning: `${lowStockCategory.category} buffer is ${lowStockCategory.valueKg.toLocaleString("en-IN")} KG, which is the lowest live category in the inventory snapshot.`,
     },
     {
       id: "revenue",
@@ -470,6 +492,13 @@ export function buildSmartInsights(data: IndustrialDashboardData): SmartInsight[
       impactScore: Math.round(Math.abs(revenueDelta) + latestRevenue / 1000),
       nextStep: revenueDelta >= 0 ? "Keep invoices and dispatch closure aligned to preserve the current commercial pace." : "Review invoices and dispatch closure so commercial leakage does not grow.",
       primaryAction: { href: "/steel/invoices", label: "Open Invoices" },
+      confidence:
+        Math.abs(revenueDelta) >= 10
+          ? "high"
+          : Math.abs(revenueDelta) >= 4
+            ? "medium"
+            : "low",
+      reasoning: `Latest invoiced value is INR ${latestRevenue.toLocaleString("en-IN")} versus INR ${previousRevenue.toLocaleString("en-IN")} previously, a ${revenueDelta.toFixed(1)}% movement.`,
     },
     {
       id: "batch",
@@ -480,6 +509,13 @@ export function buildSmartInsights(data: IndustrialDashboardData): SmartInsight[
       impactScore: highestLossBatch.lossKg,
       nextStep: highestLossBatch.lossKg >= 150 ? "Open the production or risk lane and trace the batch before approving the next shift pattern." : "Keep the batch under review while monitoring whether another loss spike overtakes it.",
       primaryAction: { href: "/steel?tab=production", label: "Open Production Lane" },
+      confidence:
+        highestLossBatch.lossKg >= 200
+          ? "high"
+          : highestLossBatch.lossKg >= 100
+            ? "medium"
+            : "low",
+      reasoning: `${highestLossBatch.batch} reported ${highestLossBatch.lossKg.toLocaleString("en-IN")} KG loss, the highest in the current window.`,
     },
   ];
 
@@ -627,10 +663,10 @@ export function buildSteelDashboardData(params: {
 
     const severityMix = overview
       ? [
-          { label: "Watch", value: Number(overview.anomaly_summary.watch_batches || 0) },
-          { label: "High", value: Number(overview.anomaly_summary.high_batches || 0) },
-          { label: "Critical", value: Number(overview.anomaly_summary.critical_batches || 0) },
-        ]
+        { label: "Watch", value: Number(overview.anomaly_summary.watch_batches || 0) },
+        { label: "High", value: Number(overview.anomaly_summary.high_batches || 0) },
+        { label: "Critical", value: Number(overview.anomaly_summary.critical_batches || 0) },
+      ]
       : INDUSTRIAL_DASHBOARD_DATA[range].donutSummary.series;
 
     const profitSummary = overview?.profit_summary;
@@ -718,49 +754,49 @@ export function buildSteelDashboardData(params: {
       kpiRows:
         currentOutput || currentLoss || currentRevenue || currentDispatchWeight
           ? buildRowsFromWindows(
-              { output: currentOutput, loss: currentLoss, dispatch: currentDispatchWeight, revenue: currentRevenue },
-              { output: previousOutput, loss: previousLoss, dispatch: previousDispatchWeight, revenue: previousRevenue },
-            )
+            { output: currentOutput, loss: currentLoss, dispatch: currentDispatchWeight, revenue: currentRevenue },
+            { output: previousOutput, loss: previousLoss, dispatch: previousDispatchWeight, revenue: previousRevenue },
+          )
           : profitSummary
             ? [
-                {
-                  metric: "Realized Revenue",
-                  current: formatMetricValue("inr", Number(profitSummary.realized_dispatched_revenue_inr || 0)),
-                  previous: formatMetricValue("inr", Number(profitSummary.realized_invoiced_amount_inr || 0)),
-                  changePercent: safePercent(
-                    Number(profitSummary.realized_dispatched_revenue_inr || 0),
-                    Number(profitSummary.realized_invoiced_amount_inr || 0),
-                  ),
-                  status: "up",
-                },
-                {
-                  metric: "Realized Profit",
-                  current: formatMetricValue("inr", Number(profitSummary.realized_dispatched_profit_inr || 0)),
-                  previous: formatMetricValue("inr", Number(profitSummary.estimated_gross_profit_inr || 0)),
-                  changePercent: safePercent(
-                    Number(profitSummary.realized_dispatched_profit_inr || 0),
-                    Number(profitSummary.estimated_gross_profit_inr || 0),
-                  ),
-                  status: Number(profitSummary.realized_dispatched_profit_inr || 0) >= 0 ? "up" : "down",
-                },
-                {
-                  metric: "Dispatch Weight",
-                  current: formatMetricValue("kg", Number(profitSummary.realized_dispatch_weight_kg || 0)),
-                  previous: formatMetricValue("kg", Number(profitSummary.realized_invoiced_weight_kg || 0)),
-                  changePercent: safePercent(
-                    Number(profitSummary.realized_dispatch_weight_kg || 0),
-                    Number(profitSummary.realized_invoiced_weight_kg || 0),
-                  ),
-                  status: "up",
-                },
-                {
-                  metric: "Leakage Exposure",
-                  current: formatMetricValue("inr", Number(overview?.anomaly_summary.total_estimated_leakage_value_inr || 0)),
-                  previous: formatMetricValue("kg", Number(overview?.anomaly_summary.total_variance_kg || 0)),
-                  changePercent: Number(overview?.batch_metrics.average_loss_percent || 0),
-                  status: Number(overview?.batch_metrics.average_loss_percent || 0) <= 5 ? "up" : "down",
-                },
-              ]
+              {
+                metric: "Realized Revenue",
+                current: formatMetricValue("inr", Number(profitSummary.realized_dispatched_revenue_inr || 0)),
+                previous: formatMetricValue("inr", Number(profitSummary.realized_invoiced_amount_inr || 0)),
+                changePercent: safePercent(
+                  Number(profitSummary.realized_dispatched_revenue_inr || 0),
+                  Number(profitSummary.realized_invoiced_amount_inr || 0),
+                ),
+                status: "up",
+              },
+              {
+                metric: "Realized Profit",
+                current: formatMetricValue("inr", Number(profitSummary.realized_dispatched_profit_inr || 0)),
+                previous: formatMetricValue("inr", Number(profitSummary.estimated_gross_profit_inr || 0)),
+                changePercent: safePercent(
+                  Number(profitSummary.realized_dispatched_profit_inr || 0),
+                  Number(profitSummary.estimated_gross_profit_inr || 0),
+                ),
+                status: Number(profitSummary.realized_dispatched_profit_inr || 0) >= 0 ? "up" : "down",
+              },
+              {
+                metric: "Dispatch Weight",
+                current: formatMetricValue("kg", Number(profitSummary.realized_dispatch_weight_kg || 0)),
+                previous: formatMetricValue("kg", Number(profitSummary.realized_invoiced_weight_kg || 0)),
+                changePercent: safePercent(
+                  Number(profitSummary.realized_dispatch_weight_kg || 0),
+                  Number(profitSummary.realized_invoiced_weight_kg || 0),
+                ),
+                status: "up",
+              },
+              {
+                metric: "Leakage Exposure",
+                current: formatMetricValue("inr", Number(overview?.anomaly_summary.total_estimated_leakage_value_inr || 0)),
+                previous: formatMetricValue("kg", Number(overview?.anomaly_summary.total_variance_kg || 0)),
+                changePercent: Number(overview?.batch_metrics.average_loss_percent || 0),
+                status: Number(overview?.batch_metrics.average_loss_percent || 0) <= 5 ? "up" : "down",
+              },
+            ]
             : INDUSTRIAL_DASHBOARD_DATA[range].kpiRows,
     };
   };

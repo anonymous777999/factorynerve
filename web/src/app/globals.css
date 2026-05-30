@@ -5,8 +5,8 @@
              File A restores the cinematic warm visual soul.
    ============================================================ */
 
-/* --- FONTS — from File A (File B had no font import) --- */
-@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
+/* --- FONTS — Modern operational typography --- */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
 @import "../styles/tokens.css";
 @import "tailwindcss";
 
@@ -16,9 +16,9 @@
    ============================================================ */
 
 :root {
-  /* --- Font families (not in tokens.css — globals-specific) --- */
-  --font-body: "IBM Plex Sans";
-  --font-display: "Space Grotesk";
+  /* --- Font families (modern operational) --- */
+  --font-body: "Inter", system-ui, -apple-system, sans-serif;
+  --font-display: "Inter", system-ui, -apple-system, sans-serif;
 
   /* --- Primary color scale (not in tokens.css — globals-specific) --- */
   --color-primary: #3b82f6;
@@ -71,11 +71,58 @@
   /* --- Shadow 2xl (tokens.css has xs/sm/md/lg/xl — only 2xl is globals-specific) --- */
   --shadow-2xl: 0 42px 90px rgba(3, 8, 18, 0.34);
 
-  /* --- Warm industrial accent (not in tokens.css) --- */
-  --accent: #c56d2d;
-  --accent-strong: #8c4218;
-  --accent-soft: rgba(197, 109, 45, 0.18);
-  --accent-quiet: rgba(197, 109, 45, 0.1);
+  /* --- Warm industrial accent (DEPRECATED - use indigo #6366f1) --- */
+  --accent: #6366f1;
+  --accent-strong: #5558e3;
+  --accent-soft: rgba(99, 102, 241, 0.18);
+  --accent-quiet: rgba(99, 102, 241, 0.1);
+
+  /* --- Interaction timing tokens (Sprint 2) --- */
+  --transition-fast: 80ms;
+  --transition-standard: 120ms;
+  --transition-expand: 150ms;
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+
+  /* --- Accessibility tokens (Sprint 2) --- */
+  --focus-ring-offset: 2px;
+  --focus-ring-width: 2px;
+  --min-touch-target: 44px;
+  /* Contrast ratio references (WCAG 2.1 AA):
+     - Body text (<18pt): 4.5:1 minimum
+     - Large text (≥18pt or ≥14pt bold): 3:1 minimum
+     - UI components: 3:1 minimum */
+
+  /* --- Density mode tokens (Sprint 2) --- */
+  /* Default density */
+  --density-default-row-height: 40px;
+  --density-default-cell-padding-x: 12px;
+  --density-default-cell-padding-y: 8px;
+  /* Compact density */
+  --density-compact-row-height: 36px;
+  --density-compact-cell-padding-x: 8px;
+  --density-compact-cell-padding-y: 6px;
+  /* Comfortable density */
+  --density-comfortable-row-height: 48px;
+  --density-comfortable-cell-padding-x: 16px;
+  --density-comfortable-cell-padding-y: 12px;
+
+  /* --- AI processing state tokens (Sprint 2) --- */
+  --ai-processing-bg: rgba(99, 102, 241, 0.08);
+  --ai-processing-fg: #4338ca;
+  --ai-processing-border: rgba(99, 102, 241, 0.2);
+  /* Confidence levels — Task 27: light-mode foregrounds darkened to hue-matched
+     700-level shades so text + dot reach WCAG AA on the subtle 10% tinted badge
+     backgrounds (bright 500-level greens/ambers were 1.9–2.2:1). Dark-mode
+     overrides live in the [data-theme="dark"] block below. */
+  --confidence-high-fg: #137a39;
+  --confidence-medium-fg: #a8490a;
+  --confidence-low-fg: #4b5563;
+
+  /* --- Feedback timing tokens (Sprint 2) --- */
+  --feedback-instant: 100ms;
+  --feedback-success-duration: 3000ms;
+  --feedback-error-duration: 5000ms;
+  --spinner-color: #4338ca;
 
   /* --- Operational signals (not in tokens.css) --- */
   --signal: #1f8a78;
@@ -102,6 +149,54 @@
    *   --scrollbar-track, --scrollbar-thumb,
    *     --scrollbar-thumb-hover                           → tokens.css §13 scrollbar tokens
    */
+}
+
+/* ============================================================
+   DARK MODE TOKENS (Sprint 2)
+   ============================================================ */
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Dark mode surfaces (2-3% lightness differentiation) */
+    --surface-app: #09111B;
+    --surface-shell: #0D1523;
+    --surface-panel: #111927;
+    --surface-card: #151F2E;
+
+    /* Dark mode text */
+    --text-primary: #EDF2F7;
+    --text-secondary: #94A3B8;
+    --text-tertiary: #64748B;
+
+    /* Dark mode borders */
+    --border-default: rgba(255, 255, 255, 0.1);
+    --border-subtle: rgba(255, 255, 255, 0.05);
+
+    /* Dark mode shadows (1.5-2x elevation) */
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
+    --shadow-md: 0 6px 12px rgba(0, 0, 0, 0.3);
+
+    /* Accent remains same in dark mode */
+    --accent: #6366f1;
+  }
+}
+
+/* ============================================================
+   DARK MODE — AI / CONFIDENCE TOKEN OVERRIDES (Task 27)
+   App toggles theme via [data-theme="dark"] on <html> (see layout.tsx),
+   so dark-mode contrast fixes must target that attribute, not @media.
+   Light-mode foregrounds (in :root) are dark 700-level shades for the
+   tinted badge backgrounds; dark mode needs lighter shades to stay >=4.5:1.
+   ============================================================ */
+
+[data-theme="dark"] {
+  /* AI processing foreground — lightened from #4338ca (1.89:1 on tint, 2.05:1 dot)
+     to indigo-200 so text reaches ~10:1 and the dot reaches ~10:1 (3:1 UI). */
+  --ai-processing-fg: #c7d2fe;
+  /* Confidence foregrounds on their 10% tinted backgrounds */
+  --confidence-high-fg: #4ade80;
+  --confidence-medium-fg: #fbbf24;
+  --confidence-low-fg: #94a3b8;
 }
 
 @layer components {
@@ -133,19 +228,14 @@
     overflow: hidden;
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-lg);
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
-      var(--surface-industrial-card);
+    background: var(--surface-industrial-card);
     box-shadow: var(--shadow-xs);
   }
 
   .route-header,
   .operational-hero {
     padding: var(--space-5);
-    background:
-      radial-gradient(circle at top left, rgba(255, 255, 255, 0.035), transparent 48%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0)),
-      var(--surface-industrial-raised);
+    background: var(--surface-industrial-raised);
   }
 
   .route-header__grid {
@@ -164,9 +254,8 @@
   .route-header__eyebrow,
   .route-panel__eyebrow {
     font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
+    font-weight: var(--weight-medium);
+    letter-spacing: 0.03em;
     color: var(--text-secondary);
   }
 
@@ -276,17 +365,14 @@
     padding: var(--space-5);
     border: 1px solid var(--border-subtle);
     border-radius: var(--radius-md);
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.025), rgba(255, 255, 255, 0)),
-      var(--surface-card);
+    background: var(--surface-card);
     box-shadow: var(--shadow-xs);
   }
 
   .route-metric__label {
     font-size: var(--text-xs);
-    font-weight: var(--weight-semibold);
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
+    font-weight: var(--weight-medium);
+    letter-spacing: 0.03em;
     color: var(--text-secondary);
   }
 
@@ -303,9 +389,7 @@
   }
 
   .surface-muted {
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0)),
-      var(--surface-shell);
+    background: var(--surface-shell);
     color: var(--text-secondary);
   }
 
@@ -376,20 +460,13 @@
 
 body {
   min-height: 100vh;
-  /* Warm industrial atmosphere — File A gradient (cinematic soul) */
-  background:
-    radial-gradient(circle at 12% 14%, rgba(197, 109, 45, 0.24), transparent 34%),
-    radial-gradient(circle at 82% 18%, rgba(31, 138, 120, 0.14), transparent 32%),
-    radial-gradient(circle at 50% 108%, rgba(245, 158, 11, 0.12), transparent 30%),
-    radial-gradient(circle at 50% -10%, rgba(255, 255, 255, 0.035), transparent 28%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 18%),
-    linear-gradient(180deg, #0b1116 0%, #111820 46%, #0c1319 100%);
+  /* Modern clean background - no cyberpunk gradients */
+  background: var(--surface-app);
   color: var(--text-primary);
-  font-family: var(--font-body), "IBM Plex Sans", sans-serif;
+  font-family: var(--font-body), "Inter", system-ui, -apple-system, sans-serif;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   overflow-x: clip;
-  /* File B — modern approach, replaces A's width:100% */
 }
 
 h1,
@@ -398,7 +475,7 @@ h3,
 h4,
 h5,
 h6 {
-  font-family: var(--font-display), "Space Grotesk", sans-serif;
+  font-family: var(--font-display), "Inter", system-ui, -apple-system, sans-serif;
 }
 
 button,
@@ -423,16 +500,16 @@ select option:checked,
 select option:hover,
 select option:focus {
   background:
-    linear-gradient(0deg, rgba(197, 109, 45, 0.2), rgba(197, 109, 45, 0.2)),
+    linear-gradient(0deg, rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.2)),
     var(--card-elevated);
-  /* warm accent tint instead of blue */
+  /* modern indigo accent */
   color: var(--text-primary);
 }
 
-/* --- Text selection — warm accent from File A --- */
+/* --- Text selection — modern indigo accent --- */
 ::selection {
-  background: rgba(197, 109, 45, 0.28);
-  color: #fdf8f2;
+  background: rgba(99, 102, 241, 0.28);
+  color: #ffffff;
 }
 
 html {
@@ -500,8 +577,8 @@ html[data-runtime-tier="safe"] .blur-\[30px\] {
 *::-webkit-scrollbar-thumb {
   border-radius: 999px;
   border: 2px solid transparent;
-  /* File A warm gradient thumb — reinforces industrial accent */
-  background: linear-gradient(180deg, rgba(171, 159, 147, 0.36), rgba(197, 109, 45, 0.24));
+  /* Modern indigo accent */
+  background: linear-gradient(180deg, rgba(148, 163, 184, 0.36), rgba(99, 102, 241, 0.24));
   background-clip: padding-box;
 }
 
@@ -520,8 +597,8 @@ svg {
 }
 
 input[type="checkbox"] {
-  accent-color: var(--accent);
-  /* warm accent, File A */
+  accent-color: #6366f1;
+  /* modern indigo accent */
 }
 
 :where(.overflow-x-auto) {
@@ -543,43 +620,31 @@ input[type="checkbox"] {
     overflow-x: clip;
   }
 
-  /* Glass surface system — backdrop blur with warm border */
+  /* Glass surface system — clean modern surfaces */
   .surface-panel {
     border: 1px solid var(--border-subtle);
-    background:
-      radial-gradient(circle at top, rgba(255, 255, 255, 0.045), transparent 56%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
-      linear-gradient(180deg, rgba(197, 109, 45, 0.03), transparent 42%),
-      var(--surface-panel);
+    background: var(--surface-panel);
     box-shadow: var(--shadow-xs);
     backdrop-filter: blur(14px);
   }
 
   .surface-panel-strong {
     border: 1px solid var(--border-default);
-    background:
-      radial-gradient(circle at top, rgba(255, 255, 255, 0.05), transparent 56%),
-      linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.015)),
-      linear-gradient(180deg, rgba(197, 109, 45, 0.035), transparent 44%),
-      var(--surface-card);
+    background: var(--surface-card);
     box-shadow: var(--shadow-sm);
     backdrop-filter: blur(16px);
   }
 
   .surface-panel-soft {
     border: 1px solid var(--border-subtle);
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0.008)),
-      var(--surface-shell);
+    background: var(--surface-shell);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), var(--shadow-xs);
     backdrop-filter: blur(12px);
   }
 
   .surface-pill {
     border: 1px solid var(--border-subtle);
-    background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.032), rgba(255, 255, 255, 0.012)),
-      var(--surface-shell);
+    background: var(--surface-shell);
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.025), var(--shadow-xs);
     backdrop-filter: blur(12px);
   }
@@ -716,9 +781,6 @@ input[type="checkbox"] {
 
 .auth-ocean-mesh {
   background:
-    radial-gradient(circle at 14% 18%, rgba(197, 109, 45, 0.2), transparent 24%),
-    radial-gradient(circle at 82% 14%, rgba(31, 138, 120, 0.14), transparent 22%),
-    radial-gradient(circle at 50% 118%, rgba(255, 255, 255, 0.06), transparent 30%),
     linear-gradient(140deg, rgba(5, 12, 21, 0.08), rgba(8, 17, 28, 0.22), rgba(4, 10, 18, 0.08));
   animation: auth-ocean-shift 20s ease-in-out infinite alternate;
   will-change: transform, filter;
@@ -726,16 +788,12 @@ input[type="checkbox"] {
 
 .auth-dot-field {
   background-image:
-    radial-gradient(circle at 14% 18%, rgba(197, 109, 45, 0.14), transparent 22%),
-    radial-gradient(circle at 84% 16%, rgba(31, 138, 120, 0.1), transparent 20%),
     radial-gradient(rgba(220, 236, 255, 0.16) 1px, transparent 1.4px),
     radial-gradient(rgba(116, 231, 221, 0.08) 1px, transparent 1.8px);
   background-size:
-    auto,
-    auto,
     24px 24px,
     48px 48px;
-  background-repeat: no-repeat, no-repeat, repeat, repeat;
+  background-repeat: repeat, repeat;
   animation: auth-dot-drift 24s linear infinite;
   will-change: transform, background-position;
 }
@@ -760,7 +818,7 @@ input[type="checkbox"] {
 
 .auth-title-glow {
   text-shadow:
-    0 0 26px rgba(197, 109, 45, 0.18),
+    0 0 26px rgba(99, 102, 241, 0.18),
     0 20px 46px rgba(2, 6, 23, 0.48);
 }
 
@@ -958,11 +1016,11 @@ input[type="checkbox"] {
   justify-content: center;
   width: 2.75rem;
   height: 2.75rem;
-  border: 1px solid rgba(197, 109, 45, 0.22);
-  /* warm accent border */
+  border: 1px solid rgba(99, 102, 241, 0.22);
+  /* modern indigo accent border */
   border-radius: 0.95rem;
   background:
-    linear-gradient(135deg, rgba(197, 109, 45, 0.28), rgba(31, 138, 120, 0.18)),
+    linear-gradient(135deg, rgba(99, 102, 241, 0.28), rgba(99, 102, 241, 0.18)),
     rgba(255, 255, 255, 0.02);
   box-shadow: 0 10px 26px rgba(3, 8, 18, 0.3);
 }
@@ -986,7 +1044,6 @@ input[type="checkbox"] {
   border-radius: inherit;
   pointer-events: none;
   background:
-    radial-gradient(circle at top left, rgba(197, 109, 45, 0.1), transparent 28%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 26%);
 }
 
@@ -998,35 +1055,35 @@ input[type="checkbox"] {
 
 .industrial-access-input:focus {
   box-shadow:
-    0 0 0 1px rgba(197, 109, 45, 0.5),
-    0 0 0 6px rgba(197, 109, 45, 0.08),
+    0 0 0 1px rgba(99, 102, 241, 0.5),
+    0 0 0 6px rgba(99, 102, 241, 0.08),
     inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .industrial-access-cta {
   background:
-    linear-gradient(180deg, rgba(222, 145, 80, 0.96), rgba(185, 98, 38, 0.96)),
-    var(--accent);
-  color: #1a0a02;
+    linear-gradient(180deg, rgba(115, 120, 255, 0.96), rgba(85, 88, 227, 0.96)),
+    #6366f1;
+  color: #ffffff;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.28),
-    0 18px 34px rgba(197, 109, 45, 0.28);
+    0 18px 34px rgba(99, 102, 241, 0.28);
 }
 
 .industrial-access-cta:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.3),
-    0 22px 38px rgba(197, 109, 45, 0.34);
+    0 22px 38px rgba(99, 102, 241, 0.34);
   filter: brightness(1.03);
 }
 
 .industrial-node-active {
-  border-color: rgba(197, 109, 45, 0.34) !important;
+  border-color: rgba(99, 102, 241, 0.34) !important;
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 16px 36px rgba(197, 109, 45, 0.16),
-    0 -2px 0 rgba(197, 109, 45, 0.8) inset;
+    0 16px 36px rgba(99, 102, 241, 0.16),
+    0 -2px 0 rgba(99, 102, 241, 0.8) inset;
 }
 
 .industrial-signal-dot {
@@ -1040,7 +1097,7 @@ input[type="checkbox"] {
   position: relative;
   background:
     linear-gradient(180deg, rgba(10, 18, 29, 0.92), rgba(10, 18, 29, 0.98)),
-    radial-gradient(circle at 35% 35%, rgba(31, 138, 120, 0.12), transparent 34%);
+    var(--surface-card);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 20px 48px rgba(3, 8, 18, 0.38);
@@ -1054,7 +1111,6 @@ input[type="checkbox"] {
   pointer-events: none;
   opacity: 0.34;
   background:
-    linear-gradient(90deg, rgba(31, 138, 120, 0.18), transparent 18%, transparent 82%, rgba(197, 109, 45, 0.18)),
     radial-gradient(circle at 50% 100%, rgba(255, 255, 255, 0.06), transparent 44%);
 }
 
@@ -1091,9 +1147,9 @@ input[type="checkbox"] {
 }
 
 .industrial-dock-item-active {
-  /* warm accent dock active state */
-  background: linear-gradient(180deg, rgba(222, 140, 68, 0.96), rgba(185, 95, 35, 0.96));
-  color: #1a0802;
+  /* modern indigo accent dock active state */
+  background: linear-gradient(180deg, rgba(115, 120, 255, 0.96), rgba(85, 88, 227, 0.96));
+  color: #ffffff;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.24);
 }
 
@@ -1111,17 +1167,14 @@ input[type="checkbox"] {
 
 .industrial-auth-shell {
   background:
-    radial-gradient(circle at 50% 14%, rgba(197, 109, 45, 0.13), transparent 18%),
-    radial-gradient(circle at 50% 86%, rgba(31, 138, 120, 0.08), transparent 22%),
     linear-gradient(180deg, #05101a 0%, #081625 52%, #06111b 100%);
 }
 
 .industrial-auth-card {
   position: relative;
   overflow: hidden;
-  border: 1px solid rgba(197, 109, 45, 0.28);
+  border: 1px solid rgba(99, 102, 241, 0.28);
   background:
-    radial-gradient(circle at 50% 0%, rgba(197, 109, 45, 0.12), transparent 34%),
     linear-gradient(180deg, rgba(32, 39, 52, 0.88), rgba(18, 23, 33, 0.94));
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.06),
