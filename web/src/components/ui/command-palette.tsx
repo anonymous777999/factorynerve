@@ -383,9 +383,10 @@ function CommandPaletteDialog({
     <div className="fixed inset-0 z-command">
       <button
         type="button"
-        className="absolute inset-0 bg-command-bg"
+        className="absolute inset-0 bg-command-bg focus-visible:outline-none"
         onClick={() => onOpenChange(false)}
         aria-label={closeLabel}
+        tabIndex={-1}
       />
       <div className="safe-top-inset safe-x-inset absolute inset-x-0 top-0 flex justify-center px-md py-md">
         <section
@@ -455,11 +456,11 @@ function CommandPaletteDialog({
                             onClick={() => handleSelect(item)}
                             onMouseEnter={() => setActiveCommandId(item.id)}
                             className={cn(
-                              "flex w-full items-start justify-between gap-md rounded-panel border-[0.5px] px-md py-sm text-left transition-[background-color,border-color,color] duration-fast ease-standard",
+                              "flex w-full items-start justify-between gap-md rounded-panel border-[0.5px] px-md py-sm text-left transition-[background-color,border-color,color] duration-fast ease-standard focus-visible:outline-none",
                               isActive
                                 ? "border-border-focus bg-command-selected"
                                 : "border-transparent bg-transparent hover:border-border-subtle hover:bg-command-hover",
-                              item.disabled ? "cursor-not-allowed opacity-60" : "focus-visible:ring-1 focus-visible:ring-border-focus",
+                              item.disabled ? "cursor-not-allowed opacity-60" : "focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-focus",
                             )}
                           >
                             <div className="min-w-0 space-y-xs">

@@ -117,6 +117,19 @@ const semanticColors = {
     "ai-processing": "var(--workflow-ai-processing)",
     "ai-bg": "var(--workflow-ai-bg)",
   },
+  // Sprint 2 Task 4: Calm indigo tokens for AI processing surfaces.
+  // Exposes utilities like bg-ai-processing-bg, text-ai-processing-fg,
+  // border-ai-processing-border for AI insight panels.
+  "ai-processing": {
+    bg: "var(--ai-processing-bg)",
+    fg: "var(--ai-processing-fg)",
+    border: "var(--ai-processing-border)",
+  },
+  confidence: {
+    "high-fg": "var(--confidence-high-fg)",
+    "medium-fg": "var(--confidence-medium-fg)",
+    "low-fg": "var(--confidence-low-fg)",
+  },
   command: {
     bg: "var(--command-bg)",
     panel: "var(--command-panel-bg)",

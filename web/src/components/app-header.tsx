@@ -76,7 +76,7 @@ export function AppHeader({
               className="h-input w-input shrink-0 text-[var(--color-text-primary)]"
               onClick={onToggleSidebar}
             >
-              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5">
+              <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-5 w-5" aria-hidden="true" focusable="false">
                 <path d="M4 6h12M4 10h12M4 14h12" strokeLinecap="round" />
               </svg>
             </Button>

@@ -24,6 +24,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(function 
         className: `pr-lg ${className || ""}`,
         validationState,
       })}
+      aria-invalid={validationState === "invalid" ? true : undefined}
       {...props}
     />
   );

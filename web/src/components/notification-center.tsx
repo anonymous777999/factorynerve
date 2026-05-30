@@ -57,7 +57,7 @@ export function NotificationCenter() {
                 onClick={() => setOpen((current) => !current)}
             >
                 <span className="sr-only">Notifications</span>
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-4.5 w-4.5">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.75" className="h-4.5 w-4.5" aria-hidden="true" focusable="false">
                     <path d="M10 3.5a3 3 0 0 1 3 3V8c0 .7.24 1.38.69 1.91L15 11.5v1H5v-1l1.31-1.59c.45-.53.69-1.2.69-1.91V6.5a3 3 0 0 1 3-3Z" strokeLinecap="round" strokeLinejoin="round" />
                     <path d="M8.5 14a1.5 1.5 0 0 0 3 0" strokeLinecap="round" />
                 </svg>

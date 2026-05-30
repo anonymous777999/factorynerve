@@ -27,7 +27,7 @@ const cardVariants = cva("rounded-lg overflow-hidden", {
     },
     defaultVariants: {
         elevation: "md",
-        padding: "md",
+        padding: "lg",
         interactive: false,
     },
 });

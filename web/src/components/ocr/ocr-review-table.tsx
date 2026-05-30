@@ -68,16 +68,40 @@ export function OcrReviewTable({
     ) as DataTableColumnDef<OcrReviewRow>[];
   }, [headers, onCellChange, onHeaderChange]);
 
+  // Sprint 2 Task 24: Calm indigo header banner marks the table as AI-extracted
+  // content. 16px padding (p-4) and 12px internal spacing (space-y-3) follow the
+  // visual doctrine for AI surfaces. Operators see immediately that values came
+  // from OCR and any cell they edit becomes "their" data on save.
   return (
-    <DataTable<OcrReviewRow>
-      ariaLabel="OCR review table"
-      columns={columns}
-      data={data}
-      enableStickyFirstColumn
-      enableVirtualization={rows.length > 100}
-      emptyTitle="No OCR rows available"
-      emptyMessage="Create or reopen a draft to continue reviewing OCR output."
-      viewportSize="lg"
-    />
+    <div className="space-y-3">
+      <div
+        className="flex flex-wrap items-center gap-3 rounded-md border border-ai-processing-border bg-ai-processing-bg p-4"
+        role="note"
+        aria-label="AI-extracted content notice"
+      >
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="h-2 w-2 rounded-full bg-ai-processing-fg"
+          />
+          <span className="text-xs font-medium uppercase tracking-[0.14em] text-ai-processing-fg">
+            AI extracted
+          </span>
+        </div>
+        <span className="text-xs text-text-secondary">
+          Review headers and cell values. Edits become trusted user data on save.
+        </span>
+      </div>
+      <DataTable<OcrReviewRow>
+        ariaLabel="OCR review table"
+        columns={columns}
+        data={data}
+        enableStickyFirstColumn
+        enableVirtualization={rows.length > 100}
+        emptyTitle="No OCR rows available"
+        emptyMessage="Create or reopen a draft to continue reviewing OCR output."
+        viewportSize="lg"
+      />
+    </div>
   );
 }

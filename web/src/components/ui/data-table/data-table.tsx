@@ -107,7 +107,7 @@ function getStickyCellClassName(
             ? "bg-status-paused-bg group-hover:bg-status-paused-bg"
             : rowStates.has("synced")
               ? "bg-status-synced-bg group-hover:bg-status-synced-bg"
-              : "bg-surface-card group-hover:bg-surface-hover";
+              : "bg-surface-card group-hover:bg-surface-panel/90";
 
   return cn(
     "sticky left-0 z-sticky border-r border-border-subtle",
@@ -152,7 +152,7 @@ function getRowSurfaceClassName(rowStates: Set<DataTableRowState>) {
     return "bg-status-synced-bg hover:bg-status-synced-bg";
   }
 
-  return "bg-surface-card hover:bg-surface-hover";
+  return "bg-surface-card hover:bg-surface-panel/90";
 }
 
 function getRowAccentClassName(rowStates: Set<DataTableRowState>) {
@@ -301,12 +301,12 @@ export function DataTable<TData extends RowData>({
         onClear={
           onSearchChange || onColumnFiltersChange
             ? () => {
-                setInternalColumnFilters([]);
-                setInternalSorting([]);
-                onColumnFiltersChange?.([]);
-                onSortingChange?.([]);
-                onSearchChange?.("");
-              }
+              setInternalColumnFilters([]);
+              setInternalSorting([]);
+              onColumnFiltersChange?.([]);
+              onSortingChange?.([]);
+              onSearchChange?.("");
+            }
             : undefined
         }
         onSearchChange={onSearchChange}
@@ -425,9 +425,9 @@ export function DataTable<TData extends RowData>({
 
   const scrollViewportRef = React.useRef<HTMLDivElement | null>(null);
   const keyboardScopeRef = React.useRef<HTMLDivElement | null>(null);
-  const densityRowMetric = useDensityMetric("--density-row-height", 34);
-  const rowHeight =
-    densityRowMetric >= 48 ? 52 : densityRowMetric <= 28 ? 36 : 44;
+  const densityRowMetric = useDensityMetric("--density-row-height", 40);
+  // Virtualizer uses density row height directly (Sprint 2: 40px default, 36px compact, 48px comfortable).
+  const rowHeight = densityRowMetric;
 
   const rows = table.getRowModel().rows;
   rowsForSelectionRef.current = rows.map((row) => ({
@@ -732,8 +732,9 @@ export function DataTable<TData extends RowData>({
                     const cellProps = getCellProps(rowIndex, columnIndex, row.id);
                     const keyboardHandler = cellProps.onKeyDown;
                     const commonClassName = cn(
-                      "border-b border-border-subtle px-cell-x py-[calc(var(--density-cell-pad-y)+2px)] align-middle text-[length:var(--text-base)] text-text-secondary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-border-focus",
+                      "border-b border-border-subtle px-cell-x py-cell-y align-middle text-[length:var(--text-base)] text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border-focus",
                       alignmentClassNames[align],
+                      align === "right" ? "tabular-nums" : "",
                       meta?.wrap ? "whitespace-normal" : "whitespace-nowrap",
                       getStickyCellClassName(isSticky, rowStates),
                       getLeadingCellAccentClassName(

@@ -1588,7 +1588,7 @@ export default function DashboardHome() {
   if (isOperatorHome) {
     return (
       <main className="min-h-screen bg-[var(--surface-industrial-deep)] px-4 py-6 md:px-6 lg:py-8">
-        <div className="mx-auto max-w-6xl space-y-4">
+        <div className="mx-auto max-w-6xl space-y-8">
           {status ? (
             <div className="rounded-[20px] border border-[var(--status-success-border)] bg-[var(--status-success-bg)] px-4 py-3 text-sm text-[var(--status-success-fg)]">
               {status}
@@ -1668,10 +1668,10 @@ export default function DashboardHome() {
               </div>
             </section>
 
-            <aside className="space-y-4">
+            <aside className="space-y-6">
               <div className="rounded-[28px] border border-[var(--border)] bg-[var(--surface-panel)] p-5 shadow-[0_20px_60px_rgba(6,10,18,0.32)]">
                 <div className="text-xs uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Today Summary</div>
-                <div className="mt-4 space-y-3 text-sm text-[var(--text-secondary)]">
+                <div className="mt-4 space-y-6 text-sm text-[var(--text-secondary)]">
                   <div className="flex items-center justify-between">
                     <span>Completed</span>
                     <span className="font-semibold text-[var(--text-inverse)]">{completedShifts}</span>
@@ -1695,14 +1695,14 @@ export default function DashboardHome() {
               <div className="rounded-[28px] border border-[var(--border)] bg-[var(--surface-industrial-raised)] p-5">
                 <div className="text-xs uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Alerts</div>
                 {workerAlerts.length ? (
-                  <div className="mt-4 space-y-3">
+                  <div className="mt-4 space-y-6">
                     {workerAlerts.slice(0, 2).map((alert) => (
                       <div key={alert.id} className={`rounded-[20px] border px-4 py-3 ${severityTone(alert.severity)}`}>
                         <div className="text-sm font-medium">{alert.message}</div>
                         <div className="mt-2 text-xs opacity-70">{formatDateTime(alert.created_at, locale)}</div>
                         <button
                           type="button"
-                          className="mt-3 text-xs font-semibold underline underline-offset-4"
+                          className="mt-3 rounded-control text-xs font-semibold underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                           onClick={() => handleMarkAlertRead(alert.id)}
                         >
                           Mark done
@@ -1719,7 +1719,7 @@ export default function DashboardHome() {
 
               <div className="rounded-[28px] border border-[var(--border)] bg-[var(--surface-industrial-raised)] p-5">
                 <div className="text-xs uppercase tracking-[0.18em] text-[var(--text-tertiary)]">Shift Status</div>
-                <div className="mt-4 space-y-3">
+                <div className="mt-4 space-y-6">
                   {todayShiftCards.map(({ shift, entry }) => (
                     <div
                       key={shift}
@@ -2214,7 +2214,7 @@ export default function DashboardHome() {
                 {primaryAction?.title || t("dashboard.primary.fallback_title", "Start the next task")}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               <div className="text-sm leading-6 text-[var(--muted)]">
                 {primaryAction?.detail || t("dashboard.primary.fallback_detail", "Keep the floor moving with the next best action.")}
               </div>
@@ -2238,7 +2238,7 @@ export default function DashboardHome() {
               </div>
               <CardTitle className="text-xl">{t("dashboard.attention.title", "What needs review now")}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 text-sm">
+            <CardContent className="space-y-6 text-sm">
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
                   <div className="text-xs text-[var(--muted)]">{t("dashboard.metric.alerts", "Alerts")}</div>
@@ -2305,7 +2305,7 @@ export default function DashboardHome() {
               </div>
               <CardTitle className="text-xl">{t("dashboard.quick.title", "No hunting, just move")}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-6">
               {/* AUDIT: DENSITY_OVERLOAD — The dashboard now spotlights the first few next routes and tucks the long route list into a secondary tray. */}
               {secondaryActions.slice(0, 3).map((card) => (
                 <div key={`${card.eyebrow}-${card.href}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
@@ -2322,7 +2322,7 @@ export default function DashboardHome() {
                   <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
                     More routes
                   </summary>
-                  <div className="mt-3 space-y-3">
+                  <div className="mt-3 space-y-6">
                     {secondaryActions.slice(3).map((card) => (
                       <div key={`${card.eyebrow}-${card.href}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
                         <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{card.eyebrow}</div>
@@ -2359,7 +2359,7 @@ export default function DashboardHome() {
                 {t("dashboard.steel.title", "Steel Control is now a separate module")}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 text-sm text-[var(--muted)]">
+            <CardContent className="space-y-6 text-sm text-[var(--muted)]">
               <div>
                 {t(
                   "dashboard.steel.copy",
@@ -2394,7 +2394,7 @@ export default function DashboardHome() {
                 <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">{card.label}</div>
                 <CardTitle>{card.value}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 text-sm text-[var(--muted)]">
+              <CardContent className="space-y-6 text-sm text-[var(--muted)]">
                 <div>{card.detail}</div>
                 {index === dashboardSnapshotCards.length - 1 && user?.role === "operator" ? (
                   <div className="flex flex-wrap gap-3">
@@ -2483,8 +2483,8 @@ export default function DashboardHome() {
                       )}
                     </div>
                   ) : state.weekly.length ? (
-                    <div className="space-y-3">
-                      <div className="space-y-3 md:hidden">
+                    <div className="space-y-6">
+                      <div className="space-y-6 md:hidden">
                         {state.weekly.map((point) => (
                           <div key={point.date} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2536,12 +2536,12 @@ export default function DashboardHome() {
                   <div className="text-sm text-[var(--muted)]">{t("dashboard.plan_limits.title", "Plan & Limits")}</div>
                   <CardTitle className="text-xl">{state.usage?.plan ? `${state.usage.plan} ${t("common.plan", "plan")}` : t("dashboard.usage_summary", "Usage summary")}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                     <div className="text-sm text-[var(--muted)]">{t("dashboard.current_period", "Current period")}</div>
                     <div className="mt-1 text-lg font-semibold">{state.usage?.period || "-"}</div>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-6">
                     <div>
                       <div className="mb-2 flex items-center justify-between text-sm">
                         <span className="text-[var(--muted)]">{t("dashboard.requests", "Requests")}</span>
@@ -2609,7 +2609,7 @@ export default function DashboardHome() {
                     <Button variant="outline">{t("dashboard.action.open_ai", "Open AI Insights")}</Button>
                   </Link>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-6">
                   {state.anomalyLocked ? (
                     <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                       {t(
@@ -2654,7 +2654,7 @@ export default function DashboardHome() {
                   <div className="text-sm text-[var(--muted)]">{t("dashboard.top_signals", "Top Signals")}</div>
                   <CardTitle className="text-xl">{t("dashboard.attention.now", "What needs attention right now")}</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-6">
                   {state.anomalyPreview?.items?.length ? (
                     state.anomalyPreview.items.slice(0, 4).map((item) => (
                       <div key={`${item.entry_id}-${item.anomaly_type}`} className={`rounded-2xl border p-4 ${severityTone(item.severity)}`}>
@@ -2693,7 +2693,7 @@ export default function DashboardHome() {
                 <CardTitle className="text-xl">{state.alerts.length} {t("dashboard.active", "active")}</CardTitle>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-6">
               {state.alerts.length ? (
                 state.alerts.slice(0, 5).map((alert) => (
                   <div

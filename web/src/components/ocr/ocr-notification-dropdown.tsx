@@ -55,6 +55,8 @@ export function OcrNotificationDropdown({
                     viewBox="0 0 16 16"
                     fill="none"
                     xmlns="http://www.w3.org/2000/svg"
+                    aria-hidden="true"
+                    focusable="false"
                 >
                     <path
                         d="M8 2C6.34315 2 5 3.34315 5 5V7.58579L3.70711 8.87868C3.31658 9.26921 3.31658 9.90237 3.70711 10.2929C4.09763 10.6834 4.73079 10.6834 5.12132 10.2929L6 9.41421V5C6 3.89543 6.89543 3 8 3C9.10457 3 10 3.89543 10 5V9.41421L10.8787 10.2929C11.2692 10.6834 11.9024 10.6834 12.2929 10.2929C12.6834 9.90237 12.6834 9.26921 12.2929 8.87868L11 7.58579V5C11 3.34315 9.65685 2 8 2Z"
@@ -115,6 +117,8 @@ export function OcrNotificationDropdown({
                                                         viewBox="0 0 14 14"
                                                         fill="none"
                                                         xmlns="http://www.w3.org/2000/svg"
+                                                        aria-hidden="true"
+                                                        focusable="false"
                                                     >
                                                         <path
                                                             d="M3.5 3.5L10.5 10.5M10.5 3.5L3.5 10.5"

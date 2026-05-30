@@ -57,7 +57,7 @@ export function GuidanceBlock({
     <section className={cn("overflow-hidden rounded-panel border border-border-default bg-surface-card", className)}>
       <button
         type="button"
-        className="flex w-full items-start justify-between gap-md px-lg py-md text-left"
+        className="flex w-full items-start justify-between gap-md px-lg py-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
         onClick={() => setExpanded(!isExpanded)}
         aria-expanded={isExpanded}
       >

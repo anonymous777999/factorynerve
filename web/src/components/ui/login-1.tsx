@@ -47,7 +47,7 @@ type LoginOneProps = {
 
 function providerButtonClasses(disabled?: boolean) {
   return cn(
-    "factory-auth-provider flex min-h-[56px] w-full items-center justify-between rounded-panel px-4 py-3 text-left transition",
+    "factory-auth-provider flex min-h-[56px] w-full items-center justify-between rounded-panel px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
     disabled
       ? "cursor-not-allowed text-text-tertiary opacity-75"
       : "text-text-primary",
@@ -233,15 +233,15 @@ export function LoginOne({
               <button
                 type="button"
                 onClick={onTogglePassword}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-control border border-border-default bg-surface-shell px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-text-secondary transition hover:border-border-strong hover:bg-surface-hover hover:text-text-primary"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-control border border-border-default bg-surface-shell px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-text-secondary transition hover:border-border-strong hover:bg-surface-hover hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
               >
                 {showPassword ? "Hide" : "Show"}
               </button>
             </div>
           </div>
 
-          <Button type="submit" className="factory-auth-cta h-[42px] w-full border-transparent" disabled={loading}>
-            {loading ? "Signing in..." : "Initialize Session"}
+          <Button type="submit" className="factory-auth-cta h-[42px] w-full border-transparent" isBusy={loading} busyLabel="Signing in...">
+            Initialize Session
           </Button>
         </div>
 

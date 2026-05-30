@@ -336,7 +336,7 @@ export function IndustrialFactoryDashboard({
   };
 
   const leftRail = (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {activeData.filterPanels.map((panel) => (
         <IndustrialFilterPanel
           key={panel.id}
@@ -350,7 +350,7 @@ export function IndustrialFactoryDashboard({
           <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Active Filters</div>
           <CardTitle className="mt-2 text-lg text-text-primary">Control context</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2 text-sm text-text-secondary">
+        <CardContent className="space-y-6 text-sm text-text-secondary">
           {activeData.filterPanels.map((panel) => (
             <div
               key={panel.id}
@@ -367,7 +367,7 @@ export function IndustrialFactoryDashboard({
           <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">Action Center</div>
           <CardTitle className="mt-2 text-lg text-text-primary">Next best step</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3 text-sm text-text-secondary">
+        <CardContent className="space-y-6 text-sm text-text-secondary">
           {filterStatus ? (
             <div className="rounded-xl border border-border-default bg-surface-elevated px-3 py-2">{filterStatus}</div>
           ) : (
@@ -379,7 +379,7 @@ export function IndustrialFactoryDashboard({
             {viewConfig.note}
           </div>
           {drilldownAction ? (
-            <div className="space-y-2 rounded-xl border border-border-default bg-surface-elevated px-3 py-3">
+            <div className="space-y-6 rounded-xl border border-border-default bg-surface-elevated px-3 py-3">
               <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">{drilldownAction.context}</div>
               <div className="font-semibold text-text-primary">
                 {lastDrillDown?.seriesName}: {lastDrillDown?.label} ({Math.round(lastDrillDown?.value || 0)})
@@ -417,7 +417,7 @@ export function IndustrialFactoryDashboard({
   return (
     <section className="space-y-6">
       <Card className="shadow-sm">
-        <CardHeader className="space-y-4">
+        <CardHeader className="space-y-6">
           {!embedded ? (
             <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>

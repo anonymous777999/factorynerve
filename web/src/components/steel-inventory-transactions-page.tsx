@@ -250,8 +250,8 @@ export function SteelInventoryTransactionsPage() {
                         placeholder="Internal audit note"
                       />
                     </div>
-                    <Button type="submit" className="w-full" disabled={busy}>
-                      {busy ? "Recording..." : "Post Transaction"}
+                    <Button type="submit" className="w-full" isBusy={busy} busyLabel="Recording...">
+                      Post Transaction
                     </Button>
                   </form>
                 </CardContent>

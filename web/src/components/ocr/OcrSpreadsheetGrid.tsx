@@ -22,19 +22,31 @@ interface OcrSpreadsheetGridProps {
   isReadOnly: boolean;
 }
 
+type CellSource = "ocr" | "ai" | "corrected" | "manual" | "unknown" | null;
+
 type RowData = Record<string, OcrCell>;
 
-function normalizeCell(cell: OcrCell): { value: string; confidence?: number | null } {
+function normalizeCell(cell: OcrCell): {
+  value: string;
+  confidence: number | null;
+  source: CellSource;
+} {
   if (typeof cell === "string") {
-    return { value: cell, confidence: null };
+    return { value: cell, confidence: null, source: null };
   }
-  return { value: cell.value, confidence: cell.confidence };
+  return {
+    value: cell.value,
+    confidence: cell.confidence ?? null,
+    source: (cell.source ?? null) as CellSource,
+  };
 }
 
+// Sprint 2 Task 24: Confidence accent ribbon on the left edge of each cell.
+// Calm semantic colors (no glow, no pulsing) that pair with the status badge.
 function getConfidenceClass(tier: "high" | "medium" | "review_required"): string {
-  if (tier === "review_required") return "border-l-4 border-l-status-danger-border bg-status-danger-bg";
-  if (tier === "medium") return "border-l-4 border-l-status-warning-border bg-status-warning-bg";
-  return "border-l-4 border-l-status-synced-border bg-status-synced-bg";
+  if (tier === "review_required") return "border-l-4 border-l-status-danger-border";
+  if (tier === "medium") return "border-l-4 border-l-status-warning-border";
+  return "border-l-4 border-l-status-synced-border";
 }
 
 function getConfidenceBadgeClass(tier: "high" | "medium" | "review_required"): string {
@@ -47,6 +59,19 @@ function getConfidenceLabel(tier: "high" | "medium" | "review_required") {
   if (tier === "review_required") return "Review";
   if (tier === "medium") return "Check";
   return "Verified";
+}
+
+// Sprint 2 Task 24: AI-generated content uses calm indigo tint; user-corrected
+// content uses neutral surface. This makes AI content visually distinct from
+// user-entered data without alarming color shifts.
+function getCellSurfaceClass(source: CellSource, isSelected: boolean): string {
+  if (isSelected) return "bg-surface-selected";
+  if (source === "corrected" || source === "manual") {
+    return "bg-surface-shell";
+  }
+  // ocr / ai / unknown / null all treated as AI-extracted content.
+  // Direct rgba avoids unreliable var()+opacity-modifier syntax (see ConfidenceBadge note).
+  return "bg-ai-processing-bg";
 }
 
 function isNumericValue(value: string): boolean {
@@ -86,11 +111,12 @@ export function OcrSpreadsheetGrid({
       cell: (info) => {
         const rowIndex = info.row.index;
         const cell = info.getValue() as OcrCell;
-        const { value, confidence } = normalizeCell(cell);
+        const { value, confidence, source } = normalizeCell(cell);
         const confidenceTier = getOcrConfidenceTier(confidence ?? undefined);
         const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.columnIndex === columnIndex;
         const isSelected = activeCell?.row === rowIndex && activeCell?.column === columnIndex;
         const isNumeric = isNumericValue(value);
+        const isUserEdited = source === "corrected" || source === "manual";
 
         if (isEditing) {
           return (
@@ -121,9 +147,14 @@ export function OcrSpreadsheetGrid({
           );
         }
 
+        const surfaceClass = getCellSurfaceClass(source, isSelected);
+        const titleParts = [getConfidenceLabel(confidenceTier)];
+        if (isUserEdited) titleParts.push("User edited");
+        else titleParts.push("AI extracted");
+
         return (
           <div
-            className={`flex h-full w-full cursor-text items-center gap-2 truncate px-3 py-2 text-text-primary ${getConfidenceClass(confidenceTier)} ${isSelected ? "ring-1 ring-inset ring-border-focus" : ""} ${isNumeric ? "text-right font-variant-numeric-tabular" : ""}`}
+            className={`flex h-full w-full cursor-text items-center gap-2 truncate px-3 py-2 text-text-primary transition-colors duration-[80ms] ${surfaceClass} ${getConfidenceClass(confidenceTier)} ${isSelected ? "ring-1 ring-inset ring-border-focus" : ""} ${isNumeric ? "text-right font-variant-numeric-tabular" : ""}`}
             onClick={() => {
               onActiveCellChange?.({ row: rowIndex, column: columnIndex });
               if (!isReadOnly) {
@@ -131,7 +162,8 @@ export function OcrSpreadsheetGrid({
                 setDraftValue(value);
               }
             }}
-            title={getConfidenceLabel(confidenceTier)}
+            title={titleParts.join(" · ")}
+            data-cell-source={source ?? "ai"}
             style={{
               fontFamily: 'Inter, "Noto Sans Devanagari", sans-serif',
               fontSize: "14px",
@@ -140,9 +172,18 @@ export function OcrSpreadsheetGrid({
             }}
           >
             <span className="truncate">{value || "\u00A0"}</span>
-            <span className={`ml-auto rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${getConfidenceBadgeClass(confidenceTier)}`}>
-              {getConfidenceLabel(confidenceTier)}
-            </span>
+            {isUserEdited ? (
+              <span
+                aria-label="User edited"
+                className="ml-auto inline-flex items-center rounded-full border border-border-default bg-surface-card px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-secondary"
+              >
+                Edited
+              </span>
+            ) : (
+              <span className={`ml-auto rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${getConfidenceBadgeClass(confidenceTier)}`}>
+                {getConfidenceLabel(confidenceTier)}
+              </span>
+            )}
           </div>
         );
       },
@@ -179,6 +220,34 @@ export function OcrSpreadsheetGrid({
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border border-border-default bg-surface-panel shadow-sm">
+      {/* Sprint 2 Task 24: Calm indigo banner clarifies that this grid holds AI-extracted
+          values. User-edited cells fall back to a neutral surface so operators can tell
+          AI content from their own corrections at a glance. */}
+      <div className="flex flex-wrap items-center gap-3 border-b border-ai-processing-border bg-ai-processing-bg px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="h-2 w-2 rounded-full bg-ai-processing-fg"
+          />
+          <span className="text-xs font-medium uppercase tracking-[0.14em] text-ai-processing-fg">
+            AI extracted
+          </span>
+        </div>
+        <span className="text-xs text-text-secondary">
+          Tinted cells are AI output. Edited cells return to a neutral surface and show an &ldquo;Edited&rdquo; tag.
+        </span>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1 rounded-full border border-status-synced-border bg-status-synced-bg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-status-synced-fg">
+            Verified
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-status-warning-border bg-status-warning-bg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-status-warning-fg">
+            Check
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-status-danger-border bg-status-danger-bg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-status-danger-fg">
+            Review
+          </span>
+        </div>
+      </div>
       <div
         ref={containerRef}
         className="min-h-0 flex-1 overflow-auto"

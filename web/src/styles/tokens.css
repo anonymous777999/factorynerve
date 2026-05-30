@@ -31,81 +31,102 @@
 
 :root {
   /* Neutrals */
-  --_prim-neutral-0:    0 0% 100%;       /* pure white */
-  --_prim-neutral-50:   210 20% 98%;     /* off-white shell bg */
-  --_prim-neutral-100:  210 16% 95%;     /* subtle surface */
-  --_prim-neutral-150:  210 14% 91%;     /* divider-level surface */
-  --_prim-neutral-200:  210 12% 86%;     /* border / rule */
-  --_prim-neutral-300:  210 10% 74%;     /* muted border */
-  --_prim-neutral-400:  210 9%  60%;     /* placeholder text */
-  --_prim-neutral-500:  210 8%  46%;     /* secondary text */
-  --_prim-neutral-600:  210 10% 34%;     /* tertiary heading */
-  --_prim-neutral-700:  213 14% 22%;     /* primary text */
-  --_prim-neutral-800:  215 18% 14%;     /* strong headings */
-  --_prim-neutral-900:  218 24% 8%;      /* near black */
-  --_prim-neutral-950:  220 30% 5%;      /* true dark bg */
+  --_prim-neutral-0: 0 0% 100%;
+  /* pure white */
+  --_prim-neutral-50: 210 20% 98%;
+  /* off-white shell bg */
+  --_prim-neutral-100: 210 16% 95%;
+  /* subtle surface */
+  --_prim-neutral-150: 210 14% 91%;
+  /* divider-level surface */
+  --_prim-neutral-200: 210 12% 86%;
+  /* border / rule */
+  --_prim-neutral-300: 210 10% 74%;
+  /* muted border */
+  --_prim-neutral-400: 210 9% 60%;
+  /* placeholder text */
+  --_prim-neutral-500: 210 8% 46%;
+  /* secondary text */
+  --_prim-neutral-600: 210 10% 34%;
+  /* tertiary heading */
+  --_prim-neutral-700: 213 14% 22%;
+  /* primary text */
+  --_prim-neutral-800: 215 18% 14%;
+  /* strong headings */
+  --_prim-neutral-900: 218 24% 8%;
+  /* near black */
+  --_prim-neutral-950: 220 30% 5%;
+  /* true dark bg */
 
   /* Brand Blue — operational, not decorative */
-  --_prim-blue-50:      213 90% 96%;
-  --_prim-blue-100:     213 85% 90%;
-  --_prim-blue-200:     213 80% 80%;
-  --_prim-blue-300:     213 75% 68%;
-  --_prim-blue-400:     213 70% 55%;
-  --_prim-blue-500:     213 78% 44%;     /* primary action */
-  --_prim-blue-600:     213 82% 36%;     /* pressed/active action */
-  --_prim-blue-700:     213 84% 28%;
-  --_prim-blue-800:     213 86% 20%;
-  --_prim-blue-900:     213 88% 14%;
+  --_prim-blue-50: 213 90% 96%;
+  --_prim-blue-100: 213 85% 90%;
+  --_prim-blue-200: 213 80% 80%;
+  --_prim-blue-300: 213 75% 68%;
+  --_prim-blue-400: 213 70% 55%;
+  --_prim-blue-500: 213 78% 44%;
+  /* primary action */
+  --_prim-blue-600: 213 82% 36%;
+  /* pressed/active action */
+  --_prim-blue-700: 213 84% 28%;
+  --_prim-blue-800: 213 86% 20%;
+  --_prim-blue-900: 213 88% 14%;
 
   /* Status: Success — Green (operational complete/healthy) */
-  --_prim-green-50:     142 70% 95%;
-  --_prim-green-100:    142 65% 88%;
-  --_prim-green-200:    142 60% 75%;
-  --_prim-green-400:    142 55% 46%;
-  --_prim-green-500:    142 60% 36%;     /* status success */
-  --_prim-green-700:    142 62% 24%;
-  --_prim-green-900:    142 64% 14%;
+  --_prim-green-50: 142 70% 95%;
+  --_prim-green-100: 142 65% 88%;
+  --_prim-green-200: 142 60% 75%;
+  --_prim-green-400: 142 55% 46%;
+  --_prim-green-500: 142 60% 36%;
+  /* status success */
+  --_prim-green-700: 142 62% 24%;
+  --_prim-green-900: 142 64% 14%;
 
   /* Status: Warning — Amber (caution, degraded, attention) */
-  --_prim-amber-50:     38 95% 95%;
-  --_prim-amber-100:    38 90% 88%;
-  --_prim-amber-200:    38 88% 76%;
-  --_prim-amber-400:    38 85% 52%;
-  --_prim-amber-500:    38 88% 44%;      /* status warning */
-  --_prim-amber-700:    38 88% 30%;
-  --_prim-amber-900:    38 90% 18%;
+  --_prim-amber-50: 38 95% 95%;
+  --_prim-amber-100: 38 90% 88%;
+  --_prim-amber-200: 38 88% 76%;
+  --_prim-amber-400: 38 85% 52%;
+  --_prim-amber-500: 38 88% 44%;
+  /* status warning */
+  --_prim-amber-700: 38 88% 30%;
+  --_prim-amber-900: 38 90% 18%;
 
   /* Status: Danger — Red (error, fault, critical stop) */
-  --_prim-red-50:       4 86% 96%;
-  --_prim-red-100:      4 82% 90%;
-  --_prim-red-200:      4 78% 78%;
-  --_prim-red-400:      4 72% 54%;
-  --_prim-red-500:      4 76% 44%;       /* status danger */
-  --_prim-red-700:      4 78% 30%;
-  --_prim-red-900:      4 80% 18%;
+  --_prim-red-50: 4 86% 96%;
+  --_prim-red-100: 4 82% 90%;
+  --_prim-red-200: 4 78% 78%;
+  --_prim-red-400: 4 72% 54%;
+  --_prim-red-500: 4 76% 44%;
+  /* status danger */
+  --_prim-red-700: 4 78% 30%;
+  --_prim-red-900: 4 80% 18%;
 
   /* Status: Processing — Indigo (AI/async in-progress) */
-  --_prim-indigo-50:    240 80% 97%;
-  --_prim-indigo-100:   240 76% 92%;
-  --_prim-indigo-200:   240 70% 82%;
-  --_prim-indigo-400:   240 64% 62%;
-  --_prim-indigo-500:   240 68% 52%;     /* status processing */
-  --_prim-indigo-700:   240 72% 36%;
-  --_prim-indigo-900:   240 76% 22%;
+  --_prim-indigo-50: 240 80% 97%;
+  --_prim-indigo-100: 240 76% 92%;
+  --_prim-indigo-200: 240 70% 82%;
+  --_prim-indigo-400: 240 64% 62%;
+  --_prim-indigo-500: 240 68% 52%;
+  /* status processing */
+  --_prim-indigo-700: 240 72% 36%;
+  --_prim-indigo-900: 240 76% 22%;
 
   /* Status: Paused — Slate (hold, awaiting, queued) */
-  --_prim-slate-50:     220 30% 96%;
-  --_prim-slate-100:    220 26% 90%;
-  --_prim-slate-400:    220 14% 56%;
-  --_prim-slate-500:    220 16% 44%;     /* status paused */
-  --_prim-slate-700:    220 20% 30%;
-  --_prim-slate-900:    220 24% 16%;
+  --_prim-slate-50: 220 30% 96%;
+  --_prim-slate-100: 220 26% 90%;
+  --_prim-slate-400: 220 14% 56%;
+  --_prim-slate-500: 220 16% 44%;
+  /* status paused */
+  --_prim-slate-700: 220 20% 30%;
+  --_prim-slate-900: 220 24% 16%;
 
   /* Status: Draft — Warm Gray (incomplete, pending) */
-  --_prim-warmgray-50:  30 16% 96%;
+  --_prim-warmgray-50: 30 16% 96%;
   --_prim-warmgray-100: 30 14% 90%;
-  --_prim-warmgray-400: 30 8%  56%;
-  --_prim-warmgray-500: 30 9%  44%;      /* status draft */
+  --_prim-warmgray-400: 30 8% 56%;
+  --_prim-warmgray-500: 30 9% 44%;
+  /* status draft */
   --_prim-warmgray-700: 30 10% 28%;
 }
 
@@ -133,74 +154,84 @@
   --color-border-info: 115 168 239;
 
   /* --- Text Hierarchy --- */
-  --text-primary:           hsl(var(--_prim-neutral-800));  /* headings, labels, key data */
-  --text-secondary:         hsl(var(--_prim-neutral-600));  /* supporting text, descriptions */
-  --text-tertiary:          hsl(var(--_prim-neutral-500));  /* placeholders, hints, metadata */
-  --text-disabled:          hsl(var(--_prim-neutral-400));  /* disabled fields */
-  --text-inverse:           hsl(var(--_prim-neutral-0));    /* text on dark/colored surfaces */
-  --text-link:              #1D6EEB;
-  --text-link-hover:        #175FCC;
-  --text-danger:            hsl(var(--_prim-red-700));
-  --text-success:           hsl(var(--_prim-green-700));
-  --text-warning:           hsl(var(--_prim-amber-700));
+  --text-primary: hsl(var(--_prim-neutral-800));
+  /* headings, labels, key data */
+  --text-secondary: hsl(var(--_prim-neutral-600));
+  /* supporting text, descriptions */
+  --text-tertiary: hsl(210 9% 42%);
+  /* placeholders, hints, metadata — Task 27: darkened from neutral-500 (46%)
+     to reach WCAG AA 4.5:1 on shell/app/panel/card surfaces (was 3.98–4.46:1) */
+  --text-disabled: hsl(var(--_prim-neutral-400));
+  /* disabled fields — exempt from contrast minimums (WCAG 1.4.3 inactive controls) */
+  --text-inverse: hsl(var(--_prim-neutral-0));
+  /* text on dark/colored surfaces */
+  --text-link: #175FCC;
+  /* Task 27: darkened from #1D6EEB to reach 4.5:1 on light surfaces (was 4.00–4.48:1) */
+  --text-link-hover: #1453B0;
+  --text-danger: hsl(var(--_prim-red-700));
+  --text-success: hsl(var(--_prim-green-700));
+  --text-warning: hsl(var(--_prim-amber-700));
 
   /* --- Surface Hierarchy ---
      Rule: each level must be visually distinguishable from its neighbors.
      app-bg < shell < panel < card < elevated < overlay */
-  --surface-app:            hsl(210 17% 96%);
-  --surface-shell:          hsl(210 13% 93%);
-  --surface-panel:          hsl(210 17% 97%);
-  --surface-card:           hsl(210 18% 98%);
-  --surface-elevated:       hsl(210 20% 99%);
-  --surface-overlay:        hsl(210 20% 99%);
-  --surface-hover:          hsl(210 15% 95%);
-  --surface-active:         hsl(210 14% 92%);
-  --surface-selected:       hsl(213 46% 91%);
-  --surface-skeleton:       hsl(210 12% 90%);
+  --surface-app: hsl(210 17% 96%);
+  --surface-shell: hsl(210 13% 93%);
+  --surface-panel: hsl(210 17% 97%);
+  --surface-card: hsl(210 18% 98%);
+  --surface-elevated: hsl(210 20% 99%);
+  --surface-overlay: hsl(210 20% 99%);
+  --surface-hover: hsl(210 15% 95%);
+  --surface-active: hsl(210 14% 92%);
+  --surface-selected: hsl(213 46% 91%);
+  --surface-skeleton: hsl(210 12% 90%);
   --surface-skeleton-shine: hsl(210 14% 94%);
-  --surface-industrial-deep:    hsl(210 16% 95%);
-  --surface-industrial-raised:  hsl(210 14% 97%);
-  --surface-industrial-card:    hsl(210 12% 99%);
+  --surface-industrial-deep: hsl(210 16% 95%);
+  --surface-industrial-raised: hsl(210 14% 97%);
+  --surface-industrial-card: hsl(210 12% 99%);
 
   /* --- Border System --- */
-  --border-subtle:          hsl(210 14% 86%);
-  --border-default:         hsl(210 11% 80%);
-  --border-strong:          hsl(210 10% 69%);
-  --border-focus:           hsl(var(--_prim-blue-400));     /* keyboard focus rings */
-  --border-danger:          hsl(var(--_prim-red-400));      /* error state inputs */
-  --border-success:         hsl(var(--_prim-green-400));    /* valid/synced inputs */
+  --border-subtle: hsl(210 14% 86%);
+  --border-default: hsl(210 11% 80%);
+  --border-strong: hsl(210 10% 69%);
+  --border-focus: hsl(var(--_prim-blue-400));
+  /* keyboard focus rings */
+  --border-danger: hsl(var(--_prim-red-400));
+  /* error state inputs */
+  --border-success: hsl(var(--_prim-green-400));
+  /* valid/synced inputs */
 
   /* --- Action / Interactive --- */
-  --action-primary:         #1D6EEB;
-  --action-primary-hover:   #2379F3;
-  --action-primary-active:  #175FCC;
-  --action-primary-text:    hsl(var(--_prim-neutral-0));
-  --action-secondary:       hsl(var(--_prim-neutral-0));
+  --action-primary: #1D6EEB;
+  --action-primary-hover: #2379F3;
+  --action-primary-active: #175FCC;
+  --action-primary-text: hsl(var(--_prim-neutral-0));
+  --action-secondary: hsl(var(--_prim-neutral-0));
   --action-secondary-hover: hsl(var(--_prim-neutral-100));
-  --action-secondary-border:hsl(var(--_prim-neutral-300));
-  --action-secondary-text:  hsl(var(--_prim-neutral-700));
-  --action-ghost-hover:     hsl(var(--_prim-neutral-100));
-  --action-destructive:     hsl(var(--_prim-red-500));
-  --action-destructive-hover:hsl(var(--_prim-red-700));
-  --action-disabled:        hsl(var(--_prim-neutral-200));
-  --action-disabled-text:   hsl(var(--_prim-neutral-400));
+  --action-secondary-border: hsl(var(--_prim-neutral-300));
+  --action-secondary-text: hsl(var(--_prim-neutral-700));
+  --action-ghost-hover: hsl(var(--_prim-neutral-100));
+  --action-destructive: hsl(var(--_prim-red-500));
+  --action-destructive-hover: hsl(var(--_prim-red-700));
+  --action-disabled: hsl(var(--_prim-neutral-200));
+  --action-disabled-text: hsl(var(--_prim-neutral-400));
 
   /* --- Focus Ring --- */
-  --focus-ring:             0 0 0 1px hsl(var(--_prim-blue-400) / 0.85);
-  --focus-ring-danger:      0 0 0 1px hsl(var(--_prim-red-400) / 0.75);
-  --focus-ring-offset:      1px;
+  --focus-ring: 0 0 0 1px hsl(var(--_prim-blue-400) / 0.85);
+  --focus-ring-danger: 0 0 0 1px hsl(var(--_prim-red-400) / 0.75);
+  --focus-ring-offset: 1px;
 
   /* --- Workflow Tokens --- */
-  --workflow-active:        hsl(var(--_prim-blue-500));
-  --workflow-active-bg:     hsl(var(--_prim-blue-50));
-  --workflow-complete:      hsl(var(--_prim-green-500));
-  --workflow-complete-bg:   hsl(var(--_prim-green-50));
-  --workflow-blocked:       hsl(var(--_prim-red-500));
-  --workflow-blocked-bg:    hsl(var(--_prim-red-50));
-  --workflow-pending:       hsl(var(--_prim-slate-500));
-  --workflow-pending-bg:    hsl(var(--_prim-slate-50));
+  --workflow-active: hsl(var(--_prim-blue-500));
+  --workflow-active-bg: hsl(var(--_prim-blue-50));
+  --workflow-complete: hsl(var(--_prim-green-500));
+  --workflow-complete-bg: hsl(var(--_prim-green-50));
+  --workflow-blocked: hsl(var(--_prim-red-500));
+  --workflow-blocked-bg: hsl(var(--_prim-red-50));
+  --workflow-pending: hsl(var(--_prim-slate-500));
+  --workflow-pending-bg: hsl(var(--_prim-slate-50));
   --workflow-ai-processing: hsl(var(--_prim-indigo-500));
-  --workflow-ai-bg:         hsl(var(--_prim-indigo-50));
+  --workflow-ai-bg: hsl(var(--_prim-indigo-50));
 }
 
 
@@ -214,58 +245,58 @@
 [data-theme="light"] {
 
   /* SUCCESS — task complete, sync confirmed, OCR verified */
-  --status-success-fg:        hsl(var(--_prim-green-700));
-  --status-success-bg:        hsl(var(--_prim-green-50));
-  --status-success-border:    hsl(var(--_prim-green-200));
-  --status-success-icon:      #22C55E;
+  --status-success-fg: hsl(var(--_prim-green-700));
+  --status-success-bg: hsl(var(--_prim-green-50));
+  --status-success-border: hsl(var(--_prim-green-200));
+  --status-success-icon: #22C55E;
 
   /* WARNING — degraded, partial, attention needed */
-  --status-warning-fg:        hsl(var(--_prim-amber-700));
-  --status-warning-bg:        hsl(var(--_prim-amber-50));
-  --status-warning-border:    hsl(var(--_prim-amber-200));
-  --status-warning-icon:      #F59E0B;
+  --status-warning-fg: hsl(var(--_prim-amber-700));
+  --status-warning-bg: hsl(var(--_prim-amber-50));
+  --status-warning-border: hsl(var(--_prim-amber-200));
+  --status-warning-icon: #F59E0B;
 
   /* DANGER — error, fault, failed, critical */
-  --status-danger-fg:         hsl(var(--_prim-red-700));
-  --status-danger-bg:         hsl(var(--_prim-red-50));
-  --status-danger-border:     hsl(var(--_prim-red-200));
-  --status-danger-icon:       #EF4444;
+  --status-danger-fg: hsl(var(--_prim-red-700));
+  --status-danger-bg: hsl(var(--_prim-red-50));
+  --status-danger-border: hsl(var(--_prim-red-200));
+  --status-danger-icon: #EF4444;
 
   /* PROCESSING — AI in-progress, async task running, OCR scanning */
-  --status-processing-fg:     hsl(var(--_prim-indigo-700));
-  --status-processing-bg:     hsl(var(--_prim-indigo-50));
+  --status-processing-fg: hsl(var(--_prim-indigo-700));
+  --status-processing-bg: hsl(var(--_prim-indigo-50));
   --status-processing-border: hsl(var(--_prim-indigo-200));
-  --status-processing-icon:   #4338CA;
+  --status-processing-icon: #4338CA;
 
   /* PAUSED — workflow on hold, awaiting input, queued */
-  --status-paused-fg:         hsl(var(--_prim-slate-700));
-  --status-paused-bg:         hsl(var(--_prim-slate-50));
-  --status-paused-border:     hsl(var(--_prim-slate-100));
-  --status-paused-icon:       hsl(var(--_prim-slate-500));
+  --status-paused-fg: hsl(var(--_prim-slate-700));
+  --status-paused-bg: hsl(var(--_prim-slate-50));
+  --status-paused-border: hsl(var(--_prim-slate-100));
+  --status-paused-icon: hsl(var(--_prim-slate-500));
 
   /* INACTIVE — disabled, archived, turned off */
-  --status-inactive-fg:       hsl(var(--_prim-neutral-500));
-  --status-inactive-bg:       hsl(var(--_prim-neutral-100));
-  --status-inactive-border:   hsl(var(--_prim-neutral-200));
-  --status-inactive-icon:     hsl(var(--_prim-neutral-400));
+  --status-inactive-fg: hsl(var(--_prim-neutral-500));
+  --status-inactive-bg: hsl(var(--_prim-neutral-100));
+  --status-inactive-border: hsl(var(--_prim-neutral-200));
+  --status-inactive-icon: hsl(var(--_prim-neutral-400));
 
   /* DRAFT — created but not submitted, incomplete */
-  --status-draft-fg:          hsl(var(--_prim-warmgray-700));
-  --status-draft-bg:          hsl(var(--_prim-warmgray-50));
-  --status-draft-border:      hsl(var(--_prim-warmgray-100));
-  --status-draft-icon:        hsl(var(--_prim-warmgray-500));
+  --status-draft-fg: hsl(var(--_prim-warmgray-700));
+  --status-draft-bg: hsl(var(--_prim-warmgray-50));
+  --status-draft-border: hsl(var(--_prim-warmgray-100));
+  --status-draft-icon: hsl(var(--_prim-warmgray-500));
 
   /* SYNCED — data confirmed synced with source of record */
-  --status-synced-fg:         hsl(var(--_prim-green-700));
-  --status-synced-bg:         hsl(var(--_prim-green-50));
-  --status-synced-border:     hsl(var(--_prim-green-200));
-  --status-synced-icon:       hsl(var(--_prim-green-500));
+  --status-synced-fg: hsl(var(--_prim-green-700));
+  --status-synced-bg: hsl(var(--_prim-green-50));
+  --status-synced-border: hsl(var(--_prim-green-200));
+  --status-synced-icon: hsl(var(--_prim-green-500));
 
   /* INFO — neutral informational, not an alert */
-  --status-info-fg:           hsl(var(--_prim-blue-700));
-  --status-info-bg:           hsl(var(--_prim-blue-50));
-  --status-info-border:       hsl(var(--_prim-blue-200));
-  --status-info-icon:         hsl(var(--_prim-blue-500));
+  --status-info-fg: hsl(var(--_prim-blue-700));
+  --status-info-bg: hsl(var(--_prim-blue-50));
+  --status-info-border: hsl(var(--_prim-blue-200));
+  --status-info-icon: hsl(var(--_prim-blue-500));
 }
 
 
@@ -277,34 +308,34 @@
 
 :root {
   /* No shadow — flat, grounded to surface */
-  --shadow-none:    none;
+  --shadow-none: none;
 
   /* Inset — for pressed states, sunken inputs */
-  --shadow-inset:   inset 0 1px 2px hsl(220 30% 5% / 0.4);
+  --shadow-inset: inset 0 1px 2px hsl(220 30% 5% / 0.4);
 
   /* XS — subtle card lift, table header sticky boundary */
-  --shadow-xs:      0 1px 2px hsl(220 30% 5% / 0.25);
+  --shadow-xs: 0 1px 2px hsl(220 30% 5% / 0.25);
 
   /* SM — panels, sidebar separators */
-  --shadow-sm:      0 1px 3px hsl(220 30% 5% / 0.3), 0 1px 2px hsl(220 30% 5% / 0.2);
+  --shadow-sm: 0 1px 3px hsl(220 30% 5% / 0.3), 0 1px 2px hsl(220 30% 5% / 0.2);
 
   /* MD — dropdowns, command palette, floating toolbars */
-  --shadow-md:      0 4px 6px hsl(220 30% 5% / 0.3), 0 2px 4px hsl(220 30% 5% / 0.2);
+  --shadow-md: 0 4px 6px hsl(220 30% 5% / 0.3), 0 2px 4px hsl(220 30% 5% / 0.2);
 
   /* LG — modals, operational drawers */
-  --shadow-lg:      0 10px 15px hsl(220 30% 5% / 0.35), 0 4px 6px hsl(220 30% 5% / 0.2);
+  --shadow-lg: 0 10px 15px hsl(220 30% 5% / 0.35), 0 4px 6px hsl(220 30% 5% / 0.2);
 
   /* XL — full-screen overlays, command bar */
-  --shadow-xl:      0 20px 25px hsl(220 30% 5% / 0.4), 0 8px 10px hsl(220 30% 5% / 0.2);
+  --shadow-xl: 0 20px 25px hsl(220 30% 5% / 0.4), 0 8px 10px hsl(220 30% 5% / 0.2);
 }
 
 [data-theme="light"] {
-  --shadow-inset:   inset 0 1px 2px hsl(210 12% 60% / 0.2);
-  --shadow-xs:      0 1px 2px hsl(210 12% 60% / 0.15);
-  --shadow-sm:      0 1px 3px hsl(210 12% 60% / 0.18), 0 1px 2px hsl(210 12% 60% / 0.1);
-  --shadow-md:      0 4px 6px hsl(210 12% 60% / 0.15), 0 2px 4px hsl(210 12% 60% / 0.1);
-  --shadow-lg:      0 10px 15px hsl(210 12% 60% / 0.18), 0 4px 6px hsl(210 12% 60% / 0.1);
-  --shadow-xl:      0 20px 25px hsl(210 12% 60% / 0.2), 0 8px 10px hsl(210 12% 60% / 0.1);
+  --shadow-inset: inset 0 1px 2px hsl(210 12% 60% / 0.2);
+  --shadow-xs: 0 1px 2px hsl(210 12% 60% / 0.15);
+  --shadow-sm: 0 1px 3px hsl(210 12% 60% / 0.18), 0 1px 2px hsl(210 12% 60% / 0.1);
+  --shadow-md: 0 4px 6px hsl(210 12% 60% / 0.15), 0 2px 4px hsl(210 12% 60% / 0.1);
+  --shadow-lg: 0 10px 15px hsl(210 12% 60% / 0.18), 0 4px 6px hsl(210 12% 60% / 0.1);
+  --shadow-xl: 0 20px 25px hsl(210 12% 60% / 0.2), 0 8px 10px hsl(210 12% 60% / 0.1);
 }
 
 
@@ -314,15 +345,24 @@
    -------------------------------------------------------------------------- */
 
 :root {
-  --z-base:           0;      /* default document flow */
-  --z-raised:         10;     /* sticky table headers, floating labels */
-  --z-sticky:         20;     /* sticky sidebars, filter bars */
-  --z-overlay-bg:     30;     /* drawer/modal scrim */
-  --z-overlay:        40;     /* drawers, side panels */
-  --z-modal:          50;     /* modals, confirmation dialogs */
-  --z-command:        60;     /* command bar (always above modals) */
-  --z-toast:          70;     /* toast notifications */
-  --z-tooltip:        80;     /* tooltips (above everything except dev tools) */
+  --z-base: 0;
+  /* default document flow */
+  --z-raised: 10;
+  /* sticky table headers, floating labels */
+  --z-sticky: 20;
+  /* sticky sidebars, filter bars */
+  --z-overlay-bg: 30;
+  /* drawer/modal scrim */
+  --z-overlay: 40;
+  /* drawers, side panels */
+  --z-modal: 50;
+  /* modals, confirmation dialogs */
+  --z-command: 60;
+  /* command bar (always above modals) */
+  --z-toast: 70;
+  /* toast notifications */
+  --z-tooltip: 80;
+  /* tooltips (above everything except dev tools) */
 }
 
 
@@ -336,35 +376,41 @@
    -------------------------------------------------------------------------- */
 
 :root {
-  --space-px:    1px;
-  --space-0:     0px;
-  --space-0-5:   2px;
-  --space-1:     4px;
-  --space-1-5:   6px;
-  --space-2:     8px;
-  --space-2-5:   10px;
-  --space-3:     12px;
-  --space-3-5:   14px;
-  --space-4:     16px;
-  --space-5:     20px;
-  --space-6:     24px;
-  --space-7:     28px;
-  --space-8:     32px;
-  --space-9:     36px;
-  --space-10:    40px;
-  --space-12:    48px;
-  --space-14:    56px;
-  --space-16:    64px;
-  --space-20:    80px;
-  --space-24:    96px;
+  --space-px: 1px;
+  --space-0: 0px;
+  --space-0-5: 2px;
+  --space-1: 4px;
+  --space-1-5: 6px;
+  --space-2: 8px;
+  --space-2-5: 10px;
+  --space-3: 12px;
+  --space-3-5: 14px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 28px;
+  --space-8: 32px;
+  --space-9: 36px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-14: 56px;
+  --space-16: 64px;
+  --space-20: 80px;
+  --space-24: 96px;
 
   /* Semantic spacing aliases — use these in components */
-  --space-xs:    var(--space-1);     /* 4px  — icon gaps, tight badge padding */
-  --space-sm:    var(--space-2);     /* 8px  — inline gaps, compact cell padding */
-  --space-md:    var(--space-4);     /* 16px — standard element padding */
-  --space-lg:    var(--space-6);     /* 24px — section gaps, card padding */
-  --space-xl:    var(--space-10);    /* 40px — layout section separation */
-  --space-2xl:   var(--space-16);   /* 64px — page-level padding */
+  --space-xs: var(--space-1);
+  /* 4px  — icon gaps, tight badge padding */
+  --space-sm: var(--space-2);
+  /* 8px  — inline gaps, compact cell padding */
+  --space-md: var(--space-4);
+  /* 16px — standard element padding */
+  --space-lg: var(--space-6);
+  /* 24px — section gaps, card padding */
+  --space-xl: var(--space-10);
+  /* 40px — layout section separation */
+  --space-2xl: var(--space-16);
+  /* 64px — page-level padding */
 }
 
 
@@ -377,56 +423,87 @@
 
 :root {
   /* Font families */
-  --font-sans:        "IBM Plex Sans", "Inter", system-ui, -apple-system, sans-serif;
-  --font-mono:        "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
-  --font-numeric:     "Tabular", "Inter", system-ui, sans-serif; /* tabular-nums */
+  --font-sans: "IBM Plex Sans", "Inter", system-ui, -apple-system, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
+  --font-numeric: "Tabular", "Inter", system-ui, sans-serif;
+  /* tabular-nums */
 
   /* Type scale — operational (not consumer) sizing */
-  --text-2xs:     10px;   /* micro labels, badge text, count indicators */
-  --text-xs:      11px;   /* table metadata, timestamps, secondary badges */
-  --text-sm:      12px;   /* secondary labels, helper text, captions */
-  --text-base:    13px;   /* operational default body / table cell text */
-  --text-md:      14px;   /* primary body, form labels */
-  --text-lg:      16px;   /* panel headings, workflow titles */
-  --text-xl:      18px;   /* page/section titles */
-  --text-2xl:     22px;   /* modal titles, major headings */
-  --text-3xl:     28px;   /* KPI numbers, dashboard metrics */
+  --text-2xs: 10px;
+  /* micro labels, badge text, count indicators */
+  --text-xs: 11px;
+  /* table metadata, timestamps, secondary badges */
+  --text-sm: 12px;
+  /* secondary labels, helper text, captions */
+  --text-base: 13px;
+  /* operational default body / table cell text */
+  --text-md: 14px;
+  /* primary body, form labels */
+  --text-lg: 16px;
+  /* panel headings, workflow titles */
+  --text-xl: 18px;
+  /* page/section titles */
+  --text-2xl: 22px;
+  /* modal titles, major headings */
+  --text-3xl: 28px;
+  /* KPI numbers, dashboard metrics */
 
   /* Line heights — optimized per use case */
-  --leading-none:     1;
-  --leading-tight:    1.2;   /* headings */
-  --leading-snug:     1.35;  /* dense table rows */
-  --leading-normal:   1.5;   /* body text */
-  --leading-relaxed:  1.65;  /* descriptions, help text */
+  --leading-none: 1;
+  --leading-tight: 1.2;
+  /* headings */
+  --leading-snug: 1.35;
+  /* dense table rows */
+  --leading-normal: 1.5;
+  /* body text */
+  --leading-relaxed: 1.65;
+  /* descriptions, help text */
 
   /* Font weights */
-  --weight-regular:   400;
-  --weight-medium:    500;
-  --weight-semibold:  600;
+  --weight-regular: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
 
   /* Letter spacing */
-  --tracking-tight:   -0.02em;  /* large headings */
-  --tracking-normal:   0;
-  --tracking-wide:     0.03em;  /* table headers, uppercase labels */
-  --tracking-wider:    0.06em;  /* ALL CAPS micro labels */
+  --tracking-tight: -0.02em;
+  /* large headings */
+  --tracking-normal: 0;
+  --tracking-wide: 0.03em;
+  /* table headers, uppercase labels */
+  --tracking-wider: 0.06em;
+  /* ALL CAPS micro labels */
 
   /* Numeric rendering */
-  --numeric-tabular:  "tnum";   /* use font-variant-numeric: tabular-nums */
+  --numeric-tabular: "tnum";
+  /* use font-variant-numeric: tabular-nums */
 
   /* Semantic typography tokens — use these in components */
-  --type-table-cell:  var(--text-base);      /* 13px, normal weight */
-  --type-table-header: var(--text-sm);       /* 12px, semibold, wide tracking */
-  --type-label:       var(--text-sm);        /* 12px, medium */
-  --type-label-dense: var(--text-xs);        /* 11px, medium */
-  --type-body:        var(--text-md);        /* 14px */
-  --type-panel-title: var(--text-lg);        /* 16px, semibold */
-  --type-page-title:  var(--text-xl);        /* 18px, semibold */
-  --type-numeric-lg:  var(--text-3xl);       /* 28px, tabular */
-  --type-numeric-md:  var(--text-xl);        /* 18px, tabular */
-  --type-numeric-sm:  var(--text-md);        /* 14px, tabular, mono */
-  --type-status:      var(--text-xs);        /* 11px, semibold, wide */
-  --type-code:        var(--text-sm);        /* 12px, mono */
-  --type-timestamp:   var(--text-xs);        /* 11px, mono, tabular */
+  --type-table-cell: var(--text-base);
+  /* 13px, normal weight */
+  --type-table-header: var(--text-sm);
+  /* 12px, semibold, wide tracking */
+  --type-label: var(--text-sm);
+  /* 12px, medium */
+  --type-label-dense: var(--text-xs);
+  /* 11px, medium */
+  --type-body: var(--text-md);
+  /* 14px */
+  --type-panel-title: var(--text-lg);
+  /* 16px, semibold */
+  --type-page-title: var(--text-xl);
+  /* 18px, semibold */
+  --type-numeric-lg: var(--text-3xl);
+  /* 28px, tabular */
+  --type-numeric-md: var(--text-xl);
+  /* 18px, tabular */
+  --type-numeric-sm: var(--text-md);
+  /* 14px, tabular, mono */
+  --type-status: var(--text-xs);
+  /* 11px, semibold, wide */
+  --type-code: var(--text-sm);
+  /* 12px, mono */
+  --type-timestamp: var(--text-xs);
+  /* 11px, mono, tabular */
 }
 
 
@@ -439,59 +516,86 @@
    Density does NOT affect: heading hierarchy, brand colors, layout zones.
    -------------------------------------------------------------------------- */
 
-/* Default / Operational — standard factory floor terminal density */
+/* Default / Operational — standard factory floor terminal density
+   Sprint 2: aligned to operational density spec (40px row, 12px/8px cell padding) */
 :root,
 [data-density="default"] {
-  --density-row-height:       34px;
-  --density-row-height-lg:    40px;   /* expanded rows, multi-line */
-  --density-cell-pad-x:       var(--space-2-5);   /* 10px */
-  --density-cell-pad-y:       var(--space-1-5);   /* 6px */
-  --density-gap:              var(--space-2);   /* 8px */
-  --density-icon-size:        16px;
-  --density-badge-pad-x:      var(--space-2);   /* 8px */
-  --density-badge-pad-y:      var(--space-0-5); /* 2px */
-  --density-input-height:     32px;
-  --density-btn-height:       32px;
-  --density-section-gap:      var(--space-4);   /* 16px */
-  --density-font-table:       var(--text-base); /* 13px */
-  --density-font-label:       var(--text-sm);   /* 12px */
-  --density-scale:            1;
+  --density-row-height: 40px;
+  /* Sprint 2 default row height */
+  --density-row-height-lg: 48px;
+  /* expanded rows, multi-line */
+  --density-cell-pad-x: var(--space-3);
+  /* 12px — Sprint 2 default */
+  --density-cell-pad-y: var(--space-2);
+  /* 8px  — Sprint 2 default */
+  --density-gap: var(--space-2);
+  /* 8px */
+  --density-icon-size: 16px;
+  --density-badge-pad-x: var(--space-2);
+  /* 8px */
+  --density-badge-pad-y: var(--space-0-5);
+  /* 2px */
+  --density-input-height: 32px;
+  --density-btn-height: 32px;
+  --density-section-gap: var(--space-4);
+  /* 16px */
+  --density-font-table: var(--text-base);
+  /* 13px */
+  --density-font-label: var(--text-sm);
+  /* 12px */
+  --density-scale: 1;
 }
 
 /* Compact — maximum data density, power users, large tables */
 [data-density="compact"] {
-  --density-row-height:       28px;
-  --density-row-height-lg:    36px;
-  --density-cell-pad-x:       var(--space-2);   /* 8px */
-  --density-cell-pad-y:       var(--space-1);   /* 4px */
-  --density-gap:              var(--space-1);   /* 4px */
-  --density-icon-size:        14px;
-  --density-badge-pad-x:      var(--space-1-5); /* 6px */
-  --density-badge-pad-y:      var(--space-px);  /* 1px */
-  --density-input-height:     28px;
-  --density-btn-height:       28px;
-  --density-section-gap:      var(--space-3);   /* 12px */
-  --density-font-table:       var(--text-sm);   /* 12px */
-  --density-font-label:       var(--text-xs);   /* 11px */
-  --density-scale:            0.75;
+  --density-row-height: 28px;
+  --density-row-height-lg: 36px;
+  --density-cell-pad-x: var(--space-2);
+  /* 8px */
+  --density-cell-pad-y: var(--space-1);
+  /* 4px */
+  --density-gap: var(--space-1);
+  /* 4px */
+  --density-icon-size: 14px;
+  --density-badge-pad-x: var(--space-1-5);
+  /* 6px */
+  --density-badge-pad-y: var(--space-px);
+  /* 1px */
+  --density-input-height: 28px;
+  --density-btn-height: 28px;
+  --density-section-gap: var(--space-3);
+  /* 12px */
+  --density-font-table: var(--text-sm);
+  /* 12px */
+  --density-font-label: var(--text-xs);
+  /* 11px */
+  --density-scale: 0.75;
 }
 
 /* Comfortable — review mode, dashboard KPIs, presentation contexts */
 [data-density="comfortable"] {
-  --density-row-height:       48px;
-  --density-row-height-lg:    60px;
-  --density-cell-pad-x:       var(--space-4);   /* 16px */
-  --density-cell-pad-y:       var(--space-3);   /* 12px */
-  --density-gap:              var(--space-3);   /* 12px */
-  --density-icon-size:        18px;
-  --density-badge-pad-x:      var(--space-3);   /* 12px */
-  --density-badge-pad-y:      var(--space-1);   /* 4px */
-  --density-input-height:     40px;
-  --density-btn-height:       40px;
-  --density-section-gap:      var(--space-6);   /* 24px */
-  --density-font-table:       var(--text-md);   /* 14px */
-  --density-font-label:       var(--text-sm);   /* 12px */
-  --density-scale:            1.25;
+  --density-row-height: 48px;
+  --density-row-height-lg: 60px;
+  --density-cell-pad-x: var(--space-4);
+  /* 16px */
+  --density-cell-pad-y: var(--space-3);
+  /* 12px */
+  --density-gap: var(--space-3);
+  /* 12px */
+  --density-icon-size: 18px;
+  --density-badge-pad-x: var(--space-3);
+  /* 12px */
+  --density-badge-pad-y: var(--space-1);
+  /* 4px */
+  --density-input-height: 40px;
+  --density-btn-height: 40px;
+  --density-section-gap: var(--space-6);
+  /* 24px */
+  --density-font-table: var(--text-md);
+  /* 14px */
+  --density-font-label: var(--text-sm);
+  /* 12px */
+  --density-scale: 1.25;
 }
 
 
@@ -501,13 +605,19 @@
    -------------------------------------------------------------------------- */
 
 :root {
-  --radius-none:    0px;
-  --radius-xs:      3px;   /* tight: badge, table cell chip */
-  --radius-sm:      4px;   /* inputs, buttons, small cards */
-  --radius-md:      6px;   /* panels, modals, drawers */
-  --radius-lg:      8px;   /* cards, popovers, dropdowns */
-  --radius-xl:      10px;  /* large overlays */
-  --radius-full:    9999px; /* pills, avatars, toggles */
+  --radius-none: 0px;
+  --radius-xs: 3px;
+  /* tight: badge, table cell chip */
+  --radius-sm: 4px;
+  /* inputs, buttons, small cards */
+  --radius-md: 6px;
+  /* panels, modals, drawers */
+  --radius-lg: 8px;
+  /* cards, popovers, dropdowns */
+  --radius-xl: 10px;
+  /* large overlays */
+  --radius-full: 9999px;
+  /* pills, avatars, toggles */
 }
 
 
@@ -519,23 +629,28 @@
    -------------------------------------------------------------------------- */
 
 :root {
-  --motion-instant:   0ms;      /* immediate state, no transition */
-  --motion-fast:      80ms;     /* hover bg, focus ring */
-  --motion-base:      120ms;    /* button press, badge swap */
-  --motion-moderate:  150ms;    /* panel expand/collapse (max allowed) */
-  --motion-reduced:   0ms;      /* respects prefers-reduced-motion */
+  --motion-instant: 0ms;
+  /* immediate state, no transition */
+  --motion-fast: 80ms;
+  /* hover bg, focus ring */
+  --motion-base: 120ms;
+  /* button press, badge swap */
+  --motion-moderate: 150ms;
+  /* panel expand/collapse (max allowed) */
+  --motion-reduced: 0ms;
+  /* respects prefers-reduced-motion */
 
-  --ease-standard:    cubic-bezier(0.2, 0, 0, 1);
-  --ease-decelerate:  cubic-bezier(0, 0, 0.2, 1);
-  --ease-accelerate:  cubic-bezier(0.4, 0, 1, 1);
+  --ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1);
+  --ease-accelerate: cubic-bezier(0.4, 0, 1, 1);
 }
 
 /* Respect prefers-reduced-motion — always */
 @media (prefers-reduced-motion: reduce) {
   :root {
-    --motion-fast:    var(--motion-reduced);
-    --motion-base:    var(--motion-reduced);
-    --motion-moderate:var(--motion-reduced);
+    --motion-fast: var(--motion-reduced);
+    --motion-base: var(--motion-reduced);
+    --motion-moderate: var(--motion-reduced);
   }
 }
 
@@ -549,116 +664,118 @@
 [data-theme="dark"] {
 
   /* Text */
-  --text-primary:           #EDF2F7;
-  --text-secondary:         #94A3B8;
-  --text-tertiary:          #546E8A;
-  --text-disabled:          #42546E;
-  --text-inverse:           hsl(var(--_prim-neutral-900));
-  --text-link:              #1D6EEB;
-  --text-link-hover:        #2379F3;
-  --text-danger:            #F87171;
-  --text-success:           #4ADE80;
-  --text-warning:           #FBBF24;
+  --text-primary: #EDF2F7;
+  --text-secondary: #94A3B8;
+  --text-tertiary: #8499B2;
+  /* Task 27: lightened from #546E8A to reach 4.5:1 on dark surfaces (was 2.79–3.59:1) */
+  --text-disabled: #42546E;
+  --text-inverse: hsl(var(--_prim-neutral-900));
+  --text-link: #60A5FA;
+  /* Task 27: lightened from #1D6EEB to reach 4.5:1 on dark surfaces (was 3.14–4.05:1) */
+  --text-link-hover: #93C5FD;
+  --text-danger: #F87171;
+  --text-success: #4ADE80;
+  --text-warning: #FBBF24;
 
   /* Surfaces */
-  --surface-app:            #09111B;
-  --surface-shell:          #0D1523;
-  --surface-panel:          #111B2B;
-  --surface-card:           #152131;
-  --surface-elevated:       #1B293B;
-  --surface-overlay:        #203148;
-  --surface-hover:          #182335;
-  --surface-active:         #1D2C40;
-  --surface-selected:       #14273E;
-  --surface-skeleton:       #101927;
+  --surface-app: #09111B;
+  --surface-shell: #0D1523;
+  --surface-panel: #111B2B;
+  --surface-card: #152131;
+  --surface-elevated: #1B293B;
+  --surface-overlay: #203148;
+  --surface-hover: #182335;
+  --surface-active: #1D2C40;
+  --surface-selected: #14273E;
+  --surface-skeleton: #101927;
   --surface-skeleton-shine: #172435;
-  --surface-industrial-deep:    #09111B;
-  --surface-industrial-raised:  #0D1523;
-  --surface-industrial-card:    #111B2B;
+  --surface-industrial-deep: #09111B;
+  --surface-industrial-raised: #0D1523;
+  --surface-industrial-card: #111B2B;
 
   /* Borders */
-  --border-subtle:          #1B2A3F;
-  --border-default:         #23344C;
-  --border-strong:          #314865;
-  --border-focus:           #1D6EEB;
-  --border-danger:          #EF4444;
-  --border-success:         #22C55E;
+  --border-subtle: #1B2A3F;
+  --border-default: #23344C;
+  --border-strong: #314865;
+  --border-focus: #1D6EEB;
+  --border-danger: #EF4444;
+  --border-success: #22C55E;
 
   /* Actions */
-  --action-primary:         #1D6EEB;
-  --action-primary-hover:   #2379F3;
-  --action-primary-active:  #175FCC;
-  --action-primary-text:    #EDF2F7;
-  --action-secondary:       #162030;
+  --action-primary: #1D6EEB;
+  --action-primary-hover: #2379F3;
+  --action-primary-active: #175FCC;
+  --action-primary-text: #EDF2F7;
+  --action-secondary: #162030;
   --action-secondary-hover: #1C2A3E;
-  --action-secondary-border:#243550;
-  --action-secondary-text:  #EDF2F7;
-  --action-ghost-hover:     #162030;
+  --action-secondary-border: #243550;
+  --action-secondary-text: #EDF2F7;
+  --action-ghost-hover: #162030;
 
   /* Status — dark mode */
-  --status-success-fg:      #BBF7D0;
-  --status-success-bg:      #0F2A1A;
-  --status-success-border:  #1F6F3F;
-  --status-success-icon:    #22C55E;
+  --status-success-fg: #BBF7D0;
+  --status-success-bg: #0F2A1A;
+  --status-success-border: #1F6F3F;
+  --status-success-icon: #22C55E;
 
-  --status-warning-fg:      #FDE68A;
-  --status-warning-bg:      #34250C;
-  --status-warning-border:  #6C4A12;
-  --status-warning-icon:    #F59E0B;
+  --status-warning-fg: #FDE68A;
+  --status-warning-bg: #34250C;
+  --status-warning-border: #6C4A12;
+  --status-warning-icon: #F59E0B;
 
-  --status-danger-fg:       #FECACA;
-  --status-danger-bg:       #341316;
-  --status-danger-border:   #7F1D1D;
-  --status-danger-icon:     #EF4444;
+  --status-danger-fg: #FECACA;
+  --status-danger-bg: #341316;
+  --status-danger-border: #7F1D1D;
+  --status-danger-icon: #EF4444;
 
-  --status-processing-fg:   #C7D2FE;
-  --status-processing-bg:   #171A3D;
+  --status-processing-fg: #C7D2FE;
+  --status-processing-bg: #171A3D;
   --status-processing-border: #312E81;
   --status-processing-icon: #4338CA;
 
-  --status-paused-fg:       #CBD5E1;
-  --status-paused-bg:       #151C28;
-  --status-paused-border:   #334155;
-  --status-paused-icon:     #64748B;
+  --status-paused-fg: #CBD5E1;
+  --status-paused-bg: #151C28;
+  --status-paused-border: #334155;
+  --status-paused-icon: #64748B;
 
-  --status-inactive-fg:     #7A8CA1;
-  --status-inactive-bg:     #111927;
+  --status-inactive-fg: #7A8CA1;
+  --status-inactive-bg: #111927;
   --status-inactive-border: #243550;
-  --status-inactive-icon:   #546E8A;
+  --status-inactive-icon: #546E8A;
 
-  --status-draft-fg:        hsl(var(--_prim-warmgray-100));
-  --status-draft-bg:        hsl(30 10% 12%);
-  --status-draft-border:    hsl(var(--_prim-warmgray-700));
-  --status-draft-icon:      hsl(var(--_prim-warmgray-400));
+  --status-draft-fg: hsl(var(--_prim-warmgray-100));
+  --status-draft-bg: hsl(30 10% 12%);
+  --status-draft-border: hsl(var(--_prim-warmgray-700));
+  --status-draft-icon: hsl(var(--_prim-warmgray-400));
 
-  --status-synced-fg:       hsl(var(--_prim-green-200));
-  --status-synced-bg:       hsl(142 40% 12%);
-  --status-synced-border:   hsl(var(--_prim-green-700));
-  --status-synced-icon:     hsl(var(--_prim-green-400));
+  --status-synced-fg: hsl(var(--_prim-green-200));
+  --status-synced-bg: hsl(142 40% 12%);
+  --status-synced-border: hsl(var(--_prim-green-700));
+  --status-synced-icon: hsl(var(--_prim-green-400));
 
-  --status-info-fg:         #BFDBFE;
-  --status-info-bg:         #10233E;
-  --status-info-border:     #1E3A5F;
-  --status-info-icon:       #1D6EEB;
+  --status-info-fg: #BFDBFE;
+  --status-info-bg: #10233E;
+  --status-info-border: #1E3A5F;
+  --status-info-icon: #1D6EEB;
 
   /* Workflow */
-  --workflow-active:        #1D6EEB;
-  --workflow-active-bg:     #10233E;
-  --workflow-complete:      #22C55E;
-  --workflow-complete-bg:   #0F2A1A;
-  --workflow-blocked:       #EF4444;
-  --workflow-blocked-bg:    #341316;
-  --workflow-pending:       #64748B;
-  --workflow-pending-bg:    #151C28;
+  --workflow-active: #1D6EEB;
+  --workflow-active-bg: #10233E;
+  --workflow-complete: #22C55E;
+  --workflow-complete-bg: #0F2A1A;
+  --workflow-blocked: #EF4444;
+  --workflow-blocked-bg: #341316;
+  --workflow-pending: #64748B;
+  --workflow-pending-bg: #151C28;
   --workflow-ai-processing: #4338CA;
-  --workflow-ai-bg:         #171A3D;
+  --workflow-ai-bg: #171A3D;
 
   /* Shadows — heavier in dark for legibility */
-  --shadow-xs:    0 1px 2px hsl(220 30% 5% / 0.25);
-  --shadow-sm:    0 1px 3px hsl(220 30% 5% / 0.3), 0 1px 2px hsl(220 30% 5% / 0.2);
-  --shadow-md:    0 4px 6px hsl(220 30% 5% / 0.3), 0 2px 4px hsl(220 30% 5% / 0.2);
-  --shadow-lg:    0 10px 15px hsl(220 30% 5% / 0.35), 0 4px 6px hsl(220 30% 5% / 0.2);
-  --shadow-xl:    0 20px 25px hsl(220 30% 5% / 0.4), 0 8px 10px hsl(220 30% 5% / 0.2);
+  --shadow-xs: 0 1px 2px hsl(220 30% 5% / 0.25);
+  --shadow-sm: 0 1px 3px hsl(220 30% 5% / 0.3), 0 1px 2px hsl(220 30% 5% / 0.2);
+  --shadow-md: 0 4px 6px hsl(220 30% 5% / 0.3), 0 2px 4px hsl(220 30% 5% / 0.2);
+  --shadow-lg: 0 10px 15px hsl(220 30% 5% / 0.35), 0 4px 6px hsl(220 30% 5% / 0.2);
+  --shadow-xl: 0 20px 25px hsl(220 30% 5% / 0.4), 0 8px 10px hsl(220 30% 5% / 0.2);
 }
 
 
@@ -679,30 +796,34 @@
 
 :root {
   /* Surface Tokens */
-  --command-bg:             hsla(var(--_prim-neutral-900) / 0.2); /* backdrop scrim */
-  --command-panel-bg:       var(--surface-overlay);
-  --command-border:         var(--border-strong);
-  --command-shadow:         var(--shadow-xl);
+  --command-bg: hsla(var(--_prim-neutral-900) / 0.2);
+  /* backdrop scrim */
+  --command-panel-bg: var(--surface-overlay);
+  --command-border: var(--border-strong);
+  --command-shadow: var(--shadow-xl);
 
   /* Interaction Tokens */
-  --command-hover:          var(--surface-hover);
-  --command-active:         var(--surface-active);
-  --command-selected:       var(--surface-selected);
-  --command-focus-ring:     var(--focus-ring);
+  --command-hover: var(--surface-hover);
+  --command-active: var(--surface-active);
+  --command-selected: var(--surface-selected);
+  --command-focus-ring: var(--focus-ring);
 
   /* Typography Tokens */
-  --command-font-size:      var(--text-md);        /* 14px body */
-  --command-shortcut-font:  var(--font-mono);      /* monospace shortcuts */
-  --command-group-label:    var(--type-label-dense); /* 11px uppercase */
+  --command-font-size: var(--text-md);
+  /* 14px body */
+  --command-shortcut-font: var(--font-mono);
+  /* monospace shortcuts */
+  --command-group-label: var(--type-label-dense);
+  /* 11px uppercase */
 
   /* Status Tokens */
   --command-match-highlight: var(--action-primary);
-  --command-shortcut-muted:  var(--text-tertiary);
-  --command-danger:          var(--status-danger-fg);
+  --command-shortcut-muted: var(--text-tertiary);
+  --command-danger: var(--status-danger-fg);
 }
 
 [data-theme="dark"] {
-  --command-bg:             hsla(var(--_prim-neutral-950) / 0.6);
+  --command-bg: hsla(var(--_prim-neutral-950) / 0.6);
 }
 
 
@@ -711,15 +832,15 @@
    -------------------------------------------------------------------------- */
 
 :root {
-  --scrollbar-width:        6px;
-  --scrollbar-track:        transparent;
-  --scrollbar-thumb:        hsl(var(--_prim-neutral-300));
-  --scrollbar-thumb-hover:  hsl(var(--_prim-neutral-400));
+  --scrollbar-width: 6px;
+  --scrollbar-track: transparent;
+  --scrollbar-thumb: hsl(var(--_prim-neutral-300));
+  --scrollbar-thumb-hover: hsl(var(--_prim-neutral-400));
 }
 
 [data-theme="dark"] {
-  --scrollbar-thumb:        hsl(var(--_prim-neutral-700));
-  --scrollbar-thumb-hover:  hsl(var(--_prim-neutral-600));
+  --scrollbar-thumb: hsl(var(--_prim-neutral-700));
+  --scrollbar-thumb-hover: hsl(var(--_prim-neutral-600));
 }
 
 /* Apply scrollbar styles globally */
@@ -727,10 +848,24 @@
   scrollbar-width: thin;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
 }
-*::-webkit-scrollbar { width: var(--scrollbar-width); height: var(--scrollbar-width); }
-*::-webkit-scrollbar-track { background: var(--scrollbar-track); }
-*::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: var(--radius-full); }
-*::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+
+*::-webkit-scrollbar {
+  width: var(--scrollbar-width);
+  height: var(--scrollbar-width);
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: var(--radius-full);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
 
 
 /* --------------------------------------------------------------------------
@@ -738,7 +873,9 @@
    Minimal — does not override browser focus or a11y defaults.
    -------------------------------------------------------------------------- */
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
@@ -756,5 +893,6 @@ html {
   background-color: var(--surface-app);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  font-variant-numeric: tabular-nums;  /* all numerics use tabular spacing */
+  font-variant-numeric: tabular-nums;
+  /* all numerics use tabular spacing */
 }

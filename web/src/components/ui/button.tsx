@@ -14,7 +14,7 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const base =
-  "ui-no-select ui-no-callout inline-flex h-[36px] shrink-0 cursor-pointer items-center justify-center gap-2 rounded-control border text-[length:var(--text-base)] font-medium transition-[background-color,color] duration-[120ms] ease-standard focus-visible:outline-none focus-visible:shadow-[var(--focus-ring)] disabled:cursor-not-allowed disabled:border-transparent disabled:bg-[var(--action-disabled)] disabled:text-[var(--action-disabled-text)]";
+  "ui-no-select ui-no-callout inline-flex h-[36px] shrink-0 cursor-pointer items-center justify-center gap-2 rounded-control border text-[length:var(--text-base)] font-medium transition-colors duration-[80ms] ease-standard focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366f1] focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:border-transparent disabled:bg-[var(--action-disabled)] disabled:text-[var(--action-disabled-text)]";
 
 const variants: Record<ButtonVariant, string> = {
   primary:
@@ -48,6 +48,7 @@ function ButtonSpinner({ className }: { className?: string }) {
       fill="none"
       aria-hidden="true"
       className={cn("h-icon w-icon animate-spin", className)}
+      style={{ color: 'var(--spinner-color)' }}
     >
       <circle
         cx="8"

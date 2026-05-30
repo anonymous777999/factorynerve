@@ -13,22 +13,22 @@ type FilterOption = {
 
 type FilterField =
   | {
-      id: string;
-      label: string;
-      type: "text" | "date";
-      value: string;
-      placeholder?: string;
-      onValueChange: (value: string) => void;
-    }
+    id: string;
+    label: string;
+    type: "text" | "date";
+    value: string;
+    placeholder?: string;
+    onValueChange: (value: string) => void;
+  }
   | {
-      id: string;
-      label: string;
-      type: "select";
-      value: string;
-      options: FilterOption[];
-      placeholder?: string;
-      onValueChange: (value: string) => void;
-    };
+    id: string;
+    label: string;
+    type: "select";
+    value: string;
+    options: FilterOption[];
+    placeholder?: string;
+    onValueChange: (value: string) => void;
+  };
 
 type ActiveFilterPill = {
   id: string;
@@ -115,7 +115,7 @@ export function FilterBar({
             <button
               key={filter.id}
               type="button"
-              className="inline-flex"
+              className="inline-flex rounded-badge focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
               onClick={filter.onClear}
             >
               <Badge status="secondary" size="compact">

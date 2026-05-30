@@ -8,7 +8,7 @@ import { useSession } from "@/lib/use-session";
 
 function LockIcon() {
   return (
-    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.8">
+    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true" focusable="false">
       <path d="M7 10V7a5 5 0 0 1 10 0v3" strokeLinecap="round" strokeLinejoin="round" />
       <rect x="5" y="10" width="14" height="10" rx="2" />
       <path d="M12 14v3" strokeLinecap="round" />

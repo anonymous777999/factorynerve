@@ -47,7 +47,7 @@ export function UploadBox({
     <div className="factory-ocr-upload-grid">
       <div
         className={cn(
-          "factory-ocr-dropzone flex flex-col justify-center overflow-hidden rounded-[0.45rem] px-8 py-10 text-center transition duration-200 md:px-10 md:py-14",
+          "factory-ocr-dropzone flex flex-col justify-center overflow-hidden rounded-[0.45rem] px-8 py-10 text-center transition duration-200 md:px-10 md:py-14 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
           dragging ? "factory-ocr-console" : "",
         )}
         data-dragging={dragging ? "true" : "false"}
@@ -67,7 +67,7 @@ export function UploadBox({
       >
         <div className="mx-auto flex max-w-xl flex-col items-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full border border-border-default bg-surface-shell text-[var(--action-primary)]">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-7 w-7">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-7 w-7" aria-hidden="true" focusable="false">
               <path d="M12 16V5m0 0L7.75 9.25M12 5l4.25 4.25" strokeLinecap="round" strokeLinejoin="round" />
               <path d="M4.5 16.5v1A2.5 2.5 0 0 0 7 20h10a2.5 2.5 0 0 0 2.5-2.5v-1" strokeLinecap="round" />
             </svg>
@@ -83,7 +83,7 @@ export function UploadBox({
           </p>
           <button
             type="button"
-            className="factory-ocr-button-primary mt-8 inline-flex h-12 min-w-[13rem] items-center justify-center px-8 text-sm font-semibold uppercase tracking-[0.14em] transition duration-200 hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-60"
+            className="factory-ocr-button-primary mt-8 inline-flex h-12 min-w-[13rem] items-center justify-center px-8 text-sm font-semibold uppercase tracking-[0.14em] transition duration-200 hover:-translate-y-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={disabled}
             onClick={() => inputRef.current?.click()}
           >
@@ -97,7 +97,7 @@ export function UploadBox({
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-3 text-sm text-text-secondary">
             <button
               type="button"
-              className="transition hover:text-[var(--action-primary)]"
+              className="rounded-control transition hover:text-[var(--action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
               onClick={() => inputRef.current?.focus()}
             >
               Paste from clipboard
@@ -112,7 +112,7 @@ export function UploadBox({
               />
               <button
                 type="button"
-                className="text-text-secondary transition hover:text-[var(--action-primary)] disabled:opacity-40"
+                className="rounded-control text-text-secondary transition hover:text-[var(--action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:opacity-40"
                 disabled={disabled || !remoteUrl.trim()}
                 onClick={onImportUrl}
               >
@@ -128,7 +128,7 @@ export function UploadBox({
                     <button
                       key={record.id}
                       type="button"
-                      className="border border-border-default bg-surface-shell px-3 py-1.5 text-xs font-medium text-text-primary transition hover:border-[var(--action-primary)]/40 hover:text-[var(--action-primary)]"
+                      className="border border-border-default bg-surface-shell px-3 py-1.5 text-xs font-medium text-text-primary transition hover:border-[var(--action-primary)]/40 hover:text-[var(--action-primary)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                       onClick={() => onOpenRecent(record.id)}
                     >
                       {shortLabel(record)}
@@ -186,7 +186,7 @@ export function UploadBox({
                 <button
                   key={record.id}
                   type="button"
-                  className="flex w-full items-center justify-between border border-border-subtle bg-surface-shell px-3 py-3 text-left transition hover:border-[var(--action-primary)]/40"
+                  className="flex w-full items-center justify-between border border-border-subtle bg-surface-shell px-3 py-3 text-left transition hover:border-[var(--action-primary)]/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
                   onClick={() => onOpenRecent(record.id)}
                 >
                   <span className="truncate pr-3 text-sm font-medium text-text-primary">{shortLabel(record)}</span>
