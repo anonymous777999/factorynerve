@@ -502,7 +502,7 @@ export default function OcrHistoryPage() {
         </div>
       </div>
 
-      {/* Table — uses a fixed viewport height so it always renders regardless of parent height */}
+      {/* Table — fixed height with internal scroll, independent of parent layout */}
       {historyQuery.isLoading ? (
         <div className="flex h-64 items-center justify-center rounded-[0.45rem] border border-border-subtle bg-surface-elevated">
           <div className="text-text-secondary">Loading OCR history...</div>
@@ -529,6 +529,7 @@ export default function OcrHistoryPage() {
             enableVirtualization={records.length > 20}
             overscan={5}
             viewportSize="lg"
+            viewportClassName="max-h-table-history min-h-[400px] overflow-y-auto"
             emptyTitle="No OCR documents match the current filters"
             emptyMessage="Adjust the search term or scan a new document to continue the workflow."
             renderToolbar={

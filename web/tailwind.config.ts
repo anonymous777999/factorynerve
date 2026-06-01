@@ -270,6 +270,7 @@ const config: Config = {
         "table-sm": "calc(var(--density-row-height-lg) * 8)",
         "table-md": "calc(var(--density-row-height-lg) * 12)",
         "table-lg": "calc(100dvh - 200px)",
+        "table-history": "calc(100dvh - 500px)",
       },
       transitionDuration: {
         fast: "var(--motion-fast)",
