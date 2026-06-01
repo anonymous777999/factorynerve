@@ -65,6 +65,7 @@ export type DataTableProps<TData extends RowData> = {
   overscan?: number;
   renderEmptyState?: React.ReactNode;
   renderToolbar?: React.ReactNode;
+  scrollAreaClassName?: string;
   searchPlaceholder?: string;
   searchValue?: string;
   selectedRowIds?: string[];
@@ -236,6 +237,7 @@ export function DataTable<TData extends RowData>({
   overscan = 8,
   renderEmptyState,
   renderToolbar,
+  scrollAreaClassName,
   searchPlaceholder = "Search records",
   searchValue = "",
   selectedRowIds,
@@ -597,7 +599,7 @@ export function DataTable<TData extends RowData>({
       {bulkToolbar}
       {toolbar}
       <ResponsiveScrollArea
-        className="w-full"
+        className={cn("w-full", scrollAreaClassName)}
         viewportClassName={cn(
           "max-w-full overflow-y-auto overscroll-contain",
           viewportSizeClassNames[viewportSize],

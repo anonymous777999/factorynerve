@@ -502,7 +502,7 @@ export default function OcrHistoryPage() {
         </div>
       </div>
 
-      {/* Table — fixed height with internal scroll, independent of parent layout */}
+      {/* Table — outer div has a fixed pixel height via inline style; DataTable fills it and scrolls inside */}
       {historyQuery.isLoading ? (
         <div className="flex h-64 items-center justify-center rounded-[0.45rem] border border-border-subtle bg-surface-elevated">
           <div className="text-text-secondary">Loading OCR history...</div>
@@ -516,7 +516,13 @@ export default function OcrHistoryPage() {
           <div className="text-text-secondary">No OCR records found</div>
         </div>
       ) : (
-        <div className="rounded-[0.45rem] border border-border-subtle bg-surface-shell">
+        /* Fixed-height container — inline style guarantees height in block-flow layout.
+           calc(100vh - 500px): topbar 48 + OCR header 160 + padding 32 +
+           stats 72 + filters 140 + gaps 48 = ~500px above the table. */
+        <div
+          className="rounded-[0.45rem] border border-border-subtle bg-surface-shell overflow-hidden flex flex-col"
+          style={{ height: "calc(100vh - 500px)", minHeight: "400px" }}
+        >
           <DataTable<OcrHistoryItem>
             ariaLabel="OCR history"
             columns={columns}
@@ -528,8 +534,9 @@ export default function OcrHistoryPage() {
             enableStickyFirstColumn
             enableVirtualization={records.length > 20}
             overscan={5}
-            viewportSize="lg"
-            viewportClassName="max-h-table-history min-h-[400px] overflow-y-auto"
+            className="flex flex-col flex-1 min-h-0"
+            scrollAreaClassName="flex-1 min-h-0"
+            viewportClassName="!max-h-none h-full overflow-y-auto"
             emptyTitle="No OCR documents match the current filters"
             emptyMessage="Adjust the search term or scan a new document to continue the workflow."
             renderToolbar={
