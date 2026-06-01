@@ -75,20 +75,19 @@ export function useOCRExecutionWorkspace({
     sourceRecords[0];
 
   useEffect(() => {
-    if (!selectedRecord) {
-      return;
+    // Sync the controlled prop into local state when it changes.
+    // Prefer the controlled value; fall back to the first available record.
+    // Do NOT include selectedDocumentId in deps — it's the value being set,
+    // including it would create a ping-pong loop with the state update.
+    const next =
+      controlledSelectedDocumentId ||
+      filteredRecords[0]?.queue.id ||
+      sourceRecords[0]?.queue.id;
+    if (next && next !== selectedDocumentId) {
+      setSelectedDocumentId(next);
     }
-
-    if (selectedDocumentId !== selectedRecord.queue.id) {
-      setSelectedDocumentId(selectedRecord.queue.id);
-    }
-  }, [selectedDocumentId, selectedRecord]);
-
-  useEffect(() => {
-    if (controlledSelectedDocumentId && controlledSelectedDocumentId !== selectedDocumentId) {
-      setSelectedDocumentId(controlledSelectedDocumentId);
-    }
-  }, [controlledSelectedDocumentId, selectedDocumentId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controlledSelectedDocumentId, filteredRecords, sourceRecords]);
 
   const kpis = useMemo(() => deriveOCRExecutionKpis(sourceRecords), [sourceRecords]);
   const panels = useMemo(
@@ -143,21 +142,21 @@ export function useOCRExecutionWorkspace({
         current.map((record) =>
           ids.includes(record.queue.id)
             ? {
-                ...record,
-                extractionFields: record.extractionFields.map((field) =>
-                  field.reviewState === "reviewed"
-                    ? field
-                    : updateFieldReviewState(field, "reviewed", "Approved through OCR execution workflow")
-                ),
-                queue: {
-                  ...record.queue,
-                  completedFields: record.queue.fieldCount,
-                  confidence: Math.max(record.queue.confidence, 0.91),
-                  queueState: "ready",
-                  reviewState: "reviewed",
-                  workflowState: "approved",
-                },
-              }
+              ...record,
+              extractionFields: record.extractionFields.map((field) =>
+                field.reviewState === "reviewed"
+                  ? field
+                  : updateFieldReviewState(field, "reviewed", "Approved through OCR execution workflow")
+              ),
+              queue: {
+                ...record.queue,
+                completedFields: record.queue.fieldCount,
+                confidence: Math.max(record.queue.confidence, 0.91),
+                queueState: "ready",
+                reviewState: "reviewed",
+                workflowState: "approved",
+              },
+            }
             : record
         )
       );

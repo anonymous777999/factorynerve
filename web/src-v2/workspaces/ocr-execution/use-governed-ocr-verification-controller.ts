@@ -77,17 +77,23 @@ export function useGovernedOcrVerificationController() {
     [selectedTemplateId, templates],
   );
 
+  // Extract stable refetch references — the query objects themselves are new
+  // references on every render, so using them directly in deps would re-run
+  // this effect on every render and re-subscribe on every render.
+  const refetchQueue = queueQuery.refetch;
+  const refetchDetail = detailQuery.refetch;
+
   useEffect(() => {
     if (!canVerify) {
       return;
     }
     return subscribeToWorkflowRefresh(() => {
-      void queueQuery.refetch();
+      void refetchQueue();
       if (route.id != null) {
-        void detailQuery.refetch();
+        void refetchDetail();
       }
     });
-  }, [canVerify, detailQuery, queueQuery, route.id]);
+  }, [canVerify, refetchDetail, refetchQueue, route.id]);
 
   useEffect(() => {
     if (!activeTemplate || activeRecord) {
