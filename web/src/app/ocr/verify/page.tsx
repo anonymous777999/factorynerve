@@ -50,7 +50,7 @@ export default async function OcrVerifyRoutePage({
     redirect(canonicalHref);
   }
 
-  if (workspaceOverride === "governed" || USE_GOVERNED_OCR_WORKSPACE || !workspaceOverride) {
+  if (workspaceOverride === "governed" || (USE_GOVERNED_OCR_WORKSPACE && !workspaceOverride)) {
     return <GovernedOcrVerificationPage />;
   }
 
