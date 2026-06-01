@@ -54,7 +54,7 @@ function badgeTone(value?: string | null) {
     return "border-amber-400/35 bg-amber-400/12 text-amber-200";
   }
   if (value === "high") {
-    return "border-orange-400/35 bg-orange-400/12 text-orange-200";
+    return "border-status-warning-fg bg-status-warning-fg text-status-warning-fg";
   }
   return "border-rose-400/35 bg-rose-400/12 text-rose-200";
 }

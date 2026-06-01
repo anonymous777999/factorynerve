@@ -350,7 +350,7 @@ export default function AiInsightsPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-                <div className="text-xs uppercase tracking-[0.18em] text-white/80">{summaryHealth.detail}</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-text-primary/80">{summaryHealth.detail}</div>
                 <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
                   <div className={`h-2 rounded-full ${summaryHealth.barClass}`} style={{ width: `${summaryHealth.percent}%` }} />
                 </div>
@@ -370,7 +370,7 @@ export default function AiInsightsPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-                <div className="text-xs uppercase tracking-[0.18em] text-white/80">{smartHealth.detail}</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-text-primary/80">{smartHealth.detail}</div>
                 <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
                   <div className={`h-2 rounded-full ${smartHealth.barClass}`} style={{ width: `${smartHealth.percent}%` }} />
                 </div>
@@ -423,7 +423,7 @@ export default function AiInsightsPage() {
                         <div key={preset.id} className="flex items-center gap-2">
                           <button
                             type="button"
-                            className="rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm font-semibold transition hover:border-[rgba(62,166,255,0.4)] hover:text-white"
+                            className="rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm font-semibold transition hover:border-[rgba(62,166,255,0.4)] hover:text-text-primary"
                             onClick={() => setQuestion(preset.question)}
                           >
                             {preset.label}

@@ -52,7 +52,7 @@ function badgeClass(tone: "blue" | "green" | "amber" | "slate") {
   if (tone === "amber") {
     return "border border-amber-400/30 bg-amber-400/15 text-amber-200";
   }
-  return "border border-[var(--border)] bg-[rgba(148,163,184,0.14)] text-slate-200";
+  return "border border-[var(--border)] bg-[rgba(148,163,184,0.14)] text-text-secondary";
 }
 
 function hasUnlimited(plan: PlanInfo, key: keyof PlanInfo["limits"]) {

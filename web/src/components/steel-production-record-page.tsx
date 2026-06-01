@@ -438,20 +438,20 @@ export function SteelProductionRecordPage() {
         <section className="rounded-lg border border-gray-800 bg-[#1a1f2e] px-6 py-4 shadow-lg">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 space-y-1">
-              <div className="text-xs uppercase tracking-wider text-gray-500">
+              <div className="text-xs uppercase tracking-wider text-text-tertiary">
                 Steel Production Record
               </div>
               <h1 className="text-2xl font-semibold text-white">
                 Keyboard-first operational capture
               </h1>
-              <p className="max-w-3xl text-sm text-gray-400">
+              <p className="max-w-3xl text-sm text-text-secondary">
                 Search materials, capture weights, review live yield and variance, then confirm
                 the ledger transformation before commit.
               </p>
             </div>
             <div className="flex gap-2">
               <Link href="/steel/batches">
-                <Button variant="outline" size="compact" className="border-gray-700 text-gray-300 hover:bg-gray-800">
+                <Button variant="outline" size="compact" className="border-border-default text-text-primary hover:bg-surface-hover">
                   Batch List
                 </Button>
               </Link>
@@ -544,11 +544,11 @@ export function SteelProductionRecordPage() {
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <CardTitle className="text-xl text-white">Production lane</CardTitle>
-                      <div className="mt-1 text-sm text-gray-400">
+                      <div className="mt-1 text-sm text-text-secondary">
                         Keyboard-first operational capture. Search materials, capture weights, review live yield.
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                    <div className="flex items-center gap-4 text-xs text-text-tertiary">
                       <span>Cmd/Ctrl+S save</span>
                       <span>Cmd/Ctrl+Enter verify</span>
                     </div>
@@ -556,7 +556,7 @@ export function SteelProductionRecordPage() {
                 </CardHeader>
                 <CardContent className="px-6 pb-6">
                   {!canRecord ? (
-                    <div className="py-4 text-sm text-orange-400">
+                    <div className="py-4 text-sm text-status-warning-fg">
                       Supervisor or higher access is required to record production batches.
                     </div>
                   ) : (

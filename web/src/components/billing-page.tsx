@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -99,7 +99,7 @@ function badgeClass(tone: "blue" | "green" | "amber" | "slate") {
   if (tone === "amber") {
     return "border border-amber-400/30 bg-amber-400/15 text-amber-200";
   }
-  return "border border-[var(--border)] bg-[rgba(148,163,184,0.14)] text-slate-200";
+  return "border border-[var(--border)] bg-[rgba(148,163,184,0.14)] text-text-secondary";
 }
 
 async function loadRazorpayScript() {
@@ -463,7 +463,7 @@ function BillingPageInner() {
       badgeClassName: smartHealth.badgeClass,
       barClassName: smartHealth.barClass,
       widthPercent: smartHealth.percent,
-      detail: `${smartHealth.detail} · Used by smart DPR input and history-based production suggestions.`,
+      detail: `${smartHealth.detail} � Used by smart DPR input and history-based production suggestions.`,
     },
     activeAddonBadges: (billing?.active_addons || []).map((addon) => addon.name),
   };
@@ -759,7 +759,7 @@ function BillingPageInner() {
                         <div className="space-y-3">
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
-                              <div className="font-semibold text-white">{addon.name}</div>
+                              <div className="font-semibold text-text-primary">{addon.name}</div>
                               <div className="overflow-safe-text mt-1 text-xs leading-5 text-[var(--muted)]">
                                 {addon.description}
                               </div>
@@ -767,7 +767,7 @@ function BillingPageInner() {
                                 {addon.scan_quota ? `${addon.scan_quota} scans per pack` : "Billable pack"}
                               </div>
                             </div>
-                            <div className="shrink-0 text-xs font-semibold text-white">
+                            <div className="shrink-0 text-xs font-semibold text-text-primary">
                               {formatAmount(addon.price, billingConfig?.currency || "INR")}/mo
                             </div>
                           </div>
@@ -797,7 +797,7 @@ function BillingPageInner() {
                               >
                                 -
                               </Button>
-                              <span className="min-w-8 text-center font-semibold text-white">
+                              <span className="min-w-8 text-center font-semibold text-text-primary">
                                 {selectedQuantity}
                               </span>
                               <Button

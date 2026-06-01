@@ -4,13 +4,11 @@ import Link from "next/link";
 import type { FormEventHandler } from "react";
 import {
   ArrowRight,
-  Building2,
   KeyRound,
   Loader2,
   Lock,
   Mail,
   ShieldCheck,
-  Users,
 } from "lucide-react";
 
 import { AuthWorkstationShell } from "@/components/auth-workstation-shell";
@@ -143,41 +141,11 @@ export function LoginOne({
                 {googleLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
               </span>
               <span>
-                <span className="block text-sm font-semibold text-current">Google workspace route</span>
-                <span className="block text-[11px] uppercase tracking-[0.16em] text-text-secondary">Connected</span>
+                <span className="block text-sm font-semibold text-current">Continue with Google</span>
+                <span className="block text-[11px] uppercase tracking-[0.16em] text-text-secondary">Work account</span>
               </span>
             </span>
             <ArrowRight className="h-4 w-4" />
-          </button>
-
-          <button type="button" disabled className={providerButtonClasses(true)}>
-            <span className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-border-default bg-surface-shell">
-                <Users className="h-4 w-4" />
-              </span>
-              <span>
-                <span className="block text-sm font-semibold text-current">Facebook workspace route</span>
-                <span className="block text-[11px] uppercase tracking-[0.16em] text-text-secondary">Backend not enabled</span>
-              </span>
-            </span>
-            <span className="rounded-full border border-border-default px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]">
-              Soon
-            </span>
-          </button>
-
-          <button type="button" disabled className={providerButtonClasses(true)}>
-            <span className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-full border border-border-default bg-surface-shell">
-                <Building2 className="h-4 w-4" />
-              </span>
-              <span>
-                <span className="block text-sm font-semibold text-current">Microsoft identity route</span>
-                <span className="block text-[11px] uppercase tracking-[0.16em] text-text-secondary">Backend not enabled</span>
-              </span>
-            </span>
-            <span className="rounded-full border border-border-default px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]">
-              Soon
-            </span>
           </button>
         </div>
 
@@ -212,10 +180,10 @@ export function LoginOne({
           <div className="space-y-2">
             <div className="flex items-center justify-between gap-3">
               <Label htmlFor="password" className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-secondary">
-                Access code
+                Password
               </Label>
               <Link href={forgotPasswordHref} className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--action-primary)] hover:text-[var(--action-primary-hover)]">
-                Reset code
+                Forgot password?
               </Link>
             </div>
             <div className="relative">
@@ -241,7 +209,7 @@ export function LoginOne({
           </div>
 
           <Button type="submit" className="factory-auth-cta h-[42px] w-full border-transparent" isBusy={loading} busyLabel="Signing in...">
-            Initialize Session
+            Sign in
           </Button>
         </div>
 

@@ -250,11 +250,11 @@ function severityClasses(severity: ReviewSeverity) {
     case "critical":
       return "border-red-400/40 bg-[rgba(239,68,68,0.12)] text-red-100";
     case "high":
-      return "border-orange-400/40 bg-[rgba(249,115,22,0.12)] text-orange-100";
+      return "border-status-warning-border bg-status-warning-bg text-status-warning-fg";
     case "warning":
-      return "border-amber-400/40 bg-[rgba(245,158,11,0.12)] text-amber-100";
+      return "border-status-warning-border bg-status-warning-bg text-status-warning-fg";
     default:
-      return "border-emerald-400/30 bg-[rgba(34,197,94,0.12)] text-emerald-100";
+      return "border-status-success-border bg-status-success-bg text-status-success-fg";
   }
 }
 
@@ -267,11 +267,11 @@ function typeClasses(kind: TaskKind | SignalKind) {
     case "ocr":
       return "border-cyan-400/30 bg-[rgba(34,211,238,0.12)] text-cyan-100";
     case "reconciliation":
-      return "border-orange-400/30 bg-[rgba(249,115,22,0.12)] text-orange-100";
+      return "border-status-processing-border bg-status-processing-bg text-status-processing-fg";
     case "batch":
       return "border-fuchsia-400/30 bg-[rgba(217,70,239,0.12)] text-fuchsia-100";
     default:
-      return "border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100";
+      return "border-status-warning-border bg-status-warning-bg text-status-warning-fg";
   }
 }
 
@@ -519,7 +519,7 @@ function normalizeOcr(record: OcrVerificationRecord, canApproveOcr: boolean): Oc
     canReject: canApproveOcr,
     typeLabel: "OCR review",
     title: record.source_filename || `Verification #${record.id}`,
-    headline: `${record.columns} columns • ${Math.round(record.avg_confidence)}% confidence • ${record.language.toUpperCase()}`,
+    headline: `${record.columns} columns • ${Math.round(record.avg_confidence)}% confidence • ${record.language}`,
     description: warnings || "No warnings raised on the queued document.",
     recommendation:
       canApproveOcr
@@ -535,7 +535,7 @@ function normalizeOcr(record: OcrVerificationRecord, canApproveOcr: boolean): Oc
     openLabel: "Open document review",
     facts: [
       { label: "Template", value: record.template_name || "-" },
-      { label: "Language", value: record.language.toUpperCase() },
+      { label: "Language", value: record.language },
       { label: "Columns", value: formatNumber(record.columns) },
       { label: "Confidence", value: `${Math.round(record.avg_confidence)}%` },
       { label: "Warnings", value: record.warnings.length ? record.warnings.join(" • ") : "None" },
@@ -559,7 +559,7 @@ function normalizeReconciliation(record: SteelReconciliation, canApprove: boolea
     canReject: canApprove,
     typeLabel: "Stock review",
     title: record.item_name || record.item_code || `Item #${record.item_id}`,
-    headline: `Variance ${formatNumber(record.variance_kg, 1)} KG • ${formatNumber(record.variance_percent, 1)}% • ${record.confidence_status.toUpperCase()} confidence`,
+    headline: `Variance ${formatNumber(record.variance_kg, 1)} KG • ${formatNumber(record.variance_percent, 1)}% • ${record.confidence_status} confidence`,
     description: record.notes?.trim() || "Physical stock count needs a decision before it changes trust in the inventory book.",
     recommendation:
       canApprove
@@ -578,7 +578,7 @@ function normalizeReconciliation(record: SteelReconciliation, canApprove: boolea
       { label: "Physical qty", value: `${formatNumber(record.physical_qty_kg, 1)} KG` },
       { label: "Variance", value: `${formatNumber(record.variance_kg, 1)} KG` },
       { label: "Variance %", value: `${formatNumber(record.variance_percent, 1)}%` },
-      { label: "Confidence", value: record.confidence_status.toUpperCase() },
+      { label: "Confidence", value: record.confidence_status },
       { label: "Counted by", value: record.counted_by_name || "-" },
       { label: "Counted at", value: formatDateTime(record.counted_at) },
       { label: "Notes", value: record.notes || "-" },
@@ -2257,7 +2257,7 @@ export default function ApprovalsPage() {
                   <QueueStatPill label="Attendance" value={attendanceTaskCount} tone="border-violet-400/30 bg-[rgba(167,139,250,0.12)] text-violet-100" />
                   <QueueStatPill label="DPR" value={dprTaskCount} tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
                   <QueueStatPill label="OCR" value={ocrTaskCount} tone="border-cyan-400/30 bg-[rgba(34,211,238,0.12)] text-cyan-100" />
-                  <QueueStatPill label="Stock" value={stockTaskCount} tone="border-orange-400/30 bg-[rgba(249,115,22,0.12)] text-orange-100" />
+                  <QueueStatPill label="Stock" value={stockTaskCount} tone="border-status-processing-border bg-status-processing-bg text-status-processing-fg" />
                 </div>
                 <div className="text-sm text-[var(--muted)]">
                   {restrictedTaskCount

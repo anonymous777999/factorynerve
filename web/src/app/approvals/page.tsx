@@ -1,5 +1,5 @@
-import ApprovalQueueWorkspace from "@/components/approval-queue-workspace";
+import ApprovalsPage from "@/components/approvals-page";
 
 export default function ApprovalsRoute() {
-  return <ApprovalQueueWorkspace />;
+  return <ApprovalsPage />;
 }

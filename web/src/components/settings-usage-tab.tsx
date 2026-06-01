@@ -8,61 +8,57 @@ type SettingsUsageTabProps = {
   usage: UsageSummary | null;
 };
 
+function StatCard({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-panel border border-border-subtle bg-surface-shell p-4">
+      <div className="text-label-dense font-medium text-text-tertiary">{label}</div>
+      <div className="mt-1 font-mono text-xl font-semibold tabular-nums text-text-primary">{value}</div>
+    </div>
+  );
+}
+
 export function SettingsUsageTab({ billing, usage }: SettingsUsageTabProps) {
   return (
-    <div className="control-center-workspace grid gap-6 xl:grid-cols-[1fr_1fr]">
-      <Card className="bg-[#151b24] border-cyan-900/30">
+    <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-xl font-mono text-cyan-400 uppercase tracking-wider">USAGE_SUMMARY</CardTitle>
+          <CardTitle>Usage summary</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-3 md:grid-cols-2">
-            <div className="rounded-[10px] bg-[#0a0e14] border border-cyan-900/30 p-4">
-              <div className="mb-1 text-[12px] text-gray-500 font-mono uppercase tracking-wider">REQUESTS_USED</div>
-              <div className="text-[22px] font-medium text-cyan-300 font-mono">{usage?.requests_used ?? 0}</div>
-            </div>
-            <div className="rounded-[10px] bg-[#0a0e14] border border-cyan-900/30 p-4">
-              <div className="mb-1 text-[12px] text-gray-500 font-mono uppercase tracking-wider">CREDITS_USED</div>
-              <div className="text-[22px] font-medium text-cyan-300 font-mono">{usage?.credits_used ?? 0}</div>
-            </div>
-            <div className="rounded-[10px] bg-[#0a0e14] border border-cyan-900/30 p-4">
-              <div className="mb-1 text-[12px] text-gray-500 font-mono uppercase tracking-wider">REQUEST_LIMIT</div>
-              <div className="text-[22px] font-medium text-cyan-300 font-mono">{usage?.max_requests || "UNLIMITED"}</div>
-            </div>
-            <div className="rounded-[10px] bg-[#0a0e14] border border-cyan-900/30 p-4">
-              <div className="mb-1 text-[12px] text-gray-500 font-mono uppercase tracking-wider">RATE_LIMIT_/MIN</div>
-              <div className="text-[22px] font-medium text-cyan-300 font-mono">{usage?.rate_limit_per_minute ?? "-"}</div>
-            </div>
+            <StatCard label="Requests used" value={usage?.requests_used ?? 0} />
+            <StatCard label="Credits used" value={usage?.credits_used ?? 0} />
+            <StatCard label="Request limit" value={usage?.max_requests || "Unlimited"} />
+            <StatCard label="Rate limit / min" value={usage?.rate_limit_per_minute ?? "-"} />
           </div>
         </CardContent>
       </Card>
 
-      <Card className="bg-[#151b24] border-cyan-900/30">
+      <Card>
         <CardHeader>
-          <CardTitle className="text-xl font-mono text-cyan-400 uppercase tracking-wider">BILLING_STATUS</CardTitle>
+          <CardTitle>Billing status</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
-          <div className="rounded-[10px] bg-[#0a0e14] border border-cyan-900/30 p-4">
-            <div className="mb-1 text-[12px] text-gray-500 font-mono uppercase tracking-wider">PLAN</div>
-            <div className="text-[22px] font-medium text-cyan-300 font-mono">{billing?.plan || "-"}</div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <StatCard label="Plan" value={billing?.plan || "-"} />
+            <StatCard label="Status" value={billing?.status || "-"} />
           </div>
-          <div className="rounded-[10px] bg-[#0a0e14] border border-cyan-900/30 p-4">
-            <div className="mb-1 text-[12px] text-gray-500 font-mono uppercase tracking-wider">STATUS</div>
-            <div className="text-[22px] font-medium text-green-400 font-mono">{billing?.status || "-"}</div>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <div className="text-gray-500 font-mono text-xs uppercase tracking-wider">TRIAL_ENDS</div>
-              <div className="font-mono text-cyan-300">{billing?.trial_end_at || "-"}</div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-panel border border-border-subtle bg-surface-shell p-4">
+              <div className="text-label-dense font-medium text-text-tertiary">Trial ends</div>
+              <div className="mt-1 font-mono text-sm text-text-primary">{billing?.trial_end_at || "-"}</div>
             </div>
-            <div>
-              <div className="text-gray-500 font-mono text-xs uppercase tracking-wider">PERIOD_END</div>
-              <div className="font-mono text-cyan-300">{billing?.current_period_end_at || "-"}</div>
+            <div className="rounded-panel border border-border-subtle bg-surface-shell p-4">
+              <div className="text-label-dense font-medium text-text-tertiary">Period end</div>
+              <div className="mt-1 font-mono text-sm text-text-primary">{billing?.current_period_end_at || "-"}</div>
             </div>
           </div>
           {billing?.pending_plan ? (
-            <div className="rounded-2xl border border-cyan-900/30 bg-[#0a0e14] p-4 font-mono text-sm text-gray-400">
-              PENDING: {billing.pending_plan} EFFECTIVE_AT {billing.pending_plan_effective_at || "-"}
+            <div className="rounded-panel border border-border-subtle bg-surface-shell p-4 text-sm text-text-secondary">
+              Pending plan: <span className="font-medium text-text-primary">{billing.pending_plan}</span>
+              {billing.pending_plan_effective_at ? (
+                <span className="ml-2 text-text-tertiary">effective {billing.pending_plan_effective_at}</span>
+              ) : null}
             </div>
           ) : null}
         </CardContent>

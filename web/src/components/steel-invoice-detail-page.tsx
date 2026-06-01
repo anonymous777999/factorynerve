@@ -52,7 +52,7 @@ function dispatchStatusBadgeClass(status: string | null | undefined) {
   if (status === "exited") return "border-cyan-400/35 bg-cyan-500/12 text-cyan-200";
   if (status === "loaded") return "border-amber-400/35 bg-amber-500/12 text-amber-200";
   if (status === "cancelled") return "border-rose-400/35 bg-rose-500/12 text-rose-200";
-  return "border-slate-400/35 bg-slate-500/12 text-slate-200";
+  return "border-slate-400/35 bg-surface-panel/12 text-text-secondary";
 }
 
 export function SteelInvoiceDetailPage() {
@@ -362,7 +362,7 @@ export function SteelInvoiceDetailPage() {
                               Partial
                             </span>
                           ) : (
-                            <span className="inline-flex rounded-full border border-slate-400/35 bg-slate-500/12 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-200">
+                            <span className="inline-flex rounded-full border border-slate-400/35 bg-surface-panel/12 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-text-secondary">
                               Open
                             </span>
                           )}

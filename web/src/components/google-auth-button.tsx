@@ -52,7 +52,7 @@ export function GoogleAuthButton({
         onClick={() => void handleClick()}
         disabled={loading}
       >
-        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white text-sm font-bold text-slate-900">
+        <span className="inline-flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white text-sm font-bold text-text-secondary">
           G
         </span>
         {loading ? t("auth.google.connecting", "Connecting to Google...") : label || t("auth.google.continue", "Continue with Google")}

@@ -201,31 +201,31 @@ export default function RegisterPage() {
 
   const successState = success
     ? {
-        title: isEmailFailure
-          ? t("auth.register.success_pending_saved", "Pending signup saved")
-          : isEmailDelivery
-            ? t("auth.register.success_inbox_required", "Inbox verification required")
-            : t("auth.register.success_link_ready", "Verification link ready"),
-        detail: isEmailFailure
+      title: isEmailFailure
+        ? t("auth.register.success_pending_saved", "Pending signup saved")
+        : isEmailDelivery
+          ? t("auth.register.success_inbox_required", "Inbox verification required")
+          : t("auth.register.success_link_ready", "Verification link ready"),
+      detail: isEmailFailure
+        ? t(
+          "auth.register.success_pending_detail",
+          "The signup request is stored safely. You only need to resend verification after email delivery recovers.",
+        )
+        : isEmailDelivery
           ? t(
-              "auth.register.success_pending_detail",
-              "The signup request is stored safely. You only need to resend verification after email delivery recovers.",
-            )
-          : isEmailDelivery
-            ? t(
-                "auth.register.success_inbox_detail",
-                "The real account stays locked until this inbox opens the verification email and activates the signup.",
-              )
-            : t(
-                "auth.register.success_link_detail",
-                "Preview mode is active, so you can open the verification link directly from this screen.",
-              ),
-        panelTone: isEmailFailure
-          ? "border-status-warning-border bg-status-warning-bg text-status-warning-fg"
-          : isEmailDelivery
-            ? "border-status-success-border bg-status-success-bg text-status-success-fg"
-            : "border-border-focus bg-surface-selected text-text-primary",
-      }
+            "auth.register.success_inbox_detail",
+            "The real account stays locked until this inbox opens the verification email and activates the signup.",
+          )
+          : t(
+            "auth.register.success_link_detail",
+            "Preview mode is active, so you can open the verification link directly from this screen.",
+          ),
+      panelTone: isEmailFailure
+        ? "border-status-warning-border bg-status-warning-bg text-status-warning-fg"
+        : isEmailDelivery
+          ? "border-status-success-border bg-status-success-bg text-status-success-fg"
+          : "border-border-focus bg-surface-selected text-text-primary",
+    }
     : null;
 
   const onSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -305,10 +305,10 @@ export default function RegisterPage() {
         setSuccess((current) =>
           current
             ? {
-                ...current,
-                verification_link: result.verification_link,
-                delivery_mode: result.delivery_mode,
-              }
+              ...current,
+              verification_link: result.verification_link,
+              delivery_mode: result.delivery_mode,
+            }
             : current,
         );
       }
@@ -372,229 +372,229 @@ export default function RegisterPage() {
       ]}
       contentClassName="space-y-5"
     >
-              {success ? (
-                <div className="space-y-4">
-                  {hasRedirectTarget ? (
-                    <div className="rounded-panel border border-border-focus bg-surface-selected p-4 text-sm text-text-primary">
-                      <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
-                        After verification
-                      </div>
-                      <div className="mt-2 text-base font-semibold">
-                        Sign in to continue into {nextDestination}.
-                      </div>
-                    </div>
-                  ) : null}
+      {success ? (
+        <div className="space-y-4">
+          {hasRedirectTarget ? (
+            <div className="rounded-panel border border-border-focus bg-surface-selected p-4 text-sm text-text-primary">
+              <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
+                After verification
+              </div>
+              <div className="mt-2 text-base font-semibold">
+                Sign in to continue into {nextDestination}.
+              </div>
+            </div>
+          ) : null}
 
-                  {successState ? (
-                    <div className={cn("rounded-panel border p-4 text-sm", successState.panelTone)}>
-                      <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-current/80">
-                        Signup status
-                      </div>
-                      <div className="mt-2 text-base font-semibold text-text-primary">{successState.title}</div>
-                      <div className="mt-2 leading-6">{successState.detail}</div>
-                    </div>
-                  ) : null}
+          {successState ? (
+            <div className={cn("rounded-panel border p-4 text-sm", successState.panelTone)}>
+              <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-current/80">
+                Signup status
+              </div>
+              <div className="mt-2 text-base font-semibold text-text-primary">{successState.title}</div>
+              <div className="mt-2 leading-6">{successState.detail}</div>
+            </div>
+          ) : null}
 
-                  <div className="rounded-panel border border-border-default bg-surface-panel p-4">
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
-                          Pending identity
-                        </div>
-                        <div className="mt-2 text-base font-semibold text-text-primary">{email}</div>
-                      </div>
-                      <div className="rounded-control border border-border-default bg-surface-elevated px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-text-secondary">
-                        {isEmailFailure ? "Retry required" : isEmailDelivery ? "Inbox action" : "Link ready"}
-                      </div>
-                    </div>
-
-                    <div className="mt-4 rounded-panel border border-border-default bg-surface-shell p-4 text-sm text-text-secondary">
-                      {success.message}
-                    </div>
-
-                    <div className="mt-4 grid gap-3 text-sm text-text-secondary">
-                      <div className="rounded-panel border border-border-default bg-surface-shell p-3">
-                        1. Open the inbox for <span className="font-medium text-text-primary">{email}</span>.
-                      </div>
-                      <div className="rounded-panel border border-border-default bg-surface-shell p-3">
-                        2. {isEmailFailure ? "Use resend once delivery is healthy again." : isPreviewMode ? "Open the local preview link below." : "Activate the verification email from DPR.ai."}
-                      </div>
-                      <div className="rounded-panel border border-border-default bg-surface-shell p-3">
-                        3. Return to sign in after verification unlocks the operator profile.
-                      </div>
-                    </div>
-
-                    {success.verification_link ? (
-                      <div className="mt-4 rounded-panel border border-border-focus bg-surface-selected p-4">
-                        <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
-                          Preview verification link
-                        </div>
-                        <a
-                          href={success.verification_link}
-                          className="mt-3 inline-flex items-center gap-2 rounded-control border border-border-focus bg-surface-panel px-4 py-2 text-sm font-medium text-text-primary transition hover:bg-surface-hover"
-                        >
-                          Open verification page
-                          <ArrowRight className="h-4 w-4" />
-                        </a>
-                        <div className="mt-3 break-all text-xs text-text-secondary">{success.verification_link}</div>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div className="flex items-center gap-3">
-                    <Button type="button" variant="outline" onClick={onResend} isBusy={resending} busyLabel={t("auth.register.resending", "Sending...")}>
-                      {t("auth.register.resend", "Resend email")}
-                    </Button>
-                    <Link href="/access" className="text-sm text-[var(--accent)] underline underline-offset-4">
-                      {t("auth.register.sign_in", "Sign in")}
-                    </Link>
-                  </div>
-
-                  {resendStatus ? (
-                    <div className="rounded-panel border border-border-default bg-surface-shell p-3 text-sm text-text-secondary">
-                      {resendStatus}
-                    </div>
-                  ) : null}
+          <div className="rounded-panel border border-border-default bg-surface-panel p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
+                  Pending identity
                 </div>
-              ) : (
-                <div className="space-y-5">
-                  {hasRedirectTarget ? (
-                    <div className="rounded-panel border border-border-focus bg-surface-selected p-4 text-sm text-text-primary">
-                      <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
-                        Start here first
-                      </div>
-                      <div className="mt-2 text-base font-semibold">
-                        After verification, the user can continue into {nextDestination}.
-                      </div>
-                    </div>
-                  ) : null}
-                  <form onSubmit={onSubmit} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <IdentityField
-                        id="factoryName"
-                        label="Organization / Company"
-                        icon={<Building2 className="h-4 w-4" />}
-                        value={factoryName}
-                        onChange={(event) => setFactoryName(event.target.value)}
-                        placeholder="Shree Steel Rolling Works"
-                        autoComplete="organization"
-                        required
-                      />
-                      <IdentityField
-                        id="name"
-                        label="Admin name"
-                        icon={<User2 className="h-4 w-4" />}
-                        value={name}
-                        onChange={(event) => setName(event.target.value)}
-                        placeholder="Aman Patel"
-                        autoComplete="name"
-                        required
-                      />
-                      <IdentityField
-                        id="email"
-                        label="Work email"
-                        icon={<Mail className="h-4 w-4" />}
-                        type="email"
-                        value={email}
-                        onChange={(event) => setEmail(event.target.value)}
-                        placeholder="ops.admin@factory.com"
-                        autoComplete="email"
-                        required
-                      />
-                      <div>
-                        <FieldLabel htmlFor="role">Role selection</FieldLabel>
-                        <div className="relative">
-                          <Select
-                            id="role"
-                            value={selectedRole}
-                            onChange={(event) => setSelectedRole(event.target.value as RoleOption["value"])}
-                            className="factory-auth-input min-h-[40px] border-border-default bg-surface-elevated px-3 pr-10 text-sm text-text-primary focus:border-border-focus"
-                          >
-                            {roleOptions.map((option) => (
-                              <option key={option.value} value={option.value}>
-                                {option.label}
-                              </option>
-                            ))}
-                          </Select>
-                          <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
-                        </div>
-                      </div>
-                      <PasswordInput
-                        id="password"
-                        label="Password"
-                        value={password}
-                        onChange={setPassword}
-                        autoComplete="new-password"
-                        placeholder="Minimum 12 characters"
-                      />
-                      <PasswordInput
-                        id="confirmPassword"
-                        label="Confirm password"
-                        value={confirmPassword}
-                        onChange={setConfirmPassword}
-                        autoComplete="new-password"
-                        placeholder="Repeat access password"
-                      />
-                      <IdentityField
-                        id="companyCode"
-                        label="Company code"
-                        icon={<ShieldCheck className="h-4 w-4" />}
-                        value={companyCode}
-                        onChange={(event) => setCompanyCode(event.target.value)}
-                        placeholder="Optional verification code"
-                      />
-                      <IdentityField
-                        id="phoneNumber"
-                        label="Operations phone"
-                        icon={<Mail className="h-4 w-4" />}
-                        type="tel"
-                        value={phoneNumber}
-                        onChange={(event) => setPhoneNumber(event.target.value)}
-                        placeholder="+91 98765 43210"
-                        autoComplete="tel"
-                        inputMode="tel"
-                      />
-                    </div>
+                <div className="mt-2 text-base font-semibold text-text-primary">{email}</div>
+              </div>
+              <div className="rounded-control border border-border-default bg-surface-elevated px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-text-secondary">
+                {isEmailFailure ? "Retry required" : isEmailDelivery ? "Inbox action" : "Link ready"}
+              </div>
+            </div>
 
-                    <div className="rounded-panel border border-border-default bg-surface-shell p-4">
-                      <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
-                        Operational onboarding
-                      </div>
-                      <div className="mt-2 text-sm font-medium text-text-primary">{roleLabel(selectedRole)}</div>
-                      <div className="mt-2 text-sm leading-6 text-text-secondary">{activeRoleDetail}</div>
-                      <div className="mt-3 text-xs leading-6 text-text-tertiary">
-                        The request remains locked until the work inbox completes verification, which prevents unverified factory records from entering the live ERP workspace.
-                      </div>
-                    </div>
+            <div className="mt-4 rounded-panel border border-border-default bg-surface-shell p-4 text-sm text-text-secondary">
+              {success.message}
+            </div>
 
-                    {error ? (
-                      <div className="rounded-panel border border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">
-                        {error}
-                      </div>
-                    ) : null}
+            <div className="mt-4 grid gap-3 text-sm text-text-secondary">
+              <div className="rounded-panel border border-border-default bg-surface-shell p-3">
+                1. Open the inbox for <span className="font-medium text-text-primary">{email}</span>.
+              </div>
+              <div className="rounded-panel border border-border-default bg-surface-shell p-3">
+                2. {isEmailFailure ? "Use resend once delivery is healthy again." : isPreviewMode ? "Open the local preview link below." : "Activate the verification email from DPR.ai."}
+              </div>
+              <div className="rounded-panel border border-border-default bg-surface-shell p-3">
+                3. Return to sign in after verification unlocks the operator profile.
+              </div>
+            </div>
 
-                    <Button
-                      type="submit"
-                      isBusy={loading}
-                      busyLabel={t("auth.register.submitting", "Creating...")}
-                      className="factory-auth-cta h-[42px] w-full border-transparent"
-                    >
-                      Factory Setup Initialization
-                    </Button>
-
-                    <div className="flex items-center justify-between gap-4 border-t border-border-subtle pt-4">
-                      <div className="text-xs uppercase tracking-[0.2em] text-text-secondary">
-                        Existing operator?
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <Link href="/access" className="text-sm text-[var(--accent)] underline underline-offset-4">
-                          {t("auth.register.sign_in", "Sign in")}
-                        </Link>
-                      </div>
-                    </div>
-                  </form>
+            {success.verification_link ? (
+              <div className="mt-4 rounded-panel border border-border-focus bg-surface-selected p-4">
+                <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
+                  Preview verification link
                 </div>
-              )}
+                <a
+                  href={success.verification_link}
+                  className="mt-3 inline-flex items-center gap-2 rounded-control border border-border-focus bg-surface-panel px-4 py-2 text-sm font-medium text-text-primary transition hover:bg-surface-hover"
+                >
+                  Open verification page
+                  <ArrowRight className="h-4 w-4" />
+                </a>
+                <div className="mt-3 break-all text-xs text-text-secondary">{success.verification_link}</div>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Button type="button" variant="outline" onClick={onResend} isBusy={resending} busyLabel={t("auth.register.resending", "Sending...")}>
+              {t("auth.register.resend", "Resend email")}
+            </Button>
+            <Link href="/access" className="text-sm text-[var(--accent)] underline underline-offset-4">
+              {t("auth.register.sign_in", "Sign in")}
+            </Link>
+          </div>
+
+          {resendStatus ? (
+            <div className="rounded-panel border border-border-default bg-surface-shell p-3 text-sm text-text-secondary">
+              {resendStatus}
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <div className="space-y-5">
+          {hasRedirectTarget ? (
+            <div className="rounded-panel border border-border-focus bg-surface-selected p-4 text-sm text-text-primary">
+              <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
+                Start here first
+              </div>
+              <div className="mt-2 text-base font-semibold">
+                After verification, the user can continue into {nextDestination}.
+              </div>
+            </div>
+          ) : null}
+          <form onSubmit={onSubmit} className="space-y-4">
+            <div className="grid grid-cols-2 gap-3">
+              <IdentityField
+                id="factoryName"
+                label="Organization / Company"
+                icon={<Building2 className="h-4 w-4" />}
+                value={factoryName}
+                onChange={(event) => setFactoryName(event.target.value)}
+                placeholder="Shree Steel Rolling Works"
+                autoComplete="organization"
+                required
+              />
+              <IdentityField
+                id="name"
+                label="Admin name"
+                icon={<User2 className="h-4 w-4" />}
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Aman Patel"
+                autoComplete="name"
+                required
+              />
+              <IdentityField
+                id="email"
+                label="Work email"
+                icon={<Mail className="h-4 w-4" />}
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="ops.admin@factory.com"
+                autoComplete="email"
+                required
+              />
+              <div>
+                <FieldLabel htmlFor="role">Role selection</FieldLabel>
+                <div className="relative">
+                  <Select
+                    id="role"
+                    value={selectedRole}
+                    onChange={(event) => setSelectedRole(event.target.value as RoleOption["value"])}
+                    className="factory-auth-input min-h-[40px] border-border-default bg-surface-elevated px-3 pr-10 text-sm text-text-primary focus:border-border-focus"
+                  >
+                    {roleOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </Select>
+                  <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
+                </div>
+              </div>
+              <PasswordInput
+                id="password"
+                label="Password"
+                value={password}
+                onChange={setPassword}
+                autoComplete="new-password"
+                placeholder="Minimum 12 characters"
+              />
+              <PasswordInput
+                id="confirmPassword"
+                label="Confirm password"
+                value={confirmPassword}
+                onChange={setConfirmPassword}
+                autoComplete="new-password"
+                placeholder="Repeat access password"
+              />
+              <IdentityField
+                id="companyCode"
+                label="Company code"
+                icon={<ShieldCheck className="h-4 w-4" />}
+                value={companyCode}
+                onChange={(event) => setCompanyCode(event.target.value)}
+                placeholder="Optional verification code"
+              />
+              <IdentityField
+                id="phoneNumber"
+                label="Operations phone"
+                icon={<Mail className="h-4 w-4" />}
+                type="tel"
+                value={phoneNumber}
+                onChange={(event) => setPhoneNumber(event.target.value)}
+                placeholder="+91 98765 43210"
+                autoComplete="tel"
+                inputMode="tel"
+              />
+            </div>
+
+            <div className="rounded-panel border border-border-default bg-surface-shell p-4">
+              <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
+                Operational onboarding
+              </div>
+              <div className="mt-2 text-sm font-medium text-text-primary">{roleLabel(selectedRole)}</div>
+              <div className="mt-2 text-sm leading-6 text-text-secondary">{activeRoleDetail}</div>
+              <div className="mt-3 text-xs leading-6 text-text-tertiary">
+                The request remains locked until the work inbox completes verification, which prevents unverified factory records from entering the live ERP workspace.
+              </div>
+            </div>
+
+            {error ? (
+              <div className="rounded-panel border border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">
+                {error}
+              </div>
+            ) : null}
+
+            <Button
+              type="submit"
+              isBusy={loading}
+              busyLabel={t("auth.register.submitting", "Creating...")}
+              className="factory-auth-cta h-[42px] w-full border-transparent"
+            >
+              Create account
+            </Button>
+
+            <div className="flex items-center justify-between gap-4 border-t border-border-subtle pt-4">
+              <div className="text-xs uppercase tracking-[0.2em] text-text-secondary">
+                Existing operator?
+              </div>
+              <div className="flex items-center gap-4">
+                <Link href="/access" className="text-sm text-[var(--accent)] underline underline-offset-4">
+                  {t("auth.register.sign_in", "Sign in")}
+                </Link>
+              </div>
+            </div>
+          </form>
+        </div>
+      )}
     </AuthWorkstationShell>
   );
 }

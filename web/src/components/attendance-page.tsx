@@ -85,8 +85,8 @@ function statusTheme(status?: AttendanceStatus | null) {
       };
     default:
       return {
-        badge: "bg-white/8 text-slate-100 border border-white/10",
-        dot: "bg-slate-300",
+        badge: "bg-white/8 text-text-primary border border-white/10",
+        dot: "bg-text-tertiary",
       };
   }
 }
@@ -235,7 +235,7 @@ export default function AttendancePage() {
         label: t("attendance.action.loading", "Loading..."),
         action: null as "in" | "out" | null,
         disabled: true,
-        className: "border border-white/10 bg-white/10 text-slate-200",
+        className: "border border-white/10 bg-white/10 text-text-primary",
       };
     }
 
@@ -270,7 +270,7 @@ export default function AttendancePage() {
       label: t("attendance.action.closed", "Attendance Closed"),
       action: null as "in" | "out" | null,
       disabled: true,
-      className: "border border-white/10 bg-white/10 text-slate-200",
+      className: "border border-white/10 bg-white/10 text-text-primary",
     };
   }, [t, today]);
 
@@ -338,9 +338,9 @@ export default function AttendancePage() {
   if (!user) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[var(--surface-industrial-deep)] px-4">
-        <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-white/5 p-6 text-white">
+        <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-white/5 p-6 text-text-primary">
           <div className="text-xl font-semibold">{t("attendance.title", "Attendance")}</div>
-          <div className="mt-3 text-sm text-slate-300">
+          <div className="mt-3 text-sm text-text-secondary">
             {sessionError || t("attendance.sign_in_required", "Please sign in to open attendance.")}
           </div>
           <Link href="/access" className="mt-6 inline-flex">
@@ -352,7 +352,7 @@ export default function AttendancePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--surface-industrial-deep)] px-4 py-6 text-white md:px-6 lg:py-8">
+    <main className="min-h-screen bg-[var(--surface-industrial-deep)] px-4 py-6 text-text-primary md:px-6 lg:py-8">
       <div className="mx-auto max-w-6xl">
         {status ? (
           <div className="mb-4 rounded-[20px] border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
@@ -372,7 +372,7 @@ export default function AttendancePage() {
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(17,25,40,0.96),rgba(11,15,25,0.98))] p-6 shadow-[0_24px_80px_rgba(6,10,18,0.48)]">
-            <div className="text-base font-semibold tracking-wide text-slate-100">{factoryName}</div>
+            <div className="text-base font-semibold tracking-wide text-text-primary">{factoryName}</div>
 
             <div className="mt-10 flex flex-col items-center text-center">
               <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] ${statusMeta.badge}`}>
@@ -382,11 +382,11 @@ export default function AttendancePage() {
 
               <div className="mt-5 text-2xl font-semibold md:text-3xl">{shiftLabel(displayShift)} {t("attendance.summary.shift", "Shift")}</div>
 
-              <div className="mt-8 text-sm uppercase tracking-[0.22em] text-slate-400">
+              <div className="mt-8 text-sm uppercase tracking-[0.22em] text-text-tertiary">
                 {today?.status === "working" ? t("attendance.main.shift_running", "Shift running") : t("attendance.main.worked_time", "Worked time")}
               </div>
               <div className="mt-3 text-4xl font-semibold tracking-tight md:text-5xl">{workedTime}</div>
-              <div className="mt-2 text-sm text-slate-300">
+              <div className="mt-2 text-sm text-text-secondary">
                 {today?.status === "working"
                   ? t("attendance.main.worked", "Worked")
                   : today?.status === "not_punched"
@@ -410,14 +410,14 @@ export default function AttendancePage() {
               </Button>
             </div>
 
-            <div className="mt-8 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 text-center text-sm text-slate-300">
-              {t("attendance.main.last_action", "Last action:")} <span className="font-semibold text-white">{formatTime(lastActionAt, locale)}</span>
+            <div className="mt-8 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 text-center text-sm text-text-secondary">
+              {t("attendance.main.last_action", "Last action:")} <span className="font-semibold text-text-primary">{formatTime(lastActionAt, locale)}</span>
             </div>
 
             <div className="mt-6 text-center">
               <button
                 type="button"
-                className="text-sm font-medium text-slate-300 transition hover:text-white"
+                className="text-sm font-medium text-text-secondary transition hover:text-text-primary"
                 onClick={() => setOptionsOpen((current) => !current)}
               >
                 {optionsOpen ? t("attendance.main.hide_tools", "Hide tools") : t("attendance.main.show_tools", "Punch tools")}
@@ -428,7 +428,7 @@ export default function AttendancePage() {
               <div className="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
                 {canOverrideShift && today?.can_punch_in ? (
                   <div>
-                    <label className="text-sm text-slate-300">{t("attendance.tools.shift", "Shift Override")}</label>
+                    <label className="text-sm text-text-secondary">{t("attendance.tools.shift", "Shift Override")}</label>
                     <Select aria-label="Shift override" value={selectedShift} onChange={(event) => setSelectedShift(event.target.value as AttendanceShift)} disabled={busy}>
                       {SHIFT_OPTIONS.map((shift) => (
                         <option key={shift} value={shift}>
@@ -436,13 +436,13 @@ export default function AttendancePage() {
                         </option>
                       ))}
                     </Select>
-                    <div className="mt-2 text-xs text-slate-400">Manual shift override is kept for elevated attendance roles only.</div>
+                    <div className="mt-2 text-xs text-text-tertiary">Manual shift override is kept for elevated attendance roles only.</div>
                   </div>
                 ) : (
                   <div className="rounded-[20px] border border-white/10 bg-[rgba(8,12,20,0.45)] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">{t("attendance.tools.shift", "Shift")}</div>
-                    <div className="mt-2 text-sm font-semibold text-white">{shiftLabel(displayShift)}</div>
-                    <div className="mt-2 text-xs text-slate-400">Shift is assigned automatically from the employee profile or attendance rules.</div>
+                    <div className="text-xs uppercase tracking-[0.16em] text-text-tertiary">{t("attendance.tools.shift", "Shift")}</div>
+                    <div className="mt-2 text-sm font-semibold text-text-primary">{shiftLabel(displayShift)}</div>
+                    <div className="mt-2 text-xs text-text-tertiary">Shift is assigned automatically from the employee profile or attendance rules.</div>
                   </div>
                 )}
 
@@ -467,24 +467,24 @@ export default function AttendancePage() {
 
           <aside className="hidden lg:block">
             <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(14,21,36,0.96),rgba(11,15,25,0.98))] p-6 shadow-[0_20px_70px_rgba(6,10,18,0.32)]">
-              <div className="text-xs uppercase tracking-[0.22em] text-slate-400">{t("attendance.summary.title", "Today Summary")}</div>
+              <div className="text-xs uppercase tracking-[0.22em] text-text-tertiary">{t("attendance.summary.title", "Today Summary")}</div>
 
-              <div className="mt-6 space-y-4 text-sm text-slate-300">
+              <div className="mt-6 space-y-4 text-sm text-text-secondary">
                 <div className="flex items-center justify-between">
                   <span>{t("attendance.summary.worked", "Worked")}</span>
-                  <span className="font-semibold text-white">{workedTime}</span>
+                  <span className="font-semibold text-text-primary">{workedTime}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>{t("attendance.summary.last_punch", "Last punch")}</span>
-                  <span className="font-semibold text-white">{formatTime(lastActionAt, locale)}</span>
+                  <span className="font-semibold text-text-primary">{formatTime(lastActionAt, locale)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>{t("attendance.summary.shift", "Shift")}</span>
-                  <span className="font-semibold text-white">{shiftLabel(displayShift)}</span>
+                  <span className="font-semibold text-text-primary">{shiftLabel(displayShift)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>{t("attendance.summary.shift_status", "Shift status")}</span>
-                  <span className="font-semibold text-white">{statusLabel(today?.status)}</span>
+                  <span className="font-semibold text-text-primary">{statusLabel(today?.status)}</span>
                 </div>
               </div>
 
@@ -501,14 +501,14 @@ export default function AttendancePage() {
               ) : null}
 
               <details className="mt-6 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
-                <summary className="cursor-pointer list-none text-sm font-semibold text-white">{t("attendance.summary.shift_details", "Shift details")}</summary>
+                <summary className="cursor-pointer list-none text-sm font-semibold text-text-primary">{t("attendance.summary.shift_details", "Shift details")}</summary>
                 <div className="mt-4 rounded-[20px] border border-white/10 bg-[rgba(8,12,20,0.45)] px-4 py-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-slate-400">{t("attendance.summary.shift_status", "Shift status")}</div>
-                  <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">
+                  <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">{t("attendance.summary.shift_status", "Shift status")}</div>
+                  <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-text-primary">
                     <span className={`h-2.5 w-2.5 rounded-full ${statusMeta.dot}`} />
                     {formatAttendanceStatusLabel(today?.status)}
                   </div>
-                  <div className="mt-4 text-sm text-slate-300">
+                  <div className="mt-4 text-sm text-text-secondary">
                     {today?.status === "working"
                       ? t("attendance.summary.timer_running", "Timer is running for the open shift.")
                       : today?.status === "late"
@@ -521,14 +521,14 @@ export default function AttendancePage() {
                   </div>
                 </div>
 
-                <div className="mt-4 rounded-[20px] border border-white/10 bg-[rgba(8,12,20,0.45)] px-4 py-4 text-sm text-slate-300">
+                <div className="mt-4 rounded-[20px] border border-white/10 bg-[rgba(8,12,20,0.45)] px-4 py-4 text-sm text-text-secondary">
                   <div className="flex items-center justify-between">
                     <span>{t("attendance.summary.factory", "Factory")}</span>
-                    <span className="font-semibold text-white">{factoryName}</span>
+                    <span className="font-semibold text-text-primary">{factoryName}</span>
                   </div>
                   <div className="mt-3 flex items-center justify-between">
                     <span>{t("attendance.summary.refresh", "Refresh")}</span>
-                    <span className="font-semibold text-white">{refreshing ? t("attendance.summary.refresh_running", "Running") : t("attendance.summary.refresh_auto", "Auto")}</span>
+                    <span className="font-semibold text-text-primary">{refreshing ? t("attendance.summary.refresh_running", "Running") : t("attendance.summary.refresh_auto", "Auto")}</span>
                   </div>
                 </div>
               </details>

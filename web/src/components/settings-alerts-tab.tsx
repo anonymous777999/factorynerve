@@ -107,9 +107,9 @@ function deliveryTone(status: string) {
 }
 
 function severityTone(severity: string) {
-  const normalized = String(severity || "").trim().toUpperCase();
+  const normalized = String(severity || "").trim();
   if (normalized === "CRITICAL") return "border-red-400/30 bg-red-500/12 text-red-200";
-  if (normalized === "HIGH") return "border-orange-400/30 bg-orange-500/12 text-orange-100";
+  if (normalized === "HIGH") return "border-status-warning-border bg-status-warning-bg text-status-warning-fg";
   if (normalized === "MEDIUM") return "border-amber-400/30 bg-amber-500/12 text-amber-100";
   return "border-sky-400/30 bg-sky-500/12 text-sky-100";
 }
@@ -145,7 +145,7 @@ function formatCountdown(seconds: number) {
 function readableDeliveryStatus(value: string) {
   return String(value || "")
     .replace(/_/g, " ")
-    .replace(/\b\w/g, (match) => match.toUpperCase());
+    .replace(/\b\w/g, (match) => match);
 }
 
 function buildFormState(recipient: AlertRecipient): AlertFormState {
@@ -606,52 +606,52 @@ export default function SettingsAlertsTab({ active }: Props) {
   return (
     <div className="control-center-workspace space-y-6">
       <section className="grid gap-4 lg:grid-cols-3">
-        <Card className="bg-[#151b24] border-cyan-900/30">
+        <Card className="bg-surface-panel border-border-subtle">
           <CardHeader>
-            <div className="text-sm text-gray-400 font-mono uppercase tracking-wider">ACTIVE_RECIPIENTS</div>
-            <CardTitle className="text-cyan-300 font-mono">{recipientPayload?.active_count ?? 0}</CardTitle>
+            <div className="text-sm text-text-secondary font-medium">Active recipients</div>
+            <CardTitle className="text-text-primary font-mono">{recipientPayload?.active_count ?? 0}</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-gray-400 font-mono">
-            {recipientPayload ? `${recipientPayload.plan.toUpperCase()}_PLAN · ${recipientPayload.limit} ACTIVE_SLOT${recipientPayload.limit === 1 ? "" : "S"}_TOTAL` : "TRACK_WHO_CAN_RECEIVE_LIVE_ALERTS"}
+          <CardContent className="text-sm text-text-secondary font-mono">
+            {recipientPayload ? `${recipientPayload.plan}_PLAN · ${recipientPayload.limit} ACTIVE_SLOT${recipientPayload.limit === 1 ? "" : "S"}_TOTAL` : "Track who can receive live alerts."}
           </CardContent>
         </Card>
-        <Card className="bg-[#151b24] border-cyan-900/30">
+        <Card className="bg-surface-panel border-border-subtle">
           <CardHeader>
-            <div className="text-sm text-gray-400 font-mono uppercase tracking-wider">REMAINING_CAPACITY</div>
-            <CardTitle className="text-cyan-300 font-mono">
+            <div className="text-sm text-text-secondary font-medium">Remaining capacity</div>
+            <CardTitle className="text-text-primary font-mono">
               {recipientPayload ? Math.max(0, recipientPayload.limit - recipientPayload.active_count) : "-"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-gray-400 font-mono">
-            UNVERIFIED_NUMBERS_DO_NOT_COUNT_UNTIL_ACTIVATED
+          <CardContent className="text-sm text-text-secondary font-mono">
+            Unverified numbers do not count until activated.
           </CardContent>
         </Card>
-        <Card className="bg-[#151b24] border-cyan-900/30">
+        <Card className="bg-surface-panel border-border-subtle">
           <CardHeader>
-            <div className="text-sm text-gray-400 font-mono uppercase tracking-wider">LAST_ALERT_SENT</div>
-            <CardTitle className="text-xl text-cyan-300 font-mono">{latestAlert ? readableDeliveryStatus(latestAlert.delivery_status).toUpperCase() : "NO_RECENT_ALERT"}</CardTitle>
+            <div className="text-sm text-text-secondary font-medium">Last alert sent</div>
+            <CardTitle className="text-xl text-text-primary font-mono">{latestAlert ? readableDeliveryStatus(latestAlert.delivery_status) : "No recent alert"}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1 text-sm text-gray-400 font-mono">
-            <div>{latestAlert ? formatAlertEventTypeLabel(latestAlert.event_type).toUpperCase() : "ALERT_ACTIVITY_WILL_APPEAR_HERE"}</div>
-            <div>{latestAlert ? formatDateTime(latestAlert.timestamp) : "KEEP_RECIPIENTS_VERIFIED_AND_ACTIVE"}</div>
+          <CardContent className="space-y-1 text-sm text-text-secondary font-mono">
+            <div>{latestAlert ? formatAlertEventTypeLabel(latestAlert.event_type) : "Alert activity will appear here."}</div>
+            <div>{latestAlert ? formatDateTime(latestAlert.timestamp) : "Keep recipients verified and active."}</div>
           </CardContent>
         </Card>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <Card className="min-w-0 bg-[#151b24] border-cyan-900/30">
+        <Card className="min-w-0 bg-surface-panel border-border-subtle">
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle className="text-xl text-cyan-300 font-mono uppercase">WHATSAPP_RECIPIENTS</CardTitle>
-              <div className="mt-2 text-sm text-gray-400 font-mono">
-                DECIDE_WHO_RECEIVES_CRITICAL_FACTORY_ALERTS
+              <CardTitle className="text-xl text-text-primary font-mono uppercase">WhatsApp recipients</CardTitle>
+              <div className="mt-2 text-sm text-text-secondary font-mono">
+                Decide who receives critical factory alerts.
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button variant="ghost" onClick={() => void loadRecipients()} disabled={recipientsLoading} className="font-mono uppercase border-cyan-900/30 text-cyan-300">
-                {recipientsLoading ? "REFRESHING..." : "REFRESH"}
+              <Button variant="ghost" onClick={() => void loadRecipients()} disabled={recipientsLoading} className="font-mono uppercase border-border-subtle text-text-primary">
+                {recipientsLoading ? "Refreshing..." : "Refresh"}
               </Button>
-              <Button onClick={openAddModal} className="bg-cyan-600 hover:bg-cyan-700 text-white font-mono uppercase tracking-wider">ADD_NUMBER</Button>
+              <Button onClick={openAddModal} className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-medium">Add number</Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">

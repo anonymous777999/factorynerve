@@ -62,7 +62,7 @@ export function BillingUsageDiagnostics({
         <div className="rounded-3xl border border-[var(--border)] bg-[rgba(8,14,24,0.72)] p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-sm font-semibold text-white">AI Quota Usage</div>
+              <div className="text-sm font-semibold text-text-primary">AI Quota Usage</div>
               <div className="mt-1 text-xs leading-5 text-[var(--muted)]">Live AI usage</div>
             </div>
             <span className="rounded-full border border-sky-400/30 bg-sky-400/15 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-sky-200">

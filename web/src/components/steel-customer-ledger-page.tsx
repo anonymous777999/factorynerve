@@ -61,7 +61,7 @@ function verificationBadgeClass(status: SteelCustomerVerificationStatus) {
   if (status === "verified") return "border-emerald-400/35 bg-emerald-500/12 text-emerald-200";
   if (status === "rejected" || status === "mismatch") return "border-rose-400/35 bg-rose-500/12 text-rose-200";
   if (status === "pending_review" || status === "format_valid") return "border-amber-400/35 bg-amber-500/12 text-amber-200";
-  return "border-slate-400/35 bg-slate-500/12 text-slate-200";
+  return "border-slate-400/35 bg-surface-panel/12 text-text-secondary";
 }
 
 function formatVerificationLabel(value: string | null | undefined) {
@@ -86,7 +86,7 @@ function taskPriorityBadgeClass(priority: SteelFollowUpTaskPriority) {
   if (priority === "critical") return "border-rose-400/35 bg-rose-500/12 text-rose-200";
   if (priority === "high") return "border-amber-400/35 bg-amber-500/12 text-amber-200";
   if (priority === "medium") return "border-cyan-400/35 bg-cyan-500/12 text-cyan-200";
-  return "border-slate-400/35 bg-slate-500/12 text-slate-200";
+  return "border-slate-400/35 bg-surface-panel/12 text-text-secondary";
 }
 
 function taskStatusBadgeClass(status: SteelFollowUpTaskStatus) {

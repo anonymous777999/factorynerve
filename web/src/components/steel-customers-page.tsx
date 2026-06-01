@@ -70,7 +70,7 @@ function verificationBadgeClass(status: SteelCustomer["verification_status"]) {
   if (status === "verified") return "border-emerald-400/35 bg-emerald-500/12 text-emerald-200";
   if (status === "rejected" || status === "mismatch") return "border-rose-400/35 bg-rose-500/12 text-rose-200";
   if (status === "pending_review" || status === "format_valid") return "border-amber-400/35 bg-amber-500/12 text-amber-200";
-  return "border-slate-400/35 bg-slate-500/12 text-slate-200";
+  return "border-slate-400/35 bg-surface-panel/12 text-text-secondary";
 }
 
 export function SteelCustomersPage() {
