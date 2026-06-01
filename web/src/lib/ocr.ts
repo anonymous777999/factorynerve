@@ -489,14 +489,6 @@ export async function previewOcrLogbook(payload: {
   if (payload.forceRefresh) {
     formData.set("force_refresh", "true");
   }
-  console.info("[OCR] /ocr/logbook payload", {
-    model: payload.model || "auto",
-    columns: payload.columns,
-    language: payload.language,
-    docTypeHint: payload.docTypeHint || "table",
-    documentHash: payload.documentHash || "none",
-    forceRefresh: !!payload.forceRefresh,
-  });
   return withOcrWakeRetry(
     () =>
       apiFetch<OcrPreviewResult>("/ocr/logbook", {

@@ -328,14 +328,6 @@ async function hydrateAuthResponse(
       permissions: currentUser.permissions,
     }),
   };
-  console.info("[AUTH_DIAGNOSTIC_BOOTSTRAP]", {
-    source: options?.source ?? "unknown",
-    currentUserExists: Boolean(mergedResponse.user?.id),
-    roleRevisionExists: mergedResponse.user?.role_revision !== undefined,
-    activeFactoryId: mergedResponse.active_factory_id ?? null,
-    organizationPresent: Boolean(mergedResponse.organization?.org_id),
-    permissionHydrationReady: Boolean(mergedResponse.user?.permissions),
-  });
   primeRoleRevision(mergedResponse.user.role_revision);
   primeSession(mergedResponse);
   return mergedResponse;
@@ -573,9 +565,9 @@ export async function getMe(options?: {
     async () =>
       mergeCurrentUserWithPermissions(
         await apiFetch<CurrentUser>(
-        "/auth/me",
-        { signal: options?.signal },
-        { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:me" },
+          "/auth/me",
+          { signal: options?.signal },
+          { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:me" },
         ),
       ),
     {

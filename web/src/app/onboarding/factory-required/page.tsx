@@ -3,27 +3,40 @@
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { useSession } from "@/lib/use-session";
 
 export default function FactoryRequiredPage() {
+  const { user } = useSession();
+
   return (
-    <main className="flex min-h-screen items-center justify-center bg-[var(--surface-industrial-deep)] px-6 py-10 text-[var(--text-primary)]">
-      <div className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(24,28,37,0.98),rgba(18,23,33,0.98))] p-8 shadow-[0_24px_60px_rgba(2,6,23,0.45)]">
-        <div className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-200/80">
-          Workspace update
+    <main className="flex min-h-screen items-center justify-center bg-surface-app px-6 py-10 text-text-primary">
+      <div className="w-full max-w-xl rounded-panel border border-border-default bg-surface-card p-8 shadow-md">
+        <div className="text-label-dense font-semibold text-text-tertiary">
+          Workspace access
         </div>
-        <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
-          Your workspace is no longer available.
+        <h1 className="mt-3 text-2xl font-semibold text-text-primary">
+          Factory access is not available
         </h1>
-        <p className="mt-4 text-sm leading-7 text-slate-300">
-          Your active factory access was removed, so we paused the workspace instead of leaving you on a broken page.
+        <p className="mt-4 text-sm leading-7 text-text-secondary">
+          Your active factory access was removed or has not been set up yet. Contact your
+          administrator to restore access, or sign in to a different account.
         </p>
-        <div className="mt-8">
-          <Link href="mailto:admin@dpr.ai">
-            <Button className="rounded-xl px-5 text-sm font-semibold">
-              Request access from your administrator
-            </Button>
+
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link href="/access">
+            <Button variant="outline">Back to sign in</Button>
           </Link>
+          {user ? (
+            <Link href="/settings">
+              <Button>Open factory settings</Button>
+            </Link>
+          ) : null}
         </div>
+
+        <p className="mt-6 text-sm text-text-tertiary">
+          If this is a mistake, ask your factory admin to check your user access in{" "}
+          <strong className="text-text-secondary">Settings → Users</strong>.
+        </p>
       </div>
     </main>
   );

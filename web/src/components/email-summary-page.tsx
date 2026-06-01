@@ -350,7 +350,7 @@ export default function EmailSummaryPage() {
         <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border-subtle pb-4">
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-xs text-text-tertiary">
-              <span>{activeFactory?.name || "RedVortex"}</span>
+              <span>{activeFactory?.name || user?.factory_name || "Factory"}</span>
               <span className="text-[11px] text-text-tertiary/60">/</span>
               <span>Reports</span>
               <span className="text-[11px] text-text-tertiary/60">/</span>

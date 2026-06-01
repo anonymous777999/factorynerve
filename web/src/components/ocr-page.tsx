@@ -368,17 +368,17 @@ export default function OcrPage({ initialJob = null }: OcrPageProps) {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
+            <Link href="/ocr/history">
+              <Button>OCR History</Button>
+            </Link>
             <Link href="/ocr/scan">
-              <Button>Scan a Document</Button>
+              <Button variant="outline">Scan a Document</Button>
             </Link>
             <Link href="/ocr/verify">
-              <Button>Open Verification</Button>
+              <Button variant="outline">Open Verification</Button>
             </Link>
             <Link href="/dashboard">
               <Button variant="outline">Dashboard</Button>
-            </Link>
-            <Link href="/email-summary">
-              <Button variant="outline">Email Summary</Button>
             </Link>
           </div>
         </section>
