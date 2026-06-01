@@ -5,7 +5,7 @@ function Progress({ value }: { value: number }) {
   return (
     <div className="h-2 w-full overflow-hidden rounded-full bg-white/10">
       <div
-        className="h-full rounded-full bg-[var(--accent)] transition-all duration-300"
+        className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-300 ease-out"
         style={{ width: `${Math.max(3, Math.min(100, value))}%` }}
       />
     </div>
@@ -64,15 +64,15 @@ export function OCRProgress({
         <div className="grid gap-3">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Date</div>
-            <div className="mt-1 min-h-6 text-sm transition-all duration-200">{fields.date || detectingText}</div>
+            <div className="mt-1 min-h-6 text-sm transition-colors duration-200">{fields.date || detectingText}</div>
           </div>
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Material</div>
-            <div className="mt-1 min-h-6 text-sm transition-all duration-200">{fields.material || detectingText}</div>
+            <div className="mt-1 min-h-6 text-sm transition-colors duration-200">{fields.material || detectingText}</div>
           </div>
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Quantity</div>
-            <div className="mt-1 min-h-6 text-sm transition-all duration-200">{fields.quantity || detectingText}</div>
+            <div className="mt-1 min-h-6 text-sm transition-colors duration-200">{fields.quantity || detectingText}</div>
           </div>
         </div>
       </div>

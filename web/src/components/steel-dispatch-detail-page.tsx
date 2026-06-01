@@ -312,32 +312,32 @@ export function SteelDispatchDetailPage() {
   ];
   const nextAction: DispatchAction | null = canMarkLoaded
     ? {
-        label: "Mark loaded",
-        status: "loaded" as SteelDispatchStatus,
-        title: "Confirm loading",
-        description: "Use this when the truck has been loaded and the gate process can continue.",
-      }
+      label: "Mark loaded",
+      status: "loaded" as SteelDispatchStatus,
+      title: "Confirm loading",
+      description: "Use this when the truck has been loaded and the gate process can continue.",
+    }
     : canMarkExited
       ? {
-          label: "Mark exited",
-          status: "exited" as SteelDispatchStatus,
-          title: "Release the truck",
-          description: "Confirm the truck has left the plant and post stock out of inventory.",
-        }
+        label: "Mark exited",
+        status: "exited" as SteelDispatchStatus,
+        title: "Release the truck",
+        description: "Confirm the truck has left the plant and post stock out of inventory.",
+      }
       : canMarkDelivered
         ? {
-            label: "Mark delivered",
-            status: "delivered" as SteelDispatchStatus,
-            title: "Close delivery",
-            description: "Capture the receiver details and close the dispatch once the customer accepts it.",
-          }
+          label: "Mark delivered",
+          status: "delivered" as SteelDispatchStatus,
+          title: "Close delivery",
+          description: "Capture the receiver details and close the dispatch once the customer accepts it.",
+        }
         : dispatchStatus === "delivered"
           ? {
-              label: "Open Reconciliation",
-              href: "/steel/reconciliations",
-              title: "Cycle count pending",
-              description: "Delivery is complete. Perform a cycle count to ensure the ledger matches physical yard stock.",
-            }
+            label: "Open Reconciliation",
+            href: "/steel/reconciliations",
+            title: "Cycle count pending",
+            description: "Delivery is complete. Perform a cycle count to ensure the ledger matches physical yard stock.",
+          }
           : null;
   const nextActionGuidance = (() => {
     if (dispatchStatus === "cancelled") {
@@ -382,30 +382,30 @@ export function SteelDispatchDetailPage() {
   })();
   const dispatchTransitionAction: DispatchAction | null = canMarkDispatched
     ? {
-        label: "Mark dispatched",
-        status: "dispatched",
-        title: "Release the truck",
-        description: "Confirm the truck has left the plant and post stock out of inventory.",
-      }
+      label: "Mark dispatched",
+      status: "dispatched",
+      title: "Release the truck",
+      description: "Confirm the truck has left the plant and post stock out of inventory.",
+    }
     : null;
   const deliveryTransitionAction: DispatchAction | null = canMarkDelivered
     ? {
-        label: "Mark delivered",
-        status: "delivered",
-        title: "Close delivery",
-        description: "Capture the receiver details and close the dispatch once the customer accepts it.",
-      }
+      label: "Mark delivered",
+      status: "delivered",
+      title: "Close delivery",
+      description: "Capture the receiver details and close the dispatch once the customer accepts it.",
+    }
     : null;
   const recommendedAction: DispatchAction | null =
     (inventoryPosted && !deliveryConfirmed ? deliveryTransitionAction : null) ||
     (truckExitRecorded && !inventoryPosted
       ? {
-          label: "Mark exited",
-          status: "exited" as SteelDispatchStatus,
-          title: "Record truck exit",
-          description:
-            "Truck exit is already recorded, but stock is still waiting to post. Move the dispatch to the next operational step so inventory can reduce.",
-        }
+        label: "Mark exited",
+        status: "exited" as SteelDispatchStatus,
+        title: "Record truck exit",
+        description:
+          "Truck exit is already recorded, but stock is still waiting to post. Move the dispatch to the next operational step so inventory can reduce.",
+      }
       : null) ||
     nextAction;
   const workflowSummaryCard = (() => {
@@ -482,42 +482,42 @@ export function SteelDispatchDetailPage() {
   const interpretedTimeline: MovementTimelineEntry[] = movementTimeline.map((entry) =>
     entry.id === "inventory-posted" && !entry.value
       ? {
-          ...entry,
-          pendingDetail:
-            "Inventory posting pending. Stock movement will occur when the dispatch is marked dispatched or delivered.",
-        }
+        ...entry,
+        pendingDetail:
+          "Inventory posting pending. Stock movement will occur when the dispatch is marked dispatched or delivered.",
+      }
       : entry,
   );
   const recommendedGuidance =
     dispatchStatus === "cancelled"
       ? {
-          title: "Dispatch cancelled",
-          description:
-            "No further operational action is available on this dispatch. Review the invoice if material still needs to move.",
-        }
+        title: "Dispatch cancelled",
+        description:
+          "No further operational action is available on this dispatch. Review the invoice if material still needs to move.",
+      }
       : deliveryConfirmed
         ? {
-            title: "Dispatch workflow complete",
-            description:
-              "Delivery confirmation is already recorded. Use the evidence panels below for audit or customer follow-up only.",
-          }
+          title: "Dispatch workflow complete",
+          description:
+            "Delivery confirmation is already recorded. Use the evidence panels below for audit or customer follow-up only.",
+        }
         : inventoryPosted && !deliveryConfirmed
           ? {
-              title: "Record delivery confirmation",
-              description:
-                "Capture the receiver name and POD notes after the customer accepts the material to close this dispatch cleanly.",
-            }
+            title: "Record delivery confirmation",
+            description:
+              "Capture the receiver name and POD notes after the customer accepts the material to close this dispatch cleanly.",
+          }
           : truckExitRecorded && !inventoryPosted && dispatchTransitionAction
             ? {
-                title: "Mark dispatch as dispatched",
-                description:
-                  "Truck exit is already recorded, but stock is still waiting to post. Mark this dispatch as dispatched so inventory can reduce.",
-              }
+              title: "Mark dispatch as dispatched",
+              description:
+                "Truck exit is already recorded, but stock is still waiting to post. Mark this dispatch as dispatched so inventory can reduce.",
+            }
             : recommendedAction
               ? {
-                  title: recommendedAction.title,
-                  description: recommendedAction.description,
-                }
+                title: recommendedAction.title,
+                description: recommendedAction.description,
+              }
               : nextActionGuidance;
 
   return (
@@ -821,6 +821,7 @@ export function SteelDispatchDetailPage() {
                   <div>
                     <label className="text-sm text-[var(--muted)]">Entry Time</label>
                     <Input
+                      aria-label="Entry time"
                       type="datetime-local"
                       value={entryTime}
                       onChange={(event) => setEntryTime(event.target.value)}
@@ -829,6 +830,7 @@ export function SteelDispatchDetailPage() {
                   <div>
                     <label className="text-sm text-[var(--muted)]">Exit Time</label>
                     <Input
+                      aria-label="Exit time"
                       type="datetime-local"
                       value={exitTime}
                       onChange={(event) => setExitTime(event.target.value)}

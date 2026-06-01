@@ -258,71 +258,71 @@ function BillingPageInner() {
       plansPayload?.plans?.length
         ? plansPayload.plans
         : ([
-            {
-              id: "free",
-              name: "Free",
-              monthly_price: 0,
-              user_limit: 3,
-              factory_limit: 1,
-              limits: { ocr: 0, summary: 10, email: 0, smart: 30 },
-              features: {},
+          {
+            id: "free",
+            name: "Free",
+            monthly_price: 0,
+            user_limit: 3,
+            factory_limit: 1,
+            limits: { ocr: 0, summary: 10, email: 0, smart: 30 },
+            features: {},
+          },
+          {
+            id: "starter",
+            name: "Starter",
+            monthly_price: 499,
+            user_limit: 8,
+            factory_limit: 1,
+            limits: { ocr: 0, summary: 30, email: 0, smart: 100 },
+            features: {},
+          },
+          {
+            id: "growth",
+            name: "Growth",
+            monthly_price: 1299,
+            user_limit: 20,
+            factory_limit: 2,
+            limits: { ocr: 0, summary: 150, email: 150, smart: 300 },
+            features: { analytics: true, pdf: true, emailSummary: true },
+          },
+          {
+            id: "factory",
+            name: "Factory",
+            monthly_price: 2999,
+            user_limit: 60,
+            factory_limit: 5,
+            limits: { ocr: 100, summary: 600, email: 600, smart: 1500 },
+            features: { analytics: true, pdf: true, emailSummary: true, templates: true },
+          },
+          {
+            id: "business",
+            name: "Business",
+            monthly_price: 6999,
+            user_limit: 150,
+            factory_limit: 10,
+            unlimited_limits: ["summary", "email", "smart"],
+            limits: { ocr: 150, summary: 0, email: 0, smart: 0 },
+            features: {
+              analytics: true,
+              pdf: true,
+              emailSummary: true,
+              templates: true,
+              api: true,
+              nlq: true,
             },
-            {
-              id: "starter",
-              name: "Starter",
-              monthly_price: 499,
-              user_limit: 8,
-              factory_limit: 1,
-              limits: { ocr: 0, summary: 30, email: 0, smart: 100 },
-              features: {},
-            },
-            {
-              id: "growth",
-              name: "Growth",
-              monthly_price: 1299,
-              user_limit: 20,
-              factory_limit: 2,
-              limits: { ocr: 0, summary: 150, email: 150, smart: 300 },
-              features: { analytics: true, pdf: true, emailSummary: true },
-            },
-            {
-              id: "factory",
-              name: "Factory",
-              monthly_price: 2999,
-              user_limit: 60,
-              factory_limit: 5,
-              limits: { ocr: 100, summary: 600, email: 600, smart: 1500 },
-              features: { analytics: true, pdf: true, emailSummary: true, templates: true },
-            },
-            {
-              id: "business",
-              name: "Business",
-              monthly_price: 6999,
-              user_limit: 150,
-              factory_limit: 10,
-              unlimited_limits: ["summary", "email", "smart"],
-              limits: { ocr: 150, summary: 0, email: 0, smart: 0 },
-              features: {
-                analytics: true,
-                pdf: true,
-                emailSummary: true,
-                templates: true,
-                api: true,
-                nlq: true,
-              },
-            },
-            {
-              id: "enterprise",
-              name: "Enterprise",
-              monthly_price: 0,
-              sales_only: true,
-              user_limit: 0,
-              factory_limit: 0,
-              unlimited_limits: ["ocr", "summary", "email", "smart"],
-              limits: { ocr: 0, summary: 0, email: 0, smart: 0 },
-              features: { analytics: true, pdf: true, emailSummary: true, templates: true, api: true, nlq: true },
-            },
-          ] as PlanInfo[]),
+          },
+          {
+            id: "enterprise",
+            name: "Enterprise",
+            monthly_price: 0,
+            sales_only: true,
+            user_limit: 0,
+            factory_limit: 0,
+            unlimited_limits: ["ocr", "summary", "email", "smart"],
+            limits: { ocr: 0, summary: 0, email: 0, smart: 0 },
+            features: { analytics: true, pdf: true, emailSummary: true, templates: true, api: true, nlq: true },
+          },
+        ] as PlanInfo[]),
     [plansPayload?.plans],
   );
 
@@ -692,8 +692,8 @@ function BillingPageInner() {
                 Provider: Razorpay {billingConfig?.configured ? "configured" : "not configured"}
               </div>
               <div>
-                <label className="text-sm text-[var(--muted)]">Upgrade Plan</label>
-                <Select value={checkoutPlan} onChange={(event) => setCheckoutPlan(event.target.value)}>
+                <label htmlFor="checkout-upgrade-plan" className="text-sm text-[var(--muted)]">Upgrade Plan</label>
+                <Select id="checkout-upgrade-plan" value={checkoutPlan} onChange={(event) => setCheckoutPlan(event.target.value)}>
                   {planOptions.map((plan) => (
                     <option key={plan.id} value={plan.id}>
                       {plan.name}
@@ -703,8 +703,9 @@ function BillingPageInner() {
                 </Select>
               </div>
               <div>
-                <label className="text-sm text-[var(--muted)]">Billing Cycle</label>
+                <label htmlFor="checkout-billing-cycle" className="text-sm text-[var(--muted)]">Billing Cycle</label>
                 <Select
+                  id="checkout-billing-cycle"
                   value={billingCycle}
                   onChange={(event) => setBillingCycle(event.target.value as BillingCycle)}
                 >
@@ -714,8 +715,9 @@ function BillingPageInner() {
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="text-sm text-[var(--muted)]">Users</label>
+                  <label htmlFor="checkout-users" className="text-sm text-[var(--muted)]">Users</label>
                   <Input
+                    id="checkout-users"
                     type="number"
                     min={1}
                     value={requestedUsers}
@@ -723,8 +725,9 @@ function BillingPageInner() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-[var(--muted)]">Factories</label>
+                  <label htmlFor="checkout-factories" className="text-sm text-[var(--muted)]">Factories</label>
                   <Input
+                    id="checkout-factories"
                     type="number"
                     min={1}
                     value={requestedFactories}
@@ -788,6 +791,7 @@ function BillingPageInner() {
                                 className="px-3 py-1"
                                 type="button"
                                 onClick={() => updateAddonQuantity(addon.id, selectedQuantity - 1)}
+                                aria-label={`Decrease ${addon.name} quantity`}
                               >
                                 -
                               </Button>
@@ -799,6 +803,7 @@ function BillingPageInner() {
                                 className="px-3 py-1"
                                 type="button"
                                 onClick={() => updateAddonQuantity(addon.id, selectedQuantity + 1)}
+                                aria-label={`Increase ${addon.name} quantity`}
                               >
                                 +
                               </Button>

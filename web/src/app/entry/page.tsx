@@ -391,10 +391,10 @@ export default function EntryPage() {
         const fallback = blankDraft(user.role);
         const nextDraft = draft
           ? {
-              ...fallback,
-              ...draft,
-              department: draft.department || fallback.department,
-            }
+            ...fallback,
+            ...draft,
+            department: draft.department || fallback.department,
+          }
           : fallback;
         nextDraft.template_fields = normalizeTemplateFields(templateContext, nextDraft.template_fields);
         setForm(nextDraft);
@@ -676,42 +676,42 @@ export default function EntryPage() {
 
   const updateNumber =
     (field: NumericFieldKey, minValue = 0) =>
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setForm((prev) => ({
-        ...prev,
-        [field]: coerceIntegerInput(event.target.value, minValue),
-      }));
-    };
+      (event: ChangeEvent<HTMLInputElement>) => {
+        setForm((prev) => ({
+          ...prev,
+          [field]: coerceIntegerInput(event.target.value, minValue),
+        }));
+      };
 
   const updateText =
     (field: TextFieldKey) =>
-    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      const value = event.target.value;
-      setForm((prev) => ({
-        ...prev,
-        [field]: value,
-      }));
-    };
+      (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const value = event.target.value;
+        setForm((prev) => ({
+          ...prev,
+          [field]: value,
+        }));
+      };
 
   const updateTemplateField =
     (fieldKey: string, inputType: TemplateInputType) =>
-    (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-      const nextValue =
-        inputType === "boolean"
-          ? (event.target as HTMLInputElement).checked
-          : inputType === "number"
-            ? event.target.value === ""
-              ? null
-              : Number(event.target.value)
-            : event.target.value;
-      setForm((prev) => ({
-        ...prev,
-        template_fields: {
-          ...(prev.template_fields || {}),
-          [fieldKey]: nextValue,
-        },
-      }));
-    };
+      (event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+        const nextValue =
+          inputType === "boolean"
+            ? (event.target as HTMLInputElement).checked
+            : inputType === "number"
+              ? event.target.value === ""
+                ? null
+                : Number(event.target.value)
+              : event.target.value;
+        setForm((prev) => ({
+          ...prev,
+          template_fields: {
+            ...(prev.template_fields || {}),
+            [fieldKey]: nextValue,
+          },
+        }));
+      };
 
   const validateStep = useCallback(
     (step: StepIndex) => {
@@ -825,11 +825,10 @@ export default function EntryPage() {
               {factoryLabel}
             </span>
             <span
-              className={`rounded-full border px-4 py-2 text-xs ${
-                online
-                  ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
-                  : "border-amber-400/20 bg-amber-400/10 text-amber-200"
-              }`}
+              className={`rounded-full border px-4 py-2 text-xs ${online
+                ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
+                : "border-amber-400/20 bg-amber-400/10 text-amber-200"
+                }`}
             >
               {online ? "Online" : "Offline"}
             </span>
@@ -872,7 +871,7 @@ export default function EntryPage() {
                 </div>
                 <div className="mt-2 h-2 rounded-full bg-white/10">
                   <div
-                    className="h-full rounded-full bg-[var(--action-primary)] transition-all duration-300"
+                    className="h-full rounded-full bg-[var(--action-primary)] transition-[width] duration-300 ease-out"
                     style={{ width: `${clampProgress(progressPercent)}%` }}
                   />
                 </div>
@@ -888,13 +887,12 @@ export default function EntryPage() {
                     key={step.title}
                     type="button"
                     onClick={() => goToStep(index)}
-                    className={`rounded-[24px] border px-4 py-4 text-left transition ${
-                      isActive
-                        ? "border-cyan-300/40 bg-cyan-400/10 shadow-[0_0_0_1px_rgba(34,211,238,0.12),0_16px_36px_rgba(10,18,34,0.32)]"
-                        : isUnlocked
-                          ? "border-white/10 bg-white/5 hover:border-cyan-300/25 hover:bg-white/8"
-                          : "border-white/6 bg-white/[0.03] text-slate-500"
-                    }`}
+                    className={`rounded-[24px] border px-4 py-4 text-left transition ${isActive
+                      ? "border-cyan-300/40 bg-cyan-400/10 shadow-[0_0_0_1px_rgba(34,211,238,0.12),0_16px_36px_rgba(10,18,34,0.32)]"
+                      : isUnlocked
+                        ? "border-white/10 bg-white/5 hover:border-cyan-300/25 hover:bg-white/8"
+                        : "border-white/6 bg-white/[0.03] text-slate-500"
+                      }`}
                   >
                     <div className="flex items-center justify-between gap-3">
                       <span className="text-xs uppercase tracking-[0.18em] text-slate-400">Step {index + 1}</span>
@@ -946,11 +944,11 @@ export default function EntryPage() {
                   <div className="grid gap-5 md:grid-cols-2">
                     <div>
                       <label className="text-sm text-slate-300">Date</label>
-                      <Input type="date" value={form.date} onChange={updateText("date")} max={localDateValue()} />
+                      <Input aria-label="Date" type="date" value={form.date} onChange={updateText("date")} max={localDateValue()} />
                     </div>
                     <div>
                       <label className="text-sm text-slate-300">Department</label>
-                      <Select value={form.department || ""} onChange={updateText("department")}>
+                      <Select aria-label="Department" value={form.department || ""} onChange={updateText("department")}>
                         {departmentOptions.map((option) => (
                           <option key={option} value={option}>
                             {option}
@@ -970,11 +968,10 @@ export default function EntryPage() {
                             key={option.value}
                             type="button"
                             onClick={() => setForm((prev) => ({ ...prev, shift: option.value }))}
-                            className={`rounded-[24px] border px-4 py-4 text-left transition ${
-                              active
-                                ? "border-cyan-300/40 bg-cyan-400/12 shadow-[0_0_0_1px_rgba(34,211,238,0.1)]"
-                                : "border-white/10 bg-white/5 hover:border-cyan-300/25 hover:bg-white/8"
-                            }`}
+                            className={`rounded-[24px] border px-4 py-4 text-left transition ${active
+                              ? "border-cyan-300/40 bg-cyan-400/12 shadow-[0_0_0_1px_rgba(34,211,238,0.1)]"
+                              : "border-white/10 bg-white/5 hover:border-cyan-300/25 hover:bg-white/8"
+                              }`}
                           >
                             <div className="text-lg">{option.icon}</div>
                             <div className="mt-2 text-base font-semibold">{option.label}</div>
@@ -1028,19 +1025,19 @@ export default function EntryPage() {
                   <div className="grid gap-5 sm:grid-cols-2">
                     <div>
                       <label className="text-sm text-slate-300">Units Target</label>
-                      <Input type="number" min={1} step={1} inputMode="numeric" value={form.units_target} onChange={updateNumber("units_target", 1)} />
+                      <Input aria-label="Units target" type="number" min={1} step={1} inputMode="numeric" value={form.units_target} onChange={updateNumber("units_target", 1)} />
                     </div>
                     <div>
                       <label className="text-sm text-slate-300">Units Produced</label>
-                      <Input type="number" min={0} step={1} inputMode="numeric" value={form.units_produced} onChange={updateNumber("units_produced", 0)} />
+                      <Input aria-label="Units produced" type="number" min={0} step={1} inputMode="numeric" value={form.units_produced} onChange={updateNumber("units_produced", 0)} />
                     </div>
                     <div>
                       <label className="text-sm text-slate-300">Manpower Present</label>
-                      <Input type="number" min={0} step={1} inputMode="numeric" value={form.manpower_present} onChange={updateNumber("manpower_present", 0)} />
+                      <Input aria-label="Manpower present" type="number" min={0} step={1} inputMode="numeric" value={form.manpower_present} onChange={updateNumber("manpower_present", 0)} />
                     </div>
                     <div>
                       <label className="text-sm text-slate-300">Manpower Absent</label>
-                      <Input type="number" min={0} step={1} inputMode="numeric" value={form.manpower_absent} onChange={updateNumber("manpower_absent", 0)} />
+                      <Input aria-label="Manpower absent" type="number" min={0} step={1} inputMode="numeric" value={form.manpower_absent} onChange={updateNumber("manpower_absent", 0)} />
                     </div>
                   </div>
 
@@ -1059,7 +1056,7 @@ export default function EntryPage() {
                     </div>
                     <div className="mt-4 h-2 rounded-full bg-white/10">
                       <div
-                        className="h-full rounded-full bg-[var(--action-primary)] transition-all duration-300"
+                        className="h-full rounded-full bg-[var(--action-primary)] transition-[width] duration-300 ease-out"
                         style={{ width: `${clampProgress(performance)}%` }}
                       />
                     </div>
@@ -1071,7 +1068,7 @@ export default function EntryPage() {
                 <div className="space-y-6">
                   <div>
                     <label className="text-sm text-slate-300">Downtime (minutes)</label>
-                    <Input type="number" min={0} step={1} inputMode="numeric" value={form.downtime_minutes} onChange={updateNumber("downtime_minutes", 0)} />
+                    <Input aria-label="Downtime (minutes)" type="number" min={0} step={1} inputMode="numeric" value={form.downtime_minutes} onChange={updateNumber("downtime_minutes", 0)} />
                   </div>
 
                   <div>
@@ -1089,22 +1086,20 @@ export default function EntryPage() {
                       <button
                         type="button"
                         onClick={() => setForm((prev) => ({ ...prev, quality_issues: false, quality_details: "" }))}
-                        className={`rounded-[24px] border px-4 py-4 text-sm font-semibold transition ${
-                          !form.quality_issues
-                            ? "border-cyan-300/40 bg-cyan-400/12 text-white"
-                            : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/8"
-                        }`}
+                        className={`rounded-[24px] border px-4 py-4 text-sm font-semibold transition ${!form.quality_issues
+                          ? "border-cyan-300/40 bg-cyan-400/12 text-white"
+                          : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/8"
+                          }`}
                       >
                         OFF
                       </button>
                       <button
                         type="button"
                         onClick={() => setForm((prev) => ({ ...prev, quality_issues: true }))}
-                        className={`rounded-[24px] border px-4 py-4 text-sm font-semibold transition ${
-                          form.quality_issues
-                            ? "border-cyan-300/40 bg-cyan-400/12 text-white"
-                            : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/8"
-                        }`}
+                        className={`rounded-[24px] border px-4 py-4 text-sm font-semibold transition ${form.quality_issues
+                          ? "border-cyan-300/40 bg-cyan-400/12 text-white"
+                          : "border-white/10 bg-white/5 text-slate-300 hover:bg-white/8"
+                          }`}
                       >
                         ON
                       </button>
@@ -1211,6 +1206,7 @@ export default function EntryPage() {
                                     />
                                   ) : inputType === "select" ? (
                                     <Select
+                                      aria-label={field.label}
                                       value={typeof value === "string" ? value : ""}
                                       onChange={updateTemplateField(field.key, inputType)}
                                     >
@@ -1266,9 +1262,8 @@ export default function EntryPage() {
               <button
                 type="button"
                 onClick={handleBack}
-                className={`text-sm font-medium transition ${
-                  activeStep === 0 ? "cursor-not-allowed text-slate-500" : "text-slate-200 hover:text-white"
-                }`}
+                className={`text-sm font-medium transition ${activeStep === 0 ? "cursor-not-allowed text-slate-500" : "text-slate-200 hover:text-white"
+                  }`}
                 disabled={activeStep === 0}
               >
                 Back
@@ -1305,18 +1300,17 @@ export default function EntryPage() {
                     <div className="mt-2 text-sm text-slate-300">{performanceLabel}</div>
                   </div>
                   <span
-                    className={`rounded-full border px-3 py-1 text-xs ${
-                      online
-                        ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
-                        : "border-amber-400/20 bg-amber-400/10 text-amber-200"
-                    }`}
+                    className={`rounded-full border px-3 py-1 text-xs ${online
+                      ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200"
+                      : "border-amber-400/20 bg-amber-400/10 text-amber-200"
+                      }`}
                   >
                     {online ? "Live" : "Offline"}
                   </span>
                 </div>
                 <div className="mt-4 h-2 rounded-full bg-white/10">
                   <div
-                    className="h-full rounded-full bg-[var(--action-primary)] transition-all duration-300"
+                    className="h-full rounded-full bg-[var(--action-primary)] transition-[width] duration-300 ease-out"
                     style={{ width: `${clampProgress(performance)}%` }}
                   />
                 </div>
@@ -1465,9 +1459,8 @@ export default function EntryPage() {
           <button
             type="button"
             onClick={handleBack}
-            className={`w-20 shrink-0 text-sm font-medium transition ${
-              activeStep === 0 ? "cursor-not-allowed text-slate-500" : "text-slate-200 hover:text-white"
-            }`}
+            className={`w-20 shrink-0 text-sm font-medium transition ${activeStep === 0 ? "cursor-not-allowed text-slate-500" : "text-slate-200 hover:text-white"
+              }`}
             disabled={activeStep === 0}
           >
             Back

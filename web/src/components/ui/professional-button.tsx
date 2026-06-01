@@ -9,7 +9,7 @@ const buttonVariants = cva(
         // Base styles - core button appearance
         "inline-flex items-center justify-center gap-2",
         "rounded-md font-medium",
-        "transition-all duration-200",
+        "transition-[background-color,border-color,color,box-shadow,opacity] duration-200",
         "cursor-pointer",
         "disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none",
         // Focus states for keyboard navigation

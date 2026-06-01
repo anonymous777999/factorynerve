@@ -784,6 +784,7 @@ export function AppSidebar({
                 {translate ? translate("shell.switch_factory", "Switch Factory") : "Switch Factory"}
               </label>
               <Select
+                aria-label={translate ? translate("shell.switch_factory", "Switch Factory") : "Switch Factory"}
                 className="mt-1.5 h-11 bg-surface-elevated text-xs"
                 value={activeFactoryId || ""}
                 onChange={(event) => void onFactorySwitch(event.target.value)}

@@ -408,19 +408,19 @@ export function SteelReconciliationsPage() {
           activeFilters={[
             statusFilter
               ? {
-                  id: "status",
-                  label: "Status",
-                  value: statusFilter,
-                  onClear: () => updateParams({ status: null }),
-                }
+                id: "status",
+                label: "Status",
+                value: statusFilter,
+                onClear: () => updateParams({ status: null }),
+              }
               : null,
             itemFilter
               ? {
-                  id: "item_id",
-                  label: "Item",
-                  value: items.find((item) => String(item.item_id) === itemFilter)?.item_code || itemFilter,
-                  onClear: () => updateParams({ item_id: null }),
-                }
+                id: "item_id",
+                label: "Item",
+                value: items.find((item) => String(item.item_id) === itemFilter)?.item_code || itemFilter,
+                onClear: () => updateParams({ item_id: null }),
+              }
               : null,
           ].filter(Boolean) as Array<{ id: string; label: string; value: string; onClear: () => void }>}
           onClearAll={() => updateParams({ status: null, item_id: null })}
@@ -482,26 +482,26 @@ export function SteelReconciliationsPage() {
                 primaryAction={
                   canReview && activeRow.status === "pending"
                     ? {
-                        id: "approve-reconciliation",
-                        label: "Approve",
-                        onAction: () => setConfirmDecision("approve"),
-                      }
+                      id: "approve-reconciliation",
+                      label: "Approve",
+                      onAction: () => setConfirmDecision("approve"),
+                    }
                     : undefined
                 }
                 secondaryAction={
                   canReview && activeRow.status === "pending"
                     ? {
-                        id: "reject-reconciliation",
-                        label: "Reject",
-                        variant: "destructive",
-                        onAction: () => setConfirmDecision("reject"),
-                      }
+                      id: "reject-reconciliation",
+                      label: "Reject",
+                      variant: "destructive",
+                      onAction: () => setConfirmDecision("reject"),
+                    }
                     : {
-                        id: "close-reconciliation",
-                        label: "Close",
-                        variant: "ghost",
-                        onAction: () => updateParams({ id: null }),
-                      }
+                      id: "close-reconciliation",
+                      label: "Close",
+                      variant: "ghost",
+                      onAction: () => updateParams({ id: null }),
+                    }
                 }
               />
             ) : null
@@ -540,7 +540,7 @@ export function SteelReconciliationsPage() {
 
               <div className="space-y-sm">
                 <label className="text-label-dense font-medium uppercase tracking-wide text-text-secondary">Mismatch root cause</label>
-                <Select {...form.register("mismatchCause")}>
+                <Select aria-label="Mismatch root cause" {...form.register("mismatchCause")}>
                   <option value="">Mismatch root cause</option>
                   {MISMATCH_CAUSE_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>{option.label}</option>

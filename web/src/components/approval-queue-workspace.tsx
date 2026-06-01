@@ -427,8 +427,12 @@ export default function ApprovalQueueWorkspace() {
                         <div className="bg-gray-700 rounded-lg border border-gray-600 p-4">
                             <div className="flex items-center justify-between mb-3">
                                 <h3 className="text-sm font-medium text-white">Source Document Crop</h3>
-                                <button className="text-gray-400 hover:text-white">
-                                    ⛶
+                                <button
+                                    type="button"
+                                    aria-label="Expand source document crop"
+                                    className="text-gray-400 hover:text-white"
+                                >
+                                    <span aria-hidden="true">⛶</span>
                                 </button>
                             </div>
                             <div className="bg-gray-900 rounded border border-gray-600 p-4 h-32 flex items-center justify-center">

@@ -78,11 +78,15 @@ export function FilterBar({
       <div className="grid gap-sm px-md py-sm md:grid-cols-2 xl:grid-cols-[repeat(4,minmax(0,1fr))_auto] xl:items-end">
         {fields.map((field) => (
           <div key={field.id} className="min-w-0">
-            <label className="ui-no-select ui-no-callout mb-xs block text-label-dense font-medium uppercase tracking-wide text-text-secondary">
+            <label
+              htmlFor={`filter-${field.id}`}
+              className="ui-no-select ui-no-callout mb-xs block text-label-dense font-medium uppercase tracking-wide text-text-secondary"
+            >
               {field.label}
             </label>
             {field.type === "select" ? (
               <Select
+                id={`filter-${field.id}`}
                 value={field.value}
                 onChange={(event) => field.onValueChange(event.target.value)}
               >
@@ -95,6 +99,7 @@ export function FilterBar({
               </Select>
             ) : (
               <Input
+                id={`filter-${field.id}`}
                 type={field.type === "date" ? "date" : "text"}
                 value={field.value}
                 placeholder={field.placeholder}

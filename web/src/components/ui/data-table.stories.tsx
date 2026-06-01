@@ -4,6 +4,7 @@ import type {
   SortingState,
 } from "@tanstack/react-table";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { expect, waitFor, within } from "storybook/test";
 
 import {
   createDataTableColumnHelper,
@@ -108,6 +109,17 @@ const columns = [
 
 const rows: DispatchRow[] = Array.from({ length: 240 }, (_, index) => ({
   id: `DSP-${String(index + 1).padStart(4, "0")}`,
+  isEditing: false,
+  vehicle: `MH12-${3000 + index}`,
+  supplier: index % 2 === 0 ? "Shree Steel Traders" : "Apex Inbound Logistics",
+  quantityKg: 1200 + index * 17,
+  status: getDispatchStatus(index),
+}));
+
+// Task 33: Virtual scrolling integrity dataset (1000+ rows).
+const LARGE_DATASET_SIZE = 1200;
+const largeDataset: DispatchRow[] = Array.from({ length: LARGE_DATASET_SIZE }, (_, index) => ({
+  id: `DSP-${String(index + 1).padStart(5, "0")}`,
   isEditing: false,
   vehicle: `MH12-${3000 + index}`,
   supplier: index % 2 === 0 ? "Shree Steel Traders" : "Apex Inbound Logistics",
@@ -332,4 +344,88 @@ export const BulkActions: Story = {
     enableVirtualization: false,
   },
   render: (args) => <BulkActionsPreview {...args} />,
+};
+
+/**
+ * Task 33: Virtual Scrolling Integrity.
+ *
+ * Renders a 1200-row dataset to validate that @tanstack/react-virtual only
+ * mounts a windowed subset of rows (rather than all 1200), keeps row heights
+ * consistent with the density token (40px default), and that the table owns a
+ * bounded, independent scroll container.
+ */
+export const LargeDatasetVirtualized: Story = {
+  args: {
+    ariaLabel: "Large dispatch queue",
+    caption: "1200-row dispatch queue for virtual scrolling validation",
+    data: largeDataset,
+    enableVirtualization: true,
+    viewportSize: "md",
+  },
+  render: (args) => (
+    <DataTable<DispatchRow>
+      {...args}
+      columns={columns}
+      data={largeDataset}
+      enableSorting={false}
+      // Explicit bounded height so the scroll container is height-constrained.
+      // In the app this comes from the `max-h-table-*` viewport utility; we pin an
+      // arbitrary-value height here so virtualization is validated deterministically.
+      viewportClassName="max-h-[480px]"
+      renderToolbar={null}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const table = await canvas.findByRole("table", { name: "Large dispatch queue" });
+
+    // The scroll viewport owns scrolling and has a bounded height (independent of page scroll).
+    const viewport = canvasElement.querySelector<HTMLElement>(
+      "[data-scroll-debug-label='dpr-data-table'] .responsive-scroll-area__viewport",
+    );
+    expect(viewport).not.toBeNull();
+    expect(viewport!.clientHeight).toBeGreaterThan(0);
+    expect(viewport!.clientHeight).toBeLessThanOrEqual(480);
+    expect(viewport!.scrollHeight).toBeGreaterThan(viewport!.clientHeight);
+
+    // Virtualization mounts only a windowed subset of rows, never the full set.
+    // Body rows exclude the aria-hidden spacer rows used for padding.
+    await waitFor(() => {
+      const bodyRows = table.querySelectorAll("tbody tr:not([aria-hidden='true'])");
+      expect(bodyRows.length).toBeGreaterThan(0);
+      // Windowed subset must be far smaller than the full dataset (1200 rows).
+      expect(bodyRows.length).toBeLessThan(200);
+    });
+
+    // Spacer rows (paddingTop/paddingBottom) keep the total scrollable height correct.
+    const spacerRows = table.querySelectorAll("tbody tr[aria-hidden='true']");
+    expect(spacerRows.length).toBeGreaterThan(0);
+
+    // Row heights are consistent and derive from the density row-height token (40px default).
+    const firstBodyRow = table.querySelector<HTMLElement>(
+      "tbody tr:not([aria-hidden='true'])",
+    );
+    expect(firstBodyRow).not.toBeNull();
+    expect(firstBodyRow!.style.height).toBe("40px");
+
+    // Capture the currently rendered row indices, then scroll deep into the dataset.
+    const getRenderedRowIndices = () =>
+      Array.from(
+        table.querySelectorAll<HTMLElement>("tbody [data-row-index]"),
+      ).map((cell) => Number(cell.dataset.rowIndex));
+
+    const initialIndices = getRenderedRowIndices();
+    const initialMin = Math.min(...initialIndices);
+
+    viewport!.scrollTop = 20_000;
+    viewport!.dispatchEvent(new Event("scroll"));
+
+    // After scrolling, the virtualizer re-windows to later rows (proves windowing tracks scroll).
+    await waitFor(() => {
+      const scrolledIndices = getRenderedRowIndices();
+      expect(Math.min(...scrolledIndices)).toBeGreaterThan(initialMin);
+      // Still a windowed subset, never the full dataset.
+      expect(scrolledIndices.length).toBeLessThan(200);
+    });
+  },
 };

@@ -2195,7 +2195,7 @@ export default function ApprovalsPage() {
                   <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <div>
                       <label className="text-sm text-[var(--muted)]">Task type</label>
-                      <Select value={taskFilter} onChange={(event) => setTaskFilter(event.target.value as TaskFilter)}>
+                      <Select aria-label="Task type" value={taskFilter} onChange={(event) => setTaskFilter(event.target.value as TaskFilter)}>
                         <option value="all">All review work</option>
                         <option value="attendance">Attendance review</option>
                         <option value="entry">DPR entries</option>
@@ -2205,7 +2205,7 @@ export default function ApprovalsPage() {
                     </div>
                     <div>
                       <label className="text-sm text-[var(--muted)]">Severity</label>
-                      <Select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value as SeverityFilter)}>
+                      <Select aria-label="Severity" value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value as SeverityFilter)}>
                         <option value="all">All severities</option>
                         <option value="critical">Critical</option>
                         <option value="high">High</option>
@@ -2215,7 +2215,7 @@ export default function ApprovalsPage() {
                     </div>
                     <div>
                       <label className="text-sm text-[var(--muted)]">Queue age</label>
-                      <Select value={ageFilter} onChange={(event) => setAgeFilter(event.target.value as AgeFilter)}>
+                      <Select aria-label="Queue age" value={ageFilter} onChange={(event) => setAgeFilter(event.target.value as AgeFilter)}>
                         <option value="all">All ages</option>
                         <option value="sla8">8h+ waiting (SLA)</option>
                         <option value="stale">24h+ waiting</option>

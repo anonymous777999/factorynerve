@@ -88,6 +88,7 @@ export function OcrResultsGrid({
                 <th key={`header-${columnIndex}`} className="border-b border-white/10 bg-[rgba(15,23,42,0.88)] px-3 py-2 align-top">
                   <div className="flex items-center gap-2">
                     <Input
+                      aria-label={`Column ${columnIndex + 1} header`}
                       value={header}
                       readOnly={readOnly}
                       onChange={(event) => updateHeader(columnIndex, event.target.value)}
@@ -114,6 +115,7 @@ export function OcrResultsGrid({
                 {row.map((cell, columnIndex) => (
                   <td key={`cell-${rowIndex}-${columnIndex}`} className="border-b border-white/6 px-3 py-2">
                     <Input
+                      aria-label={`Row ${rowIndex + 1} ${normalizedHeaders[columnIndex] || `column ${columnIndex + 1}`}`}
                       value={cell}
                       readOnly={readOnly}
                       onChange={(event) => updateCell(rowIndex, columnIndex, event.target.value)}

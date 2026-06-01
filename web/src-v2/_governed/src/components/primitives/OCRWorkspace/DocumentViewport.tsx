@@ -132,7 +132,15 @@ export function DocumentViewport({
             {pageSlot ? (
               pageSlot(page, index)
             ) : page.imageSrc ? (
-              <img src={page.imageSrc} alt={page.title ?? `Page ${page.pageNumber}`} className="block w-full" />
+              // First page renders eagerly (above the fold); later pages lazy load
+              // since they sit >200px below the viewport in the vertical page stack.
+              <img
+                src={page.imageSrc}
+                alt={page.title ?? `Page ${page.pageNumber}`}
+                className="block w-full"
+                loading={index === 0 ? "eager" : "lazy"}
+                decoding="async"
+              />
             ) : (
               <div className="aspect-[1/1.414] w-full bg-[linear-gradient(180deg,var(--color-surface-primary),var(--color-surface-elevated))]" />
             )}

@@ -401,7 +401,7 @@ export default function AiInsightsPage() {
             <CardContent className="space-y-4">
               <div>
                 <label className="text-sm text-[var(--muted)]">{t("ai.query.label", "Question")}</label>
-                <Input value={question} onChange={(event) => setQuestion(event.target.value)} />
+                <Input aria-label={t("ai.query.label", "Question")} value={question} onChange={(event) => setQuestion(event.target.value)} />
               </div>
               <div className="flex flex-wrap gap-3">
                 <Button onClick={handleQuestion} disabled={queryBusy}>

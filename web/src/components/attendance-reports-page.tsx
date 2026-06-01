@@ -244,11 +244,11 @@ export default function AttendanceReportsPage() {
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <label className="text-sm text-[var(--muted)]">{t("attendance.reports.range.from", "Date From")}</label>
-                <Input type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
+                <Input aria-label="Date from" type="date" value={dateFrom} onChange={(event) => setDateFrom(event.target.value)} />
               </div>
               <div>
                 <label className="text-sm text-[var(--muted)]">{t("attendance.reports.range.to", "Date To")}</label>
-                <Input type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
+                <Input aria-label="Date to" type="date" value={dateTo} onChange={(event) => setDateTo(event.target.value)} />
               </div>
             </div>
           </CardHeader>

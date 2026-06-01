@@ -921,7 +921,7 @@ export default function ReportsPage() {
                     <span>{reportJob.progress}%</span>
                   </div>
                   <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                    <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: progressWidth(reportJob.progress) }} />
+                    <div className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-300 ease-out" style={{ width: progressWidth(reportJob.progress) }} />
                   </div>
                   <div className="mt-3 text-sm text-[var(--text)]">{reportJob.message}</div>
                   {reportJob.status === "failed" && reportJob.error ? (
@@ -1040,7 +1040,7 @@ export default function ReportsPage() {
                         <span>{summaryJob.progress}%</span>
                       </div>
                       <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                        <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: progressWidth(summaryJob.progress) }} />
+                        <div className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-300 ease-out" style={{ width: progressWidth(summaryJob.progress) }} />
                       </div>
                       <div className="mt-3 text-sm text-[var(--text)]">{summaryJob.message}</div>
                       {summaryJob.status === "failed" && summaryJob.error ? (

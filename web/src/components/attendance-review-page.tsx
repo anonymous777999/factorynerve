@@ -481,6 +481,7 @@ function ReviewDetailPanel({
               <div>
                 <label className="text-sm text-[var(--muted)]">Punch In</label>
                 <Input
+                  aria-label="Punch in"
                   type="datetime-local"
                   value={form.punchInAt}
                   onChange={(event) => onUpdateForm(item.attendance_id, { punchInAt: event.target.value })}
@@ -489,6 +490,7 @@ function ReviewDetailPanel({
               <div>
                 <label className="text-sm text-[var(--muted)]">Punch Out</label>
                 <Input
+                  aria-label="Punch out"
                   type="datetime-local"
                   value={form.punchOutAt}
                   onChange={(event) => onUpdateForm(item.attendance_id, { punchOutAt: event.target.value })}
@@ -499,6 +501,7 @@ function ReviewDetailPanel({
             <div>
               <label className="text-sm text-[var(--muted)]">Final Status</label>
               <Select
+                aria-label="Final status"
                 value={form.finalStatus}
                 onChange={(event) =>
                   onUpdateForm(item.attendance_id, { finalStatus: event.target.value as AttendanceReviewFinalStatus })
@@ -1078,11 +1081,11 @@ export default function AttendanceReviewPage() {
               </div>
               <div>
                 <label className="text-sm text-[var(--muted)]">Review date</label>
-                <Input type="date" value={attendanceDate} onChange={(event) => setAttendanceDate(event.target.value)} />
+                <Input aria-label="Review date" type="date" value={attendanceDate} onChange={(event) => setAttendanceDate(event.target.value)} />
               </div>
               <div>
                 <label className="text-sm text-[var(--muted)]">Issue type</label>
-                <Select value={issueFilter} onChange={(event) => setIssueFilter(event.target.value as "all" | ReviewIssueType)}>
+                <Select aria-label="Issue type" value={issueFilter} onChange={(event) => setIssueFilter(event.target.value as "all" | ReviewIssueType)}>
                   {ISSUE_TYPE_OPTIONS.map((option) => (
                     <option key={option.value} value={option.value}>
                       {option.label}
@@ -1092,7 +1095,7 @@ export default function AttendanceReviewPage() {
               </div>
               <div>
                 <label className="text-sm text-[var(--muted)]">Shift</label>
-                <Select value={shiftFilter} onChange={(event) => setShiftFilter(event.target.value)}>
+                <Select aria-label="Shift" value={shiftFilter} onChange={(event) => setShiftFilter(event.target.value)}>
                   <option value="all">All shifts</option>
                   <option value="morning">Morning</option>
                   <option value="evening">Evening</option>
@@ -1101,7 +1104,7 @@ export default function AttendanceReviewPage() {
               </div>
               <div>
                 <label className="text-sm text-[var(--muted)]">Department</label>
-                <Select value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)}>
+                <Select aria-label="Department" value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)}>
                   <option value="all">All departments</option>
                   {departmentOptions.map((department) => (
                     <option key={department} value={department}>

@@ -28,9 +28,19 @@ export function OcrNotificationDropdown({
             }
         }
 
+        function handleEsc(event: KeyboardEvent) {
+            if (event.key === "Escape") {
+                setIsOpen(false);
+            }
+        }
+
         if (isOpen) {
             document.addEventListener("mousedown", handleClickOutside);
-            return () => document.removeEventListener("mousedown", handleClickOutside);
+            document.addEventListener("keydown", handleEsc);
+            return () => {
+                document.removeEventListener("mousedown", handleClickOutside);
+                document.removeEventListener("keydown", handleEsc);
+            };
         }
     }, [isOpen]);
 
@@ -48,6 +58,7 @@ export function OcrNotificationDropdown({
                         : "border-border-subtle bg-surface-shell text-text-secondary hover:bg-surface-container"
                 )}
                 aria-label="Notifications"
+                aria-expanded={isOpen}
             >
                 <svg
                     width="16"

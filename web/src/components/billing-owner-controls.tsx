@@ -58,7 +58,7 @@ export function BillingOwnerControls({
             </div>
           ) : (
             <div className="space-y-3">
-              <Select value={downgradePlan} onChange={(event) => onDowngradePlanChange(event.target.value)}>
+              <Select aria-label="Select plan to schedule downgrade" value={downgradePlan} onChange={(event) => onDowngradePlanChange(event.target.value)}>
                 {planOptions.map((plan) => (
                   <option key={plan.id} value={plan.id}>
                     {plan.name}
@@ -79,7 +79,7 @@ export function BillingOwnerControls({
               This emergency control is enabled by environment flag. Keep it off for normal billing so Razorpay stays the
               only upgrade path.
             </div>
-            <Select value={overridePlan} onChange={(event) => onOverridePlanChange(event.target.value)}>
+            <Select aria-label="Select plan for manual org override" value={overridePlan} onChange={(event) => onOverridePlanChange(event.target.value)}>
               {planOptions.map((plan) => (
                 <option key={plan.id} value={plan.id}>
                   {plan.name}

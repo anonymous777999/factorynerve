@@ -576,7 +576,7 @@ export function SteelDispatchesPage() {
             <CardContent className="space-y-5">
               <div>
                 <label className="text-sm text-[var(--muted)]">Invoice</label>
-                <Select value={selectedInvoiceId} onChange={(event) => setSelectedInvoiceId(event.target.value)}>
+                <Select aria-label="Invoice" value={selectedInvoiceId} onChange={(event) => setSelectedInvoiceId(event.target.value)}>
                   <option value="">Select invoice</option>
                   {invoices.map((invoice) => (
                     <option key={invoice.id} value={invoice.id}>
@@ -645,7 +645,7 @@ export function SteelDispatchesPage() {
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
                   <label className="text-sm text-[var(--muted)]">Dispatch Date</label>
-                  <Input type="date" value={dispatchDate} onChange={(event) => setDispatchDate(event.target.value)} />
+                  <Input aria-label="Dispatch date" type="date" value={dispatchDate} onChange={(event) => setDispatchDate(event.target.value)} />
                 </div>
                 <div>
                   <label className="text-sm text-[var(--muted)]">Truck Number</label>
@@ -658,7 +658,7 @@ export function SteelDispatchesPage() {
                 </div>
                 <div>
                   <label className="text-sm text-[var(--muted)]">Vehicle Type</label>
-                  <Select value={vehicleType} onChange={(event) => setVehicleType(event.target.value as SteelVehicleType)}>
+                  <Select aria-label="Vehicle type" value={vehicleType} onChange={(event) => setVehicleType(event.target.value as SteelVehicleType)}>
                     <option value="truck">Truck</option>
                     <option value="trailer">Trailer</option>
                     <option value="pickup">Pickup</option>
@@ -686,11 +686,11 @@ export function SteelDispatchesPage() {
                 </div>
                 <div>
                   <label className="text-sm text-[var(--muted)]">Entry Time</label>
-                  <Input type="datetime-local" value={entryTime} onChange={(event) => setEntryTime(event.target.value)} />
+                  <Input aria-label="Entry time" type="datetime-local" value={entryTime} onChange={(event) => setEntryTime(event.target.value)} />
                 </div>
                 <div>
                   <label className="text-sm text-[var(--muted)]">Exit Time</label>
-                  <Input type="datetime-local" value={exitTime} onChange={(event) => setExitTime(event.target.value)} />
+                  <Input aria-label="Exit time" type="datetime-local" value={exitTime} onChange={(event) => setExitTime(event.target.value)} />
                 </div>
               </div>
 
@@ -759,6 +759,7 @@ export function SteelDispatchesPage() {
                                   type="number"
                                   min="0"
                                   step="0.01"
+                                  aria-label={`Dispatch weight (KG) for ${line.item_code}`}
                                   value={draft?.weight_kg || ""}
                                   onChange={(event) =>
                                     setLineDrafts((current) =>

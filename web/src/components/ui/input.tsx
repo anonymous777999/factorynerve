@@ -31,6 +31,20 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(function Inp
   const ariaInvalid =
     ariaInvalidProp !== undefined ? ariaInvalidProp : isInvalid ? true : undefined;
 
+  // Register this control's id with the surrounding Field so the Label can
+  // wire up htmlFor automatically (programmatic label association).
+  const registerControl = fieldContext?.registerControl;
+  const unregisterControl = fieldContext?.unregisterControl;
+  React.useEffect(() => {
+    if (!id || !registerControl || !unregisterControl) {
+      return;
+    }
+    registerControl(id);
+    return () => {
+      unregisterControl(id);
+    };
+  }, [id, registerControl, unregisterControl]);
+
   return (
     <input
       ref={ref}

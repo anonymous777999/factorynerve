@@ -124,7 +124,7 @@ export function OcrJobStatusPanel({ job, onJobChange }: OcrJobStatusPanelProps) 
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-white/10">
           <div
-            className="h-full rounded-full bg-[var(--accent)] transition-all"
+            className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-300 ease-out"
             style={{ width: `${Math.max(4, Math.min(100, Number(job.progress || 0)))}%` }}
           />
         </div>

@@ -62,7 +62,7 @@
      ======================================================================= */
 
     .interactive {
-        @apply transition-all duration-200 cursor-pointer;
+        @apply transition-[background-color, border-color, color, box-shadow, opacity, transform] duration-200 cursor-pointer;
     }
 
     /* Subtle scale on hover - for cards, buttons */
@@ -320,7 +320,7 @@
 
     /* Professional button base */
     .btn-professional {
-        @apply inline-flex items-center justify-center gap-2 rounded-md font-medium h-10 px-4 transition-all duration-200 focus-ring;
+        @apply inline-flex items-center justify-center gap-2 rounded-md font-medium h-10 px-4 transition-[background-color, border-color, color, box-shadow, opacity] duration-200 focus-ring;
     }
 
     /* Page header */
