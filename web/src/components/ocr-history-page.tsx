@@ -362,191 +362,188 @@ export default function OcrHistoryPage() {
         </div>
       }
     >
-      <div className="flex min-h-0 flex-1 flex-col gap-4">
-        <div className="factory-ocr-panel-grid factory-ocr-panel-grid--four flex-shrink-0">
-          <div className="factory-ocr-data-card">
-            <div className="factory-ocr-data-card__label">Documents tracked</div>
-            <div className="factory-ocr-data-card__value">{records.length}</div>
-          </div>
-          <div className="factory-ocr-data-card">
-            <div className="factory-ocr-data-card__label">Approved</div>
-            <div className="factory-ocr-data-card__value">{summary.approved}</div>
-          </div>
-          <div className="factory-ocr-data-card">
-            <div className="factory-ocr-data-card__label">Pending review</div>
-            <div className="factory-ocr-data-card__value">{summary.pending}</div>
-          </div>
-          <div className="factory-ocr-data-card">
-            <div className="factory-ocr-data-card__label">Rejected</div>
-            <div className="factory-ocr-data-card__value">{summary.rejected}</div>
-          </div>
+      {/* Stats row */}
+      <div className="factory-ocr-panel-grid factory-ocr-panel-grid--four mb-4">
+        <div className="factory-ocr-data-card">
+          <div className="factory-ocr-data-card__label">Documents tracked</div>
+          <div className="factory-ocr-data-card__value">{records.length}</div>
         </div>
-
-        <div className="flex-shrink-0 rounded-[0.45rem] border border-border-subtle bg-surface-shell p-4">
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <label className="space-y-2 text-sm text-text-secondary">
-              <span className="text-text-primary">Status</span>
-              <select
-                className="input w-full"
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value as OcrVerifyQueueFilters["status"])}
-              >
-                <option value="all">All</option>
-                <option value="pending">Pending</option>
-                <option value="approved">Approved</option>
-                <option value="rejected">Rejected</option>
-                <option value="draft">Draft</option>
-              </select>
-            </label>
-
-            <label className="space-y-2 text-sm text-text-secondary">
-              <span className="text-text-primary">Export</span>
-              <select
-                className="input w-full"
-                value={exportStateFilter}
-                onChange={(event) => setExportStateFilter(event.target.value as typeof exportStateFilter)}
-              >
-                <option value="all">All</option>
-                <option value="pending">Pending</option>
-                <option value="exported">Exported</option>
-                <option value="failed">Failed</option>
-                <option value="json_generated">JSON</option>
-              </select>
-            </label>
-
-            <label className="space-y-2 text-sm text-text-secondary">
-              <span className="text-text-primary">Document type</span>
-              <select
-                className="input w-full"
-                value={documentTypeFilter}
-                onChange={(event) => setDocumentTypeFilter(event.target.value)}
-              >
-                {documentTypeOptions.map((type) => (
-                  <option key={type} value={type}>
-                    {type === "all" ? "All" : type}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="space-y-2 text-sm text-text-secondary">
-              <span className="text-text-primary">Reviewer</span>
-              <select
-                className="input w-full"
-                value={reviewerIdFilter ?? "all"}
-                onChange={(event) =>
-                  setReviewerIdFilter(event.target.value === "all" ? null : Number(event.target.value))
-                }
-              >
-                <option value="all">All</option>
-                {reviewerOptions.map(([id, name]) => (
-                  <option key={id} value={id}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-            <label className="space-y-2 text-sm text-text-secondary">
-              <span className="text-text-primary">Confidence</span>
-              <select
-                className="input w-full"
-                value={confidenceFilter}
-                onChange={(event) => setConfidenceFilter(event.target.value as typeof confidenceFilter)}
-              >
-                <option value="all">All</option>
-                <option value="high">High (85%+)</option>
-                <option value="medium">Medium (60–84%)</option>
-                <option value="low">Low (&lt;60%)</option>
-              </select>
-            </label>
-            <label className="space-y-2 text-sm text-text-secondary">
-              <span className="text-text-primary">Updated after</span>
-              <input
-                className="input w-full"
-                type="date"
-                value={updatedAfterFilter}
-                onChange={(event) => setUpdatedAfterFilter(event.target.value)}
-              />
-            </label>
-            <label className="space-y-2 text-sm text-text-secondary">
-              <span className="text-text-primary">Updated before</span>
-              <input
-                className="input w-full"
-                type="date"
-                value={updatedBeforeFilter}
-                onChange={(event) => setUpdatedBeforeFilter(event.target.value)}
-              />
-            </label>
-            <div className="flex items-end">
-              <Button
-                size="compact"
-                variant="outline"
-                className="w-full"
-                onClick={() => {
-                  setStatusFilter("all");
-                  setExportStateFilter("all");
-                  setDocumentTypeFilter("all");
-                  setReviewerIdFilter(null);
-                  setConfidenceFilter("all");
-                  setUpdatedAfterFilter("");
-                  setUpdatedBeforeFilter("");
-                }}
-              >
-                Reset filters
-              </Button>
-            </div>
-          </div>
+        <div className="factory-ocr-data-card">
+          <div className="factory-ocr-data-card__label">Approved</div>
+          <div className="factory-ocr-data-card__value">{summary.approved}</div>
         </div>
-
-        <div className="flex min-h-0 flex-1 flex-col">
-          {historyQuery.isLoading ? (
-            <div className="flex flex-1 items-center justify-center bg-surface-elevated rounded-[0.45rem] border border-border-subtle">
-              <div className="text-text-secondary">Loading OCR history...</div>
-            </div>
-          ) : historyQuery.isError ? (
-            <div className="flex flex-1 items-center justify-center bg-surface-elevated rounded-[0.45rem] border border-border-subtle">
-              <div className="text-error">Error loading OCR history: {historyQuery.error?.message}</div>
-            </div>
-          ) : records.length === 0 ? (
-            <div className="flex flex-1 items-center justify-center bg-surface-elevated rounded-[0.45rem] border border-border-subtle">
-              <div className="text-text-secondary">No OCR records found</div>
-            </div>
-          ) : (
-            <div className="min-h-0 flex-1 rounded-[0.45rem] border border-border-subtle bg-surface-shell">
-              <DataTable<OcrHistoryItem>
-                ariaLabel="OCR history"
-                columns={columns}
-                data={records}
-                getRowId={(row) => String(row.id)}
-                selectedRowId={activeSelectedRecordId ? String(activeSelectedRecordId) : null}
-                onRowClick={(row) => setSelectedRecordId(Number(row.id))}
-                enableGlobalSearch
-                enableStickyFirstColumn
-                enableVirtualization={records.length > 20}
-                overscan={5}
-                className="h-full w-full"
-                viewportClassName="h-full w-full overflow-y-auto"
-                viewportSize="lg"
-                emptyTitle="No OCR documents match the current filters"
-                emptyMessage="Adjust the search term or scan a new document to continue the workflow."
-                renderToolbar={
-                  <DataTableToolbar
-                    searchPlaceholder="Search by file, type, status, or export"
-                    searchValue={search}
-                    onSearchChange={setSearch}
-                    onClear={() => setSearch("")}
-                  />
-                }
-                searchValue={search}
-                onSearchChange={setSearch}
-              />
-            </div>
-          )}
+        <div className="factory-ocr-data-card">
+          <div className="factory-ocr-data-card__label">Pending review</div>
+          <div className="factory-ocr-data-card__value">{summary.pending}</div>
+        </div>
+        <div className="factory-ocr-data-card">
+          <div className="factory-ocr-data-card__label">Rejected</div>
+          <div className="factory-ocr-data-card__value">{summary.rejected}</div>
         </div>
       </div>
+
+      {/* Filters */}
+      <div className="mb-4 rounded-[0.45rem] border border-border-subtle bg-surface-shell p-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <label className="space-y-2 text-sm text-text-secondary">
+            <span className="text-text-primary">Status</span>
+            <select
+              className="input w-full"
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value as OcrVerifyQueueFilters["status"])}
+            >
+              <option value="all">All</option>
+              <option value="pending">Pending</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+              <option value="draft">Draft</option>
+            </select>
+          </label>
+
+          <label className="space-y-2 text-sm text-text-secondary">
+            <span className="text-text-primary">Export</span>
+            <select
+              className="input w-full"
+              value={exportStateFilter}
+              onChange={(event) => setExportStateFilter(event.target.value as typeof exportStateFilter)}
+            >
+              <option value="all">All</option>
+              <option value="pending">Pending</option>
+              <option value="exported">Exported</option>
+              <option value="failed">Failed</option>
+              <option value="json_generated">JSON</option>
+            </select>
+          </label>
+
+          <label className="space-y-2 text-sm text-text-secondary">
+            <span className="text-text-primary">Document type</span>
+            <select
+              className="input w-full"
+              value={documentTypeFilter}
+              onChange={(event) => setDocumentTypeFilter(event.target.value)}
+            >
+              {documentTypeOptions.map((type) => (
+                <option key={type} value={type}>
+                  {type === "all" ? "All" : type}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="space-y-2 text-sm text-text-secondary">
+            <span className="text-text-primary">Reviewer</span>
+            <select
+              className="input w-full"
+              value={reviewerIdFilter ?? "all"}
+              onChange={(event) =>
+                setReviewerIdFilter(event.target.value === "all" ? null : Number(event.target.value))
+              }
+            >
+              <option value="all">All</option>
+              {reviewerOptions.map(([id, name]) => (
+                <option key={id} value={id}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <label className="space-y-2 text-sm text-text-secondary">
+            <span className="text-text-primary">Confidence</span>
+            <select
+              className="input w-full"
+              value={confidenceFilter}
+              onChange={(event) => setConfidenceFilter(event.target.value as typeof confidenceFilter)}
+            >
+              <option value="all">All</option>
+              <option value="high">High (85%+)</option>
+              <option value="medium">Medium (60–84%)</option>
+              <option value="low">Low (&lt;60%)</option>
+            </select>
+          </label>
+          <label className="space-y-2 text-sm text-text-secondary">
+            <span className="text-text-primary">Updated after</span>
+            <input
+              className="input w-full"
+              type="date"
+              value={updatedAfterFilter}
+              onChange={(event) => setUpdatedAfterFilter(event.target.value)}
+            />
+          </label>
+          <label className="space-y-2 text-sm text-text-secondary">
+            <span className="text-text-primary">Updated before</span>
+            <input
+              className="input w-full"
+              type="date"
+              value={updatedBeforeFilter}
+              onChange={(event) => setUpdatedBeforeFilter(event.target.value)}
+            />
+          </label>
+          <div className="flex items-end">
+            <Button
+              size="compact"
+              variant="outline"
+              className="w-full"
+              onClick={() => {
+                setStatusFilter("all");
+                setExportStateFilter("all");
+                setDocumentTypeFilter("all");
+                setReviewerIdFilter(null);
+                setConfidenceFilter("all");
+                setUpdatedAfterFilter("");
+                setUpdatedBeforeFilter("");
+              }}
+            >
+              Reset filters
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Table — uses a fixed viewport height so it always renders regardless of parent height */}
+      {historyQuery.isLoading ? (
+        <div className="flex h-64 items-center justify-center rounded-[0.45rem] border border-border-subtle bg-surface-elevated">
+          <div className="text-text-secondary">Loading OCR history...</div>
+        </div>
+      ) : historyQuery.isError ? (
+        <div className="flex h-64 items-center justify-center rounded-[0.45rem] border border-border-subtle bg-surface-elevated">
+          <div className="text-error">Error loading OCR history: {historyQuery.error?.message}</div>
+        </div>
+      ) : records.length === 0 ? (
+        <div className="flex h-64 items-center justify-center rounded-[0.45rem] border border-border-subtle bg-surface-elevated">
+          <div className="text-text-secondary">No OCR records found</div>
+        </div>
+      ) : (
+        <div className="rounded-[0.45rem] border border-border-subtle bg-surface-shell">
+          <DataTable<OcrHistoryItem>
+            ariaLabel="OCR history"
+            columns={columns}
+            data={records}
+            getRowId={(row) => String(row.id)}
+            selectedRowId={activeSelectedRecordId ? String(activeSelectedRecordId) : null}
+            onRowClick={(row) => setSelectedRecordId(Number(row.id))}
+            enableGlobalSearch
+            enableStickyFirstColumn
+            enableVirtualization={records.length > 20}
+            overscan={5}
+            viewportSize="lg"
+            emptyTitle="No OCR documents match the current filters"
+            emptyMessage="Adjust the search term or scan a new document to continue the workflow."
+            renderToolbar={
+              <DataTableToolbar
+                searchPlaceholder="Search by file, type, status, or export"
+                searchValue={search}
+                onSearchChange={setSearch}
+                onClear={() => setSearch("")}
+              />
+            }
+            searchValue={search}
+            onSearchChange={setSearch}
+          />
+        </div>
+      )}
     </OcrShell>
   );
 }
