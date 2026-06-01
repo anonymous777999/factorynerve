@@ -52,6 +52,33 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async headers() {
+    return [
+      {
+        // HTML pages must never be cached — they reference hashed JS chunks.
+        // If a browser caches stale HTML after a redeployment, it will try to
+        // load old chunk hashes that no longer exist on the server.
+        source: "/((?!_next/static|_next/image|favicon.ico|manifest.json|icons/).*)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
+          },
+        ],
+      },
+      {
+        // Static assets (JS/CSS chunks) are content-addressed by hash — safe to
+        // cache forever. Next.js already sets this but we make it explicit.
+        source: "/_next/static/:path*",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
+          },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
