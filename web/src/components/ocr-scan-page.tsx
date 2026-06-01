@@ -70,13 +70,13 @@ const DataTableGrid = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="rounded-[28px] border border-[#e3e8ef] bg-white p-6">
-        <div className="h-5 w-36 animate-pulse rounded-full bg-[#e6ebf1]" />
+      <div className="rounded-panel border border-border-subtle bg-surface-card p-6">
+        <div className="h-5 w-36 animate-pulse rounded-full bg-surface-skeleton" />
         <div className="mt-5 grid gap-2">
           {Array.from({ length: 5 }, (_, rowIndex) => (
             <div key={rowIndex} className="grid grid-cols-4 gap-2">
               {Array.from({ length: 4 }, (_, columnIndex) => (
-                <div key={`${rowIndex}-${columnIndex}`} className="h-10 animate-pulse rounded-[14px] bg-[#f4f6f8]" />
+                <div key={`${rowIndex}-${columnIndex}`} className="h-10 animate-pulse rounded-md bg-surface-skeleton" />
               ))}
             </div>
           ))}
@@ -91,13 +91,13 @@ const OcrSpreadsheetGrid = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="rounded-[28px] border border-[#e3e8ef] bg-white p-6">
-        <div className="h-5 w-36 animate-pulse rounded-full bg-[#e6ebf1]" />
+      <div className="rounded-panel border border-border-subtle bg-surface-card p-6">
+        <div className="h-5 w-36 animate-pulse rounded-full bg-surface-skeleton" />
         <div className="mt-5 grid gap-2">
           {Array.from({ length: 5 }, (_, rowIndex) => (
             <div key={rowIndex} className="grid grid-cols-4 gap-2">
               {Array.from({ length: 4 }, (_, columnIndex) => (
-                <div key={`${rowIndex}-${columnIndex}`} className="h-10 animate-pulse rounded-[14px] bg-[#f4f6f8]" />
+                <div key={`${rowIndex}-${columnIndex}`} className="h-10 animate-pulse rounded-md bg-surface-skeleton" />
               ))}
             </div>
           ))}
@@ -367,14 +367,6 @@ function extractPreviewTable(result: OcrPreviewResult) {
   const normalizedRows = sourceRows.map((row) =>
     Array.from({ length: columnCount }, (_, index) => stringifySheetCell(row[index])),
   );
-
-  console.log("EXTRACT OUTPUT:", {
-    sheetHeaders,
-    sheetRows,
-    normalizedHeaders,
-    normalizedRows,
-    willCreateSheets: normalizedRows.length > 0
-  });
 
   return {
     sheets: normalizedRows.length
@@ -1210,8 +1202,6 @@ export default function OcrScanPage() {
 
       const extractTimer = window.setTimeout(() => setProcessingStage("extract"), 500);
       const confidenceTimer = window.setTimeout(() => setProcessingStage("confidence"), 1300);
-
-      console.info("[OCR] Selected model", model, "forceRefresh", forceRefresh);
       let result: OcrPreviewResult;
       try {
         result = await previewOcrLogbook({
@@ -1236,7 +1226,6 @@ export default function OcrScanPage() {
       const isLargeDataset = rowCount > 500 || colCount > 50;
 
       if (isLargeDataset) {
-        console.warn(`Large dataset detected: ${rowCount} rows × ${colCount} columns`);
         setProcessingWarning(
           `Large document (${rowCount} rows × ${colCount} columns). Performance may be affected.`
         );
@@ -1269,12 +1258,6 @@ export default function OcrScanPage() {
         userCorrected: result.user_corrected ?? null,
         reviewRequired: result.review_required ?? null,
       };
-
-      console.info("[OCR] OCR response", {
-        requestedModel: model,
-        finalModel: result.routing?.provider_model || result.routing?.selected_model || "unknown",
-        tokenUsage: result.token_usage ?? result.routing?.usage ?? null,
-      });
 
       setResultPreview(nextPreview);
       setConfidenceMatrix(result.cell_confidence || []);
@@ -1884,14 +1867,14 @@ export default function OcrScanPage() {
                   onOpenUpload={() => uploadInputRef.current?.click()}
                 />
                 {recentRecords.length ? (
-                  <div className="mt-4 rounded-[24px] border border-[#e3e8ef] bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.05)]">
-                    <div className="text-sm font-medium text-[#101828]">Recent uploads</div>
+                  <div className="mt-4 rounded-panel border border-border-subtle bg-surface-card p-4 shadow-[0_16px_40px_rgba(15,23,42,0.05)]">
+                    <div className="text-sm font-medium text-text-primary">Recent uploads</div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {recentRecords.slice(0, 4).map((record) => (
                         <button
                           key={record.id}
                           type="button"
-                          className="rounded-full border border-[#dbe3eb] bg-[#f8fafc] px-3 py-1.5 text-xs text-[#344054]"
+                          className="rounded-full border border-border-subtle bg-surface-shell px-3 py-1.5 text-xs text-text-primary"
                           onClick={() => void openRecentRecord(record.id)}
                         >
                           {record.source_filename || `Document #${record.id}`}
@@ -1981,7 +1964,7 @@ export default function OcrScanPage() {
                 </div>
                 <button
                   type="button"
-                  className="rounded-full border-2 border-current/30 bg-white/60 px-4 py-2 text-xs font-semibold transition hover:bg-white hover:shadow-sm"
+                  className="rounded-full border-2 border-current/30 bg-white/60 px-4 py-2 text-xs font-semibold transition hover:bg-surface-card hover:shadow-sm"
                   onClick={() => {
                     if (resultPreview.userCorrected) {
                       setConfirmTitle("Replace existing scan?");
@@ -2075,7 +2058,7 @@ export default function OcrScanPage() {
                           alt="Source document"
                           draggable={false}
                           className={cn(
-                            "rounded-[0.35rem] border border-border-subtle bg-white object-contain shadow-[0_20px_60px_rgba(0,0,0,0.34)]",
+                            "rounded-[0.35rem] border border-border-subtle bg-surface-card object-contain shadow-[0_20px_60px_rgba(0,0,0,0.34)]",
                             imageFitMode === "width" ? "w-full max-w-none" : "",
                             imageFitMode === "height" ? "h-full max-h-none" : "",
                             imageFitMode === "free" ? "max-w-none" : "",
@@ -2484,18 +2467,18 @@ export default function OcrScanPage() {
             <div className="space-y-5">
               <div className="factory-ocr-stage-grid factory-ocr-stage-grid--review">
                 <div className="factory-ocr-console overflow-hidden rounded-[0.45rem] xl:max-h-[85vh]">
-                  <div className="flex items-center justify-between border-b border-[#edf1f5] px-4 py-3">
+                  <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">
                     <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#667085]">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-secondary">
                         Source
                       </div>
-                      <div className="mt-1 text-sm text-[#667085]">
+                      <div className="mt-1 text-sm text-text-secondary">
                         {formatExtractionSource(resultPreview.routingMeta, resultPreview.avgConfidence)}
                       </div>
-                      <div className="mt-1 text-xs text-[#667085]">
-                        Extraction source: <span className="font-semibold text-[#101828]">{formatExtractionSource(resultPreview.routingMeta, resultPreview.avgConfidence)}</span>
+                      <div className="mt-1 text-xs text-text-secondary">
+                        Extraction source: <span className="font-semibold text-text-primary">{formatExtractionSource(resultPreview.routingMeta, resultPreview.avgConfidence)}</span>
                         {resultPreview.routingMeta?.model_tier ? (
-                          <span className="ml-2 rounded-full border border-[#d9e1e8] bg-[#f8fafc] px-2 py-0.5 text-[11px] font-medium text-[#344054]">
+                          <span className="ml-2 rounded-full border border-border-subtle bg-surface-shell px-2 py-0.5 text-[11px] font-medium text-text-primary">
                             {formatSelectedModelLabel(resultPreview.routingMeta, resultPreview.tokenUsage)}
                             {resultPreview.routingMeta.forced ? " forced" : ""}
                           </span>
@@ -2505,7 +2488,7 @@ export default function OcrScanPage() {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        className="rounded-full border border-[#d9e1e8] bg-white px-3 py-1.5 text-sm text-[#344054]"
+                        className="rounded-full border border-border-subtle bg-surface-card px-3 py-1.5 text-sm text-text-primary"
                         onClick={() => setZoom((value) => Math.max(0.8, value - 0.1))}
                         aria-label="Zoom out"
                       >
@@ -2513,7 +2496,7 @@ export default function OcrScanPage() {
                       </button>
                       <button
                         type="button"
-                        className="rounded-full border border-[#d9e1e8] bg-white px-3 py-1.5 text-sm text-[#344054]"
+                        className="rounded-full border border-border-subtle bg-surface-card px-3 py-1.5 text-sm text-text-primary"
                         onClick={() => setZoom((value) => Math.min(2.2, value + 0.1))}
                         aria-label="Zoom in"
                       >
@@ -2521,7 +2504,7 @@ export default function OcrScanPage() {
                       </button>
                     </div>
                   </div>
-                  <div className="relative grid place-items-center overflow-auto bg-[#f7f9fb] p-3 max-h-[70vh]">
+                  <div className="relative grid place-items-center overflow-auto bg-surface-shell p-3 max-h-[70vh]">
                     {displayPreviewUrl ? (
                       <div className="relative">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -2556,13 +2539,13 @@ export default function OcrScanPage() {
                         />
                         {boundingBox ? (
                           <div
-                            className="pointer-events-none absolute border-2 border-[#185FA5] bg-[#185FA5]/12 shadow-[0_0_0_6px_rgba(24,95,165,0.12)] transition duration-150"
+                            className="pointer-events-none absolute border-2 border-accent bg-accent-soft shadow-[0_0_0_6px_rgba(99,102,241,0.12)] transition duration-150"
                             style={boundingBox}
                           />
                         ) : null}
                       </div>
                     ) : (
-                      <div className="text-sm text-[#667085]">Image preview unavailable</div>
+                      <div className="text-sm text-text-secondary">Image preview unavailable</div>
                     )}
                   </div>
                 </div>
@@ -2587,8 +2570,8 @@ export default function OcrScanPage() {
                       <button
                         type="button"
                         className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${viewMode === "spreadsheet"
-                          ? "bg-[#185FA5] text-white"
-                          : "border border-[#d9e1e8] bg-white text-[#344054] hover:bg-[#f8fafc]"
+                          ? "bg-accent text-white"
+                          : "border border-border-subtle bg-surface-card text-text-primary hover:bg-surface-shell"
                           }`}
                         onClick={() => setViewMode("spreadsheet")}
                       >
@@ -2597,8 +2580,8 @@ export default function OcrScanPage() {
                       <button
                         type="button"
                         className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${viewMode === "raw"
-                          ? "bg-[#185FA5] text-white"
-                          : "border border-[#d9e1e8] bg-white text-[#344054] hover:bg-[#f8fafc]"
+                          ? "bg-accent text-white"
+                          : "border border-border-subtle bg-surface-card text-text-primary hover:bg-surface-shell"
                           }`}
                         onClick={() => setViewMode("raw")}
                         title="Show raw OCR data for debugging"
@@ -2607,19 +2590,6 @@ export default function OcrScanPage() {
                       </button>
                     </div>
                   </div>
-
-                  {(() => {
-                    console.debug("OCR preview state:", resultPreview);
-                    console.debug("OCR sheets:", resultPreview?.sheets);
-                    console.debug("OCR sheet:", resultPreview?.sheets?.[0]);
-                    console.debug("OCR render check:", {
-                      hasSheet: !!sheet,
-                      hasRows: !!sheet?.rows,
-                      rowCount: sheet?.rows?.length,
-                      willRenderNewTable: !!(sheet && sheet.rows && sheet.rows.length > 0)
-                    });
-                    return null;
-                  })()}
 
                   {viewMode === "raw" ? (
                     <RawDataView
@@ -2657,11 +2627,11 @@ export default function OcrScanPage() {
                             <div className="overflow-auto">
                               <table className="min-w-full border-collapse">
                                 <thead>
-                                  <tr className="bg-[#f8fafc]">
+                                  <tr className="bg-surface-shell">
                                     {sheet.columns.map((column, columnIndex) => (
                                       <th
                                         key={`sheet-header-${columnIndex}`}
-                                        className={`border border-[#e3e8ef] px-4 py-3 text-sm font-semibold text-[#101828] ${columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
+                                        className={`border border-border-subtle px-4 py-3 text-sm font-semibold text-text-primary ${columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
                                           }`}
                                       >
                                         {stringifySheetCell(column)}
@@ -2675,7 +2645,7 @@ export default function OcrScanPage() {
                                       {row.map((cell, columnIndex) => (
                                         <td
                                           key={`sheet-cell-${rowIndex}-${columnIndex}`}
-                                          className={`border border-[#e3e8ef] px-4 py-3 text-sm text-[#344054] ${columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
+                                          className={`border border-border-subtle px-4 py-3 text-sm text-text-primary ${columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
                                             }`}
                                         >
                                           {stringifySheetCell(cell)}

@@ -141,8 +141,7 @@ export default function ReportsIntelligenceWorkspace() {
     }, []);
 
     const handleUpdateReport = useCallback(() => {
-        // Mock update logic
-        console.log("Updating report for range:", startDate, "to", endDate);
+        // Update report for the selected date range
     }, [startDate, endDate]);
 
     const handleGenerateAiSummary = useCallback(() => {

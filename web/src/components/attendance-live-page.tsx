@@ -298,7 +298,7 @@ export default function AttendanceLivePage() {
           }
           leftSlot={
             <div className="flex min-w-0 items-center gap-sm">
-              {liveMode ? <span className="h-2.5 w-2.5 rounded-full bg-status-success-icon animate-pulse" /> : null}
+              {liveMode ? <span className="h-2.5 w-2.5 rounded-full bg-status-success-icon" /> : null}
               <div className="min-w-0 space-y-xs">
                 <div className="flex flex-wrap items-center gap-sm">
                   <Badge status={liveMode ? "success" : "secondary"} size="compact">
@@ -404,19 +404,19 @@ export default function AttendanceLivePage() {
           activeFilters={[
             filter !== "all"
               ? {
-                  id: "status",
-                  label: "Status",
-                  value: filter.replaceAll("_", " "),
-                  onClear: () => updateParams({ status: null }),
-                }
+                id: "status",
+                label: "Status",
+                value: filter.replaceAll("_", " "),
+                onClear: () => updateParams({ status: null }),
+              }
               : null,
             attendanceDate !== todayValue()
               ? {
-                  id: "attendance_date",
-                  label: "Date",
-                  value: attendanceDate,
-                  onClear: () => updateParams({ attendance_date: todayValue() }),
-                }
+                id: "attendance_date",
+                label: "Date",
+                value: attendanceDate,
+                onClear: () => updateParams({ attendance_date: todayValue() }),
+              }
               : null,
           ].filter(Boolean) as Array<{ id: string; label: string; value: string; onClear: () => void }>}
           onClearAll={() => updateParams({ attendance_date: todayValue(), status: null })}

@@ -417,7 +417,7 @@ export default function EmailSummaryPage() {
               {/* Vertical Date Pickers */}
               <div className="space-y-2 pt-1.5">
                 <div>
-                  <label className="text-[9px] uppercase font-bold tracking-wider text-text-tertiary block">Start Date</label>
+                  <label className="text-[11px] font-medium text-text-tertiary block">Start Date</label>
                   <Input
                     aria-label="Start date"
                     type="date"
@@ -427,7 +427,7 @@ export default function EmailSummaryPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-[9px] uppercase font-bold tracking-wider text-text-tertiary block">End Date</label>
+                  <label className="text-[11px] font-medium text-text-tertiary block">End Date</label>
                   <Input
                     aria-label="End date"
                     type="date"
@@ -533,7 +533,7 @@ export default function EmailSummaryPage() {
                 const isReady = item.value === "Ready" || item.value.includes("docs") || Number(item.value) > 0;
                 return (
                   <div key={item.label} className="flex flex-col justify-between p-2.5 rounded-md bg-surface-card border border-border-subtle">
-                    <span className="text-[9px] uppercase font-bold tracking-wider text-text-tertiary select-none">{item.label}</span>
+                    <span className="text-[11px] font-medium text-text-tertiary select-none">{item.label}</span>
                     <div className="mt-1.5 flex items-baseline gap-1.5">
                       <span className="text-base font-mono font-bold text-text-primary">{item.value}</span>
                       <span className={cn("h-1.5 w-1.5 rounded-full inline-block shrink-0", isReady ? "bg-emerald-500" : "bg-amber-500")} />
@@ -642,7 +642,7 @@ export default function EmailSummaryPage() {
                     </p>
                   </div>
                   <span className={cn(
-                    "px-2 py-0.5 rounded-full text-[9px] font-bold tracking-wider uppercase border shrink-0 inline-block",
+                    "px-2 py-0.5 rounded-full text-[11px] font-bold tracking-wider uppercase border shrink-0 inline-block",
                     (ocrSummary?.pending_documents ?? 0) === 0
                       ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
                       : "bg-amber-500/10 border-amber-500/20 text-amber-400"
@@ -654,15 +654,15 @@ export default function EmailSummaryPage() {
                 {/* Clean Flat Micro-Grid */}
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div className="bg-surface-elevated/30 rounded p-2.5 border border-border-subtle">
-                    <span className="text-[9px] text-text-tertiary uppercase font-bold tracking-wide select-none">Trusted Rows</span>
+                    <span className="text-[11px] text-text-tertiary font-medium select-none">Trusted Rows</span>
                     <div className="text-base font-mono font-bold mt-0.5 text-text-primary">{ocrSummary?.trusted_rows ?? 0}</div>
                   </div>
                   <div className="bg-surface-elevated/30 rounded p-2.5 border border-border-subtle">
-                    <span className="text-[9px] text-text-tertiary uppercase font-bold tracking-wide select-none">Untrusted</span>
+                    <span className="text-[11px] text-text-tertiary font-medium select-none">Untrusted</span>
                     <div className="text-base font-mono font-bold mt-0.5 text-text-primary">{ocrSummary?.untrusted_documents ?? 0}</div>
                   </div>
                   <div className="bg-surface-elevated/30 rounded p-2.5 border border-border-subtle">
-                    <span className="text-[9px] text-text-tertiary uppercase font-bold tracking-wide select-none">Last Trusted</span>
+                    <span className="text-[11px] text-text-tertiary font-medium select-none">Last Trusted</span>
                     <div className="text-[10px] font-bold mt-1 text-text-primary truncate">
                       {ocrSummary?.last_trusted_at
                         ? new Date(ocrSummary.last_trusted_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })
@@ -748,7 +748,7 @@ export default function EmailSummaryPage() {
                   </span>
                   <span className={cn(
                     "h-1.5 w-1.5 rounded-full inline-block",
-                    draftReady ? "bg-emerald-500 animate-pulse" : "bg-amber-500"
+                    draftReady ? "bg-emerald-500" : "bg-amber-500"
                   )} />
                 </div>
               </div>
@@ -756,7 +756,7 @@ export default function EmailSummaryPage() {
               {/* Composer Inputs */}
               <div className="space-y-3">
                 <div>
-                  <label className="text-[9px] uppercase font-bold tracking-wider text-text-tertiary select-none">Recipients</label>
+                  <label className="text-[11px] font-medium text-text-tertiary select-none">Recipients</label>
                   <Textarea
                     rows={2}
                     value={recipientsRaw}
@@ -766,7 +766,7 @@ export default function EmailSummaryPage() {
                   />
                 </div>
                 <div>
-                  <label className="text-[9px] uppercase font-bold tracking-wider text-text-tertiary select-none">Subject</label>
+                  <label className="text-[11px] font-medium text-text-tertiary select-none">Subject</label>
                   <Input
                     aria-label="Subject"
                     value={subject}
@@ -832,8 +832,8 @@ export default function EmailSummaryPage() {
               {/* Text Writing Area */}
               <div>
                 <div className="flex items-center justify-between select-none">
-                  <label className="text-[9px] uppercase font-bold tracking-wider text-text-tertiary block">AI Draft Content</label>
-                  <span className="text-[9px] text-text-tertiary/60 font-mono">DASHED STATE: PRE-VERIFIED</span>
+                  <label className="text-[11px] font-medium text-text-tertiary block">AI Draft Content</label>
+                  <span className="text-[11px] text-text-tertiary/60 font-mono">Pre-verified</span>
                 </div>
                 <Textarea
                   rows={13}
@@ -894,7 +894,7 @@ export default function EmailSummaryPage() {
         {/* Global Workstation Status Signals */}
         {(status || ocrWarning || steelWarning || error || sessionError) && (
           <div className="rounded-lg border border-border-default bg-surface-panel p-4 flex flex-col gap-2">
-            <div className="text-xs uppercase font-bold tracking-wider text-text-tertiary select-none">
+            <div className="text-xs font-medium text-text-tertiary select-none">
               System Events & Signals
             </div>
             <div className="space-y-1.5 text-xs">

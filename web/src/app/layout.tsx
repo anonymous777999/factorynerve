@@ -85,6 +85,13 @@ export default function RootLayout({
           }}
         />
         <AppProviders>
+          {/* Skip link for keyboard/screen reader users — WCAG 2.4.1 */}
+          <a
+            href="#main-content"
+            className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-md focus:bg-surface-card focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-accent focus:shadow-md focus:outline-none focus:ring-2 focus:ring-accent"
+          >
+            Skip to main content
+          </a>
           <BetaRolloutBanner />
           <BadgeProvider>
             <AppShell>{children}</AppShell>

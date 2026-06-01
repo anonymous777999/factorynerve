@@ -94,14 +94,14 @@ export function RawDataView({ data, title = "Raw OCR Data" }: RawDataViewProps) 
             {!collapsed && (
                 <>
                     {isTruncated && (
-                        <div className="mb-3 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
-                            ⚠️ Large payload detected ({Math.round(fullSize / 1024)}KB).
+                        <div className="mb-3 rounded-panel border border-status-warning-border bg-status-warning-bg p-3 text-sm text-status-warning-fg">
+                            Large payload detected ({Math.round(fullSize / 1024)}KB).
                             Showing first {Math.round(MAX_DISPLAY_SIZE / 1024)}KB only.
                             Use Download button to get the full data.
                         </div>
                     )}
-                    <div className="overflow-auto rounded-[16px] border border-[#e3e8ef] bg-[#101828] p-4 max-h-[600px]">
-                        <pre className="text-xs text-[#f8fafc] font-mono leading-relaxed">
+                    <div className="overflow-auto rounded-panel border border-border-default bg-surface-app p-4 max-h-[600px]">
+                        <pre className="text-xs text-text-primary font-mono leading-relaxed">
                             {stringified}
                         </pre>
                     </div>
