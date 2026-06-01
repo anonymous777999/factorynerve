@@ -141,6 +141,10 @@ export type OcrPreviewResult = {
   reprocess_count?: number | null;
   user_corrected?: boolean | null;
   review_required?: boolean | null;
+  previous_confidence?: number | null;
+  confidence_dropped?: boolean;
+  confidence_improved?: boolean;
+  last_reprocessed_at?: string | null;
   columns: number;
   avg_confidence: number;
   warnings: string[];

@@ -47,12 +47,12 @@ describe("Badge Component - Governance Compliance", () => {
 
     describe("Status Variants", () => {
         const statusVariants: Array<{
-            status: "success" | "warning" | "danger" | "processing" | "paused";
+            status: "success" | "warning" | "error" | "processing" | "paused";
             label: string;
         }> = [
                 { status: "success", label: "Success" },
                 { status: "warning", label: "Warning" },
-                { status: "danger", label: "Error" },
+                { status: "error", label: "Error" },
                 { status: "processing", label: "Processing" },
                 { status: "paused", label: "Paused" },
             ];

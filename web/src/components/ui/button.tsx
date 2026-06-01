@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 
 type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "destructive";
 type ButtonSize = "default" | "compact" | "icon";
-type ResolvedButtonVariant = "primary" | "secondary" | "ghost";
+type ResolvedButtonVariant = "primary" | "secondary" | "ghost" | "destructive";
 
 export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
@@ -14,7 +14,7 @@ export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
 };
 
 const base =
-  "ui-no-select ui-no-callout inline-flex h-[36px] shrink-0 cursor-pointer items-center justify-center gap-2 rounded-control border text-[length:var(--text-base)] font-medium transition-colors duration-[80ms] ease-standard focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#6366f1] focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:border-transparent disabled:bg-[var(--action-disabled)] disabled:text-[var(--action-disabled-text)]";
+  "ui-no-select ui-no-callout inline-flex h-[36px] shrink-0 cursor-pointer items-center justify-center gap-2 rounded-control border text-[length:var(--text-base)] font-medium transition-all duration-150 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--border-focus)] focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:border-transparent disabled:bg-[var(--action-disabled)] disabled:text-[var(--action-disabled-text)]";
 
 const variants: Record<ButtonVariant, string> = {
   primary:
@@ -26,7 +26,7 @@ const variants: Record<ButtonVariant, string> = {
   ghost:
     "border-transparent bg-transparent text-[var(--text-link)] hover:bg-[var(--action-ghost-hover)] hover:text-[var(--text-link-hover)]",
   destructive:
-    "border-transparent bg-[var(--action-primary)] text-[var(--action-primary-text)] hover:bg-[var(--action-primary-hover)] active:bg-[var(--action-primary-active)]",
+    "border-transparent bg-[var(--action-destructive)] text-[var(--action-primary-text)] hover:bg-[var(--action-destructive-hover)] active:bg-[var(--action-destructive-hover)]",
 };
 
 const sizes: Record<ButtonSize, string> = {
@@ -37,7 +37,6 @@ const sizes: Record<ButtonSize, string> = {
 
 function resolveVariant(variant: ButtonVariant): ResolvedButtonVariant {
   if (variant === "outline") return "secondary";
-  if (variant === "destructive") return "primary";
   return variant;
 }
 

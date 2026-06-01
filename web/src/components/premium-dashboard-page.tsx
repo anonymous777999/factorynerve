@@ -79,7 +79,7 @@ function levelClasses(level: number) {
     case 2:
       return "bg-[rgba(34,197,94,0.75)]";
     case 1:
-      return "bg-[rgba(62,166,255,0.55)]";
+      return "bg-[color-mix(in_srgb,var(--action-primary)_55%,transparent)]";
     default:
       return "bg-[rgba(255,255,255,0.06)]";
   }
@@ -188,14 +188,14 @@ function TimelineChart({ points }: { points: DerivedTimelinePoint[] }) {
             />
           );
         })}
-        <path d={unitPath} fill="none" stroke="#3EA6FF" strokeWidth="4" strokeLinecap="round" />
-        <path d={perfPath} fill="none" stroke="#2DD4BF" strokeWidth="3" strokeLinecap="round" />
+        <path d={unitPath} fill="none" stroke="var(--action-primary)" strokeWidth="4" strokeLinecap="round" />
+        <path d={perfPath} fill="none" stroke="var(--status-success-fg)" strokeWidth="3" strokeLinecap="round" />
         {points.map((point, index) => {
           const x = padding + (index * (width - padding * 2)) / Math.max(1, points.length - 1);
           const unitY = height - padding - (point.units / maxUnits) * (height - padding * 2);
           return (
             <g key={point.date}>
-              <circle cx={x} cy={unitY} r="4" fill="#3EA6FF" />
+              <circle cx={x} cy={unitY} r="4" fill="var(--action-primary)" />
             </g>
           );
         })}
@@ -235,8 +235,8 @@ function FactoryChart({
             type="button"
             onClick={() => onSelect(active ? null : item.factoryId)}
             className={`w-full rounded-2xl border p-4 text-left transition ${active
-              ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)]"
-              : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[rgba(62,166,255,0.25)]"
+              ? "border-[color-mix(in_srgb,var(--action-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--action-primary)_14%,transparent)]"
+              : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[color-mix(in_srgb,var(--action-primary)_25%,transparent)]"
               }`}
           >
             <div className="flex items-center justify-between gap-3">
@@ -249,7 +249,7 @@ function FactoryChart({
               <div className="text-xs text-[var(--muted)]">{item.downtime} min downtime</div>
             </div>
             <div className="mt-3 h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
-              <div className="h-2 rounded-full bg-[linear-gradient(90deg,#3EA6FF,#2DD4BF)]" style={{ width: `${width}%` }} />
+              <div className="h-2 rounded-full bg-[var(--action-primary)]" style={{ width: `${width}%` }} />
             </div>
           </button>
         );
@@ -277,8 +277,8 @@ function ShiftChart({
             type="button"
             onClick={() => onSelect(active ? null : item.shift)}
             className={`rounded-2xl border p-4 text-left transition ${active
-              ? "border-[rgba(45,212,191,0.45)] bg-[rgba(45,212,191,0.14)]"
-              : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[rgba(45,212,191,0.28)]"
+              ? "border-[color-mix(in_srgb,var(--action-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--action-primary)_14%,transparent)]"
+              : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[color-mix(in_srgb,var(--action-primary)_28%,transparent)]"
               }`}
           >
             <div className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">{shiftLabel(item.shift)}</div>
@@ -286,7 +286,7 @@ function ShiftChart({
             <div className="mt-1 text-sm text-[var(--muted)]">{item.units} units - {item.downtime} min downtime</div>
             <div className="mt-3 h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
               <div
-                className="h-2 rounded-full bg-[linear-gradient(90deg,#2DD4BF,#84CC16)]"
+                className="h-2 rounded-full bg-[var(--action-primary)]"
                 style={{ width: `${Math.max(5, Math.min(100, item.performance))}%` }}
               />
             </div>
@@ -660,10 +660,10 @@ export default function PremiumDashboardPage() {
   return (
     <main className="min-h-screen px-4 py-8 md:px-8" data-component="premium-dashboard-page">
       <div className="mx-auto max-w-[1500px] space-y-6">
-        <section className="rounded-[2rem] border border-[rgba(62,166,255,0.18)] bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.18),rgba(11,14,20,0.92)_50%)] p-6 shadow-[0_40px_120px_rgba(3,8,20,0.45)]">
+        <section className="rounded-[2rem] border border-[color-mix(in_srgb,var(--action-primary)_18%,transparent)] bg-[radial-gradient(circle_at_top_left,color-mix(in_srgb,var(--action-primary)_18%,transparent),rgba(11,14,20,0.92)_50%)] p-6 shadow-[0_40px_120px_rgba(3,8,20,0.45)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-[0.32em] text-[rgba(62,166,255,0.88)]">
+              <div className="text-xs font-semibold uppercase tracking-[0.32em] text-[color-mix(in_srgb,var(--action-primary)_88%,transparent)]">
                 Owner Intelligence
               </div>
               <h1 className="text-3xl font-semibold text-[var(--text)]">Read the owner signals before you jump into a desk</h1>
@@ -679,7 +679,7 @@ export default function PremiumDashboardPage() {
           </div>
 
           <div className="mt-6 flex flex-wrap items-center gap-3 text-xs">
-            <span className="rounded-full border border-[rgba(45,212,191,0.34)] bg-[rgba(45,212,191,0.14)] px-4 py-2 text-[var(--text)]">
+            <span className="rounded-full border border-[color-mix(in_srgb,var(--action-primary)_34%,transparent)] bg-[color-mix(in_srgb,var(--action-primary)_14%,transparent)] px-4 py-2 text-[var(--text)]">
               Tier: {dashboard?.plan?.toUpperCase() || "PREMIUM"}
             </span>
             {dashboard?.enterprise_mode ? (
@@ -687,7 +687,7 @@ export default function PremiumDashboardPage() {
                 Enterprise mode active
               </span>
             ) : (
-              <span className="rounded-full border border-[rgba(62,166,255,0.25)] bg-[rgba(62,166,255,0.1)] px-4 py-2 text-[var(--text)]">
+              <span className="rounded-full border border-[color-mix(in_srgb,var(--action-primary)_25%,transparent)] bg-[color-mix(in_srgb,var(--action-primary)_10%,transparent)] px-4 py-2 text-[var(--text)]">
                 Factory premium surface
               </span>
             )}
@@ -1022,7 +1022,7 @@ export default function PremiumDashboardPage() {
                     <CardContent className="space-y-3">
                       {topBatchSignals.length ? (
                         topBatchSignals.map((item) => (
-                          <Link key={`batch:${item.id}`} href={`/steel/batches/${item.id}`} className="block rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 transition hover:border-[rgba(62,166,255,0.3)]">
+                          <Link key={`batch:${item.id}`} href={`/steel/batches/${item.id}`} className="block rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 transition hover:border-[color-mix(in_srgb,var(--action-primary)_30%,transparent)]">
                             <div className="flex items-center justify-between gap-3">
                               <div className="text-sm font-semibold text-[var(--text)]">{item.batch_code}</div>
                               <div className="text-xs text-[var(--muted)]">Score {item.anomaly_score.toFixed(1)}</div>
@@ -1105,7 +1105,7 @@ export default function PremiumDashboardPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-[rgba(62,166,255,0.2)] bg-[rgba(62,166,255,0.08)] p-4 text-sm leading-6 text-[var(--text)]/90">
+                    <div className="rounded-2xl border border-[color-mix(in_srgb,var(--action-primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--action-primary)_8%,transparent)] p-4 text-sm leading-6 text-[var(--text)]/90">
                       {ocrSummary.trust_note}
                     </div>
                   </CardContent>
@@ -1150,7 +1150,7 @@ export default function PremiumDashboardPage() {
                   {(dashboard.insights || []).map((insight) => (
                     <div
                       key={insight}
-                      className="rounded-2xl border border-[rgba(62,166,255,0.16)] bg-[rgba(62,166,255,0.08)] p-4 text-sm leading-6 text-[var(--text)]/90"
+                      className="rounded-2xl border border-[color-mix(in_srgb,var(--action-primary)_16%,transparent)] bg-[color-mix(in_srgb,var(--action-primary)_8%,transparent)] p-4 text-sm leading-6 text-[var(--text)]/90"
                     >
                       {insight}
                     </div>

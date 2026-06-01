@@ -129,12 +129,12 @@ export function OcrReviewPreviewPane({
 
           <div className="overflow-hidden rounded-panel border border-border-default bg-surface-shell">
             {imageUrl ? (
-              <div className="relative bg-surface-app">
+              <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg bg-surface-panel">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={imageUrl}
                   alt={activeRecord.source_filename || `OCR source ${activeRecord.id}`}
-                  className="max-h-[70vh] w-full object-contain"
+                  className="absolute inset-0 h-full w-full object-contain"
                 />
               </div>
             ) : (

@@ -175,11 +175,11 @@
   /* --- Surface Hierarchy ---
      Rule: each level must be visually distinguishable from its neighbors.
      app-bg < shell < panel < card < elevated < overlay */
-  --surface-app: hsl(210 17% 96%);
-  --surface-shell: hsl(210 13% 93%);
-  --surface-panel: hsl(210 17% 97%);
-  --surface-card: hsl(210 18% 98%);
-  --surface-elevated: hsl(210 20% 99%);
+  --surface-app: hsl(210 16% 94%);
+  --surface-shell: hsl(210 16% 96%);
+  --surface-panel: hsl(210 17% 98%);
+  --surface-card: hsl(0 0% 100%);
+  --surface-elevated: hsl(0 0% 100%);
   --surface-overlay: hsl(210 20% 99%);
   --surface-hover: hsl(210 15% 95%);
   --surface-active: hsl(210 14% 92%);
@@ -423,7 +423,7 @@
 
 :root {
   /* Font families */
-  --font-sans: "IBM Plex Sans", "Inter", system-ui, -apple-system, sans-serif;
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
   --font-numeric: "Tabular", "Inter", system-ui, sans-serif;
   /* tabular-nums */

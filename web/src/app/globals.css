@@ -5,10 +5,12 @@
              File A restores the cinematic warm visual soul.
    ============================================================ */
 
-/* --- FONTS — Modern operational typography --- */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap");
+/* --- FONTS — Modern operational typography (loaded via next/font in layout.tsx) --- */
 @import "../styles/tokens.css";
 @import "tailwindcss";
+
+/* Page-transition / enter-exit animation utilities (animate-in, fade-in, …). */
+@plugin "tailwindcss-animate";
 
 
 /* ============================================================
@@ -16,9 +18,9 @@
    ============================================================ */
 
 :root {
-  /* --- Font families (modern operational) --- */
-  --font-body: "Inter", system-ui, -apple-system, sans-serif;
-  --font-display: "Inter", system-ui, -apple-system, sans-serif;
+  /* --- Font families (modern operational) — loaded via next/font (--font-inter) --- */
+  --font-body: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-inter), system-ui, -apple-system, sans-serif;
 
   /* --- Primary color scale (not in tokens.css — globals-specific) --- */
   --color-primary: #3b82f6;
@@ -71,11 +73,11 @@
   /* --- Shadow 2xl (tokens.css has xs/sm/md/lg/xl — only 2xl is globals-specific) --- */
   --shadow-2xl: 0 42px 90px rgba(3, 8, 18, 0.34);
 
-  /* --- Warm industrial accent (DEPRECATED - use indigo #6366f1) --- */
-  --accent: #6366f1;
-  --accent-strong: #5558e3;
-  --accent-soft: rgba(99, 102, 241, 0.18);
-  --accent-quiet: rgba(99, 102, 241, 0.1);
+  /* SINGLE ACCENT — never use #6366f1 or #3EA6FF directly */
+  --accent: var(--action-primary);
+  --accent-strong: var(--action-primary-active);
+  --accent-soft: color-mix(in srgb, var(--action-primary) 18%, transparent);
+  --accent-quiet: color-mix(in srgb, var(--action-primary) 10%, transparent);
 
   /* --- Interaction timing tokens (Sprint 2) --- */
   --transition-fast: 80ms;
@@ -149,36 +151,6 @@
    *   --scrollbar-track, --scrollbar-thumb,
    *     --scrollbar-thumb-hover                           → tokens.css §13 scrollbar tokens
    */
-}
-
-/* ============================================================
-   DARK MODE TOKENS (Sprint 2)
-   ============================================================ */
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    /* Dark mode surfaces (2-3% lightness differentiation) */
-    --surface-app: #09111B;
-    --surface-shell: #0D1523;
-    --surface-panel: #111927;
-    --surface-card: #151F2E;
-
-    /* Dark mode text */
-    --text-primary: #EDF2F7;
-    --text-secondary: #94A3B8;
-    --text-tertiary: #64748B;
-
-    /* Dark mode borders */
-    --border-default: rgba(255, 255, 255, 0.1);
-    --border-subtle: rgba(255, 255, 255, 0.05);
-
-    /* Dark mode shadows (1.5-2x elevation) */
-    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
-    --shadow-md: 0 6px 12px rgba(0, 0, 0, 0.3);
-
-    /* Accent remains same in dark mode */
-    --accent: #6366f1;
-  }
 }
 
 /* ============================================================

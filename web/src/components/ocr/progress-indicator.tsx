@@ -56,8 +56,10 @@ export function ProgressIndicator({ thumbnailSrc, stage, warning }: ProgressIndi
         </div>
         <div className="grid min-h-[20rem] place-items-center bg-surface-shell p-4">
           {thumbnailSrc ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={thumbnailSrc} alt="OCR processing preview" className="max-h-[20rem] w-full object-contain" />
+            <div className="relative aspect-[4/3] w-full overflow-hidden rounded-lg bg-surface-panel">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={thumbnailSrc} alt="OCR processing preview" className="absolute inset-0 h-full w-full object-contain" />
+            </div>
           ) : (
             <div className="text-sm text-text-secondary">Preparing preview</div>
           )}

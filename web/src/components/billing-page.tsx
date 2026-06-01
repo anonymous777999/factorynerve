@@ -435,7 +435,7 @@ function BillingPageInner() {
         ? "Locked - add OCR pack"
         : `${billing?.usage?.credits_used ?? 0}${billing?.usage?.max_credits ? ` / ${billing.usage.max_credits}` : " / Unlimited"}`,
       widthPercent: progressPercent(billing?.usage?.credits_used, billing?.usage?.max_credits),
-      barClassName: "bg-[linear-gradient(90deg,#3ea6ff,#2dd4bf)]",
+      barClassName: "bg-[var(--action-primary)]",
     },
     rateLimitLabel: `${billing?.usage?.rate_limit_per_minute ?? "-"} / minute`,
     summaryQuota: {
@@ -594,7 +594,9 @@ function BillingPageInner() {
           },
         },
         theme: {
-          color: "#3ea6ff",
+          // Razorpay checkout renders in its own iframe and cannot read CSS
+          // variables; this must be the literal value of --action-primary (#1D6EEB).
+          color: "#1D6EEB",
         },
       });
       checkout.open();

@@ -30,7 +30,7 @@ export function getQuotaHealth(used?: number, limit?: number) {
       badge: "Unlimited",
       detail: "No monthly cap",
       badgeClass: "border border-sky-400/30 bg-sky-400/15 text-sky-200",
-      barClass: "bg-[linear-gradient(90deg,#3ea6ff,#2dd4bf)]",
+      barClass: "bg-[var(--action-primary)]",
     };
   }
 
@@ -62,7 +62,7 @@ export function getQuotaHealth(used?: number, limit?: number) {
       badge: "Tracking",
       detail: `${percent}% used`,
       badgeClass: "border border-sky-400/30 bg-sky-400/15 text-sky-200",
-      barClass: "bg-[linear-gradient(90deg,#3ea6ff,#2dd4bf)]",
+      barClass: "bg-[var(--action-primary)]",
     };
   }
 

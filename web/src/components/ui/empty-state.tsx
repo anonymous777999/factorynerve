@@ -26,19 +26,27 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-4 rounded-panel border border-border-subtle bg-surface-panel px-lg py-16 text-center",
+        "flex flex-col items-center justify-center rounded-panel bg-surface-panel py-12 px-6 text-center",
         className,
       )}
       {...props}
     >
-      {icon ? <div className="text-text-secondary">{icon}</div> : null}
-      <div className="space-y-sm">
-        <p className="text-panel-title font-semibold text-text-primary">{title}</p>
-        {description ? <p className="mx-auto max-w-2xl text-body text-text-secondary">{description}</p> : null}
-      </div>
-      {children ? <div className="max-w-2xl text-body text-text-secondary">{children}</div> : null}
+      {icon ? (
+        <div className="mb-4 text-text-tertiary [&_svg]:h-12 [&_svg]:w-12">{icon}</div>
+      ) : null}
+      <p className="mb-2 text-lg font-medium text-text-primary">{title}</p>
+      {description ? (
+        <p className="mx-auto max-w-[320px] text-md leading-relaxed text-text-secondary">
+          {description}
+        </p>
+      ) : null}
+      {children ? (
+        <div className="mx-auto mt-2 max-w-[320px] text-md leading-relaxed text-text-secondary">
+          {children}
+        </div>
+      ) : null}
       {action || secondaryAction ? (
-        <div className="flex flex-wrap items-center justify-center gap-sm">
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-sm">
           {action}
           {secondaryAction}
         </div>

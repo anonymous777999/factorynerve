@@ -29,6 +29,7 @@ const semanticColors = {
   border: {
     subtle: "var(--border-subtle)",
     default: "var(--border-default)",
+    secondary: "var(--color-border-secondary)",
     strong: "var(--border-strong)",
     focus: "var(--border-focus)",
     danger: "var(--border-danger)",

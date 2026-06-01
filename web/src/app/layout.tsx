@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
+import { Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
+import { cn } from "@/lib/utils";
 import { AppProviders } from "@/components/app-providers";
 import { AppShell } from "@/components/app-shell";
 import { BetaRolloutBanner } from "@/components/beta-rollout-banner";
@@ -10,6 +12,13 @@ import { OfflineSyncAgent } from "@/components/offline-sync-agent";
 import { ServiceWorker } from "@/components/service-worker";
 import { ToastCenter } from "@/components/toast-center";
 import { BadgeProvider } from "@/providers/badge-provider";
+
+const inter = Inter({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-inter",
+  weight: ["400", "500", "600"],
+});
 
 export const metadata: Metadata = {
   title: "DPR.ai Web",
@@ -27,7 +36,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0b0e14",
+  themeColor: [
+    { media: "(prefers-color-scheme: dark)", color: "#09111B" },
+    { media: "(prefers-color-scheme: light)", color: "#f0f2f5" },
+  ],
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
@@ -47,7 +59,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className="h-full antialiased" data-theme="dark" data-density="default">
+    <html
+      lang="en"
+      className={cn("h-full antialiased", inter.variable)}
+      data-theme="dark"
+      data-density="default"
+    >
       <body className="flex min-h-full flex-col bg-surface-app font-sans text-text-primary">
         <Script
           id="dpr-ui-preferences-init"

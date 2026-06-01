@@ -18,6 +18,7 @@ import { ShareLinkGenerator } from "@/components/ocr/share-link-generator";
 import { UploadBox } from "@/components/ocr/upload-box";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { Select } from "@/components/ui/select";
 import { USE_TANSTACK_TABLE } from "@/config/featureFlags";
 import { formatApiErrorMessage } from "@/lib/api";
@@ -638,6 +639,15 @@ export default function OcrScanPage() {
   const [savedId, setSavedId] = useState<number | null>(null);
   const [draftDirty, setDraftDirty] = useState(false);
   const [shareLink, setShareLink] = useState<string | null>(null);
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const [pendingCancelAction, setPendingCancelAction] = useState<(() => void) | null>(null);
+  const [confirmTitle, setConfirmTitle] = useState("Replace existing scan?");
+  const [confirmDescription, setConfirmDescription] = useState(
+    "This will overwrite your current scan. This cannot be undone.",
+  );
+  const [confirmLabel, setConfirmLabel] = useState("Replace");
   const [shareExpiresAt, setShareExpiresAt] = useState<string | null>(null);
   // TODO: requires backend endpoint for persistence
   const [selectedModel, setSelectedModel] = useState<ModelOption>("auto");
@@ -1281,28 +1291,31 @@ export default function OcrScanPage() {
       setMagnifierPoint({ x: 50, y: 50, visible: false });
       setStep("preview");
 
-      let draftSaveFailed = false;
-      if (result.reused_verification_id) {
-        setSavedId(result.reused_verification_id);
-      } else {
-        // If this was a fresh scan after a cached one, check confidence delta
-        const previousConf = (result as any).previous_confidence;
-        if (forceRefresh && previousConf != null) {
-          if ((result as any).confidence_dropped) {
-            const keepOriginal = !window.confirm(
-              "Fresh scan looks less reliable than the saved result.\n\nDo you want to use the new result anyway? Click Cancel to keep your previous result."
-            );
-            if (keepOriginal) {
-              // Re-run without force_refresh to get the cached one back
-              void processFile(file, sourceName, model, false);
-              return;
-            }
-          } else if ((result as any).confidence_improved) {
-            setStatus("Scan updated with a cleaner read.");
+      const finalizeAfterSave = (draftSaveFailed: boolean) => {
+        if (!draftSaveFailed && !status) {
+          if (warpSkipped) {
+            setStatus("Sheet ready to review. Perspective correction was skipped for this image.");
+            setStatusTone("warning");
+          } else if (result.scan_quality?.confidence_band === "low") {
+            setStatus("Image quality may affect accuracy.");
+            setStatusTone("warning");
+          } else if (result.cached) {
+            const ageText = result.cache_age_hours ? ` (${Math.round(result.cache_age_hours)}h ago)` : "";
+            setStatus(`Instant result from cache${ageText}. Review before approval.`);
+            setStatusTone("success");
+          } else if (result.reused) {
+            setStatus("Existing OCR draft reopened.");
+            setStatusTone("success");
+          } else {
+            setStatus("Sheet ready to review.");
             setStatusTone("success");
           }
         }
+        signalWorkflowRefresh("ocr-scan");
+        void loadRecentRecords();
+      };
 
+      const saveDraft = async (): Promise<boolean> => {
         try {
           const saved = await createOcrVerification({
             templateId: null,
@@ -1324,35 +1337,49 @@ export default function OcrScanPage() {
             file: prepared.file,
           });
           setSavedId(saved.id);
+          return false;
         } catch (saveReason) {
-          draftSaveFailed = true;
           setSavedId(null);
           setStatus(humanDraftSaveError(saveReason));
           setStatusTone("warning");
+          return true;
         }
-      }
+      };
 
-      if (!draftSaveFailed && !status) {
-        if (warpSkipped) {
-          setStatus("Sheet ready to review. Perspective correction was skipped for this image.");
-          setStatusTone("warning");
-        } else if (result.scan_quality?.confidence_band === "low") {
-          setStatus("Image quality may affect accuracy.");
-          setStatusTone("warning");
-        } else if (result.cached) {
-          const ageText = result.cache_age_hours ? ` (${Math.round(result.cache_age_hours)}h ago)` : "";
-          setStatus(`Instant result from cache${ageText}. Review before approval.`);
-          setStatusTone("success");
-        } else if (result.reused) {
-          setStatus("Existing OCR draft reopened.");
-          setStatusTone("success");
-        } else {
-          setStatus("Sheet ready to review.");
+      if (result.reused_verification_id) {
+        setSavedId(result.reused_verification_id);
+        finalizeAfterSave(false);
+      } else {
+        // If this was a fresh scan after a cached one, check confidence delta
+        const previousConf = result.previous_confidence;
+        if (forceRefresh && previousConf != null && result.confidence_dropped) {
+          // Defer the decision to an accessible confirmation modal instead of a
+          // blocking window.confirm. Confirm = keep the fresh (less reliable) scan;
+          // cancel = re-run without force_refresh to restore the previous result.
+          setConfirmTitle("Replace existing scan?");
+          setConfirmDescription(
+            "The fresh scan looks less reliable than your saved result. Replace it with the new read, or cancel to keep your previous result.",
+          );
+          setConfirmLabel("Replace");
+          setPendingAction(() => () => {
+            void (async () => {
+              const draftSaveFailed = await saveDraft();
+              finalizeAfterSave(draftSaveFailed);
+            })();
+          });
+          setPendingCancelAction(() => () => {
+            void processFile(file, sourceName, model, false);
+          });
+          setConfirmOpen(true);
+          return;
+        }
+        if (forceRefresh && previousConf != null && result.confidence_improved) {
+          setStatus("Scan updated with a cleaner read.");
           setStatusTone("success");
         }
+        const draftSaveFailed = await saveDraft();
+        finalizeAfterSave(draftSaveFailed);
       }
-      signalWorkflowRefresh("ocr-scan");
-      void loadRecentRecords();
     } catch (reason) {
       console.error("OCR extraction error:", reason);
       setStatus(humanExtractError(reason));
@@ -1721,6 +1748,36 @@ export default function OcrScanPage() {
 
   return (
     <>
+      <ConfirmationModal
+        open={confirmOpen}
+        onOpenChange={(next) => {
+          if (!next) {
+            // Treat dismiss/cancel as the cancel action.
+            const cancel = pendingCancelAction;
+            setConfirmOpen(false);
+            setPendingAction(null);
+            setPendingCancelAction(null);
+            cancel?.();
+          }
+        }}
+        title={confirmTitle}
+        description={confirmDescription}
+        status="error"
+        statusLabel="Destructive"
+        primaryActionLabel={confirmLabel}
+        onConfirm={() => {
+          const action = pendingAction;
+          setConfirmOpen(false);
+          setPendingAction(null);
+          setPendingCancelAction(null);
+          action?.();
+        }}
+      >
+        <p className="text-body text-text-secondary">
+          Choose {confirmLabel} to continue, or Cancel to keep your current result.
+        </p>
+      </ConfirmationModal>
+
       {cameraOpen ? (
         <CameraCapture
           onClose={() => route.closeCamera()}
@@ -1884,9 +1941,14 @@ export default function OcrScanPage() {
                   className="rounded-control border border-current/30 px-3 py-1.5 text-xs font-semibold transition hover:bg-white/10"
                   onClick={() => {
                     if (resultPreview.userCorrected) {
-                      if (window.confirm("You have manually edited this result. Rescanning will replace your edits. Continue?")) {
-                        handleRerunWithSelectedModel(true);
-                      }
+                      setConfirmTitle("Replace existing scan?");
+                      setConfirmDescription(
+                        "You have manually edited this result. Rescanning will overwrite your edits. This cannot be undone.",
+                      );
+                      setConfirmLabel("Rescan");
+                      setPendingAction(() => () => handleRerunWithSelectedModel(true));
+                      setPendingCancelAction(null);
+                      setConfirmOpen(true);
                     } else {
                       handleRerunWithSelectedModel(true);
                     }
@@ -1922,9 +1984,14 @@ export default function OcrScanPage() {
                   className="rounded-full border-2 border-current/30 bg-white/60 px-4 py-2 text-xs font-semibold transition hover:bg-white hover:shadow-sm"
                   onClick={() => {
                     if (resultPreview.userCorrected) {
-                      if (window.confirm("You have manually edited this result. Rescanning will replace your edits. Continue?")) {
-                        handleRerunWithSelectedModel(true);
-                      }
+                      setConfirmTitle("Replace existing scan?");
+                      setConfirmDescription(
+                        "You have manually edited this result. Rescanning will overwrite your edits. This cannot be undone.",
+                      );
+                      setConfirmLabel("Rescan");
+                      setPendingAction(() => () => handleRerunWithSelectedModel(true));
+                      setPendingCancelAction(null);
+                      setConfirmOpen(true);
                     } else {
                       handleRerunWithSelectedModel(true);
                     }
