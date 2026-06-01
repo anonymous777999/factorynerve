@@ -463,7 +463,7 @@ function BillingPageInner() {
       badgeClassName: smartHealth.badgeClass,
       barClassName: smartHealth.barClass,
       widthPercent: smartHealth.percent,
-      detail: `${smartHealth.detail} · Used by smart DPR input and history-based production suggestions.`,
+      detail: `${smartHealth.detail} Â· Used by smart DPR input and history-based production suggestions.`,
     },
     activeAddonBadges: (billing?.active_addons || []).map((addon) => addon.name),
   };
