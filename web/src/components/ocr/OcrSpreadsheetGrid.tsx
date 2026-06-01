@@ -175,12 +175,12 @@ export function OcrSpreadsheetGrid({
             {isUserEdited ? (
               <span
                 aria-label="User edited"
-                className="ml-auto inline-flex items-center rounded-full border border-border-default bg-surface-card px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-text-secondary"
+                className="ml-auto inline-flex items-center rounded-full border border-border-default bg-surface-card px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary"
               >
                 Edited
               </span>
             ) : (
-              <span className={`ml-auto rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${getConfidenceBadgeClass(confidenceTier)}`}>
+              <span className={`ml-auto rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] ${getConfidenceBadgeClass(confidenceTier)}`}>
                 {getConfidenceLabel(confidenceTier)}
               </span>
             )}
@@ -237,13 +237,13 @@ export function OcrSpreadsheetGrid({
           Tinted cells are AI output. Edited cells return to a neutral surface and show an &ldquo;Edited&rdquo; tag.
         </span>
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-1 rounded-full border border-status-synced-border bg-status-synced-bg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-status-synced-fg">
+          <span className="inline-flex items-center gap-1 rounded-full border border-status-synced-border bg-status-synced-bg px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-status-synced-fg">
             Verified
           </span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-status-warning-border bg-status-warning-bg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-status-warning-fg">
+          <span className="inline-flex items-center gap-1 rounded-full border border-status-warning-border bg-status-warning-bg px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-status-warning-fg">
             Check
           </span>
-          <span className="inline-flex items-center gap-1 rounded-full border border-status-danger-border bg-status-danger-bg px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-status-danger-fg">
+          <span className="inline-flex items-center gap-1 rounded-full border border-status-danger-border bg-status-danger-bg px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-status-danger-fg">
             Review
           </span>
         </div>
@@ -256,7 +256,7 @@ export function OcrSpreadsheetGrid({
           <thead className="sticky top-0 z-10 shadow-md">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
-                <th className="sticky left-0 z-20 w-12 border border-border-default bg-surface-panel px-2 py-2 text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">
+                <th className="sticky left-0 z-20 w-12 border border-border-default bg-surface-panel px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">
                   Row
                 </th>
                 {headerGroup.headers.map((header) => (

@@ -31,10 +31,10 @@ export function ImagePreview({
             </div>
           ) : null}
           {title ? <div className="mt-1 text-lg font-semibold text-[#101418]">{title}</div> : null}
-          {subtitle ? <div className="mt-1 text-sm text-[#66707c]">{subtitle}</div> : null}
+          {subtitle ? <div className="mt-1 text-sm text-text-secondary">{subtitle}</div> : null}
         </div>
       ) : null}
-      <div className="relative grid min-h-[18rem] place-items-center bg-[#f6f7f8]">
+      <div className="relative grid min-h-[18rem] place-items-center bg-surface-shell">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={src} alt={alt} className="max-h-[68vh] w-full object-contain" />
         {overlay}

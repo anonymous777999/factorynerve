@@ -197,7 +197,7 @@ export function SteelInventoryPage() {
                             </div>
                           </td>
                           <td className="px-3 py-3">
-                            <span className={`inline-flex rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${badgeTone(row.confidence_status)}`}>
+                            <span className={`inline-flex rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeTone(row.confidence_status)}`}>
                               {row.confidence_status}
                             </span>
                           </td>

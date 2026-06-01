@@ -345,17 +345,17 @@ function AppShellFrame({
                       variant="outline"
                       onClick={shell.toggleSidebar}
                       aria-label={shell.sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-                      className="h-8 border-border-default bg-surface-elevated px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-text-primary hover:border-border-strong hover:bg-surface-hover"
+                      className="h-8 border-border-default bg-surface-elevated px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-primary hover:border-border-strong hover:bg-surface-hover"
                     >
                       {shell.sidebarOpen ? "Hide Nav" : "Show Nav"}
                     </Button>
                     <div className="h-4 w-px bg-border-default" />
                     <div className="min-w-0 space-y-0.5">
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--action-primary)]">
+                        <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--action-primary)]">
                           DPR.ai
                         </span>
-                        <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-text-tertiary">
+                        <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-text-tertiary">
                           {factoryName}
                         </span>
                       </div>
@@ -363,7 +363,7 @@ function AppShellFrame({
                         <span className="truncate text-sm font-semibold text-text-primary">
                           {shell.currentItem.label}
                         </span>
-                        <span className="hidden truncate font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary xl:inline">
+                        <span className="hidden truncate font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary xl:inline">
                           {shell.currentItem.description}
                         </span>
                       </div>
@@ -380,7 +380,7 @@ function AppShellFrame({
                       size="compact"
                       variant="outline"
                       onClick={() => setCommandPaletteOpen(true)}
-                      className="h-8 border-border-default bg-surface-elevated px-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-text-primary hover:border-border-strong hover:bg-surface-hover"
+                      className="h-8 border-border-default bg-surface-elevated px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-primary hover:border-border-strong hover:bg-surface-hover"
                     >
                       {focusMode ? "Workspace Commands" : "Commands"}
                     </Button>

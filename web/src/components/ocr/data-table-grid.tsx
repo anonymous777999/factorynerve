@@ -221,7 +221,7 @@ export function DataTableGrid({
         <table className="min-w-full border-separate border-spacing-0 text-table-density">
           <thead className="sticky top-0 z-10 bg-surface-panel">
             <tr>
-              <th className="sticky left-0 z-20 w-12 min-w-12 border-b border-r border-border-default bg-surface-panel px-2 py-cell-y text-center text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">
+              <th className="sticky left-0 z-20 w-12 min-w-12 border-b border-r border-border-default bg-surface-panel px-2 py-cell-y text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">
                 Row
               </th>
               {normalizedHeaders.map((header, columnIndex) => (
@@ -327,7 +327,7 @@ export function DataTableGrid({
                           onDoubleClick={() => beginEdit({ row: rowIndex, column: columnIndex })}
                         >
                           <span className="truncate">{cellData.value || "\u00A0"}</span>
-                          <span className={cn("ml-auto rounded-badge border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em]", getConfidenceBadgeClass(confidenceTier))}>
+                          <span className={cn("ml-auto rounded-badge border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em]", getConfidenceBadgeClass(confidenceTier))}>
                             {getConfidenceLabel(confidenceTier)}
                           </span>
                         </button>

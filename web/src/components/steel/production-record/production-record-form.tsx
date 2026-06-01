@@ -46,7 +46,7 @@ export function ProductionRecordForm({
                 validationState={toValidationState(fieldState.error?.message)}
                 aria-invalid={fieldState.invalid}
                 aria-describedby="steel-production-batch-code-help"
-                className="mt-2 bg-[#0f1419] border-gray-700 text-white placeholder:text-gray-600"
+                className="mt-2 bg-surface-app border-border-default text-text-primary placeholder:text-text-tertiary"
                 onChange={(event) => field.onChange(normalizeBatchCode(event.target.value))}
               />
               <HelperText
@@ -80,7 +80,7 @@ export function ProductionRecordForm({
                 validationState={toValidationState(fieldState.error?.message)}
                 aria-invalid={fieldState.invalid}
                 aria-describedby="steel-production-date-help"
-                className="mt-2 bg-[#0f1419] border-gray-700 text-white"
+                className="mt-2 bg-surface-app border-border-default text-text-primary"
               />
               <HelperText
                 id="steel-production-date-help"
@@ -118,7 +118,7 @@ export function ProductionRecordForm({
                 validationState={toValidationState(fieldState.error?.message)}
                 aria-invalid={fieldState.invalid}
                 aria-describedby="steel-production-input-item-help"
-                className="mt-2 bg-[#0f1419] border-gray-700 text-white"
+                className="mt-2 bg-surface-app border-border-default text-text-primary"
                 onValueChange={field.onChange}
                 onBlur={field.onBlur}
               />
@@ -156,7 +156,7 @@ export function ProductionRecordForm({
                 validationState={toValidationState(fieldState.error?.message)}
                 aria-invalid={fieldState.invalid}
                 aria-describedby="steel-production-output-item-help"
-                className="mt-2 bg-[#0f1419] border-gray-700 text-white"
+                className="mt-2 bg-surface-app border-border-default text-text-primary"
                 onValueChange={field.onChange}
                 onBlur={field.onBlur}
               />
@@ -198,7 +198,7 @@ export function ProductionRecordForm({
                 validationState={toValidationState(fieldState.error?.message)}
                 aria-invalid={fieldState.invalid}
                 aria-describedby="steel-production-input-quantity-help"
-                className="mt-2 font-mono bg-[#0f1419] border-gray-700 text-white placeholder:text-gray-600"
+                className="mt-2 font-mono bg-surface-app border-border-default text-text-primary placeholder:text-text-tertiary"
               />
               <HelperText
                 id="steel-production-input-quantity-help"
@@ -235,7 +235,7 @@ export function ProductionRecordForm({
                 validationState={toValidationState(fieldState.error?.message)}
                 aria-invalid={fieldState.invalid}
                 aria-describedby="steel-production-expected-output-help"
-                className="mt-2 font-mono bg-[#0f1419] border-gray-700 text-white placeholder:text-gray-600"
+                className="mt-2 font-mono bg-surface-app border-border-default text-text-primary placeholder:text-text-tertiary"
               />
               <HelperText
                 id="steel-production-expected-output-help"
@@ -272,7 +272,7 @@ export function ProductionRecordForm({
                 validationState={toValidationState(fieldState.error?.message)}
                 aria-invalid={fieldState.invalid}
                 aria-describedby="steel-production-actual-output-help"
-                className="mt-2 font-mono bg-[#0f1419] border-gray-700 text-white placeholder:text-gray-600"
+                className="mt-2 font-mono bg-surface-app border-border-default text-text-primary placeholder:text-text-tertiary"
               />
               <HelperText
                 id="steel-production-actual-output-help"
@@ -306,7 +306,7 @@ export function ProductionRecordForm({
               validationState={toValidationState(fieldState.error?.message)}
               aria-invalid={fieldState.invalid}
               aria-describedby="steel-production-notes-help"
-              className="mt-2 bg-[#0f1419] border-gray-700 text-white placeholder:text-gray-600"
+              className="mt-2 bg-surface-app border-border-default text-text-primary placeholder:text-text-tertiary"
             />
             <HelperText
               id="steel-production-notes-help"

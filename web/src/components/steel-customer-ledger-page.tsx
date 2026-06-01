@@ -1010,10 +1010,10 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className={`inline-flex rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${taskPriorityBadgeClass(task.priority)}`}>
+                        <div className={`inline-flex rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${taskPriorityBadgeClass(task.priority)}`}>
                           {formatTaskLabel(task.priority)}
                         </div>
-                        <div className={`inline-flex rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${taskStatusBadgeClass(task.status)}`}>
+                        <div className={`inline-flex rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${taskStatusBadgeClass(task.status)}`}>
                           {formatTaskLabel(task.status)}
                         </div>
                       </div>

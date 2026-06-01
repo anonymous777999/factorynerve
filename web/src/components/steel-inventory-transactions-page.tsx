@@ -170,7 +170,7 @@ export function SteelInventoryTransactionsPage() {
                           <td className="px-3 py-3 text-[var(--muted)]">{tx.transaction_type.replace("_", " ")}</td>
                           <td className="px-3 py-3 font-mono text-white">{formatKg(tx.quantity_kg)}</td>
                           <td className="px-3 py-3">
-                            <span className={`rounded-full px-2 py-0.5 text-[10px] uppercase font-bold ${tx.direction === "in" ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"}`}>
+                            <span className={`rounded-full px-2 py-0.5 text-[11px] uppercase font-bold ${tx.direction === "in" ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"}`}>
                               {tx.direction}
                             </span>
                           </td>

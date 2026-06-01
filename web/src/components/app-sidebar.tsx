@@ -760,11 +760,11 @@ export function AppSidebar({
         <div className="factory-sidebar-header rounded-panel border border-border-subtle bg-surface-panel p-3 shadow-[var(--shadow-xs)]">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="text-[9px] font-semibold uppercase tracking-[0.24em] text-[var(--action-primary)]">DPR.ai</div>
+              <div className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--action-primary)]">DPR.ai</div>
               <div className="mt-1 truncate text-sm font-semibold leading-5 text-text-primary">
                 {activeFactoryName}
               </div>
-              <div className="mt-0.5 text-[10px] leading-4 uppercase tracking-[0.14em] text-text-secondary">
+              <div className="mt-0.5 text-[11px] leading-4 uppercase tracking-[0.14em] text-text-secondary">
                 {activeIndustryLabel || (translate ? translate("shell.factory_context", "Factory context") : "Factory context")}
                 {organizationPlan ? ` • ${organizationPlan} ${translate ? translate("common.plan", "plan") : "plan"}` : ""}
               </div>
@@ -780,16 +780,16 @@ export function AppSidebar({
           </div>
 
           <div className="mt-3 flex flex-wrap gap-1.5">
-            <span className="rounded-badge border border-border-subtle bg-surface-elevated px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-text-secondary">
+            <span className="rounded-badge border border-border-subtle bg-surface-elevated px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-secondary">
               {roleLabel(resolvedRole, translate)}
             </span>
             {workflowTemplateLabel ? (
-              <span className="rounded-badge border border-border-subtle bg-surface-shell px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
+              <span className="rounded-badge border border-border-subtle bg-surface-shell px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
                 {workflowTemplateLabel}
               </span>
             ) : null}
             {organizationName ? (
-              <span className="truncate rounded-badge border border-border-subtle bg-surface-shell px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
+              <span className="truncate rounded-badge border border-border-subtle bg-surface-shell px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-tertiary">
                 {organizationName}
               </span>
             ) : null}
@@ -797,7 +797,7 @@ export function AppSidebar({
 
           {factoryChoices.length > 1 ? (
             <div className="mt-3">
-              <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+              <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
                 {translate ? translate("shell.switch_factory", "Switch Factory") : "Switch Factory"}
               </label>
               <Select
@@ -917,7 +917,7 @@ export function AppSidebar({
             <details className="group rounded-panel border border-border-subtle bg-surface-panel px-3 py-3 shadow-[var(--shadow-xs)]">
               <summary className="ui-no-select ui-no-callout flex cursor-pointer list-none items-center justify-between gap-3 text-left">
                 <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
                     {translate ? translate("shell.account_title", "Account") : "Account"}
                   </div>
                   <div className="mt-1 text-sm font-semibold text-[var(--text)]">
@@ -931,7 +931,7 @@ export function AppSidebar({
               <div className="mt-4 space-y-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="space-y-1.5">
-                    <label className="ui-no-select ui-no-callout block text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                    <label className="ui-no-select ui-no-callout block text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
                       {translate ? translate("language.label", "Language") : "Language"}
                     </label>
                     <Select
@@ -949,7 +949,7 @@ export function AppSidebar({
                   </div>
 
                   <div className="space-y-1.5">
-                    <label className="ui-no-select ui-no-callout block text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                    <label className="ui-no-select ui-no-callout block text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
                       {translate ? translate("shell.theme", "Theme") : "Theme"}
                     </label>
                     <Select
@@ -968,7 +968,7 @@ export function AppSidebar({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="ui-no-select ui-no-callout block text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                  <label className="ui-no-select ui-no-callout block text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
                     {translate ? translate("shell.density", "Density") : "Density"}
                   </label>
                   <Select
@@ -992,7 +992,7 @@ export function AppSidebar({
 
                 <div className="flex items-center justify-between gap-3 rounded-panel bg-surface-shell px-3 py-2.5">
                   <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
                       {translate ? translate("shell.tips_title", "Tips") : "Tips"}
                     </div>
                     <div className="mt-1 text-xs text-[var(--text)]">
@@ -1014,7 +1014,7 @@ export function AppSidebar({
                   >
                     <span
                       className={cn(
-                        "inline-flex h-6 w-6 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-panel text-[10px] font-semibold text-text-primary transition",
+                        "inline-flex h-6 w-6 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-panel text-[11px] font-semibold text-text-primary transition",
                         showTips ? "translate-x-6" : "translate-x-0",
                       )}
                     >
@@ -1246,7 +1246,7 @@ export function AppMobileBottomNav({
               >
                 <NavIcon href={item.href} active={scanAction || active} />
                 {badgeCount > 0 ? (
-                  <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--status-danger-bg)] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-[var(--text-inverse)]">
+                  <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-[var(--status-danger-bg)] px-1.5 py-0.5 text-[11px] font-semibold leading-none text-[var(--text-inverse)]">
                     {formatBadgeCount(badgeCount)}
                   </span>
                 ) : null}

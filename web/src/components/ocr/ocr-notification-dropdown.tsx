@@ -79,7 +79,7 @@ export function OcrNotificationDropdown({
                     />
                 </svg>
                 {hasNotifications && (
-                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-action-primary text-[10px] font-semibold text-white">
+                    <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-action-primary text-[11px] font-semibold text-white">
                         {notifications.length}
                     </span>
                 )}

@@ -403,7 +403,7 @@ export default function SettingsAttendancePage() {
                     <span
                       className={cn(
                         "h-[7px] w-[7px] rounded-full",
-                        profile.is_active ? "bg-[#639922]" : "bg-[var(--color-text-tertiary)]",
+                        profile.is_active ? "bg-surface-panel" : "bg-[var(--color-text-tertiary)]",
                       )}
                     />
                   </button>

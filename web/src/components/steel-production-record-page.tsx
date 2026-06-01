@@ -433,9 +433,9 @@ export function SteelProductionRecordPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0f1419] px-3 py-4 md:px-4 md:py-5">
+    <main className="min-h-screen bg-surface-app px-3 py-4 md:px-4 md:py-5">
       <div className="mx-auto max-w-7xl space-y-4">
-        <section className="rounded-lg border border-gray-800 bg-[#1a1f2e] px-6 py-4 shadow-lg">
+        <section className="rounded-lg border border-border-subtle bg-surface-card px-6 py-4 shadow-lg">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="min-w-0 space-y-1">
               <div className="text-xs uppercase tracking-wider text-text-tertiary">
@@ -539,7 +539,7 @@ export function SteelProductionRecordPage() {
             }}
           >
             <div className="space-y-4">
-              <Card className="bg-[#1a1f2e] border-gray-800">
+              <Card className="bg-surface-card border-border-subtle">
                 <CardHeader className="px-6 pt-6">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>

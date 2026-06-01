@@ -526,7 +526,7 @@ export function SteelDispatchDetailPage() {
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)] mb-4">
+              <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-[var(--muted)] mb-4">
                 <span>Production</span>
                 <span>→</span>
                 <span>Invoice</span>

@@ -62,7 +62,7 @@ export function NotificationCenter() {
                     <path d="M8.5 14a1.5 1.5 0 0 0 3 0" strokeLinecap="round" />
                 </svg>
                 {count > 0 ? (
-                    <span className="pointer-events-none absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-status-warning-icon px-1.5 text-[10px] font-semibold text-white">
+                    <span className="pointer-events-none absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-status-warning-icon px-1.5 text-[11px] font-semibold text-white">
                         {count}
                     </span>
                 ) : null}

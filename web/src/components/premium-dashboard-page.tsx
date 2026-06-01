@@ -1202,7 +1202,7 @@ export default function PremiumDashboardPage() {
                     <div className="grid min-w-max lg:min-w-[980px] grid-cols-[100px_repeat(24,minmax(0,1fr))] gap-2">
                       <div />
                       {Array.from({ length: 24 }).map((_, hour) => (
-                        <div key={hour} className="text-center text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
+                        <div key={hour} className="text-center text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
                           {hour.toString().padStart(2, "0")}
                         </div>
                       ))}

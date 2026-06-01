@@ -70,13 +70,13 @@ export function SettingsFactoryTab({
   const moduleChipTone = (moduleName: string) => {
     const normalized = moduleName.trim().toLowerCase();
     if (normalized === "dpr" || normalized === "traceability") {
-      return "bg-[#E6F1FB] text-[#185FA5]";
+      return "bg-surface-panel text-[#185FA5]";
     }
     if (normalized === "quality" || normalized === "certificates") {
-      return "bg-[#EAF3DE] text-[#3B6D11]";
+      return "bg-surface-panel text-[#3B6D11]";
     }
     if (normalized === "scrap" || normalized === "downtime") {
-      return "bg-[#FAEEDA] text-[#854F0B]";
+      return "bg-surface-panel text-[#854F0B]";
     }
     return "bg-[var(--color-background-secondary)] text-[var(--color-text-secondary)]";
   };

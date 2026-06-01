@@ -162,7 +162,7 @@ export function SteelInvoiceDetailPage() {
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)] mb-4">
+              <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-[var(--muted)] mb-4">
                 <span>Production</span>
                 <span>→</span>
                 <span className="text-[var(--accent)] font-bold">Invoice</span>
@@ -354,15 +354,15 @@ export function SteelInvoiceDetailPage() {
                         <td className="px-3 py-3">{formatCurrency(line.line_total)}</td>
                         <td className="px-3 py-3">
                           {Number(line.remaining_weight_kg || 0) <= 0.001 ? (
-                            <span className="inline-flex rounded-full border border-emerald-400/35 bg-emerald-500/12 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-emerald-200">
+                            <span className="inline-flex rounded-full border border-emerald-400/35 bg-emerald-500/12 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-emerald-200">
                               Dispatched
                             </span>
                           ) : Number(line.dispatched_weight_kg || 0) > 0 ? (
-                            <span className="inline-flex rounded-full border border-amber-400/35 bg-amber-500/12 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-amber-200">
+                            <span className="inline-flex rounded-full border border-amber-400/35 bg-amber-500/12 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-amber-200">
                               Partial
                             </span>
                           ) : (
-                            <span className="inline-flex rounded-full border border-slate-400/35 bg-surface-panel/12 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-text-secondary">
+                            <span className="inline-flex rounded-full border border-slate-400/35 bg-surface-panel/12 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-text-secondary">
                               Open
                             </span>
                           )}
@@ -415,7 +415,7 @@ export function SteelInvoiceDetailPage() {
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
                             <div
-                              className={`inline-flex rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${dispatchStatusBadgeClass(dispatch.status)}`}
+                              className={`inline-flex rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${dispatchStatusBadgeClass(dispatch.status)}`}
                             >
                               {dispatch.status}
                             </div>

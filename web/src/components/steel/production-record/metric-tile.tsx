@@ -16,7 +16,7 @@ export function MetricTile({
       ? "border-red-800 bg-red-950/30"
       : tone === "watch"
         ? "border-orange-800 bg-orange-950/30"
-        : "border-gray-700 bg-[#0f1419]";
+        : "border-border-default bg-surface-card";
 
   return (
     <div className={cn("rounded-lg border px-4 py-3", toneClassName)}>

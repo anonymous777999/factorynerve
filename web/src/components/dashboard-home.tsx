@@ -1758,7 +1758,7 @@ export default function DashboardHome() {
           <div className="factory-dashboard-reminder">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <div className="inline-flex rounded-sm border border-border-subtle bg-surface-elevated px-2 py-1 font-mono text-[10px] uppercase tracking-[0.18em] text-text-secondary">
+                <div className="inline-flex rounded-sm border border-border-subtle bg-surface-elevated px-2 py-1 font-mono text-[11px] uppercase tracking-[0.18em] text-text-secondary">
                   Action now
                 </div>
                 <div className="mt-3 max-w-[14ch] text-[18px] font-semibold leading-[1.35] text-text-primary">
@@ -1896,7 +1896,7 @@ export default function DashboardHome() {
                 {dashboardNodeCards.map((node) => (
                   <div key={node.label} className="factory-critical-strip__node">
                     <span className={`inline-flex h-1.5 w-1.5 rounded-full ${node.tone}`} />
-                    <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-secondary">{node.label}</span>
+                    <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-secondary">{node.label}</span>
                     <span className="text-xs text-text-primary">{node.status}</span>
                   </div>
                 ))}
@@ -1906,7 +1906,7 @@ export default function DashboardHome() {
               <div className="factory-critical-strip__metrics">
                 {dashboardTelemetryCards.map((card) => (
                   <div key={card.label} className="factory-critical-strip__metric">
-                    <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary">{card.label}</div>
+                    <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary">{card.label}</div>
                     <div className={`text-[30px] font-semibold leading-none ${card.accentClass}`}>{card.value}</div>
                     <div className="text-xs leading-5 text-text-secondary">
                       {card.label === "Trusted OCR"
@@ -1922,7 +1922,7 @@ export default function DashboardHome() {
               </div>
               <div className="factory-critical-strip__aside">
                 <div>
-                  <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-tertiary">Queue urgency</div>
+                  <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary">Queue urgency</div>
                   <div className="mt-2 text-base font-semibold text-text-primary">
                     {primaryAction?.title || "Keep the next lane moving"}
                   </div>
@@ -1967,7 +1967,7 @@ export default function DashboardHome() {
                 <div className="factory-workflow-lane__chips">
                   {lane.metrics.map((metric) => (
                     <div key={metric.label} className="factory-workflow-chip">
-                      <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">{metric.label}</span>
+                      <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">{metric.label}</span>
                       <span className="text-sm font-semibold text-text-primary">{metric.value}</span>
                     </div>
                   ))}
@@ -2007,13 +2007,13 @@ export default function DashboardHome() {
               {liveFeedItems.length ? (
                 liveFeedItems.map((item) => (
                   <div key={item.key} className="factory-feed-item">
-                    <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-tertiary">{item.channel}</div>
+                    <div className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-tertiary">{item.channel}</div>
                     <div>
                       <div className="text-sm font-semibold text-text-primary">{item.title}</div>
                       <div className="mt-1 text-xs leading-5 text-text-secondary">{item.detail}</div>
                       <div className="mt-2 text-[11px] text-text-tertiary">{item.time}</div>
                     </div>
-                    <Link href={item.href} className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--action-primary)]">
+                    <Link href={item.href} className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--action-primary)]">
                       {item.action}
                     </Link>
                   </div>
@@ -2026,19 +2026,19 @@ export default function DashboardHome() {
               <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-text-tertiary">Escalation Summary</div>
               <div className="mt-4 space-y-3">
                 <div className="factory-workflow-chip w-full justify-between">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">Unread Alerts</span>
+                  <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">Unread Alerts</span>
                   <span className="text-sm font-semibold text-text-primary">{state.alerts.length}</span>
                 </div>
                 <div className="factory-workflow-chip w-full justify-between">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">OCR Pending</span>
+                  <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">OCR Pending</span>
                   <span className="text-sm font-semibold text-text-primary">{state.ocrSummary?.pending_documents ?? 0}</span>
                 </div>
                 <div className="factory-workflow-chip w-full justify-between">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">Queue Backlog</span>
+                  <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">Queue Backlog</span>
                   <span className="text-sm font-semibold text-text-primary">{queueCount}</span>
                 </div>
                 <div className="factory-workflow-chip w-full justify-between">
-                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">Signals</span>
+                  <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">Signals</span>
                   <span className="text-sm font-semibold text-text-primary">{anomalyCount}</span>
                 </div>
               </div>
@@ -2067,7 +2067,7 @@ export default function DashboardHome() {
                 {recentEntries.length ? (
                   <ResponsiveScrollArea debugLabel="dashboard-recent-entries">
                     <table className="min-w-full text-left text-sm">
-                      <thead className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--muted)]">
+                      <thead className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
                         <tr className="border-b border-[var(--border)]">
                           <th className="px-3 py-3 font-medium">{t("table.date", "Date")}</th>
                           <th className="px-3 py-3 font-medium">{t("table.shift", "Shift")}</th>
@@ -2106,7 +2106,7 @@ export default function DashboardHome() {
               <div className="mt-2 text-lg font-semibold text-text-primary">OCR anomalies, review pressure, and pending intelligence</div>
               <div className="factory-intelligence-stack mt-4">
                 <div className="rounded-sm border border-border-subtle bg-surface-panel px-3 py-3">
-                  <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">OCR Trust</div>
+                  <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">OCR Trust</div>
                   <div className="mt-2 text-sm text-text-secondary">
                     {state.ocrSummary
                       ? `${state.ocrSummary.pending_documents} pending docs, ${state.ocrSummary.trusted_documents} trusted docs, ${state.ocrSummary.trusted_rows} trusted rows.`
@@ -2114,7 +2114,7 @@ export default function DashboardHome() {
                   </div>
                 </div>
                 <div className="rounded-sm border border-border-subtle bg-surface-panel px-3 py-3">
-                  <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">Top Signals</div>
+                  <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">Top Signals</div>
                   <div className="mt-3 space-y-3">
                     {state.anomalyPreview?.items?.length ? (
                       state.anomalyPreview.items.slice(0, 3).map((item) => (
@@ -2131,7 +2131,7 @@ export default function DashboardHome() {
                   </div>
                 </div>
                 <div className="rounded-sm border border-border-subtle bg-surface-panel px-3 py-3">
-                  <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">Pending Review Intelligence</div>
+                  <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">Pending Review Intelligence</div>
                   <div className="mt-2 text-sm text-text-secondary">
                     {canReview
                       ? `Review lanes should absorb ${state.alerts.length} alerts and ${state.ocrSummary?.pending_documents ?? 0} OCR exceptions before downstream exports.`
@@ -2146,21 +2146,21 @@ export default function DashboardHome() {
               <div className="mt-2 text-lg font-semibold text-text-primary">Usage, escalation summary, and recommended next moves</div>
               <div className="factory-intelligence-stack mt-4">
                 <div className="rounded-sm border border-border-subtle bg-surface-panel px-3 py-3">
-                  <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">Usage Snapshot</div>
+                  <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">Usage Snapshot</div>
                   <div className="mt-2 text-sm text-text-secondary">
                     {state.usage?.plan ? `${state.usage.plan} plan • ${state.usage.period || "Current period"}` : "Usage summary is available when plan data resolves."}
                   </div>
                   <div className="mt-3 space-y-2">
                     {dashboardSnapshotCards.slice(0, 3).map((card) => (
                       <div key={card.label} className="factory-workflow-chip w-full justify-between">
-                        <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">{card.label}</span>
+                        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">{card.label}</span>
                         <span className="text-sm font-semibold text-text-primary">{card.value}</span>
                       </div>
                     ))}
                   </div>
                 </div>
                 <div className="rounded-sm border border-border-subtle bg-surface-panel px-3 py-3">
-                  <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-tertiary">Recommendations</div>
+                  <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">Recommendations</div>
                   <div className="mt-3 space-y-3">
                     {operationalRecommendations.map((recommendation, index) => (
                       <div key={index} className="text-sm leading-6 text-text-secondary">
@@ -2733,7 +2733,7 @@ export default function DashboardHome() {
               {recentEntries.length ? (
                 <ResponsiveScrollArea debugLabel="dashboard-recent-entries">
                   <table className="min-w-full text-left text-sm">
-                    <thead className="font-mono text-[10px] uppercase tracking-[0.16em] text-[var(--muted)]">
+                    <thead className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">
                         <th className="px-3 py-3 font-medium">{t("table.date", "Date")}</th>
                         <th className="px-3 py-3 font-medium">{t("table.shift", "Shift")}</th>

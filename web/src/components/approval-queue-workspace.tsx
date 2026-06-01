@@ -89,7 +89,7 @@ function getSeverityColor(severity: ApprovalItem["severity"]) {
         case "Low":
             return "text-green-400";
         default:
-            return "text-gray-400";
+            return "text-text-secondary";
     }
 }
 
@@ -145,7 +145,7 @@ export default function ApprovalQueueWorkspace() {
                                 setSelectedItems([...selectedItems, id]);
                             }
                         }}
-                        className="w-4 h-4 rounded border-gray-600 bg-gray-800 text-orange-500 focus:ring-orange-500"
+                        className="w-4 h-4 rounded border-border-default bg-surface-panel text-orange-500 focus:ring-orange-500"
                     />
                 ),
                 meta: {
@@ -175,7 +175,7 @@ export default function ApprovalQueueWorkspace() {
             columnHelper.accessor("type", {
                 header: "Type",
                 cell: (info) => (
-                    <span className="text-gray-300">
+                    <span className="text-text-secondary">
                         {info.getValue()}
                     </span>
                 ),
@@ -191,7 +191,7 @@ export default function ApprovalQueueWorkspace() {
             columnHelper.accessor("age", {
                 header: "Age",
                 cell: (info) => (
-                    <span className="text-gray-400 font-mono text-sm">
+                    <span className="text-text-secondary font-mono text-sm">
                         {info.getValue()}
                     </span>
                 ),
@@ -215,7 +215,7 @@ export default function ApprovalQueueWorkspace() {
                                 <Button
                                     size="compact"
                                     variant="outline"
-                                    className="border-gray-600 text-gray-300 hover:bg-gray-700 px-3 py-1 text-xs"
+                                    className="border-border-default text-text-secondary hover:bg-surface-panel px-3 py-1 text-xs"
                                 >
                                     Open
                                 </Button>
@@ -233,7 +233,7 @@ export default function ApprovalQueueWorkspace() {
 
     if (loading) {
         return (
-            <main className="flex min-h-screen items-center justify-center bg-gray-900 text-gray-300">
+            <main className="flex min-h-screen items-center justify-center bg-surface-panel text-text-secondary">
                 Loading approval queue...
             </main>
         );
@@ -241,10 +241,10 @@ export default function ApprovalQueueWorkspace() {
 
     if (!user) {
         return (
-            <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 bg-gray-900">
-                <div className="w-full max-w-md p-6 bg-gray-800 rounded-lg border border-gray-700">
+            <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 bg-surface-panel">
+                <div className="w-full max-w-md p-6 bg-surface-panel rounded-lg border border-border-default">
                     <h1 className="text-xl font-semibold text-white mb-4">Approval Queue</h1>
-                    <p className="text-gray-400 mb-4">Access required to continue into the approval workflow.</p>
+                    <p className="text-text-secondary mb-4">Access required to continue into the approval workflow.</p>
                     <Link href="/access">
                         <Button className="w-full bg-orange-600 hover:bg-orange-700">Open Access</Button>
                     </Link>
@@ -254,22 +254,22 @@ export default function ApprovalQueueWorkspace() {
     }
 
     return (
-        <main className="min-h-screen bg-gray-900 text-gray-100">
+        <main className="min-h-screen bg-surface-panel text-text-secondary">
             {/* Main Layout */}
             <div className="flex min-h-screen">
                 {/* Main Content Area */}
                 <div className="flex-1 flex flex-col">
                     {/* Header */}
-                    <header className="bg-gray-800 border-b border-gray-700 px-6 py-4">
+                    <header className="bg-surface-panel border-b border-border-default px-6 py-4">
                         <div className="flex items-center justify-between">
                             <div>
                                 <h1 className="text-2xl font-semibold text-white">Approval Queue</h1>
-                                <p className="text-gray-400 text-sm mt-1">
+                                <p className="text-text-secondary text-sm mt-1">
                                     Close the next review first, then work down the backlog.
                                 </p>
                             </div>
                             <div className="flex items-center gap-3">
-                                <Button variant="outline" size="compact" className="border-gray-600 text-gray-300">
+                                <Button variant="outline" size="compact" className="border-border-default text-text-secondary">
                                     🔄 Refresh
                                 </Button>
                                 <Button className="bg-orange-600 hover:bg-orange-700 text-white">
@@ -284,34 +284,34 @@ export default function ApprovalQueueWorkspace() {
                         <div className="flex items-center gap-3">
                             <span className="text-red-400">⚠️</span>
                             <span className="text-red-300 font-medium">Urgent Decision Required:</span>
-                            <span className="text-gray-300">3 high-risk exceptions identified in morning shift.</span>
+                            <span className="text-text-secondary">3 high-risk exceptions identified in morning shift.</span>
                         </div>
                     </div>
 
                     {/* KPI Cards */}
-                    <div className="px-6 py-4 bg-gray-800 border-b border-gray-700">
+                    <div className="px-6 py-4 bg-surface-panel border-b border-border-default">
                         <div className="grid grid-cols-4 gap-4">
-                            <div className="bg-gray-700 rounded-lg p-4 border border-gray-600">
-                                <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Open Items</div>
+                            <div className="bg-surface-panel rounded-lg p-4 border border-border-default">
+                                <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">Open Items</div>
                                 <div className="text-3xl font-bold text-blue-400">124</div>
                             </div>
-                            <div className="bg-gray-700 rounded-lg p-4 border border-gray-600">
-                                <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Urgent</div>
+                            <div className="bg-surface-panel rounded-lg p-4 border border-border-default">
+                                <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">Urgent</div>
                                 <div className="text-3xl font-bold text-orange-400">3</div>
                             </div>
-                            <div className="bg-gray-700 rounded-lg p-4 border border-gray-600">
-                                <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">SLA Breaches</div>
+                            <div className="bg-surface-panel rounded-lg p-4 border border-border-default">
+                                <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">SLA Breaches</div>
                                 <div className="text-3xl font-bold text-red-400">1</div>
                             </div>
-                            <div className="bg-gray-700 rounded-lg p-4 border border-gray-600">
-                                <div className="text-xs text-gray-400 uppercase tracking-wide mb-1">Pending Review</div>
-                                <div className="text-3xl font-bold text-gray-300">45</div>
+                            <div className="bg-surface-panel rounded-lg p-4 border border-border-default">
+                                <div className="text-xs text-text-secondary uppercase tracking-wide mb-1">Pending Review</div>
+                                <div className="text-3xl font-bold text-text-secondary">45</div>
                             </div>
                         </div>
                     </div>
 
                     {/* Priority Focus Cards */}
-                    <div className="px-6 py-4 bg-gray-800 border-b border-gray-700">
+                    <div className="px-6 py-4 bg-surface-panel border-b border-border-default">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="bg-red-900/20 border border-red-800/50 rounded-lg p-4">
                                 <div className="flex items-center justify-between">
@@ -339,34 +339,34 @@ export default function ApprovalQueueWorkspace() {
                     </div>
 
                     {/* Filters and Bulk Actions */}
-                    <div className="px-6 py-4 bg-gray-800 border-b border-gray-700">
+                    <div className="px-6 py-4 bg-surface-panel border-b border-border-default">
                         <div className="flex items-center justify-between mb-4">
                             <div>
-                                <div className="text-sm text-gray-400 mb-2">Presets & Filters</div>
+                                <div className="text-sm text-text-secondary mb-2">Presets & Filters</div>
                                 <div className="flex gap-2">
                                     <Button className="bg-orange-600 hover:bg-orange-700 text-white text-xs px-3 py-1">All</Button>
-                                    <Button variant="outline" className="border-gray-600 text-gray-300 text-xs px-3 py-1">Today</Button>
-                                    <Button variant="outline" className="border-gray-600 text-gray-300 text-xs px-3 py-1">8h+</Button>
-                                    <Button variant="outline" className="border-gray-600 text-gray-300 text-xs px-3 py-1">24h+</Button>
-                                    <Button variant="outline" className="border-gray-600 text-gray-300 text-xs px-3 py-1">OCR only</Button>
-                                    <Button variant="outline" className="border-gray-600 text-gray-300 text-xs px-3 py-1">Attendance</Button>
+                                    <Button variant="outline" className="border-border-default text-text-secondary text-xs px-3 py-1">Today</Button>
+                                    <Button variant="outline" className="border-border-default text-text-secondary text-xs px-3 py-1">8h+</Button>
+                                    <Button variant="outline" className="border-border-default text-text-secondary text-xs px-3 py-1">24h+</Button>
+                                    <Button variant="outline" className="border-border-default text-text-secondary text-xs px-3 py-1">OCR only</Button>
+                                    <Button variant="outline" className="border-border-default text-text-secondary text-xs px-3 py-1">Attendance</Button>
                                 </div>
                             </div>
-                            <div className="text-sm text-gray-400">
+                            <div className="text-sm text-text-secondary">
                                 Selected {selectedItems.length}
                             </div>
                         </div>
 
                         {selectedItems.length > 0 && (
-                            <div className="flex items-center gap-3 p-3 bg-gray-700 rounded-lg border border-gray-600">
-                                <span className="text-sm text-gray-300">
+                            <div className="flex items-center gap-3 p-3 bg-surface-panel rounded-lg border border-border-default">
+                                <span className="text-sm text-text-secondary">
                                     {selectedItems.length} item{selectedItems.length > 1 ? 's' : ''} selected
                                 </span>
                                 <Button
                                     variant="outline"
                                     size="compact"
                                     onClick={handleClearSelection}
-                                    className="border-gray-600 text-gray-300 text-xs"
+                                    className="border-border-default text-text-secondary text-xs"
                                 >
                                     Clear selection
                                 </Button>
@@ -388,8 +388,8 @@ export default function ApprovalQueueWorkspace() {
                     </div>
 
                     {/* Data Table */}
-                    <div className="flex-1 px-6 py-4 bg-gray-900">
-                        <div className="bg-gray-800 rounded-lg border border-gray-700 overflow-hidden">
+                    <div className="flex-1 px-6 py-4 bg-surface-panel">
+                        <div className="bg-surface-panel rounded-lg border border-border-default overflow-hidden">
                             <DataTable<ApprovalItem>
                                 ariaLabel="Approval queue"
                                 columns={columns}
@@ -400,8 +400,8 @@ export default function ApprovalQueueWorkspace() {
                                 enableGlobalSearch={false}
                                 enableStickyFirstColumn={false}
                                 enableVirtualization={false}
-                                className="h-full w-full bg-gray-800"
-                                viewportClassName="bg-gray-800"
+                                className="h-full w-full bg-surface-panel"
+                                viewportClassName="bg-surface-panel"
                                 viewportSize="lg"
                                 emptyTitle="No approval items"
                                 emptyMessage="No items match the current filters."
@@ -411,8 +411,8 @@ export default function ApprovalQueueWorkspace() {
                 </div>
 
                 {/* Right Sidebar - Active Review */}
-                <aside className="w-80 bg-gray-800 border-l border-gray-700 flex flex-col">
-                    <div className="p-4 border-b border-gray-700">
+                <aside className="w-80 bg-surface-panel border-l border-border-default flex flex-col">
+                    <div className="p-4 border-b border-border-default">
                         <div className="flex items-center justify-between mb-2">
                             <h2 className="text-lg font-semibold text-white">Active Review</h2>
                             <span className="text-orange-400 font-mono text-sm">{selectedItem?.itemId}</span>
@@ -424,43 +424,43 @@ export default function ApprovalQueueWorkspace() {
 
                     <div className="flex-1 p-4 space-y-4">
                         {/* Source Document Crop */}
-                        <div className="bg-gray-700 rounded-lg border border-gray-600 p-4">
+                        <div className="bg-surface-panel rounded-lg border border-border-default p-4">
                             <div className="flex items-center justify-between mb-3">
                                 <h3 className="text-sm font-medium text-white">Source Document Crop</h3>
                                 <button
                                     type="button"
                                     aria-label="Expand source document crop"
-                                    className="text-gray-400 hover:text-white"
+                                    className="text-text-secondary hover:text-white"
                                 >
                                     <span aria-hidden="true">⛶</span>
                                 </button>
                             </div>
-                            <div className="bg-gray-900 rounded border border-gray-600 p-4 h-32 flex items-center justify-center">
+                            <div className="bg-surface-panel rounded border border-border-default p-4 h-32 flex items-center justify-center">
                                 <div className="text-center">
                                     <div className="text-2xl mb-2">📄</div>
-                                    <div className="text-xs text-gray-400">SHIPPING_MANIFEST_A42.pdf</div>
+                                    <div className="text-xs text-text-secondary">SHIPPING_MANIFEST_A42.pdf</div>
                                     <div className="text-xs text-red-400 mt-1">LOW CONFIDENCE: 42%</div>
                                 </div>
                             </div>
                         </div>
 
                         {/* Extracted Data */}
-                        <div className="bg-gray-700 rounded-lg border border-gray-600 p-4">
+                        <div className="bg-surface-panel rounded-lg border border-border-default p-4">
                             <h3 className="text-sm font-medium text-white mb-3">Extracted Data</h3>
                             <div className="space-y-3">
                                 <div>
-                                    <div className="text-xs text-gray-400">Vendor ID</div>
+                                    <div className="text-xs text-text-secondary">Vendor ID</div>
                                     <div className="text-sm text-white font-mono">VND-8834-X</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-gray-400">Date</div>
+                                    <div className="text-xs text-text-secondary">Date</div>
                                     <div className="text-sm text-white">2023-10-27</div>
                                 </div>
                                 <div>
-                                    <div className="text-xs text-gray-400">Discrepancy Detected (Total Amount)</div>
+                                    <div className="text-xs text-text-secondary">Discrepancy Detected (Total Amount)</div>
                                     <div className="flex items-center gap-2">
                                         <span className="text-sm text-red-400 line-through">$14,500.00</span>
-                                        <span className="text-gray-400">→</span>
+                                        <span className="text-text-secondary">→</span>
                                         <span className="text-sm text-orange-400 font-semibold">$1,450.00</span>
                                     </div>
                                 </div>
@@ -468,12 +468,12 @@ export default function ApprovalQueueWorkspace() {
                         </div>
 
                         {/* DPR.ai Interpretation */}
-                        <div className="bg-gray-700 rounded-lg border border-gray-600 p-4">
+                        <div className="bg-surface-panel rounded-lg border border-border-default p-4">
                             <div className="flex items-center gap-2 mb-3">
                                 <span className="text-blue-400">🤖</span>
                                 <h3 className="text-sm font-medium text-white">DPR.ai Interpretation</h3>
                             </div>
-                            <div className="space-y-2 text-xs text-gray-300">
+                            <div className="space-y-2 text-xs text-text-secondary">
                                 <div>• <strong>Anomaly:</strong> Decimal point placement unclear due to document stain.</div>
                                 <div>• <strong>Pattern:</strong> Matches known hardware latency issue with scanner bay 4.</div>
                                 <div>• <strong>Recommendation:</strong> Manual verification of PO total required against ERP record.</div>
@@ -482,14 +482,14 @@ export default function ApprovalQueueWorkspace() {
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="p-4 border-t border-gray-700 space-y-2">
+                    <div className="p-4 border-t border-border-default space-y-2">
                         <Button className="w-full bg-green-600 hover:bg-green-700 text-white">
                             ✅ Regularize (Approve)
                         </Button>
                         <Button variant="outline" className="w-full border-red-600 text-red-300 hover:bg-red-900/20">
                             Reject (Mark Late)
                         </Button>
-                        <Button variant="outline" className="w-full border-gray-600 text-gray-300 hover:bg-gray-700">
+                        <Button variant="outline" className="w-full border-border-default text-text-secondary hover:bg-surface-panel">
                             Escalate to HR
                         </Button>
                     </div>

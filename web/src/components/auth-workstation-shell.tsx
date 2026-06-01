@@ -152,16 +152,16 @@ export function AuthWorkstationShell({
 
                 <div className="mt-6 space-y-4 text-sm text-text-secondary">
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.18em] text-text-tertiary">Security posture</div>
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-text-tertiary">Security posture</div>
                     <div className="mt-1 text-sm font-medium text-text-primary">{supportTitle}</div>
                   </div>
                   <div>
-                    <div className="text-[10px] uppercase tracking-[0.18em] text-text-tertiary">Operational note</div>
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-text-tertiary">Operational note</div>
                     <div className="mt-1 text-sm text-text-secondary">{supportDescription}</div>
                   </div>
                   {metrics.map((metric) => (
                     <div key={metric.label}>
-                      <div className="text-[10px] uppercase tracking-[0.18em] text-text-tertiary">{metric.label}</div>
+                      <div className="text-[11px] uppercase tracking-[0.18em] text-text-tertiary">{metric.label}</div>
                       <div className="mt-1 text-sm font-medium text-text-primary">{metric.value}</div>
                     </div>
                   ))}

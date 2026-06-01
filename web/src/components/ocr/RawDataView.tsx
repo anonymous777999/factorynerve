@@ -58,11 +58,11 @@ export function RawDataView({ data, title = "Raw OCR Data" }: RawDataViewProps) 
     };
 
     return (
-        <div className="rounded-[28px] border border-[#e3e8ef] bg-white p-6 shadow-[0_18px_54px_rgba(15,23,42,0.05)]">
+        <div className="rounded-[28px] border border-border-subtle bg-white p-6 shadow-[0_18px_54px_rgba(15,23,42,0.05)]">
             <div className="mb-4 flex items-center justify-between">
                 <div>
-                    <h3 className="text-lg font-semibold text-[#101828]">{title}</h3>
-                    <p className="mt-1 text-sm text-[#667085]">
+                    <h3 className="text-lg font-semibold text-text-primary">{title}</h3>
+                    <p className="mt-1 text-sm text-text-secondary">
                         Exact OCR payload for debugging and support
                     </p>
                 </div>
@@ -70,21 +70,21 @@ export function RawDataView({ data, title = "Raw OCR Data" }: RawDataViewProps) 
                     <button
                         type="button"
                         onClick={() => setCollapsed(!collapsed)}
-                        className="rounded-full border border-[#d9e1e8] bg-white px-3 py-1.5 text-sm text-[#344054] transition hover:bg-[#f8fafc]"
+                        className="rounded-full border border-[#d9e1e8] bg-white px-3 py-1.5 text-sm text-text-primary transition hover:bg-surface-shell"
                     >
                         {collapsed ? "Expand" : "Collapse"}
                     </button>
                     <button
                         type="button"
                         onClick={handleCopy}
-                        className="rounded-full border border-[#d9e1e8] bg-white px-3 py-1.5 text-sm text-[#344054] transition hover:bg-[#f8fafc]"
+                        className="rounded-full border border-[#d9e1e8] bg-white px-3 py-1.5 text-sm text-text-primary transition hover:bg-surface-shell"
                     >
                         Copy
                     </button>
                     <button
                         type="button"
                         onClick={handleDownload}
-                        className="rounded-full border border-[#d9e1e8] bg-white px-3 py-1.5 text-sm text-[#344054] transition hover:bg-[#f8fafc]"
+                        className="rounded-full border border-[#d9e1e8] bg-white px-3 py-1.5 text-sm text-text-primary transition hover:bg-surface-shell"
                     >
                         Download
                     </button>

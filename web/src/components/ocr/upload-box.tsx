@@ -190,7 +190,7 @@ export function UploadBox({
                   onClick={() => onOpenRecent(record.id)}
                 >
                   <span className="truncate pr-3 text-sm font-medium text-text-primary">{shortLabel(record)}</span>
-                  <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-[var(--action-primary)]">
+                  <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-[var(--action-primary)]">
                     Reopen
                   </span>
                 </button>

@@ -455,7 +455,7 @@ export function JobsDrawer() {
                           {!isActive ? (
                             <button
                               type="button"
-                              className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--text)]"
+                              className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--text)]"
                               onClick={() => handleDismiss(job.job_id)}
                             >
                               Dismiss

@@ -1993,7 +1993,7 @@ export default function OcrScanPage() {
                 <section className="ocr-workstation-panel ocr-source-workspace">
                   <div className="ocr-workstation-panel__header">
                     <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">
                         Source image
                       </div>
                       <div className="mt-1 text-sm font-semibold text-text-primary">
@@ -2002,7 +2002,7 @@ export default function OcrScanPage() {
                     </div>
                     <span
                       className={cn(
-                        "rounded-badge border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em]",
+                        "rounded-badge border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em]",
                         scanLooksBlurry
                           ? "border-status-danger-border bg-status-danger-bg text-status-danger-fg"
                           : "border-status-synced-border bg-status-synced-bg text-status-synced-fg",
@@ -2118,7 +2118,7 @@ export default function OcrScanPage() {
                 <section className="ocr-workstation-panel ocr-sheet-workspace">
                   <div className="ocr-workstation-panel__header">
                     <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">
                         OCR spreadsheet
                       </div>
                       <div className="mt-1 text-sm text-text-secondary">
@@ -2296,7 +2296,7 @@ export default function OcrScanPage() {
                   <aside className="ocr-workstation-panel ocr-review-rail">
                     <div className="ocr-workstation-panel__header">
                       <div>
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">
                           Review rail
                         </div>
                         <div className="mt-1 text-sm font-semibold text-text-primary">
@@ -2331,13 +2331,13 @@ export default function OcrScanPage() {
                         <strong>{correctionCount}</strong>
                       </div>
                       <div className="ocr-rail-context">
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">Linked focus</div>
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">Linked focus</div>
                         <div className="mt-1 text-sm font-medium text-text-primary">{activeCellLabel}</div>
                         <div className="mt-1 text-xs text-text-secondary">Selected table context drives the source highlight.</div>
                       </div>
                       {resultPreview.scanQuality?.confidence_band === "low" || resultPreview.warnings.length ? (
                         <div className="ocr-rail-context">
-                          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">Inspection notes</div>
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">Inspection notes</div>
                           <div className="mt-2 flex flex-wrap gap-1.5">
                             {resultPreview.scanQuality?.confidence_band === "low" ? (
                               <span className="factory-ocr-chip factory-ocr-chip--warning">Low quality</span>
@@ -2351,7 +2351,7 @@ export default function OcrScanPage() {
                         </div>
                       ) : null}
                       <div className="ocr-rail-context">
-                        <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary" htmlFor="ocr-review-pass">
+                        <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-tertiary" htmlFor="ocr-review-pass">
                           Reprocess mode
                         </label>
                         <Select
@@ -2469,7 +2469,7 @@ export default function OcrScanPage() {
                 <div className="factory-ocr-console overflow-hidden rounded-[0.45rem] xl:max-h-[85vh]">
                   <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">
                     <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-text-secondary">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-secondary">
                         Source
                       </div>
                       <div className="mt-1 text-sm text-text-secondary">

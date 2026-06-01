@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -468,7 +468,7 @@ export function WorkflowReminderStrip({ className }: { className?: string }) {
 
             {secondaryReminders.length ? (
               <div className="flex min-w-0 flex-col gap-2">
-                <div className="px-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+                <div className="px-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
                   Supporting signals
                 </div>
                 {secondaryReminders.map((reminder) => (

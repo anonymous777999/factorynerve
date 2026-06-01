@@ -351,9 +351,9 @@ export default function EmailSummaryPage() {
           <div className="min-w-0">
             <div className="flex items-center gap-2 text-xs text-text-tertiary">
               <span>{activeFactory?.name || "RedVortex"}</span>
-              <span className="text-[10px] text-text-tertiary/60">/</span>
+              <span className="text-[11px] text-text-tertiary/60">/</span>
               <span>Reports</span>
-              <span className="text-[10px] text-text-tertiary/60">/</span>
+              <span className="text-[11px] text-text-tertiary/60">/</span>
               <span className="text-text-secondary">Email Summary</span>
             </div>
             <h1 className="mt-1 text-2xl font-bold tracking-tight text-text-primary">
@@ -396,19 +396,19 @@ export default function EmailSummaryPage() {
               <div className="grid grid-cols-3 gap-1.5 pt-1">
                 <button
                   onClick={() => handleQuickRange("today")}
-                  className="rounded-md bg-surface-elevated border border-border-subtle py-1 px-1.5 text-[10px] font-semibold text-text-secondary hover:text-text-primary hover:bg-surface-overlay transition-colors text-center select-none cursor-pointer"
+                  className="rounded-md bg-surface-elevated border border-border-subtle py-1 px-1.5 text-[11px] font-semibold text-text-secondary hover:text-text-primary hover:bg-surface-overlay transition-colors text-center select-none cursor-pointer"
                 >
                   Today
                 </button>
                 <button
                   onClick={() => handleQuickRange("week")}
-                  className="rounded-md bg-surface-elevated border border-border-subtle py-1 px-1.5 text-[10px] font-semibold text-text-secondary hover:text-text-primary hover:bg-surface-overlay transition-colors text-center select-none cursor-pointer"
+                  className="rounded-md bg-surface-elevated border border-border-subtle py-1 px-1.5 text-[11px] font-semibold text-text-secondary hover:text-text-primary hover:bg-surface-overlay transition-colors text-center select-none cursor-pointer"
                 >
                   Last 7d
                 </button>
                 <button
                   onClick={() => handleQuickRange("month")}
-                  className="rounded-md bg-surface-elevated border border-border-subtle py-1 px-1.5 text-[10px] font-semibold text-text-secondary hover:text-text-primary hover:bg-surface-overlay transition-colors text-center select-none cursor-pointer"
+                  className="rounded-md bg-surface-elevated border border-border-subtle py-1 px-1.5 text-[11px] font-semibold text-text-secondary hover:text-text-primary hover:bg-surface-overlay transition-colors text-center select-none cursor-pointer"
                 >
                   Month
                 </button>
@@ -448,7 +448,7 @@ export default function EmailSummaryPage() {
                 <span>{loadingSummary ? "Syncing..." : "Sync Telemetry"}</span>
               </Button>
 
-              <p className="text-[10px] text-text-tertiary leading-relaxed pt-0.5 border-t border-border-subtle/50 mt-1">
+              <p className="text-[11px] text-text-tertiary leading-relaxed pt-0.5 border-t border-border-subtle/50 mt-1">
                 Data will compile inside the defined window.
               </p>
             </div>
@@ -462,13 +462,13 @@ export default function EmailSummaryPage() {
               <div className="space-y-2 pt-1 text-xs text-text-secondary">
                 <div className="flex items-center justify-between border-b border-border-subtle/60 pb-1.5">
                   <span className="text-text-tertiary">Plan Level</span>
-                  <span className="font-mono text-text-primary capitalize text-[10px] font-semibold bg-surface-elevated px-1.5 py-0.5 rounded border border-border-subtle">
+                  <span className="font-mono text-text-primary capitalize text-[11px] font-semibold bg-surface-elevated px-1.5 py-0.5 rounded border border-border-subtle">
                     {summary?.plan || "free"}
                   </span>
                 </div>
                 <div className="flex items-center justify-between border-b border-border-subtle/60 pb-1.5">
                   <span className="text-text-tertiary">Model Pipeline</span>
-                  <span className="font-mono text-text-primary text-[10px] truncate max-w-[130px] text-right" title={summary?.provider}>
+                  <span className="font-mono text-text-primary text-[11px] truncate max-w-[130px] text-right" title={summary?.provider}>
                     {summary?.provider || "groq->anthropic"}
                   </span>
                 </div>
@@ -490,7 +490,7 @@ export default function EmailSummaryPage() {
                 )}
                 <div className="flex items-center justify-between">
                   <span className="text-text-tertiary">Est. AI Tokens</span>
-                  <span className="font-mono text-text-primary text-[10px] font-semibold">
+                  <span className="font-mono text-text-primary text-[11px] font-semibold">
                     {summary?.estimated_tokens || 0}
                   </span>
                 </div>
@@ -538,7 +538,7 @@ export default function EmailSummaryPage() {
                       <span className="text-base font-mono font-bold text-text-primary">{item.value}</span>
                       <span className={cn("h-1.5 w-1.5 rounded-full inline-block shrink-0", isReady ? "bg-emerald-500" : "bg-amber-500")} />
                     </div>
-                    <span className="mt-1 text-[10px] leading-normal text-text-secondary truncate block select-none">{item.detail}</span>
+                    <span className="mt-1 text-[11px] leading-normal text-text-secondary truncate block select-none">{item.detail}</span>
                   </div>
                 );
               })}
@@ -580,7 +580,7 @@ export default function EmailSummaryPage() {
                         {summary.totals.average_performance.toFixed(1)}%
                       </div>
                     </div>
-                    <div className="mt-4 text-[10px] text-text-secondary leading-normal select-none">
+                    <div className="mt-4 text-[11px] text-text-secondary leading-normal select-none">
                       Relative to factory-configured baseline target.
                     </div>
                   </div>
@@ -593,7 +593,7 @@ export default function EmailSummaryPage() {
                         {summary.totals.total_downtime} <span className="text-xs font-normal text-text-secondary">min</span>
                       </div>
                     </div>
-                    <div className="mt-4 text-[10px] text-text-secondary leading-normal select-none">
+                    <div className="mt-4 text-[11px] text-text-secondary leading-normal select-none">
                       Total stops detected across machinery telemetry logs.
                     </div>
                   </div>
@@ -606,7 +606,7 @@ export default function EmailSummaryPage() {
                         {summary.totals.manpower_present} <span className="text-xs font-normal text-text-secondary">present</span>
                       </div>
                     </div>
-                    <div className="mt-4 text-[10px] text-text-secondary leading-normal select-none font-medium">
+                    <div className="mt-4 text-[11px] text-text-secondary leading-normal select-none font-medium">
                       {summary.totals.manpower_absent} attendance profiles absent.
                     </div>
                   </div>
@@ -663,7 +663,7 @@ export default function EmailSummaryPage() {
                   </div>
                   <div className="bg-surface-elevated/30 rounded p-2.5 border border-border-subtle">
                     <span className="text-[11px] text-text-tertiary font-medium select-none">Last Trusted</span>
-                    <div className="text-[10px] font-bold mt-1 text-text-primary truncate">
+                    <div className="text-[11px] font-bold mt-1 text-text-primary truncate">
                       {ocrSummary?.last_trusted_at
                         ? new Date(ocrSummary.last_trusted_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })
                         : "-"}
@@ -696,7 +696,7 @@ export default function EmailSummaryPage() {
                         ? formatCurrency(steelOverview.anomaly_summary.total_estimated_leakage_value_inr)
                         : "Restricted Security Level"}
                     </span>
-                    <span className="text-[10px] text-text-tertiary uppercase tracking-wide font-semibold select-none">leakage alert</span>
+                    <span className="text-[11px] text-text-tertiary uppercase tracking-wide font-semibold select-none">leakage alert</span>
                   </div>
 
                   {/* Fully Flattened List Elements (No nested border boxes) */}
@@ -723,7 +723,7 @@ export default function EmailSummaryPage() {
                   <ChevronDown className="h-3.5 w-3.5 text-text-tertiary transition-transform group-open:rotate-180" />
                 </summary>
                 <div className="mt-3 border-t border-border-subtle pt-3 cursor-default">
-                  <pre className="p-3 bg-surface-card rounded border border-border-subtle text-[10px] font-mono leading-relaxed text-text-secondary overflow-x-auto whitespace-pre">
+                  <pre className="p-3 bg-surface-card rounded border border-border-subtle text-[11px] font-mono leading-relaxed text-text-secondary overflow-x-auto whitespace-pre">
                     {summary.raw_lines.join("\n")}
                   </pre>
                 </div>
@@ -743,7 +743,7 @@ export default function EmailSummaryPage() {
                 </div>
                 {/* Verification Readiness Indicator */}
                 <div className="flex items-center gap-1.5 select-none">
-                  <span className="text-[10px] text-text-tertiary font-semibold">
+                  <span className="text-[11px] text-text-tertiary font-semibold">
                     {draftReady ? "Sync Clear" : "Needs Draft"}
                   </span>
                   <span className={cn(
@@ -880,7 +880,7 @@ export default function EmailSummaryPage() {
                     </div>
                   </details>
                 </div>
-                <p className="text-[10px] text-text-tertiary text-center leading-normal select-none">
+                <p className="text-[11px] text-text-tertiary text-center leading-normal select-none">
                   Transfer handles draft payload securely in native secure client.
                 </p>
               </div>

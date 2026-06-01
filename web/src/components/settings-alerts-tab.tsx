@@ -865,10 +865,10 @@ export default function SettingsAlertsTab({ active }: Props) {
                           )}
                         >
                           <div className="flex flex-wrap items-start gap-3">
-                            <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]", severityTone(alert.severity))}>
+                            <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityTone(alert.severity))}>
                               {alert.severity}
                             </span>
-                            <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]", deliveryTone(alert.delivery_status))}>
+                            <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", deliveryTone(alert.delivery_status))}>
                               {readableDeliveryStatus(alert.delivery_status)}
                             </span>
                             <span className="text-xs text-[var(--muted)]">{formatDateTime(alert.timestamp)}</span>
@@ -907,10 +907,10 @@ export default function SettingsAlertsTab({ active }: Props) {
                         <div className="mt-4 space-y-4">
                           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                             <div className="flex flex-wrap gap-3">
-                              <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]", severityTone(selectedAlert.severity))}>
+                              <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityTone(selectedAlert.severity))}>
                                 {selectedAlert.severity}
                               </span>
-                              <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]", deliveryTone(selectedAlert.delivery_status))}>
+                              <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", deliveryTone(selectedAlert.delivery_status))}>
                                 {readableDeliveryStatus(selectedAlert.delivery_status)}
                               </span>
                             </div>
@@ -924,7 +924,7 @@ export default function SettingsAlertsTab({ active }: Props) {
                               selectedAlert.deliveries.map((delivery, index) => (
                                 <div key={`${delivery.ref_id}:${delivery.recipient_phone || index}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                                   <div className="flex flex-wrap items-center gap-3">
-                                    <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]", deliveryTone(delivery.delivery_status))}>
+                                    <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", deliveryTone(delivery.delivery_status))}>
                                       {readableDeliveryStatus(delivery.delivery_status)}
                                     </span>
                                     <span className="text-xs text-[var(--muted)]">{maskPhoneNumber(delivery.recipient_phone)}</span>

@@ -461,7 +461,7 @@ export function FeedbackWidget({
         </span>
         {!immersiveScannerRoute ? <span>Help</span> : null}
         {queuedCount > 0 ? (
-          <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-bold text-[var(--action-primary-text)]">
+          <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[11px] font-bold text-[var(--action-primary-text)]">
             {queuedCount}
           </span>
         ) : null}

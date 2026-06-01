@@ -38,7 +38,7 @@ function MetricBadge({ tone, label }: { tone: SteelStatusTone; label: string }) 
     >
       <span
         className={cn(
-          "inline-flex h-5 min-w-5 items-center justify-center rounded-full border px-1 text-[10px] font-bold leading-none",
+          "inline-flex h-5 min-w-5 items-center justify-center rounded-full border px-1 text-[11px] font-bold leading-none",
           toneAccentClasses(tone),
         )}
       >

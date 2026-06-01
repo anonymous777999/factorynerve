@@ -688,7 +688,7 @@ export function SteelCustomersPage() {
                           <td className="px-3 py-3">
                             <div className="flex flex-wrap items-center gap-2">
                               <div className="font-semibold text-white">{customer.name}</div>
-                              <div className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-[0.16em] ${verificationBadgeClass(customer.verification_status)}`}>
+                              <div className={`inline-flex rounded-full border px-2 py-0.5 text-[11px] uppercase tracking-[0.16em] ${verificationBadgeClass(customer.verification_status)}`}>
                                 {customer.verification_status.replace("_", " ")}
                               </div>
                             </div>

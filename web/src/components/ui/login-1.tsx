@@ -201,7 +201,7 @@ export function LoginOne({
               <button
                 type="button"
                 onClick={onTogglePassword}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-control border border-border-default bg-surface-shell px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-text-secondary transition hover:border-border-strong hover:bg-surface-hover hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-control border border-border-default bg-surface-shell px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-secondary transition hover:border-border-strong hover:bg-surface-hover hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
               >
                 {showPassword ? "Hide" : "Show"}
               </button>

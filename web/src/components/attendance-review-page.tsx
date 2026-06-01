@@ -1280,7 +1280,7 @@ export default function AttendanceReviewPage() {
                                               <div className="mt-1 text-xs text-[var(--muted)]">{formatAttendanceStatusLabel(review.item.status)}</div>
                                               {review.issueType === "missed_punch" ? (
                                                 <div className="mt-2">
-                                                  <span className={cn("rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]", severityClasses("critical"))}>
+                                                  <span className={cn("rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]", severityClasses("critical"))}>
                                                     Missed punch
                                                   </span>
                                                 </div>
