@@ -327,7 +327,7 @@ export function SteelCommandCenterPage() {
               {canSeeFinancials ? (
                 <div className="mt-3 space-y-2">
                   <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Owner Report Date</div>
-                  <Input type="date" value={ownerReportDate} onChange={(event) => setOwnerReportDate(event.target.value)} />
+                  <Input aria-label="Owner report date" type="date" value={ownerReportDate} onChange={(event) => setOwnerReportDate(event.target.value)} />
                 </div>
               ) : null}
             </div>

@@ -121,6 +121,7 @@ export default function ForgotPasswordPage() {
         <div>
           <label className="text-label-dense font-medium uppercase tracking-wide text-text-secondary">{t("forms.email", "Email")}</label>
           <Input
+            aria-label={t("forms.email", "Email")}
             type="email"
             autoComplete="email"
             value={email}

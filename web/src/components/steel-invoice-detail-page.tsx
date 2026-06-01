@@ -129,11 +129,11 @@ export function SteelInvoiceDetailPage() {
   const linkedDispatches = detail.dispatches || [];
   const dispatchedWeight = Number(
     detail.dispatch_summary?.dispatched_weight_kg ||
-      invoiceLines.reduce((sum, line) => sum + Number(line.dispatched_weight_kg || 0), 0),
+    invoiceLines.reduce((sum, line) => sum + Number(line.dispatched_weight_kg || 0), 0),
   );
   const remainingWeight = Number(
     detail.dispatch_summary?.remaining_weight_kg ||
-      invoiceLines.reduce((sum, line) => sum + Number(line.remaining_weight_kg || 0), 0),
+    invoiceLines.reduce((sum, line) => sum + Number(line.remaining_weight_kg || 0), 0),
   );
   const fullyDispatchedCount = invoiceLines.filter(
     (line) => Number(line.remaining_weight_kg || 0) <= 0.001,
@@ -287,7 +287,7 @@ export function SteelInvoiceDetailPage() {
               <div className="text-xl font-semibold text-white">{formatKg(dispatchedWeight)} KG</div>
               <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
                 <div
-                  className="h-full bg-[var(--accent)] transition-all"
+                  className="h-full bg-[var(--accent)] transition-[width] duration-300 ease-out"
                   style={{ width: `${Math.min(100, dispatchCompletionPercent)}%` }}
                 />
               </div>

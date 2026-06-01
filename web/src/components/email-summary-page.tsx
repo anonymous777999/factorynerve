@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { 
-  Calendar, 
-  RefreshCw, 
-  Sparkles, 
-  FileText, 
-  ShieldAlert, 
-  Mail, 
-  HelpCircle, 
-  ChevronDown, 
+import {
+  Calendar,
+  RefreshCw,
+  Sparkles,
+  FileText,
+  ShieldAlert,
+  Mail,
+  HelpCircle,
+  ChevronDown,
   Settings,
   Shield,
   Info
@@ -193,7 +193,7 @@ export default function EmailSummaryPage() {
 
   const composeLinks = useMemo(() => buildComposeLinks(recipients, subject, body), [recipients, subject, body]);
   const draftReady = useMemo(() => Boolean(recipients.length && subject.trim() && body.trim()), [recipients.length, subject, body]);
-  
+
   const ownerRiskLines = useMemo(() => {
     if (!steelOverview) return [];
     const highRiskBatchCount =
@@ -212,7 +212,7 @@ export default function EmailSummaryPage() {
   }, [steelOverview]);
 
   const bodyHasOwnerRisk = useMemo(() => body.includes("Owner Risk Watch"), [body]);
-  
+
   const sendReadinessCards = useMemo(
     () => [
       {
@@ -345,7 +345,7 @@ export default function EmailSummaryPage() {
   return (
     <main className="min-h-screen bg-surface-shell px-4 py-4 md:px-6">
       <div className="mx-auto max-w-[1600px] flex flex-col gap-6">
-        
+
         {/* Modern Compact Unified Page Header */}
         <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border-subtle pb-4">
           <div className="min-w-0">
@@ -381,17 +381,17 @@ export default function EmailSummaryPage() {
 
         {/* 3-Lane Grid Structure */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_1fr] xl:grid-cols-[280px_1fr_420px] items-start">
-          
+
           {/* 🛠️ LANE 1 — CONTROL RAIL (col-span-1) */}
           <div className="space-y-4 col-span-1 lg:max-w-[260px] xl:max-w-none">
-            
+
             {/* Range Presets and Date Inputs */}
             <div className="space-y-3 rounded-lg border border-border-default bg-surface-panel p-4">
               <div className="flex items-center gap-1.5 text-xs font-semibold tracking-wider text-text-tertiary uppercase select-none">
                 <Calendar className="h-3.5 w-3.5 text-action-primary" />
                 <span>Range Selector</span>
               </div>
-              
+
               {/* Presets Row */}
               <div className="grid grid-cols-3 gap-1.5 pt-1">
                 <button
@@ -413,12 +413,13 @@ export default function EmailSummaryPage() {
                   Month
                 </button>
               </div>
-              
+
               {/* Vertical Date Pickers */}
               <div className="space-y-2 pt-1.5">
                 <div>
                   <label className="text-[9px] uppercase font-bold tracking-wider text-text-tertiary block">Start Date</label>
                   <Input
+                    aria-label="Start date"
                     type="date"
                     value={startDate}
                     onChange={(e) => setStartDate(e.target.value)}
@@ -428,6 +429,7 @@ export default function EmailSummaryPage() {
                 <div>
                   <label className="text-[9px] uppercase font-bold tracking-wider text-text-tertiary block">End Date</label>
                   <Input
+                    aria-label="End date"
                     type="date"
                     value={endDate}
                     onChange={(e) => setEndDate(e.target.value)}
@@ -445,7 +447,7 @@ export default function EmailSummaryPage() {
                 <RefreshCw className={cn("h-3.5 w-3.5", loadingSummary ? "animate-spin" : "")} />
                 <span>{loadingSummary ? "Syncing..." : "Sync Telemetry"}</span>
               </Button>
-              
+
               <p className="text-[10px] text-text-tertiary leading-relaxed pt-0.5 border-t border-border-subtle/50 mt-1">
                 Data will compile inside the defined window.
               </p>
@@ -524,7 +526,7 @@ export default function EmailSummaryPage() {
 
           {/* 🔬 LANE 2 — TRUST / TELEMETRY (col-span-1) */}
           <div className="space-y-6 col-span-1 flex flex-col">
-            
+
             {/* Readiness Summary Matrix Bar */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-surface-panel rounded-lg p-3 border border-border-default">
               {sendReadinessCards.map((item) => {
@@ -547,10 +549,10 @@ export default function EmailSummaryPage() {
               <div className="text-xs font-semibold tracking-wider text-text-tertiary uppercase select-none">
                 Telemetry Summary Snapshot
               </div>
-              
+
               {summary ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  
+
                   {/* Units Card */}
                   <div className="p-4 rounded-lg bg-surface-card border border-border-subtle flex flex-col justify-between">
                     <div>
@@ -562,14 +564,14 @@ export default function EmailSummaryPage() {
                     {/* Linear Target Progress */}
                     <div className="mt-4 pt-1">
                       <div className="h-1.5 w-full bg-surface-elevated rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-action-primary rounded-full transition-all duration-500"
+                        <div
+                          className="h-full bg-action-primary rounded-full transition-[width] duration-500 ease-out"
                           style={{ width: `${Math.min(100, (summary.totals.total_units / (summary.totals.total_target || 1)) * 100)}%` }}
                         />
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Performance Yield */}
                   <div className="p-4 rounded-lg bg-surface-card border border-border-subtle flex flex-col justify-between">
                     <div>
@@ -628,7 +630,7 @@ export default function EmailSummaryPage() {
                   </Button>
                 </Link>
               </div>
-              
+
               <div className="p-4 rounded-lg bg-surface-card border border-border-subtle space-y-4">
                 <div className="flex items-start justify-between border-b border-border-subtle/60 pb-3 gap-3">
                   <div>
@@ -648,7 +650,7 @@ export default function EmailSummaryPage() {
                     {(ocrSummary?.pending_documents ?? 0) === 0 ? "All verified" : "review pending"}
                   </span>
                 </div>
-                
+
                 {/* Clean Flat Micro-Grid */}
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div className="bg-surface-elevated/30 rounded p-2.5 border border-border-subtle">
@@ -732,9 +734,9 @@ export default function EmailSummaryPage() {
 
           {/* ✍️ LANE 3 — EXECUTION / COMPOSER (col-span-1) */}
           <div className="col-span-1 xl:sticky xl:top-4 space-y-4">
-            
+
             <div className="rounded-lg border border-border-default bg-surface-panel p-5 space-y-4 shadow-xl">
-              
+
               <div className="flex items-center justify-between">
                 <div className="text-xs font-bold tracking-wider text-text-tertiary uppercase select-none">
                   Executive Composer
@@ -760,15 +762,16 @@ export default function EmailSummaryPage() {
                     value={recipientsRaw}
                     onChange={(event) => setRecipientsRaw(event.target.value)}
                     placeholder="manager@example.com, client@example.com"
-                    className="w-full text-xs font-mono py-1.5 px-2.5 bg-surface-card border border-border-default rounded-md mt-1 leading-normal focus:border-border-focus transition-all resize-none"
+                    className="w-full text-xs font-mono py-1.5 px-2.5 bg-surface-card border border-border-default rounded-md mt-1 leading-normal focus:border-border-focus transition-colors resize-none"
                   />
                 </div>
                 <div>
                   <label className="text-[9px] uppercase font-bold tracking-wider text-text-tertiary select-none">Subject</label>
                   <Input
+                    aria-label="Subject"
                     value={subject}
                     onChange={(event) => setSubject(event.target.value)}
-                    className="w-full text-xs py-1.5 px-2.5 bg-surface-card border border-border-default rounded-md h-8 mt-1 focus:border-border-focus transition-all"
+                    className="w-full text-xs py-1.5 px-2.5 bg-surface-card border border-border-default rounded-md h-8 mt-1 focus:border-border-focus transition-colors"
                   />
                 </div>
               </div>
@@ -851,7 +854,7 @@ export default function EmailSummaryPage() {
                       <span>Send with Gmail</span>
                     </Button>
                   </a>
-                  
+
                   <details className="relative group shrink-0">
                     <summary className="list-none cursor-pointer">
                       <Button size="compact" variant="outline" className="h-9 px-3 text-xs flex items-center gap-1 cursor-pointer">
@@ -860,15 +863,15 @@ export default function EmailSummaryPage() {
                       </Button>
                     </summary>
                     <div className="absolute right-0 bottom-full mb-2 w-40 bg-surface-overlay border border-border-default rounded-md shadow-2xl z-50 p-1 flex flex-col gap-0.5 cursor-default">
-                      <a 
-                        href={composeLinks.outlook} 
-                        target="_blank" 
-                        rel="noreferrer" 
+                      <a
+                        href={composeLinks.outlook}
+                        target="_blank"
+                        rel="noreferrer"
                         className="w-full text-left text-xs px-3 py-2 rounded-md hover:bg-surface-selected text-text-secondary hover:text-text-primary cursor-pointer transition-colors block"
                       >
                         Open Outlook
                       </a>
-                      <a 
+                      <a
                         href={composeLinks.mailto}
                         className="w-full text-left text-xs px-3 py-2 rounded-md hover:bg-surface-selected text-text-secondary hover:text-text-primary cursor-pointer transition-colors block"
                       >
@@ -885,7 +888,7 @@ export default function EmailSummaryPage() {
             </div>
 
           </div>
-          
+
         </div>
 
         {/* Global Workstation Status Signals */}

@@ -21,6 +21,7 @@ export function DataTableToolbar({
   searchPlaceholder = "Search records",
   searchValue = "",
 }: DataTableToolbarProps) {
+  const searchInputId = React.useId();
   return (
     <div
       className={cn(
@@ -30,10 +31,14 @@ export function DataTableToolbar({
     >
       {onSearchChange ? (
         <div className="min-w-0 flex-1">
-          <label className="ui-no-select ui-no-callout mb-xs block text-label-dense font-medium uppercase tracking-wide text-text-secondary">
+          <label
+            htmlFor={searchInputId}
+            className="ui-no-select ui-no-callout mb-xs block text-label-dense font-medium uppercase tracking-wide text-text-secondary"
+          >
             Search
           </label>
           <Input
+            id={searchInputId}
             value={searchValue}
             className="mt-0 px-sm text-label-dense"
             placeholder={searchPlaceholder}

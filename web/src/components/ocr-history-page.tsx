@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/data-table/data-table-types";
 import { DataTableToolbar } from "@/components/ui/data-table/data-table-toolbar";
 import { EmptyState } from "@/components/ui/empty-state";
+import { useDebouncedValue } from "@/hooks/use-interaction-timing";
 import { useOcrHistoryQuery } from "@/hooks/use-ocr-verify-queries";
 import { canUseOcrScan } from "@/lib/ocr-access";
 import { type OcrVerifyQueueFilters } from "@/lib/query-keys";
@@ -79,8 +80,13 @@ export default function OcrHistoryPage() {
     }
   }, [confidenceFilter]);
 
+  // Requirement 12.8: search drives a backend list query via the query key.
+  // Debounce the value that feeds the query (300ms) so we issue one request per
+  // pause instead of one per keystroke, while the input stays fully responsive.
+  const debouncedSearch = useDebouncedValue(search, 300);
+
   const filters: OcrVerifyQueueFilters = {
-    search,
+    search: debouncedSearch,
     status: statusFilter,
     exportState: exportStateFilter,
     documentType: documentTypeFilter === "all" ? undefined : documentTypeFilter,

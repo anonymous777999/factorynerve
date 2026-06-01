@@ -199,6 +199,7 @@ export function SteelInventoryTransactionsPage() {
                     <div>
                       <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Material</label>
                       <Select
+                        aria-label="Material"
                         value={form.item_id}
                         onChange={(e) => setForm({ ...form, item_id: e.target.value })}
                         required
@@ -212,6 +213,7 @@ export function SteelInventoryTransactionsPage() {
                     <div>
                       <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Direction</label>
                       <Select
+                        aria-label="Direction"
                         value={form.direction}
                         onChange={(e) => setForm({ ...form, direction: e.target.value })}
                       >
@@ -233,6 +235,7 @@ export function SteelInventoryTransactionsPage() {
                     <div>
                       <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Reason / Type</label>
                       <Select
+                        aria-label="Reason / type"
                         value={form.transaction_type}
                         onChange={(e) => setForm({ ...form, transaction_type: e.target.value })}
                       >

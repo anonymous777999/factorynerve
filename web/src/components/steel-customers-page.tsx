@@ -583,7 +583,7 @@ export function SteelCustomersPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="text-sm text-[var(--muted)]">Company Type</label>
-                  <Select value={form.company_type} onChange={(event) => setForm((current) => ({ ...current, company_type: event.target.value }))}>
+                  <Select aria-label="Company type" value={form.company_type} onChange={(event) => setForm((current) => ({ ...current, company_type: event.target.value }))}>
                     <option value="trader">Trader</option>
                     <option value="manufacturer">Manufacturer</option>
                     <option value="contractor">Contractor</option>
@@ -592,7 +592,7 @@ export function SteelCustomersPage() {
                 </div>
                 <div>
                   <label className="text-sm text-[var(--muted)]">Status</label>
-                  <Select value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as "active" | "on_hold" | "blocked" }))}>
+                  <Select aria-label="Status" value={form.status} onChange={(event) => setForm((current) => ({ ...current, status: event.target.value as "active" | "on_hold" | "blocked" }))}>
                     <option value="active">Active</option>
                     <option value="on_hold">On Hold</option>
                     <option value="blocked">Blocked</option>

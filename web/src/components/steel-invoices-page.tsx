@@ -230,9 +230,9 @@ export function SteelInvoicesPage() {
           }),
           batch_id: line.batch_id
             ? parseRequiredNumber(line.batch_id, `Line ${index + 1} batch`, {
-                minimum: 1,
-                integerOnly: true,
-              })
+              minimum: 1,
+              integerOnly: true,
+            })
             : undefined,
           description: line.description || undefined,
           weight_kg: parseRequiredNumber(line.weight_kg, `Line ${index + 1} weight`, {
@@ -397,11 +397,11 @@ export function SteelInvoicesPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="text-sm text-[var(--muted)]">Invoice Date</label>
-                  <Input type="date" value={invoiceDate} onChange={(event) => setInvoiceDate(event.target.value)} />
+                  <Input aria-label="Invoice date" type="date" value={invoiceDate} onChange={(event) => setInvoiceDate(event.target.value)} />
                 </div>
                 <div>
                   <label className="text-sm text-[var(--muted)]">Customer</label>
-                  <Select value={selectedCustomerId} onChange={(event) => setSelectedCustomerId(event.target.value)}>
+                  <Select aria-label="Customer" value={selectedCustomerId} onChange={(event) => setSelectedCustomerId(event.target.value)}>
                     <option value="">Select existing customer (optional)</option>
                     {customers.map((customer) => (
                       <option key={customer.id} value={customer.id}>
@@ -419,7 +419,7 @@ export function SteelInvoicesPage() {
                 </div>
                 <div>
                   <label className="text-sm text-[var(--muted)]">Payment Terms</label>
-                  <Input type="number" min="0" step="1" inputMode="numeric" value={paymentTermsDays} onChange={(event) => setPaymentTermsDays(event.target.value)} />
+                  <Input aria-label="Payment terms" type="number" min="0" step="1" inputMode="numeric" value={paymentTermsDays} onChange={(event) => setPaymentTermsDays(event.target.value)} />
                   <div className="mt-2 text-xs text-[var(--muted)]">Due {dueDate}</div>
                 </div>
               </div>
@@ -445,7 +445,7 @@ export function SteelInvoicesPage() {
                       <div className="grid gap-4 md:grid-cols-2">
                         <div>
                           <label className="text-sm text-[var(--muted)]">Finished item</label>
-                          <Select value={line.item_id} onChange={(event) => setLine(index, { item_id: event.target.value, batch_id: "" })}>
+                          <Select aria-label="Finished item" value={line.item_id} onChange={(event) => setLine(index, { item_id: event.target.value, batch_id: "" })}>
                             <option value="">Select item</option>
                             {finishedItems.map((item) => (
                               <option key={item.id} value={item.id}>
@@ -471,7 +471,7 @@ export function SteelInvoicesPage() {
                         </div>
                         <div>
                           <label className="text-sm text-[var(--muted)]">Batch (optional)</label>
-                          <Select value={line.batch_id} onChange={(event) => setLine(index, { batch_id: event.target.value })}>
+                          <Select aria-label="Batch (optional)" value={line.batch_id} onChange={(event) => setLine(index, { batch_id: event.target.value })}>
                             <option value="">No batch link</option>
                             {matchingBatches.map((batch) => (
                               <option key={batch.id} value={batch.id}>
@@ -484,11 +484,11 @@ export function SteelInvoicesPage() {
                       <div className="mt-4 grid gap-4 md:grid-cols-3">
                         <div>
                           <label className="text-sm text-[var(--muted)]">Weight (KG)</label>
-                          <Input type="number" min="0.01" step="0.01" value={line.weight_kg} onChange={(event) => setLine(index, { weight_kg: event.target.value })} />
+                          <Input aria-label="Weight (KG)" type="number" min="0.01" step="0.01" value={line.weight_kg} onChange={(event) => setLine(index, { weight_kg: event.target.value })} />
                         </div>
                         <div>
                           <label className="text-sm text-[var(--muted)]">Rate / KG</label>
-                          <Input type="number" min="0" step="0.01" value={line.rate_per_kg} onChange={(event) => setLine(index, { rate_per_kg: event.target.value })} />
+                          <Input aria-label="Rate / KG" type="number" min="0" step="0.01" value={line.rate_per_kg} onChange={(event) => setLine(index, { rate_per_kg: event.target.value })} />
                         </div>
                         <div>
                           <label className="text-sm text-[var(--muted)]">Line Total</label>

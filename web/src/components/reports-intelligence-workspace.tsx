@@ -257,6 +257,7 @@ export default function ReportsIntelligenceWorkspace() {
                                             Start Date
                                         </label>
                                         <Input
+                                            aria-label="Start date"
                                             type="date"
                                             value={startDate}
                                             onChange={(e) => setStartDate(e.target.value)}
@@ -268,6 +269,7 @@ export default function ReportsIntelligenceWorkspace() {
                                             End Date
                                         </label>
                                         <Input
+                                            aria-label="End date"
                                             type="date"
                                             value={endDate}
                                             onChange={(e) => setEndDate(e.target.value)}

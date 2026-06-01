@@ -74,6 +74,7 @@ export function OCRResultForm({
               {renderConfidence(confidence.date)}
             </div>
             <Input
+              aria-label="Date"
               value={fields.date}
               onChange={(e) => onChange("date", e.target.value)}
               className={`mt-1 h-12 text-base ${inputClass(confidence.date)}`}
@@ -85,6 +86,7 @@ export function OCRResultForm({
               {renderConfidence(confidence.material)}
             </div>
             <Input
+              aria-label="Material"
               value={fields.material}
               onChange={(e) => onChange("material", e.target.value)}
               className={`mt-1 h-12 text-base ${inputClass(confidence.material)}`}
@@ -96,6 +98,7 @@ export function OCRResultForm({
               {renderConfidence(confidence.quantity)}
             </div>
             <Input
+              aria-label="Quantity"
               value={fields.quantity}
               onChange={(e) => onChange("quantity", e.target.value)}
               className={`mt-1 h-12 text-base ${inputClass(confidence.quantity)}`}

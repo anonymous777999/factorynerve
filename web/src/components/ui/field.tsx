@@ -7,9 +7,17 @@ export type FieldValidationState = "default" | "invalid" | "valid";
 type FieldContextValue = {
   id?: string;
   describedById?: string;
+  /**
+   * The id of the control that should receive the label's `htmlFor`. Only set
+   * once a labelable control (Input/Textarea/Select) has registered itself, so
+   * the Label never emits a dangling `htmlFor` pointing at a non-existent id.
+   */
+  labelTargetId?: string;
   validationState: FieldValidationState;
   registerHelperText: (id: string) => void;
   unregisterHelperText: (id: string) => void;
+  registerControl: (id: string) => void;
+  unregisterControl: (id: string) => void;
 };
 
 const FieldContext = React.createContext<FieldContextValue | null>(null);
@@ -82,6 +90,7 @@ export function Field({
   const fieldId = idProp ?? generatedId;
 
   const [helperIds, setHelperIds] = React.useState<string[]>([]);
+  const [controlIds, setControlIds] = React.useState<string[]>([]);
 
   const registerHelperText = React.useCallback((helperId: string) => {
     setHelperIds((prev) => (prev.includes(helperId) ? prev : [...prev, helperId]));
@@ -91,17 +100,40 @@ export function Field({
     setHelperIds((prev) => prev.filter((existing) => existing !== helperId));
   }, []);
 
+  const registerControl = React.useCallback((controlId: string) => {
+    setControlIds((prev) => (prev.includes(controlId) ? prev : [...prev, controlId]));
+  }, []);
+
+  const unregisterControl = React.useCallback((controlId: string) => {
+    setControlIds((prev) => prev.filter((existing) => existing !== controlId));
+  }, []);
+
   const describedById = helperIds.length > 0 ? helperIds.join(" ") : undefined;
+  // Only expose a label target once a labelable control (Input/Textarea/Select)
+  // has registered itself, so Label never emits a dangling `htmlFor`.
+  const labelTargetId = controlIds[0];
 
   const contextValue = React.useMemo<FieldContextValue>(
     () => ({
       id: fieldId,
       describedById,
+      labelTargetId,
       validationState,
       registerHelperText,
       unregisterHelperText,
+      registerControl,
+      unregisterControl,
     }),
-    [fieldId, describedById, validationState, registerHelperText, unregisterHelperText],
+    [
+      fieldId,
+      describedById,
+      labelTargetId,
+      validationState,
+      registerHelperText,
+      unregisterHelperText,
+      registerControl,
+      unregisterControl,
+    ],
   );
 
   return (
@@ -126,16 +158,16 @@ export function Label({
   ...props
 }: LabelProps) {
   const fieldContext = useFieldContext();
-  // We deliberately do NOT auto-resolve htmlFor from FieldContext to avoid
-  // creating dangling htmlFor references when sibling controls (e.g. Select)
-  // do not yet participate in the FieldContext id system. Callers can still
-  // pass htmlFor explicitly when they need an association.
+  // Resolve htmlFor from FieldContext only once a labelable control has
+  // registered its id (labelTargetId). This avoids dangling htmlFor references
+  // while still associating the label with the control for assistive tech.
+  const resolvedHtmlFor = htmlFor ?? fieldContext?.labelTargetId;
   const resolvedValidationState =
     validationState ?? fieldContext?.validationState ?? "default";
 
   return (
     <label
-      htmlFor={htmlFor}
+      htmlFor={resolvedHtmlFor}
       className={cn(
         "ui-no-select ui-no-callout mb-1 block text-[11px] font-medium text-[var(--color-text-secondary)]",
         resolvedValidationState === "invalid" ? "text-status-danger-fg" : "",

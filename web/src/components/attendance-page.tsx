@@ -323,7 +323,7 @@ export default function AttendancePage() {
 
   if (loading || (pageLoading && Boolean(user) && !hasLoadedOnce)) {
     return (
-    <main className="min-h-screen bg-[var(--surface-industrial-deep)] px-4 py-8 md:px-6">
+      <main className="min-h-screen bg-[var(--surface-industrial-deep)] px-4 py-8 md:px-6">
         <div className="mx-auto max-w-6xl space-y-6">
           <Skeleton className="h-[28rem] rounded-[2rem]" />
           <div className="hidden gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -337,7 +337,7 @@ export default function AttendancePage() {
 
   if (!user) {
     return (
-    <main className="flex min-h-screen items-center justify-center bg-[var(--surface-industrial-deep)] px-4">
+      <main className="flex min-h-screen items-center justify-center bg-[var(--surface-industrial-deep)] px-4">
         <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-white/5 p-6 text-white">
           <div className="text-xl font-semibold">{t("attendance.title", "Attendance")}</div>
           <div className="mt-3 text-sm text-slate-300">
@@ -429,7 +429,7 @@ export default function AttendancePage() {
                 {canOverrideShift && today?.can_punch_in ? (
                   <div>
                     <label className="text-sm text-slate-300">{t("attendance.tools.shift", "Shift Override")}</label>
-                    <Select value={selectedShift} onChange={(event) => setSelectedShift(event.target.value as AttendanceShift)} disabled={busy}>
+                    <Select aria-label="Shift override" value={selectedShift} onChange={(event) => setSelectedShift(event.target.value as AttendanceShift)} disabled={busy}>
                       {SHIFT_OPTIONS.map((shift) => (
                         <option key={shift} value={shift}>
                           {shiftLabel(shift)}

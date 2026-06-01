@@ -235,8 +235,8 @@ function FactoryChart({
             type="button"
             onClick={() => onSelect(active ? null : item.factoryId)}
             className={`w-full rounded-2xl border p-4 text-left transition ${active
-                ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)]"
-                : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[rgba(62,166,255,0.25)]"
+              ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)]"
+              : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[rgba(62,166,255,0.25)]"
               }`}
           >
             <div className="flex items-center justify-between gap-3">
@@ -277,8 +277,8 @@ function ShiftChart({
             type="button"
             onClick={() => onSelect(active ? null : item.shift)}
             className={`rounded-2xl border p-4 text-left transition ${active
-                ? "border-[rgba(45,212,191,0.45)] bg-[rgba(45,212,191,0.14)]"
-                : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[rgba(45,212,191,0.28)]"
+              ? "border-[rgba(45,212,191,0.45)] bg-[rgba(45,212,191,0.14)]"
+              : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[rgba(45,212,191,0.28)]"
               }`}
           >
             <div className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">{shiftLabel(item.shift)}</div>
@@ -733,7 +733,7 @@ export default function PremiumDashboardPage() {
             <div className="grid gap-3 sm:grid-cols-4">
               <div>
                 <div className="mb-2 text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Window</div>
-                <Select value={String(days)} onChange={(event) => setDays(Number(event.target.value))}>
+                <Select aria-label="Window" value={String(days)} onChange={(event) => setDays(Number(event.target.value))}>
                   <option value="7">Last 7 days</option>
                   <option value="14">Last 14 days</option>
                   <option value="30">Last 30 days</option>
@@ -741,7 +741,7 @@ export default function PremiumDashboardPage() {
               </div>
               <div>
                 <div className="mb-2 text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Factory</div>
-                <Select value={selectedFactoryId || ""} onChange={(event) => setSelectedFactoryId(event.target.value || null)}>
+                <Select aria-label="Factory" value={selectedFactoryId || ""} onChange={(event) => setSelectedFactoryId(event.target.value || null)}>
                   <option value="">All factories</option>
                   {(dashboard?.filters.factories || []).map((factory) => (
                     <option key={factory.id} value={factory.id}>
@@ -752,7 +752,7 @@ export default function PremiumDashboardPage() {
               </div>
               <div>
                 <div className="mb-2 text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Shift</div>
-                <Select value={selectedShift || ""} onChange={(event) => setSelectedShift(event.target.value || null)}>
+                <Select aria-label="Shift" value={selectedShift || ""} onChange={(event) => setSelectedShift(event.target.value || null)}>
                   <option value="">All shifts</option>
                   {(dashboard?.filters.shifts || []).map((item) => (
                     <option key={item.id} value={item.id}>
@@ -763,7 +763,7 @@ export default function PremiumDashboardPage() {
               </div>
               <div>
                 <div className="mb-2 text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Audit Action</div>
-                <Select value={auditAction} onChange={(event) => setAuditAction(event.target.value)}>
+                <Select aria-label="Audit action" value={auditAction} onChange={(event) => setAuditAction(event.target.value)}>
                   <option value="">All actions</option>
                   {auditActions.map((action) => (
                     <option key={action} value={action}>

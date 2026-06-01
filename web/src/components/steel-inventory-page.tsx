@@ -244,6 +244,7 @@ export function SteelInventoryPage() {
                     <div>
                       <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Category</label>
                       <Select
+                        aria-label="Category"
                         value={form.category}
                         onChange={(e) => setForm({ ...form, category: e.target.value })}
                       >

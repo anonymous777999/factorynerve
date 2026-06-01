@@ -863,11 +863,11 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
                       <label className="text-sm text-[var(--muted)]">Payment Date</label>
-                      <Input type="date" value={paymentForm.payment_date} onChange={(event) => setPaymentForm((current) => ({ ...current, payment_date: event.target.value }))} />
+                      <Input type="date" value={paymentForm.payment_date} aria-label="Payment date" onChange={(event) => setPaymentForm((current) => ({ ...current, payment_date: event.target.value }))} />
                     </div>
                     <div>
                       <label className="text-sm text-[var(--muted)]">Invoice (optional)</label>
-                      <Select value={paymentForm.invoice_id} onChange={(event) => setPaymentForm((current) => ({ ...current, invoice_id: event.target.value }))}>
+                      <Select aria-label="Payment invoice" value={paymentForm.invoice_id} onChange={(event) => setPaymentForm((current) => ({ ...current, invoice_id: event.target.value }))}>
                         <option value="">Auto allocate oldest outstanding</option>
                         {openInvoices.map((invoice) => (
                           <option key={invoice.id} value={invoice.id}>
@@ -880,11 +880,11 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                   <div className="grid gap-4 md:grid-cols-2">
                     <div>
                       <label className="text-sm text-[var(--muted)]">Amount</label>
-                      <Input type="number" min="0.01" step="0.01" value={paymentForm.amount} onChange={(event) => setPaymentForm((current) => ({ ...current, amount: event.target.value }))} />
+                      <Input type="number" min="0.01" step="0.01" value={paymentForm.amount} aria-label="Payment amount" onChange={(event) => setPaymentForm((current) => ({ ...current, amount: event.target.value }))} />
                     </div>
                     <div>
                       <label className="text-sm text-[var(--muted)]">Payment Mode</label>
-                      <Select value={paymentForm.payment_mode} onChange={(event) => setPaymentForm((current) => ({ ...current, payment_mode: event.target.value as SteelPaymentMode }))}>
+                      <Select aria-label="Payment mode" value={paymentForm.payment_mode} onChange={(event) => setPaymentForm((current) => ({ ...current, payment_mode: event.target.value as SteelPaymentMode }))}>
                         {PAYMENT_MODE_OPTIONS.map((mode) => (
                           <option key={mode} value={mode}>
                             {mode === "bank_transfer"
@@ -938,6 +938,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                     <div>
                       <label className="text-sm text-[var(--muted)]">Priority</label>
                       <Select
+                        aria-label="Follow-up priority"
                         value={taskForm.priority}
                         onChange={(event) =>
                           setTaskForm((current) => ({ ...current, priority: event.target.value as SteelFollowUpTaskPriority }))
@@ -955,12 +956,14 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                       <Input
                         type="date"
                         value={taskForm.due_date}
+                        aria-label="Follow-up due date"
                         onChange={(event) => setTaskForm((current) => ({ ...current, due_date: event.target.value }))}
                       />
                     </div>
                     <div>
                       <label className="text-sm text-[var(--muted)]">Invoice (optional)</label>
                       <Select
+                        aria-label="Follow-up invoice"
                         value={taskForm.invoice_id}
                         onChange={(event) => setTaskForm((current) => ({ ...current, invoice_id: event.target.value }))}
                       >
@@ -1022,31 +1025,31 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                         {task.created_by_name ? ` by ${task.created_by_name}` : ""}
                         {task.completed_at ? ` · closed ${formatDate(task.completed_at)}` : ""}
                       </div>
-                    {canManageTasks && (
-                      <div className="flex flex-wrap gap-2">
-                        <Button
-                          variant="outline"
-                          disabled={taskBusy || task.status !== "open"}
-                          onClick={() => void setTaskStatus(task.id, "in_progress")}
-                        >
-                          Start
-                        </Button>
-                        <Button
-                          variant="outline"
-                          disabled={taskBusy || task.status === "done" || task.status === "cancelled"}
-                          onClick={() => void setTaskStatus(task.id, "done")}
-                        >
-                          Mark Done
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          disabled={taskBusy || task.status === "cancelled" || task.status === "done"}
-                          onClick={() => void setTaskStatus(task.id, "cancelled")}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    )}
+                      {canManageTasks && (
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="outline"
+                            disabled={taskBusy || task.status !== "open"}
+                            onClick={() => void setTaskStatus(task.id, "in_progress")}
+                          >
+                            Start
+                          </Button>
+                          <Button
+                            variant="outline"
+                            disabled={taskBusy || task.status === "done" || task.status === "cancelled"}
+                            onClick={() => void setTaskStatus(task.id, "done")}
+                          >
+                            Mark Done
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            disabled={taskBusy || task.status === "cancelled" || task.status === "done"}
+                            onClick={() => void setTaskStatus(task.id, "cancelled")}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

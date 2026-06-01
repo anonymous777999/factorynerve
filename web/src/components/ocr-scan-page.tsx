@@ -679,7 +679,7 @@ export default function OcrScanPage() {
         resultPreview?.scanQuality,
         Math.max(editableRows.length, 1),
         Math.max(editableHeaders.length, 1),
-    ),
+      ),
     [activeCell, editableHeaders.length, editableRows.length, resultPreview?.scanQuality],
   );
   const suspiciousRowCount = useMemo(() => {
@@ -905,21 +905,21 @@ export default function OcrScanPage() {
     setResultPreview(
       persisted.headers?.length || persisted.rows?.length
         ? {
-            type: persisted.resultType || "table",
-            title: persisted.title || persisted.fileName || "OCR Extraction",
-            headers: persisted.headers || [],
-            rows: cloneRows((persisted.rows as OcrCell[][] | undefined) || []),
-            rawText: persisted.rawText ?? null,
-            language: persisted.language || "auto",
-            avgConfidence: persisted.confidence ?? null,
-            warnings: persisted.warnings || [],
-            scanQuality: persisted.scanQuality ?? null,
-            routingMeta: persisted.routingMeta ?? null,
-            routingLabel: persisted.routingMeta?.model_tier ?? null,
-            tokenUsage: persisted.tokenUsage ?? null,
-            debug: persisted.debug ?? null,
-            reused: false,
-          }
+          type: persisted.resultType || "table",
+          title: persisted.title || persisted.fileName || "OCR Extraction",
+          headers: persisted.headers || [],
+          rows: cloneRows((persisted.rows as OcrCell[][] | undefined) || []),
+          rawText: persisted.rawText ?? null,
+          language: persisted.language || "auto",
+          avgConfidence: persisted.confidence ?? null,
+          warnings: persisted.warnings || [],
+          scanQuality: persisted.scanQuality ?? null,
+          routingMeta: persisted.routingMeta ?? null,
+          routingLabel: persisted.routingMeta?.model_tier ?? null,
+          tokenUsage: persisted.tokenUsage ?? null,
+          debug: persisted.debug ?? null,
+          reused: false,
+        }
         : null,
     );
     setEditableHeaders(persisted.headers || []);
@@ -1772,21 +1772,21 @@ export default function OcrScanPage() {
             </div>
             <div className="factory-ocr-stagebar">
               {STEP_LABELS.map((item, index) => {
-                  const activeIndex = STEP_LABELS.findIndex((stepItem) => stepItem.key === step);
-                  const state = index < activeIndex ? "done" : index === activeIndex ? "current" : "idle";
-                  return (
-                    <div
-                      key={item.key}
-                      className="factory-ocr-stagepill"
-                      data-state={state}
-                    >
-                      <div className="factory-ocr-stagepill__index">
-                        {index + 1}
-                      </div>
-                      <div className="factory-ocr-stagepill__label">{item.label}</div>
+                const activeIndex = STEP_LABELS.findIndex((stepItem) => stepItem.key === step);
+                const state = index < activeIndex ? "done" : index === activeIndex ? "current" : "idle";
+                return (
+                  <div
+                    key={item.key}
+                    className="factory-ocr-stagepill"
+                    data-state={state}
+                  >
+                    <div className="factory-ocr-stagepill__index">
+                      {index + 1}
                     </div>
-                  );
-                })}
+                    <div className="factory-ocr-stagepill__label">{item.label}</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
@@ -2243,129 +2243,129 @@ export default function OcrScanPage() {
                     <span>Review rail</span>
                   </button>
                 ) : (
-                <aside className="ocr-workstation-panel ocr-review-rail">
-                  <div className="ocr-workstation-panel__header">
-                    <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">
-                        Review rail
-                      </div>
-                      <div className="mt-1 text-sm font-semibold text-text-primary">
-                        {step === "export" ? "Ready for export" : "Verification active"}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="ocr-panel-eye-button"
-                      onClick={() => setReviewRailCollapsed(true)}
-                      aria-label="Hide review rail"
-                      title="Hide review rail"
-                    >
-                      <EyeOff aria-hidden="true" size={16} />
-                    </button>
-                  </div>
-                  <div className="ocr-review-rail__body">
-                    <div className="ocr-rail-metric" data-tone="success">
-                      <span>Average confidence</span>
-                      <strong>{formatConfidence(resultPreview.avgConfidence)}</strong>
-                    </div>
-                    <div className="ocr-rail-metric" data-tone={visibleLowConfidenceCount ? "danger" : "success"}>
-                      <span>Unresolved cells</span>
-                      <strong>{visibleLowConfidenceCount}</strong>
-                    </div>
-                    <div className="ocr-rail-metric" data-tone={suspiciousRowCount ? "warning" : "success"}>
-                      <span>Suspicious rows</span>
-                      <strong>{suspiciousRowCount}</strong>
-                    </div>
-                    <div className="ocr-rail-metric">
-                      <span>Corrections</span>
-                      <strong>{correctionCount}</strong>
-                    </div>
-                    <div className="ocr-rail-context">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">Linked focus</div>
-                      <div className="mt-1 text-sm font-medium text-text-primary">{activeCellLabel}</div>
-                      <div className="mt-1 text-xs text-text-secondary">Selected table context drives the source highlight.</div>
-                    </div>
-                    {resultPreview.scanQuality?.confidence_band === "low" || resultPreview.warnings.length ? (
-                      <div className="ocr-rail-context">
-                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">Inspection notes</div>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {resultPreview.scanQuality?.confidence_band === "low" ? (
-                            <span className="factory-ocr-chip factory-ocr-chip--warning">Low quality</span>
-                          ) : null}
-                          {resultPreview.warnings.map((warning) => (
-                            <span key={warning} className="factory-ocr-chip">
-                              {warning.replaceAll("_", " ")}
-                            </span>
-                          ))}
+                  <aside className="ocr-workstation-panel ocr-review-rail">
+                    <div className="ocr-workstation-panel__header">
+                      <div>
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">
+                          Review rail
+                        </div>
+                        <div className="mt-1 text-sm font-semibold text-text-primary">
+                          {step === "export" ? "Ready for export" : "Verification active"}
                         </div>
                       </div>
-                    ) : null}
-                    <div className="ocr-rail-context">
-                      <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary" htmlFor="ocr-review-pass">
-                        Reprocess mode
-                      </label>
-                      <Select
-                        id="ocr-review-pass"
-                        value={selectedModel}
-                        onChange={(event) => setSelectedModel(toModelOption(event.target.value))}
-                        disabled={busy}
-                        className="mt-2"
-                      >
-                        <option value="auto">Auto routing</option>
-                        <option value="claude-haiku-4-5-20251001">Fast pass</option>
-                        <option value="claude-sonnet-4-6">Balanced review</option>
-                        <option value="claude-opus-4-7">Maximum accuracy</option>
-                      </Select>
                       <button
                         type="button"
-                        className="factory-ocr-button-secondary mt-2 w-full px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
-                        disabled={busy || !canRerunWithSelectedModel}
-                        onClick={() => handleRerunWithSelectedModel()}
+                        className="ocr-panel-eye-button"
+                        onClick={() => setReviewRailCollapsed(true)}
+                        aria-label="Hide review rail"
+                        title="Hide review rail"
                       >
-                        Reprocess OCR
+                        <EyeOff aria-hidden="true" size={16} />
                       </button>
                     </div>
-                    <div className="grid gap-2">
-                      <button
-                        type="button"
-                        className="factory-ocr-button-secondary px-3 py-2 text-sm font-medium"
-                        disabled={!activeCell}
-                        onClick={handleDeleteSelectedRow}
-                      >
-                        Delete selected row
-                      </button>
-                      {step === "preview" ? (
+                    <div className="ocr-review-rail__body">
+                      <div className="ocr-rail-metric" data-tone="success">
+                        <span>Average confidence</span>
+                        <strong>{formatConfidence(resultPreview.avgConfidence)}</strong>
+                      </div>
+                      <div className="ocr-rail-metric" data-tone={visibleLowConfidenceCount ? "danger" : "success"}>
+                        <span>Unresolved cells</span>
+                        <strong>{visibleLowConfidenceCount}</strong>
+                      </div>
+                      <div className="ocr-rail-metric" data-tone={suspiciousRowCount ? "warning" : "success"}>
+                        <span>Suspicious rows</span>
+                        <strong>{suspiciousRowCount}</strong>
+                      </div>
+                      <div className="ocr-rail-metric">
+                        <span>Corrections</span>
+                        <strong>{correctionCount}</strong>
+                      </div>
+                      <div className="ocr-rail-context">
+                        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">Linked focus</div>
+                        <div className="mt-1 text-sm font-medium text-text-primary">{activeCellLabel}</div>
+                        <div className="mt-1 text-xs text-text-secondary">Selected table context drives the source highlight.</div>
+                      </div>
+                      {resultPreview.scanQuality?.confidence_band === "low" || resultPreview.warnings.length ? (
+                        <div className="ocr-rail-context">
+                          <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">Inspection notes</div>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {resultPreview.scanQuality?.confidence_band === "low" ? (
+                              <span className="factory-ocr-chip factory-ocr-chip--warning">Low quality</span>
+                            ) : null}
+                            {resultPreview.warnings.map((warning) => (
+                              <span key={warning} className="factory-ocr-chip">
+                                {warning.replaceAll("_", " ")}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      <div className="ocr-rail-context">
+                        <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-text-tertiary" htmlFor="ocr-review-pass">
+                          Reprocess mode
+                        </label>
+                        <Select
+                          id="ocr-review-pass"
+                          value={selectedModel}
+                          onChange={(event) => setSelectedModel(toModelOption(event.target.value))}
+                          disabled={busy}
+                          className="mt-2"
+                        >
+                          <option value="auto">Auto routing</option>
+                          <option value="claude-haiku-4-5-20251001">Fast pass</option>
+                          <option value="claude-sonnet-4-6">Balanced review</option>
+                          <option value="claude-opus-4-7">Maximum accuracy</option>
+                        </Select>
                         <button
                           type="button"
-                          className="factory-ocr-button-primary px-3 py-2 text-sm font-semibold"
-                          onClick={async () => {
-                            if (draftDirty) {
-                              await persistStructuredDraft();
-                            }
-                            setStep("export");
-                          }}
+                          className="factory-ocr-button-secondary mt-2 w-full px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={busy || !canRerunWithSelectedModel}
+                          onClick={() => handleRerunWithSelectedModel()}
                         >
-                          Approve extraction
+                          Reprocess OCR
                         </button>
-                      ) : (
+                      </div>
+                      <div className="grid gap-2">
                         <button
                           type="button"
                           className="factory-ocr-button-secondary px-3 py-2 text-sm font-medium"
-                          onClick={() => setStep("preview")}
+                          disabled={!activeCell}
+                          onClick={handleDeleteSelectedRow}
                         >
-                          Reopen review
+                          Delete selected row
                         </button>
-                      )}
-                      <button
-                        type="button"
-                        className="factory-ocr-button-secondary px-3 py-2 text-sm font-medium"
-                        onClick={resetFlow}
-                      >
-                        Try another image
-                      </button>
+                        {step === "preview" ? (
+                          <button
+                            type="button"
+                            className="factory-ocr-button-primary px-3 py-2 text-sm font-semibold"
+                            onClick={async () => {
+                              if (draftDirty) {
+                                await persistStructuredDraft();
+                              }
+                              setStep("export");
+                            }}
+                          >
+                            Approve extraction
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="factory-ocr-button-secondary px-3 py-2 text-sm font-medium"
+                            onClick={() => setStep("preview")}
+                          >
+                            Reopen review
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="factory-ocr-button-secondary px-3 py-2 text-sm font-medium"
+                          onClick={resetFlow}
+                        >
+                          Try another image
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                </aside>
+                  </aside>
                 )}
               </div>
 
@@ -2440,6 +2440,7 @@ export default function OcrScanPage() {
                         type="button"
                         className="rounded-full border border-[#d9e1e8] bg-white px-3 py-1.5 text-sm text-[#344054]"
                         onClick={() => setZoom((value) => Math.max(0.8, value - 0.1))}
+                        aria-label="Zoom out"
                       >
                         -
                       </button>
@@ -2447,6 +2448,7 @@ export default function OcrScanPage() {
                         type="button"
                         className="rounded-full border border-[#d9e1e8] bg-white px-3 py-1.5 text-sm text-[#344054]"
                         onClick={() => setZoom((value) => Math.min(2.2, value + 0.1))}
+                        aria-label="Zoom in"
                       >
                         +
                       </button>

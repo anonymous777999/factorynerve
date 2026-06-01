@@ -449,7 +449,7 @@ export default function OcrPage({ initialJob = null }: OcrPageProps) {
             <CardContent className="space-y-4">
               <div>
                 <label className="text-sm text-[var(--muted)]">OCR Mode</label>
-                <Select value={mode} onChange={(event) => setMode(event.target.value as "ledger" | "table") }>
+                <Select aria-label="OCR mode" value={mode} onChange={(event) => setMode(event.target.value as "ledger" | "table")}>
                   <option value="ledger">Ledger to Excel</option>
                   <option value="table">Table Scan to Excel</option>
                 </Select>
@@ -457,6 +457,7 @@ export default function OcrPage({ initialJob = null }: OcrPageProps) {
               <div>
                 <label className="text-sm text-[var(--muted)]">Image File</label>
                 <Input
+                  aria-label="Image file"
                   type="file"
                   accept="image/*"
                   onChange={(event) => setFile(event.target.files?.[0] || null)}
@@ -497,7 +498,7 @@ export default function OcrPage({ initialJob = null }: OcrPageProps) {
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-white/10">
                     <div
-                      className="h-full rounded-full bg-[var(--accent)] transition-all"
+                      className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-300 ease-out"
                       style={{ width: `${Math.max(4, Math.min(100, Number(job.progress || 0)))}%` }}
                     />
                   </div>
@@ -612,12 +613,13 @@ export default function OcrPage({ initialJob = null }: OcrPageProps) {
             <CardContent className="space-y-4">
               <div>
                 <label className="text-sm text-[var(--muted)]">Template Name</label>
-                <Input value={templateName} onChange={(event) => setTemplateName(event.target.value)} />
+                <Input aria-label="Template name" value={templateName} onChange={(event) => setTemplateName(event.target.value)} />
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="text-sm text-[var(--muted)]">Columns</label>
                   <Input
+                    aria-label="Columns"
                     type="number"
                     min={1}
                     max={8}
@@ -627,7 +629,7 @@ export default function OcrPage({ initialJob = null }: OcrPageProps) {
                 </div>
                 <div>
                   <label className="text-sm text-[var(--muted)]">Language</label>
-                  <Select value={templateLanguage} onChange={(event) => setTemplateLanguage(event.target.value)}>
+                  <Select aria-label="Language" value={templateLanguage} onChange={(event) => setTemplateLanguage(event.target.value)}>
                     {TEMPLATE_LANGUAGES.map((language) => (
                       <option key={language} value={language}>
                         {language}
@@ -638,7 +640,7 @@ export default function OcrPage({ initialJob = null }: OcrPageProps) {
               </div>
               <div>
                 <label className="text-sm text-[var(--muted)]">Header Mode</label>
-                <Select value={templateHeaderMode} onChange={(event) => setTemplateHeaderMode(event.target.value)}>
+                <Select aria-label="Header mode" value={templateHeaderMode} onChange={(event) => setTemplateHeaderMode(event.target.value)}>
                   {TEMPLATE_HEADER_MODES.map((headerMode) => (
                     <option key={headerMode} value={headerMode}>
                       {headerMode}
@@ -666,6 +668,7 @@ export default function OcrPage({ initialJob = null }: OcrPageProps) {
               <div>
                 <label className="text-sm text-[var(--muted)]">Sample Images</label>
                 <Input
+                  aria-label="Sample images"
                   type="file"
                   accept="image/*"
                   multiple
