@@ -96,10 +96,12 @@ export function OcrReviewWorkspace({
               notesRef={notesRef}
             />
 
+            {/* Fixed-height table container — inline style guarantees height in block-flow layout */}
             <div
               ref={tableRef}
               tabIndex={-1}
-              className="rounded-panel outline-none focus-visible:ring-2 focus-visible:ring-border-focus"
+              className="rounded-panel outline-none focus-visible:ring-2 focus-visible:ring-border-focus overflow-hidden flex flex-col"
+              style={{ height: "calc(100vh - 520px)", minHeight: "320px" }}
             >
               <OcrReviewTable
                 headers={headers}

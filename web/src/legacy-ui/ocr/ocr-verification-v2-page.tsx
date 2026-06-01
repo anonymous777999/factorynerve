@@ -964,9 +964,9 @@ export default function OcrVerificationV2Page() {
     <WorkstationShell
       eyebrow="OCR verification"
       title="OCR workstation"
-      description="Queue-owned OCR review with refresh-safe routing, review continuity, and mobile-safe back navigation."
+      description="Review, correct, and approve OCR-extracted documents."
       tone={route.step === 4 ? "warning" : route.step === 3 ? "processing" : "default"}
-      toneLabel={`${getStepLabel(route.step)} step`}
+      toneLabel={route.step === 4 ? "Decision" : route.step === 3 ? "Review" : route.step === 2 ? "Intake" : "Queue"}
       actions={[
         {
           id: "queue",
@@ -976,26 +976,19 @@ export default function OcrVerificationV2Page() {
         },
         {
           id: "intake",
-          label: "Intake",
+          label: "New scan",
           variant: route.step === 2 ? "primary" : "outline",
           onAction: () => route.openIntake(),
         },
-        {
-          id: "review",
-          label: "Review",
-          variant: route.step === 3 ? "primary" : "outline",
-          onAction: () => activeRecord && route.openVerification(activeRecord.id, 3, "workspace"),
-        },
-        {
-          id: "decision",
-          label: "Decision",
-          variant: route.step === 4 ? "primary" : "outline",
-          onAction: () => activeRecord && route.openVerification(activeRecord.id, 4, "workspace"),
-        },
       ]}
       metrics={[
-        { id: "step", label: "Route step", value: getStepLabel(route.step), detail: `Draft ${route.id ?? "new"}`, tone: "processing" },
-        { id: "queue", label: "Queue", value: queue.length, detail: `${queueRows.length} visible`, tone: "approval" },
+        {
+          id: "queue",
+          label: "Queue",
+          value: queue.length,
+          detail: `${queueRows.length} visible`,
+          tone: "approval",
+        },
         {
           id: "signals",
           label: "Review signals",
@@ -1003,31 +996,14 @@ export default function OcrVerificationV2Page() {
           detail: activeRecord ? `Draft #${activeRecord.id}` : "No active draft",
           tone: reviewSignals.length ? "warning" : "synced",
         },
-        {
-          id: "continuity",
-          label: "Mobile pane",
-          value: route.pane,
-          detail: `Tab ${route.tab}`,
-          tone: route.pane === "workspace" ? "processing" : "default",
-        },
+        ...(activeRecord ? [{
+          id: "status",
+          label: "Status",
+          value: getRecordStatusLabel(activeRecord),
+          detail: activeRecord.source_filename || `Draft #${activeRecord.id}`,
+          tone: getRecordStatusTone(activeRecord) as "synced" | "processing" | "error" | "default",
+        }] : []),
       ]}
-      filters={route.pane === "queue" ? queueFilters : undefined}
-      rail={
-        <SectionPanel
-          eyebrow="Continuity"
-          title="Route state"
-          description="Back, refresh, and queue filters should reopen the same OCR context."
-          tone="processing"
-          toneLabel="URL-owned"
-        >
-          <div className="space-y-sm text-label-dense text-text-secondary">
-            <div>Draft: {route.id ?? "new intake"}</div>
-            <div>Step: {route.step}</div>
-            <div>Pane: {route.pane}</div>
-            <div>Tab: {route.tab}</div>
-          </div>
-        </SectionPanel>
-      }
     >
       <div className="space-y-md">
         {combinedError ? (
@@ -1068,11 +1044,11 @@ export default function OcrVerificationV2Page() {
                     { id: "start-intake", label: "Start intake", onAction: () => route.openIntake() },
                     ...(queue[0]
                       ? [{
-                          id: "open-latest",
-                          label: "Open latest draft",
-                          variant: "outline" as const,
-                          onAction: () => route.openVerification(queue[0].id, 3, "workspace"),
-                        }]
+                        id: "open-latest",
+                        label: "Open latest draft",
+                        variant: "outline" as const,
+                        onAction: () => route.openVerification(queue[0].id, 3, "workspace"),
+                      }]
                       : []),
                   ]}
                 >
@@ -1145,7 +1121,7 @@ export default function OcrVerificationV2Page() {
               statusLabel={dirty ? "Unsaved changes" : getRecordStatusLabel(activeRecord)}
               title={activeRecord.source_filename || `Draft #${activeRecord.id}`}
               description="Actions stay pinned in review."
-              meta={`Draft ${activeRecord.id} | ${reviewSignals.length} signal${reviewSignals.length === 1 ? "" : "s"} | Alt+1 queue | Alt+2 preview | Alt+3 grid`}
+              meta={`Draft ${activeRecord.id} | ${reviewSignals.length} signal${reviewSignals.length === 1 ? "" : "s"}`}
               primaryAction={primaryAction ?? undefined}
               secondaryAction={secondaryAction ?? undefined}
               tertiaryAction={tertiaryAction ?? undefined}

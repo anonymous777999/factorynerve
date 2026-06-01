@@ -100,7 +100,9 @@ export function OcrReviewTable({
         enableVirtualization={rows.length > 100}
         emptyTitle="No OCR rows available"
         emptyMessage="Create or reopen a draft to continue reviewing OCR output."
-        viewportSize="lg"
+        className="flex flex-col flex-1 min-h-0"
+        scrollAreaClassName="flex-1 min-h-0"
+        viewportClassName="!max-h-none h-full overflow-y-auto"
       />
     </div>
   );
