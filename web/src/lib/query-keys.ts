@@ -27,6 +27,7 @@ function normalizeQueueFilters(filters: OcrVerifyQueueFilters) {
     documentType: filters.documentType?.trim().toLowerCase() || null,
     reviewerId: filters.reviewerId ?? null,
     minConfidence: filters.minConfidence ?? null,
+    maxConfidence: filters.maxConfidence ?? null,
     updatedAfter: filters.updatedAfter || null,
     updatedBefore: filters.updatedBefore || null,
   };

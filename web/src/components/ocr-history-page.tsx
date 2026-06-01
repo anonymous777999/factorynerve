@@ -14,12 +14,12 @@ import {
 import { DataTableToolbar } from "@/components/ui/data-table/data-table-toolbar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { useDebouncedValue } from "@/hooks/use-interaction-timing";
-import { useOcrHistoryQuery } from "@/hooks/use-ocr-verify-queries";
+import { useOcrHistoryQuery, useOcrVerifyDetailQuery } from "@/hooks/use-ocr-verify-queries";
 import { canUseOcrScan } from "@/lib/ocr-access";
 import { type OcrVerifyQueueFilters } from "@/lib/query-keys";
 import {
   downloadOcrVerificationExport,
-  type OcrVerificationRecord,
+  type OcrHistoryItem,
 } from "@/lib/ocr";
 import { transferBlob } from "@/lib/blob-transfer";
 import { useSession } from "@/lib/use-session";
@@ -37,9 +37,9 @@ function formatTimestamp(value?: string | null) {
   });
 }
 
-const columnHelper = createDataTableColumnHelper<OcrVerificationRecord>();
+const columnHelper = createDataTableColumnHelper<OcrHistoryItem>();
 
-function getStatusBadgeStatus(status: OcrVerificationRecord["status"]) {
+function getStatusBadgeStatus(status: OcrHistoryItem["status"]) {
   switch (status) {
     case "approved":
       return "synced" as const;
@@ -64,17 +64,16 @@ export default function OcrHistoryPage() {
   const [confidenceFilter, setConfidenceFilter] = useState<"all" | "low" | "medium" | "high">("all");
   const [updatedAfterFilter, setUpdatedAfterFilter] = useState("");
   const [updatedBeforeFilter, setUpdatedBeforeFilter] = useState("");
-  const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
   const canAccess = canUseOcrScan(user?.role);
 
   const confidenceRange = useMemo(() => {
     switch (confidenceFilter) {
       case "low":
-        return { minConfidence: 0, maxConfidence: 60 };
+        return { minConfidence: 0, maxConfidence: 0.6 };
       case "medium":
-        return { minConfidence: 60, maxConfidence: 85 };
+        return { minConfidence: 0.6, maxConfidence: 0.85 };
       case "high":
-        return { minConfidence: 85, maxConfidence: undefined };
+        return { minConfidence: 0.85, maxConfidence: undefined };
       default:
         return { minConfidence: undefined, maxConfidence: undefined };
     }
@@ -99,6 +98,23 @@ export default function OcrHistoryPage() {
 
   const historyQuery = useOcrHistoryQuery(filters, Boolean(user) && canAccess);
   const records = useMemo(() => historyQuery.data ?? [], [historyQuery.data]);
+
+  const [selectedRecordId, setSelectedRecordId] = useState<number | null>(null);
+
+  const activeSelectedRecordId = useMemo(
+    () => (records.some((record) => record.id === selectedRecordId) ? selectedRecordId : records[0]?.id ?? null),
+    [records, selectedRecordId],
+  );
+
+  const selectedRecord = useMemo(
+    () => records.find((record) => record.id === activeSelectedRecordId) || records[0] || null,
+    [records, activeSelectedRecordId],
+  );
+
+  // Fetch full details (including audit_events) only for the selected record
+  const detailQuery = useOcrVerifyDetailQuery(activeSelectedRecordId, Boolean(user) && canAccess);
+  const selectedRecordDetail = detailQuery.data ?? null;
+  const selectedEvents = selectedRecordDetail?.audit_events ?? [];
 
   const summary = useMemo(() => {
     const approved = records.filter((record) => record.status === "approved").length;
@@ -134,29 +150,11 @@ export default function OcrHistoryPage() {
     [records],
   );
 
-  const activeSelectedRecordId = useMemo(
-    () => (records.some((record) => record.id === selectedRecordId) ? selectedRecordId : records[0]?.id ?? null),
-    [records, selectedRecordId],
-  );
-
-  const selectedRecord = useMemo(
-    () => records.find((record) => record.id === activeSelectedRecordId) || records[0] || null,
-    [records, activeSelectedRecordId],
-  );
-
   const auditTriage = useMemo(() => {
-    const lowConfidence = records.filter((record) => record.avg_confidence < 60).length;
+    const lowConfidence = records.filter((record) => record.avg_confidence < 0.6).length;
     const exportFailures = records.filter((record) => record.export_state === "failed").length;
-    const reviewEvents = records.flatMap((record) => record.audit_events || []);
-    const recentEvents = reviewEvents
-      .sort((left, right) =>
-        new Date(right.created_at || 0).getTime() - new Date(left.created_at || 0).getTime(),
-      )
-      .slice(0, 5);
-    return { lowConfidence, exportFailures, recentEvents };
+    return { lowConfidence, exportFailures };
   }, [records]);
-
-  const selectedEvents = selectedRecord?.audit_events ?? [];
 
   const handleDownload = useCallback(async (recordId: number) => {
     setBusyId(recordId);
@@ -192,7 +190,7 @@ export default function OcrHistoryPage() {
                 {info.getValue()}
               </div>
               <div className="mt-xs text-label-dense text-text-secondary">
-                {Math.round(record.avg_confidence || 0)}% confidence
+                {Math.round((record.avg_confidence || 0) * 100)}% confidence
               </div>
             </div>
           );
@@ -251,7 +249,7 @@ export default function OcrHistoryPage() {
           align: "right",
         },
       }),
-    ] as DataTableColumnDef<OcrVerificationRecord>[],
+    ] as DataTableColumnDef<OcrHistoryItem>[],
     [busyId, handleDownload],
   );
 
@@ -338,7 +336,7 @@ export default function OcrHistoryPage() {
               <div className="font-medium text-text-primary">{selectedRecord?.source_filename || `Document #${selectedRecord?.id}`}</div>
               <div>Status: {selectedRecord?.status || "—"}</div>
               <div>Type: {selectedRecord?.doc_type_hint || "table"}</div>
-              <div>Confidence: {Math.round(selectedRecord?.avg_confidence ?? 0)}%</div>
+              <div>Confidence: {Math.round((selectedRecord?.avg_confidence ?? 0) * 100)}%</div>
               {selectedRecord?.reviewed_by_name ? <div>Reviewed by: {selectedRecord.reviewed_by_name}</div> : null}
             </div>
           </div>
@@ -518,7 +516,7 @@ export default function OcrHistoryPage() {
             </div>
           ) : (
             <div className="min-h-0 flex-1 rounded-[0.45rem] border border-border-subtle bg-surface-shell">
-              <DataTable<OcrVerificationRecord>
+              <DataTable<OcrHistoryItem>
                 ariaLabel="OCR history"
                 columns={columns}
                 data={records}

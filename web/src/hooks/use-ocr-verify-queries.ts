@@ -12,11 +12,13 @@ import {
   approveOcrVerification,
   createOcrVerification,
   getOcrVerification,
+  listOcrHistory,
   listOcrTemplates,
   listOcrVerifications,
   rejectOcrVerification,
   submitOcrVerification,
   updateOcrVerification,
+  type OcrHistoryItem,
   type OcrTemplate,
   type OcrVerificationRecord,
   type OcrVerificationSavePayload,
@@ -38,6 +40,28 @@ function sortVerifications(records: OcrVerificationRecord[]) {
   };
 
   return [...records].sort((left, right) => {
+    if (weight(right.status) !== weight(left.status)) {
+      return weight(right.status) - weight(left.status);
+    }
+    return new Date(right.updated_at || 0).getTime() - new Date(left.updated_at || 0).getTime();
+  });
+}
+
+function sortHistoryItems(items: OcrHistoryItem[]) {
+  const weight = (status: OcrHistoryItem["status"]) => {
+    switch (status) {
+      case "pending":
+        return 4;
+      case "rejected":
+        return 3;
+      case "draft":
+        return 2;
+      default:
+        return 1;
+    }
+  };
+
+  return [...items].sort((left, right) => {
     if (weight(right.status) !== weight(left.status)) {
       return weight(right.status) - weight(left.status);
     }
@@ -95,10 +119,13 @@ export function useOcrHistoryQuery(filters: OcrVerifyQueueFilters, enabled: bool
     updatedBefore: filters.updatedBefore || undefined,
   };
 
-  return useQuery<OcrVerificationRecord[]>({
+  return useQuery<OcrHistoryItem[]>({
     queryKey: queryKeys.ocrVerify.history(filters),
-    queryFn: ({ signal }) => listOcrVerifications(queryFilters, { signal }),
-    select: (records) => sortVerifications(records),
+    queryFn: async ({ signal }) => {
+      const page = await listOcrHistory(queryFilters, null, 100, { signal });
+      return page.items;
+    },
+    select: (items) => sortHistoryItems(items),
     enabled,
   });
 }
