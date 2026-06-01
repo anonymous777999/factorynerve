@@ -28,7 +28,8 @@ export function useOcrVerifyRouteState() {
   const searchParams = useSearchParams();
 
   const state = useMemo(() => {
-    const rawId = searchParams.get("id");
+    // Support both ?id=N (canonical) and ?verification_id=N (legacy alias from OCR history page)
+    const rawId = searchParams.get("id") ?? searchParams.get("verification_id");
     const parsedId = rawId ? Number(rawId) : Number.NaN;
     const id = Number.isInteger(parsedId) && parsedId > 0 ? parsedId : null;
 

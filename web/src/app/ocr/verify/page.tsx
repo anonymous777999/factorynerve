@@ -28,13 +28,11 @@ export default async function OcrVerifyRoutePage({
     return <OcrVerificationV2Page />;
   }
 
-  if (workspaceOverride === "governed" || USE_GOVERNED_OCR_WORKSPACE || !workspaceOverride) {
-    return <GovernedOcrVerificationPage />;
-  }
-
+  // Normalize legacy ?verification_id=N to canonical ?id=N before rendering.
+  // This must run before returning any workspace component so the client-side
+  // route state hook always receives the canonical ?id param.
   const canonicalHref = buildCanonicalOcrVerifyHref(resolvedSearchParams);
   const currentParams = new URLSearchParams();
-
   Object.entries(resolvedSearchParams).forEach(([key, value]) => {
     if (Array.isArray(value)) {
       value.forEach((item) => currentParams.append(key, item));
@@ -44,13 +42,16 @@ export default async function OcrVerifyRoutePage({
       currentParams.set(key, value);
     }
   });
-
   const currentHref = currentParams.toString()
     ? `/ocr/verify?${currentParams.toString()}`
     : "/ocr/verify";
 
   if (canonicalHref !== currentHref) {
     redirect(canonicalHref);
+  }
+
+  if (workspaceOverride === "governed" || USE_GOVERNED_OCR_WORKSPACE || !workspaceOverride) {
+    return <GovernedOcrVerificationPage />;
   }
 
   return <OcrVerificationV2Page />;

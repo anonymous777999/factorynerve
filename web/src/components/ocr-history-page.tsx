@@ -229,7 +229,7 @@ export default function OcrHistoryPage() {
 
           return (
             <div className="flex justify-end gap-sm">
-              <Link href={`/ocr/verify?verification_id=${record.id}`}>
+              <Link href={`/ocr/verify?id=${record.id}&step=3&pane=workspace`}>
                 <Button size="compact" variant="outline">
                   Open
                 </Button>
