@@ -1,5 +1,5 @@
-import WorkQueuePage from "@/components/work-queue-page";
+import { WorkQueueWorkspace } from "@/features/work-queue";
 
 export default function WorkQueueRoute() {
-  return <WorkQueuePage />;
+  return <WorkQueueWorkspace />;
 }

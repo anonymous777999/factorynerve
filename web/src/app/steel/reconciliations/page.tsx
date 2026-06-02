@@ -1,5 +1,5 @@
-import { SteelReconciliationsPage } from "@/components/steel-reconciliations-page";
+import { SteelReconciliationsWorkspace } from "@/features/steel";
 
 export default function SteelReconciliationsRoute() {
-  return <SteelReconciliationsPage />;
+  return <SteelReconciliationsWorkspace />;
 }

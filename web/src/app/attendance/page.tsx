@@ -1,5 +1,3 @@
-import AttendancePage from "@/components/attendance-page";
+import { OperatorAttendanceWorkspace } from "@/features/attendance";
 
-export default function Page() {
-  return <AttendancePage />;
-}
+export default OperatorAttendanceWorkspace;

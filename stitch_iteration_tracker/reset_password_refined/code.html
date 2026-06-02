@@ -1,0 +1,201 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Reset Password - DPR.ai</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary-fixed": "#001946",
+                        "on-surface-variant": "#d9c3ae",
+                        "on-error": "#690005",
+                        "secondary-fixed-dim": "#b1c5ff",
+                        "error-container": "#93000a",
+                        "tertiary-container": "#33b559",
+                        "on-tertiary": "#003914",
+                        "border-default": "#333b48",
+                        "surface-elevated": "#1c2029",
+                        "on-background": "#e2e2e9",
+                        "inverse-surface": "#e2e2e9",
+                        "error": "#ffb4ab",
+                        "outline": "#a18d7b",
+                        "secondary-fixed": "#dae2ff",
+                        "surface": "#111318",
+                        "secondary": "#b1c5ff",
+                        "background": "#111318",
+                        "inverse-primary": "#885200",
+                        "secondary-container": "#0459d3",
+                        "tertiary-fixed": "#7ffc97",
+                        "on-primary": "#482900",
+                        "inverse-on-surface": "#2e3036",
+                        "surface-container-highest": "#33353a",
+                        "surface-container-high": "#282a2f",
+                        "surface-canvas": "#111318",
+                        "surface-tint": "#ffb868",
+                        "text-secondary": "#cbd5e1",
+                        "surface-raised": "#212633",
+                        "text-primary": "#f1f5f9",
+                        "on-surface": "#e2e2e9",
+                        "surface-primary": "#161a21",
+                        "primary-fixed": "#ffddbb",
+                        "status-critical": "#dc2626",
+                        "border-strong": "#4a5568",
+                        "status-caution": "#ea580c",
+                        "surface-overlay": "#252b36",
+                        "on-primary-fixed-variant": "#673d00",
+                        "surface-container-lowest": "#0c0e13",
+                        "surface-ground": "#0a0b0d",
+                        "surface-container-low": "#1a1b21",
+                        "on-error-container": "#ffdad6",
+                        "primary-fixed-dim": "#ffb868",
+                        "on-primary-fixed": "#2b1700",
+                        "surface-variant": "#33353a",
+                        "on-secondary-container": "#d1dcff",
+                        "surface-dim": "#111318",
+                        "primary-container": "#e08c0f",
+                        "tertiary": "#62df7d",
+                        "surface-container": "#1e2025",
+                        "text-muted": "#64748b",
+                        "on-secondary": "#002c71",
+                        "border-subtle": "#252b36",
+                        "surface-bright": "#37393f",
+                        "on-tertiary-fixed-variant": "#005320",
+                        "on-tertiary-fixed": "#002109",
+                        "on-tertiary-container": "#003f17",
+                        "tertiary-fixed-dim": "#62df7d",
+                        "outline-variant": "#534435",
+                        "primary": "#ffb868",
+                        "on-primary-container": "#502e00",
+                        "on-secondary-fixed-variant": "#00419f"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "base": "16px",
+                        "sm": "12px",
+                        "margin-mobile": "16px",
+                        "gutter": "16px",
+                        "xl": "32px",
+                        "unit": "4px",
+                        "lg": "24px",
+                        "margin-desktop": "32px",
+                        "md": "20px",
+                        "micro": "4px",
+                        "xs": "8px"
+                    },
+                    "fontFamily": {
+                        "table-cell": ["Inter"],
+                        "body-md": ["Inter"],
+                        "page-title-mobile": ["Inter"],
+                        "panel-title": ["Inter"],
+                        "display-4xl": ["Inter"],
+                        "label-sm": ["JetBrains Mono"],
+                        "page-title": ["Inter"],
+                        "metadata-xs": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "table-cell": ["13px", {"lineHeight": "1.50", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "body-md": ["14px", {"lineHeight": "1.50", "letterSpacing": "-0.006em", "fontWeight": "400"}],
+                        "page-title-mobile": ["20px", {"lineHeight": "1.25", "fontWeight": "600"}],
+                        "panel-title": ["18px", {"lineHeight": "1.40", "letterSpacing": "-0.010em", "fontWeight": "600"}],
+                        "display-4xl": ["36px", {"lineHeight": "1.15", "letterSpacing": "-0.026em", "fontWeight": "700"}],
+                        "label-sm": ["12px", {"lineHeight": "1.45", "letterSpacing": "0.004em", "fontWeight": "500"}],
+                        "page-title": ["24px", {"lineHeight": "1.25", "letterSpacing": "-0.018em", "fontWeight": "600"}],
+                        "metadata-xs": ["11px", {"lineHeight": "1.45", "letterSpacing": "0.05em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.surface-canvas');
+            color: theme('colors.text-primary');
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface-canvas text-text-primary antialiased">
+<!-- TopAppBar -->
+<header class="bg-surface-primary dark:bg-surface-primary flex justify-between items-center px-margin-mobile md:px-margin-desktop w-full z-50 docked full-width top-0 h-12 border-b border-border-strong">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-primary dark:text-primary" data-icon="factory">factory</span>
+<div class="flex flex-col">
+<span class="font-panel-title text-panel-title text-primary dark:text-primary">DPR.ai</span>
+</div>
+</div>
+<div>
+<span class="font-metadata-xs text-metadata-xs text-text-muted">FACTORY OS</span>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col items-center justify-center p-margin-mobile">
+<div class="w-full max-w-md flex flex-col gap-xl">
+<!-- Auth Container -->
+<div class="bg-surface-container border-2 border-border-strong rounded-xl p-8 shadow-xl flex flex-col gap-xl">
+<div class="flex flex-col items-center text-center gap-sm">
+<span class="material-symbols-outlined text-primary text-4xl mb-2" data-icon="lock_reset" style="font-variation-settings: 'FILL' 1;">lock_reset</span>
+<h1 class="font-page-title-mobile text-page-title-mobile text-text-primary">Reset Password</h1>
+<p class="font-body-md text-body-md text-text-muted">Enter a new secure password for your Factory OS account.</p>
+</div>
+<form class="flex flex-col gap-sm">
+<div class="flex flex-col gap-micro">
+<label class="font-label-sm text-label-sm text-text-secondary" for="new-password">New Password</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-lg" data-icon="key">key</span>
+<input class="w-full bg-surface-raised border border-border-default rounded text-text-primary font-body-md text-body-md pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent focus:ring-offset-1 focus:ring-offset-surface-canvas transition-all" id="new-password" placeholder="••••••••" type="password">
+</div>
+</div>
+<div class="flex flex-col gap-micro">
+<label class="font-label-sm text-label-sm text-text-secondary" for="confirm-password">Confirm Password</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-muted text-lg" data-icon="lock">lock</span>
+<input class="w-full bg-surface-raised border border-border-default rounded text-text-primary font-body-md text-body-md pl-10 pr-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent focus:ring-offset-1 focus:ring-offset-surface-canvas transition-all" id="confirm-password" placeholder="••••••••" type="password">
+</div>
+</div>
+<button class="mt-4 w-full bg-primary text-on-primary font-panel-title text-panel-title py-3 rounded flex items-center justify-center gap-2 hover:bg-primary-fixed-dim transition-colors active:scale-95 duration-100" type="button">
+<span>Update Password</span>
+<span class="material-symbols-outlined" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</form>
+</div>
+<!-- Guardrails / Support Section -->
+<div class="bg-surface-ground border border-border-subtle rounded-lg p-margin-mobile flex gap-sm items-start">
+<span class="material-symbols-outlined text-text-muted mt-0.5" data-icon="info">info</span>
+<div class="flex flex-col gap-xs">
+<p class="font-table-cell text-table-cell text-text-secondary">Password Requirements:</p>
+<ul class="font-table-cell text-table-cell text-text-muted list-disc list-inside">
+<li>Minimum 12 characters</li>
+<li>Include numbers &amp; symbols</li>
+<li>Avoid sequential operational codes</li>
+</ul>
+</div>
+</div>
+<!-- Back to Login Link -->
+<div class="text-center mt-2">
+<a class="font-body-md text-body-md text-text-muted hover:text-primary transition-colors inline-flex items-center gap-1" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="arrow_back">arrow_back</span>
+                    Return to Login
+                </a>
+</div>
+<div class="hidden">
+<img alt="Reference Image" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBwBzAZ3xlHR55Z0eksahwTfqvtteA79ZaZh8rAROQeUf5XJvVuSkObSJD9F55YeD3IA5aSrzpdmaxAHGXQ-ATDfeYmLR8TkCEEhmPQhjj67o1CTkCAiNi-kRM0K0NkAJf-46xiiDnYIhGSGR-4VTjShavM7uTKnseUOwZBcVCDzwOGL3gzJrNJdHzfY_-v7VtXEc8yX_efZhuW0lYz9rEe2tWb2ZoXWPgaFse3qM0y8iljS8mFDIZk0N1LVJrnOvNUIpHXtGI2GgI1">
+</div>
+</div>
+</main>
+</body></html>

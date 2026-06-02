@@ -1,0 +1,477 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>DPR.ai - OCR Intake Workstation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-surface": "#e2e2e9",
+                    "surface-variant": "#33353a",
+                    "on-primary-fixed": "#2b1700",
+                    "inverse-on-surface": "#2e3036",
+                    "primary-fixed-dim": "#ffb868",
+                    "on-background": "#e2e2e9",
+                    "on-tertiary-container": "#003f17",
+                    "on-tertiary-fixed": "#002109",
+                    "surface": "#111318",
+                    "tertiary": "#62df7d",
+                    "on-error": "#690005",
+                    "inverse-primary": "#885200",
+                    "surface-overlay": "#252b36",
+                    "outline-variant": "#534435",
+                    "surface-container-low": "#1a1b21",
+                    "border-subtle": "#252b36",
+                    "surface-canvas": "#111318",
+                    "on-primary": "#482900",
+                    "border-default": "#333b48",
+                    "on-secondary": "#002c71",
+                    "error-container": "#93000a",
+                    "text-muted": "#64748b",
+                    "status-caution": "#ea580c",
+                    "surface-container-high": "#282a2f",
+                    "background": "#111318",
+                    "text-secondary": "#cbd5e1",
+                    "primary-container": "#e08c0f",
+                    "on-tertiary": "#003914",
+                    "surface-container-lowest": "#0c0e13",
+                    "on-tertiary-fixed-variant": "#005320",
+                    "error": "#ffb4ab",
+                    "surface-primary": "#161a21",
+                    "on-primary-container": "#502e00",
+                    "inverse-surface": "#e2e2e9",
+                    "text-primary": "#f1f5f9",
+                    "surface-dim": "#111318",
+                    "surface-container": "#1e2025",
+                    "surface-raised": "#212633",
+                    "secondary-container": "#0459d3",
+                    "primary": "#ffb868",
+                    "outline": "#a18d7b",
+                    "tertiary-container": "#33b559",
+                    "surface-elevated": "#1c2029",
+                    "on-secondary-container": "#d1dcff",
+                    "surface-bright": "#37393f",
+                    "surface-tint": "#ffb868",
+                    "on-error-container": "#ffdad6",
+                    "secondary-fixed": "#dae2ff",
+                    "secondary": "#b1c5ff",
+                    "tertiary-fixed": "#7ffc97",
+                    "secondary-fixed-dim": "#b1c5ff",
+                    "tertiary-fixed-dim": "#62df7d",
+                    "primary-fixed": "#ffddbb",
+                    "surface-ground": "#0a0b0d",
+                    "on-primary-fixed-variant": "#673d00",
+                    "surface-container-highest": "#33353a",
+                    "on-secondary-fixed-variant": "#00419f",
+                    "border-strong": "#4a5568",
+                    "status-critical": "#dc2626",
+                    "on-surface-variant": "#d9c3ae",
+                    "on-secondary-fixed": "#001946"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "xs": "8px",
+                    "xl": "32px",
+                    "margin-desktop": "32px",
+                    "micro": "4px",
+                    "margin-mobile": "16px",
+                    "base": "16px",
+                    "sm": "12px",
+                    "unit": "4px",
+                    "lg": "24px",
+                    "gutter": "16px",
+                    "md": "20px"
+            },
+            "fontFamily": {
+                    "page-title": ["Inter"],
+                    "table-cell": ["Inter"],
+                    "metadata-xs": ["JetBrains Mono"],
+                    "label-sm": ["JetBrains Mono"],
+                    "panel-title": ["Inter"],
+                    "body-md": ["Inter"],
+                    "page-title-mobile": ["Inter"],
+                    "display-4xl": ["Inter"]
+            },
+            "fontSize": {
+                    "page-title": ["24px", {"lineHeight": "1.25", "letterSpacing": "-0.018em", "fontWeight": "600"}],
+                    "table-cell": ["13px", {"lineHeight": "1.50", "letterSpacing": "0em", "fontWeight": "400"}],
+                    "metadata-xs": ["11px", {"lineHeight": "1.45", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                    "label-sm": ["12px", {"lineHeight": "1.45", "letterSpacing": "0.004em", "fontWeight": "500"}],
+                    "panel-title": ["18px", {"lineHeight": "1.40", "letterSpacing": "-0.010em", "fontWeight": "600"}],
+                    "body-md": ["14px", {"lineHeight": "1.50", "letterSpacing": "-0.006em", "fontWeight": "400"}],
+                    "page-title-mobile": ["20px", {"lineHeight": "1.25", "fontWeight": "600"}],
+                    "display-4xl": ["36px", {"lineHeight": "1.15", "letterSpacing": "-0.026em", "fontWeight": "700"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body {
+            background-color: #111318;
+            color: #e2e2e9;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .material-symbols-outlined[data-weight="fill"] {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden flex bg-surface">
+<!-- Shared Component: SideNavBar -->
+<nav aria-label="Main Navigation" class="fixed left-0 top-0 h-full w-[220px] bg-surface-container flex flex-col py-lg shadow-md z-40 hidden md:flex border-r border-border-default">
+<!-- Header -->
+<div class="px-base mb-xl">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded bg-surface-raised flex items-center justify-center border border-border-subtle shrink-0">
+<span class="material-symbols-outlined text-primary" style="font-size: 20px;">factory</span>
+</div>
+<div>
+<h1 class="font-panel-title text-panel-title text-on-surface truncate">Steel Plant 01</h1>
+<p class="font-metadata-xs text-metadata-xs text-text-muted truncate uppercase">Production Line A</p>
+</div>
+</div>
+<button class="mt-lg w-full bg-primary hover:bg-primary-container text-on-primary font-label-sm text-label-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-xs">
+<span class="material-symbols-outlined" style="font-size: 16px;">add</span>
+                New Job
+            </button>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 overflow-y-auto px-xs">
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-text-secondary hover:bg-surface-raised hover:text-primary transition-colors font-label-sm text-label-sm" href="#">
+<span class="material-symbols-outlined" style="font-size: 18px;">dashboard</span>
+                        Dashboard
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-text-secondary hover:bg-surface-raised hover:text-primary transition-colors font-label-sm text-label-sm" href="#">
+<span class="material-symbols-outlined" style="font-size: 18px;">account_tree</span>
+                        Workflows
+                    </a>
+</li>
+<li>
+<a aria-current="page" class="flex items-center gap-3 px-3 py-2 rounded text-primary font-bold border-r-2 border-primary bg-surface-raised transition-colors font-label-sm text-label-sm scale-95" href="#">
+<span class="material-symbols-outlined" data-weight="fill" style="font-size: 18px;">document_scanner</span>
+                        OCR Engine
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-text-secondary hover:bg-surface-raised hover:text-primary transition-colors font-label-sm text-label-sm" href="#">
+<span class="material-symbols-outlined" style="font-size: 18px;">analytics</span>
+                        Telemetry
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-text-secondary hover:bg-surface-raised hover:text-primary transition-colors font-label-sm text-label-sm" href="#">
+<span class="material-symbols-outlined" style="font-size: 18px;">inventory_2</span>
+                        Archives
+                    </a>
+</li>
+</ul>
+</div>
+<!-- Footer Links -->
+<div class="px-xs mt-auto pt-4 border-t border-border-default">
+<ul class="space-y-1">
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-text-secondary hover:bg-surface-raised hover:text-primary transition-colors font-label-sm text-label-sm" href="#">
+<span class="material-symbols-outlined" style="font-size: 18px;">memory</span>
+                        System Status
+                    </a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-3 py-2 rounded text-text-secondary hover:bg-surface-raised hover:text-primary transition-colors font-label-sm text-label-sm" href="#">
+<span class="material-symbols-outlined" style="font-size: 18px;">logout</span>
+                        Logout
+                    </a>
+</li>
+</ul>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col md:ml-[220px] h-full overflow-hidden bg-surface-canvas relative">
+<!-- Shared Component: TopNavBar (Mobile Only Fallback/Header Context) -->
+<header class="flex md:hidden justify-between items-center px-base w-full z-50 bg-surface-primary h-[48px] border-b border-strong">
+<div class="flex items-center gap-sm">
+<span class="font-panel-title text-panel-title font-bold text-primary">DPR.ai</span>
+</div>
+<div class="flex items-center gap-sm text-text-muted">
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">notifications</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors">settings</span>
+<div class="w-6 h-6 rounded-full bg-surface-raised border border-border-strong overflow-hidden ml-xs">
+<img alt="Operator Profile" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDEH5DncyUITET8ThITiXT-A86XAHI3pgTtp4VXawQl6FvQzrdAZ9F9WYjSzmaTvHgG0-PjdlFaHo_xEa7GLHaSWS36ezjPF-MIYxirip_tkwptkZwfuipax2mg4cVRiLOv3RTlRsXKWxWwDcM0VlrVmQZXXIY09g_LF-fQsq1lqWVYu48TqsKpaXLwBsGXssv1c4NVWQON5zfeVDqCPUZxlJ8H2lnzhjz8YLVnJ1wEsd5KRYvNn5rHGAUXgzNko8116duNFlfrI3f3">
+</div>
+</div>
+</header>
+<!-- Top Workflow Progress Bar (Desktop) -->
+<div class="hidden md:flex items-center justify-between px-margin-desktop py-lg border-b border-border-default bg-surface-ground shrink-0">
+<div>
+<h2 class="font-metadata-xs text-metadata-xs text-text-muted uppercase tracking-widest mb-1">Document Scan Pipeline</h2>
+<h1 class="font-page-title text-page-title text-text-primary">Intake &amp; Routing</h1>
+</div>
+<div class="flex items-center gap-4">
+<!-- Progress Steps -->
+<div class="flex items-center gap-2">
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-container text-on-primary-container border border-primary">
+<span class="font-metadata-xs text-metadata-xs rounded-full w-5 h-5 flex items-center justify-center bg-surface-ground text-primary border border-primary">1</span>
+<span class="font-label-sm text-label-sm font-semibold">Upload</span>
+</div>
+<div class="w-8 h-[1px] bg-border-strong"></div>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-raised text-text-muted border border-border-subtle">
+<span class="font-metadata-xs text-metadata-xs rounded-full w-5 h-5 flex items-center justify-center bg-surface-ground border border-border-subtle">2</span>
+<span class="font-label-sm text-label-sm">Processing</span>
+</div>
+<div class="w-8 h-[1px] bg-border-strong"></div>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-raised text-text-muted border border-border-subtle">
+<span class="font-metadata-xs text-metadata-xs rounded-full w-5 h-5 flex items-center justify-center bg-surface-ground border border-border-subtle">3</span>
+<span class="font-label-sm text-label-sm">Review &amp; Edit</span>
+</div>
+<div class="w-8 h-[1px] bg-border-strong"></div>
+<div class="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface-raised text-text-muted border border-border-subtle">
+<span class="font-metadata-xs text-metadata-xs rounded-full w-5 h-5 flex items-center justify-center bg-surface-ground border border-border-subtle">4</span>
+<span class="font-label-sm text-label-sm">Export</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Dynamic Workspace (Center + Right Panel) -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Center Operational Canvas -->
+<div class="flex-1 overflow-y-auto p-margin-desktop flex flex-col gap-xl">
+<!-- Dropzone Area -->
+<div class="border-2 border-dashed border-border-strong rounded-xl bg-surface-container-low p-xl flex flex-col items-center justify-center text-center transition-all hover:border-primary hover:bg-surface-raised relative overflow-hidden group min-h-[300px]">
+<!-- Subtle Glow Effect for AI -->
+<div class="absolute inset-0 bg-secondary-container opacity-5 blur-[100px] pointer-events-none group-hover:opacity-10 transition-opacity"></div>
+<div class="w-16 h-16 rounded-full bg-surface-raised border border-border-default flex items-center justify-center mb-4 group-hover:border-primary transition-colors">
+<span class="material-symbols-outlined text-text-muted group-hover:text-primary" style="font-size: 32px;">cloud_upload</span>
+</div>
+<h3 class="font-panel-title text-panel-title text-text-primary mb-2">Drag &amp; Drop Scan Artifacts</h3>
+<p class="font-body-md text-body-md text-text-muted max-w-md mb-6">Upload raw PDFs, TIFFs, or high-res images for processing via Anthropics Claude 3.5 Sonnet engine.</p>
+<div class="flex gap-4">
+<button class="bg-surface-elevated hover:bg-surface-bright text-text-primary font-label-sm text-label-sm py-2 px-6 rounded border border-border-default transition-colors">
+                            Browse Files
+                        </button>
+<button class="bg-primary hover:bg-primary-container text-on-primary font-label-sm text-label-sm py-2 px-6 rounded transition-colors flex items-center gap-2 shadow-[0px_0px_12px_rgba(255,184,104,0.3)]">
+<span class="material-symbols-outlined" style="font-size: 16px;">bolt</span>
+                            Quick Capture
+                        </button>
+</div>
+<div class="mt-8 flex gap-4 text-text-muted font-metadata-xs text-metadata-xs uppercase">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">picture_as_pdf</span> PDF</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">image</span> JPG/PNG</span>
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">receipt_long</span> TIFF</span>
+</div>
+</div>
+<!-- Recent Intakes Table -->
+<div class="bg-surface-elevated rounded-xl border border-border-default overflow-hidden shadow-lg">
+<div class="px-base py-sm border-b border-border-strong flex justify-between items-center bg-surface-container">
+<h3 class="font-panel-title text-panel-title text-text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-text-muted" style="font-size: 18px;">history</span>
+                            Active Batch Queue
+                        </h3>
+<div class="flex gap-2">
+<button class="w-8 h-8 rounded bg-surface-raised border border-border-subtle flex items-center justify-center hover:text-primary hover:border-primary transition-colors text-text-muted">
+<span class="material-symbols-outlined" style="font-size: 16px;">filter_list</span>
+</button>
+<button class="w-8 h-8 rounded bg-surface-raised border border-border-subtle flex items-center justify-center hover:text-primary hover:border-primary transition-colors text-text-muted">
+<span class="material-symbols-outlined" style="font-size: 16px;">refresh</span>
+</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-low font-metadata-xs text-metadata-xs text-text-muted uppercase tracking-wider border-b border-border-strong">
+<th class="px-4 py-3 w-12"></th>
+<th class="px-4 py-3">Artifact ID</th>
+<th class="px-4 py-3">Source Type</th>
+<th class="px-4 py-3">Status</th>
+<th class="px-4 py-3 text-right">Engine</th>
+<th class="px-4 py-3 text-right">Timestamp</th>
+</tr>
+</thead>
+<tbody class="font-table-cell text-table-cell text-text-secondary divide-y divide-border-subtle">
+<!-- Row 1: Processing -->
+<tr class="hover:bg-surface-raised transition-colors group">
+<td class="px-4 py-3">
+<div class="w-2 h-2 rounded-full bg-secondary-container animate-pulse shadow-[0_0_8px_rgba(4,89,211,0.6)]"></div>
+</td>
+<td class="px-4 py-3 font-metadata-xs text-text-primary">SCAN-20260410-001.pdf</td>
+<td class="px-4 py-3"><span class="px-2 py-1 rounded bg-surface-overlay border border-border-subtle text-xs">Manifest</span></td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2 text-secondary">
+<span class="material-symbols-outlined animate-spin" style="font-size: 14px;">sync</span>
+                                            Extracting Tables...
+                                        </div>
+</td>
+<td class="px-4 py-3 text-right text-text-muted">Sonnet 3.5</td>
+<td class="px-4 py-3 text-right font-metadata-xs text-text-muted">Just now</td>
+</tr>
+<!-- Row 2: Review Needed -->
+<tr class="hover:bg-surface-raised transition-colors group bg-surface-overlay/30">
+<td class="px-4 py-3">
+<div class="w-2 h-2 rounded-full bg-status-caution"></div>
+</td>
+<td class="px-4 py-3 font-metadata-xs text-text-primary">INV-99283-DESKEWED.tiff</td>
+<td class="px-4 py-3"><span class="px-2 py-1 rounded bg-surface-overlay border border-border-subtle text-xs">Invoice</span></td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2 text-status-caution">
+<span class="material-symbols-outlined" style="font-size: 14px;">warning</span>
+                                            Low Confidence (72%)
+                                        </div>
+</td>
+<td class="px-4 py-3 text-right text-text-muted">Sonnet 3.5</td>
+<td class="px-4 py-3 text-right font-metadata-xs text-text-muted">12 min ago</td>
+</tr>
+<!-- Row 3: Completed -->
+<tr class="hover:bg-surface-raised transition-colors group">
+<td class="px-4 py-3">
+<div class="w-2 h-2 rounded-full bg-tertiary"></div>
+</td>
+<td class="px-4 py-3 font-metadata-xs text-text-primary">LOG-SHIFT-A-0409.jpg</td>
+<td class="px-4 py-3"><span class="px-2 py-1 rounded bg-surface-overlay border border-border-subtle text-xs">Handwritten</span></td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2 text-tertiary">
+<span class="material-symbols-outlined" style="font-size: 14px;">check_circle</span>
+                                            Verified
+                                        </div>
+</td>
+<td class="px-4 py-3 text-right text-text-muted">Haiku 3</td>
+<td class="px-4 py-3 text-right font-metadata-xs text-text-muted">1 hr ago</td>
+</tr>
+<!-- Row 4: Completed -->
+<tr class="hover:bg-surface-raised transition-colors group">
+<td class="px-4 py-3">
+<div class="w-2 h-2 rounded-full bg-tertiary"></div>
+</td>
+<td class="px-4 py-3 font-metadata-xs text-text-primary">BOL-77321-FINAL.pdf</td>
+<td class="px-4 py-3"><span class="px-2 py-1 rounded bg-surface-overlay border border-border-subtle text-xs">Logistics</span></td>
+<td class="px-4 py-3">
+<div class="flex items-center gap-2 text-tertiary">
+<span class="material-symbols-outlined" style="font-size: 14px;">check_circle</span>
+                                            Verified
+                                        </div>
+</td>
+<td class="px-4 py-3 text-right text-text-muted">Sonnet 3.5</td>
+<td class="px-4 py-3 text-right font-metadata-xs text-text-muted">2 hrs ago</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-base py-sm border-t border-border-strong bg-surface-container flex justify-between items-center text-text-muted font-label-sm text-label-sm">
+<span>Showing 4 of 12 active jobs</span>
+<a class="hover:text-primary transition-colors flex items-center gap-1" href="#">View All History <span class="material-symbols-outlined" style="font-size: 16px;">chevron_right</span></a>
+</div>
+</div>
+</div>
+<!-- Right OCR Telemetry Panel (Fixed Width) -->
+<aside class="w-[360px] border-l border-border-default bg-surface-container flex flex-col shrink-0 hidden lg:flex shadow-[-4px_0_24px_rgba(0,0,0,0.2)]">
+<!-- Panel Header -->
+<div class="p-base border-b border-border-strong bg-surface-container-high flex items-center justify-between">
+<h3 class="font-panel-title text-panel-title text-text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary" style="font-size: 20px;">memory</span>
+                        Engine Telemetry
+                    </h3>
+<div class="w-2 h-2 rounded-full bg-tertiary shadow-[0_0_8px_rgba(98,223,125,0.6)]"></div>
+</div>
+<div class="flex-1 overflow-y-auto p-base flex flex-col gap-lg">
+<!-- AI Model Status -->
+<div class="bg-surface-elevated rounded-lg border border-border-subtle p-sm">
+<div class="flex justify-between items-center mb-3">
+<span class="font-metadata-xs text-metadata-xs text-text-muted uppercase">Primary Engine</span>
+<span class="font-metadata-xs text-metadata-xs px-2 py-0.5 rounded bg-surface-overlay border border-border-subtle text-text-primary">v4.6.2</span>
+</div>
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded bg-surface-primary border border-border-default flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" style="font-size: 24px;">smart_toy</span>
+</div>
+<div>
+<h4 class="font-label-sm text-label-sm text-text-primary">Claude Sonnet 3.5</h4>
+<p class="font-metadata-xs text-metadata-xs text-tertiary flex items-center gap-1 mt-0.5">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary inline-block"></span> Operational
+                                </p>
+</div>
+</div>
+<!-- Mini Stats Grid -->
+<div class="grid grid-cols-2 gap-2 mt-2 pt-3 border-t border-border-subtle">
+<div>
+<p class="font-metadata-xs text-metadata-xs text-text-muted uppercase">Latency</p>
+<p class="font-label-sm text-label-sm text-text-primary font-mono mt-1">412ms</p>
+</div>
+<div>
+<p class="font-metadata-xs text-metadata-xs text-text-muted uppercase">Token Usage</p>
+<p class="font-label-sm text-label-sm text-text-primary font-mono mt-1">1.2M / hr</p>
+</div>
+</div>
+</div>
+<!-- Confidence Distribution -->
+<div>
+<h4 class="font-metadata-xs text-metadata-xs text-text-muted uppercase mb-3 flex items-center gap-2">
+<span class="material-symbols-outlined text-[14px]">bar_chart</span> Batch Confidence
+                        </h4>
+<div class="space-y-3">
+<!-- High -->
+<div>
+<div class="flex justify-between text-xs mb-1">
+<span class="text-text-secondary font-label-sm text-label-sm">High (&gt;90%)</span>
+<span class="text-text-primary font-mono">82%</span>
+</div>
+<div class="w-full bg-surface-overlay rounded-full h-1.5">
+<div class="bg-tertiary h-1.5 rounded-full" style="width: 82%"></div>
+</div>
+</div>
+<!-- Med -->
+<div>
+<div class="flex justify-between text-xs mb-1">
+<span class="text-text-secondary font-label-sm text-label-sm">Medium (70-90%)</span>
+<span class="text-text-primary font-mono">14%</span>
+</div>
+<div class="w-full bg-surface-overlay rounded-full h-1.5">
+<div class="bg-primary h-1.5 rounded-full" style="width: 14%"></div>
+</div>
+</div>
+<!-- Low -->
+<div>
+<div class="flex justify-between text-xs mb-1">
+<span class="text-text-secondary font-label-sm text-label-sm">Low (&lt;70%)</span>
+<span class="text-status-caution font-mono">4%</span>
+</div>
+<div class="w-full bg-surface-overlay rounded-full h-1.5">
+<div class="bg-status-caution h-1.5 rounded-full" style="width: 4%"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- System Log Console -->
+<div class="mt-auto border-t border-border-strong pt-lg">
+<div class="flex justify-between items-center mb-2">
+<h4 class="font-metadata-xs text-metadata-xs text-text-muted uppercase">Live Engine Stream</h4>
+<span class="material-symbols-outlined text-text-muted text-[14px] cursor-pointer hover:text-primary">open_in_full</span>
+</div>
+<div class="bg-surface-ground border border-border-subtle rounded p-2 h-32 overflow-y-auto font-metadata-xs text-metadata-xs text-text-muted font-mono leading-relaxed shadow-inner">
+<div class="mb-1"><span class="text-secondary">[SYS]</span> 14:02:11 - Polling intake queue...</div>
+<div class="mb-1"><span class="text-tertiary">[INFO]</span> 14:02:15 - Artifact SCAN-001 detected.</div>
+<div class="mb-1"><span class="text-primary">[PROC]</span> 14:02:16 - Allocating Sonnet 3.5 node.</div>
+<div class="mb-1"><span class="text-secondary">[SYS]</span> 14:02:18 - Extracting table structures...</div>
+<div class="mb-1 opacity-70">_</div>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</main>
+</body></html>

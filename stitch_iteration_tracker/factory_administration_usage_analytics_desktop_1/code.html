@@ -1,0 +1,399 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Factory Administration Workspace - Usage Tab</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "text-primary": "#f1f5f9",
+                      "on-tertiary-fixed": "#002109",
+                      "on-secondary": "#002c71",
+                      "border-default": "#333b48",
+                      "border-strong": "#4a5568",
+                      "primary-container": "#e08c0f",
+                      "surface-ground": "#0a0b0d",
+                      "error-container": "#93000a",
+                      "on-primary-container": "#502e00",
+                      "secondary-container": "#0459d3",
+                      "on-tertiary-container": "#003f17",
+                      "on-secondary-container": "#d1dcff",
+                      "primary-fixed": "#ffddbb",
+                      "inverse-on-surface": "#2e3036",
+                      "secondary-fixed": "#dae2ff",
+                      "on-primary": "#482900",
+                      "status-critical": "#dc2626",
+                      "on-surface": "#e2e2e9",
+                      "outline": "#a18d7b",
+                      "surface-container-highest": "#33353a",
+                      "on-error-container": "#ffdad6",
+                      "on-surface-variant": "#d9c3ae",
+                      "secondary": "#b1c5ff",
+                      "surface-dim": "#111318",
+                      "tertiary-container": "#33b559",
+                      "status-caution": "#ea580c",
+                      "on-background": "#e2e2e9",
+                      "surface-raised": "#212633",
+                      "outline-variant": "#534435",
+                      "inverse-surface": "#e2e2e9",
+                      "text-secondary": "#cbd5e1",
+                      "surface-canvas": "#111318",
+                      "text-muted": "#64748b",
+                      "surface-container": "#1e2025",
+                      "on-error": "#690005",
+                      "tertiary": "#62df7d",
+                      "surface-overlay": "#252b36",
+                      "surface-container-low": "#1a1b21",
+                      "surface-primary": "#161a21",
+                      "surface-variant": "#33353a",
+                      "surface-container-lowest": "#0c0e13",
+                      "border-subtle": "#252b36",
+                      "on-tertiary-fixed-variant": "#005320",
+                      "surface-tint": "#ffb868",
+                      "on-primary-fixed": "#2b1700",
+                      "on-tertiary": "#003914",
+                      "surface-bright": "#37393f",
+                      "primary": "#ffb868",
+                      "surface": "#111318",
+                      "surface-container-high": "#282a2f",
+                      "inverse-primary": "#885200",
+                      "tertiary-fixed-dim": "#62df7d",
+                      "on-primary-fixed-variant": "#673d00",
+                      "tertiary-fixed": "#7ffc97",
+                      "primary-fixed-dim": "#ffb868",
+                      "secondary-fixed-dim": "#b1c5ff",
+                      "on-secondary-fixed": "#001946",
+                      "background": "#111318",
+                      "on-secondary-fixed-variant": "#00419f",
+                      "error": "#ffb4ab",
+                      "surface-elevated": "#1c2029"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "unit": "4px",
+                      "xs": "8px",
+                      "margin-mobile": "16px",
+                      "sm": "12px",
+                      "lg": "24px",
+                      "md": "20px",
+                      "base": "16px",
+                      "micro": "4px",
+                      "margin-desktop": "32px",
+                      "gutter": "16px",
+                      "xl": "32px"
+              },
+              "fontFamily": {
+                      "table-cell": [
+                              "Inter"
+                      ],
+                      "metadata-xs": [
+                              "JetBrains Mono"
+                      ],
+                      "label-sm": [
+                              "JetBrains Mono"
+                      ],
+                      "display-4xl": [
+                              "Inter"
+                      ],
+                      "page-title": [
+                              "Inter"
+                      ],
+                      "panel-title": [
+                              "Inter"
+                      ],
+                      "page-title-mobile": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "table-cell": [
+                              "13px",
+                              {
+                                      "lineHeight": "1.50",
+                                      "letterSpacing": "0em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "metadata-xs": [
+                              "11px",
+                              {
+                                      "lineHeight": "1.45",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.45",
+                                      "letterSpacing": "0.004em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-4xl": [
+                              "36px",
+                              {
+                                      "lineHeight": "1.15",
+                                      "letterSpacing": "-0.026em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "page-title": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.25",
+                                      "letterSpacing": "-0.018em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "panel-title": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.40",
+                                      "letterSpacing": "-0.010em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "page-title-mobile": [
+                              "20px",
+                              {
+                                      "lineHeight": "1.25",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.50",
+                                      "letterSpacing": "-0.006em",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        body {
+            background-color: theme('colors.surface-ground');
+            color: theme('colors.text-primary');
+            font-family: 'Inter', sans-serif;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="flex bg-surface-ground text-text-primary h-screen overflow-hidden">
+<!-- SideNavBar -->
+<aside class="w-[220px] h-screen fixed left-0 top-0 border-r border-border-strong bg-surface-primary flex flex-col py-4 gap-y-2 z-50">
+<div class="px-4 mb-4">
+<div class="font-metadata-xs text-metadata-xs uppercase tracking-widest text-muted">DPR.AI</div>
+<h1 class="font-panel-title text-panel-title mt-1">RedVortex ORG</h1>
+<p class="font-metadata-xs text-metadata-xs text-text-muted mt-1">Steel Industry • Free Plan</p>
+</div>
+<nav class="flex-1 overflow-y-auto w-full">
+<ul class="flex flex-col gap-y-1 px-2">
+<li class="px-3 py-2 rounded flex items-center gap-x-3 text-on-surface-variant hover:bg-surface-container-highest transition-colors duration-150 cursor-pointer">
+<span class="material-symbols-outlined text-[18px]">dashboard</span>
+<span class="font-label-sm text-label-sm">Today Board</span>
+</li>
+<li class="px-3 py-2 rounded flex items-center gap-x-3 text-on-surface-variant hover:bg-surface-container-highest transition-colors duration-150 cursor-pointer">
+<span class="material-symbols-outlined text-[18px]">fact_check</span>
+<span class="font-label-sm text-label-sm">Approvals</span>
+</li>
+<li class="px-3 py-2 rounded flex items-center gap-x-3 text-on-surface-variant hover:bg-surface-container-highest transition-colors duration-150 cursor-pointer">
+<span class="material-symbols-outlined text-[18px]">analytics</span>
+<span class="font-label-sm text-label-sm">Reports &amp; Exports</span>
+</li>
+<li class="px-3 py-2 rounded flex items-center gap-x-3 text-on-surface-variant hover:bg-surface-container-highest transition-colors duration-150 cursor-pointer">
+<span class="material-symbols-outlined text-[18px]">monitoring</span>
+<span class="font-label-sm text-label-sm">Performance</span>
+</li>
+<li class="px-3 py-2 rounded flex items-center gap-x-3 text-on-surface-variant hover:bg-surface-container-highest transition-colors duration-150 cursor-pointer">
+<span class="material-symbols-outlined text-[18px]">fingerprint</span>
+<span class="font-label-sm text-label-sm">Attendance Admin</span>
+</li>
+<li class="px-3 py-2 rounded flex items-center gap-x-3 bg-surface-variant text-primary border-r-2 border-primary cursor-pointer" style="transform: scale(0.98); transition: all 100ms;">
+<span class="material-symbols-outlined text-[18px]">factory</span>
+<span class="font-label-sm text-label-sm">Factory Admin</span>
+</li>
+<li class="px-3 py-2 rounded flex items-center gap-x-3 text-on-surface-variant hover:bg-surface-container-highest transition-colors duration-150 cursor-pointer">
+<span class="material-symbols-outlined text-[18px]">document_scanner</span>
+<span class="font-label-sm text-label-sm">OCR History</span>
+</li>
+<li class="px-3 py-2 rounded flex items-center gap-x-3 text-on-surface-variant hover:bg-surface-container-highest transition-colors duration-150 cursor-pointer">
+<span class="material-symbols-outlined text-[18px]">card_membership</span>
+<span class="font-label-sm text-label-sm">Subscription</span>
+</li>
+<li class="px-3 py-2 rounded flex items-center gap-x-3 text-on-surface-variant hover:bg-surface-container-highest transition-colors duration-150 cursor-pointer">
+<span class="material-symbols-outlined text-[18px]">receipt_long</span>
+<span class="font-label-sm text-label-sm">Billing &amp; Invoices</span>
+</li>
+<li class="px-3 py-2 rounded flex items-center gap-x-3 text-on-surface-variant hover:bg-surface-container-highest transition-colors duration-150 cursor-pointer">
+<span class="material-symbols-outlined text-[18px]">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</li>
+<li class="px-3 py-2 rounded flex items-center gap-x-3 text-on-surface-variant hover:bg-surface-container-highest transition-colors duration-150 cursor-pointer">
+<span class="material-symbols-outlined text-[18px]">language</span>
+<span class="font-label-sm text-label-sm">Language</span>
+</li>
+<li class="px-3 py-2 rounded flex items-center gap-x-3 text-on-surface-variant hover:bg-surface-container-highest transition-colors duration-150 cursor-pointer mt-auto">
+<span class="material-symbols-outlined text-[18px]">logout</span>
+<span class="font-label-sm text-label-sm">Sign-out</span>
+</li>
+</ul>
+</nav>
+<div class="mt-auto px-4 pt-4 border-t border-border-subtle flex gap-x-4">
+<button class="text-text-muted hover:text-on-surface transition-colors flex items-center gap-x-1">
+<span class="material-symbols-outlined text-[16px]">help</span>
+<span class="font-metadata-xs text-metadata-xs">Help</span>
+</button>
+<button class="text-text-muted hover:text-on-surface transition-colors flex items-center gap-x-1">
+<span class="material-symbols-outlined text-[16px]">settings</span>
+<span class="font-metadata-xs text-metadata-xs">Settings</span>
+</button>
+</div>
+</aside>
+<div class="flex-1 flex flex-col ml-[220px]">
+<!-- TopNavBar -->
+<header class="h-12 w-full fixed top-0 z-40 bg-surface-primary border-b border-border-strong flex justify-between items-center px-margin-desktop ml-[220px]" style="width: calc(100% - 220px);">
+<div class="flex items-center gap-x-6">
+<div class="font-panel-title text-panel-title font-bold text-on-surface">FactoryNerve OS</div>
+<nav class="hidden md:flex gap-x-6">
+<a class="text-text-muted hover:text-on-surface transition-colors font-metadata-xs text-metadata-xs h-12 flex items-center" href="#">Board</a>
+<a class="text-text-muted hover:text-on-surface transition-colors font-metadata-xs text-metadata-xs h-12 flex items-center" href="#">Reports</a>
+<a class="text-text-muted hover:text-on-surface transition-colors font-metadata-xs text-metadata-xs h-12 flex items-center" href="#">Plans</a>
+<a class="text-primary border-b-2 border-primary h-12 flex items-center font-metadata-xs text-metadata-xs" href="#">Billing</a>
+</nav>
+</div>
+<div class="flex items-center gap-x-4">
+<button class="text-text-muted hover:text-primary transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-[20px]">notifications</span>
+</button>
+<button class="text-text-muted hover:text-primary transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-[20px]">history</span>
+</button>
+<button class="text-text-muted hover:text-primary transition-colors cursor-pointer">
+<span class="material-symbols-outlined text-[20px]">terminal</span>
+</button>
+<div class="w-6 h-6 rounded-full bg-surface-raised border border-border-subtle overflow-hidden ml-2">
+<!-- Placeholder for User Profile -->
+</div>
+</div>
+</header>
+<!-- TopAppBar (Notification Strip) -->
+<div class="w-full h-auto mt-12 py-3 px-6 bg-surface-ground border-b border-border-subtle inset shadow-sm flex items-center justify-between">
+<div class="flex items-center gap-x-3">
+<span class="material-symbols-outlined text-primary-container text-[20px]">campaign</span>
+<span class="font-metadata-xs text-metadata-xs text-primary-container font-bold tracking-tighter uppercase">LIVE REMINDERS</span>
+</div>
+<button class="font-label-sm text-label-sm font-bold text-primary hover:brightness-110 transition-all cursor-pointer">
+                Review Attendance
+            </button>
+</div>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto p-margin-desktop bg-surface-canvas">
+<!-- Page Header -->
+<div class="mb-8">
+<p class="font-metadata-xs text-metadata-xs text-primary tracking-widest uppercase mb-2">Settings</p>
+<h2 class="font-display-4xl text-display-4xl text-on-surface mb-2">Keep factory setup and team control in one admin lane</h2>
+<p class="font-body-md text-body-md text-text-muted max-w-2xl">Update factory setup, manage people, and check plan posture without leaving the admin workspace.</p>
+</div>
+<!-- Admin Tools Nav Strip -->
+<div class="bg-surface-elevated rounded-xl border border-border-subtle p-4 mb-8 flex items-center justify-between">
+<div class="flex items-center gap-x-6">
+<span class="font-metadata-xs text-metadata-xs text-text-muted uppercase tracking-widest mr-4">Admin tools</span>
+<nav class="flex gap-x-2">
+<button class="px-4 py-1.5 rounded font-label-sm text-label-sm text-text-muted hover:bg-surface-raised transition-colors">Factory</button>
+<button class="px-4 py-1.5 rounded font-label-sm text-label-sm text-text-muted hover:bg-surface-raised transition-colors">Users</button>
+<button class="px-4 py-1.5 rounded bg-secondary-container text-on-secondary-container font-label-sm text-label-sm">Usage</button>
+<button class="px-4 py-1.5 rounded font-label-sm text-label-sm text-text-muted hover:bg-surface-raised transition-colors">Alerts</button>
+</nav>
+</div>
+</div>
+<!-- Context Cards -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+<div class="bg-surface-container rounded-lg p-5 border border-border-subtle">
+<p class="font-metadata-xs text-metadata-xs text-text-muted mb-1">Current Factory</p>
+<h3 class="font-page-title text-page-title text-on-surface mb-1">RedVortex ORG</h3>
+<p class="font-metadata-xs text-metadata-xs text-text-muted">Steel Industry • Steel Core Pack</p>
+</div>
+<div class="bg-surface-container rounded-lg p-5 border border-border-subtle">
+<p class="font-metadata-xs text-metadata-xs text-text-muted mb-1">Factory Network</p>
+<div class="font-display-4xl text-display-4xl font-metadata-xs text-on-surface mb-1">1</div>
+<p class="font-metadata-xs text-metadata-xs text-text-muted">Steel Industry: 1</p>
+</div>
+<div class="bg-surface-container rounded-lg p-5 border border-border-subtle">
+<p class="font-metadata-xs text-metadata-xs text-text-muted mb-1">Active Users</p>
+<div class="font-display-4xl text-display-4xl font-metadata-xs text-on-surface mb-1">2</div>
+<p class="font-metadata-xs text-metadata-xs text-text-muted">Plan free • Billing status: active</p>
+</div>
+</div>
+<!-- Two Column Layout for Metrics -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+<!-- Usage Summary -->
+<div>
+<h3 class="font-panel-title text-panel-title text-on-surface mb-4">Usage Summary</h3>
+<div class="grid grid-cols-2 gap-4">
+<div class="bg-surface-container rounded-lg p-5 border border-border-subtle">
+<p class="font-metadata-xs text-metadata-xs text-text-muted mb-2">Requests Used</p>
+<div class="font-display-4xl text-display-4xl font-metadata-xs text-on-surface">0</div>
+</div>
+<div class="bg-surface-container rounded-lg p-5 border border-border-subtle">
+<p class="font-metadata-xs text-metadata-xs text-text-muted mb-2">Credits Used</p>
+<div class="font-display-4xl text-display-4xl font-metadata-xs text-on-surface">0</div>
+</div>
+<div class="bg-surface-container rounded-lg p-5 border border-border-subtle">
+<p class="font-metadata-xs text-metadata-xs text-text-muted mb-2">Request Limit</p>
+<div class="font-page-title text-page-title font-metadata-xs text-on-surface">Unlimited</div>
+</div>
+<div class="bg-surface-container rounded-lg p-5 border border-border-subtle">
+<p class="font-metadata-xs text-metadata-xs text-text-muted mb-2">Rate Limit / min</p>
+<div class="font-display-4xl text-display-4xl font-metadata-xs text-on-surface">-</div>
+</div>
+</div>
+</div>
+<!-- Billing Status -->
+<div>
+<h3 class="font-panel-title text-panel-title text-on-surface mb-4">Billing Status</h3>
+<div class="bg-surface-container rounded-lg border border-border-subtle overflow-hidden">
+<div class="p-5 border-b border-border-subtle">
+<p class="font-metadata-xs text-metadata-xs text-text-muted mb-2">Plan</p>
+<div class="font-page-title text-page-title text-on-surface">free</div>
+</div>
+<div class="p-5 border-b border-border-subtle">
+<p class="font-metadata-xs text-metadata-xs text-text-muted mb-2">Status</p>
+<div class="font-page-title text-page-title text-tertiary">active</div>
+</div>
+<div class="grid grid-cols-2">
+<div class="p-5 border-r border-border-subtle">
+<p class="font-metadata-xs text-metadata-xs text-text-muted mb-2">Trial Ends</p>
+<div class="font-body-md text-body-md text-on-surface">-</div>
+</div>
+<div class="p-5">
+<p class="font-metadata-xs text-metadata-xs text-text-muted mb-2">Current Period End</p>
+<div class="font-body-md text-body-md text-on-surface">-</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

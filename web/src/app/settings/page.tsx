@@ -1,5 +1,5 @@
-import SettingsPage from "@/components/settings-page";
+import { SettingsWorkspace } from "@/features/settings";
 
 export default function SettingsRoute() {
-  return <SettingsPage />;
+  return <SettingsWorkspace />;
 }

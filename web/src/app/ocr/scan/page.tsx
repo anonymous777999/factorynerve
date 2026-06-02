@@ -1,6 +1,5 @@
-import OcrScanPage from "@/components/ocr-scan-page";
+import { OcrScanWorkspace } from "@/features/ocr";
 
 export default function OcrScanRoutePage() {
-  return <OcrScanPage />;
+  return <OcrScanWorkspace />;
 }
-

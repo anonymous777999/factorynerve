@@ -1,11 +1,11 @@
 import { Suspense } from "react";
 
-import BillingPage from "@/components/billing-page";
+import { BillingWorkspace } from "@/features/billing";
 
 export default function BillingRoutePage() {
   return (
-    <Suspense fallback={<main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">Loading billing...</main>}>
-      <BillingPage />
+    <Suspense fallback={null}>
+      <BillingWorkspace />
     </Suspense>
   );
 }

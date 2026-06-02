@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>INDUSTRIAL OS - User Governance</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "secondary-fixed": "#a2eeff",
+                        "surface-dim": "#0f131d",
+                        "outline-variant": "#434655",
+                        "primary-container": "#2563eb",
+                        "on-secondary-container": "#00515d",
+                        "tertiary-fixed-dim": "#4edea3",
+                        "secondary-fixed-dim": "#2fd9f4",
+                        "primary": "#b4c5ff",
+                        "primary-fixed": "#dbe1ff",
+                        "secondary": "#5de6ff",
+                        "tertiary": "#4edea3",
+                        "background": "#0f131d",
+                        "on-primary": "#002a78",
+                        "inverse-on-surface": "#2c303b",
+                        "on-surface-variant": "#c3c6d7",
+                        "on-secondary-fixed": "#001f25",
+                        "secondary-container": "#00cbe6",
+                        "on-surface": "#dfe2f0",
+                        "surface-container-lowest": "#0a0e17",
+                        "surface-container-highest": "#31353f",
+                        "inverse-primary": "#0053db",
+                        "on-tertiary": "#003824",
+                        "on-secondary": "#00363e",
+                        "inverse-surface": "#dfe2f0",
+                        "on-tertiary-container": "#bdffdb",
+                        "on-primary-fixed": "#00174b",
+                        "on-tertiary-fixed": "#002113",
+                        "surface-container-high": "#262a34",
+                        "primary-fixed-dim": "#b4c5ff",
+                        "surface-container-low": "#171c25",
+                        "surface-variant": "#31353f",
+                        "on-error-container": "#ffdad6",
+                        "surface-tint": "#b4c5ff",
+                        "surface": "#0f131d",
+                        "error": "#ffb4ab",
+                        "on-secondary-fixed-variant": "#004e5a",
+                        "tertiary-container": "#007d55",
+                        "surface-bright": "#353944",
+                        "on-primary-fixed-variant": "#003ea8",
+                        "surface-container": "#1b2029",
+                        "on-tertiary-fixed-variant": "#005236",
+                        "outline": "#8d90a0",
+                        "tertiary-fixed": "#6ffbbe",
+                        "on-background": "#dfe2f0",
+                        "error-container": "#93000a",
+                        "on-error": "#690005",
+                        "on-primary-container": "#eeefff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"],
+                        "label-caps": ["JetBrains Mono"],
+                        "headline-md": ["Inter"],
+                        "data-mono": ["JetBrains Mono"],
+                        "headline-lg": ["Inter"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                        "label-caps": ["10px", {"lineHeight": "12px", "letterSpacing": "0.08em", "fontWeight": "700"}],
+                        "headline-md": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "data-mono": ["13px", {"lineHeight": "16px", "letterSpacing": "-0.01em", "fontWeight": "500"}],
+                        "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { background-color: #070b14; color: #dfe2f0; }
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; font-size: 18px; }
+        .scan-line { background: linear-gradient(to bottom, transparent 50%, rgba(37, 99, 235, 0.05) 50%); background-size: 100% 4px; }
+        input:focus, select:focus { outline: none; border-color: #5de6ff; box-shadow: 0 0 0 1px #5de6ff; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #0a0e17; }
+        ::-webkit-scrollbar-thumb { background: #434655; }
+    </style>
+</head>
+<body class="font-body-md overflow-hidden h-screen select-none scan-line">
+<!-- Persistent SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-[240px] bg-surface-dim border-r border-outline-variant flex flex-col py-4 space-y-2 z-50">
+<div class="px-4 mb-6">
+<h1 class="text-headline-md font-headline-md font-bold tracking-tighter text-on-surface">INDUSTRIAL OS</h1>
+<p class="font-label-caps text-label-caps text-on-surface-variant opacity-60">Terminal v4.02</p>
+</div>
+<nav class="flex-1 space-y-1">
+<a class="flex items-center px-4 py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined mr-3">factory</span>
+<span class="font-label-caps text-label-caps">Production</span>
+</a>
+<a class="flex items-center px-4 py-2 text-secondary border-l-2 border-secondary bg-surface-container-high transition-colors duration-150" href="#">
+<span class="material-symbols-outlined mr-3">group</span>
+<span class="font-label-caps text-label-caps">Users</span>
+</a>
+<a class="flex items-center px-4 py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined mr-3">monitoring</span>
+<span class="font-label-caps text-label-caps">Analytics</span>
+</a>
+<a class="flex items-center px-4 py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined mr-3">alt_route</span>
+<span class="font-label-caps text-label-caps">Routing</span>
+</a>
+<a class="flex items-center px-4 py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined mr-3">inventory</span>
+<span class="font-label-caps text-label-caps">Inventory</span>
+</a>
+</nav>
+<div class="px-4 mt-auto space-y-2">
+<button class="w-full bg-error-container text-on-error-container py-2 font-label-caps text-label-caps rounded-sm hover:brightness-110 transition-all border border-error/20">
+                EMERGENCY STOP
+            </button>
+<div class="pt-4 border-t border-outline-variant space-y-1">
+<a class="flex items-center py-2 text-on-surface-variant hover:text-on-surface" href="#">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="font-label-caps text-label-caps">Diagnostics</span>
+</a>
+<a class="flex items-center py-2 text-on-surface-variant hover:text-on-surface" href="#">
+<span class="material-symbols-outlined mr-3">logout</span>
+<span class="font-label-caps text-label-caps">Logout</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- TopAppBar -->
+<header class="fixed top-0 right-0 left-[240px] h-12 bg-surface-container-lowest border-b border-outline-variant flex justify-between items-center px-4 z-40">
+<div class="flex items-center space-x-6">
+<div class="font-label-caps text-label-caps text-secondary-container tracking-widest">CONTROL_CENTER</div>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-outline text-sm">search</span>
+<input class="bg-surface-container-lowest border border-outline-variant text-body-sm px-8 py-1 w-64 rounded-sm focus:ring-1 focus:ring-secondary-fixed text-on-surface" placeholder="QUERY_SYSTEM..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-4">
+<button class="flex items-center space-x-1 px-2 py-1 text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">notifications_active</span>
+</button>
+<button class="flex items-center space-x-1 px-2 py-1 text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">sensors</span>
+</button>
+<button class="flex items-center space-x-1 px-3 py-1 bg-primary-container text-on-primary-container font-label-caps text-label-caps rounded-sm hover:brightness-110">
+                LIVE_FEED
+            </button>
+<div class="h-6 w-px bg-outline-variant mx-2"></div>
+<img alt="Admin" class="h-8 w-8 rounded-full border border-outline" data-alt="A close-up portrait of a professional system administrator in a dark, high-tech control room setting. The individual is wearing a modern dark suit, with subtle blue ambient lighting reflecting off their sharp features. The background is filled with blurred digital displays and server rack lights, creating a clinical and authoritative corporate aesthetic with deep slate and cyan tones." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCgUX8vt6OvOjNE9qzSSeTC3_PCFeqrhEQOSDE4hx45_3x8I5WJntk8THKqlXBekTzQzfnl0hUJZgmLdwg8hkf5gceX9vu4E3fd9HGHUoZRTHNw1YF8onkLRXd8oSNKSv5F53eFJU7DkmP0O6a568uKxk7g3cwelh3qtWh6iwo9NJvKqvP4qarg2HlLDLzgDpyyaHPuSHakEP0c7ZExyjP2J_YikNsYa1-Njah-Dd24dEb_jLDe_8PTocy8aTVH69k-wMwQU53l8hU5"/>
+</div>
+</header>
+<!-- LIVE REMINDERS Strip -->
+<div class="fixed top-12 right-0 left-[240px] h-8 bg-surface-container border-b border-outline-variant flex items-center px-4 z-30 overflow-hidden">
+<div class="flex items-center space-x-2 animate-pulse">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="font-label-caps text-label-caps text-tertiary">LIVE_REMINDERS:</span>
+</div>
+<div class="ml-4 flex-1 overflow-hidden">
+<div class="flex space-x-8 whitespace-nowrap text-body-sm text-on-surface-variant font-data-mono italic">
+<span>[09:14] Sector 7B authentication protocol updated.</span>
+<span>[09:12] New user RedVortex access verified.</span>
+<span>[08:45] Inventory reconciliation scheduled for 14:00.</span>
+</div>
+</div>
+</div>
+<!-- Main Content Area -->
+<main class="fixed top-20 bottom-0 right-0 left-[240px] overflow-y-auto p-4 space-y-4">
+<!-- Hero Section -->
+<section class="relative h-24 rounded-lg overflow-hidden border border-outline-variant group">
+<img class="absolute inset-0 w-full h-full object-cover opacity-20 group-hover:opacity-30 transition-opacity duration-700" data-alt="A wide-angle cinematic shot of a futuristic industrial factory architecture at dusk. The building features dark steel beams, large glass panels reflecting a deep blue twilight sky, and rows of geometric lights. The atmosphere is clinical and high-density, with a focus on structural precision and professional governance, using a palette of deep slates and electric cyan highlights." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAKga4yaovGxCP1xOHHArh0BiFKd0npqvKylunJHgIxe7sdaXz5hkHLeNAaZdKbO2nzwpAOSEhzBuucb5zxvtIwzrgjPk1rzz70t85ctgX5sQPrOF0fUzKUm6rGPEW4YBfu2Md7DTXLsa95carvcMva1Ufy6-Ig2ckakjkwWyAdEae0xc9g3d9DT7I6xfpeB_q0GDA6agAHMebn9utPEySSckX_05ETVKbrLLZDBFlp4R4so59g1jNHjEnvyrTjTPxPeTd6XdSEh8ED"/>
+<div class="absolute inset-0 bg-gradient-to-r from-background via-background/80 to-transparent flex flex-col justify-center px-8">
+<h2 class="font-headline-lg text-headline-lg text-primary tracking-tight">Keep factory setup and team control in one admin lane</h2>
+<p class="font-body-md text-on-surface-variant max-w-xl">Centralized User Governance and Permission Mapping Engine</p>
+</div>
+</section>
+<!-- Admin Tools Strip -->
+<div class="flex items-center border-b border-outline-variant px-2 space-x-1">
+<button class="px-6 py-2 font-label-caps text-label-caps text-on-surface-variant hover:bg-surface-container-low transition-all">Board</button>
+<button class="px-6 py-2 font-label-caps text-label-caps text-on-surface-variant hover:bg-surface-container-low transition-all">Reports</button>
+<button class="px-6 py-2 font-label-caps text-label-caps text-on-surface-variant hover:bg-surface-container-low transition-all">Plans</button>
+<button class="px-6 py-2 font-label-caps text-label-caps text-on-surface-variant hover:bg-surface-container-low transition-all">Billing</button>
+<button class="px-6 py-2 font-label-caps text-label-caps text-secondary border-b-2 border-secondary bg-surface-container-high">USERS</button>
+</div>
+<!-- KPI Strip -->
+<div class="grid grid-cols-4 gap-4">
+<div class="bg-surface-container-low border border-outline-variant p-3 flex flex-col">
+<span class="font-label-caps text-[9px] text-outline uppercase tracking-widest">Current Factory</span>
+<span class="font-data-mono text-headline-md text-primary mt-1">APOLLO_7_NORTH</span>
+</div>
+<div class="bg-surface-container-low border border-outline-variant p-3 flex flex-col">
+<span class="font-label-caps text-[9px] text-outline uppercase tracking-widest">Factory Network</span>
+<span class="font-data-mono text-headline-md text-on-surface mt-1">12 NODES ACTIVE</span>
+</div>
+<div class="bg-surface-container-low border border-outline-variant p-3 flex flex-col">
+<span class="font-label-caps text-[9px] text-outline uppercase tracking-widest">Active Users</span>
+<span class="font-data-mono text-headline-md text-tertiary mt-1">428 / 500</span>
+</div>
+<div class="bg-surface-container-low border border-outline-variant p-3 flex flex-col">
+<span class="font-label-caps text-[9px] text-outline uppercase tracking-widest">Alerts</span>
+<span class="font-data-mono text-headline-md text-error mt-1">03 CRITICAL</span>
+</div>
+</div>
+<!-- Center Content (Split Layout) -->
+<div class="grid grid-cols-12 gap-4 h-[calc(100vh-420px)] min-h-[400px]">
+<!-- LEFT: Users Table -->
+<div class="col-span-8 bg-surface-container-low border border-outline-variant flex flex-col overflow-hidden">
+<div class="p-3 bg-surface-container border-b border-outline-variant flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface">GOVERNANCE_REGISTRY</span>
+<div class="flex space-x-2">
+<button class="material-symbols-outlined text-outline hover:text-on-surface transition-colors">refresh</button>
+<button class="material-symbols-outlined text-outline hover:text-on-surface transition-colors">download</button>
+</div>
+</div>
+<div class="flex-1 overflow-auto">
+<table class="w-full border-collapse text-left">
+<thead class="sticky top-0 bg-surface-container-high z-10 shadow-sm">
+<tr>
+<th class="px-4 py-2 font-label-caps text-[10px] text-outline border-b border-outline-variant">USER_ID</th>
+<th class="px-4 py-2 font-label-caps text-[10px] text-outline border-b border-outline-variant">NAME</th>
+<th class="px-4 py-2 font-label-caps text-[10px] text-outline border-b border-outline-variant">EMAIL</th>
+<th class="px-4 py-2 font-label-caps text-[10px] text-outline border-b border-outline-variant">ROLE</th>
+<th class="px-4 py-2 font-label-caps text-[10px] text-outline border-b border-outline-variant">FACTORY_ACCESS</th>
+<th class="px-4 py-2 font-label-caps text-[10px] text-outline border-b border-outline-variant">PLAN</th>
+<th class="px-4 py-2 font-label-caps text-[10px] text-outline border-b border-outline-variant">ACTIVE</th>
+</tr>
+</thead>
+<tbody class="font-data-mono text-data-mono">
+<tr class="hover:bg-white/5 border-b border-outline-variant/30 transition-colors">
+<td class="px-4 py-2 text-secondary">10001</td>
+<td class="px-4 py-2 text-on-surface">RedVortex</td>
+<td class="px-4 py-2 text-on-surface-variant">admin@vortex.ind</td>
+<td class="px-4 py-2">
+<span class="px-1 border border-primary text-[9px] text-primary rounded-sm">OWNER</span>
+</td>
+<td class="px-4 py-2">GLOBAL_ADMIN</td>
+<td class="px-4 py-2">ENTERPRISE</td>
+<td class="px-4 py-2"><span class="w-2 h-2 inline-block rounded-full bg-tertiary"></span></td>
+</tr>
+<tr class="hover:bg-white/5 border-b border-outline-variant/30 transition-colors">
+<td class="px-4 py-2 text-secondary">10000</td>
+<td class="px-4 py-2 text-on-surface">Anonymous</td>
+<td class="px-4 py-2 text-on-surface-variant">sys.admin@internal.os</td>
+<td class="px-4 py-2">
+<span class="px-1 border border-secondary text-[9px] text-secondary rounded-sm">ADMIN</span>
+</td>
+<td class="px-4 py-2">FACILITY_LEVEL_1</td>
+<td class="px-4 py-2">ENTERPRISE</td>
+<td class="px-4 py-2"><span class="w-2 h-2 inline-block rounded-full bg-tertiary"></span></td>
+</tr>
+<!-- Dummy Rows -->
+<tr class="hover:bg-white/5 border-b border-outline-variant/30 transition-colors opacity-60">
+<td class="px-4 py-2 text-secondary">09942</td>
+<td class="px-4 py-2 text-on-surface">J. Chen</td>
+<td class="px-4 py-2 text-on-surface-variant">j.chen@north.ind</td>
+<td class="px-4 py-2"><span class="px-1 border border-outline text-[9px] text-outline rounded-sm">OPERATOR</span></td>
+<td class="px-4 py-2">ZONE_B_NORTH</td>
+<td class="px-4 py-2">BASIC</td>
+<td class="px-4 py-2"><span class="w-2 h-2 inline-block rounded-full bg-tertiary"></span></td>
+</tr>
+<tr class="hover:bg-white/5 border-b border-outline-variant/30 transition-colors opacity-60">
+<td class="px-4 py-2 text-secondary">09941</td>
+<td class="px-4 py-2 text-on-surface">M. Kowalski</td>
+<td class="px-4 py-2 text-on-surface-variant">m.kow@south.ind</td>
+<td class="px-4 py-2"><span class="px-1 border border-outline text-[9px] text-outline rounded-sm">LOGISTICS</span></td>
+<td class="px-4 py-2">SOUTH_GATE_ALL</td>
+<td class="px-4 py-2">STANDARD</td>
+<td class="px-4 py-2"><span class="w-2 h-2 inline-block rounded-full bg-outline"></span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- RIGHT Panel: Invite & Governance -->
+<div class="col-span-4 space-y-4 overflow-y-auto pr-1">
+<!-- Invite User Form -->
+<div class="bg-surface-container border border-outline-variant">
+<div class="p-3 bg-surface-container-high border-b border-outline-variant flex items-center">
+<span class="material-symbols-outlined mr-2 text-primary">person_add</span>
+<span class="font-label-caps text-label-caps text-on-surface">INVITE_NEW_USER</span>
+</div>
+<div class="p-4 space-y-4">
+<div class="space-y-1">
+<label class="font-label-caps text-[10px] text-outline">FULL_NAME</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-sm p-2 text-body-sm text-on-surface font-data-mono" placeholder="e.g. MARCUS_AURELIUS" type="text"/>
+</div>
+<div class="space-y-1">
+<label class="font-label-caps text-[10px] text-outline">EMAIL_ADDRESS</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded-sm p-2 text-body-sm text-on-surface font-data-mono" placeholder="user@factory.node" type="email"/>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-1">
+<label class="font-label-caps text-[10px] text-outline">SYSTEM_ROLE</label>
+<select class="w-full bg-surface-container-lowest border border-outline-variant rounded-sm p-2 text-body-sm text-on-surface font-data-mono appearance-none">
+<option>OPERATOR</option>
+<option>SUPERVISOR</option>
+<option>ADMIN</option>
+</select>
+</div>
+<div class="space-y-1">
+<label class="font-label-caps text-[10px] text-outline">NODE_ACCESS</label>
+<select class="w-full bg-surface-container-lowest border border-outline-variant rounded-sm p-2 text-body-sm text-on-surface font-data-mono appearance-none">
+<option>APOLLO_7</option>
+<option>VORTEX_9</option>
+<option>LOCAL_ONLY</option>
+</select>
+</div>
+</div>
+<button class="w-full bg-primary text-on-primary font-label-caps py-2 rounded-sm hover:bg-primary-fixed transition-colors">GENERATE_INVITATION</button>
+</div>
+</div>
+<!-- Governance Form -->
+<div class="bg-surface-container border border-outline-variant">
+<div class="p-3 bg-surface-container-high border-b border-outline-variant flex items-center">
+<span class="material-symbols-outlined mr-2 text-secondary">security</span>
+<span class="font-label-caps text-label-caps text-on-surface">GOVERNANCE_CONTROL</span>
+</div>
+<div class="p-4 space-y-4">
+<div class="flex items-center justify-between p-2 bg-surface-container-low border border-outline-variant">
+<div class="flex items-center space-x-3">
+<div class="w-8 h-8 rounded-sm bg-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined">person</span>
+</div>
+<div class="flex flex-col">
+<span class="font-data-mono text-body-sm">RedVortex</span>
+<span class="font-label-caps text-[9px] text-outline">UID: 10001</span>
+</div>
+</div>
+<span class="font-label-caps text-[9px] text-tertiary">ACTIVE_SESSION</span>
+</div>
+<div class="space-y-3 pt-2">
+<div class="flex items-center justify-between">
+<span class="text-body-sm text-on-surface-variant">Update User Role</span>
+<select class="bg-surface-container-lowest border border-outline-variant text-[11px] px-2 py-1 font-data-mono text-secondary">
+<option>ROOT_OWNER</option>
+<option>ADMINISTRATOR</option>
+</select>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-body-sm text-on-surface-variant">Multi-Factor Auth</span>
+<span class="font-label-caps text-[10px] text-tertiary">ENFORCED</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-body-sm text-on-surface-variant">Access Expiry</span>
+<span class="font-label-caps text-[10px] text-on-surface">NEVER</span>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-2 pt-2">
+<button class="bg-surface-container-lowest border border-outline-variant text-on-surface py-2 font-label-caps text-[10px] hover:bg-surface-container-highest transition-colors">RESET_KEY</button>
+<button class="bg-error/10 border border-error/30 text-error py-2 font-label-caps text-[10px] hover:bg-error/20 transition-colors">DEACTIVATE</button>
+</div>
+</div>
+</div>
+<!-- System Load Indicators (Aesthetic) -->
+<div class="bg-surface-container-lowest border border-outline-variant p-3 space-y-2">
+<div class="flex justify-between items-center">
+<span class="font-label-caps text-[9px] text-outline">SYSTEM_LOAD</span>
+<span class="font-data-mono text-[9px] text-tertiary">0.04 MS</span>
+</div>
+<div class="h-1 w-full bg-outline-variant">
+<div class="h-full bg-tertiary w-1/4"></div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer Stats Overlay -->
+<footer class="fixed bottom-0 right-0 left-[240px] h-6 bg-surface-container-lowest border-t border-outline-variant flex items-center justify-between px-4 z-50">
+<div class="flex space-x-4">
+<span class="font-data-mono text-[9px] text-outline uppercase">CPU: 12%</span>
+<span class="font-data-mono text-[9px] text-outline uppercase">RAM: 4.2GB / 64GB</span>
+<span class="font-data-mono text-[9px] text-outline uppercase">LATENCY: 14MS</span>
+</div>
+<div class="flex items-center space-x-2">
+<span class="font-data-mono text-[9px] text-tertiary uppercase">Secure Tunnel Active</span>
+<span class="w-2 h-2 rounded-full bg-tertiary shadow-[0_0_5px_#4ede3]"></span>
+</div>
+</footer>
+<script>
+        // Simple Micro-interaction: Keyboard Focus simulation
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '/' ) {
+                e.preventDefault();
+                document.querySelector('input[placeholder="QUERY_SYSTEM..."]').focus();
+            }
+        });
+
+        // Ambient update effect
+        setInterval(() => {
+            const tickers = document.querySelectorAll('.animate-pulse');
+            tickers.forEach(t => {
+                t.style.opacity = Math.random() * 0.5 + 0.5;
+            });
+        }, 100);
+    </script>
+</body></html>

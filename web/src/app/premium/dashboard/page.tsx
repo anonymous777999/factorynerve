@@ -1,5 +1,5 @@
-import PremiumDashboardPage from "@/components/premium-dashboard-page";
+import { PremiumDashboardWorkspace } from "@/features/dashboard";
 
 export default function PremiumDashboardRoute() {
-  return <PremiumDashboardPage />;
+  return <PremiumDashboardWorkspace />;
 }

@@ -1,0 +1,510 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Factory Administration Workspace - Board Tab</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "text-primary": "#f1f5f9",
+                      "on-tertiary-fixed": "#002109",
+                      "on-secondary": "#002c71",
+                      "border-default": "#333b48",
+                      "border-strong": "#4a5568",
+                      "primary-container": "#e08c0f",
+                      "surface-ground": "#0a0b0d",
+                      "error-container": "#93000a",
+                      "on-primary-container": "#502e00",
+                      "secondary-container": "#0459d3",
+                      "on-tertiary-container": "#003f17",
+                      "on-secondary-container": "#d1dcff",
+                      "primary-fixed": "#ffddbb",
+                      "inverse-on-surface": "#2e3036",
+                      "secondary-fixed": "#dae2ff",
+                      "on-primary": "#482900",
+                      "status-critical": "#dc2626",
+                      "on-surface": "#e2e2e9",
+                      "outline": "#a18d7b",
+                      "surface-container-highest": "#33353a",
+                      "on-error-container": "#ffdad6",
+                      "on-surface-variant": "#d9c3ae",
+                      "secondary": "#b1c5ff",
+                      "surface-dim": "#111318",
+                      "tertiary-container": "#33b559",
+                      "status-caution": "#ea580c",
+                      "on-background": "#e2e2e9",
+                      "surface-raised": "#212633",
+                      "outline-variant": "#534435",
+                      "inverse-surface": "#e2e2e9",
+                      "text-secondary": "#cbd5e1",
+                      "surface-canvas": "#111318",
+                      "text-muted": "#64748b",
+                      "surface-container": "#1e2025",
+                      "on-error": "#690005",
+                      "tertiary": "#62df7d",
+                      "surface-overlay": "#252b36",
+                      "surface-container-low": "#1a1b21",
+                      "surface-primary": "#161a21",
+                      "surface-variant": "#33353a",
+                      "surface-container-lowest": "#0c0e13",
+                      "border-subtle": "#252b36",
+                      "on-tertiary-fixed-variant": "#005320",
+                      "surface-tint": "#ffb868",
+                      "on-primary-fixed": "#2b1700",
+                      "on-tertiary": "#003914",
+                      "surface-bright": "#37393f",
+                      "primary": "#ffb868",
+                      "surface": "#111318",
+                      "surface-container-high": "#282a2f",
+                      "inverse-primary": "#885200",
+                      "tertiary-fixed-dim": "#62df7d",
+                      "on-primary-fixed-variant": "#673d00",
+                      "tertiary-fixed": "#7ffc97",
+                      "primary-fixed-dim": "#ffb868",
+                      "secondary-fixed-dim": "#b1c5ff",
+                      "on-secondary-fixed": "#001946",
+                      "background": "#111318",
+                      "on-secondary-fixed-variant": "#00419f",
+                      "error": "#ffb4ab",
+                      "surface-elevated": "#1c2029"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "unit": "4px",
+                      "xs": "8px",
+                      "margin-mobile": "16px",
+                      "sm": "12px",
+                      "lg": "24px",
+                      "md": "20px",
+                      "base": "16px",
+                      "micro": "4px",
+                      "margin-desktop": "32px",
+                      "gutter": "16px",
+                      "xl": "32px"
+              },
+              "fontFamily": {
+                      "table-cell": [
+                              "Inter"
+                      ],
+                      "metadata-xs": [
+                              "JetBrains Mono"
+                      ],
+                      "label-sm": [
+                              "JetBrains Mono"
+                      ],
+                      "display-4xl": [
+                              "Inter"
+                      ],
+                      "page-title": [
+                              "Inter"
+                      ],
+                      "panel-title": [
+                              "Inter"
+                      ],
+                      "page-title-mobile": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "table-cell": [
+                              "13px",
+                              {
+                                      "lineHeight": "1.50",
+                                      "letterSpacing": "0em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "metadata-xs": [
+                              "11px",
+                              {
+                                      "lineHeight": "1.45",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.45",
+                                      "letterSpacing": "0.004em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "display-4xl": [
+                              "36px",
+                              {
+                                      "lineHeight": "1.15",
+                                      "letterSpacing": "-0.026em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "page-title": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.25",
+                                      "letterSpacing": "-0.018em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "panel-title": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.40",
+                                      "letterSpacing": "-0.010em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "page-title-mobile": [
+                              "20px",
+                              {
+                                      "lineHeight": "1.25",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.50",
+                                      "letterSpacing": "-0.006em",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        .material-symbols-outlined {
+          font-variation-settings:
+          'FILL' 0,
+          'wght' 400,
+          'GRAD' 0,
+          'opsz' 24;
+        }
+        .fill-icon {
+            font-variation-settings: 'FILL' 1;
+        }
+      </style>
+</head>
+<body class="bg-surface-canvas text-text-primary font-body-md h-screen w-full overflow-hidden flex selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar -->
+<nav class="w-[220px] h-screen fixed left-0 top-0 border-r border-border-strong bg-surface-primary flex flex-col py-4 gap-y-2 z-50">
+<div class="px-4 pb-6 border-b border-border-subtle mb-2 flex flex-col gap-1">
+<span class="font-metadata-xs text-metadata-xs uppercase tracking-widest text-muted">RedVortex ORG Logo</span>
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary fill-icon" data-icon="factory">factory</span>
+<span class="font-panel-title text-panel-title text-text-primary">RedVortex ORG</span>
+</div>
+<span class="font-metadata-xs text-metadata-xs text-text-muted">Steel Industry • Free Plan</span>
+</div>
+<div class="flex-1 overflow-y-auto px-2 flex flex-col gap-1">
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="dashboard">dashboard</span>
+<span class="font-label-sm text-label-sm">Today Board</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="fact_check">fact_check</span>
+<span class="font-label-sm text-label-sm">Approvals</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="analytics">analytics</span>
+<span class="font-label-sm text-label-sm">Reports &amp; Exports</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="monitoring">monitoring</span>
+<span class="font-label-sm text-label-sm">Performance</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="fingerprint">fingerprint</span>
+<span class="font-label-sm text-label-sm">Attendance Admin</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md bg-surface-variant text-primary border-r-2 border-primary scale-98 transition-all duration-100" href="#">
+<span class="material-symbols-outlined text-[18px] fill-icon" data-icon="factory">factory</span>
+<span class="font-label-sm text-label-sm font-semibold">Factory Admin</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="document_scanner">document_scanner</span>
+<span class="font-label-sm text-label-sm">OCR History</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="card_membership">card_membership</span>
+<span class="font-label-sm text-label-sm">Subscription</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="receipt_long">receipt_long</span>
+<span class="font-label-sm text-label-sm">Billing &amp; Invoices</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150 mt-auto" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm">Profile</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="language">language</span>
+<span class="font-label-sm text-label-sm">Language</span>
+</a>
+<a class="flex items-center gap-3 px-3 py-2 rounded-md text-on-surface-variant hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-[18px]" data-icon="logout">logout</span>
+<span class="font-label-sm text-label-sm">Sign-out</span>
+</a>
+</div>
+<div class="px-4 pt-4 border-t border-border-subtle mt-2 flex justify-between items-center">
+<span class="font-metadata-xs text-metadata-xs text-text-muted">DPR.AI</span>
+<div class="flex gap-2 text-text-muted">
+<a class="hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined text-[16px]" data-icon="help">help</span></a>
+<a class="hover:text-primary transition-colors" href="#"><span class="material-symbols-outlined text-[16px]" data-icon="settings">settings</span></a>
+</div>
+</div>
+</nav>
+<!-- Main Content Canvas -->
+<main class="ml-[220px] flex-1 flex flex-col h-screen overflow-hidden bg-surface-canvas relative">
+<!-- TopNavBar -->
+<header class="h-12 w-full flex-shrink-0 bg-surface-primary border-b border-border-strong flex justify-between items-center px-margin-desktop z-40 relative">
+<div class="flex items-center gap-6">
+<span class="font-panel-title text-panel-title font-bold text-on-surface">FactoryNerve OS</span>
+<nav class="hidden md:flex gap-6 h-full items-end">
+<a class="font-metadata-xs text-metadata-xs text-primary border-b-2 border-primary pb-2 uppercase tracking-wide" href="#">Board</a>
+<a class="font-metadata-xs text-metadata-xs text-text-muted hover:text-on-surface hover:text-primary transition-colors pb-[10px] uppercase tracking-wide" href="#">Reports</a>
+<a class="font-metadata-xs text-metadata-xs text-text-muted hover:text-on-surface hover:text-primary transition-colors pb-[10px] uppercase tracking-wide" href="#">Plans</a>
+<a class="font-metadata-xs text-metadata-xs text-text-muted hover:text-on-surface hover:text-primary transition-colors pb-[10px] uppercase tracking-wide" href="#">Billing</a>
+</nav>
+</div>
+<div class="flex items-center gap-4 text-text-muted">
+<button class="hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="notifications">notifications</span></button>
+<button class="hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="history">history</span></button>
+<button class="hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="terminal">terminal</span></button>
+<div class="w-6 h-6 rounded-full bg-surface-elevated border border-border-subtle overflow-hidden flex items-center justify-center ml-2">
+<span class="material-symbols-outlined text-[14px]" data-icon="person">person</span>
+</div>
+</div>
+</header>
+<!-- TopAppBar (Notification Strip) -->
+<div class="w-full h-auto py-3 px-6 border-b border-border-subtle bg-surface-ground flex items-center justify-between inset shadow-sm flex-shrink-0">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-md bg-primary-container/20 flex items-center justify-center text-primary-container">
+<span class="material-symbols-outlined text-[18px]" data-icon="campaign">campaign</span>
+</div>
+<div>
+<h3 class="font-metadata-xs text-metadata-xs text-primary-container font-bold tracking-tighter uppercase mb-0.5">LIVE REMINDERS</h3>
+<p class="font-label-sm text-label-sm text-text-secondary">Attendance review is waiting. 1 attendance issue need closure.</p>
+</div>
+</div>
+<button class="px-4 py-1.5 rounded-md bg-surface-raised border border-border-default font-label-sm text-label-sm text-text-primary hover:brightness-110 transition-all shadow-sm">Review Attendance</button>
+</div>
+<!-- Scrollable Content -->
+<div class="flex-1 overflow-y-auto p-margin-desktop space-y-6 scroll-smooth">
+<!-- Hero Panel -->
+<section class="p-6 rounded-xl bg-surface-elevated border border-border-subtle relative overflow-hidden">
+<div class="absolute inset-0 bg-gradient-to-br from-secondary-container/10 to-transparent pointer-events-none"></div>
+<div class="relative z-10 max-w-2xl">
+<span class="font-metadata-xs text-metadata-xs text-secondary tracking-widest uppercase mb-2 block">Settings</span>
+<h1 class="font-display-4xl text-display-4xl text-text-primary mb-3">Keep factory setup and team control in one admin lane</h1>
+<p class="font-body-md text-body-md text-text-secondary">Update factory setup, manage people, and check plan posture without leaving the admin workspace.</p>
+</div>
+</section>
+<!-- Admin Tools Tabs -->
+<section class="flex gap-2 p-1 rounded-lg bg-surface-container-low border border-border-subtle w-fit">
+<button class="px-4 py-1.5 rounded-md bg-secondary-container text-text-primary font-label-sm text-label-sm transition-colors shadow-sm">Board</button>
+<button class="px-4 py-1.5 rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised font-label-sm text-label-sm transition-colors">Reports</button>
+<button class="px-4 py-1.5 rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised font-label-sm text-label-sm transition-colors">Plans</button>
+<button class="px-4 py-1.5 rounded-md text-text-muted hover:text-text-primary hover:bg-surface-raised font-label-sm text-label-sm transition-colors">Billing</button>
+</section>
+<!-- KPI Strip -->
+<section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+<div class="p-4 rounded-lg bg-surface-raised border border-border-default">
+<span class="font-metadata-xs text-metadata-xs text-text-muted uppercase block mb-1">Current Factory</span>
+<div class="font-page-title text-page-title text-text-primary mb-1">RedVortex ORG</div>
+<div class="font-table-cell text-table-cell text-text-secondary">Steel Industry • Steel Core Pack</div>
+</div>
+<div class="p-4 rounded-lg bg-surface-raised border border-border-default">
+<span class="font-metadata-xs text-metadata-xs text-text-muted uppercase block mb-1">Factory Network</span>
+<div class="font-page-title text-page-title text-text-primary mb-1">1</div>
+<div class="font-table-cell text-table-cell text-text-secondary">Steel Industry: 1</div>
+</div>
+<div class="p-4 rounded-lg bg-surface-raised border border-border-default">
+<span class="font-metadata-xs text-metadata-xs text-text-muted uppercase block mb-1">Active Users</span>
+<div class="font-page-title text-page-title text-text-primary mb-1">2</div>
+<div class="font-table-cell text-table-cell text-text-secondary">Plan free • Billing status: active</div>
+</div>
+<div class="p-4 rounded-lg bg-surface-raised border border-border-default flex items-center justify-center border-dashed">
+<button class="font-label-sm text-label-sm text-primary hover:text-primary-container flex items-center gap-2 transition-colors">
+<span class="material-symbols-outlined text-[18px]" data-icon="add">add</span> New Metric
+                    </button>
+</div>
+</section>
+<!-- Secondary Tabs -->
+<div class="border-b border-border-subtle">
+<nav class="flex gap-6">
+<a class="font-label-sm text-label-sm text-primary border-b-2 border-primary pb-2 px-1" href="#">Factory</a>
+<a class="font-label-sm text-label-sm text-text-muted hover:text-text-primary pb-2 px-1 transition-colors" href="#">Users</a>
+<a class="font-label-sm text-label-sm text-text-muted hover:text-text-primary pb-2 px-1 transition-colors" href="#">Usage</a>
+<a class="font-label-sm text-label-sm text-text-muted hover:text-text-primary pb-2 px-1 transition-colors" href="#">Alerts</a>
+</nav>
+</div>
+<!-- Split Layout -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 pb-12">
+<!-- Left Column: Factory Profile -->
+<div class="lg:col-span-2 space-y-6">
+<h2 class="font-page-title text-page-title text-text-primary">Factory Profile</h2>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="space-y-1.5">
+<label class="font-metadata-xs text-metadata-xs text-text-muted block">Factory Name</label>
+<input class="w-full bg-surface-ground border border-border-default rounded-md px-3 py-2 text-text-primary font-table-cell focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all outline-none" readonly="" type="text" value="RedVortex ORG">
+</div>
+<div class="space-y-1.5">
+<label class="font-metadata-xs text-metadata-xs text-text-muted block">Industry Profile</label>
+<input class="w-full bg-surface-ground border border-border-default rounded-md px-3 py-2 text-text-primary font-table-cell focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all outline-none" readonly="" type="text" value="Steel Industry">
+<p class="font-metadata-xs text-metadata-xs text-text-muted mt-1 leading-tight">Traceability-first profile for heats, scrap, quality release, and line performance.</p>
+</div>
+</div>
+<div class="space-y-1.5">
+<label class="font-metadata-xs text-metadata-xs text-text-muted block">Workflow Template</label>
+<input class="w-full bg-surface-ground border border-border-default rounded-md px-3 py-2 text-text-primary font-table-cell focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all outline-none" readonly="" type="text" value="Steel Core Pack">
+<p class="font-metadata-xs text-metadata-xs text-text-muted mt-1 leading-tight">Steel starter template focused on production traceability, scrap, and quality release readiness.</p>
+</div>
+<div class="space-y-1.5">
+<label class="font-metadata-xs text-metadata-xs text-text-muted block">Address</label>
+<input class="w-full bg-surface-ground border border-border-default rounded-md px-3 py-2 text-text-primary font-table-cell focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all outline-none" readonly="" type="text" value="India, maharashtra, panvel, raigad 410208">
+</div>
+<div class="space-y-4 pt-4 border-t border-border-subtle">
+<h3 class="font-panel-title text-panel-title text-text-primary">Starter Modules</h3>
+<div class="flex flex-wrap gap-2">
+<span class="px-3 py-1 rounded-full bg-surface-raised border border-border-default font-metadata-xs text-metadata-xs text-text-primary">Dpr</span>
+<span class="px-3 py-1 rounded-full bg-surface-raised border border-border-default font-metadata-xs text-metadata-xs text-text-primary">Quality</span>
+<span class="px-3 py-1 rounded-full bg-surface-raised border border-border-default font-metadata-xs text-metadata-xs text-text-primary">Traceability</span>
+<span class="px-3 py-1 rounded-full bg-surface-raised border border-border-default font-metadata-xs text-metadata-xs text-text-primary">Scrap</span>
+<span class="px-3 py-1 rounded-full bg-surface-raised border border-border-default font-metadata-xs text-metadata-xs text-text-primary">Certificates</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+<!-- Module Card 1 -->
+<div class="p-4 rounded-lg bg-surface-elevated border border-border-default">
+<h4 class="font-label-sm text-label-sm text-text-primary mb-1">Shift Handover</h4>
+<p class="font-metadata-xs text-metadata-xs text-text-muted mb-3 leading-relaxed">Production, staffing, and downtime summary captured at the end of every shift.</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-0.5 rounded bg-surface-ground border border-border-subtle font-metadata-xs text-metadata-xs text-text-secondary">Shift Date</span>
+<span class="px-2 py-0.5 rounded bg-surface-ground border border-border-subtle font-metadata-xs text-metadata-xs text-text-secondary">Shift</span>
+<span class="px-2 py-0.5 rounded bg-surface-ground border border-border-subtle font-metadata-xs text-metadata-xs text-text-secondary">Units Target</span>
+<span class="px-2 py-0.5 rounded bg-surface-ground border border-border-subtle font-metadata-xs text-metadata-xs text-text-secondary">Units Produced</span>
+<span class="px-2 py-0.5 rounded bg-surface-ground border border-border-subtle font-metadata-xs text-metadata-xs text-text-secondary">Manpower Present</span>
+<span class="px-2 py-0.5 rounded bg-surface-ground border border-border-subtle font-metadata-xs text-metadata-xs text-text-secondary">Downtime Minutes</span>
+</div>
+</div>
+<!-- Module Card 2 -->
+<div class="p-4 rounded-lg bg-surface-elevated border border-border-default">
+<h4 class="font-label-sm text-label-sm text-text-primary mb-1">Quality Gate</h4>
+<p class="font-metadata-xs text-metadata-xs text-text-muted mb-3 leading-relaxed">Shared quality capture block for defects, holds, and release notes.</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-0.5 rounded bg-surface-ground border border-border-subtle font-metadata-xs text-metadata-xs text-text-secondary">Quality Issues</span>
+<span class="px-2 py-0.5 rounded bg-surface-ground border border-border-subtle font-metadata-xs text-metadata-xs text-text-secondary">Quality Details</span>
+<span class="px-2 py-0.5 rounded bg-surface-ground border border-border-subtle font-metadata-xs text-metadata-xs text-text-secondary">Materials Used</span>
+</div>
+</div>
+<!-- Module Card 3 -->
+<div class="p-4 rounded-lg bg-surface-elevated border border-border-default md:col-span-2">
+<h4 class="font-label-sm text-label-sm text-text-primary mb-1">Heat and Lot Traceability</h4>
+<p class="font-metadata-xs text-metadata-xs text-text-muted mb-3 leading-relaxed">Trace steel production against heat, lot, and certificate references.</p>
+<div class="flex flex-wrap gap-2">
+<span class="px-2 py-0.5 rounded bg-surface-ground border border-border-subtle font-metadata-xs text-metadata-xs text-text-secondary">Heat Number</span>
+<span class="px-2 py-0.5 rounded bg-surface-ground border border-border-subtle font-metadata-xs text-metadata-xs text-text-secondary">Lot Number</span>
+<span class="px-2 py-0.5 rounded bg-surface-ground border border-border-subtle font-metadata-xs text-metadata-xs text-text-secondary">Scrap (kg)</span>
+<span class="px-2 py-0.5 rounded bg-surface-ground border border-border-subtle font-metadata-xs text-metadata-xs text-text-secondary">Certificate Reference</span>
+</div>
+</div>
+</div>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-border-subtle">
+<div class="space-y-1.5">
+<label class="font-metadata-xs text-metadata-xs text-text-muted block">Morning Target</label>
+<input class="w-full bg-surface-ground border border-border-default rounded-md px-3 py-2 text-text-primary font-table-cell focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all outline-none" type="number" value="0">
+</div>
+<div class="space-y-1.5">
+<label class="font-metadata-xs text-metadata-xs text-text-muted block">Evening Target</label>
+<input class="w-full bg-surface-ground border border-border-default rounded-md px-3 py-2 text-text-primary font-table-cell focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all outline-none" type="number" value="0">
+</div>
+<div class="space-y-1.5">
+<label class="font-metadata-xs text-metadata-xs text-text-muted block">Night Target</label>
+<input class="w-full bg-surface-ground border border-border-default rounded-md px-3 py-2 text-text-primary font-table-cell focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all outline-none" type="number" value="0">
+</div>
+</div>
+<button class="px-6 py-2 rounded-md bg-secondary-container text-text-primary font-label-sm text-label-sm hover:brightness-110 transition-all shadow-sm">Save profile</button>
+</div>
+<!-- Right Column: Create Factory & Status -->
+<div class="space-y-6">
+<div class="p-6 rounded-xl bg-surface-elevated border border-border-subtle space-y-4">
+<h2 class="font-page-title text-page-title text-text-primary border-b border-border-subtle pb-2">Create Factory</h2>
+<div class="space-y-1.5">
+<label class="font-metadata-xs text-metadata-xs text-text-muted block">Factory Name</label>
+<input class="w-full bg-surface-ground border border-border-default rounded-md px-3 py-2 text-text-primary font-table-cell focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all outline-none" placeholder="Enter factory name" type="text">
+</div>
+<div class="space-y-1.5">
+<label class="font-metadata-xs text-metadata-xs text-text-muted block">Industry Profile</label>
+<select class="w-full bg-surface-ground border border-border-default rounded-md px-3 py-2 text-text-primary font-table-cell focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all outline-none appearance-none">
+<option>General Manufacturing</option>
+<option>Steel Production</option>
+<option>Automotive Assembly</option>
+</select>
+</div>
+<div class="space-y-1.5">
+<label class="font-metadata-xs text-metadata-xs text-text-muted block">Workflow Template</label>
+<select class="w-full bg-surface-ground border border-border-default rounded-md px-3 py-2 text-text-primary font-table-cell focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all outline-none appearance-none">
+<option>General Operations Pack</option>
+<option>Lean Manufacturing Pack</option>
+</select>
+<p class="font-metadata-xs text-metadata-xs text-text-muted mt-1 leading-tight">Starter operating template for standard production, manpower, downtime, quality, and dispatch.</p>
+</div>
+<div class="space-y-1.5">
+<label class="font-metadata-xs text-metadata-xs text-text-muted block">Location</label>
+<input class="w-full bg-surface-ground border border-border-default rounded-md px-3 py-2 text-text-primary font-table-cell focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all outline-none" placeholder="City, Region" type="text">
+</div>
+<div class="space-y-1.5">
+<label class="font-metadata-xs text-metadata-xs text-text-muted block">Address</label>
+<input class="w-full bg-surface-ground border border-border-default rounded-md px-3 py-2 text-text-primary font-table-cell focus:ring-2 focus:ring-primary-container focus:border-transparent transition-all outline-none" placeholder="Full address" type="text">
+</div>
+<div class="p-3 rounded-md bg-surface-ground border border-border-subtle">
+<h4 class="font-label-sm text-label-sm text-text-primary mb-1">Pack Preview</h4>
+<p class="font-metadata-xs text-metadata-xs text-text-muted mb-2">Shared industrial modules that will be enabled first for this factory.</p>
+<div class="flex flex-wrap gap-1.5">
+<span class="px-2 py-0.5 rounded-sm bg-surface-raised border border-border-default font-metadata-xs text-metadata-xs text-text-secondary">Dpr</span>
+<span class="px-2 py-0.5 rounded-sm bg-surface-raised border border-border-default font-metadata-xs text-metadata-xs text-text-secondary">Downtime</span>
+<span class="px-2 py-0.5 rounded-sm bg-surface-raised border border-border-default font-metadata-xs text-metadata-xs text-text-secondary">Quality</span>
+<span class="px-2 py-0.5 rounded-sm bg-surface-raised border border-border-default font-metadata-xs text-metadata-xs text-text-secondary">Dispatch</span>
+<span class="px-2 py-0.5 rounded-sm bg-surface-raised border border-border-default font-metadata-xs text-metadata-xs text-text-secondary">Manpower</span>
+</div>
+</div>
+<button class="w-full py-2 rounded-md bg-surface-ground border border-border-default text-text-muted font-label-sm text-label-sm hover:text-text-primary hover:border-border-strong transition-all cursor-not-allowed opacity-50" disabled="">Create Factory</button>
+</div>
+<div class="p-6 rounded-xl bg-surface-elevated border border-border-subtle">
+<h2 class="font-panel-title text-panel-title text-text-primary mb-1">Control Tower Snapshot</h2>
+<p class="font-metadata-xs text-metadata-xs text-text-muted mb-4">Org: RedVortex ORG | Plan free</p>
+<div class="p-3 rounded-md bg-surface-ground border border-border-subtle flex justify-between items-center">
+<div>
+<div class="font-label-sm text-label-sm text-text-primary mb-0.5">RedVortex ORG</div>
+<div class="font-metadata-xs text-metadata-xs text-text-secondary">Steel Industry | Steel Core Pack</div>
+<div class="font-metadata-xs text-metadata-xs text-text-muted mt-1">Code QFK72150 | Members 4 | Role admin</div>
+</div>
+<span class="px-2 py-1 rounded-sm bg-tertiary-container/20 border border-tertiary-container/30 text-tertiary-container font-metadata-xs text-metadata-xs uppercase tracking-wider">Active</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Floating Help Action (Conceptual) -->
+<button class="fixed bottom-6 right-6 px-4 py-2 rounded-full bg-surface-raised border border-border-default shadow-lg text-text-primary font-label-sm text-label-sm flex items-center gap-2 hover:bg-surface-elevated transition-colors z-50">
+<span class="material-symbols-outlined text-[16px]" data-icon="help">help</span> Help
+    </button>
+</body></html>

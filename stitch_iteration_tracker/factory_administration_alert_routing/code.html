@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Factory Admin - Alerts | FactoryNerve OS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-raised": "#212633",
+                      "surface-overlay": "#252b36",
+                      "secondary-fixed": "#dae2ff",
+                      "surface": "#111318",
+                      "secondary-fixed-dim": "#b1c5ff",
+                      "on-surface-variant": "#d9c3ae",
+                      "surface-elevated": "#1c2029",
+                      "surface-variant": "#33353a",
+                      "primary-container": "#e08c0f",
+                      "on-secondary-fixed-variant": "#00419f",
+                      "surface-primary": "#161a21",
+                      "outline-variant": "#534435",
+                      "on-secondary-container": "#d1dcff",
+                      "status-critical": "#dc2626",
+                      "outline": "#a18d7b",
+                      "on-tertiary-container": "#003f17",
+                      "on-primary-fixed-variant": "#673d00",
+                      "tertiary": "#62df7d",
+                      "primary-fixed": "#ffddbb",
+                      "on-primary-container": "#502e00",
+                      "border-strong": "#4a5568",
+                      "border-default": "#333b48",
+                      "on-secondary-fixed": "#001946",
+                      "surface-canvas": "#111318",
+                      "surface-container": "#1e2025",
+                      "on-primary-fixed": "#2b1700",
+                      "surface-container-lowest": "#0c0e13",
+                      "surface-ground": "#0a0b0d",
+                      "on-tertiary-fixed-variant": "#005320",
+                      "background": "#111318",
+                      "tertiary-container": "#33b559",
+                      "surface-bright": "#37393f",
+                      "text-muted": "#64748b",
+                      "text-primary": "#f1f5f9",
+                      "tertiary-fixed": "#7ffc97",
+                      "on-surface": "#e2e2e9",
+                      "on-primary": "#482900",
+                      "secondary-container": "#0459d3",
+                      "inverse-on-surface": "#2e3036",
+                      "tertiary-fixed-dim": "#62df7d",
+                      "secondary": "#b1c5ff",
+                      "text-secondary": "#cbd5e1",
+                      "primary": "#ffb868",
+                      "on-error-container": "#ffdad6",
+                      "border-subtle": "#252b36",
+                      "on-background": "#e2e2e9",
+                      "inverse-surface": "#e2e2e9",
+                      "surface-container-highest": "#33353a",
+                      "primary-fixed-dim": "#ffb868",
+                      "surface-tint": "#ffb868",
+                      "on-secondary": "#002c71",
+                      "on-tertiary": "#003914",
+                      "status-caution": "#ea580c",
+                      "surface-container-low": "#1a1b21",
+                      "error-container": "#93000a",
+                      "on-tertiary-fixed": "#002109",
+                      "surface-container-high": "#282a2f",
+                      "surface-dim": "#111318",
+                      "error": "#ffb4ab",
+                      "on-error": "#690005",
+                      "inverse-primary": "#885200"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "xl": "32px",
+                      "margin-desktop": "32px",
+                      "sm": "12px",
+                      "md": "20px",
+                      "xs": "8px",
+                      "unit": "4px",
+                      "lg": "24px",
+                      "base": "16px",
+                      "micro": "4px",
+                      "margin-mobile": "16px",
+                      "gutter": "16px"
+              },
+              "fontFamily": {
+                      "page-title-mobile": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "JetBrains Mono"
+                      ],
+                      "metadata-xs": [
+                              "JetBrains Mono"
+                      ],
+                      "panel-title": [
+                              "Inter"
+                      ],
+                      "table-cell": [
+                              "Inter"
+                      ],
+                      "display-4xl": [
+                              "Inter"
+                      ],
+                      "page-title": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ]
+              },
+              "fontSize": {
+                      "page-title-mobile": [
+                              "20px",
+                              {
+                                      "lineHeight": "1.25",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.45",
+                                      "letterSpacing": "0.004em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "metadata-xs": [
+                              "11px",
+                              {
+                                      "lineHeight": "1.45",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "panel-title": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.40",
+                                      "letterSpacing": "-0.010em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "table-cell": [
+                              "13px",
+                              {
+                                      "lineHeight": "1.50",
+                                      "letterSpacing": "0em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "display-4xl": [
+                              "36px",
+                              {
+                                      "lineHeight": "1.15",
+                                      "letterSpacing": "-0.026em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "page-title": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.25",
+                                      "letterSpacing": "-0.018em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.50",
+                                      "letterSpacing": "-0.006em",
+                                      "fontWeight": "400"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+      </script>
+<style>
+        /* Custom scrollbar for deep dark theme */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111318;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333b48;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4a5568;
+        }
+      </style>
+</head>
+<body class="bg-surface-canvas text-text-primary min-h-screen flex flex-col font-body-md overflow-x-hidden selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar -->
+<header class="bg-surface-primary dark:bg-surface-primary docked full-width top-0 h-[48px] border-b border-strong flat no shadows flex justify-between items-center px-lg w-full z-50 fixed">
+<div class="flex items-center gap-lg h-full">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary dark:text-primary text-[20px]" data-weight="fill" style="font-variation-settings: 'FILL' 1;">factory</span>
+<span class="text-panel-title font-panel-title font-bold text-on-surface">FactoryNerve OS</span>
+</div>
+<nav class="hidden md:flex h-full border-l border-strong pl-lg">
+<ul class="flex items-center h-full space-x-lg">
+<li class="h-full flex items-center">
+<a class="text-label-sm font-label-sm text-on-surface-variant font-medium hover:bg-surface-variant hover:text-on-surface transition-colors h-full flex items-center px-xs border-b-2 border-transparent" href="#">Board</a>
+</li>
+<li class="h-full flex items-center">
+<a class="text-label-sm font-label-sm text-on-surface-variant font-medium hover:bg-surface-variant hover:text-on-surface transition-colors h-full flex items-center px-xs border-b-2 border-transparent" href="#">Reports</a>
+</li>
+<li class="h-full flex items-center">
+<a class="text-label-sm font-label-sm text-on-surface-variant font-medium hover:bg-surface-variant hover:text-on-surface transition-colors h-full flex items-center px-xs border-b-2 border-transparent" href="#">Plans</a>
+</li>
+<li class="h-full flex items-center">
+<a class="text-label-sm font-label-sm text-primary border-b-2 border-primary font-bold pb-2 hover:bg-surface-variant hover:text-on-surface transition-colors h-full flex items-center px-xs opacity-80 transition-all" href="#">Billing</a>
+</li>
+</ul>
+</nav>
+</div>
+<div class="flex items-center gap-md">
+<div class="hidden md:flex items-center gap-xs border-r border-strong pr-md">
+<span class="text-metadata-xs font-metadata-xs text-text-muted">Alerts 0</span>
+<span class="text-metadata-xs font-metadata-xs text-text-muted mx-xs">•</span>
+<span class="text-metadata-xs font-metadata-xs text-primary font-bold tracking-wider">WORKSPACE</span>
+</div>
+<div class="flex items-center gap-sm text-text-muted">
+<button aria-label="notifications" class="hover:text-on-surface transition-colors flex items-center justify-center h-8 w-8 rounded hover:bg-surface-variant">
+<span class="material-symbols-outlined text-[18px]">notifications</span>
+</button>
+<button aria-label="settings" class="hover:text-on-surface transition-colors flex items-center justify-center h-8 w-8 rounded hover:bg-surface-variant">
+<span class="material-symbols-outlined text-[18px]">settings</span>
+</button>
+<button aria-label="help" class="hover:text-on-surface transition-colors flex items-center justify-center h-8 w-8 rounded hover:bg-surface-variant">
+<span class="material-symbols-outlined text-[18px]">help</span>
+</button>
+</div>
+<div class="h-7 w-7 rounded-full bg-surface-raised border border-strong overflow-hidden flex items-center justify-center ml-xs">
+<span class="material-symbols-outlined text-[16px] text-text-muted">person</span>
+</div>
+</div>
+</header>
+<div class="flex flex-1 pt-[48px]">
+<!-- SideNavBar -->
+<aside class="bg-surface-canvas dark:bg-surface-canvas fixed left-0 top-0 h-full w-[220px] border-r border-strong flat no shadows flex flex-col py-md z-40 pt-[68px] hidden md:flex">
+<div class="px-4 mb-lg pb-md border-b border-strong">
+<div class="flex items-center gap-sm mb-xs">
+<div class="h-6 w-6 rounded bg-surface-elevated border border-strong flex items-center justify-center">
+<span class="material-symbols-outlined text-[14px] text-primary" data-weight="fill" style="font-variation-settings: 'FILL' 1;">business</span>
+</div>
+<span class="text-label-sm font-bold text-on-surface truncate">RedVortex ORG</span>
+</div>
+<span class="text-metadata-xs font-metadata-xs text-text-muted block pl-8">Steel Industry • free plan</span>
+</div>
+<div class="px-4 mb-md">
+<button class="w-full bg-surface-raised border border-default hover:bg-surface-elevated text-on-surface py-2 px-3 rounded flex items-center justify-center gap-xs transition-colors">
+<span class="material-symbols-outlined text-[16px]">add</span>
+<span class="text-label-sm font-label-sm">New Entry</span>
+</button>
+</div>
+<nav class="flex-1 overflow-y-auto">
+<div class="mb-sm px-4"><span class="text-metadata-xs font-metadata-xs text-text-muted uppercase tracking-wider">Today</span></div>
+<ul class="mb-lg">
+<li><a class="text-label-sm font-label-sm text-on-surface-variant px-4 py-3 hover:bg-surface-elevated hover:text-on-surface transition-all flex items-center gap-sm group" href="#"><span class="material-symbols-outlined text-[18px] text-text-muted group-hover:text-on-surface transition-colors">dashboard</span>Today Board</a></li>
+<li><a class="text-label-sm font-label-sm text-on-surface-variant px-4 py-3 hover:bg-surface-elevated hover:text-on-surface transition-all flex items-center gap-sm group" href="#"><span class="material-symbols-outlined text-[18px] text-text-muted group-hover:text-on-surface transition-colors">fact_check</span>Approvals</a></li>
+</ul>
+<div class="mb-sm px-4"><span class="text-metadata-xs font-metadata-xs text-text-muted uppercase tracking-wider">Management</span></div>
+<ul class="mb-lg">
+<li><a class="text-label-sm font-label-sm text-on-surface-variant px-4 py-3 hover:bg-surface-elevated hover:text-on-surface transition-all flex items-center gap-sm group" href="#"><span class="material-symbols-outlined text-[18px] text-text-muted group-hover:text-on-surface transition-colors">analytics</span>Reports &amp; Exports</a></li>
+<li><a class="text-label-sm font-label-sm text-on-surface-variant px-4 py-3 hover:bg-surface-elevated hover:text-on-surface transition-all flex items-center gap-sm group" href="#"><span class="material-symbols-outlined text-[18px] text-text-muted group-hover:text-on-surface transition-colors">speed</span>Performance</a></li>
+</ul>
+<div class="mb-sm px-4"><span class="text-metadata-xs font-metadata-xs text-text-muted uppercase tracking-wider">Admin</span></div>
+<ul class="mb-lg">
+<li><a class="text-label-sm font-label-sm text-on-surface-variant px-4 py-3 hover:bg-surface-elevated hover:text-on-surface transition-all flex items-center gap-sm group" href="#"><span class="material-symbols-outlined text-[18px] text-text-muted group-hover:text-on-surface transition-colors">event_available</span>Attendance Admin</a></li>
+<li><a class="text-label-sm font-label-sm bg-surface-raised text-primary border-l-4 border-primary px-4 py-3 hover:bg-surface-elevated hover:text-on-surface transition-all scale-[0.98] flex items-center gap-sm group" href="#"><span class="material-symbols-outlined text-[18px] text-primary transition-colors">factory</span>Factory Admin</a></li>
+<li><a class="text-label-sm font-label-sm text-on-surface-variant px-4 py-3 hover:bg-surface-elevated hover:text-on-surface transition-all flex items-center gap-sm group" href="#"><span class="material-symbols-outlined text-[18px] text-text-muted group-hover:text-on-surface transition-colors">history_edu</span>OCR History</a></li>
+<li><a class="text-label-sm font-label-sm text-on-surface-variant px-4 py-3 hover:bg-surface-elevated hover:text-on-surface transition-all flex items-center gap-sm group" href="#"><span class="material-symbols-outlined text-[18px] text-text-muted group-hover:text-on-surface transition-colors">subtitles</span>Subscription</a></li>
+<li><a class="text-label-sm font-label-sm text-on-surface-variant px-4 py-3 hover:bg-surface-elevated hover:text-on-surface transition-all flex items-center gap-sm group" href="#"><span class="material-symbols-outlined text-[18px] text-text-muted group-hover:text-on-surface transition-colors">receipt_long</span>Billing &amp; Invoices</a></li>
+</ul>
+</nav>
+<div class="mt-auto border-t border-strong pt-md">
+<div class="mb-sm px-4"><span class="text-metadata-xs font-metadata-xs text-text-muted uppercase tracking-wider">Account</span></div>
+<ul>
+<li><a class="text-label-sm font-label-sm text-on-surface-variant px-4 py-2 hover:bg-surface-elevated hover:text-on-surface transition-all flex items-center gap-sm group" href="#"><span class="material-symbols-outlined text-[16px] text-text-muted group-hover:text-on-surface transition-colors">manage_accounts</span>Profile Settings</a></li>
+<li><a class="text-label-sm font-label-sm text-on-surface-variant px-4 py-2 hover:bg-surface-elevated hover:text-on-surface transition-all flex items-center gap-sm group" href="#"><span class="material-symbols-outlined text-[16px] text-text-muted group-hover:text-on-surface transition-colors">logout</span>Sign-out</a></li>
+</ul>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 md:ml-[220px] p-margin-mobile md:p-margin-desktop bg-surface-canvas min-h-full">
+<!-- Live Reminders TopAppBar Component -->
+<div class="bg-surface-ground dark:bg-surface-ground full-width rounded-lg my-sm border border-status-caution/30 shadow-sm flex items-center gap-base px-base py-sm mx-margin-desktop mb-lg cursor-pointer hover:bg-surface-raised transition-all relative overflow-hidden group">
+<div class="absolute inset-0 bg-status-caution opacity-0 group-hover:opacity-5 transition-opacity"></div>
+<span class="material-symbols-outlined text-status-caution dark:text-status-caution">warning</span>
+<div class="flex-1">
+<div class="text-metadata-xs font-metadata-xs uppercase tracking-wider text-status-caution font-bold mb-micro">LIVE REMINDERS</div>
+<div class="text-table-cell font-table-cell text-on-surface-variant flex items-center justify-between">
+<span>Attendance review is waiting • 1 attendance issue need closure.</span>
+<button class="bg-surface-raised border border-default text-on-surface text-label-sm font-label-sm px-3 py-1 rounded hover:border-strong transition-colors">Action now</button>
+</div>
+</div>
+</div>
+<!-- Page Header -->
+<div class="mb-xl">
+<div class="text-metadata-xs font-metadata-xs text-primary mb-xs tracking-wider uppercase">Settings</div>
+<h1 class="text-display-4xl font-display-4xl text-on-surface mb-sm">Keep factory setup and team control in one admin lane</h1>
+<p class="text-body-md font-body-md text-text-muted max-w-3xl">Update factory setup, manage people, and check plan posture without leaving the admin workspace.</p>
+</div>
+<!-- In-page Navigation Tabs -->
+<div class="bg-surface-raised border border-strong rounded-lg p-xs mb-lg flex gap-xs w-fit">
+<button class="text-label-sm font-label-sm text-on-surface-variant px-4 py-2 rounded hover:bg-surface-elevated transition-colors">Factory</button>
+<button class="text-label-sm font-label-sm text-on-surface-variant px-4 py-2 rounded hover:bg-surface-elevated transition-colors">Users</button>
+<button class="text-label-sm font-label-sm text-on-surface-variant px-4 py-2 rounded hover:bg-surface-elevated transition-colors">Usage</button>
+<button class="text-label-sm font-label-sm bg-secondary-container text-text-primary font-medium px-4 py-2 rounded shadow-sm">Alerts</button>
+</div>
+<!-- KPI Summary Strip (Bento Grid Style) -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-base mb-xl">
+<div class="bg-surface-elevated border border-strong rounded-lg p-base flex flex-col justify-between h-[120px]">
+<div class="text-metadata-xs font-metadata-xs text-text-muted">Current Factory</div>
+<div>
+<div class="text-page-title font-page-title text-on-surface mb-xs">RedVortex ORG</div>
+<div class="text-metadata-xs font-metadata-xs text-text-muted">Steel Industry • Steel Core Pack</div>
+</div>
+</div>
+<div class="bg-surface-elevated border border-strong rounded-lg p-base flex flex-col justify-between h-[120px]">
+<div class="text-metadata-xs font-metadata-xs text-text-muted">Active Recipients</div>
+<div>
+<div class="text-display-4xl font-display-4xl text-on-surface mb-xs">0</div>
+<div class="text-metadata-xs font-metadata-xs text-text-muted">free plan • 2 active slots total</div>
+</div>
+</div>
+<div class="bg-surface-elevated border border-strong rounded-lg p-base flex flex-col justify-between h-[120px]">
+<div class="text-metadata-xs font-metadata-xs text-text-muted">Remaining Capacity</div>
+<div>
+<div class="text-display-4xl font-display-4xl text-on-surface mb-xs">2</div>
+<div class="text-metadata-xs font-metadata-xs text-text-muted">Unverified numbers do not count</div>
+</div>
+</div>
+<div class="bg-surface-elevated border border-strong rounded-lg p-base flex flex-col justify-between h-[120px] relative overflow-hidden">
+<div class="absolute right-0 top-0 h-full w-1/2 bg-gradient-to-l from-surface-variant/20 to-transparent pointer-events-none"></div>
+<div class="text-metadata-xs font-metadata-xs text-text-muted">Last Alert Sent</div>
+<div>
+<div class="text-page-title font-page-title text-on-surface mb-xs">No recent alert</div>
+<div class="text-metadata-xs font-metadata-xs text-text-muted">Awaiting delivery history</div>
+</div>
+</div>
+</div>
+<!-- Main Workspace Layout: Asymmetric Split -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-lg">
+<!-- LEFT COLUMN: WhatsApp Recipients -->
+<div class="lg:col-span-7 space-y-base">
+<div class="flex items-center justify-between mb-sm">
+<div>
+<h2 class="text-page-title font-page-title text-on-surface mb-xs">WhatsApp Recipients</h2>
+<p class="text-table-cell font-table-cell text-text-muted">Decide who receives critical factory alerts, what they get, and whether each route is trusted.</p>
+</div>
+<div class="flex gap-sm">
+<button class="text-label-sm font-label-sm text-secondary hover:text-secondary-fixed transition-colors flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]">refresh</span>
+                                Refresh
+                            </button>
+<button class="bg-secondary-container hover:bg-secondary-fixed text-text-primary text-label-sm font-label-sm px-4 py-2 rounded transition-colors shadow-md">Add Number</button>
+</div>
+</div>
+<!-- Recipient Card (Glassmorphism / Complex nested layout) -->
+<div class="bg-surface-raised border border-strong rounded-xl p-base relative overflow-hidden shadow-lg group">
+<!-- Decorative subtle gradient -->
+<div class="absolute -top-10 -right-10 w-32 h-32 bg-primary-container/5 rounded-full blur-2xl pointer-events-none group-hover:bg-primary-container/10 transition-colors"></div>
+<div class="flex justify-between items-start mb-lg relative z-10">
+<div class="flex items-center gap-md">
+<div class="h-10 w-10 rounded-full bg-surface-overlay border border-default flex items-center justify-center">
+<span class="material-symbols-outlined text-text-muted">smartphone</span>
+</div>
+<div>
+<div class="flex items-center gap-sm mb-xs">
+<span class="text-panel-title font-panel-title text-on-surface">+91******9313</span>
+<span class="bg-surface-overlay text-status-caution border border-status-caution/30 text-metadata-xs font-metadata-xs px-2 py-0.5 rounded-full uppercase">PENDING</span>
+</div>
+<span class="bg-surface-overlay text-text-muted border border-default text-metadata-xs font-metadata-xs px-2 py-0.5 rounded-full uppercase inline-block">PAUSED</span>
+</div>
+</div>
+<!-- Delivery Toggle Area -->
+<div class="bg-surface-ground border border-subtle rounded-lg p-sm flex items-center gap-md w-64">
+<div class="flex-1">
+<div class="text-metadata-xs font-metadata-xs text-text-muted uppercase mb-xs">Live Delivery</div>
+<div class="text-label-sm font-label-sm text-on-surface-variant">Disabled</div>
+</div>
+<button aria-label="Toggle live delivery disabled" class="w-10 h-5 bg-surface-variant rounded-full relative cursor-not-allowed opacity-50">
+<div class="absolute left-1 top-0.5 w-4 h-4 bg-text-muted rounded-full"></div>
+</button>
+</div>
+</div>
+<!-- Routing Grid inside Card -->
+<div class="grid grid-cols-3 gap-sm mb-lg relative z-10">
+<div class="bg-surface-overlay border border-default rounded p-sm">
+<div class="text-metadata-xs font-metadata-xs text-text-muted uppercase mb-sm tracking-wider">RECEIVES</div>
+<div class="text-label-sm font-label-sm text-on-surface">Critical, Warnings, Security, Reports</div>
+</div>
+<div class="bg-surface-overlay border border-default rounded p-sm">
+<div class="text-metadata-xs font-metadata-xs text-text-muted uppercase mb-sm tracking-wider">VERIFIED AT</div>
+<div class="text-label-sm font-label-sm text-text-muted">-</div>
+</div>
+<div class="bg-surface-overlay border border-status-caution/20 rounded p-sm">
+<div class="text-metadata-xs font-metadata-xs text-status-caution uppercase mb-sm tracking-wider">SAFETY RULE</div>
+<div class="text-label-sm font-label-sm text-status-caution font-medium">Verify number before enabling alerts</div>
+</div>
+</div>
+<!-- Card Actions -->
+<div class="flex justify-end gap-sm relative z-10 border-t border-subtle pt-sm">
+<button class="text-label-sm font-label-sm text-secondary hover:text-secondary-fixed px-3 py-1.5 transition-colors">Verify</button>
+<button class="text-label-sm font-label-sm text-secondary hover:text-secondary-fixed px-3 py-1.5 transition-colors">Edit</button>
+<button class="bg-surface-overlay border border-default text-status-critical hover:bg-error-container hover:text-on-error-container text-label-sm font-label-sm px-4 py-1.5 rounded transition-colors ml-xs">Delete</button>
+</div>
+</div>
+<!-- Placeholder for empty state if needed -->
+<!-- 
+                    <div class="border-2 border-dashed border-strong rounded-xl p-xl flex flex-col items-center justify-center text-center opacity-50">
+                        <span class="material-symbols-outlined text-[32px] text-text-muted mb-sm">add_link</span>
+                        <div class="text-panel-title font-panel-title text-on-surface-variant mb-xs">No active recipients</div>
+                        <div class="text-table-cell font-table-cell text-text-muted">Add a WhatsApp number to start routing alerts.</div>
+                    </div> 
+                    -->
+</div>
+<!-- RIGHT COLUMN: Rules & Logs -->
+<div class="lg:col-span-5 space-y-lg">
+<!-- Alert Configuration Rules -->
+<div class="bg-surface-ground border border-subtle rounded-xl p-base">
+<div class="flex items-center gap-sm mb-md">
+<span class="material-symbols-outlined text-primary text-[20px]">rule</span>
+<h3 class="text-panel-title font-panel-title text-on-surface">Alert Configuration Rules</h3>
+</div>
+<div class="space-y-sm">
+<div class="bg-surface-raised border border-default rounded p-sm flex items-start gap-sm">
+<span class="material-symbols-outlined text-text-muted text-[16px] mt-0.5">info</span>
+<p class="text-table-cell font-table-cell text-text-muted">Each recipient can have independent subscriptions so critical alerts reach the right people without spam.</p>
+</div>
+<div class="bg-surface-raised border border-default rounded p-sm flex items-start gap-sm">
+<span class="material-symbols-outlined text-text-muted text-[16px] mt-0.5">policy</span>
+<p class="text-table-cell font-table-cell text-text-muted">Critical and warning groups map to the existing severity filters. Security maps to the current anomaly alert type.</p>
+</div>
+<div class="bg-surface-raised border border-default rounded p-sm flex items-start gap-sm opacity-60">
+<span class="material-symbols-outlined text-text-muted text-[16px] mt-0.5">build</span>
+<p class="text-table-cell font-table-cell text-text-muted">Machine downtime routing is reserved for future backend support and is shown as coming soon in v1.</p>
+</div>
+</div>
+</div>
+<!-- Activity / Logs -->
+<div class="bg-surface-raised border border-strong rounded-xl p-base flex flex-col h-[300px]">
+<div class="flex items-center justify-between mb-md">
+<div>
+<h3 class="text-panel-title font-panel-title text-on-surface mb-xs">Activity / Logs</h3>
+<p class="text-metadata-xs font-metadata-xs text-text-muted">Recent org-wide alert events</p>
+</div>
+<button class="text-label-sm font-label-sm text-secondary hover:text-secondary-fixed transition-colors flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]">refresh</span>
+</button>
+</div>
+<div class="flex-1 bg-surface-ground border border-subtle rounded border-dashed flex flex-col items-center justify-center p-md text-center">
+<span class="material-symbols-outlined text-[24px] text-text-muted mb-sm opacity-50">history</span>
+<div class="text-label-sm font-label-sm text-on-surface-variant mb-xs">No alert activity yet.</div>
+<div class="text-table-cell font-table-cell text-text-muted max-w-[200px]">Once alerts are triggered, the latest delivery status will appear here.</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom spacing for fixed elements if needed -->
+<div class="h-xl"></div>
+</main>
+</div>
+</body></html>

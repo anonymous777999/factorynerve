@@ -1,0 +1,467 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>DPR.ai - OCR Processing</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-surface": "#e2e2e9",
+                        "surface-variant": "#33353a",
+                        "on-primary-fixed": "#2b1700",
+                        "inverse-on-surface": "#2e3036",
+                        "primary-fixed-dim": "#ffb868",
+                        "on-background": "#e2e2e9",
+                        "on-tertiary-container": "#003f17",
+                        "on-tertiary-fixed": "#002109",
+                        "surface": "#111318",
+                        "tertiary": "#62df7d",
+                        "on-error": "#690005",
+                        "inverse-primary": "#885200",
+                        "surface-overlay": "#252b36",
+                        "outline-variant": "#534435",
+                        "surface-container-low": "#1a1b21",
+                        "border-subtle": "#252b36",
+                        "surface-canvas": "#111318",
+                        "on-primary": "#482900",
+                        "border-default": "#333b48",
+                        "on-secondary": "#002c71",
+                        "error-container": "#93000a",
+                        "text-muted": "#64748b",
+                        "status-caution": "#ea580c",
+                        "surface-container-high": "#282a2f",
+                        "background": "#111318",
+                        "text-secondary": "#cbd5e1",
+                        "primary-container": "#e08c0f",
+                        "on-tertiary": "#003914",
+                        "surface-container-lowest": "#0c0e13",
+                        "on-tertiary-fixed-variant": "#005320",
+                        "error": "#ffb4ab",
+                        "surface-primary": "#161a21",
+                        "on-primary-container": "#502e00",
+                        "inverse-surface": "#e2e2e9",
+                        "text-primary": "#f1f5f9",
+                        "surface-dim": "#111318",
+                        "surface-container": "#1e2025",
+                        "surface-raised": "#212633",
+                        "secondary-container": "#0459d3",
+                        "primary": "#ffb868",
+                        "outline": "#a18d7b",
+                        "tertiary-container": "#33b559",
+                        "surface-elevated": "#1c2029",
+                        "on-secondary-container": "#d1dcff",
+                        "surface-bright": "#37393f",
+                        "surface-tint": "#ffb868",
+                        "on-error-container": "#ffdad6",
+                        "secondary-fixed": "#dae2ff",
+                        "secondary": "#b1c5ff",
+                        "tertiary-fixed": "#7ffc97",
+                        "secondary-fixed-dim": "#b1c5ff",
+                        "tertiary-fixed-dim": "#62df7d",
+                        "primary-fixed": "#ffddbb",
+                        "surface-ground": "#0a0b0d",
+                        "on-primary-fixed-variant": "#673d00",
+                        "surface-container-highest": "#33353a",
+                        "on-secondary-fixed-variant": "#00419f",
+                        "border-strong": "#4a5568",
+                        "status-critical": "#dc2626",
+                        "on-surface-variant": "#d9c3ae",
+                        "on-secondary-fixed": "#001946"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    spacing: {
+                        "xs": "8px",
+                        "xl": "32px",
+                        "margin-desktop": "32px",
+                        "micro": "4px",
+                        "margin-mobile": "16px",
+                        "base": "16px",
+                        "sm": "12px",
+                        "unit": "4px",
+                        "lg": "24px",
+                        "gutter": "16px",
+                        "md": "20px"
+                    },
+                    fontFamily: {
+                        "page-title": ["Inter"],
+                        "table-cell": ["Inter"],
+                        "metadata-xs": ["JetBrains Mono"],
+                        "label-sm": ["JetBrains Mono"],
+                        "panel-title": ["Inter"],
+                        "body-md": ["Inter"],
+                        "page-title-mobile": ["Inter"],
+                        "display-4xl": ["Inter"]
+                    },
+                    fontSize: {
+                        "page-title": ["24px", { lineHeight: "1.25", letterSpacing: "-0.018em", fontWeight: "600" }],
+                        "table-cell": ["13px", { lineHeight: "1.50", letterSpacing: "0em", fontWeight: "400" }],
+                        "metadata-xs": ["11px", { lineHeight: "1.45", letterSpacing: "0.05em", fontWeight: "600" }],
+                        "label-sm": ["12px", { lineHeight: "1.45", letterSpacing: "0.004em", fontWeight: "500" }],
+                        "panel-title": ["18px", { lineHeight: "1.40", letterSpacing: "-0.010em", fontWeight: "600" }],
+                        "body-md": ["14px", { lineHeight: "1.50", letterSpacing: "-0.006em", fontWeight: "400" }],
+                        "page-title-mobile": ["20px", { lineHeight: "1.25", fontWeight: "600" }],
+                        "display-4xl": ["36px", { lineHeight: "1.15", letterSpacing: "-0.026em", fontWeight: "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .scanline {
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+            background-size: 100% 4px;
+        }
+        .progress-bar-animated {
+            animation: progress 2s ease-in-out infinite alternate;
+        }
+        @keyframes progress {
+            0% { width: 30%; }
+            100% { width: 70%; }
+        }
+        .terminal-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 14px;
+            background-color: #ffb868;
+            animation: blink 1s step-end infinite;
+            vertical-align: middle;
+            margin-left: 4px;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface h-screen flex overflow-hidden selection:bg-primary-container selection:text-on-primary-container">
+<!-- SideNavBar -->
+<nav class="bg-surface-container flex flex-col h-full py-lg w-[220px] shrink-0 border-r border-border-default hidden md:flex z-10 shadow-md transition-all duration-300">
+<!-- Header -->
+<div class="px-base mb-xl">
+<div class="flex items-center gap-sm">
+<div class="w-8 h-8 rounded bg-surface-raised flex items-center justify-center border border-border-strong shrink-0">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="factory">factory</span>
+</div>
+<div class="truncate">
+<h2 class="font-panel-title text-panel-title text-on-surface truncate">Steel Plant 01</h2>
+<p class="font-metadata-xs text-metadata-xs text-text-muted truncate">Production Line A</p>
+</div>
+</div>
+</div>
+<!-- CTA -->
+<div class="px-base mb-lg">
+<button class="w-full bg-primary hover:bg-primary-fixed-dim text-on-primary font-label-sm text-label-sm py-2 px-4 rounded transition-colors flex items-center justify-center gap-2">
+<span class="material-symbols-outlined text-[16px]" data-icon="add">add</span>
+                New Job
+            </button>
+</div>
+<!-- Navigation Tabs -->
+<div class="flex-1 overflow-y-auto px-xs space-y-1">
+<a class="flex items-center gap-sm px-3 py-2 rounded text-text-secondary hover:bg-surface-raised hover:text-primary transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors" data-icon="dashboard">dashboard</span>
+<span class="font-label-sm text-label-sm">Dashboard</span>
+</a>
+<a class="flex items-center gap-sm px-3 py-2 rounded text-text-secondary hover:bg-surface-raised hover:text-primary transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors" data-icon="account_tree">account_tree</span>
+<span class="font-label-sm text-label-sm">Workflows</span>
+</a>
+<a class="flex items-center gap-sm px-3 py-2 rounded bg-surface-raised text-primary font-bold border-l-2 border-primary -ml-xs pl-[calc(0.75rem+2px)] transition-transform scale-95 origin-left" href="#">
+<span class="material-symbols-outlined text-[20px] text-primary" data-icon="document_scanner" data-weight="fill" style="font-variation-settings: 'FILL' 1;">document_scanner</span>
+<span class="font-label-sm text-label-sm">OCR Engine</span>
+</a>
+<a class="flex items-center gap-sm px-3 py-2 rounded text-text-secondary hover:bg-surface-raised hover:text-primary transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors" data-icon="analytics">analytics</span>
+<span class="font-label-sm text-label-sm">Telemetry</span>
+</a>
+<a class="flex items-center gap-sm px-3 py-2 rounded text-text-secondary hover:bg-surface-raised hover:text-primary transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-primary transition-colors" data-icon="inventory_2">inventory_2</span>
+<span class="font-label-sm text-label-sm">Archives</span>
+</a>
+</div>
+<!-- Footer Tabs -->
+<div class="px-xs mt-auto pt-lg space-y-1 border-t border-border-default mx-base">
+<a class="flex items-center gap-sm px-3 py-2 rounded text-text-secondary hover:bg-surface-raised hover:text-primary transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] text-status-caution group-hover:text-primary transition-colors" data-icon="memory">memory</span>
+<span class="font-label-sm text-label-sm flex-1">System Status</span>
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+</a>
+<a class="flex items-center gap-sm px-3 py-2 rounded text-text-secondary hover:bg-surface-raised hover:text-error transition-colors group" href="#">
+<span class="material-symbols-outlined text-[20px] group-hover:text-error transition-colors" data-icon="logout">logout</span>
+<span class="font-label-sm text-label-sm">Logout</span>
+</a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col min-w-0 bg-surface-canvas relative">
+<!-- TopNavBar -->
+<header class="bg-surface-primary border-b border-strong flex justify-between items-center px-base w-full z-50 docked full-width top-0 h-[48px] shrink-0">
+<!-- Brand / Logo Area -->
+<div class="flex items-center gap-md">
+<button class="md:hidden text-text-muted hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="menu">menu</span>
+</button>
+<div class="flex flex-col justify-center h-full">
+<h1 class="font-panel-title text-panel-title font-bold text-primary tracking-tight leading-none">DPR.ai</h1>
+</div>
+</div>
+<!-- Navigation Links (Center) -->
+<nav class="hidden lg:flex items-center h-full gap-lg">
+<a class="h-full flex items-center text-text-muted hover:text-primary transition-colors font-label-sm text-label-sm border-b-2 border-transparent" href="#">Queue Health</a>
+<a class="h-full flex items-center text-primary border-b-2 border-primary opacity-80 font-label-sm text-label-sm" href="#">Pending Reviews</a>
+<a class="h-full flex items-center text-text-muted hover:text-primary transition-colors font-label-sm text-label-sm border-b-2 border-transparent" href="#">Failed Scans</a>
+</nav>
+<!-- Actions (Right) -->
+<div class="flex items-center gap-sm">
+<!-- Search (Placeholder for structure) -->
+<div class="hidden md:flex items-center bg-surface-raised border border-border-default rounded px-3 py-1 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition-all">
+<span class="material-symbols-outlined text-text-muted text-[18px] mr-2" data-icon="search">search</span>
+<input class="bg-transparent border-none text-body-md text-on-surface focus:outline-none w-48 placeholder-text-muted font-body-md text-sm" placeholder="Search queues..." type="text">
+</div>
+<div class="flex items-center gap-xs ml-2 border-l border-border-default pl-sm">
+<button class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface-raised hover:text-primary transition-colors relative">
+<span class="material-symbols-outlined text-[20px]" data-icon="notifications">notifications</span>
+<span class="absolute top-1 right-1 w-2 h-2 rounded-full bg-status-caution border border-surface-primary"></span>
+</button>
+<button class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface-raised hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="settings">settings</span>
+</button>
+<button class="w-8 h-8 rounded-full flex items-center justify-center text-text-muted hover:bg-surface-raised hover:text-primary transition-colors">
+<span class="material-symbols-outlined text-[20px]" data-icon="help">help</span>
+</button>
+<button class="w-8 h-8 rounded-full bg-surface-raised border border-border-default ml-2 overflow-hidden hover:border-primary transition-colors">
+<img alt="Operator Profile" class="w-full h-full object-cover" data-alt="A generic placeholder avatar image for a factory operator profile." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGcjZ3n1zYh33GUupJrLCsKu5Y_AuHFOjbg6vEEGMrPt0KM1xYRgvsMdHYhXuhwmvXaXhdE1iIMqSTSTjK8QZZ8yRpUcPtc56LQ8WaLBCeAfAb4KGNukqqMzRh5p3_x4m2lGaonKbvydKEePqC_VdkNRvROLfvrqAYGPmQkvTV5cdet0NiPq-0CjDcZc5uNAROJ8sJONnCozfhIzvgOtx3nQlWb3L7mw0ZbWn3yGP9-r_aSxyFwt8YrQeCDFew5VS8r9ATzG9FvbYS">
+</button>
+</div>
+</div>
+</header>
+<!-- Canvas Body (Processing Stage) -->
+<main class="flex-1 flex overflow-hidden relative">
+<!-- Ambient Background Glow for Processing State -->
+<div class="absolute inset-0 pointer-events-none overflow-hidden z-0">
+<div class="absolute top-1/4 left-1/4 w-[40rem] h-[40rem] bg-secondary-container rounded-full mix-blend-screen filter blur-[120px] opacity-10 animate-pulse"></div>
+</div>
+<!-- Left/Main Workspace (Document & Routing) -->
+<div class="flex-1 flex flex-col min-w-0 border-r border-border-strong relative z-10 p-lg gap-lg overflow-y-auto">
+<!-- Page Header (Stage Context) -->
+<div class="flex items-end justify-between border-b border-border-default pb-4">
+<div>
+<div class="flex items-center gap-2 mb-1">
+<span class="font-metadata-xs text-metadata-xs text-secondary tracking-widest uppercase bg-surface-raised px-2 py-0.5 rounded border border-border-subtle">Stage 2: Extraction</span>
+<span class="material-symbols-outlined text-text-muted text-[14px]" data-icon="chevron_right">chevron_right</span>
+<span class="font-metadata-xs text-metadata-xs text-primary">Job ID: #882-AX-99</span>
+</div>
+<h2 class="font-page-title text-page-title text-text-primary">Processing Document...</h2>
+</div>
+<!-- High-level Progress Stepper -->
+<div class="flex items-center gap-4 bg-surface-raised p-2 rounded-lg border border-border-default shadow-sm">
+<div class="flex flex-col items-center opacity-50">
+<div class="w-6 h-6 rounded-full bg-tertiary-container text-on-tertiary-container flex items-center justify-center mb-1">
+<span class="material-symbols-outlined text-[14px]" data-icon="check">check</span>
+</div>
+<span class="font-metadata-xs text-metadata-xs text-text-muted">Upload</span>
+</div>
+<div class="w-8 h-px bg-border-strong"></div>
+<div class="flex flex-col items-center">
+<div class="w-6 h-6 rounded-full bg-primary text-on-primary flex items-center justify-center mb-1 border-2 border-primary ring-4 ring-primary/20">
+<span class="material-symbols-outlined text-[14px] animate-spin" data-icon="sync">sync</span>
+</div>
+<span class="font-metadata-xs text-metadata-xs text-primary font-bold">Processing</span>
+</div>
+<div class="w-8 h-px bg-border-strong"></div>
+<div class="flex flex-col items-center opacity-50">
+<div class="w-6 h-6 rounded-full bg-surface-container-high border border-border-default text-text-muted flex items-center justify-center mb-1">
+<span class="font-metadata-xs text-metadata-xs">3</span>
+</div>
+<span class="font-metadata-xs text-metadata-xs text-text-muted">Review</span>
+</div>
+</div>
+</div>
+<!-- Core Workspace Grid -->
+<div class="flex-1 grid grid-cols-1 xl:grid-cols-12 gap-lg min-h-0">
+<!-- Document Preview Panel (Left Col) -->
+<div class="xl:col-span-5 flex flex-col bg-surface-elevated rounded-xl border border-border-default overflow-hidden shadow-lg">
+<div class="p-3 border-b border-border-default bg-surface-container flex justify-between items-center shrink-0">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-text-muted text-[18px]" data-icon="image">image</span>
+<span class="font-label-sm text-label-sm text-text-secondary">Source: invoice_scan_04.jpg</span>
+</div>
+<div class="flex gap-2">
+<button class="w-6 h-6 rounded bg-surface-raised flex items-center justify-center hover:bg-surface-bright text-text-muted hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[16px]" data-icon="zoom_in">zoom_in</span>
+</button>
+<button class="w-6 h-6 rounded bg-surface-raised flex items-center justify-center hover:bg-surface-bright text-text-muted hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-[16px]" data-icon="zoom_out">zoom_out</span>
+</button>
+</div>
+</div>
+<div class="flex-1 bg-surface-ground relative overflow-hidden flex items-center justify-center p-4">
+<!-- Simulated Document Image -->
+<div class="relative max-w-full max-h-full aspect-[1/1.4] bg-white rounded shadow-2xl overflow-hidden border border-border-subtle group">
+<img alt="Document to scan" class="w-full h-full object-cover opacity-80 mix-blend-luminosity group-hover:opacity-100 group-hover:mix-blend-normal transition-all duration-500" data-alt="A close up shot of a printed financial invoice or receipt document resting on a desk, slightly skewed, waiting to be digitally scanned and processed by OCR software." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAbrgQg1DZ6HNhcA6c2NsBEf3pCR-FGad38wUBybmoPUAXnLHFrrwtYiRSixUaD4RYNaBPlb8AMyBfMRGc9VwIp1BfXBzp77o9_C_ysKiI_PwFgb1e0nuV6k6mHSLsCcB68mCHVegrgnbVxlNlJ5yKzw_CeJ4BdyytBXTurANwuGuvMjZFupZ2IrGiW8vwGbjTc58Id4I_MOUzX-S8vNzvhuRA1wbsiFTacJp3E5hjAD2h-YraUm4htLazQ3xuaWT2s9LdsTcq9tmo2">
+<!-- Active Scanning Overlay Effects -->
+<div class="absolute inset-0 bg-secondary-container/10 pointer-events-none"></div>
+<div class="absolute top-0 left-0 w-full h-[40px] bg-gradient-to-b from-primary/30 to-transparent border-t-2 border-primary scanline progress-bar-animated shadow-[0_0_15px_rgba(255,184,104,0.5)]"></div>
+<!-- Detected Bounding Boxes (Simulated) -->
+<div class="absolute top-[15%] left-[10%] w-[30%] h-[5%] border border-tertiary bg-tertiary/20 rounded-sm pulse-slow"></div>
+<div class="absolute top-[25%] left-[10%] w-[80%] h-[40%] border border-primary bg-primary/10 rounded-sm pulse-slow" style="animation-delay: 0.5s;"></div>
+<div class="absolute top-[70%] left-[50%] w-[40%] h-[10%] border border-status-caution bg-status-caution/20 rounded-sm pulse-slow" style="animation-delay: 1s;"></div>
+</div>
+</div>
+</div>
+<!-- Extraction Dashboard & Terminal (Right Col) -->
+<div class="xl:col-span-7 flex flex-col gap-4">
+<!-- Routing & Status Bento -->
+<div class="grid grid-cols-2 gap-4 shrink-0">
+<!-- Model Routing Card -->
+<div class="bg-surface-elevated rounded-xl border border-border-default p-4 shadow-md flex flex-col relative overflow-hidden">
+<div class="absolute right-0 top-0 w-24 h-24 bg-primary/5 rounded-bl-full pointer-events-none"></div>
+<div class="flex items-center justify-between mb-3">
+<span class="font-metadata-xs text-metadata-xs text-text-muted uppercase">Active Model Route</span>
+<span class="bg-primary-container text-on-primary-container font-metadata-xs text-metadata-xs px-2 py-0.5 rounded-full flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-on-primary-container animate-pulse"></span>
+                                        Live
+                                    </span>
+</div>
+<div class="flex items-center gap-3 mt-1">
+<div class="w-10 h-10 rounded-lg bg-surface-raised border border-primary-fixed-dim flex items-center justify-center text-primary shadow-[0_0_10px_rgba(255,184,104,0.2)]">
+<span class="material-symbols-outlined text-[24px]" data-icon="smart_toy">smart_toy</span>
+</div>
+<div>
+<h3 class="font-body-md text-body-md text-text-primary font-bold">Claude 3.5 Sonnet</h3>
+<p class="font-metadata-xs text-metadata-xs text-text-muted">via Anthropic API</p>
+</div>
+</div>
+</div>
+<!-- Confidence Score Card -->
+<div class="bg-surface-elevated rounded-xl border border-border-default p-4 shadow-md flex flex-col relative overflow-hidden">
+<div class="absolute right-0 top-0 w-24 h-24 bg-tertiary/5 rounded-bl-full pointer-events-none"></div>
+<div class="flex items-center justify-between mb-3">
+<span class="font-metadata-xs text-metadata-xs text-text-muted uppercase">Est. Confidence</span>
+<span class="material-symbols-outlined text-tertiary text-[16px]" data-icon="trending_up">trending_up</span>
+</div>
+<div class="flex items-end gap-2 mt-1">
+<span class="font-display-4xl text-display-4xl text-text-primary">94<span class="text-xl text-text-muted">%</span></span>
+<div class="flex flex-col pb-1">
+<div class="flex gap-1">
+<div class="w-2 h-4 bg-tertiary rounded-sm"></div>
+<div class="w-2 h-4 bg-tertiary rounded-sm"></div>
+<div class="w-2 h-4 bg-tertiary rounded-sm"></div>
+<div class="w-2 h-4 bg-tertiary rounded-sm"></div>
+<div class="w-2 h-4 bg-surface-raised rounded-sm"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Real-time Processing Log Terminal -->
+<div class="flex-1 bg-surface-ground rounded-xl border border-border-strong overflow-hidden flex flex-col shadow-inner min-h-[200px]">
+<div class="bg-surface-container-high px-3 py-2 border-b border-border-strong flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-text-muted text-[16px]" data-icon="terminal">terminal</span>
+<span class="font-metadata-xs text-metadata-xs text-text-secondary uppercase tracking-wider">Extraction_Log_v2.sh</span>
+</div>
+<div class="flex gap-1.5">
+<div class="w-2.5 h-2.5 rounded-full bg-border-strong"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-border-strong"></div>
+<div class="w-2.5 h-2.5 rounded-full bg-border-strong"></div>
+</div>
+</div>
+<div class="flex-1 p-4 font-metadata-xs text-metadata-xs text-text-secondary overflow-y-auto font-mono space-y-1.5 selection:bg-surface-bright selection:text-white">
+<div class="text-text-muted">[10:42:01] INFO  System initialized. Preparing image buffer...</div>
+<div class="text-text-muted">[10:42:02] INFO  Applying deskew and contrast normalization... [OK]</div>
+<div class="text-secondary">[10:42:03] ROUTE Request routed to Model: Claude-3-5-Sonnet-20240620</div>
+<div class="text-text-primary">[10:42:03] REQ   Initiating API handshake (Timeout: 30s)</div>
+<div class="text-tertiary">[10:42:04] RES   Connection established. Sending payload (1.2MB)...</div>
+<div class="text-text-muted">[10:42:05] AWAIT Waiting for inference generation...</div>
+<div class="text-text-muted">[10:42:07] AWAIT Analyzing tabular structures...</div>
+<div class="text-text-primary flex items-center">
+                                    [10:42:08] STREAM Parsing JSON chunks... <span class="terminal-cursor"></span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Telemetry Panel (Fixed) -->
+<aside class="w-[320px] bg-surface-container border-l border-border-strong flex flex-col shrink-0 hidden lg:flex z-20 shadow-[-4px_0_15px_rgba(0,0,0,0.2)]">
+<div class="p-4 border-b border-border-default">
+<h3 class="font-panel-title text-panel-title text-text-primary flex items-center gap-2">
+<span class="material-symbols-outlined text-[20px] text-primary" data-icon="speed">speed</span>
+                        Job Telemetry
+                    </h3>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-6">
+<!-- Token Usage -->
+<div class="space-y-2">
+<div class="flex justify-between items-end">
+<span class="font-metadata-xs text-metadata-xs text-text-muted uppercase tracking-wider">Token Allocation</span>
+<span class="font-label-sm text-label-sm text-text-primary">732 / 4096</span>
+</div>
+<div class="w-full h-1.5 bg-surface-raised rounded-full overflow-hidden border border-border-subtle">
+<div class="h-full bg-secondary w-[18%]"></div>
+</div>
+<div class="flex justify-between font-metadata-xs text-metadata-xs text-text-muted pt-1">
+<span>Input: 442</span>
+<span>Output: 290 (est)</span>
+</div>
+</div>
+<!-- Cost Estimator -->
+<div class="p-3 bg-surface-elevated rounded border border-border-default">
+<span class="font-metadata-xs text-metadata-xs text-text-muted uppercase block mb-1">Estimated Cost</span>
+<div class="flex items-baseline gap-1">
+<span class="font-body-md text-body-md text-text-secondary">$</span>
+<span class="font-page-title text-page-title text-text-primary">0.0056</span>
+<span class="font-metadata-xs text-metadata-xs text-text-muted">USD</span>
+</div>
+</div>
+<!-- Schema Validation -->
+<div class="space-y-3">
+<span class="font-metadata-xs text-metadata-xs text-text-muted uppercase tracking-wider block">Schema Targets</span>
+<div class="flex items-center gap-3 p-2 bg-surface-raised rounded border border-border-subtle opacity-50">
+<div class="w-5 h-5 rounded-full bg-surface-bright flex items-center justify-center">
+<span class="material-symbols-outlined text-[12px] text-text-muted" data-icon="pending">pending</span>
+</div>
+<div class="flex-1">
+<span class="font-label-sm text-label-sm text-text-secondary block">Header Data</span>
+</div>
+</div>
+<div class="flex items-center gap-3 p-2 bg-surface-raised rounded border border-border-subtle opacity-50">
+<div class="w-5 h-5 rounded-full bg-surface-bright flex items-center justify-center">
+<span class="material-symbols-outlined text-[12px] text-text-muted" data-icon="pending">pending</span>
+</div>
+<div class="flex-1">
+<span class="font-label-sm text-label-sm text-text-secondary block">Line Items Array</span>
+</div>
+</div>
+<div class="flex items-center gap-3 p-2 bg-surface-raised rounded border border-border-subtle opacity-50">
+<div class="w-5 h-5 rounded-full bg-surface-bright flex items-center justify-center">
+<span class="material-symbols-outlined text-[12px] text-text-muted" data-icon="pending">pending</span>
+</div>
+<div class="flex-1">
+<span class="font-label-sm text-label-sm text-text-secondary block">Totals &amp; Tax</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Footer Actions -->
+<div class="p-4 border-t border-border-default bg-surface-container-high">
+<button class="w-full bg-surface-raised hover:bg-error/20 hover:border-error/50 hover:text-error text-status-caution border border-outline-variant font-label-sm text-label-sm py-2 rounded transition-colors flex justify-center items-center gap-2" title="Halt current processing job">
+<span class="material-symbols-outlined text-[18px]" data-icon="stop_circle">stop_circle</span>
+                        Abort Extraction
+                    </button>
+</div>
+</aside>
+</main>
+</div>
+</body></html>

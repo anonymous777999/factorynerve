@@ -1,5 +1,5 @@
-import { SteelDispatchesPage } from "@/components/steel-dispatches-page";
+import { SteelDispatchesWorkspace } from "@/features/steel";
 
 export default function SteelDispatchesRoute() {
-  return <SteelDispatchesPage />;
+  return <SteelDispatchesWorkspace />;
 }

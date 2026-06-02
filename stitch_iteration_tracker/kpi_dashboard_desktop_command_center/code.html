@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FactoryNerve OS - Operational Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface": "#111318",
+                      "on-tertiary-fixed-variant": "#005320",
+                      "surface-raised": "#212633",
+                      "tertiary-fixed-dim": "#62df7d",
+                      "tertiary-container": "#33b559",
+                      "on-primary-fixed": "#2b1700",
+                      "primary-fixed": "#ffddbb",
+                      "surface-primary": "#161a21",
+                      "border-strong": "#4a5568",
+                      "text-secondary": "#cbd5e1",
+                      "surface-bright": "#37393f",
+                      "outline-variant": "#534435",
+                      "on-primary": "#482900",
+                      "surface-container-high": "#282a2f",
+                      "surface-tint": "#ffb868",
+                      "secondary-container": "#0459d3",
+                      "primary": "#ffb868",
+                      "surface-variant": "#33353a",
+                      "outline": "#a18d7b",
+                      "inverse-primary": "#885200",
+                      "surface-dim": "#111318",
+                      "error": "#ffb4ab",
+                      "tertiary": "#62df7d",
+                      "on-tertiary-fixed": "#002109",
+                      "surface-container-lowest": "#0c0e13",
+                      "surface-elevated": "#1c2029",
+                      "surface-canvas": "#111318",
+                      "inverse-on-surface": "#2e3036",
+                      "on-tertiary": "#003914",
+                      "on-secondary-fixed-variant": "#00419f",
+                      "background": "#111318",
+                      "surface-container": "#1e2025",
+                      "on-tertiary-container": "#003f17",
+                      "status-caution": "#ea580c",
+                      "surface-container-highest": "#33353a",
+                      "border-subtle": "#252b36",
+                      "status-critical": "#dc2626",
+                      "on-primary-fixed-variant": "#673d00",
+                      "surface-container-low": "#1a1b21",
+                      "text-primary": "#f1f5f9",
+                      "on-surface": "#e2e2e9",
+                      "primary-fixed-dim": "#ffb868",
+                      "on-secondary": "#002c71",
+                      "on-error-container": "#ffdad6",
+                      "secondary-fixed": "#dae2ff",
+                      "on-surface-variant": "#d9c3ae",
+                      "tertiary-fixed": "#7ffc97",
+                      "on-secondary-container": "#d1dcff",
+                      "secondary-fixed-dim": "#b1c5ff",
+                      "on-primary-container": "#502e00",
+                      "on-error": "#690005",
+                      "on-background": "#e2e2e9",
+                      "secondary": "#b1c5ff",
+                      "surface-overlay": "#252b36",
+                      "error-container": "#93000a",
+                      "inverse-surface": "#e2e2e9",
+                      "text-muted": "#64748b",
+                      "border-default": "#333b48",
+                      "primary-container": "#e08c0f",
+                      "surface-ground": "#0a0b0d",
+                      "on-secondary-fixed": "#001946",
+                      "ai-blue": "#2f6ee8",
+                      "status-success": "#10b981",
+                      "status-info": "#3b82f6"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "unit": "4px",
+                      "md": "20px",
+                      "xs": "8px",
+                      "margin-desktop": "32px",
+                      "lg": "24px",
+                      "base": "16px",
+                      "gutter": "16px",
+                      "xl": "32px",
+                      "sm": "12px",
+                      "margin-mobile": "16px",
+                      "micro": "4px"
+              },
+              "fontFamily": {
+                      "page-title-mobile": ["Inter"],
+                      "display-4xl": ["Inter"],
+                      "page-title": ["Inter"],
+                      "body-md": ["Inter"],
+                      "table-cell": ["Inter"],
+                      "label-sm": ["JetBrains Mono"],
+                      "panel-title": ["Inter"],
+                      "metadata-xs": ["JetBrains Mono"]
+              },
+              "fontSize": {
+                      "page-title-mobile": ["20px", {"lineHeight": "1.25", "fontWeight": "600"}],
+                      "display-4xl": ["36px", {"lineHeight": "1.15", "letterSpacing": "-0.026em", "fontWeight": "700"}],
+                      "page-title": ["24px", {"lineHeight": "1.25", "letterSpacing": "-0.018em", "fontWeight": "600"}],
+                      "body-md": ["14px", {"lineHeight": "1.50", "letterSpacing": "-0.006em", "fontWeight": "400"}],
+                      "table-cell": ["13px", {"lineHeight": "1.50", "letterSpacing": "0em", "fontWeight": "400"}],
+                      "label-sm": ["12px", {"lineHeight": "1.45", "letterSpacing": "0.004em", "fontWeight": "500"}],
+                      "panel-title": ["18px", {"lineHeight": "1.40", "letterSpacing": "-0.010em", "fontWeight": "600"}],
+                      "metadata-xs": ["11px", {"lineHeight": "1.45", "letterSpacing": "0.05em", "fontWeight": "600"}]
+              }
+            }
+          }
+        }
+    </script>
+<style>
+        body { background-color: #111318; color: #f1f5f9; }
+        .tech-border { border: 1px solid #333b48; }
+        .data-value { font-family: 'JetBrains Mono', monospace; font-weight: 600; }
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-surface-canvas text-text-primary antialiased flex h-screen overflow-hidden font-body-md selection:bg-primary-container selection:text-on-primary-container">
+<!-- JSON Component: SideNavBar (Rail) -->
+<nav class="w-[220px] h-full flex flex-col border-r border-strong bg-surface-primary dark:bg-surface-primary fixed left-0 top-0 bottom-0 z-40">
+<div class="p-base border-b border-strong flex items-center gap-sm">
+<div class="w-8 h-8 rounded bg-primary-container flex items-center justify-center text-on-primary-container font-bold">FN</div>
+<div>
+<h1 class="font-panel-title text-panel-title font-bold text-primary dark:text-primary leading-tight">FactoryNerve</h1>
+<p class="font-metadata-xs text-metadata-xs text-text-muted">Steel Operations</p>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto py-sm">
+<ul class="space-y-unit px-xs">
+<!-- Overview is Active based on intent -->
+<li>
+<a class="flex items-center gap-sm px-sm py-sm rounded-DEFAULT text-primary border-l-4 border-primary bg-surface-raised font-label-sm text-label-sm scale-95 duration-150" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+<span>Overview</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-sm px-sm py-sm rounded-DEFAULT text-text-muted hover:text-on-surface hover:bg-surface-container-high transition-colors font-label-sm text-label-sm scale-95 duration-150 border-l-4 border-transparent" href="#">
+<span class="material-symbols-outlined">inventory_2</span>
+<span>Inventory</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-sm px-sm py-sm rounded-DEFAULT text-text-muted hover:text-on-surface hover:bg-surface-container-high transition-colors font-label-sm text-label-sm scale-95 duration-150 border-l-4 border-transparent" href="#">
+<span class="material-symbols-outlined">precision_manufacturing</span>
+<span>Production</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-sm px-sm py-sm rounded-DEFAULT text-text-muted hover:text-on-surface hover:bg-surface-container-high transition-colors font-label-sm text-label-sm scale-95 duration-150 border-l-4 border-transparent" href="#">
+<span class="material-symbols-outlined">payments</span>
+<span>Sales</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-sm px-sm py-sm rounded-DEFAULT text-text-muted hover:text-on-surface hover:bg-surface-container-high transition-colors font-label-sm text-label-sm scale-95 duration-150 border-l-4 border-transparent" href="#">
+<span class="material-symbols-outlined">warning</span>
+<span>Risk</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-sm px-sm py-sm rounded-DEFAULT text-text-muted hover:text-on-surface hover:bg-surface-container-high transition-colors font-label-sm text-label-sm scale-95 duration-150 border-l-4 border-transparent" href="#">
+<span class="material-symbols-outlined">psychology</span>
+<span>AI Insights</span>
+</a>
+</li>
+</ul>
+</div>
+<div class="p-base border-t border-strong">
+<button class="w-full bg-primary-container text-on-primary-container font-label-sm text-label-sm py-xs rounded hover:brightness-110 transition-all flex justify-center items-center gap-xs">
+                Shift Handover
+            </button>
+<div class="mt-base flex justify-around">
+<button class="text-text-muted hover:text-primary transition-colors flex flex-col items-center gap-micro">
+<span class="material-symbols-outlined text-[20px]">settings</span>
+<span class="font-metadata-xs text-metadata-xs">Settings</span>
+</button>
+<button class="text-text-muted hover:text-primary transition-colors flex flex-col items-center gap-micro">
+<span class="material-symbols-outlined text-[20px]">help</span>
+<span class="font-metadata-xs text-metadata-xs">Support</span>
+</button>
+</div>
+</div>
+</nav>
+<!-- JSON Component: TopNavBar -->
+<header class="h-[48px] w-full border-b border-strong bg-surface-primary dark:bg-surface-primary fixed top-0 right-0 left-[220px] z-30 flex items-center justify-between px-md">
+<div class="flex items-center gap-lg">
+<span class="font-page-title text-page-title font-black text-primary dark:text-primary">FactoryNerve</span>
+<nav class="hidden md:flex items-center gap-base">
+<!-- Dashboard is active based on context -->
+<a class="font-body-md text-body-md text-primary font-bold border-b-2 border-primary pb-1 Active: opacity-80" href="#">Dashboard</a>
+<a class="font-body-md text-body-md text-text-secondary hover:text-primary transition-all" href="#">Analytics</a>
+<a class="font-body-md text-body-md text-text-secondary hover:text-primary transition-all" href="#">Logistics</a>
+<a class="font-body-md text-body-md text-text-secondary hover:text-primary transition-all" href="#">Safety</a>
+</nav>
+</div>
+<div class="flex items-center gap-base">
+<div class="relative hidden lg:block">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-text-muted text-[18px]">search</span>
+<input class="bg-surface-container border border-strong rounded-DEFAULT pl-8 pr-sm py-1 text-table-cell focus:border-primary focus:ring-1 focus:ring-primary outline-none text-text-primary placeholder:text-text-muted w-64 transition-all" placeholder="Search systems..." type="text"/>
+</div>
+<div class="flex items-center gap-xs px-sm py-1 rounded bg-surface-container border border-strong">
+<div class="w-2 h-2 rounded-full bg-status-success animate-pulse"></div>
+<span class="font-metadata-xs text-metadata-xs text-status-success uppercase tracking-wider">System Live</span>
+</div>
+<div class="flex items-center gap-sm border-l border-strong pl-base ml-xs">
+<button class="text-text-secondary hover:text-primary transition-colors relative">
+<span class="material-symbols-outlined">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-status-critical rounded-full"></span>
+</button>
+<button class="w-8 h-8 rounded-full bg-surface-container-high border border-strong flex items-center justify-center overflow-hidden hover:border-primary transition-colors">
+<span class="material-symbols-outlined text-text-muted">account_circle</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 ml-[220px] mr-[360px] mt-[48px] p-base overflow-y-auto h-[calc(100vh-48px)]">
+<div class="mb-lg">
+<h2 class="font-page-title text-page-title mb-xs">Operational Control Lane</h2>
+<p class="font-body-md text-body-md text-text-muted">Real-time factory floor metrics and synchronized systems data.</p>
+</div>
+<!-- KPI Ribbon -->
+<div class="grid grid-cols-4 gap-base mb-lg">
+<!-- Amber -->
+<div class="bg-surface-elevated tech-border p-base rounded-DEFAULT relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary-container"></div>
+<div class="flex justify-between items-start mb-sm">
+<span class="font-label-sm text-label-sm text-text-muted uppercase">Overall Efficiency</span>
+<span class="material-symbols-outlined text-primary-container text-[20px]">speed</span>
+</div>
+<div class="flex items-baseline gap-xs">
+<span class="text-display-4xl font-display-4xl data-value text-text-primary">94.2%</span>
+<span class="font-metadata-xs text-metadata-xs text-primary-container flex items-center"><span class="material-symbols-outlined text-[14px]">arrow_upward</span> 1.2%</span>
+</div>
+</div>
+<!-- Green -->
+<div class="bg-surface-elevated tech-border p-base rounded-DEFAULT relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-1 h-full bg-status-success"></div>
+<div class="flex justify-between items-start mb-sm">
+<span class="font-label-sm text-label-sm text-text-muted uppercase">Yield</span>
+<span class="material-symbols-outlined text-status-success text-[20px]">check_circle</span>
+</div>
+<div class="flex items-baseline gap-xs">
+<span class="text-display-4xl font-display-4xl data-value text-text-primary">91.8%</span>
+<span class="font-metadata-xs text-metadata-xs text-status-success flex items-center"><span class="material-symbols-outlined text-[14px]">arrow_upward</span> 0.5%</span>
+</div>
+</div>
+<!-- Blue -->
+<div class="bg-surface-elevated tech-border p-base rounded-DEFAULT relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-1 h-full bg-status-info"></div>
+<div class="flex justify-between items-start mb-sm">
+<span class="font-label-sm text-label-sm text-text-muted uppercase">Scrap Rate</span>
+<span class="material-symbols-outlined text-status-info text-[20px]">recycling</span>
+</div>
+<div class="flex items-baseline gap-xs">
+<span class="text-display-4xl font-display-4xl data-value text-text-primary">2.4%</span>
+<span class="font-metadata-xs text-metadata-xs text-status-info flex items-center"><span class="material-symbols-outlined text-[14px]">arrow_downward</span> 0.1%</span>
+</div>
+</div>
+<!-- Red -->
+<div class="bg-surface-elevated tech-border p-base rounded-DEFAULT relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-1 h-full bg-status-critical"></div>
+<div class="flex justify-between items-start mb-sm">
+<span class="font-label-sm text-label-sm text-text-muted uppercase">Downtime</span>
+<span class="material-symbols-outlined text-status-critical text-[20px]">warning</span>
+</div>
+<div class="flex items-baseline gap-xs">
+<span class="text-display-4xl font-display-4xl data-value text-text-primary">12m</span>
+<span class="font-metadata-xs text-metadata-xs text-status-critical flex items-center"><span class="material-symbols-outlined text-[14px]">arrow_upward</span> 4m</span>
+</div>
+</div>
+</div>
+<!-- Central Grid Charts (Abstracted with CSS patterns) -->
+<div class="grid grid-cols-2 gap-base mb-lg">
+<div class="bg-surface-elevated tech-border rounded-DEFAULT p-base flex flex-col min-h-[300px]">
+<div class="flex justify-between items-center mb-base">
+<h3 class="font-panel-title text-panel-title">Plant Efficiency Trend</h3>
+<button class="material-symbols-outlined text-text-muted hover:text-text-primary">more_horiz</button>
+</div>
+<div class="flex-1 bg-surface-container border border-subtle rounded-DEFAULT relative overflow-hidden flex items-end">
+<!-- Faux Chart Pattern -->
+<div class="w-full h-full absolute inset-0 opacity-20" style="background-image: linear-gradient(#333b48 1px, transparent 1px), linear-gradient(90deg, #333b48 1px, transparent 1px); background-size: 20px 20px;"></div>
+<div class="w-full h-24 bg-gradient-to-t from-primary-container/20 to-transparent relative border-t border-primary-container">
+<svg class="absolute bottom-0 w-full h-24 preserve-3d" preserveaspectratio="none" viewbox="0 0 100 100">
+<polyline fill="none" points="0,100 20,60 40,80 60,30 80,50 100,10" stroke="#e08c0f" stroke-width="2"></polyline>
+</svg>
+</div>
+</div>
+</div>
+<div class="bg-surface-elevated tech-border rounded-DEFAULT p-base flex flex-col min-h-[300px]">
+<div class="flex justify-between items-center mb-base">
+<h3 class="font-panel-title text-panel-title">Resource Utilization</h3>
+<button class="material-symbols-outlined text-text-muted hover:text-text-primary">more_horiz</button>
+</div>
+<div class="flex-1 bg-surface-container border border-subtle rounded-DEFAULT p-base flex flex-col justify-center gap-sm">
+<div class="space-y-1">
+<div class="flex justify-between font-metadata-xs text-metadata-xs">
+<span class="text-text-muted">Line 1 - Heavy Assembly</span>
+<span class="data-value text-text-primary">88%</span>
+</div>
+<div class="w-full h-2 bg-surface-ground rounded-full overflow-hidden">
+<div class="h-full bg-status-info w-[88%] rounded-full"></div>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between font-metadata-xs text-metadata-xs">
+<span class="text-text-muted">Line 2 - Precision</span>
+<span class="data-value text-text-primary">92%</span>
+</div>
+<div class="w-full h-2 bg-surface-ground rounded-full overflow-hidden">
+<div class="h-full bg-status-success w-[92%] rounded-full"></div>
+</div>
+</div>
+<div class="space-y-1">
+<div class="flex justify-between font-metadata-xs text-metadata-xs">
+<span class="text-text-muted">Line 3 - Packaging</span>
+<span class="data-value text-status-caution">65%</span>
+</div>
+<div class="w-full h-2 bg-surface-ground rounded-full overflow-hidden">
+<div class="h-full bg-status-caution w-[65%] rounded-full"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Table -->
+<div class="bg-surface-elevated tech-border rounded-DEFAULT overflow-hidden mb-xl">
+<div class="p-base border-b border-strong bg-surface-container flex justify-between items-center">
+<h3 class="font-panel-title text-panel-title">Shift Efficiency Benchmarking</h3>
+<button class="font-label-sm text-label-sm text-primary hover:underline">View Full Report</button>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left font-table-cell text-table-cell whitespace-nowrap">
+<thead class="bg-surface-container-low text-text-muted border-b border-strong">
+<tr>
+<th class="py-sm px-base font-medium">Shift</th>
+<th class="py-sm px-base font-medium">Total Output (MT)</th>
+<th class="py-sm px-base font-medium">Yield Loss (KG)</th>
+<th class="py-sm px-base font-medium">Supervisor Notes</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-subtle">
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="py-sm px-base font-medium">Morning (06:00 - 14:00)</td>
+<td class="py-sm px-base data-value">1,240.5</td>
+<td class="py-sm px-base data-value text-status-success">12.4</td>
+<td class="py-sm px-base text-text-muted">Nominal operations. Maintenance completed.</td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="py-sm px-base font-medium">Evening (14:00 - 22:00)</td>
+<td class="py-sm px-base data-value">1,190.2</td>
+<td class="py-sm px-base data-value text-status-caution">45.8</td>
+<td class="py-sm px-base text-text-muted">Minor pressure drops on Line 3. Investigating.</td>
+</tr>
+<tr class="hover:bg-surface-container-high transition-colors">
+<td class="py-sm px-base font-medium">Night (22:00 - 06:00)</td>
+<td class="py-sm px-base data-value">1,105.0</td>
+<td class="py-sm px-base data-value text-status-critical">89.2</td>
+<td class="py-sm px-base text-text-muted">Belt slip incident. Temporary halt required.</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</main>
+<!-- JSON Component: SideNavBar (Drawer - Intelligence Rail) -->
+<aside class="w-[360px] h-full border-l border-strong bg-surface-container dark:bg-surface-container shadow-xl fixed right-0 top-[48px] bottom-0 z-20 flex flex-col">
+<div class="p-base border-b border-strong">
+<h2 class="font-panel-title text-panel-title text-secondary">Intelligence Rail</h2>
+<p class="font-metadata-xs text-metadata-xs text-text-muted mt-1 uppercase tracking-widest">AI Augmented Insights</p>
+</div>
+<!-- Hidden Navigation from JSON mapped to structure, using it subtly as section headers or tabs -->
+<div class="flex border-b border-strong px-sm py-xs gap-xs overflow-x-auto scrollbar-hide">
+<button class="px-sm py-1 rounded text-secondary bg-secondary-container font-label-sm text-label-sm whitespace-nowrap flex items-center gap-xs">
+<span class="material-symbols-outlined text-[16px]">short_text</span> Summary
+            </button>
+<button class="px-sm py-1 rounded text-text-muted hover:bg-surface-container-highest font-label-sm text-label-sm whitespace-nowrap flex items-center gap-xs transition-colors">
+<span class="material-symbols-outlined text-[16px]">priority_high</span> Alerts
+            </button>
+<button class="px-sm py-1 rounded text-text-muted hover:bg-surface-container-highest font-label-sm text-label-sm whitespace-nowrap flex items-center gap-xs transition-colors">
+<span class="material-symbols-outlined text-[16px]">insights</span> Forecast
+            </button>
+</div>
+<div class="flex-1 overflow-y-auto p-base space-y-base bg-surface-ground">
+<!-- AI Panel: Predictive Efficiency -->
+<div class="bg-surface-elevated tech-border rounded-DEFAULT p-base relative shadow-[0_0_8px_rgba(47,110,232,0.3)] border-l-2 border-l-ai-blue">
+<div class="flex items-start gap-sm mb-sm">
+<span class="material-symbols-outlined text-ai-blue mt-0.5">psychology</span>
+<div>
+<h4 class="font-panel-title text-panel-title text-text-primary text-[14px]">Predictive Efficiency Forecast</h4>
+<p class="font-metadata-xs text-metadata-xs text-text-muted mt-1">Based on current trajectory</p>
+</div>
+</div>
+<div class="bg-surface-container-low p-sm rounded text-body-md font-body-md border border-subtle">
+                    Model predicts a <strong class="text-status-success">2% gain</strong> in overall efficiency over the next 4 hours if optimal thermal parameters are maintained.
+                </div>
+<div class="mt-sm flex justify-end">
+<button class="font-label-sm text-label-sm text-ai-blue hover:text-white transition-colors">Apply Optimizations →</button>
+</div>
+</div>
+<!-- AI Panel: Anomaly Detection -->
+<div class="bg-surface-elevated tech-border rounded-DEFAULT p-base relative border-l-2 border-l-status-caution">
+<div class="flex items-start gap-sm mb-sm">
+<span class="material-symbols-outlined text-status-caution mt-0.5">radar</span>
+<div>
+<h4 class="font-panel-title text-panel-title text-text-primary text-[14px]">Operational Anomaly Detected</h4>
+<p class="font-metadata-xs text-metadata-xs text-text-muted mt-1">Line 3 Diagnostics</p>
+</div>
+</div>
+<div class="bg-surface-container-low p-sm rounded text-body-md font-body-md border border-subtle">
+                    Sustained <strong class="text-status-caution">low pressure</strong> detected in Line 3 pneumatic feed. Correlates with recent yield loss drop in evening shift.
+                </div>
+<div class="mt-sm flex justify-end gap-sm">
+<button class="font-label-sm text-label-sm text-text-muted hover:text-text-primary transition-colors">Dismiss</button>
+<button class="font-label-sm text-label-sm bg-primary-container text-on-primary-container px-sm py-1 rounded">Investigate</button>
+</div>
+</div>
+<!-- Contextual Info -->
+<div class="bg-surface-elevated tech-border rounded-DEFAULT p-base">
+<h4 class="font-label-sm text-label-sm text-text-muted uppercase mb-sm">System Confidence</h4>
+<div class="flex items-center gap-sm">
+<div class="w-full bg-surface-ground h-2 rounded-full overflow-hidden">
+<div class="bg-ai-blue h-full w-[95%]"></div>
+</div>
+<span class="font-metadata-xs text-metadata-xs data-value">95%</span>
+</div>
+<p class="font-metadata-xs text-metadata-xs text-text-muted mt-2 text-center">Data ingested from 144 sensors</p>
+</div>
+</div>
+</aside>
+</body></html>

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FactoryNerve OS - Mobile Operations Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline-variant": "#534435",
+                    "surface-container-low": "#1a1b21",
+                    "on-primary": "#482900",
+                    "surface-canvas": "#111318",
+                    "on-tertiary-container": "#003f17",
+                    "error": "#ffb4ab",
+                    "border-strong": "#4a5568",
+                    "on-background": "#e2e2e9",
+                    "surface-tint": "#ffb868",
+                    "surface-primary": "#161a21",
+                    "on-primary-container": "#502e00",
+                    "surface": "#111318",
+                    "surface-dim": "#111318",
+                    "secondary-container": "#0459d3",
+                    "on-tertiary-fixed": "#002109",
+                    "on-error": "#690005",
+                    "status-caution": "#ea580c",
+                    "on-error-container": "#ffdad6",
+                    "tertiary-fixed": "#7ffc97",
+                    "on-surface-variant": "#d9c3ae",
+                    "primary-fixed-dim": "#ffb868",
+                    "on-primary-fixed-variant": "#673d00",
+                    "text-primary": "#f1f5f9",
+                    "primary-fixed": "#ffddbb",
+                    "status-critical": "#dc2626",
+                    "inverse-primary": "#885200",
+                    "tertiary-container": "#33b559",
+                    "surface-container-high": "#282a2f",
+                    "inverse-on-surface": "#2e3036",
+                    "text-secondary": "#cbd5e1",
+                    "inverse-surface": "#e2e2e9",
+                    "surface-raised": "#212633",
+                    "primary": "#ffb868",
+                    "error-container": "#93000a",
+                    "surface-container-highest": "#33353a",
+                    "surface-container": "#1e2025",
+                    "outline": "#a18d7b",
+                    "surface-container-lowest": "#0c0e13",
+                    "surface-ground": "#0a0b0d",
+                    "text-muted": "#64748b",
+                    "tertiary": "#62df7d",
+                    "on-secondary-fixed-variant": "#00419f",
+                    "border-default": "#333b48",
+                    "surface-bright": "#37393f",
+                    "background": "#111318",
+                    "on-secondary-container": "#d1dcff",
+                    "surface-variant": "#33353a",
+                    "secondary": "#b1c5ff",
+                    "secondary-fixed-dim": "#b1c5ff",
+                    "surface-overlay": "#252b36",
+                    "on-tertiary-fixed-variant": "#005320",
+                    "border-subtle": "#252b36",
+                    "secondary-fixed": "#dae2ff",
+                    "on-primary-fixed": "#2b1700",
+                    "primary-container": "#e08c0f",
+                    "on-secondary": "#002c71",
+                    "on-secondary-fixed": "#001946",
+                    "surface-elevated": "#1c2029",
+                    "on-surface": "#e2e2e9",
+                    "tertiary-fixed-dim": "#62df7d",
+                    "on-tertiary": "#003914"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "xl": "32px",
+                    "unit": "4px",
+                    "sm": "12px",
+                    "xs": "8px",
+                    "margin-mobile": "16px",
+                    "lg": "24px",
+                    "micro": "4px",
+                    "base": "16px",
+                    "md": "20px",
+                    "margin-desktop": "32px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "metadata-xs": ["JetBrains Mono"],
+                    "display-4xl": ["Inter"],
+                    "page-title": ["Inter"],
+                    "panel-title": ["Inter"],
+                    "page-title-mobile": ["Inter"],
+                    "body-md": ["Inter"],
+                    "label-sm": ["JetBrains Mono"],
+                    "table-cell": ["Inter"]
+            },
+            "fontSize": {
+                    "metadata-xs": ["11px", { "lineHeight": "1.45", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                    "display-4xl": ["36px", { "lineHeight": "1.15", "letterSpacing": "-0.026em", "fontWeight": "700" }],
+                    "page-title": ["24px", { "lineHeight": "1.25", "letterSpacing": "-0.018em", "fontWeight": "600" }],
+                    "panel-title": ["18px", { "lineHeight": "1.40", "letterSpacing": "-0.010em", "fontWeight": "600" }],
+                    "page-title-mobile": ["20px", { "lineHeight": "1.25", "fontWeight": "600" }],
+                    "body-md": ["14px", { "lineHeight": "1.50", "letterSpacing": "-0.006em", "fontWeight": "400" }],
+                    "label-sm": ["12px", { "lineHeight": "1.45", "letterSpacing": "0.004em", "fontWeight": "500" }],
+                    "table-cell": ["13px", { "lineHeight": "1.50", "letterSpacing": "0em", "fontWeight": "400" }]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        body {
+            background-color: #111318;
+            color: #f1f5f9;
+        }
+        .glow-secondary-300 {
+            box-shadow: 0px 0px 8px rgba(47, 110, 232, 0.3);
+        }
+        /* Custom scrollbar for dense feeling */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1a1b21;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333b48;
+            border-radius: 2px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4a5568;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="flex flex-col h-screen overflow-hidden bg-surface-canvas font-body-md text-text-primary">
+<!-- Top Navigation App Bar -->
+<header class="bg-surface-primary dark:bg-surface-primary text-primary dark:text-primary docked full-width top-0 h-[48px] border-b border-border-strong dark:border-border-strong flat no shadows flex justify-between items-center w-full px-base max-w-full flex-shrink-0 z-50">
+<div class="flex items-center gap-xs">
+<span class="font-panel-title text-panel-title font-bold text-primary dark:text-primary">FactoryNerve OS</span>
+<span class="font-metadata-xs text-metadata-xs text-text-muted px-2 py-0.5 bg-surface-raised rounded">OPS-MBL</span>
+</div>
+<div class="flex items-center gap-sm">
+<button class="hover:text-primary-fixed-dim dark:hover:text-primary-fixed-dim transition-colors text-text-muted focus:outline-none">
+<span class="material-symbols-outlined text-[20px]" data-icon="search">search</span>
+</button>
+<button class="hover:text-primary-fixed-dim dark:hover:text-primary-fixed-dim transition-colors text-text-muted focus:outline-none relative">
+<span class="material-symbols-outlined text-[20px]" data-icon="notifications">notifications</span>
+<span class="absolute top-0 right-0 w-2 h-2 bg-status-critical rounded-full border border-surface-primary"></span>
+</button>
+</div>
+</header>
+<!-- Persistent Industrial Header -->
+<div class="bg-surface-ground px-margin-mobile py-xs border-b border-border-default flex justify-between items-center flex-shrink-0">
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-tertiary shadow-[0_0_8px_rgba(98,223,125,0.5)]"></span>
+<span class="font-metadata-xs text-metadata-xs text-text-secondary uppercase">Active</span>
+</div>
+<div class="flex items-center gap-md font-metadata-xs text-metadata-xs text-text-muted">
+<span>SIG: <span class="text-text-primary">98%</span></span>
+<span>SHF: <span class="text-text-primary">Night</span></span>
+</div>
+</div>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto overflow-x-hidden flex flex-col pb-[80px]">
+<!-- Triage Metrics Strip -->
+<div class="grid grid-cols-3 gap-unit p-margin-mobile border-b border-border-default bg-surface-container-low">
+<div class="flex flex-col items-center justify-center p-xs bg-surface-raised border border-border-subtle rounded">
+<span class="font-display-4xl text-display-4xl text-text-primary">12</span>
+<span class="font-metadata-xs text-metadata-xs text-text-muted uppercase">Incoming</span>
+</div>
+<div class="flex flex-col items-center justify-center p-xs bg-surface-raised border border-status-caution rounded relative overflow-hidden">
+<div class="absolute inset-0 bg-status-caution opacity-10"></div>
+<span class="font-display-4xl text-display-4xl text-status-caution">4</span>
+<span class="font-metadata-xs text-metadata-xs text-status-caution uppercase">Processing</span>
+</div>
+<div class="flex flex-col items-center justify-center p-xs bg-surface-raised border border-border-subtle rounded">
+<span class="font-display-4xl text-display-4xl text-tertiary">8</span>
+<span class="font-metadata-xs text-metadata-xs text-text-muted uppercase">Verified</span>
+</div>
+</div>
+<div class="p-margin-mobile flex flex-col gap-base">
+<!-- Focused Review View (The Active Item) -->
+<div class="flex flex-col border-2 border-primary rounded bg-surface-container-high shadow-xl relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-primary"></div>
+<!-- Email Header Info -->
+<div class="p-sm border-b border-border-default bg-surface-raised flex justify-between items-start">
+<div class="flex flex-col gap-unit">
+<span class="font-metadata-xs text-metadata-xs text-text-muted">ID: <span class="text-primary font-bold">EML-992-B</span></span>
+<h2 class="font-panel-title text-panel-title text-text-primary">Urgent: PO Update - Steel Coils</h2>
+<span class="font-label-sm text-label-sm text-text-secondary">From: vendor@industrial-supply.com</span>
+</div>
+<span class="material-symbols-outlined text-primary" data-icon="mark_email_unread">mark_email_unread</span>
+</div>
+<!-- AI Interpretation Panel -->
+<div class="p-sm flex flex-col gap-sm bg-surface-overlay glow-secondary-300">
+<div class="flex justify-between items-center mb-unit">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-secondary text-[16px]" data-icon="psychology">psychology</span>
+<span class="font-metadata-xs text-metadata-xs text-secondary uppercase tracking-widest">AI Interpretation</span>
+</div>
+<span class="font-metadata-xs text-metadata-xs text-tertiary">94% Confidence</span>
+</div>
+<!-- Confidence Bar -->
+<div class="w-full h-1 bg-surface-container rounded-full overflow-hidden">
+<div class="h-full bg-tertiary w-[94%]"></div>
+</div>
+<!-- Extracted Entities -->
+<div class="grid grid-cols-2 gap-unit mt-xs">
+<div class="bg-surface-raised p-xs border border-border-subtle rounded flex flex-col">
+<span class="font-metadata-xs text-metadata-xs text-text-muted">Vendor ID</span>
+<span class="font-label-sm text-label-sm text-text-primary">V-7742</span>
+</div>
+<div class="bg-surface-raised p-xs border border-border-subtle rounded flex flex-col">
+<span class="font-metadata-xs text-metadata-xs text-text-muted">Order #</span>
+<span class="font-label-sm text-label-sm text-text-primary">PO-2026-89</span>
+</div>
+<div class="bg-surface-raised p-xs border border-border-subtle rounded flex flex-col col-span-2">
+<span class="font-metadata-xs text-metadata-xs text-text-muted">Requested Delivery</span>
+<span class="font-label-sm text-label-sm text-text-primary text-status-caution">2026-05-20 (Accelerated)</span>
+</div>
+</div>
+<!-- AI Reasoning -->
+<div class="bg-surface-container-low p-xs border-l-2 border-secondary mt-unit text-text-secondary font-table-cell leading-tight">
+<span class="font-bold text-secondary">Summary:</span> Vendor requesting accelerated delivery for PO-2026-89. Quantity remains 40 tons. Impacts production line Beta scheduling. Requires supervisor approval.
+                    </div>
+</div>
+<!-- Raw Snippet Collapsible -->
+<div class="border-t border-border-default">
+<button class="w-full p-xs flex justify-between items-center bg-surface-container text-text-muted hover:bg-surface-container-high transition-colors focus:outline-none" onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('.material-symbols-outlined').innerText = this.nextElementSibling.classList.contains('hidden') ? 'expand_more' : 'expand_less';">
+<span class="font-metadata-xs text-metadata-xs uppercase">View Raw Email Source</span>
+<span class="material-symbols-outlined text-[16px]" data-icon="expand_more">expand_more</span>
+</button>
+<div class="hidden p-xs bg-surface-ground border-t border-border-subtle overflow-x-auto">
+<pre class="font-metadata-xs text-metadata-xs text-text-muted whitespace-pre-wrap">Hello Team,
+Please note we are pushing the delivery for PO-2026-89 to the 20th. 
+Total tonnage remains 40t. Let us know if this causes receiving issues.
+- Logistics Desk
+                        </pre>
+</div>
+</div>
+</div>
+<!-- Operational Actions -->
+<div class="flex gap-sm mt-xs">
+<button class="flex-1 bg-surface-raised border border-status-critical text-status-critical font-label-sm text-label-sm py-sm rounded flex items-center justify-center gap-xs hover:bg-[rgba(220,38,38,0.1)] transition-colors">
+<span class="material-symbols-outlined text-[16px]" data-icon="warning">warning</span>
+                    Escalate
+                </button>
+<button class="flex-[2] bg-primary text-on-primary font-bold font-label-sm text-label-sm py-sm rounded flex items-center justify-center gap-xs hover:bg-primary-fixed-dim transition-colors shadow-[0_0_12px_rgba(255,184,104,0.2)]">
+<span class="material-symbols-outlined text-[18px]" data-icon="done_all">done_all</span>
+                    Approve &amp; Map to ERP
+                </button>
+</div>
+<div class="w-full h-px bg-border-strong my-xs"></div>
+<!-- Email Ingestion Queue -->
+<div class="flex flex-col gap-unit">
+<h3 class="font-metadata-xs text-metadata-xs text-text-muted uppercase tracking-wider mb-unit">Ingestion Queue</h3>
+<!-- Queue Item 1 -->
+<div class="bg-surface-raised border border-border-default rounded p-xs flex flex-col gap-unit opacity-75">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-status-caution"></span>
+<span class="font-metadata-xs text-metadata-xs text-text-muted">EML-993-C</span>
+</div>
+<span class="font-metadata-xs text-metadata-xs text-text-muted">10m ago</span>
+</div>
+<div class="font-label-sm text-label-sm text-text-secondary truncate">Shipping Delay - Transit 4A</div>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-status-caution text-[14px]" data-icon="schedule">schedule</span>
+<span class="font-metadata-xs text-metadata-xs text-status-caution">AI: Reschedule Required</span>
+</div>
+</div>
+<!-- Queue Item 2 -->
+<div class="bg-surface-raised border border-border-default rounded p-xs flex flex-col gap-unit opacity-75">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-status-critical"></span>
+<span class="font-metadata-xs text-metadata-xs text-text-muted">EML-994-D</span>
+</div>
+<span class="font-metadata-xs text-metadata-xs text-text-muted">15m ago</span>
+</div>
+<div class="font-label-sm text-label-sm text-text-secondary truncate">Discrepancy: Invoice #8821</div>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-status-critical text-[14px]" data-icon="error">error</span>
+<span class="font-metadata-xs text-metadata-xs text-status-critical">AI: Price Mismatch Detected</span>
+</div>
+</div>
+<!-- Queue Item 3 -->
+<div class="bg-surface-raised border border-border-default rounded p-xs flex flex-col gap-unit opacity-50">
+<div class="flex justify-between items-start">
+<div class="flex items-center gap-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-text-muted"></span>
+<span class="font-metadata-xs text-metadata-xs text-text-muted">EML-995-E</span>
+</div>
+<span class="font-metadata-xs text-metadata-xs text-text-muted">22m ago</span>
+</div>
+<div class="font-label-sm text-label-sm text-text-secondary truncate">Weekly Safety Report PDF</div>
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-text-muted text-[14px]" data-icon="description">description</span>
+<span class="font-metadata-xs text-metadata-xs text-text-muted">AI: Routine Archival</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Navigation Bar (Mobile Only) -->
+<nav class="bg-surface-primary dark:bg-surface-primary border-t border-border-default fixed bottom-0 w-full h-[64px] flex justify-around items-center px-xs md:hidden z-50">
+<a class="flex flex-col items-center justify-center w-full h-full text-text-muted dark:text-text-muted hover:text-text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1" data-icon="dashboard">dashboard</span>
+<span class="font-metadata-xs text-metadata-xs">Dashboard</span>
+</a>
+<!-- Active Tab: Operations -->
+<a class="flex flex-col items-center justify-center w-full h-full text-primary dark:text-primary relative group" href="#">
+<div class="absolute inset-x-0 top-0 h-0.5 bg-primary rounded-b-full"></div>
+<div class="bg-primary/10 rounded-full p-1 mb-1 group-active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-[24px] text-primary" data-icon="factory" data-weight="fill" style="font-variation-settings: 'FILL' 1;">factory</span>
+</div>
+<span class="font-metadata-xs text-metadata-xs font-bold">Operations</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-text-muted dark:text-text-muted hover:text-text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1" data-icon="analytics">analytics</span>
+<span class="font-metadata-xs text-metadata-xs">Analytics</span>
+</a>
+<a class="flex flex-col items-center justify-center w-full h-full text-text-muted dark:text-text-muted hover:text-text-primary transition-colors" href="#">
+<span class="material-symbols-outlined text-[24px] mb-1" data-icon="menu">menu</span>
+<span class="font-metadata-xs text-metadata-xs">Menu</span>
+</a>
+</nav>
+</body></html>

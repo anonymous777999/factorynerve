@@ -1,5 +1,5 @@
-import EmailSummaryPage from "@/components/email-summary-page";
+import { EmailSummaryWorkspace } from "@/features/reports";
 
 export default function EmailSummaryRoutePage() {
-  return <EmailSummaryPage />;
+  return <EmailSummaryWorkspace />;
 }

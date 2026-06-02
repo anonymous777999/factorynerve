@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { SuccessBanner, MutationErrorBanner } from "@/shared/feedback";
 import { ApiError } from "@/lib/api";
 import {
   createSteelInvoice,
@@ -24,6 +25,7 @@ import {
   type SteelStockItem,
 } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
+import { formatKg, todayValue, addDays } from "@/features/steel/lib/steel-helpers";
 
 type DraftLine = {
   item_id: string;
@@ -33,29 +35,12 @@ type DraftLine = {
   rate_per_kg: string;
 };
 
-function todayValue() {
-  const now = new Date();
-  const offset = now.getTimezoneOffset() * 60000;
-  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
-}
-
-function formatKg(value: number | null | undefined) {
-  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value || 0);
-}
-
 function formatCurrency(value: number | null | undefined) {
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: "INR",
     maximumFractionDigits: 0,
   }).format(value || 0);
-}
-
-function addDays(dateValue: string, days: number) {
-  const parsed = new Date(`${dateValue}T00:00:00`);
-  if (Number.isNaN(parsed.getTime())) return dateValue;
-  parsed.setDate(parsed.getDate() + days);
-  return parsed.toISOString().slice(0, 10);
 }
 
 function blankLine(): DraftLine {
@@ -279,7 +264,7 @@ export function SteelInvoicesPage() {
             <CardTitle>Steel Invoicing</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
+            <div className="text-sm text-status-danger-fg">{sessionError || "Please sign in to continue."}</div>
             <Link href="/access">
               <Button>Open Access</Button>
             </Link>
@@ -454,15 +439,15 @@ export function SteelInvoicesPage() {
                             ))}
                           </Select>
                           {!finishedItems.length ? (
-                            <div className="mt-3 rounded-2xl border border-amber-400/35 bg-amber-500/10 px-3 py-3 text-sm text-amber-100">
+                            <div className="mt-3 rounded-2xl border border-status-warning-border bg-status-warning-bg px-3 py-3 text-sm text-status-warning-fg">
                               <div className="font-semibold text-white">No finished goods available for invoicing</div>
                               <div className="mt-1">Invoice lines only support inventory items categorized as finished goods.</div>
-                              <div className="mt-1 text-xs uppercase tracking-[0.16em] text-amber-200">
+                              <div className="mt-1 text-xs uppercase tracking-[0.16em] text-status-warning-fg">
                                 Workflow: Production Batch -&gt; Finished Goods -&gt; Invoice
                               </div>
                               <div className="mt-2">Record a Production Batch or create a finished goods inventory item first.</div>
                               <Link href="/steel" className="mt-3 inline-flex">
-                                <Button type="button" variant="ghost" className="px-2 py-1 text-xs text-amber-100 hover:text-white">
+                                <Button type="button" variant="ghost" className="px-2 py-1 text-xs text-status-warning-fg hover:text-white">
                                   Open Steel Module
                                 </Button>
                               </Link>
@@ -594,8 +579,8 @@ export function SteelInvoicesPage() {
           </Card>
         </section>
 
-        {status ? <div className="text-sm text-green-400">{status}</div> : null}
-        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
+        {status ? <SuccessBanner message={status} onDismiss={() => setStatus("")} /> : null}
+        {error || sessionError ? <MutationErrorBanner message={error || sessionError} onDismiss={() => setError("")} /> : null}
       </div>
     </main>
   );

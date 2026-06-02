@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>INDUSTRIAL OS - Usage Analytics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@100..900&amp;family=JetBrains+Mono:wght@100..900&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary-fixed": "#a2eeff",
+                      "surface-dim": "#0f131d",
+                      "outline-variant": "#434655",
+                      "primary-container": "#2563eb",
+                      "on-secondary-container": "#00515d",
+                      "tertiary-fixed-dim": "#4edea3",
+                      "secondary-fixed-dim": "#2fd9f4",
+                      "primary": "#b4c5ff",
+                      "primary-fixed": "#dbe1ff",
+                      "secondary": "#5de6ff",
+                      "tertiary": "#4edea3",
+                      "background": "#0f131d",
+                      "on-primary": "#002a78",
+                      "inverse-on-surface": "#2c303b",
+                      "on-surface-variant": "#c3c6d7",
+                      "on-secondary-fixed": "#001f25",
+                      "secondary-container": "#00cbe6",
+                      "on-surface": "#dfe2f0",
+                      "surface-container-lowest": "#0a0e17",
+                      "surface-container-highest": "#31353f",
+                      "inverse-primary": "#0053db",
+                      "on-tertiary": "#003824",
+                      "on-secondary": "#00363e",
+                      "inverse-surface": "#dfe2f0",
+                      "on-tertiary-container": "#bdffdb",
+                      "on-primary-fixed": "#00174b",
+                      "on-tertiary-fixed": "#002113",
+                      "surface-container-high": "#262a34",
+                      "primary-fixed-dim": "#b4c5ff",
+                      "surface-container-low": "#171c25",
+                      "surface-variant": "#31353f",
+                      "on-error-container": "#ffdad6",
+                      "surface-tint": "#b4c5ff",
+                      "surface": "#0f131d",
+                      "error": "#ffb4ab",
+                      "on-secondary-fixed-variant": "#004e5a",
+                      "tertiary-container": "#007d55",
+                      "surface-bright": "#353944",
+                      "on-primary-fixed-variant": "#003ea8",
+                      "surface-container": "#1b2029",
+                      "on-tertiary-fixed-variant": "#005236",
+                      "outline": "#8d90a0",
+                      "tertiary-fixed": "#6ffbbe",
+                      "on-background": "#dfe2f0",
+                      "error-container": "#93000a",
+                      "on-error": "#690005",
+                      "on-primary-container": "#eeefff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "unit": "4px",
+                      "gutter": "12px",
+                      "margin": "16px",
+                      "panel-padding": "12px"
+              },
+              "fontFamily": {
+                      "body-sm": ["Inter"],
+                      "label-caps": ["JetBrains Mono"],
+                      "headline-md": ["Inter"],
+                      "data-mono": ["JetBrains Mono"],
+                      "headline-lg": ["Inter"],
+                      "body-md": ["Inter"]
+              },
+              "fontSize": {
+                      "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                      "label-caps": ["10px", {"lineHeight": "12px", "letterSpacing": "0.08em", "fontWeight": "700"}],
+                      "headline-md": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "data-mono": ["13px", {"lineHeight": "16px", "letterSpacing": "-0.01em", "fontWeight": "500"}],
+                      "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        body {
+            background-color: #070b14;
+            color: #dfe2f0;
+            overflow: hidden;
+        }
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #31353f; border-radius: 2px; }
+        .panel-glow { box-shadow: 0 0 15px rgba(0, 203, 230, 0.05); }
+    </style>
+</head>
+<body class="font-body-md h-screen w-full flex">
+<!-- Persistent SideNavBar -->
+<aside class="fixed left-0 top-0 h-full w-[240px] bg-surface-dim border-r border-outline-variant flex flex-col py-4 space-y-2 z-50">
+<div class="px-4 mb-6">
+<h1 class="text-headline-md font-headline-md font-bold tracking-tighter text-on-surface">INDUSTRIAL OS</h1>
+<p class="font-label-caps text-label-caps text-outline">Terminal v4.02</p>
+</div>
+<nav class="flex-1 space-y-1">
+<div class="px-2">
+<a class="flex items-center px-3 py-2 space-x-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">factory</span>
+<span class="font-label-caps text-label-caps">Production</span>
+</a>
+<a class="flex items-center px-3 py-2 space-x-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">group</span>
+<span class="font-label-caps text-label-caps">Users</span>
+</a>
+<a class="flex items-center px-3 py-2 space-x-3 text-secondary border-l-2 border-secondary bg-surface-container-high transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">monitoring</span>
+<span class="font-label-caps text-label-caps">Analytics</span>
+</a>
+<a class="flex items-center px-3 py-2 space-x-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">alt_route</span>
+<span class="font-label-caps text-label-caps">Routing</span>
+</a>
+<a class="flex items-center px-3 py-2 space-x-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">inventory</span>
+<span class="font-label-caps text-label-caps">Inventory</span>
+</a>
+</div>
+</nav>
+<div class="px-4 py-2">
+<button class="w-full bg-error-container text-on-error-container py-2 text-label-caps font-label-caps border border-error/20 hover:bg-error/20 transition-all">
+                EMERGENCY STOP
+            </button>
+</div>
+<div class="px-2 pt-4 border-t border-outline-variant/30">
+<a class="flex items-center px-3 py-2 space-x-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">analytics</span>
+<span class="font-label-caps text-label-caps">Diagnostics</span>
+</a>
+<a class="flex items-center px-3 py-2 space-x-3 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150" href="#">
+<span class="material-symbols-outlined text-[20px]">logout</span>
+<span class="font-label-caps text-label-caps">Logout</span>
+</a>
+</div>
+</aside>
+<!-- Main Container -->
+<main class="ml-[240px] flex-1 flex flex-col h-screen overflow-hidden">
+<!-- TopAppBar -->
+<header class="h-12 bg-surface-container-lowest border-b border-outline-variant flex justify-between items-center px-4 w-full">
+<div class="flex items-center space-x-4 flex-1">
+<span class="font-label-caps text-label-caps text-secondary-container tracking-widest">CONTROL_CENTER</span>
+<div class="h-8 bg-surface-container-low border border-outline-variant rounded flex items-center px-2 w-64 focus-within:ring-1 focus-within:ring-secondary-fixed">
+<span class="material-symbols-outlined text-outline text-[18px] mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-data-mono font-data-mono text-[11px] w-full text-on-surface uppercase placeholder-outline/50" placeholder="QUERY_SYSTEM..." type="text"/>
+</div>
+</div>
+<div class="flex items-center space-x-6">
+<div class="flex items-center space-x-3">
+<span class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-highest cursor-pointer p-1">notifications_active</span>
+<span class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-highest cursor-pointer p-1">sensors</span>
+<span class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-highest cursor-pointer p-1">terminal</span>
+</div>
+<button class="bg-primary-container text-on-primary-container px-3 py-1 font-label-caps text-label-caps hover:brightness-110">
+                    LIVE_FEED
+                </button>
+<div class="w-8 h-8 rounded bg-surface-variant flex items-center justify-center overflow-hidden border border-outline-variant">
+<img alt="Admin User Profile" class="w-full h-full" data-alt="A stylized, technical avatar for a system administrator featuring geometric shapes and blue circuitry patterns. The visual style is clinical, high-contrast, and minimalist, fitting an ultra-dark workstation aesthetic with vibrant cyan accents on a dark slate background." src="https://lh3.googleusercontent.com/aida-public/AB6AXuA75x45kzlX4DixUnJ3WiCOKYMWbgHAgAbWWc5J-owXXopajzLJ48l3I9NDOCsSRJedrodusK7LwK15N_6dpX2LuLtAxQfA8DKuRamm27A2iu-d9ibhNQI8Q2-0MQ51yGm15etINSYU2EGCdGnZmzSr1YRrWdV0IFoIfpqxhJu_8xwCnLYMWLcnIwoP1KI7OAPxyWVrVpQ02PB5D2_e8uPlWHLtzBOBO1MH8HysGMXY3FRNxql9E9DANQA_ePXeiw0SyKprHZ_R1OPn"/>
+</div>
+</div>
+</header>
+<!-- LIVE REMINDERS Strip -->
+<section class="h-10 bg-surface-container border-b border-outline-variant flex items-center px-4 overflow-hidden">
+<div class="flex items-center space-x-2 mr-4">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+<span class="font-label-caps text-label-caps text-secondary whitespace-nowrap">LIVE REMINDERS:</span>
+</div>
+<div class="flex space-x-8 animate-marquee whitespace-nowrap">
+<p class="text-body-sm font-body-sm text-on-surface-variant uppercase">SYSTEM_LOAD: 42% // NODE_STABILITY: NOMINAL // PENDING_REPORTS: 03 // NEXT_BACKUP: 14:00Z</p>
+<p class="text-body-sm font-body-sm text-on-surface-variant uppercase">SYSTEM_LOAD: 42% // NODE_STABILITY: NOMINAL // PENDING_REPORTS: 03 // NEXT_BACKUP: 14:00Z</p>
+</div>
+</section>
+<!-- Main Workspace (USAGE tab) -->
+<div class="flex-1 overflow-y-auto custom-scrollbar p-6 bg-[#070b14]">
+<!-- Header Hero -->
+<div class="mb-8 relative overflow-hidden rounded bg-surface-container-low border border-outline-variant p-8">
+<div class="absolute inset-0 opacity-10 pointer-events-none">
+<div class="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,#2563eb,transparent_70%)]"></div>
+</div>
+<div class="relative z-10 max-w-2xl">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-2">Usage Analytics Dashboard</h2>
+<p class="text-body-md font-body-md text-on-surface-variant">Keep factory setup and team control in one admin lane. Monitor real-time throughput and resource allocation across your entire industrial network.</p>
+</div>
+</div>
+<!-- Admin Tools Strip -->
+<div class="flex items-center space-x-1 mb-8 border-b border-outline-variant/30">
+<button class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-colors">Board</button>
+<button class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-colors">Reports</button>
+<button class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-colors">Plans</button>
+<button class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface transition-colors">Billing</button>
+<button class="px-6 py-3 font-label-caps text-label-caps text-primary border-b-2 border-primary">USAGE</button>
+</div>
+<!-- KPI Strip -->
+<div class="grid grid-cols-4 gap-4 mb-8">
+<div class="bg-surface-container-low border border-outline-variant p-4">
+<p class="font-label-caps text-label-caps text-outline mb-2">Current Factory</p>
+<p class="font-data-mono text-headline-md text-on-surface">NORTH_PLANT_A1</p>
+</div>
+<div class="bg-surface-container-low border border-outline-variant p-4">
+<p class="font-label-caps text-label-caps text-outline mb-2">Factory Network</p>
+<p class="font-data-mono text-headline-md text-on-surface">12 NODES</p>
+</div>
+<div class="bg-surface-container-low border border-outline-variant p-4">
+<p class="font-label-caps text-label-caps text-outline mb-2">Active Users</p>
+<div class="flex items-end justify-between">
+<p class="font-data-mono text-headline-md text-secondary">842</p>
+<span class="text-tertiary font-data-mono text-[10px] pb-1">+12.5%</span>
+</div>
+</div>
+<div class="bg-surface-container-low border border-outline-variant p-4">
+<p class="font-label-caps text-label-caps text-outline mb-2">Capacity</p>
+<div class="w-full bg-surface-container-highest h-1 mb-2">
+<div class="bg-primary h-full w-[78%]"></div>
+</div>
+<p class="font-data-mono text-data-mono text-on-surface text-right">78.4%</p>
+</div>
+</div>
+<!-- Analytics Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+<!-- Usage Summary -->
+<div class="bg-surface-container border border-outline-variant rounded-lg overflow-hidden flex flex-col">
+<div class="px-4 py-3 bg-surface-container-high border-b border-outline-variant flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface">Usage Summary</span>
+<div class="flex space-x-2">
+<span class="material-symbols-outlined text-[18px] text-outline cursor-pointer hover:text-on-surface">refresh</span>
+<span class="material-symbols-outlined text-[18px] text-outline cursor-pointer hover:text-on-surface">expand_content</span>
+</div>
+</div>
+<div class="p-6 space-y-6">
+<div class="flex justify-between items-center border-b border-outline-variant/20 pb-4">
+<div>
+<p class="text-body-sm font-body-sm text-outline uppercase">Requests Used</p>
+<p class="font-data-mono text-headline-md text-on-surface">1,248,392</p>
+</div>
+<div class="text-right">
+<p class="text-body-sm font-body-sm text-outline uppercase">Trend</p>
+<p class="font-data-mono text-tertiary">STABLE</p>
+</div>
+</div>
+<div class="flex justify-between items-center border-b border-outline-variant/20 pb-4">
+<div>
+<p class="text-body-sm font-body-sm text-outline uppercase">Credits Used</p>
+<p class="font-data-mono text-headline-md text-on-surface">14.2k</p>
+</div>
+<div class="text-right">
+<p class="text-body-sm font-body-sm text-outline uppercase">Allocation</p>
+<p class="font-data-mono text-on-surface-variant">42% OF CAP</p>
+</div>
+</div>
+<div class="flex justify-between items-center border-b border-outline-variant/20 pb-4">
+<div>
+<p class="text-body-sm font-body-sm text-outline uppercase">Request Limit</p>
+<p class="font-data-mono text-headline-md text-secondary">Unlimited</p>
+</div>
+<div class="text-right">
+<p class="text-body-sm font-body-sm text-outline uppercase">Tier</p>
+<p class="font-label-caps text-label-caps bg-secondary-container/20 text-secondary-container px-2 py-0.5 border border-secondary-container/30">ENTERPRISE</p>
+</div>
+</div>
+<div class="pt-2">
+<p class="text-body-sm font-body-sm text-outline uppercase mb-2">Rate Limit</p>
+<div class="bg-surface-container-lowest border border-outline-variant p-4">
+<p class="font-data-mono text-data-mono text-on-surface">10,000 REQ / SECOND</p>
+<div class="mt-2 w-full bg-surface-container-highest h-0.5">
+<div class="bg-tertiary h-full w-[12%]"></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Billing Status -->
+<div class="bg-surface-container border border-outline-variant rounded-lg overflow-hidden flex flex-col">
+<div class="px-4 py-3 bg-surface-container-high border-b border-outline-variant flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface">Billing Status</span>
+<div class="flex space-x-2">
+<span class="material-symbols-outlined text-[18px] text-outline cursor-pointer hover:text-on-surface">payments</span>
+</div>
+</div>
+<div class="p-6">
+<div class="grid grid-cols-2 gap-4 mb-8">
+<div class="p-4 bg-surface-container-low border border-outline-variant">
+<p class="font-label-caps text-label-caps text-outline mb-1">Plan</p>
+<p class="font-data-mono text-data-mono text-on-surface uppercase">free_tier_eval</p>
+</div>
+<div class="p-4 bg-surface-container-low border border-outline-variant">
+<p class="font-label-caps text-label-caps text-outline mb-1">Status</p>
+<div class="flex items-center space-x-2">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>
+<p class="font-data-mono text-data-mono text-on-surface uppercase">active</p>
+</div>
+</div>
+<div class="p-4 bg-surface-container-low border border-outline-variant">
+<p class="font-label-caps text-label-caps text-outline mb-1">Trial Ends</p>
+<p class="font-data-mono text-data-mono text-on-surface">2024-12-15</p>
+</div>
+<div class="p-4 bg-surface-container-low border border-outline-variant">
+<p class="font-label-caps text-label-caps text-outline mb-1">Current Period End</p>
+<p class="font-data-mono text-data-mono text-on-surface">2024-11-20</p>
+</div>
+</div>
+<div class="space-y-4">
+<h4 class="font-label-caps text-label-caps text-outline uppercase tracking-widest">Recent Ledger Events</h4>
+<div class="space-y-2">
+<div class="flex justify-between items-center p-3 bg-surface-container-lowest border border-outline-variant/30 hover:bg-surface-container-highest transition-colors cursor-pointer group">
+<div class="flex items-center space-x-3">
+<span class="material-symbols-outlined text-outline group-hover:text-primary">receipt_long</span>
+<div>
+<p class="text-body-sm font-data-mono text-on-surface">INV_2024_09_A1</p>
+<p class="text-[10px] font-label-caps text-outline">OCT 01, 2024</p>
+</div>
+</div>
+<span class="font-data-mono text-on-surface">$0.00</span>
+</div>
+<div class="flex justify-between items-center p-3 bg-surface-container-lowest border border-outline-variant/30 hover:bg-surface-container-highest transition-colors cursor-pointer group">
+<div class="flex items-center space-x-3">
+<span class="material-symbols-outlined text-outline group-hover:text-primary">receipt_long</span>
+<div>
+<p class="text-body-sm font-data-mono text-on-surface">INV_2024_08_A1</p>
+<p class="text-[10px] font-label-caps text-outline">SEP 01, 2024</p>
+</div>
+</div>
+<span class="font-data-mono text-on-surface">$0.00</span>
+</div>
+</div>
+<button class="w-full mt-4 py-3 bg-slate-800 border border-slate-700 text-on-surface font-label-caps text-label-caps hover:bg-slate-700 transition-colors uppercase">
+                                Upgrade to Enterprise
+                            </button>
+</div>
+</div>
+</div>
+</div>
+<!-- Operational Table (Recent API Calls) -->
+<div class="mt-8 bg-surface-container border border-outline-variant rounded-lg overflow-hidden">
+<div class="px-4 py-3 bg-surface-container-high border-b border-outline-variant flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface uppercase">Live Execution Log</span>
+<span class="text-[10px] font-data-mono text-outline">UPDATED: JUST_NOW</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-high/50 text-outline uppercase text-[10px] font-label-caps">
+<th class="px-4 py-2 border-b border-outline-variant">Timestamp</th>
+<th class="px-4 py-2 border-b border-outline-variant">Module</th>
+<th class="px-4 py-2 border-b border-outline-variant">Method</th>
+<th class="px-4 py-2 border-b border-outline-variant">Payload</th>
+<th class="px-4 py-2 border-b border-outline-variant text-right">Latency</th>
+<th class="px-4 py-2 border-b border-outline-variant">Status</th>
+</tr>
+</thead>
+<tbody class="font-data-mono text-[11px]">
+<tr class="hover:bg-white/[0.03] transition-colors border-b border-outline-variant/10">
+<td class="px-4 py-2 text-on-surface-variant">14:22:01.034</td>
+<td class="px-4 py-2 text-on-surface">CORE_SENSORS</td>
+<td class="px-4 py-2 text-secondary">GET_TELEMETRY</td>
+<td class="px-4 py-2 text-outline">{"node": "A1", "ch": 4}</td>
+<td class="px-4 py-2 text-right text-on-surface">12ms</td>
+<td class="px-4 py-2"><span class="text-tertiary">200 OK</span></td>
+</tr>
+<tr class="hover:bg-white/[0.03] transition-colors border-b border-outline-variant/10">
+<td class="px-4 py-2 text-on-surface-variant">14:22:00.912</td>
+<td class="px-4 py-2 text-on-surface">AUTH_SERVICE</td>
+<td class="px-4 py-2 text-secondary">VALIDATE_TOKEN</td>
+<td class="px-4 py-2 text-outline">{"uid": "admin_77"}</td>
+<td class="px-4 py-2 text-right text-on-surface">45ms</td>
+<td class="px-4 py-2"><span class="text-tertiary">200 OK</span></td>
+</tr>
+<tr class="hover:bg-white/[0.03] transition-colors border-b border-outline-variant/10">
+<td class="px-4 py-2 text-on-surface-variant">14:21:59.455</td>
+<td class="px-4 py-2 text-on-surface">DATA_INGRESS</td>
+<td class="px-4 py-2 text-secondary">PUSH_EVENT</td>
+<td class="px-4 py-2 text-outline">{"batch_id": 992}</td>
+<td class="px-4 py-2 text-right text-on-surface">112ms</td>
+<td class="px-4 py-2"><span class="text-tertiary">200 OK</span></td>
+</tr>
+<tr class="hover:bg-white/[0.03] transition-colors">
+<td class="px-4 py-2 text-on-surface-variant">14:21:58.110</td>
+<td class="px-4 py-2 text-on-surface">ROUTING_GW</td>
+<td class="px-4 py-2 text-secondary">REMAP_NODE</td>
+<td class="px-4 py-2 text-outline">{"target": "SEC_B"}</td>
+<td class="px-4 py-2 text-right text-on-surface">8ms</td>
+<td class="px-4 py-2"><span class="text-error">403 ERR</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</main>
+<script>
+        // Simple marquee animation logic if needed, though CSS handle it
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log("Industrial OS Terminal Initialized...");
+            
+            // Random value fluctuations for simulation
+            setInterval(() => {
+                const load = Math.floor(Math.random() * (48 - 38 + 1) + 38);
+                const marquee = document.querySelectorAll('.animate-marquee p');
+                marquee.forEach(el => {
+                    el.innerHTML = el.innerHTML.replace(/SYSTEM_LOAD: \d+%/, `SYSTEM_LOAD: ${load}%`);
+                });
+            }, 5000);
+        });
+    </script>
+<style>
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+        .animate-marquee {
+            display: flex;
+            width: fit-content;
+            animation: marquee 30s linear infinite;
+        }
+    </style>
+</body></html>

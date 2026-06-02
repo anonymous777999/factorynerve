@@ -31,7 +31,7 @@ import {
   Wallet,
 } from "lucide-react";
 
-import RoleGate from "@/components/role-gate";
+import RoleGate from "@/shared/permissions/role-gate";
 import { Select } from "@/components/ui/select";
 import type { Permissions } from "@/lib/auth";
 import type { AppLanguage } from "@/lib/i18n";

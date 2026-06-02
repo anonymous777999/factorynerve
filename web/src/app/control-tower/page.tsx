@@ -1,5 +1,5 @@
-import ControlTowerPage from "@/components/control-tower-page";
+import { ControlTowerWorkspace } from "@/features/control-tower";
 
 export default function ControlTowerRoute() {
-  return <ControlTowerPage />;
+  return <ControlTowerWorkspace />;
 }

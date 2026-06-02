@@ -171,6 +171,218 @@
   --confidence-low-fg: #94a3b8;
 }
 
+/* ============================================================
+   GLOBAL TYPOGRAPHY PASS (Day 1, Hour 3–4)
+   Cascades across every page. Edit the tokens, not these rules.
+   ============================================================ */
+
+/* Tight headings — premium, authoritative */
+h1,
+h2,
+h3,
+.route-header__title,
+.panel-title {
+  letter-spacing: -0.02em;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* Numeric values — always tabular mono */
+.tabular-nums,
+[data-numeric],
+td.numeric,
+.kpi-value,
+.metric-value,
+[class*="font-mono"] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Labels — uniform across all forms, tables, sidebars */
+.section-label,
+.nav-section-title,
+.factory-ocr-card-title,
+.route-header__eyebrow,
+.factory-sidebar-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+
+/* ============================================================
+   MOBILE / PWA TOUCH TARGETS (Day 3, Hour 14–15)
+   Factory terminals: prevent accidental zoom + enforce 44px taps.
+   ============================================================ */
+
+* {
+  touch-action: manipulation;
+}
+
+button,
+a[role="button"],
+[role="button"],
+input[type="button"],
+input[type="submit"],
+input[type="reset"] {
+  min-height: 44px;
+}
+
+/* Compact table actions opt out */
+.btn-compact,
+[data-size="compact"],
+[data-size="xs"] {
+  min-height: unset;
+}
+
+/* iOS Safari: prevent input zoom */
+@supports (-webkit-touch-callout: none) {
+
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+
+/* ============================================================
+   GLOBAL TRANSITION & EFFECT UTILITIES
+   Applied to all interactive elements for consistent micro-interactions.
+   Rules: max 150ms, functional only, respects prefers-reduced-motion.
+   ============================================================ */
+
+/* Base interactive transition — all clickable elements */
+button,
+a,
+[role="button"],
+[role="link"] {
+  transition:
+    color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    opacity var(--motion-fast) var(--ease-standard);
+}
+
+/* Input fields */
+input,
+textarea,
+select {
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    background var(--motion-fast) var(--ease-standard);
+}
+
+/* Cards — hover lift effect */
+[data-theme="dark"] .route-metric,
+[data-theme="dark"] .factory-data-card,
+[data-theme="dark"] .factory-workflow-chip {
+  transition:
+    box-shadow var(--motion-base) var(--ease-standard),
+    border-color var(--motion-base) var(--ease-standard),
+    transform var(--motion-base) var(--ease-standard);
+}
+
+[data-theme="dark"] .route-metric:hover,
+[data-theme="dark"] .factory-data-card:hover {
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.35),
+    0 1px 4px rgba(0, 0, 0, 0.20),
+    0 0 0 1px rgba(255, 255, 255, 0.07);
+  transform: translateY(-1px);
+}
+
+/* Skeleton shimmer animation */
+@keyframes skeleton-shimmer {
+  0% {
+    background-position: -200% center;
+  }
+
+  100% {
+    background-position: 200% center;
+  }
+}
+
+[data-theme="dark"] .animate-pulse {
+  animation: skeleton-shimmer 2s linear infinite;
+  background: linear-gradient(90deg,
+      var(--surface-skeleton) 0%,
+      var(--surface-skeleton-shine) 50%,
+      var(--surface-skeleton) 100%);
+  background-size: 200% auto;
+}
+
+/* Focus ring — consistent across all elements */
+[data-theme="dark"] *:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--surface-app), 0 0 0 4px var(--action-primary),
+    0 0 8px rgba(79, 120, 232, 0.20);
+}
+
+/* Table row hover — smooth, non-distracting */
+[data-theme="dark"] tr {
+  transition: background-color var(--motion-fast) var(--ease-standard);
+}
+
+/* Sidebar item transitions */
+[data-theme="dark"] .factory-nav-link {
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
+}
+
+/* Panel slide-in — for drawers and expanding panels */
+@keyframes panel-enter {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-panel-enter {
+  animation: panel-enter var(--motion-base) var(--ease-decelerate) both;
+}
+
+.animate-fade-in {
+  animation: fade-in var(--motion-fast) var(--ease-standard) both;
+}
+
+.animate-scale-in {
+  animation: scale-in var(--motion-base) var(--ease-decelerate) both;
+}
+
 @layer components {
   .operational-page {
     width: 100%;
@@ -1313,9 +1525,9 @@ input[type="checkbox"] {
   --action-secondary-border: #333b48;
   --action-secondary-text: #f1f5f9;
   --action-ghost-hover: #252b36;
-  --focus-ring: 0 0 0 1px rgba(255, 184, 104, 0.9);
+  --focus-ring: 0 0 0 1px rgba(79, 120, 232, 0.9);
   background:
-    radial-gradient(circle at 14% 12%, rgba(255, 184, 104, 0.14), transparent 24%),
+    radial-gradient(circle at 14% 12%, rgba(79, 120, 232, 0.14), transparent 24%),
     radial-gradient(circle at 82% 20%, rgba(98, 223, 125, 0.06), transparent 18%),
     linear-gradient(180deg, #0d1015 0%, #111318 56%, #0d1015 100%);
 }
@@ -1370,7 +1582,7 @@ input[type="checkbox"] {
 
 .factory-auth-card--support {
   background:
-    linear-gradient(180deg, rgba(255, 184, 104, 0.04), rgba(255, 255, 255, 0.01)),
+    linear-gradient(180deg, rgba(79, 120, 232, 0.04), rgba(255, 255, 255, 0.01)),
     var(--surface-industrial-deep);
 }
 
@@ -1380,7 +1592,7 @@ input[type="checkbox"] {
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-xl);
   background:
-    linear-gradient(180deg, rgba(255, 184, 104, 0.04), rgba(255, 255, 255, 0.01)),
+    linear-gradient(180deg, rgba(79, 120, 232, 0.04), rgba(255, 255, 255, 0.01)),
     linear-gradient(180deg, var(--surface-panel), var(--surface-card));
   padding: 1.5rem;
   box-shadow:
@@ -1423,8 +1635,8 @@ input[type="checkbox"] {
 .factory-auth-input:focus {
   border-color: var(--border-focus) !important;
   box-shadow:
-    0 0 0 1px rgba(255, 184, 104, 0.6),
-    0 0 0 4px rgba(255, 184, 104, 0.08);
+    0 0 0 1px rgba(79, 120, 232, 0.6),
+    0 0 0 4px rgba(79, 120, 232, 0.08);
 }
 
 .factory-auth-provider {
@@ -1443,7 +1655,7 @@ input[type="checkbox"] {
   color: var(--action-primary-text);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    0 16px 34px rgba(255, 184, 104, 0.18);
+    0 16px 34px rgba(79, 120, 232, 0.18);
 }
 
 .factory-auth-cta:hover:not(:disabled) {
@@ -1481,9 +1693,9 @@ input[type="checkbox"] {
   --action-secondary-border: #35404d;
   --action-secondary-text: #f1f5f9;
   --action-ghost-hover: #242a34;
-  --focus-ring: 0 0 0 1px rgba(255, 184, 104, 0.9);
+  --focus-ring: 0 0 0 1px rgba(79, 120, 232, 0.9);
   background:
-    radial-gradient(circle at 14% 8%, rgba(255, 184, 104, 0.08), transparent 22%),
+    radial-gradient(circle at 14% 8%, rgba(79, 120, 232, 0.08), transparent 22%),
     radial-gradient(circle at 82% 12%, rgba(98, 223, 125, 0.04), transparent 16%),
     linear-gradient(180deg, #0d1015 0%, #101318 56%, #0b0d11 100%);
 }
@@ -1512,7 +1724,7 @@ input[type="checkbox"] {
 
 .factory-workstation-frame {
   background:
-    radial-gradient(circle at top, rgba(255, 184, 104, 0.02), transparent 24%),
+    radial-gradient(circle at top, rgba(79, 120, 232, 0.02), transparent 24%),
     var(--surface-shell);
 }
 
@@ -1529,7 +1741,7 @@ input[type="checkbox"] {
   overflow: hidden;
   border: 1px solid var(--border-default);
   background:
-    radial-gradient(circle at top left, rgba(255, 184, 104, 0.06), transparent 32%),
+    radial-gradient(circle at top left, rgba(79, 120, 232, 0.06), transparent 32%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0)),
     var(--surface-panel);
 }
@@ -1539,7 +1751,7 @@ input[type="checkbox"] {
   position: absolute;
   inset: auto 0 0 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 184, 104, 0.7), transparent);
+  background: linear-gradient(90deg, transparent, rgba(79, 120, 232, 0.7), transparent);
   opacity: 0.9;
 }
 
@@ -1547,6 +1759,9 @@ input[type="checkbox"] {
   border-radius: 0.35rem;
   border: 1px solid transparent;
   background: transparent;
+  transition: background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
 }
 
 .factory-nav-link:hover {
@@ -1555,12 +1770,15 @@ input[type="checkbox"] {
 }
 
 .factory-nav-link-active {
-  border-color: var(--border-default);
-  border-left-color: var(--action-primary);
-  background:
-    linear-gradient(90deg, rgba(255, 184, 104, 0.12), transparent 26%),
-    var(--surface-panel);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.02);
+  border-color: transparent;
+  border-left: 2px solid var(--action-primary);
+  border-radius: 0 0.35rem 0.35rem 0;
+  background: rgba(79, 120, 232, 0.07);
+  box-shadow: none;
+}
+
+.factory-nav-link-active:hover {
+  background: rgba(79, 120, 232, 0.10);
 }
 
 .factory-context-rail {
@@ -1595,7 +1813,7 @@ input[type="checkbox"] {
   position: relative;
   padding: 1.5rem;
   background:
-    radial-gradient(circle at top right, rgba(255, 184, 104, 0.08), transparent 22%),
+    radial-gradient(circle at top right, rgba(79, 120, 232, 0.08), transparent 22%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0)),
     var(--surface-elevated);
 }
@@ -1859,7 +2077,7 @@ input[type="checkbox"] {
 .factory-workflow-lane--critical {
   min-height: 13rem;
   background:
-    linear-gradient(180deg, rgba(255, 184, 104, 0.05), rgba(255, 255, 255, 0)),
+    linear-gradient(180deg, rgba(79, 120, 232, 0.05), rgba(255, 255, 255, 0)),
     var(--surface-elevated);
 }
 
@@ -2072,7 +2290,7 @@ input[type="checkbox"] {
   display: block;
   color: var(--text-primary);
   background:
-    radial-gradient(circle at 12% 8%, rgba(255, 184, 104, 0.08), transparent 18%),
+    radial-gradient(circle at 12% 8%, rgba(79, 120, 232, 0.08), transparent 18%),
     radial-gradient(circle at 86% 22%, rgba(98, 223, 125, 0.05), transparent 16%),
     linear-gradient(180deg, var(--surface-app) 0%, var(--surface-industrial-deep) 100%);
 }
@@ -2203,26 +2421,26 @@ input[type="checkbox"] {
 }
 
 .factory-ocr-stagepill[data-state="done"] {
-  border-color: rgba(255, 184, 104, 0.3);
-  background: rgba(255, 184, 104, 0.1);
+  border-color: rgba(79, 120, 232, 0.3);
+  background: rgba(79, 120, 232, 0.1);
   color: var(--text-primary);
 }
 
 .factory-ocr-stagepill[data-state="done"] .factory-ocr-stagepill__index {
-  border-color: rgba(255, 184, 104, 0.34);
+  border-color: rgba(79, 120, 232, 0.34);
   color: var(--action-primary);
 }
 
 .factory-ocr-stagepill[data-state="current"] {
-  border-color: rgba(255, 184, 104, 0.48);
-  background: linear-gradient(180deg, rgba(255, 184, 104, 0.14), rgba(120, 68, 20, 0.32));
+  border-color: rgba(79, 120, 232, 0.48);
+  background: linear-gradient(180deg, rgba(79, 120, 232, 0.14), rgba(120, 68, 20, 0.32));
   color: var(--text-primary);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 
 .factory-ocr-stagepill[data-state="current"] .factory-ocr-stagepill__index {
-  border-color: rgba(255, 184, 104, 0.56);
-  background: rgba(255, 184, 104, 0.18);
+  border-color: rgba(79, 120, 232, 0.56);
+  background: rgba(79, 120, 232, 0.18);
   color: var(--action-primary);
 }
 
@@ -2243,8 +2461,8 @@ input[type="checkbox"] {
 }
 
 .factory-ocr-status[data-tone="warning"] {
-  border-color: rgba(255, 184, 104, 0.24);
-  background: rgba(255, 184, 104, 0.08);
+  border-color: rgba(79, 120, 232, 0.24);
+  background: rgba(79, 120, 232, 0.08);
   color: rgba(255, 236, 208, 0.94);
 }
 
@@ -2314,8 +2532,8 @@ input[type="checkbox"] {
 }
 
 .factory-ocr-chip--warning {
-  border-color: rgba(255, 184, 104, 0.28);
-  background: rgba(255, 184, 104, 0.08);
+  border-color: rgba(79, 120, 232, 0.28);
+  background: rgba(79, 120, 232, 0.08);
   color: rgba(255, 232, 197, 0.96);
 }
 
@@ -2360,21 +2578,21 @@ input[type="checkbox"] {
 .factory-ocr-dropzone {
   border: 1px dashed var(--border-strong);
   background:
-    radial-gradient(circle at center, rgba(255, 184, 104, 0.06), transparent 30%),
+    radial-gradient(circle at center, rgba(79, 120, 232, 0.06), transparent 30%),
     linear-gradient(180deg, rgba(20, 24, 31, 0.94), rgba(12, 15, 20, 0.98));
   min-height: 31rem;
 }
 
 .factory-ocr-dropzone[data-dragging="true"] {
-  border-color: rgba(255, 184, 104, 0.58);
+  border-color: rgba(79, 120, 232, 0.58);
   box-shadow:
-    inset 0 0 0 1px rgba(255, 184, 104, 0.12),
-    0 0 0 1px rgba(255, 184, 104, 0.08);
+    inset 0 0 0 1px rgba(79, 120, 232, 0.12),
+    0 0 0 1px rgba(79, 120, 232, 0.08);
 }
 
 .factory-ocr-button-primary {
-  border: 1px solid rgba(255, 184, 104, 0.48);
-  background: linear-gradient(180deg, rgba(255, 184, 104, 1), rgba(214, 133, 58, 1));
+  border: 1px solid rgba(79, 120, 232, 0.48);
+  background: linear-gradient(180deg, rgba(79, 120, 232, 1), rgba(214, 133, 58, 1));
   color: var(--action-primary-text);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }

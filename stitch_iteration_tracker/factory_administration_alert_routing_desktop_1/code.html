@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>INDUSTRIAL OS - Alert Routing</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "secondary-fixed": "#a2eeff",
+                      "surface-dim": "#0f131d",
+                      "outline-variant": "#434655",
+                      "primary-container": "#2563eb",
+                      "on-secondary-container": "#00515d",
+                      "tertiary-fixed-dim": "#4edea3",
+                      "secondary-fixed-dim": "#2fd9f4",
+                      "primary": "#b4c5ff",
+                      "primary-fixed": "#dbe1ff",
+                      "secondary": "#5de6ff",
+                      "tertiary": "#4edea3",
+                      "background": "#0f131d",
+                      "on-primary": "#002a78",
+                      "inverse-on-surface": "#2c303b",
+                      "on-surface-variant": "#c3c6d7",
+                      "on-secondary-fixed": "#001f25",
+                      "secondary-container": "#00cbe6",
+                      "on-surface": "#dfe2f0",
+                      "surface-container-lowest": "#0a0e17",
+                      "surface-container-highest": "#31353f",
+                      "inverse-primary": "#0053db",
+                      "on-tertiary": "#003824",
+                      "on-secondary": "#00363e",
+                      "inverse-surface": "#dfe2f0",
+                      "on-tertiary-container": "#bdffdb",
+                      "on-primary-fixed": "#00174b",
+                      "on-tertiary-fixed": "#002113",
+                      "surface-container-high": "#262a34",
+                      "primary-fixed-dim": "#b4c5ff",
+                      "surface-container-low": "#171c25",
+                      "surface-variant": "#31353f",
+                      "on-error-container": "#ffdad6",
+                      "surface-tint": "#b4c5ff",
+                      "surface": "#0f131d",
+                      "error": "#ffb4ab",
+                      "on-secondary-fixed-variant": "#004e5a",
+                      "tertiary-container": "#007d55",
+                      "surface-bright": "#353944",
+                      "on-primary-fixed-variant": "#003ea8",
+                      "surface-container": "#1b2029",
+                      "on-tertiary-fixed-variant": "#005236",
+                      "outline": "#8d90a0",
+                      "tertiary-fixed": "#6ffbbe",
+                      "on-background": "#dfe2f0",
+                      "error-container": "#93000a",
+                      "on-error": "#690005",
+                      "on-primary-container": "#eeefff"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "unit": "4px",
+                      "gutter": "12px",
+                      "margin": "16px",
+                      "panel-padding": "12px"
+              },
+              "fontFamily": {
+                      "body-sm": ["Inter"],
+                      "label-caps": ["JetBrains Mono"],
+                      "headline-md": ["Inter"],
+                      "data-mono": ["JetBrains Mono"],
+                      "headline-lg": ["Inter"],
+                      "body-md": ["Inter"]
+              },
+              "fontSize": {
+                      "body-sm": ["12px", {"lineHeight": "16px", "fontWeight": "400"}],
+                      "label-caps": ["10px", {"lineHeight": "12px", "letterSpacing": "0.08em", "fontWeight": "700"}],
+                      "headline-md": ["18px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                      "data-mono": ["13px", {"lineHeight": "16px", "letterSpacing": "-0.01em", "fontWeight": "500"}],
+                      "headline-lg": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.02em", "fontWeight": "600"}],
+                      "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+              }
+            },
+          },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #0a0e17; }
+        ::-webkit-scrollbar-thumb { background: #434655; }
+        ::-webkit-scrollbar-thumb:hover { background: #5de6ff; }
+        .grid-bg {
+            background-image: radial-gradient(circle at 1px 1px, rgba(67, 70, 85, 0.1) 1px, transparent 0);
+            background-size: 24px 24px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md selection:bg-secondary selection:text-on-secondary">
+<!-- Persistent Sidebar -->
+<aside class="fixed left-0 top-0 h-full w-[240px] bg-surface-dim flex flex-col h-full py-4 space-y-2 border-r border-outline-variant z-50">
+<div class="px-4 mb-6">
+<div class="text-headline-md font-headline-md font-bold tracking-tighter text-on-surface">INDUSTRIAL OS</div>
+<div class="font-label-caps text-label-caps text-secondary-container tracking-widest mt-1 opacity-70">Terminal v4.02</div>
+</div>
+<nav class="flex-1 px-2 space-y-1">
+<a class="flex items-center px-3 py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150 rounded" href="#">
+<span class="material-symbols-outlined mr-3">factory</span>
+<span class="font-label-caps text-label-caps">Production</span>
+</a>
+<a class="flex items-center px-3 py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150 rounded" href="#">
+<span class="material-symbols-outlined mr-3">group</span>
+<span class="font-label-caps text-label-caps">Users</span>
+</a>
+<a class="flex items-center px-3 py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150 rounded" href="#">
+<span class="material-symbols-outlined mr-3">monitoring</span>
+<span class="font-label-caps text-label-caps">Analytics</span>
+</a>
+<a class="flex items-center px-3 py-2 text-secondary border-l-2 border-secondary bg-surface-container-high transition-colors duration-150" href="#">
+<span class="material-symbols-outlined mr-3">alt_route</span>
+<span class="font-label-caps text-label-caps">Routing</span>
+</a>
+<a class="flex items-center px-3 py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150 rounded" href="#">
+<span class="material-symbols-outlined mr-3">inventory</span>
+<span class="font-label-caps text-label-caps">Inventory</span>
+</a>
+</nav>
+<div class="px-4 py-4 space-y-4">
+<button class="w-full bg-error-container text-on-error-container py-2 text-label-caps font-label-caps flex items-center justify-center gap-2 hover:brightness-110 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-[16px]">emergency_home</span>
+                EMERGENCY STOP
+            </button>
+<div class="pt-4 border-t border-outline-variant space-y-1">
+<a class="flex items-center px-3 py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150 rounded" href="#">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="font-label-caps text-label-caps">Diagnostics</span>
+</a>
+<a class="flex items-center px-3 py-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors duration-150 rounded" href="#">
+<span class="material-symbols-outlined mr-3">logout</span>
+<span class="font-label-caps text-label-caps">Logout</span>
+</a>
+</div>
+</div>
+</aside>
+<!-- Top Workspace Bar -->
+<header class="fixed top-0 right-0 left-[240px] h-12 bg-surface-container-lowest flex justify-between items-center px-4 w-full h-12 border-b border-outline-variant z-40">
+<div class="flex items-center gap-6">
+<div class="font-label-caps text-label-caps text-secondary-container tracking-widest">CONTROL_CENTER</div>
+<div class="relative group">
+<span class="material-symbols-outlined absolute left-2 top-1/2 -translate-y-1/2 text-outline text-[18px]">search</span>
+<input class="bg-surface-container-lowest border border-outline-variant text-body-sm font-data-mono px-8 py-1 focus:outline-none focus:ring-1 focus:ring-secondary-fixed transition-all w-64" placeholder="CMD SEARCH..." type="text"/>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex gap-2">
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">notifications_active</span>
+</button>
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">sensors</span>
+</button>
+<button class="p-1.5 text-on-surface-variant hover:bg-surface-container-highest transition-colors">
+<span class="material-symbols-outlined">terminal</span>
+</button>
+</div>
+<button class="bg-primary text-on-primary px-3 py-1 font-label-caps text-[11px] hover:brightness-110 active:scale-95 transition-all">LIVE_FEED</button>
+<div class="w-8 h-8 rounded bg-surface-container-high border border-outline-variant overflow-hidden">
+<img alt="Admin User Profile" data-alt="A clinical, hyper-realistic profile portrait of a system administrator in an ultra-modern workspace. The lighting is dominated by glowing cyan monitors, reflecting sharp blue highlights on their stoic face and modern eyewear. The background is a dense array of high-tech workstation servers and cable management in deep charcoal and slate tones. The mood is one of intense focus and absolute professional competence." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD6O6AaxrRHu_CaFRXzC9ziMCQT-UZB-upl1xMNRxSn7pegNyVMu1l6f8BjnAHGvaQh5OK-T05GCn-r0cN9s7EsmO7DkdnyMYIpQsx2EnXsH2JH72yg5fqz7-lIJkFguDHVLFWi-du9kmzqtx6zs0u3RKY1aMy6SpiBkt4JB2XNDvApynEzyZUbpGBTW-d_EjADJT-dEYpMOl21sFAow14WFTX-QKugWMHAADvNFuRR7O78MEQ0l-18cXPNp1xDbshXbJvFQOi2jPNt"/>
+</div>
+</div>
+</header>
+<!-- Main Workspace -->
+<main class="ml-[240px] mt-12 p-margin flex flex-col gap-gutter min-h-[calc(100vh-48px)] grid-bg">
+<!-- Header Hero -->
+<section class="flex flex-col gap-2">
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight">Keep factory setup and team control in one admin lane</h1>
+<div class="flex items-center gap-2">
+<span class="h-2 w-2 rounded-full bg-secondary animate-pulse"></span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">OPERATIONAL STATUS: NOMINAL</span>
+</div>
+</section>
+<!-- Admin Tools Strip -->
+<nav class="flex border-b border-outline-variant">
+<button class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors">Board</button>
+<button class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors">Reports</button>
+<button class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors">Plans</button>
+<button class="px-6 py-3 font-label-caps text-label-caps text-on-surface-variant hover:text-on-surface hover:bg-surface-container-low transition-colors">Billing</button>
+<button class="px-6 py-3 font-label-caps text-label-caps text-primary border-b-2 border-primary bg-surface-container-high">ALERTS</button>
+</nav>
+<!-- KPI Strip -->
+<section class="grid grid-cols-3 gap-gutter">
+<div class="bg-surface-container-low border border-outline-variant p-panel-padding flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Active Recipients</span>
+<span class="font-data-mono text-headline-md text-secondary">00</span>
+</div>
+<div class="bg-surface-container-low border border-outline-variant p-panel-padding flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Remaining Capacity</span>
+<span class="font-data-mono text-headline-md text-tertiary">02</span>
+</div>
+<div class="bg-surface-container-low border border-outline-variant p-panel-padding flex justify-between items-center">
+<span class="font-label-caps text-label-caps text-on-surface-variant">Last Alert Sent</span>
+<span class="font-data-mono text-body-sm text-outline">No recent alert</span>
+</div>
+</section>
+<!-- LIVE REMINDERS Strip -->
+<div class="bg-surface-container-high border border-secondary/20 p-2 overflow-hidden flex items-center gap-4">
+<div class="font-label-caps text-label-caps bg-secondary/10 text-secondary px-2 py-0.5 border border-secondary/30">LIVE REMINDERS</div>
+<div class="flex-1 overflow-hidden">
+<div class="flex gap-12 animate-marquee whitespace-nowrap">
+<span class="font-body-sm text-on-surface-variant"><span class="text-secondary font-bold">●</span> System backup scheduled for 04:00 GMT</span>
+<span class="font-body-sm text-on-surface-variant"><span class="text-tertiary font-bold">●</span> Node 04 redundancy check passed</span>
+<span class="font-body-sm text-on-surface-variant"><span class="text-error font-bold">●</span> Calibration drift detected on Sector 7</span>
+<span class="font-body-sm text-on-surface-variant"><span class="text-secondary font-bold">●</span> Firmware update available for Sensor Grid v2</span>
+</div>
+</div>
+</div>
+<!-- Alert Routing Grid (Split Layout) -->
+<div class="flex-1 grid grid-cols-12 gap-gutter">
+<!-- LEFT: Recipients Management -->
+<div class="col-span-5 flex flex-col gap-gutter">
+<div class="bg-surface-container border border-outline-variant flex flex-col">
+<div class="bg-surface-container-highest p-panel-padding border-b border-outline-variant flex justify-between items-center">
+<span class="font-label-caps text-label-caps">WhatsApp Recipients</span>
+<div class="flex gap-2">
+<span class="material-symbols-outlined text-[16px] cursor-pointer hover:text-secondary transition-colors">refresh</span>
+<span class="material-symbols-outlined text-[16px] cursor-pointer hover:text-secondary transition-colors">settings</span>
+</div>
+</div>
+<div class="p-panel-padding space-y-4">
+<div class="bg-surface-container-lowest border border-outline-variant p-3 flex flex-col gap-3 group hover:border-secondary/50 transition-all">
+<div class="flex justify-between items-start">
+<div>
+<div class="font-data-mono text-body-md text-on-surface">+91 ******9313</div>
+<div class="flex items-center gap-1.5 mt-1">
+<span class="h-1.5 w-1.5 rounded-full bg-on-surface-variant"></span>
+<span class="font-label-caps text-[9px] text-on-surface-variant uppercase">Pending Verification</span>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="relative w-8 h-4 bg-surface-container-high rounded-full border border-outline transition-all cursor-pointer">
+<span class="absolute left-0.5 top-0.5 w-2.5 h-2.5 bg-outline rounded-full transition-all"></span>
+</button>
+<div class="flex gap-1">
+<button class="p-1 hover:bg-surface-container-highest transition-colors rounded">
+<span class="material-symbols-outlined text-[18px] text-error">delete_forever</span>
+</button>
+</div>
+</div>
+</div>
+<div class="flex flex-wrap gap-2">
+<span class="bg-surface-container-high border border-outline-variant px-2 py-0.5 text-[10px] font-label-caps text-on-surface-variant">CRITICAL</span>
+<span class="bg-surface-container-high border border-outline-variant px-2 py-0.5 text-[10px] font-label-caps text-on-surface-variant">WARNINGS</span>
+<span class="bg-surface-container-high border border-outline-variant px-2 py-0.5 text-[10px] font-label-caps text-on-surface-variant">SECURITY</span>
+</div>
+</div>
+<button class="w-full border-2 border-dashed border-outline-variant p-4 flex flex-col items-center justify-center gap-2 text-on-surface-variant hover:border-secondary hover:text-secondary transition-all group">
+<span class="material-symbols-outlined group-hover:scale-110 transition-transform">person_add</span>
+<span class="font-label-caps text-label-caps">ADD NEW RECIPIENT</span>
+</button>
+</div>
+</div>
+<div class="bg-surface-container border border-outline-variant p-panel-padding flex-1">
+<div class="font-label-caps text-label-caps mb-4 text-on-surface-variant">Routing Tags</div>
+<div class="space-y-2">
+<div class="flex items-center justify-between p-2 hover:bg-surface-container-low transition-colors group">
+<div class="flex items-center gap-3">
+<span class="h-3 w-3 rounded-full bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.4)]"></span>
+<span class="font-data-mono text-body-sm">CRITICAL</span>
+</div>
+<span class="font-data-mono text-xs text-outline opacity-0 group-hover:opacity-100">HIGH PRIORITY</span>
+</div>
+<div class="flex items-center justify-between p-2 hover:bg-surface-container-low transition-colors group">
+<div class="flex items-center gap-3">
+<span class="h-3 w-3 rounded-full bg-amber-500"></span>
+<span class="font-data-mono text-body-sm">WARNINGS</span>
+</div>
+<span class="font-data-mono text-xs text-outline opacity-0 group-hover:opacity-100">STABILITY</span>
+</div>
+<div class="flex items-center justify-between p-2 hover:bg-surface-container-low transition-colors group">
+<div class="flex items-center gap-3">
+<span class="h-3 w-3 rounded-full bg-blue-500"></span>
+<span class="font-data-mono text-body-sm">SECURITY</span>
+</div>
+<span class="font-data-mono text-xs text-outline opacity-0 group-hover:opacity-100">ACCESS LOGS</span>
+</div>
+<div class="flex items-center justify-between p-2 hover:bg-surface-container-low transition-colors group">
+<div class="flex items-center gap-3">
+<span class="h-3 w-3 rounded-full bg-emerald-500"></span>
+<span class="font-data-mono text-body-sm">REPORTS</span>
+</div>
+<span class="font-data-mono text-xs text-outline opacity-0 group-hover:opacity-100">SCHEDULED</span>
+</div>
+</div>
+</div>
+</div>
+<!-- RIGHT: Configuration & Monitor -->
+<div class="col-span-7 flex flex-col gap-gutter">
+<div class="bg-surface-container border border-outline-variant">
+<div class="bg-surface-container-highest p-panel-padding border-b border-outline-variant flex justify-between items-center">
+<span class="font-label-caps text-label-caps">Alert Configuration Rules</span>
+<button class="bg-slate-800 border border-slate-700 px-3 py-1 font-label-caps text-[10px] hover:bg-slate-700">NEW_RULE</button>
+</div>
+<div class="p-0">
+<table class="w-full text-left font-data-mono text-body-sm">
+<thead class="bg-surface-container-low border-b border-outline-variant">
+<tr>
+<th class="py-2 px-4 font-label-caps text-label-caps text-outline">RULE_ID</th>
+<th class="py-2 px-4 font-label-caps text-label-caps text-outline">CONDITION</th>
+<th class="py-2 px-4 font-label-caps text-label-caps text-outline">CHANNEL</th>
+<th class="py-2 px-4 font-label-caps text-label-caps text-outline">STATUS</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/30">
+<tr class="hover:bg-white/5 transition-colors cursor-pointer">
+<td class="py-3 px-4">#AL-1002</td>
+<td class="py-3 px-4">Temp &gt; 85°C</td>
+<td class="py-3 px-4 text-secondary">WHATSAPP</td>
+<td class="py-3 px-4"><span class="border border-emerald-500 text-emerald-500 px-1.5 py-0.5 text-[10px]">ACTIVE</span></td>
+</tr>
+<tr class="hover:bg-white/5 transition-colors cursor-pointer">
+<td class="py-3 px-4">#AL-1003</td>
+<td class="py-3 px-4">Unauthorized Access</td>
+<td class="py-3 px-4 text-secondary">WHATSAPP</td>
+<td class="py-3 px-4"><span class="border border-emerald-500 text-emerald-500 px-1.5 py-0.5 text-[10px]">ACTIVE</span></td>
+</tr>
+<tr class="hover:bg-white/5 transition-colors cursor-pointer opacity-50">
+<td class="py-3 px-4">#AL-1004</td>
+<td class="py-3 px-4">Daily Yield Summary</td>
+<td class="py-3 px-4">EMAIL</td>
+<td class="py-3 px-4"><span class="border border-outline text-outline px-1.5 py-0.5 text-[10px]">PAUSED</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="bg-surface-container-low border border-outline-variant flex-1 flex flex-col">
+<div class="bg-surface-container-highest p-panel-padding border-b border-outline-variant flex justify-between items-center">
+<span class="font-label-caps text-label-caps">Activity / Logs</span>
+<div class="flex items-center gap-4 font-data-mono text-[10px] text-outline">
+<span>UPTIME: 42D 12H</span>
+<span class="text-tertiary">SYNCED</span>
+</div>
+</div>
+<div class="flex-1 p-panel-padding font-data-mono text-[11px] overflow-y-auto space-y-1">
+<div class="flex gap-3 text-outline">
+<span class="shrink-0 text-on-surface-variant">14:02:11</span>
+<span class="text-tertiary">[SYSTEM]</span>
+<span>Initialization handshake with WhatsApp Gateway successful.</span>
+</div>
+<div class="flex gap-3 text-outline">
+<span class="shrink-0 text-on-surface-variant">14:05:44</span>
+<span class="text-secondary">[ROUTING]</span>
+<span>Updating recipient policy for +91******9313...</span>
+</div>
+<div class="flex gap-3 text-outline">
+<span class="shrink-0 text-on-surface-variant">14:12:00</span>
+<span class="text-outline">[HEARTBEAT]</span>
+<span>All routing nodes operational. No packets lost.</span>
+</div>
+<div class="flex gap-3 text-outline">
+<span class="shrink-0 text-on-surface-variant">14:28:31</span>
+<span class="text-rose-400">[SECURITY]</span>
+<span>Blocked attempt to bypass verification for Node 17.</span>
+</div>
+<div class="flex gap-3 text-outline">
+<span class="shrink-0 text-on-surface-variant">14:35:01</span>
+<span class="text-tertiary">[SYSTEM]</span>
+<span>Admin session re-validated for Terminal v4.02.</span>
+</div>
+<div class="flex gap-3 text-outline animate-pulse">
+<span class="shrink-0 text-on-surface-variant">14:40:55</span>
+<span class="text-secondary">[GATEWAY]</span>
+<span>Listening for incoming verification tokens...</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<style>
+        @keyframes marquee {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+        .animate-marquee {
+            animation: marquee 30s linear infinite;
+        }
+        .animate-marquee:hover {
+            animation-play-state: paused;
+        }
+    </style>
+<script>
+        // Micro-interactions for the "industrial" feel
+        document.querySelectorAll('button, a').forEach(el => {
+            el.addEventListener('mousedown', () => {
+                el.classList.add('scale-95');
+            });
+            el.addEventListener('mouseup', () => {
+                el.classList.remove('scale-95');
+            });
+            el.addEventListener('mouseleave', () => {
+                el.classList.remove('scale-95');
+            });
+        });
+
+        // Toggle simulation
+        document.querySelectorAll('button.relative').forEach(toggle => {
+            toggle.addEventListener('click', () => {
+                const dot = toggle.querySelector('span');
+                const isActive = toggle.classList.contains('bg-secondary');
+                
+                if (isActive) {
+                    toggle.classList.remove('bg-secondary', 'border-secondary-fixed');
+                    toggle.classList.add('bg-surface-container-high', 'border-outline');
+                    dot.classList.remove('translate-x-4', 'bg-on-secondary');
+                    dot.classList.add('translate-x-0', 'bg-outline');
+                } else {
+                    toggle.classList.add('bg-secondary', 'border-secondary-fixed');
+                    toggle.classList.remove('bg-surface-container-high', 'border-outline');
+                    dot.classList.add('translate-x-4', 'bg-on-secondary');
+                    dot.classList.remove('translate-x-0', 'bg-outline');
+                }
+            });
+        });
+    </script>
+</body></html>

@@ -47,11 +47,11 @@ function formatDateTime(value?: string | null) {
 }
 
 function dispatchStatusBadgeClass(status: string | null | undefined) {
-  if (status === "delivered") return "border-emerald-400/35 bg-emerald-500/12 text-emerald-200";
-  if (status === "dispatched") return "border-cyan-400/35 bg-cyan-500/12 text-cyan-200";
-  if (status === "exited") return "border-cyan-400/35 bg-cyan-500/12 text-cyan-200";
-  if (status === "loaded") return "border-amber-400/35 bg-amber-500/12 text-amber-200";
-  if (status === "cancelled") return "border-rose-400/35 bg-rose-500/12 text-rose-200";
+  if (status === "delivered") return "border-status-success-border bg-status-success-bg text-status-success-fg";
+  if (status === "dispatched") return "border-status-processing-border bg-status-processing-bg text-status-processing-fg";
+  if (status === "exited") return "border-status-processing-border bg-status-processing-bg text-status-processing-fg";
+  if (status === "loaded") return "border-status-warning-border bg-status-warning-bg text-status-warning-fg";
+  if (status === "cancelled") return "border-status-danger-border bg-status-danger-bg text-status-danger-fg";
   return "border-slate-400/35 bg-surface-panel/12 text-text-secondary";
 }
 
@@ -108,7 +108,7 @@ export function SteelInvoiceDetailPage() {
             <CardTitle>Steel Invoice Detail</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{error || sessionError || "Invoice not found."}</div>
+            <div className="text-sm text-status-danger-fg">{error || sessionError || "Invoice not found."}</div>
             <div className="flex gap-3">
               <Link href="/steel/invoices">
                 <Button variant="outline">Back to Invoices</Button>
@@ -358,7 +358,7 @@ export function SteelInvoiceDetailPage() {
                               Dispatched
                             </span>
                           ) : Number(line.dispatched_weight_kg || 0) > 0 ? (
-                            <span className="inline-flex rounded-full border border-amber-400/35 bg-amber-500/12 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-amber-200">
+                            <span className="inline-flex rounded-full border border-amber-400/35 bg-amber-500/12 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-status-warning-fg">
                               Partial
                             </span>
                           ) : (
@@ -488,7 +488,7 @@ export function SteelInvoiceDetailPage() {
           </Card>
         </section>
 
-        {error ? <div className="text-sm text-red-400">{error}</div> : null}
+        {error ? <div className="text-sm text-status-danger-fg">{error}</div> : null}
       </div>
     </main>
   );

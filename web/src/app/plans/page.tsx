@@ -1,5 +1,5 @@
-import PlansPage from "@/components/plans-page";
+import { PlansWorkspace } from "@/features/billing";
 
 export default function PlansRoutePage() {
-  return <PlansPage />;
+  return <PlansWorkspace />;
 }

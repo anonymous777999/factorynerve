@@ -1,5 +1,5 @@
-import { SteelInventoryPage } from "@/components/steel-inventory-page";
+import { SteelInventoryWorkspace } from "@/features/steel";
 
 export default function SteelInventoryRoute() {
-  return <SteelInventoryPage />;
+  return <SteelInventoryWorkspace />;
 }

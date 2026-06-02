@@ -1,0 +1,232 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>DPR.ai - Verify Email</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed": "#001946",
+                    "on-surface-variant": "#d9c3ae",
+                    "on-error": "#690005",
+                    "secondary-fixed-dim": "#b1c5ff",
+                    "error-container": "#93000a",
+                    "tertiary-container": "#33b559",
+                    "on-tertiary": "#003914",
+                    "border-default": "#333b48",
+                    "surface-elevated": "#1c2029",
+                    "on-background": "#e2e2e9",
+                    "inverse-surface": "#e2e2e9",
+                    "error": "#ffb4ab",
+                    "outline": "#a18d7b",
+                    "secondary-fixed": "#dae2ff",
+                    "surface": "#111318",
+                    "secondary": "#b1c5ff",
+                    "background": "#111318",
+                    "inverse-primary": "#885200",
+                    "secondary-container": "#0459d3",
+                    "tertiary-fixed": "#7ffc97",
+                    "on-primary": "#482900",
+                    "inverse-on-surface": "#2e3036",
+                    "surface-container-highest": "#33353a",
+                    "surface-container-high": "#282a2f",
+                    "surface-canvas": "#111318",
+                    "surface-tint": "#ffb868",
+                    "text-secondary": "#cbd5e1",
+                    "surface-raised": "#212633",
+                    "text-primary": "#f1f5f9",
+                    "on-surface": "#e2e2e9",
+                    "surface-primary": "#161a21",
+                    "primary-fixed": "#ffddbb",
+                    "status-critical": "#dc2626",
+                    "border-strong": "#4a5568",
+                    "status-caution": "#ea580c",
+                    "surface-overlay": "#252b36",
+                    "on-primary-fixed-variant": "#673d00",
+                    "surface-container-lowest": "#0c0e13",
+                    "surface-ground": "#0a0b0d",
+                    "surface-container-low": "#1a1b21",
+                    "on-error-container": "#ffdad6",
+                    "primary-fixed-dim": "#ffb868",
+                    "on-primary-fixed": "#2b1700",
+                    "surface-variant": "#33353a",
+                    "on-secondary-container": "#d1dcff",
+                    "surface-dim": "#111318",
+                    "primary-container": "#e08c0f",
+                    "tertiary": "#62df7d",
+                    "surface-container": "#1e2025",
+                    "text-muted": "#64748b",
+                    "on-secondary": "#002c71",
+                    "border-subtle": "#252b36",
+                    "surface-bright": "#37393f",
+                    "on-tertiary-fixed-variant": "#005320",
+                    "on-tertiary-fixed": "#002109",
+                    "on-tertiary-container": "#003f17",
+                    "tertiary-fixed-dim": "#62df7d",
+                    "outline-variant": "#534435",
+                    "primary": "#ffb868",
+                    "on-primary-container": "#502e00",
+                    "on-secondary-fixed-variant": "#00419f"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "spacing": {
+                    "base": "16px",
+                    "sm": "12px",
+                    "margin-mobile": "16px",
+                    "gutter": "16px",
+                    "xl": "32px",
+                    "unit": "4px",
+                    "lg": "24px",
+                    "margin-desktop": "32px",
+                    "md": "20px",
+                    "micro": "4px",
+                    "xs": "8px"
+            },
+            "fontFamily": {
+                    "table-cell": [
+                            "Inter"
+                    ],
+                    "body-md": [
+                            "Inter"
+                    ],
+                    "page-title-mobile": [
+                            "Inter"
+                    ],
+                    "panel-title": [
+                            "Inter"
+                    ],
+                    "display-4xl": [
+                            "Inter"
+                    ],
+                    "label-sm": [
+                            "JetBrains Mono"
+                    ],
+                    "page-title": [
+                            "Inter"
+                    ],
+                    "metadata-xs": [
+                            "JetBrains Mono"
+                    ]
+            },
+            "fontSize": {
+                    "table-cell": [
+                            "13px",
+                            {
+                                    "lineHeight": "1.50",
+                                    "letterSpacing": "0em",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "body-md": [
+                            "14px",
+                            {
+                                    "lineHeight": "1.50",
+                                    "letterSpacing": "-0.006em",
+                                    "fontWeight": "400"
+                            }
+                    ],
+                    "page-title-mobile": [
+                            "20px",
+                            {
+                                    "lineHeight": "1.25",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "panel-title": [
+                            "18px",
+                            {
+                                    "lineHeight": "1.40",
+                                    "letterSpacing": "-0.010em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "display-4xl": [
+                            "36px",
+                            {
+                                    "lineHeight": "1.15",
+                                    "letterSpacing": "-0.026em",
+                                    "fontWeight": "700"
+                            }
+                    ],
+                    "label-sm": [
+                            "12px",
+                            {
+                                    "lineHeight": "1.45",
+                                    "letterSpacing": "0.004em",
+                                    "fontWeight": "500"
+                            }
+                    ],
+                    "page-title": [
+                            "24px",
+                            {
+                                    "lineHeight": "1.25",
+                                    "letterSpacing": "-0.018em",
+                                    "fontWeight": "600"
+                            }
+                    ],
+                    "metadata-xs": [
+                            "11px",
+                            {
+                                    "lineHeight": "1.45",
+                                    "letterSpacing": "0.05em",
+                                    "fontWeight": "600"
+                            }
+                    ]
+            }
+    },
+        },
+      }
+    </script>
+</head>
+<body class="bg-surface-canvas text-text-primary antialiased flex flex-col min-h-screen">
+<!-- TopAppBar JSON Component Mapping -->
+<header class="bg-surface-primary dark:bg-surface-primary border-b border-border-strong fixed top-0 w-full z-50 h-[48px] flex justify-between items-center px-margin-mobile md:px-margin-desktop">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-primary dark:text-primary" style="font-variation-settings: 'FILL' 1;">factory</span>
+<div class="flex flex-col">
+<span class="font-panel-title text-panel-title text-primary dark:text-primary tracking-tight font-extrabold">DPR.ai</span>
+</div>
+</div>
+<div class="flex items-center">
+<span class="font-metadata-xs text-metadata-xs text-text-muted">FACTORY OS</span>
+</div>
+</header>
+<!-- Main Content Area - Linear Auth Flow (No Nav Shell) -->
+<main class="flex-grow flex flex-col justify-center items-center px-margin-mobile pt-[48px] pb-lg">
+<!-- Auth Container -->
+<div class="w-full max-w-md bg-surface-primary border-2 border-border-strong rounded-xl shadow-xl p-xl flex flex-col gap-xl">
+<!-- Header Section -->
+<div class="text-center flex flex-col items-center gap-sm">
+<div class="w-16 h-16 rounded-full bg-surface-raised flex items-center justify-center border border-border-default mb-sm">
+<span class="material-symbols-outlined text-primary text-[32px]">mark_email_read</span>
+</div>
+<h1 class="font-page-title-mobile text-page-title-mobile text-text-primary">Email Verified</h1>
+<p class="font-body-md text-body-md text-text-muted">Your email address has been successfully verified. You can now access the factory system.</p>
+</div>
+<!-- Actions -->
+<div class="flex flex-col gap-sm">
+<button class="w-full h-12 bg-primary text-on-primary font-panel-title text-panel-title rounded flex items-center justify-center hover:bg-primary-fixed transition-colors">
+                    Sign in
+                </button>
+<button class="w-full h-12 bg-surface-raised border border-border-default text-text-primary font-body-md text-body-md rounded flex items-center justify-center hover:bg-surface-overlay transition-colors">
+                    Request new link
+                </button>
+</div>
+<!-- Secondary Info (Image Reference) -->
+<div class="mt-md rounded-lg overflow-hidden border border-border-subtle shadow-md">
+<img alt="Workflow map showing email verification process" class="w-full h-auto object-cover opacity-80 mix-blend-screen" data-alt="A highly technical workflow diagram mapping out an email verification process within an industrial software interface. The diagram uses glowing amber and blue nodes against a deep, dark grey grid background, emphasizing a high-tech, modern operational aesthetic. Thin connecting lines trace the data path, creating a sense of precision and complex system integration." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAMYLgEqGF62zouhnzAakdkjmoMsn_XOPyfXntNJnlcyxPUYCaVKtd0t2z0MGJCwB7NEWvehZnl1TjthwVUQtgKILt8i34NJqOmNn1q-Rl8We4wQBf9RK2ze90JInnk9a2ygDVRtv8O-bByQgGcp_7dCOPe79RTNyOcuojFq1_aw7vko-8bsfIrtXD1WLBAqsprqX5seBv1m6rSNrHJULpYheWmAREeDalA_ledE8Yjn1QhqA6tZEZIeufUpUH_s8W3XU-ezd2YZhA_">
+</div>
+</div>
+</main>
+</body></html>
