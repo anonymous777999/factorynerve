@@ -26,6 +26,7 @@ import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
+import { SuccessBanner, MutationErrorBanner } from "@/shared/feedback";
 
 type DecisionForm = {
   punchInAt: string;
@@ -1003,19 +1004,13 @@ export default function AttendanceReviewPage() {
         </GuidanceBlock>
 
         {status ? (
-          <div className="operational-panel border-status-success-border bg-status-success-bg px-4 py-3 text-sm text-status-success-fg">
-            {status}
-          </div>
+          <SuccessBanner message={status} onDismiss={() => setStatus("")} />
         ) : null}
         {error ? (
-          <div className="operational-panel border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">
-            {error}
-          </div>
+          <MutationErrorBanner message={error} onDismiss={() => setError("")} />
         ) : null}
         {sessionError ? (
-          <div className="operational-panel border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">
-            {sessionError}
-          </div>
+          <MutationErrorBanner message={sessionError} />
         ) : null}
 
         {/* AUDIT: DENSITY_OVERLOAD - collapse queue pulse metrics until the reviewer wants backlog context. */}

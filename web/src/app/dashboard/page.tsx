@@ -1,5 +1,5 @@
-import DashboardHome from "@/components/dashboard-home";
+import { DashboardHome } from "@/features/dashboard";
 
-export default function DashboardPage() {
+export default function DashboardRoute() {
   return <DashboardHome />;
 }

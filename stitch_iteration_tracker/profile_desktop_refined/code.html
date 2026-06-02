@@ -1,0 +1,300 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>FactoryNerve OS - Profile</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500;600&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed-dim": "#62df7d",
+                        "secondary-fixed-dim": "#b1c5ff",
+                        "surface-raised": "#212633",
+                        "on-surface-variant": "#d9c3ae",
+                        "secondary-container": "#0459d3",
+                        "surface-container-high": "#282a2f",
+                        "surface-bright": "#37393f",
+                        "on-primary": "#482900",
+                        "surface": "#111318",
+                        "surface-container-highest": "#33353a",
+                        "primary-container": "#e08c0f",
+                        "primary": "#ffb868",
+                        "surface-primary": "#161a21",
+                        "on-tertiary-fixed-variant": "#005320",
+                        "text-muted": "#64748b",
+                        "surface-canvas": "#111318",
+                        "error": "#ffb4ab",
+                        "border-strong": "#4a5568",
+                        "tertiary-container": "#33b559",
+                        "surface-container-lowest": "#0c0e13",
+                        "primary-fixed-dim": "#ffb868",
+                        "surface-container": "#1e2025",
+                        "primary-fixed": "#ffddbb",
+                        "on-primary-container": "#502e00",
+                        "inverse-on-surface": "#2e3036",
+                        "error-container": "#93000a",
+                        "on-primary-fixed-variant": "#673d00",
+                        "on-primary-fixed": "#2b1700",
+                        "status-caution": "#ea580c",
+                        "on-tertiary-fixed": "#002109",
+                        "on-background": "#e2e2e9",
+                        "surface-overlay": "#252b36",
+                        "surface-ground": "#0a0b0d",
+                        "on-error-container": "#ffdad6",
+                        "status-critical": "#dc2626",
+                        "text-primary": "#f1f5f9",
+                        "on-tertiary": "#003914",
+                        "surface-variant": "#33353a",
+                        "surface-tint": "#ffb868",
+                        "on-secondary-fixed-variant": "#00419f",
+                        "surface-elevated": "#1c2029",
+                        "outline": "#a18d7b",
+                        "on-surface": "#e2e2e9",
+                        "secondary-fixed": "#dae2ff",
+                        "inverse-primary": "#885200",
+                        "border-subtle": "#252b36",
+                        "border-default": "#333b48",
+                        "outline-variant": "#534435",
+                        "surface-container-low": "#1a1b21",
+                        "on-tertiary-container": "#003f17",
+                        "secondary": "#b1c5ff",
+                        "tertiary": "#62df7d",
+                        "tertiary-fixed": "#7ffc97",
+                        "on-error": "#690005",
+                        "on-secondary-fixed": "#001946",
+                        "inverse-surface": "#e2e2e9",
+                        "on-secondary-container": "#d1dcff",
+                        "surface-dim": "#111318",
+                        "text-secondary": "#cbd5e1",
+                        "on-secondary": "#002c71",
+                        "background": "#111318"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "base": "16px",
+                        "margin-mobile": "16px",
+                        "xs": "8px",
+                        "unit": "4px",
+                        "margin-desktop": "32px",
+                        "gutter": "16px",
+                        "xl": "32px",
+                        "sm": "12px",
+                        "micro": "4px",
+                        "md": "20px",
+                        "lg": "24px"
+                    },
+                    "fontFamily": {
+                        "table-cell": ["Inter"],
+                        "display-4xl": ["Inter"],
+                        "page-title-mobile": ["Inter"],
+                        "panel-title": ["Inter"],
+                        "label-sm": ["JetBrains Mono"],
+                        "page-title": ["Inter"],
+                        "metadata-xs": ["JetBrains Mono"],
+                        "body-md": ["Inter"]
+                    },
+                    "fontSize": {
+                        "table-cell": ["13px", { "lineHeight": "1.50", "letterSpacing": "0em", "fontWeight": "400" }],
+                        "display-4xl": ["36px", { "lineHeight": "1.15", "letterSpacing": "-0.026em", "fontWeight": "700" }],
+                        "page-title-mobile": ["20px", { "lineHeight": "1.25", "fontWeight": "600" }],
+                        "panel-title": ["18px", { "lineHeight": "1.40", "letterSpacing": "-0.010em", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "1.45", "letterSpacing": "0.004em", "fontWeight": "500" }],
+                        "page-title": ["24px", { "lineHeight": "1.25", "letterSpacing": "-0.018em", "fontWeight": "600" }],
+                        "metadata-xs": ["11px", { "lineHeight": "1.45", "letterSpacing": "0.05em", "fontWeight": "600" }],
+                        "body-md": ["14px", { "lineHeight": "1.50", "letterSpacing": "-0.006em", "fontWeight": "400" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface font-body-md text-body-md min-h-screen flex">
+<!-- NavigationDrawer -->
+<aside class="fixed left-0 top-0 h-full w-[220px] bg-surface-canvas dark:bg-surface-canvas border-r border-border-default z-40 hidden md:flex flex-col py-lg">
+<div class="px-gutter mb-xl flex items-center gap-xs">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">factory</span>
+<span class="font-panel-title text-panel-title text-primary tracking-tight">FACTORY OS</span>
+</div>
+<nav class="flex-1 px-sm flex flex-col gap-unit">
+<a class="flex items-center gap-sm px-sm py-sm rounded transition-all duration-200 text-on-surface-variant hover:bg-surface-raised" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">key</span>
+<span class="font-label-sm text-label-sm">System Access</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-sm rounded transition-all duration-200 text-on-surface-variant hover:bg-surface-raised" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">security</span>
+<span class="font-label-sm text-label-sm">Security Logs</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-sm rounded transition-all duration-200 text-primary font-bold bg-surface-container" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">fingerprint</span>
+<span class="font-label-sm text-label-sm">Identity Vault</span>
+</a>
+<a class="flex items-center gap-sm px-sm py-sm rounded transition-all duration-200 text-on-surface-variant hover:bg-surface-raised" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">help_center</span>
+<span class="font-label-sm text-label-sm">Help Center</span>
+</a>
+</nav>
+<div class="px-gutter mt-auto pt-gutter border-t border-border-subtle">
+<div class="flex items-center gap-sm text-text-muted">
+<span class="material-symbols-outlined text-status-caution">person</span>
+<span class="font-metadata-xs text-metadata-xs uppercase">J. Doe - Admin</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col md:ml-[220px] min-h-screen">
+<!-- TopAppBar -->
+<header class="bg-surface-primary dark:bg-surface-primary flex justify-between items-center px-margin-desktop w-full z-50 docked full-width top-0 h-12 border-b border-border-strong sticky">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-primary dark:text-primary">factory</span>
+<h1 class="font-panel-title text-panel-title text-primary dark:text-primary font-bold tracking-tight">DPR.ai</h1>
+<span class="ml-sm font-metadata-xs text-metadata-xs text-text-muted border-l border-border-strong pl-sm">RedVortex ORG</span>
+</div>
+<button class="font-label-sm text-label-sm text-text-muted hover:bg-surface-overlay transition-colors active:scale-95 duration-100 px-sm py-xs rounded flex items-center gap-xs border border-border-subtle">
+                FACTORY OS
+                <span class="material-symbols-outlined text-base">login</span>
+</button>
+</header>
+<!-- Canvas -->
+<div class="p-margin-desktop flex-1 overflow-y-auto">
+<header class="mb-xl flex items-center justify-between">
+<div>
+<h2 class="font-page-title text-page-title text-text-primary">Identity Profile</h2>
+<p class="font-table-cell text-table-cell text-text-muted mt-unit">Manage your operational credentials and workspace context.</p>
+</div>
+</header>
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-gutter mb-gutter">
+<!-- Col 1: Identity -->
+<section class="bg-surface-elevated border border-border-default rounded-lg p-lg flex flex-col items-center text-center shadow-[0_8px_24px_rgba(0,0,0,0.5)]">
+<div class="w-24 h-24 rounded-full bg-surface-raised border-2 border-border-strong flex items-center justify-center mb-md overflow-hidden relative shadow-inner">
+<img alt="Avatar" class="w-full h-full object-cover" data-alt="A high-contrast, moody close-up portrait of an industrial worker or engineer in a dimly lit factory setting. The lighting should be dramatic, with cool blue ambient light and a sharp amber rim light highlighting the subject's features. The aesthetic is dark, professional, and slightly gritty, reflecting a high-stakes, AI-augmented manufacturing environment." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBiSWzjU8cIyGDfrOPWRXYcJluk5oOIvsXcoiecOGt0Mt1Gl4F381lyCoZMfF7krIcqP5AbJUrt1WiVfETtJWUP26YGw-ERvKdihwRbIgUox2dl612-yIL1Jk_3YBe5doR7N6wWdIJFyyCmHZKfGI_i-e9uN5CWKDigbqxPa5pwpjWiD9l9Jzu4SXc4oSni78uSDn1s3j1kqhzuWqcNEH3YwHulXLjCkIBA5jDWbJnyYRvweneV-tRtgfFw5nVuAAKDEvpfakU9T1cs">
+</div>
+<h3 class="font-panel-title text-panel-title text-text-primary">John Doe</h3>
+<div class="mt-xs bg-surface-overlay border border-border-subtle rounded-full px-sm py-unit flex items-center gap-unit">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse shadow-[0_0_8px_rgba(255,184,104,0.5)]"></span>
+<span class="font-metadata-xs text-metadata-xs text-primary tracking-wider uppercase">Administrator</span>
+</div>
+<div class="w-full mt-xl text-left space-y-md">
+<div>
+<label class="font-metadata-xs text-metadata-xs text-text-muted uppercase tracking-wider block mb-unit">Primary Email</label>
+<div class="font-table-cell text-table-cell text-text-primary bg-surface-raised border border-border-subtle p-sm rounded flex items-center gap-sm">
+<span class="material-symbols-outlined text-text-muted text-sm">mail</span>
+                                j.doe@redvortex.com
+                            </div>
+</div>
+<div>
+<label class="font-metadata-xs text-metadata-xs text-text-muted uppercase tracking-wider block mb-unit">System ID</label>
+<div class="font-label-sm text-label-sm text-text-secondary bg-surface-ground p-sm rounded border border-border-subtle break-all">
+                                SYS-ID-98472-A
+                            </div>
+</div>
+</div>
+</section>
+<!-- Col 2: Security & Sessions -->
+<section class="bg-surface-elevated border border-border-default rounded-lg p-lg shadow-[0_8px_24px_rgba(0,0,0,0.5)] flex flex-col">
+<h3 class="font-panel-title text-panel-title text-text-primary mb-md flex items-center gap-sm border-b border-border-subtle pb-sm">
+<span class="material-symbols-outlined text-secondary">security</span>
+                        Security &amp; Sessions
+                    </h3>
+<div class="space-y-md flex-1">
+<div>
+<label class="font-metadata-xs text-metadata-xs text-text-muted uppercase tracking-wider block mb-unit">Last Login</label>
+<div class="bg-surface-raised border border-border-subtle p-sm rounded">
+<div class="flex justify-between items-center mb-unit">
+<span class="font-table-cell text-table-cell text-text-primary">Today, 08:42 AM</span>
+<span class="font-metadata-xs text-metadata-xs text-tertiary-fixed px-unit py-[2px] bg-tertiary-fixed/10 rounded">SUCCESS</span>
+</div>
+<div class="font-metadata-xs text-metadata-xs text-text-muted flex gap-sm">
+<span>IP: 192.168.1.45</span>
+<span>Device: Win10 / Chrome</span>
+</div>
+</div>
+</div>
+<div>
+<label class="font-metadata-xs text-metadata-xs text-text-muted uppercase tracking-wider block mb-unit flex items-center justify-between">
+                                Active Devices
+                                <span class="bg-surface-overlay px-unit rounded text-text-secondary">2</span>
+</label>
+<div class="space-y-unit">
+<div class="flex items-center gap-sm font-table-cell text-table-cell text-text-primary bg-surface-raised border border-primary/30 p-sm rounded relative overflow-hidden">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-primary"></div>
+<span class="material-symbols-outlined text-text-muted">computer</span>
+<span>Control Room Desktop (Current)</span>
+</div>
+<div class="flex items-center gap-sm font-table-cell text-table-cell text-text-secondary bg-surface-ground border border-border-subtle p-sm rounded">
+<span class="material-symbols-outlined text-text-muted">smartphone</span>
+<span>Mobile Auth Device</span>
+</div>
+</div>
+</div>
+</div>
+<button class="w-full mt-md bg-surface-raised border border-border-default hover:bg-surface-overlay text-text-primary font-label-sm text-label-sm py-sm rounded transition-colors flex justify-center items-center gap-sm focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 focus:ring-offset-surface">
+<span class="material-symbols-outlined text-sm">key</span>
+                        Change Password
+                    </button>
+</section>
+<!-- Col 3: Workspace Context -->
+<section class="bg-surface-elevated border border-border-default rounded-lg p-lg shadow-[0_8px_24px_rgba(0,0,0,0.5)] flex flex-col">
+<h3 class="font-panel-title text-panel-title text-text-primary mb-md flex items-center gap-sm border-b border-border-subtle pb-sm">
+<span class="material-symbols-outlined text-primary">domain</span>
+                        Workspace Context
+                    </h3>
+<div class="space-y-md flex-1">
+<div>
+<label class="font-metadata-xs text-metadata-xs text-text-muted uppercase tracking-wider block mb-unit">Current Assignment</label>
+<div class="bg-surface-raised border border-border-strong p-sm rounded relative overflow-hidden shadow-[0_0_8px_rgba(47,110,232,0.1)]">
+<div class="absolute right-0 top-0 opacity-10">
+<span class="material-symbols-outlined text-[64px]" style="font-variation-settings: 'FILL' 1;">precision_manufacturing</span>
+</div>
+<h4 class="font-panel-title text-panel-title text-text-primary relative z-10">RedVortex ORG</h4>
+<p class="font-metadata-xs text-metadata-xs text-text-secondary mt-unit relative z-10">Sector 7G / Heavy Assembly</p>
+</div>
+</div>
+<div>
+<label class="font-metadata-xs text-metadata-xs text-text-muted uppercase tracking-wider block mb-unit">Clearance Level</label>
+<div class="flex gap-unit">
+<div class="h-2 flex-1 bg-primary rounded-l"></div>
+<div class="h-2 flex-1 bg-primary"></div>
+<div class="h-2 flex-1 bg-primary"></div>
+<div class="h-2 flex-1 bg-surface-overlay rounded-r"></div>
+</div>
+<div class="flex justify-between mt-unit font-metadata-xs text-metadata-xs text-text-muted">
+<span>L1</span>
+<span class="text-primary">L3 (Admin)</span>
+<span>L4</span>
+</div>
+</div>
+</div>
+</section>
+</div>
+<!-- Bottom Section: Danger Zone -->
+<section class="bg-surface-ground border border-border-subtle rounded-lg p-lg mt-xl flex flex-col lg:flex-row justify-between items-center gap-md">
+<div>
+<h4 class="font-panel-title text-panel-title text-error flex items-center gap-sm">
+<span class="material-symbols-outlined">warning</span>
+                        Danger Zone
+                    </h4>
+<p class="font-table-cell text-table-cell text-text-muted mt-unit">Context switching or session termination. These actions require re-authentication.</p>
+</div>
+<div class="flex gap-sm w-full lg:w-auto">
+<button class="flex-1 lg:flex-none bg-surface-raised border border-border-default hover:bg-surface-overlay text-text-primary font-label-sm text-label-sm py-sm px-md rounded transition-colors">
+                        Switch Context
+                    </button>
+<button class="flex-1 lg:flex-none bg-error/10 border border-error/30 hover:bg-error/20 text-error font-label-sm text-label-sm py-sm px-md rounded transition-colors flex items-center justify-center gap-xs">
+<span class="material-symbols-outlined text-sm">logout</span>
+                        Sign Out
+                    </button>
+</div>
+</section>
+</div>
+</main>
+</body></html>

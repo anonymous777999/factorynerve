@@ -1,5 +1,5 @@
-import { SteelBatchesPage } from "@/components/steel-batches-page";
+import { SteelBatchesWorkspace } from "@/features/steel";
 
 export default function SteelBatchesRoute() {
-  return <SteelBatchesPage />;
+  return <SteelBatchesWorkspace />;
 }

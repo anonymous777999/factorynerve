@@ -1,0 +1,403 @@
+<!DOCTYPE html><html class="h-full" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>FactoryNerve OS - Customers</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;700&amp;display=swap" rel="stylesheet">
+<script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            industrial: {
+              950: '#070b14',
+              900: '#0d121f',
+              800: '#161d2d',
+              700: '#232d42',
+              600: '#34435e',
+              brand: '#3b82f6'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+        }
+      }
+    }
+  </script>
+<style data-purpose="scrollbar-styling">
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #070b14;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #232d42;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #34435e;
+    }
+  </style>
+<style data-purpose="custom-layout">
+    .erp-input {
+      background-color: #161d2d;
+      border-color: #232d42;
+      color: #e2e8f0;
+      font-size: 0.875rem;
+      border-radius: 0.25rem;
+    }
+    .erp-input:focus {
+      border-color: #3b82f6;
+      ring-color: #3b82f6;
+    }
+    .erp-label {
+      color: #94a3b8;
+      font-size: 0.75rem;
+      margin-bottom: 0.25rem;
+      display: block;
+    }
+  </style>
+</head>
+<body class="bg-industrial-950 text-slate-200 font-sans h-full flex overflow-hidden">
+<!-- BEGIN: LeftSidebar -->
+<aside class="w-64 border-r border-slate-800 flex-shrink-0 flex flex-col h-full bg-industrial-950">
+<div class="p-4 border-b border-slate-800">
+<div class="flex items-center gap-2 mb-4">
+<div class="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-bold">FN</div>
+<div class="text-sm">
+<p class="font-bold leading-none">DPR.AI</p>
+<p class="text-xs text-slate-500">RedVortex ORG</p>
+</div>
+</div>
+<div class="bg-industrial-800 p-2 rounded text-[10px] uppercase tracking-wider text-slate-400 font-bold">
+        Steel Industry • free plan
+      </div>
+</div>
+<nav class="flex-1 overflow-y-auto p-4 space-y-6">
+<!-- Owner Section -->
+<div>
+<p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">Owner</p>
+<ul class="space-y-1">
+<li class="px-3 py-2 rounded-md text-xs font-medium text-slate-400 hover:bg-industrial-800 cursor-pointer">STEEL CORE PACK</li>
+<li class="px-3 py-2 rounded-md text-xs font-medium text-slate-400 hover:bg-industrial-800 cursor-pointer">REDVORTEX ORG</li>
+</ul>
+</div>
+<!-- Operations Section -->
+<div>
+<ul class="space-y-1">
+<li class="flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium text-slate-400 hover:bg-industrial-800 cursor-pointer">
+<span class="w-4 h-4 border border-slate-600 rounded-sm"></span> Steel Batches
+          </li>
+<li class="flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium text-slate-400 hover:bg-industrial-800 cursor-pointer">
+<span class="w-4 h-4 border border-slate-600 rounded-sm"></span> Steel Charts
+          </li>
+<li class="flex items-center gap-3 px-3 py-2 rounded-md text-xs font-bold text-white bg-industrial-800 border border-slate-700 cursor-pointer">
+<span class="w-4 h-4 border-2 border-orange-500 rounded-sm"></span> Customers
+          </li>
+<li class="flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium text-slate-400 hover:bg-industrial-800 cursor-pointer">
+<span class="w-4 h-4 border border-slate-600 rounded-sm"></span> Dispatch
+          </li>
+</ul>
+</div>
+<!-- Review Section -->
+<div>
+<div class="flex justify-between items-center mb-3">
+<p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Review</p>
+<svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<ul class="space-y-1">
+<li class="flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium text-slate-400 hover:bg-industrial-800 cursor-pointer">
+<span class="w-4 h-4 border border-slate-600 rounded-sm"></span> Approvals
+          </li>
+<li class="flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium text-slate-400 hover:bg-industrial-800 cursor-pointer">
+<span class="w-4 h-4 border border-slate-600 rounded-sm"></span> OCR History
+          </li>
+</ul>
+</div>
+<!-- Management Section -->
+<div>
+<div class="flex justify-between items-center mb-3">
+<p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Management</p>
+<svg class="w-3 h-3 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+<ul class="space-y-1">
+<li class="flex items-center gap-3 px-3 py-2 rounded-md text-xs font-medium text-slate-400 hover:bg-industrial-800 cursor-pointer">
+<span class="w-4 h-4 border border-slate-600 rounded-sm"></span> Performance
+          </li>
+</ul>
+</div>
+</nav>
+<div class="p-4 border-t border-slate-800">
+<div class="flex items-center justify-between p-2 rounded-md text-xs font-medium text-slate-400 hover:bg-industrial-800 cursor-pointer border border-slate-700">
+<div>
+<p class="text-[10px] text-slate-500">ACCOUNT</p>
+<p class="text-white">Profile, language, and tools</p>
+</div>
+<svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 9l-7 7-7-7" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+</div>
+</aside>
+<!-- END: LeftSidebar -->
+<!-- BEGIN: MainContent -->
+<main class="flex-1 flex flex-col overflow-hidden">
+<!-- BEGIN: TopWorkspaceBar -->
+<header class="h-14 border-b border-slate-800 flex items-center justify-between px-6 bg-industrial-950">
+<div class="flex items-center gap-4">
+<button class="text-xs font-bold text-slate-400 hover:text-white">Hide Nav</button>
+<div class="h-6 w-px bg-slate-800 mx-2"></div>
+<div>
+<div class="flex items-center gap-2">
+<span class="text-[10px] font-bold text-slate-500 uppercase">REDVORTEX ORG</span>
+</div>
+<h1 class="text-xs font-bold"><span class="text-slate-400">Customers</span> Track customer ledger, payments, and outstanding exposure</h1>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<button class="px-3 py-1 bg-industrial-900 border border-slate-700 rounded text-xs font-bold text-slate-300">Alerts 0</button>
+<button class="px-3 py-1 bg-industrial-900 border border-slate-700 rounded text-xs font-bold text-slate-300">Review 0</button>
+<button class="px-3 py-1 bg-industrial-900 border border-slate-700 rounded text-xs font-bold text-slate-300">Commands</button>
+<div class="bg-blue-600 px-3 py-1 rounded text-xs font-bold uppercase tracking-widest text-white shadow-lg shadow-blue-900/20">WORKSPACE</div>
+</div>
+</header>
+<!-- END: TopWorkspaceBar -->
+<div class="flex-1 overflow-y-auto bg-industrial-950 p-6 space-y-6">
+<!-- BEGIN: LiveReminders -->
+<section class="bg-industrial-900 border border-slate-800 rounded-lg p-6 relative overflow-hidden" data-purpose="live-reminders">
+<div class="flex justify-between items-start">
+<div>
+<p class="text-[10px] font-bold text-orange-500 uppercase tracking-[0.2em] mb-1">LIVE REMINDERS</p>
+<p class="text-xs text-slate-500">The next actions are synced across attendance, entry, scan, review, and queue.</p>
+</div>
+<div class="bg-industrial-950/50 border border-slate-700 rounded-xl p-6 flex gap-8 items-center max-w-md">
+<div>
+<button class="bg-white text-black font-bold text-[11px] px-4 py-2 rounded mb-3 block w-full">Action now</button>
+<h3 class="text-xs font-bold text-white mb-1">Attendance review is waiting</h3>
+<p class="text-[10px] text-slate-500">1 attendance issue need closure.</p>
+</div>
+<button class="bg-industrial-800 border border-slate-700 text-white text-[11px] px-6 py-4 rounded-lg font-bold">Review Attendance</button>
+</div>
+</div>
+</section>
+<!-- END: LiveReminders -->
+<!-- BEGIN: HeroSection -->
+<section data-purpose="hero-section">
+<p class="text-[10px] font-bold text-orange-500 uppercase tracking-[0.2em] mb-1">STEEL CUSTOMER LEDGER</p>
+<h2 class="text-3xl font-bold text-white mb-2">Add the buyer before receivables start moving</h2>
+<p class="text-sm text-slate-500">Keep buyer setup, receivables, and recovery context in one place before invoices and dispatches stack up.</p>
+</section>
+<!-- END: HeroSection -->
+<!-- BEGIN: LedgerToolStrip -->
+<section class="bg-industrial-900 border border-slate-800 rounded-lg p-3" data-purpose="ledger-tools">
+<p class="text-[10px] font-bold text-slate-400 uppercase mb-3 px-3">Ledger tools</p>
+<div class="flex gap-4">
+<button class="px-6 py-2 bg-industrial-950 border border-slate-700 text-blue-400 text-xs font-bold rounded">Steel hub</button>
+<button class="px-6 py-2 text-slate-400 hover:text-white text-xs font-bold">Invoices</button>
+<button class="px-6 py-2 text-slate-400 hover:text-white text-xs font-bold">Dispatches</button>
+</div>
+</section>
+<!-- END: LedgerToolStrip -->
+<!-- BEGIN: KPICards -->
+<section class="grid grid-cols-5 gap-3" data-purpose="kpi-strip">
+<div class="bg-industrial-900 border border-slate-800 p-4 rounded">
+<p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Customers</p>
+<p class="text-2xl font-bold text-white font-mono">1</p>
+</div>
+<div class="bg-industrial-900 border border-slate-800 p-4 rounded">
+<p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Outstanding</p>
+<p class="text-2xl font-bold text-white font-mono">₹3,18,302</p>
+</div>
+<div class="bg-industrial-900 border border-slate-800 p-4 rounded">
+<p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Overdue</p>
+<p class="text-2xl font-bold text-white font-mono">₹0</p>
+</div>
+<div class="bg-industrial-900 border border-slate-800 p-4 rounded">
+<p class="text-[10px] font-bold text-slate-500 uppercase mb-1">High Risk</p>
+<p class="text-2xl font-bold text-white font-mono">0</p>
+</div>
+<div class="bg-industrial-900 border border-slate-800 p-4 rounded relative overflow-hidden">
+<p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Open Follow-up</p>
+<p class="text-2xl font-bold text-white font-mono">0</p>
+<button class="absolute top-2 right-2 w-6 h-6 bg-industrial-950 flex items-center justify-center rounded border border-slate-700 text-slate-400">?</button>
+</div>
+</section>
+<!-- END: KPICards -->
+<!-- BEGIN: MainGrid -->
+<div class="grid grid-cols-12 gap-6 items-start pb-10">
+<!-- BEGIN: LeftPanel_Form -->
+<section class="col-span-7 bg-industrial-900 border border-slate-800 rounded-lg p-6" data-purpose="buyer-profile-form">
+<div class="mb-6">
+<p class="text-[10px] text-slate-500 uppercase font-bold">Create Customer</p>
+<h3 class="text-xl font-bold text-white">Add buyer profile</h3>
+</div>
+<form class="space-y-4">
+<div>
+<label class="erp-label">Customer Name</label>
+<input class="w-full erp-input p-3 bg-surface-elevated text-primary" placeholder="Buyer / customer name" type="text" style="background-color: #1c2029;">
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="erp-label">Contact Person</label>
+<input class="w-full erp-input p-3 bg-surface-elevated text-primary" placeholder="Primary contact person" type="text" style="background-color: #1c2029;">
+</div>
+<div>
+<label class="erp-label">Designation</label>
+<input class="w-full erp-input p-3 bg-surface-elevated text-primary" placeholder="Purchase manager / owner" type="text" style="background-color: #1c2029;">
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="erp-label">Phone</label>
+<input class="w-full erp-input font-mono p-3 bg-surface-elevated text-primary" placeholder="9876543210" type="text" style="background-color: #1c2029;">
+</div>
+<div>
+<label class="erp-label">Email</label>
+<input class="w-full erp-input p-3 bg-surface-elevated text-primary" placeholder="buyer@example.com" type="email" style="background-color: #1c2029;">
+</div>
+</div>
+<div>
+<label class="erp-label">Address</label>
+<textarea class="w-full erp-input p-3 min-h-[100px] bg-surface-elevated text-primary" placeholder="Billing / delivery address" style="background-color: #1c2029;"></textarea>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="erp-label">City</label>
+<input class="w-full erp-input p-3 bg-surface-elevated text-primary" type="text" value="Mumbai" style="background-color: #1c2029;">
+</div>
+<div>
+<label class="erp-label">State</label>
+<input class="w-full erp-input p-3 bg-surface-elevated text-primary" type="text" value="Maharashtra" style="background-color: #1c2029;">
+</div>
+</div>
+<div class="grid grid-cols-3 gap-4">
+<div>
+<label class="erp-label">GST</label>
+<input class="w-full erp-input font-mono p-3 uppercase bg-surface-elevated text-primary" placeholder="22AAAAA0000A1Z5" type="text" style="background-color: #1c2029;">
+</div>
+<div>
+<label class="erp-label">PAN</label>
+<input class="w-full erp-input font-mono p-3 uppercase bg-surface-elevated text-primary" placeholder="ABCDE1234F" type="text" style="background-color: #1c2029;">
+</div>
+<div>
+<label class="erp-label">Legacy Tax ID</label>
+<input class="w-full erp-input p-3 bg-surface-elevated text-primary" placeholder="Optional tax identifier" type="text" style="background-color: #1c2029;">
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="erp-label">Company Type</label>
+<select class="w-full erp-input p-3 appearance-none bg-surface-elevated text-primary" style="background-color: #1c2029;">
+<option>Trader</option>
+<option>Manufacturer</option>
+<option>Retailer</option>
+</select>
+</div>
+<div>
+<label class="erp-label">Status</label>
+<select class="w-full erp-input p-3 appearance-none bg-surface-elevated text-primary" style="background-color: #1c2029;">
+<option>Active</option>
+<option>Inactive</option>
+</select>
+</div>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div>
+<label class="erp-label">Credit Limit</label>
+<input class="w-full erp-input font-mono p-3 bg-surface-elevated text-primary" type="number" value="500000" style="background-color: #1c2029;">
+</div>
+<div>
+<label class="erp-label">Payment Terms (days)</label>
+<input class="w-full erp-input font-mono p-3 bg-surface-elevated text-primary" type="number" value="30" style="background-color: #1c2029;">
+</div>
+</div>
+<div>
+<label class="erp-label">Notes</label>
+<textarea class="w-full erp-input p-3 min-h-[120px] bg-surface-elevated text-primary" placeholder="Payment habits, follow-up notes, preferred material" style="background-color: #1c2029;"></textarea>
+</div>
+<button class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-3 rounded text-sm transition-colors" type="submit">
+              Create customer
+            </button>
+</form>
+</section>
+<!-- END: LeftPanel_Form -->
+<!-- BEGIN: RightPanel_Directory -->
+<section class="col-span-5 bg-industrial-900 border border-slate-800 rounded-lg p-6 h-fit sticky top-6" data-purpose="customer-directory">
+<div class="flex justify-between items-start mb-6">
+<div>
+<p class="text-[10px] text-slate-500 uppercase font-bold">Customer Directory</p>
+<h3 class="text-xl font-bold text-white">Receivables and recovery at a glance</h3>
+</div>
+<button class="bg-industrial-800 p-2 rounded border border-slate-700 text-slate-400">
+<svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M11 3a1 1 0 10-2 0v1a1 1 0 102 0V3zM15.657 5.757a1 1 0 00-1.414-1.414l-.707.707a1 1 0 001.414 1.414l.707-.707zM18 10a1 1 0 01-1 1h-1a1 1 0 110-2h1a1 1 0 011 1zM5.05 6.464A1 1 0 106.464 5.05l-.707-.707a1 1 0 00-1.414 1.414l.707.707zM5 10a1 1 0 01-1 1H3a1 1 0 110-2h1a1 1 0 011 1zM8 16v-1a1 1 0 112 0v1a1 1 0 11-2 0zM13.536 14.95a1 1 0 011.414 0l.707.707a1 1 0 01-1.414 1.414l-.707-.707a1 1 0 010-1.414zM16.243 16.243a1 1 0 011.414 1.414l-1.414-1.414z"></path></svg>
+</button>
+</div>
+<div class="flex items-center justify-between mb-4">
+<h4 class="text-xs font-bold text-white">View directory</h4>
+<div class="flex items-center gap-2 bg-industrial-950 p-1 rounded-lg border border-slate-800">
+<button class="px-3 py-1 rounded text-[11px] font-bold text-white">Jobs</button>
+<span class="text-[10px] text-slate-500 mr-2">0 recent</span>
+</div>
+</div>
+<div class="border border-slate-800 rounded-lg overflow-hidden" data-purpose="directory-table">
+<table class="w-full text-left text-[11px]">
+<thead class="bg-industrial-950 border-b border-slate-800">
+<tr>
+<th class="p-3 font-bold text-slate-500 uppercase tracking-tighter">Customer</th>
+<th class="p-3 font-bold text-slate-500 uppercase tracking-tighter">Risk</th>
+<th class="p-3 font-bold text-slate-500 uppercase tracking-tighter text-center">Lifecycle</th>
+<th class="p-3 font-bold text-slate-500 uppercase tracking-tighter">Outstanding</th>
+<th class="p-3 font-bold text-slate-500 uppercase tracking-tighter">Credit</th>
+<th class="p-3 font-bold text-slate-500 uppercase tracking-tighter">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-800">
+<tr class="hover:bg-industrial-800 transition-colors">
+<td class="p-3">
+<p class="font-bold text-white">SHIVAM GAUTAM</p>
+<div class="mt-1 flex items-center gap-2">
+<span class="bg-slate-700 text-[9px] px-1 rounded font-bold">DRAFT</span>
+</div>
+<p class="text-[9px] text-slate-500 mt-1 uppercase">CUST-00001 | Contact pending</p>
+</td>
+<td class="p-3">
+<span class="inline-block bg-green-900/30 text-green-500 border border-green-800/50 px-2 py-0.5 rounded-full text-[10px] font-bold mb-1">LOW</span>
+<p class="text-[9px] text-slate-500">0 overdue days | score 0</p>
+</td>
+<td class="p-3 text-center">
+<p class="text-white font-bold">Clear</p>
+<p class="text-[9px] text-slate-500">No follow-up due</p>
+</td>
+<td class="p-3">
+<p class="text-white font-bold font-mono">₹3,18,302</p>
+<p class="text-[9px] text-slate-500">Overdue ₹0</p>
+</td>
+<td class="p-3">
+<p class="text-white font-bold">No limit</p>
+<p class="text-[9px] text-slate-500">30 day terms</p>
+</td>
+<td class="p-3">
+<button class="text-orange-500 font-bold hover:underline">View</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="mt-4 flex justify-end">
+<div class="bg-industrial-950 border border-slate-700 rounded-full px-4 py-2 flex items-center gap-2">
+<span class="w-5 h-5 bg-blue-600 rounded-full flex items-center justify-center text-[10px] font-bold">?</span>
+<span class="text-xs font-bold text-slate-300">Help</span>
+</div>
+</div>
+</section>
+<!-- END: RightPanel_Directory -->
+</div>
+<!-- END: MainGrid -->
+</div>
+</main>
+<!-- END: MainContent -->
+
+
+</body></html>

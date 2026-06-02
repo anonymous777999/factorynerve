@@ -37,6 +37,7 @@ import {
   type SteelStockMismatchCause,
 } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
+import { formatKg } from "@/features/steel/lib/steel-helpers";
 
 const columnHelper = createDataTableColumnHelper<SteelReconciliation>();
 
@@ -54,10 +55,6 @@ const MISMATCH_CAUSE_OPTIONS: Array<{ value: SteelStockMismatchCause; label: str
   { value: "delayed_dispatch_update", label: "Delayed Dispatch Update" },
   { value: "other", label: "Other" },
 ];
-
-function formatKg(value: number | null | undefined) {
-  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value || 0);
-}
 
 function formatDateTime(value?: string | null) {
   if (!value) return "-";
@@ -261,7 +258,20 @@ export function SteelReconciliationsPage() {
         }),
         columnHelper.accessor("variance_kg", {
           header: "Variance",
-          cell: (info) => <span className="font-mono tabular-nums">{formatKg(info.getValue())} KG</span>,
+          cell: (info) => {
+            const value = info.getValue() ?? 0;
+            const tone =
+              value > 0
+                ? "text-status-danger-fg"
+                : value < 0
+                  ? "text-status-warning-fg"
+                  : "text-status-success-fg";
+            return (
+              <span className={`font-mono tabular-nums font-semibold ${tone}`}>
+                {value > 0 ? "+" : ""}{formatKg(value)} KG
+              </span>
+            );
+          },
           meta: { align: "right" },
         }),
         columnHelper.accessor("counted_at", {
@@ -327,7 +337,7 @@ export function SteelReconciliationsPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="rounded-panel border border-border-default bg-surface-panel px-lg py-lg shadow-xs">
           <div className="max-w-4xl">
-            <div className="text-sm uppercase tracking-wide text-text-secondary">Steel Reconciliations</div>
+            <div className="text-xs font-medium tracking-wide text-text-tertiary">Steel Reconciliations</div>
             <h1 className="mt-2 text-3xl font-semibold text-text-primary md:text-4xl">Stock mismatches</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-text-secondary">
               Reconciliation compares your physical stock count against the system ledger so you can close inventory trust gaps without leaving the list workflow.
@@ -511,19 +521,19 @@ export function SteelReconciliationsPage() {
             <form className="space-y-4">
               <div className="grid gap-3 md:grid-cols-2">
                 <div className="rounded-panel border border-border-subtle bg-surface-shell px-md py-sm">
-                  <div className="text-xs uppercase tracking-wide text-text-secondary">System</div>
+                  <div className="text-xs font-medium text-text-tertiary">System</div>
                   <div className="mt-1 font-mono text-lg text-text-primary">{formatKg(activeRow.system_qty_kg)} KG</div>
                 </div>
                 <div className="rounded-panel border border-border-subtle bg-surface-shell px-md py-sm">
-                  <div className="text-xs uppercase tracking-wide text-text-secondary">Physical</div>
+                  <div className="text-xs font-medium text-text-tertiary">Physical</div>
                   <div className="mt-1 font-mono text-lg text-text-primary">{formatKg(activeRow.physical_qty_kg)} KG</div>
                 </div>
                 <div className="rounded-panel border border-border-subtle bg-surface-shell px-md py-sm">
-                  <div className="text-xs uppercase tracking-wide text-text-secondary">Variance</div>
+                  <div className="text-xs font-medium text-text-tertiary">Variance</div>
                   <div className="mt-1 font-mono text-lg text-text-primary">{formatKg(activeRow.variance_kg)} KG</div>
                 </div>
                 <div className="rounded-panel border border-border-subtle bg-surface-shell px-md py-sm">
-                  <div className="text-xs uppercase tracking-wide text-text-secondary">Variance %</div>
+                  <div className="text-xs font-medium text-text-tertiary">Variance %</div>
                   <div className="mt-1 font-mono text-lg text-text-primary">{activeRow.variance_percent.toFixed(2)}%</div>
                 </div>
               </div>

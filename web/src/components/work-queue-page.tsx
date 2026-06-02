@@ -30,6 +30,7 @@ import { subscribeToWorkflowRefresh } from "@/lib/workflow-sync";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SuccessBanner, MutationErrorBanner } from "@/shared/feedback";
 
 const ALL_SHIFTS = ["morning", "evening", "night"] as const;
 
@@ -721,12 +722,12 @@ export default function WorkQueuePage() {
         id: `ocr-${record.id}`,
         section: "review",
         title: `OCR verification is waiting`,
-        detail: `${record.source_filename || `Record #${record.id}`} | ${record.avg_confidence.toFixed(0)}% confidence`,
+        detail: `${record.source_filename || `Record #${record.id}`} | ${Math.round((record.avg_confidence || 0) * 100)}% confidence`,
         href: "/ocr/verify",
         action: "Open OCR Review",
-        tone: record.avg_confidence < 75 ? "watch" : "action",
+        tone: (record.avg_confidence || 0) < 0.75 ? "watch" : "action",
         meta: `OCR #${record.id}`,
-        priority: record.avg_confidence < 75 ? 82 : 78,
+        priority: (record.avg_confidence || 0) < 0.75 ? 82 : 78,
       });
     });
     const hiddenVerificationsCount = Math.max(
@@ -1031,14 +1032,10 @@ export default function WorkQueuePage() {
       <main className="min-h-screen bg-[var(--surface-industrial-deep)] px-4 py-6 md:px-6 lg:py-8">
         <div className="mx-auto max-w-6xl space-y-4">
           {error ? (
-            <div className="rounded-[20px] border border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">
-              {error}
-            </div>
+            <MutationErrorBanner message={error} onDismiss={() => setError("")} />
           ) : null}
           {sessionError ? (
-            <div className="rounded-[20px] border border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">
-              {sessionError}
-            </div>
+            <MutationErrorBanner message={sessionError} />
           ) : null}
           {sectionErrorEntries.length ? (
             <section className="grid gap-2 md:grid-cols-3">
@@ -1298,8 +1295,8 @@ export default function WorkQueuePage() {
           ) : null}
         </section>
 
-        {error ? <div className="operational-panel border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">{error}</div> : null}
-        {sessionError ? <div className="operational-panel border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">{sessionError}</div> : null}
+        {error ? <MutationErrorBanner message={error} onDismiss={() => setError("")} /> : null}
+        {sessionError ? <MutationErrorBanner message={sessionError} /> : null}
         {refreshing ? (
           <div className="surface-muted px-4 py-3 text-sm text-text-secondary">
             Refreshing queue data in the background...
@@ -1389,7 +1386,7 @@ export default function WorkQueuePage() {
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${toneBadgeClass(nextUpItem.tone)}`}>
+                          <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold tracking-wide ${toneBadgeClass(nextUpItem.tone)}`}>
                             Next up
                           </span>
                           <span className="text-xs text-text-tertiary">{sectionLabel(nextUpItem.section)}</span>
@@ -1429,7 +1426,7 @@ export default function WorkQueuePage() {
                             <div className="flex flex-wrap items-start justify-between gap-3">
                               <div className="space-y-2">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${toneBadgeClass(item.tone)}`}>
+                                  <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold tracking-wide ${toneBadgeClass(item.tone)}`}>
                                     {sectionLabel(item.section)}
                                   </span>
                                   {item.meta ? <span className="text-xs text-text-tertiary">{item.meta}</span> : null}

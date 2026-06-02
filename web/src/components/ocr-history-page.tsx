@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/data-table/data-table-types";
 import { DataTableToolbar } from "@/components/ui/data-table/data-table-toolbar";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ConfidenceMeter } from "@/shared/ai";
 import { useDebouncedValue } from "@/hooks/use-interaction-timing";
 import { useOcrHistoryQuery, useOcrVerifyDetailQuery } from "@/hooks/use-ocr-verify-queries";
 import { canUseOcrScan } from "@/lib/ocr-access";
@@ -184,13 +185,28 @@ export default function OcrHistoryPage() {
         header: "Document",
         cell: (info) => {
           const record = info.row.original;
+          const statusColor =
+            record.status === "approved"
+              ? "var(--status-success-icon)"
+              : record.status === "pending"
+                ? "var(--status-warning-icon)"
+                : record.status === "rejected"
+                  ? "var(--status-danger-icon)"
+                  : "var(--border-subtle)";
           return (
-            <div className="min-w-0">
-              <div className="truncate text-body font-medium text-text-primary">
-                {info.getValue()}
-              </div>
-              <div className="mt-xs text-label-dense text-text-secondary">
-                {Math.round((record.avg_confidence || 0) * 100)}% confidence
+            <div className="flex min-w-0 items-stretch gap-3">
+              <span
+                aria-hidden="true"
+                className="-my-1 w-0.5 rounded-full"
+                style={{ background: statusColor }}
+              />
+              <div className="min-w-0">
+                <div className="truncate text-body font-medium text-text-primary">
+                  {info.getValue()}
+                </div>
+                <div className="mt-xs text-label-dense tabular-nums text-text-secondary">
+                  {Math.round((record.avg_confidence || 0) * 100)}% confidence
+                </div>
               </div>
             </div>
           );
@@ -229,7 +245,7 @@ export default function OcrHistoryPage() {
 
           return (
             <div className="flex justify-end gap-sm">
-              <Link href={`/ocr/verify?id=${record.id}&step=3&pane=workspace`}>
+              <Link href={`/ocr/verify?id=${record.id}&step=${record.status === "pending" || record.status === "approved" ? 4 : 3}&pane=workspace`}>
                 <Button size="compact" variant="outline">
                   Open
                 </Button>
@@ -332,12 +348,26 @@ export default function OcrHistoryPage() {
 
           <div className="factory-ocr-console factory-ocr-console--subtle rounded-[0.45rem] p-4">
             <div className="factory-ocr-card-title">Selected record</div>
-            <div className="mt-3 space-y-2 text-sm leading-6 text-text-secondary">
-              <div className="font-medium text-text-primary">{selectedRecord?.source_filename || `Document #${selectedRecord?.id}`}</div>
-              <div>Status: {selectedRecord?.status || "—"}</div>
-              <div>Type: {selectedRecord?.doc_type_hint || "table"}</div>
-              <div>Confidence: {Math.round((selectedRecord?.avg_confidence ?? 0) * 100)}%</div>
-              {selectedRecord?.reviewed_by_name ? <div>Reviewed by: {selectedRecord.reviewed_by_name}</div> : null}
+            <div className="mt-3 space-y-3 text-sm leading-6 text-text-secondary">
+              {selectedRecord ? (
+                <>
+                  <div>
+                    <div className="font-medium text-text-primary">{selectedRecord.source_filename || `Document #${selectedRecord.id}`}</div>
+                    <div className="mt-1 text-xs text-text-tertiary">
+                      Type: {selectedRecord.doc_type_hint || "table"} &middot; Status: {selectedRecord.status}
+                    </div>
+                  </div>
+                  <ConfidenceMeter
+                    value={selectedRecord.avg_confidence || 0}
+                    showLabel
+                  />
+                  {selectedRecord.reviewed_by_name ? (
+                    <div className="text-xs text-text-tertiary">Reviewed by {selectedRecord.reviewed_by_name}</div>
+                  ) : null}
+                </>
+              ) : (
+                <div className="text-text-tertiary">Select a row to see details.</div>
+              )}
             </div>
           </div>
 

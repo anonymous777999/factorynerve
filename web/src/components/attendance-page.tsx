@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { SuccessBanner, MutationErrorBanner } from "@/shared/feedback";
 import { ApiError } from "@/lib/api";
 import {
   formatAttendanceStatusLabel,
@@ -63,29 +64,34 @@ function statusTheme(status?: AttendanceStatus | null) {
   switch (status) {
     case "working":
       return {
-        badge: "bg-emerald-500/15 text-emerald-100 border border-emerald-400/25",
-        dot: "bg-emerald-400",
+        badge:
+          "bg-[var(--status-success-bg)] text-[var(--status-success-fg)] border border-[var(--status-success-border)]",
+        dot: "bg-[var(--status-success-icon)]",
       };
     case "late":
     case "half_day":
       return {
-        badge: "bg-amber-500/15 text-amber-100 border border-amber-400/25",
-        dot: "bg-amber-400",
+        badge:
+          "bg-[var(--status-warning-bg)] text-[var(--status-warning-fg)] border border-[var(--status-warning-border)]",
+        dot: "bg-[var(--status-warning-icon)]",
       };
     case "missed_punch":
     case "absent":
       return {
-        badge: "bg-rose-500/15 text-rose-100 border border-rose-400/25",
-        dot: "bg-rose-400",
+        badge:
+          "bg-[var(--status-danger-bg)] text-[var(--status-danger-fg)] border border-[var(--status-danger-border)]",
+        dot: "bg-[var(--status-danger-icon)]",
       };
     case "completed":
       return {
-        badge: "bg-sky-500/15 text-sky-100 border border-sky-400/25",
-        dot: "bg-sky-400",
+        badge:
+          "bg-[var(--status-info-bg)] text-[var(--status-info-fg)] border border-[var(--status-info-border)]",
+        dot: "bg-[var(--status-info-icon)]",
       };
     default:
       return {
-        badge: "bg-white/8 text-text-primary border border-white/10",
+        badge:
+          "bg-[var(--surface-elevated)] text-text-primary border border-[var(--border-subtle)]",
         dot: "bg-text-tertiary",
       };
   }
@@ -106,6 +112,8 @@ export default function AttendancePage() {
   const [error, setError] = useState("");
   const [optionsOpen, setOptionsOpen] = useState(false);
   const [nowMs, setNowMs] = useState(() => Date.now());
+  const [justPunched, setJustPunched] = useState<"in" | "out" | null>(null);
+  const [justPunchedAt, setJustPunchedAt] = useState<string | null>(null);
   const canOverrideShift = ["supervisor", "manager", "admin", "owner"].includes(user?.role || "");
 
   const shiftLabel = useCallback(
@@ -120,19 +128,19 @@ export default function AttendancePage() {
     (value?: AttendanceStatus | null) => {
       switch (value) {
         case "working":
-          return t("attendance.status.active_shift", "Shift in Progress");
+          return t("attendance.status.active_shift", "Shift in progress");
         case "late":
-          return t("attendance.status.late", "Late Arrival");
+          return t("attendance.status.late", "Late arrival");
         case "missed_punch":
-          return t("attendance.status.missed_punch", "Missed Punch");
+          return t("attendance.status.missed_punch", "Missed punch");
         case "completed":
-          return t("attendance.status.shift_closed", "Attendance Closed");
+          return t("attendance.status.shift_closed", "Attendance closed");
         case "half_day":
-          return t("attendance.status.half_day", "Half Day");
+          return t("attendance.status.half_day", "Half day");
         case "absent":
           return t("attendance.status.absent", "Absent");
         default:
-          return t("attendance.status.not_started", "Not Started");
+          return t("attendance.status.not_started", "Not started");
       }
     },
     [t],
@@ -235,42 +243,47 @@ export default function AttendancePage() {
         label: t("attendance.action.loading", "Loading..."),
         action: null as "in" | "out" | null,
         disabled: true,
-        className: "border border-white/10 bg-white/10 text-text-primary",
+        className:
+          "border border-[var(--border-subtle)] bg-[var(--surface-elevated)] text-text-secondary",
       };
     }
 
     if (today.can_punch_in) {
       return {
-        label: t("attendance.action.punch_in", "Punch In"),
+        label: t("attendance.action.punch_in", "Punch in"),
         action: "in" as const,
         disabled: false,
-        className: "bg-[var(--action-primary)] text-[var(--action-primary-text)] hover:bg-[var(--action-primary-hover)]",
+        className:
+          "bg-[var(--status-success-icon)] text-white hover:brightness-110 active:scale-[0.98] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_12px_rgba(0,0,0,0.4)]",
       };
     }
 
     if (today.can_punch_out) {
       return {
-        label: t("attendance.action.punch_out", "Punch Out"),
+        label: t("attendance.action.punch_out", "Punch out"),
         action: "out" as const,
         disabled: false,
-        className: "bg-[var(--action-primary)] text-[var(--action-primary-text)] hover:bg-[var(--action-primary-hover)]",
+        className:
+          "bg-[var(--status-danger-icon)] text-white hover:brightness-110 active:scale-[0.98] shadow-[inset_0_1px_0_rgba(255,255,255,0.15),0_4px_12px_rgba(0,0,0,0.4)]",
       };
     }
 
     if (today.status === "missed_punch") {
       return {
-        label: t("attendance.action.needs_review", "Needs Review"),
+        label: t("attendance.action.needs_review", "Needs review"),
         action: null as "in" | "out" | null,
         disabled: true,
-        className: "border border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-fg)]",
+        className:
+          "border border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-fg)]",
       };
     }
 
     return {
-      label: t("attendance.action.closed", "Attendance Closed"),
+      label: t("attendance.action.closed", "Attendance closed"),
       action: null as "in" | "out" | null,
       disabled: true,
-      className: "border border-white/10 bg-white/10 text-text-primary",
+      className:
+        "border border-[var(--border-subtle)] bg-[var(--surface-elevated)] text-text-secondary",
     };
   }, [t, today]);
 
@@ -305,6 +318,12 @@ export default function AttendancePage() {
       });
       setToday(next);
       setSelectedShift(next.shift);
+      setJustPunched(action);
+      setJustPunchedAt(new Date().toISOString());
+      window.setTimeout(() => {
+        setJustPunched(null);
+        setJustPunchedAt(null);
+      }, 3000);
       setStatus(action === "in" ? t("attendance.status.punch_in_recorded", "Punch in recorded.") : t("attendance.status.punch_out_recorded", "Punch out recorded."));
       await loadAttendance({ background: true });
       signalWorkflowRefresh(`attendance-${action}`);
@@ -323,12 +342,12 @@ export default function AttendancePage() {
 
   if (loading || (pageLoading && Boolean(user) && !hasLoadedOnce)) {
     return (
-      <main className="min-h-screen bg-[var(--surface-industrial-deep)] px-4 py-8 md:px-6">
+      <main className="min-h-screen bg-[var(--surface-app)] px-4 py-8 md:px-6">
         <div className="mx-auto max-w-6xl space-y-6">
-          <Skeleton className="h-[28rem] rounded-[2rem]" />
+          <Skeleton className="h-[28rem] rounded-2xl" />
           <div className="hidden gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_360px]">
-            <Skeleton className="h-[22rem] rounded-[2rem]" />
-            <Skeleton className="h-[22rem] rounded-[2rem]" />
+            <Skeleton className="h-[22rem] rounded-2xl" />
+            <Skeleton className="h-[22rem] rounded-2xl" />
           </div>
         </div>
       </main>
@@ -337,14 +356,14 @@ export default function AttendancePage() {
 
   if (!user) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[var(--surface-industrial-deep)] px-4">
-        <div className="w-full max-w-md rounded-[2rem] border border-white/10 bg-white/5 p-6 text-text-primary">
+      <main className="flex min-h-screen items-center justify-center bg-[var(--surface-app)] px-4">
+        <div className="w-full max-w-md rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 text-text-primary shadow-[var(--shadow-md)]">
           <div className="text-xl font-semibold">{t("attendance.title", "Attendance")}</div>
           <div className="mt-3 text-sm text-text-secondary">
             {sessionError || t("attendance.sign_in_required", "Please sign in to open attendance.")}
           </div>
           <Link href="/access" className="mt-6 inline-flex">
-            <Button className="h-12 px-6">{t("dashboard.action.open_login", "Open Access")}</Button>
+            <Button className="h-12 px-6">{t("dashboard.action.open_login", "Open access")}</Button>
           </Link>
         </div>
       </main>
@@ -352,40 +371,62 @@ export default function AttendancePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--surface-industrial-deep)] px-4 py-6 text-text-primary md:px-6 lg:py-8">
+    <main className="min-h-screen bg-[var(--surface-app)] px-4 py-6 text-text-primary md:px-6 lg:py-8">
+      {justPunched ? (
+        <div
+          className="animate-fade-in fixed inset-x-4 top-4 z-50 mx-auto max-w-md rounded-xl px-4 py-4 text-center text-white shadow-[var(--shadow-xl)]"
+          style={{
+            background:
+              justPunched === "in" ? "var(--status-success-icon)" : "var(--status-danger-icon)",
+          }}
+          role="status"
+          aria-live="polite"
+        >
+          <div className="text-lg font-semibold">
+            {justPunched === "in"
+              ? t("attendance.confirm.in", "Punched in ✓")
+              : t("attendance.confirm.out", "Punched out ✓")}
+          </div>
+          <div className="mt-1 text-sm opacity-90 tabular-nums">
+            {formatTime(justPunchedAt, locale)}
+          </div>
+        </div>
+      ) : null}
       <div className="mx-auto max-w-6xl">
         {status ? (
-          <div className="mb-4 rounded-[20px] border border-emerald-400/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-100">
-            {status}
-          </div>
+          <SuccessBanner
+            className="mb-4"
+            message={status}
+            onDismiss={() => setStatus("")}
+          />
         ) : null}
         {error ? (
-          <div className="mb-4 rounded-[20px] border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
-            {error}
-          </div>
+          <MutationErrorBanner
+            className="mb-4"
+            message={error}
+            onDismiss={() => setError("")}
+          />
         ) : null}
         {sessionError ? (
-          <div className="mb-4 rounded-[20px] border border-rose-400/20 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
-            {sessionError}
-          </div>
+          <MutationErrorBanner className="mb-4" message={sessionError} />
         ) : null}
 
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-          <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(17,25,40,0.96),rgba(11,15,25,0.98))] p-6 shadow-[0_24px_80px_rgba(6,10,18,0.48)]">
-            <div className="text-base font-semibold tracking-wide text-text-primary">{factoryName}</div>
+          <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 shadow-[var(--shadow-md)]">
+            <div className="text-base font-semibold text-text-primary">{factoryName}</div>
 
             <div className="mt-10 flex flex-col items-center text-center">
-              <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] ${statusMeta.badge}`}>
+              <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold ${statusMeta.badge}`}>
                 <span className={`h-2.5 w-2.5 rounded-full ${statusMeta.dot}`} />
                 {statusLabel(today?.status)}
               </div>
 
-              <div className="mt-5 text-2xl font-semibold md:text-3xl">{shiftLabel(displayShift)} {t("attendance.summary.shift", "Shift")}</div>
+              <div className="mt-5 text-2xl font-semibold md:text-3xl text-text-primary">{shiftLabel(displayShift)} {t("attendance.summary.shift", "shift")}</div>
 
-              <div className="mt-8 text-sm uppercase tracking-[0.22em] text-text-tertiary">
+              <div className="mt-8 text-xs font-medium text-text-tertiary">
                 {today?.status === "working" ? t("attendance.main.shift_running", "Shift running") : t("attendance.main.worked_time", "Worked time")}
               </div>
-              <div className="mt-3 text-4xl font-semibold tracking-tight md:text-5xl">{workedTime}</div>
+              <div className="mt-3 text-5xl font-semibold tracking-tight text-text-primary md:text-6xl tabular-nums">{workedTime}</div>
               <div className="mt-2 text-sm text-text-secondary">
                 {today?.status === "working"
                   ? t("attendance.main.worked", "Worked")
@@ -398,7 +439,7 @@ export default function AttendancePage() {
             <div className="mt-10">
               <Button
                 variant="ghost"
-                className={`h-20 w-full rounded-[28px] text-xl font-semibold ${mainAction.className}`}
+                className={`h-24 w-full rounded-xl text-2xl font-semibold ${mainAction.className}`}
                 disabled={busy || mainAction.disabled}
                 onClick={mainAction.action === "in" || mainAction.action === "out" ? handleMainAction : undefined}
               >
@@ -410,14 +451,14 @@ export default function AttendancePage() {
               </Button>
             </div>
 
-            <div className="mt-8 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 text-center text-sm text-text-secondary">
-              {t("attendance.main.last_action", "Last action:")} <span className="font-semibold text-text-primary">{formatTime(lastActionAt, locale)}</span>
+            <div className="mt-8 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-shell)] px-4 py-4 text-center text-sm text-text-secondary">
+              {t("attendance.main.last_action", "Last action:")} <span className="font-semibold text-text-primary tabular-nums">{formatTime(lastActionAt, locale)}</span>
             </div>
 
             <div className="mt-6 text-center">
               <button
                 type="button"
-                className="text-sm font-medium text-text-secondary transition hover:text-text-primary"
+                className="text-sm font-medium text-text-secondary hover:text-text-primary"
                 onClick={() => setOptionsOpen((current) => !current)}
               >
                 {optionsOpen ? t("attendance.main.hide_tools", "Hide tools") : t("attendance.main.show_tools", "Punch tools")}
@@ -425,10 +466,10 @@ export default function AttendancePage() {
             </div>
 
             {optionsOpen ? (
-              <div className="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4">
+              <div className="mt-4 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-shell)] p-4">
                 {canOverrideShift && today?.can_punch_in ? (
                   <div>
-                    <label className="text-sm text-text-secondary">{t("attendance.tools.shift", "Shift Override")}</label>
+                    <label className="text-sm text-text-secondary">{t("attendance.tools.shift", "Shift override")}</label>
                     <Select aria-label="Shift override" value={selectedShift} onChange={(event) => setSelectedShift(event.target.value as AttendanceShift)} disabled={busy}>
                       {SHIFT_OPTIONS.map((shift) => (
                         <option key={shift} value={shift}>
@@ -439,8 +480,8 @@ export default function AttendancePage() {
                     <div className="mt-2 text-xs text-text-tertiary">Manual shift override is kept for elevated attendance roles only.</div>
                   </div>
                 ) : (
-                  <div className="rounded-[20px] border border-white/10 bg-[rgba(8,12,20,0.45)] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-text-tertiary">{t("attendance.tools.shift", "Shift")}</div>
+                  <div className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 py-4">
+                    <div className="text-xs font-medium text-text-tertiary">{t("attendance.tools.shift", "Shift")}</div>
                     <div className="mt-2 text-sm font-semibold text-text-primary">{shiftLabel(displayShift)}</div>
                     <div className="mt-2 text-xs text-text-tertiary">Shift is assigned automatically from the employee profile or attendance rules.</div>
                   </div>
@@ -455,28 +496,36 @@ export default function AttendancePage() {
                   >
                     {refreshing ? t("common.loading", "Loading...") : t("common.refresh", "Refresh")}
                   </Button>
-                  <Link href="/attendance/reports" className="block">
-                    <Button variant="ghost" className="h-11 w-full rounded-[22px] border border-white/10 bg-white/5">
-                      {t("attendance.tools.view_history", "View History")}
-                    </Button>
-                  </Link>
+                  {canOverrideShift ? (
+                    <Link href="/attendance/reports" className="block">
+                      <Button variant="outline" className="h-11 w-full">
+                        {t("attendance.tools.view_history", "View history")}
+                      </Button>
+                    </Link>
+                  ) : (
+                    <Link href="/attendance" className="block">
+                      <Button variant="outline" className="h-11 w-full">
+                        {t("attendance.tools.view_attendance", "My attendance")}
+                      </Button>
+                    </Link>
+                  )}
                 </div>
               </div>
             ) : null}
           </section>
 
           <aside className="hidden lg:block">
-            <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(14,21,36,0.96),rgba(11,15,25,0.98))] p-6 shadow-[0_20px_70px_rgba(6,10,18,0.32)]">
-              <div className="text-xs uppercase tracking-[0.22em] text-text-tertiary">{t("attendance.summary.title", "Today Summary")}</div>
+            <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 shadow-[var(--shadow-sm)]">
+              <div className="text-xs font-medium text-text-tertiary">{t("attendance.summary.title", "Today's summary")}</div>
 
               <div className="mt-6 space-y-4 text-sm text-text-secondary">
                 <div className="flex items-center justify-between">
                   <span>{t("attendance.summary.worked", "Worked")}</span>
-                  <span className="font-semibold text-text-primary">{workedTime}</span>
+                  <span className="font-semibold text-text-primary tabular-nums">{workedTime}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>{t("attendance.summary.last_punch", "Last punch")}</span>
-                  <span className="font-semibold text-text-primary">{formatTime(lastActionAt, locale)}</span>
+                  <span className="font-semibold text-text-primary tabular-nums">{formatTime(lastActionAt, locale)}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span>{t("attendance.summary.shift", "Shift")}</span>
@@ -489,22 +538,22 @@ export default function AttendancePage() {
               </div>
 
               {summaryAlert ? (
-                <div className="mt-6 rounded-[24px] border border-amber-400/20 bg-amber-500/10 px-4 py-4 text-sm text-amber-100">
+                <div className="mt-6 rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] px-4 py-4 text-sm text-[var(--status-warning-fg)]">
                   {summaryAlert}
                 </div>
               ) : null}
 
               {today?.late_warning ? (
-                <div className="mt-4 rounded-[24px] border border-amber-400/20 bg-amber-500/10 px-4 py-4 text-sm text-amber-100">
+                <div className="mt-4 rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] px-4 py-4 text-sm text-[var(--status-warning-fg)]">
                   {today.late_warning}
                 </div>
               ) : null}
 
-              <details className="mt-6 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
+              <details className="mt-6 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-shell)] px-4 py-4">
                 <summary className="cursor-pointer list-none text-sm font-semibold text-text-primary">{t("attendance.summary.shift_details", "Shift details")}</summary>
-                <div className="mt-4 rounded-[20px] border border-white/10 bg-[rgba(8,12,20,0.45)] px-4 py-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-text-tertiary">{t("attendance.summary.shift_status", "Shift status")}</div>
-                  <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-text-primary">
+                <div className="mt-4 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 py-4">
+                  <div className="text-xs font-medium text-text-tertiary">{t("attendance.summary.shift_status", "Shift status")}</div>
+                  <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold text-text-primary">
                     <span className={`h-2.5 w-2.5 rounded-full ${statusMeta.dot}`} />
                     {formatAttendanceStatusLabel(today?.status)}
                   </div>
@@ -521,7 +570,7 @@ export default function AttendancePage() {
                   </div>
                 </div>
 
-                <div className="mt-4 rounded-[20px] border border-white/10 bg-[rgba(8,12,20,0.45)] px-4 py-4 text-sm text-text-secondary">
+                <div className="mt-4 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 py-4 text-sm text-text-secondary">
                   <div className="flex items-center justify-between">
                     <span>{t("attendance.summary.factory", "Factory")}</span>
                     <span className="font-semibold text-text-primary">{factoryName}</span>

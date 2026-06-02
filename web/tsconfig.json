@@ -31,6 +31,18 @@
       "@/v2/*": [
         "./src-v2/*"
       ],
+      "@/features/*": [
+        "./src/features/*"
+      ],
+      "@/shared/*": [
+        "./src/shared/*"
+      ],
+      "@/core/*": [
+        "./src/core/*"
+      ],
+      "@/design-system/*": [
+        "./src/design-system/*"
+      ],
       "@/*": [
         "./src/*"
       ]

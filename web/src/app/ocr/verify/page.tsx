@@ -2,8 +2,7 @@ import "@/v2/systems/styles/factory-nerve.ui.css";
 
 import { redirect } from "next/navigation";
 
-import { NEW_OCR_VERIFY, USE_GOVERNED_OCR_WORKSPACE } from "@/config/featureFlags";
-import OcrVerificationPage from "@/legacy-ui/ocr/ocr-verification-page";
+import { USE_GOVERNED_OCR_WORKSPACE } from "@/config/featureFlags";
 import OcrVerificationV2Page from "@/legacy-ui/ocr/ocr-verification-v2-page";
 import { buildCanonicalOcrVerifyHref } from "@/lib/ocr-verify-route";
 import { GovernedOcrVerificationPage } from "@/v2/workspaces/ocr-execution";
@@ -19,10 +18,6 @@ export default async function OcrVerifyRoutePage({
   const workspaceOverride = Array.isArray(resolvedSearchParams.workspace)
     ? resolvedSearchParams.workspace[0]
     : resolvedSearchParams.workspace;
-
-  if (!NEW_OCR_VERIFY) {
-    return <OcrVerificationPage />;
-  }
 
   if (workspaceOverride === "legacy") {
     return <OcrVerificationV2Page />;
@@ -50,7 +45,7 @@ export default async function OcrVerifyRoutePage({
     redirect(canonicalHref);
   }
 
-  if (workspaceOverride === "governed" || (USE_GOVERNED_OCR_WORKSPACE && !workspaceOverride)) {
+  if (USE_GOVERNED_OCR_WORKSPACE && (workspaceOverride === "governed" || !workspaceOverride)) {
     return <GovernedOcrVerificationPage />;
   }
 

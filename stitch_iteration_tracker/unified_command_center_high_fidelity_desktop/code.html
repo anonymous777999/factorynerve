@@ -1,0 +1,506 @@
+<!DOCTYPE html><html class="dark" lang="en"><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>DPR.ai - Owner Desk</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet">
+<script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            app: {
+              bg: '#111318',
+              surface: '#1A1D24',
+              surfaceAlt: '#22262F',
+              border: '#2C323E',
+              text: '#E5E7EB',
+              textMuted: '#9CA3AF',
+              primary: '#3B82F6',
+              primaryHover: '#2563EB',
+              danger: '#EF4444',
+              dangerBg: 'rgba(239, 68, 68, 0.1)',
+              warning: '#F59E0B',
+              warningBg: 'rgba(245, 158, 11, 0.1)',
+              success: '#10B981',
+              successBg: 'rgba(16, 185, 129, 0.1)',
+            }
+          },
+          fontSize: {
+            'xxs': '0.65rem',
+          }
+        }
+      }
+    }
+  </script>
+<style data-purpose="base-styles">
+    body {
+      background-color: theme('colors.app.bg');
+      color: theme('colors.app.text');
+      font-family: theme('fontFamily.sans');
+    }
+    .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+    }
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+  </style>
+</head>
+<body class="h-screen flex overflow-hidden antialiased text-sm">
+<!-- BEGIN: Sidebar -->
+<aside class="w-64 flex-shrink-0 border-r border-app-border bg-app-bg flex flex-col justify-between" data-purpose="sidebar">
+<div>
+<div class="h-16 flex items-center justify-between px-4 border-b border-app-border">
+<div class="flex items-center gap-2">
+<span class="font-bold text-lg tracking-tight text-white">DPR.ai</span>
+</div>
+<button class="text-xs text-app-textMuted hover:text-white bg-app-surfaceAlt px-2 py-1 rounded">Hide Nav</button>
+</div>
+<div class="px-4 py-4 border-b border-app-border">
+<div class="font-medium text-white">RedVortex ORG</div>
+<div class="text-xs text-app-textMuted mt-0.5">Steel Industry • Free Plan</div>
+</div>
+<div class="py-4 overflow-y-auto scrollbar-hide h-[calc(100vh-280px)]">
+<div class="px-4 mb-4">
+<div class="text-xxs font-bold text-app-textMuted uppercase tracking-wider mb-2">Pinned</div>
+<a class="flex items-center gap-2 px-2 py-1.5 text-app-text hover:bg-app-surface rounded-md group transition-colors" href="#">
+<svg class="w-4 h-4 text-app-textMuted group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="text-sm">Profile</span>
+</a>
+</div>
+<div class="px-4 mb-4">
+<div class="text-xxs font-bold text-app-textMuted uppercase tracking-wider mb-2">Management</div>
+<a class="flex items-center gap-2 px-2 py-1.5 text-app-text hover:bg-app-surface rounded-md group transition-colors" href="#">
+<svg class="w-4 h-4 text-app-textMuted group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="text-sm">Reports &amp; Exports</span>
+</a>
+<a class="flex items-center gap-2 px-2 py-1.5 bg-app-surfaceAlt text-white rounded-md group transition-colors border-l-2 border-app-primary" href="#">
+<svg class="w-4 h-4 text-app-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="text-sm font-medium">Owner Desk</span>
+</a>
+<a class="flex items-center gap-2 px-2 py-1.5 text-app-text hover:bg-app-surface rounded-md group transition-colors" href="#">
+<svg class="w-4 h-4 text-app-textMuted group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="text-sm">Factory Network</span>
+</a>
+<a class="flex items-center gap-2 px-2 py-1.5 text-app-text hover:bg-app-surface rounded-md group transition-colors" href="#">
+<svg class="w-4 h-4 text-app-textMuted group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M13 10V3L4 14h7v7l9-11h-7z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="text-sm">AI Insights</span>
+</a>
+</div>
+<div class="px-4">
+<div class="text-xxs font-bold text-app-textMuted uppercase tracking-wider mb-2">Operations</div>
+<a class="flex items-center gap-2 px-2 py-1.5 text-app-text hover:bg-app-surface rounded-md group transition-colors" href="#">
+<svg class="w-4 h-4 text-app-textMuted group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<span class="text-sm">Steel Batches</span>
+</a>
+</div>
+</div>
+</div>
+<div class="p-4 border-t border-app-border">
+<button class="w-full flex justify-center items-center gap-2 bg-app-surfaceAlt hover:bg-app-border text-white text-xs font-medium py-2 rounded transition-colors mb-4">
+            WORKSPACE
+        </button>
+<a class="flex items-center gap-2 text-xs text-app-textMuted hover:text-white mb-2" href="#">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path><path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+        Account Settings
+      </a>
+<a class="flex items-center gap-2 text-xs text-app-danger hover:text-red-400" href="#">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+        Sign Out
+      </a>
+</div>
+</aside>
+<!-- END: Sidebar -->
+<!-- BEGIN: Main Content -->
+<main class="flex-1 flex flex-col h-full overflow-hidden bg-app-bg" data-purpose="main-content">
+<!-- BEGIN: Global Header -->
+<header class="h-20 flex-shrink-0 border-b border-app-border flex items-center justify-between px-6 bg-app-surface/50 backdrop-blur-sm" data-purpose="global-header">
+<div>
+<div class="text-xxs font-bold text-app-textMuted uppercase tracking-wider mb-1">Steel Operations</div>
+<h1 class="text-2xl font-semibold text-white tracking-tight">Run the steel desk from one trusted control lane</h1>
+<p class="text-xs text-app-textMuted mt-0.5">Start with live stock trust, then move into batch, sales, and risk lanes without losing factory context.</p>
+</div>
+<div class="flex items-center gap-3">
+<div class="flex flex-col items-end bg-app-surfaceAlt border border-app-border rounded px-3 py-1.5">
+<span class="text-[10px] text-app-textMuted uppercase tracking-wider">Active Steel Factory</span>
+<span class="text-sm font-medium text-white">RedVortex ORG (QFK72150)</span>
+</div>
+<div class="flex flex-col bg-app-surfaceAlt border border-app-border rounded px-3 py-1.5 cursor-pointer hover:bg-app-border transition-colors">
+<span class="text-[10px] text-app-textMuted uppercase tracking-wider">Owner Report Date</span>
+<div class="flex items-center gap-2">
+<span class="text-sm font-medium text-white font-mono">05/26/2026</span>
+<svg class="w-3.5 h-3.5 text-app-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</div>
+</div>
+</div>
+</header>
+<!-- END: Global Header -->
+<!-- BEGIN: Scrollable Content Area -->
+<div class="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
+<!-- BEGIN: Live Reminders Ticker -->
+<div class="bg-app-warningBg border border-app-warning/20 rounded-lg p-3 flex items-start justify-between">
+<div class="flex items-start gap-3">
+<svg class="w-5 h-5 text-app-warning mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+<div>
+<div class="text-xs font-bold text-app-warning uppercase tracking-wider mb-0.5">Live Reminders</div>
+<div class="text-sm text-white">The next actions are synced across attendance, entry, scan, review, and queue.</div>
+<div class="text-sm text-app-warning font-medium mt-0.5">Attendance review is waiting (1 attendance issue needs closure).</div>
+</div>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-xs text-app-textMuted bg-app-surface px-2 py-1 rounded">Action Item</span>
+<button class="bg-app-surfaceAlt hover:bg-app-border text-white text-xs font-medium px-4 py-1.5 rounded transition-colors">Review</button>
+</div>
+</div>
+<!-- END: Live Reminders Ticker -->
+<!-- BEGIN: Top Row (Priority + KPIs) -->
+<div class="grid grid-cols-12 gap-4">
+<!-- Priority Widget -->
+<div class="col-span-5 bg-app-surface border border-app-danger/30 rounded-lg p-4 flex flex-col justify-between shadow-sm relative overflow-hidden">
+<div class="absolute top-0 left-0 w-1 h-full bg-app-danger"></div>
+<div>
+<div class="flex justify-between items-start mb-2">
+<div class="text-xs font-bold text-app-danger uppercase tracking-wider">Top Priority</div>
+<span class="text-[10px] font-medium bg-app-dangerBg text-app-danger px-2 py-0.5 rounded border border-app-danger/20">Critical Stock Anomaly</span>
+</div>
+<h2 class="text-lg font-semibold text-white mb-2 leading-tight">GR1001 - Steel roll is off by <span class="font-mono text-app-danger">-140 KG</span> and needs a trusted count.</h2>
+<p class="text-xs text-app-textMuted mb-4">Reconcile the item first so every downstream stock, batch, and sales decision uses reliable inventory numbers.</p>
+</div>
+<div class="flex gap-2 mt-auto">
+<button class="bg-app-primary hover:bg-app-primaryHover text-white text-xs font-medium px-4 py-2 rounded transition-colors shadow-[0_0_10px_rgba(59,130,246,0.3)]">Open Reconciliations</button>
+<button class="bg-app-surfaceAlt hover:bg-app-border border border-app-border text-white text-xs font-medium px-4 py-2 rounded transition-colors">Open Inventory Desk</button>
+</div>
+</div>
+<!-- KPI Strip -->
+<div class="col-span-7 grid grid-cols-4 gap-4">
+<div class="bg-app-surface border border-app-border rounded-lg p-4 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-center mb-1">
+<div class="text-xs font-medium text-app-textMuted uppercase tracking-wider">Today Loss</div>
+<span class="text-[10px] text-app-textMuted">-- STABLE</span>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="text-2xl font-bold text-white font-mono">0</span>
+<span class="text-xs text-app-textMuted">KG</span>
+</div>
+<div class="text-[10px] text-app-textMuted mt-2 leading-tight">0.0% vs yesterday yield loss. 1 high-risk batch signal active.</div>
+</div>
+<button class="w-full mt-3 bg-app-surfaceAlt hover:bg-app-border text-xs text-white py-1.5 rounded transition-colors border border-transparent hover:border-app-border">Risk Lane</button>
+</div>
+<div class="bg-app-surface border border-app-border rounded-lg p-4 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-center mb-1">
+<div class="text-xs font-medium text-app-textMuted uppercase tracking-wider">Total Stock</div>
+<span class="text-[10px] text-app-textMuted">-- STABLE</span>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="text-2xl font-bold text-white font-mono">1,070</span>
+<span class="text-xs text-app-textMuted">KG</span>
+</div>
+<div class="text-[10px] text-app-textMuted mt-2 leading-tight">0.0% vs yesterday mix. 0 green, 4 watch, 1 critical.</div>
+</div>
+<button class="w-full mt-3 bg-app-surfaceAlt hover:bg-app-border text-xs text-white py-1.5 rounded transition-colors border border-transparent hover:border-app-border">Stock Review</button>
+</div>
+<div class="bg-app-surface border border-app-border rounded-lg p-4 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-center mb-1">
+<div class="text-xs font-medium text-app-textMuted uppercase tracking-wider">Today Production</div>
+<span class="text-[10px] text-app-textMuted">-- STABLE</span>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="text-2xl font-bold text-white font-mono">0</span>
+<span class="text-xs text-app-textMuted">KG</span>
+</div>
+<div class="text-[10px] text-app-textMuted mt-2 leading-tight">0.0% vs yesterday output pace. 0 batches ongoing.</div>
+</div>
+<button class="w-full mt-3 bg-app-surfaceAlt hover:bg-app-border text-xs text-white py-1.5 rounded transition-colors border border-transparent hover:border-app-border">Production Lane</button>
+</div>
+<div class="bg-app-surface border border-app-border rounded-lg p-4 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-center mb-1">
+<div class="text-xs font-medium text-app-textMuted uppercase tracking-wider">Today Revenue</div>
+<span class="text-[10px] text-app-textMuted">-- STABLE</span>
+</div>
+<div class="flex items-baseline gap-1">
+<span class="text-xs text-app-textMuted">INR</span>
+<span class="text-2xl font-bold text-white font-mono">0</span>
+</div>
+<div class="text-[10px] text-app-textMuted mt-2 leading-tight">0.0% vs yesterday. 0 KG dispatch weight tied to windows.</div>
+</div>
+<button class="w-full mt-3 bg-app-surfaceAlt hover:bg-app-border text-xs text-white py-1.5 rounded transition-colors border border-transparent hover:border-app-border">Invoices</button>
+</div>
+</div>
+</div>
+<!-- END: Top Row -->
+<!-- BEGIN: Middle Row -->
+<div class="grid grid-cols-12 gap-4">
+<!-- Live Stock Trust Board -->
+<div class="col-span-8 bg-app-surface border border-app-border rounded-lg p-4 flex flex-col">
+<div class="flex justify-between items-start mb-4">
+<div>
+<h3 class="text-base font-semibold text-white">Live Stock Trust Board</h3>
+<p class="text-xs text-app-textMuted mt-0.5">1 anomaly item and 500 KG raw material in active tracking.</p>
+</div>
+<button class="bg-app-surfaceAlt hover:bg-app-border border border-app-border text-white text-xs font-medium px-3 py-1.5 rounded transition-colors">Open Stock Lane</button>
+</div>
+<div class="flex gap-2 mb-4">
+<button class="text-xs font-medium px-3 py-1 bg-app-successBg text-app-success border border-app-success/20 rounded">Green: 0</button>
+<button class="text-xs font-medium px-3 py-1 bg-app-warningBg text-app-warning border border-app-warning/20 rounded">Review: 4</button>
+<button class="text-xs font-medium px-3 py-1 bg-app-dangerBg text-app-danger border border-app-danger/20 rounded">Mismatch: 1</button>
+</div>
+<div class="flex-1 overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-app-border text-[10px] font-bold text-app-textMuted uppercase tracking-wider">
+<th class="pb-2 font-medium">Item</th>
+<th class="pb-2 font-medium">Zone</th>
+<th class="pb-2 font-medium">KG</th>
+<th class="pb-2 font-medium">Ton</th>
+<th class="pb-2 font-medium">Last Variance</th>
+<th class="pb-2 font-medium">Confidence</th>
+</tr>
+</thead>
+<tbody class="text-sm">
+<!-- Row 1 -->
+<tr class="border-b border-app-border/50 hover:bg-app-surfaceAlt/50 transition-colors group">
+<td class="py-3">
+<div class="font-medium text-white group-hover:text-app-primary transition-colors cursor-pointer">Steel Pipe</div>
+<div class="text-[10px] text-app-textMuted font-mono">GS100 / Finished</div>
+</td>
+<td class="py-3">
+<div class="text-white">Warehouse</div>
+<div class="text-[10px] text-app-textMuted">Derived from logs</div>
+</td>
+<td class="py-3 font-mono text-white">0</td>
+<td class="py-3 font-mono text-white">0</td>
+<td class="py-3">
+<div class="text-app-warning font-medium">No count yet</div>
+<div class="text-[10px] text-app-textMuted">Variance pending</div>
+</td>
+<td class="py-3">
+<span class="text-[10px] font-bold bg-app-warningBg text-app-warning border border-app-warning/30 px-2 py-0.5 rounded uppercase">Yellow</span>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="border-b border-app-border/50 hover:bg-app-surfaceAlt/50 transition-colors group">
+<td class="py-3">
+<div class="font-medium text-white group-hover:text-app-primary transition-colors cursor-pointer">Steel roll</div>
+<div class="text-[10px] text-app-textMuted font-mono">GR1001 / Raw</div>
+</td>
+<td class="py-3">
+<div class="text-white">Yard</div>
+<div class="text-[10px] text-app-textMuted">Material stage</div>
+</td>
+<td class="py-3 font-mono text-white">0</td>
+<td class="py-3 font-mono text-white">0</td>
+<td class="py-3">
+<div class="text-app-danger font-medium font-mono">-140.00 KG</div>
+<div class="text-[10px] text-app-danger/70">-12.50%</div>
+</td>
+<td class="py-3">
+<span class="text-[10px] font-bold bg-app-dangerBg text-app-danger border border-app-danger/30 px-2 py-0.5 rounded uppercase">Red</span>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-app-surfaceAlt/50 transition-colors group">
+<td class="py-3">
+<div class="font-medium text-white group-hover:text-app-primary transition-colors cursor-pointer">Steel roll</div>
+<div class="text-[10px] text-app-textMuted font-mono">GR1002 / Raw</div>
+</td>
+<td class="py-3">
+<div class="text-white">Yard</div>
+<div class="text-[10px] text-app-textMuted">Material stage</div>
+</td>
+<td class="py-3 font-mono text-white">500</td>
+<td class="py-3 font-mono text-white">0.5</td>
+<td class="py-3">
+<div class="text-app-warning font-medium">No count yet</div>
+<div class="text-[10px] text-app-textMuted">Variance pending</div>
+</td>
+<td class="py-3">
+<span class="text-[10px] font-bold bg-app-warningBg text-app-warning border border-app-warning/30 px-2 py-0.5 rounded uppercase">Yellow</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Owner Control Board -->
+<div class="col-span-4 bg-app-surface border border-app-border rounded-lg p-4 flex flex-col">
+<h3 class="text-base font-semibold text-white mb-4">Owner Control Board</h3>
+<div class="space-y-4">
+<!-- Metric 1 -->
+<div class="bg-app-surfaceAlt rounded p-3 border border-app-border/50">
+<div class="flex justify-between items-start mb-1">
+<div class="text-[10px] font-medium text-app-textMuted uppercase tracking-wider">Top Loss Batch</div>
+<span class="text-[10px] font-bold bg-app-dangerBg text-app-danger border border-app-danger/20 px-1.5 py-0.5 rounded">CRITICAL</span>
+</div>
+<div class="font-mono text-white font-medium">GS100</div>
+<div class="text-xs text-white mt-1">Variance <span class="font-mono">10 KG</span> / <span class="font-mono text-app-danger">₹10,000</span> exposure.</div>
+<div class="text-[10px] text-app-success mt-0.5">Estimated gross profit ₹89,000.</div>
+<button class="mt-2 text-xs text-app-primary hover:text-app-primaryHover font-medium bg-app-surface border border-app-border px-2 py-1 rounded transition-colors">Open Trace</button>
+</div>
+<!-- Metric 2 -->
+<div class="bg-app-surfaceAlt rounded p-3 border border-app-border/50 flex justify-between items-end">
+<div>
+<div class="text-[10px] font-medium text-app-textMuted uppercase tracking-wider mb-1">Highest Risk Operator</div>
+<div class="text-sm font-medium text-white">Operator Sec-B</div>
+<div class="text-[10px] text-app-textMuted mt-0.5">1 batches / 1 high risk / avg loss 30.00%</div>
+</div>
+<div class="font-mono text-app-danger font-medium text-sm">₹11,000</div>
+</div>
+<!-- Metric 3 -->
+<div class="bg-app-surfaceAlt rounded p-3 border border-app-border/50 flex justify-between items-end">
+<div>
+<div class="text-[10px] font-medium text-app-textMuted uppercase tracking-wider mb-1">Highest Loss Day</div>
+<div class="text-sm font-mono text-white">2026-05-09</div>
+</div>
+<div class="font-mono text-white font-medium text-sm">10 KG total</div>
+</div>
+</div>
+</div>
+</div>
+<!-- END: Middle Row -->
+<!-- BEGIN: Bottom Row -->
+<div class="grid grid-cols-12 gap-4">
+<!-- Latest Batch Signals -->
+<div class="col-span-8 bg-app-surface border border-app-border rounded-lg p-4 flex flex-col relative overflow-hidden">
+<!-- Top red accent line -->
+<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-app-warning/50 to-app-danger/50"></div>
+<div class="flex justify-between items-start mb-4 mt-1">
+<div>
+<div class="text-[10px] font-bold text-app-warning uppercase tracking-wider mb-0.5">Production Snapshot</div>
+<h3 class="text-lg font-semibold text-white">Latest Batch Signals</h3>
+</div>
+</div>
+<div class="flex justify-between items-center mb-4 bg-app-surfaceAlt p-3 rounded border border-app-border/50">
+<div>
+<div class="text-xs text-white">Active Batches Recorded: <span class="font-bold">1</span></div>
+<div class="text-xs text-white mt-0.5">Average Plant Loss Pace: <span class="font-bold text-app-warning">30.00%</span></div>
+</div>
+<div class="flex gap-2">
+<button class="bg-app-surface hover:bg-app-border border border-app-border text-white text-xs font-medium px-3 py-1.5 rounded transition-colors">Open Reconciliations</button>
+<button class="bg-app-danger/10 hover:bg-app-danger/20 border border-app-danger/30 text-app-danger text-xs font-medium px-3 py-1.5 rounded transition-colors">Open Risk Lane</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="border-b border-app-border text-[10px] font-bold text-app-textMuted uppercase tracking-wider">
+<th class="pb-2 font-medium">Batch</th>
+<th class="pb-2 font-medium">Expected Weight</th>
+<th class="pb-2 font-medium">Actual Weight</th>
+<th class="pb-2 font-medium">Variance</th>
+<th class="pb-2 font-medium text-right pr-4">Severity</th>
+</tr>
+</thead>
+<tbody class="text-sm">
+<tr class="border-b border-app-border/50">
+<td class="py-3">
+<div class="font-mono font-medium text-white">GS100</div>
+<div class="text-[10px] text-app-textMuted font-mono">2026-05-09</div>
+</td>
+<td class="py-3 font-mono text-white">80 KG</td>
+<td class="py-3 font-mono text-white">70 KG</td>
+<td class="py-3">
+<div class="font-mono text-app-danger font-medium">10 KG</div>
+<div class="text-[10px] text-app-textMuted">₹10,000 loss exposure</div>
+</td>
+<td class="py-3 text-right pr-4">
+<div class="inline-flex flex-col items-end">
+<span class="text-[10px] font-bold bg-app-dangerBg text-app-danger border border-app-danger/30 px-2 py-0.5 rounded uppercase mb-1">Critical</span>
+<div class="text-[10px] text-app-warning flex items-center gap-1">
+<svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path clip-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" fill-rule="evenodd"></path></svg>
+                                        Poor traceability
+                                    </div>
+</div>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- OCR Ingestion Pipeline -->
+<div class="col-span-4 bg-app-surface border border-app-border rounded-lg p-4 flex flex-col">
+<div class="flex justify-between items-start mb-4">
+<h3 class="text-base font-semibold text-white">OCR Ingestion Pipeline</h3>
+<span class="text-[10px] font-medium text-app-primary border border-app-primary/30 bg-app-primary/10 px-2 py-0.5 rounded">AI Native</span>
+</div>
+<div class="space-y-3 flex-1">
+<!-- Item 1 -->
+<div class="flex justify-between items-center pb-3 border-b border-app-border/50">
+<div>
+<div class="text-sm font-medium text-white flex items-center gap-2">
+<svg class="w-4 h-4 text-app-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                             Scrap_Receipt_Log_A.jpg
+                         </div>
+<div class="text-[10px] text-app-textMuted mt-0.5">Melt Shop • Processed into Excel</div>
+</div>
+<span class="text-[10px] font-bold bg-app-successBg text-app-success border border-app-success/20 px-2 py-0.5 rounded uppercase">Success</span>
+</div>
+<!-- Item 2 -->
+<div class="flex justify-between items-center pb-3 border-b border-app-border/50">
+<div>
+<div class="text-sm font-medium text-white flex items-center gap-2">
+<svg class="w-4 h-4 text-app-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                             Yield_Report_NightShift.jpg
+                         </div>
+<div class="text-[10px] text-app-textMuted mt-0.5">Material Yield • Processing fields...</div>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="relative flex h-2 w-2">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-app-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2 w-2 bg-app-primary"></span>
+</span>
+<span class="text-[10px] font-bold text-app-primary uppercase">Extracting</span>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="flex justify-between items-center">
+<div>
+<div class="text-sm font-medium text-white flex items-center gap-2">
+<svg class="w-4 h-4 text-app-textMuted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+                             Handwritten_Logs_BatchC.png
+                         </div>
+<div class="text-[10px] text-app-textMuted mt-0.5">Low confidence field validation</div>
+</div>
+<span class="text-[10px] font-bold bg-app-warningBg text-app-warning border border-app-warning/20 px-2 py-0.5 rounded uppercase">Needs Review</span>
+</div>
+</div>
+<div class="mt-4 pt-3 border-t border-app-border/50 flex justify-between items-center">
+<div class="text-xs text-app-textMuted">Extraction Accuracy Rate: <span class="text-app-success font-medium">96.4%</span></div>
+<a class="text-xs text-app-primary hover:text-app-primaryHover transition-colors font-medium" href="#">View Log Queue</a>
+</div>
+</div>
+</div>
+<!-- END: Bottom Row -->
+<!-- BEGIN: Bottom Quick Actions Bar -->
+<div class="bg-app-surface border border-app-border rounded-lg p-4 flex justify-between items-center mt-6">
+<div>
+<div class="text-[10px] font-bold text-app-warning uppercase tracking-wider mb-0.5">Quick Actions</div>
+<h3 class="text-sm font-semibold text-white">Move from signal to steel action fast</h3>
+<p class="text-xs text-app-textMuted mt-0.5">System tracking status loop cards display health drift anomalies. Execute directly from the terminal buttons.</p>
+</div>
+<div class="flex gap-2">
+<button class="bg-app-primary hover:bg-app-primaryHover text-white text-xs font-medium px-4 py-2 rounded transition-colors shadow-sm">Open Reconciliations</button>
+<button class="bg-app-surfaceAlt hover:bg-app-border border border-app-border text-white text-xs font-medium px-4 py-2 rounded transition-colors">Record Batch</button>
+<button class="bg-app-surfaceAlt hover:bg-app-border border border-app-border text-white text-xs font-medium px-4 py-2 rounded transition-colors">Inventory Desk</button>
+<button class="bg-app-surfaceAlt hover:bg-app-border border border-app-border text-white text-xs font-medium px-4 py-2 rounded transition-colors">Invoices</button>
+<button class="bg-app-surfaceAlt hover:bg-app-border border border-app-border text-white text-xs font-medium px-4 py-2 rounded transition-colors">Dispatches</button>
+</div>
+</div>
+<!-- END: Bottom Quick Actions Bar -->
+<!-- Padding for bottom scroll -->
+<div class="h-6"></div>
+</div>
+<!-- END: Scrollable Content Area -->
+</main>
+<!-- END: Main Content -->
+</body></html>

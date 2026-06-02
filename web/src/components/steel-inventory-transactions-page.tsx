@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
+import { SuccessBanner, MutationErrorBanner } from "@/shared/feedback";
 import { ApiError } from "@/lib/api";
 import {
   createSteelTransaction,
@@ -17,20 +18,7 @@ import {
   type SteelItem,
 } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
-
-function formatKg(value: number | null | undefined) {
-  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value || 0);
-}
-
-function formatDateTime(value: string) {
-  return new Date(value).toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { formatKg, formatDateTime } from "@/features/steel/lib/steel-helpers";
 
 export function SteelInventoryTransactionsPage() {
   const { user, activeFactory, loading, error: sessionError } = useSession();
@@ -170,7 +158,7 @@ export function SteelInventoryTransactionsPage() {
                           <td className="px-3 py-3 text-[var(--muted)]">{tx.transaction_type.replace("_", " ")}</td>
                           <td className="px-3 py-3 font-mono text-white">{formatKg(tx.quantity_kg)}</td>
                           <td className="px-3 py-3">
-                            <span className={`rounded-full px-2 py-0.5 text-[11px] uppercase font-bold ${tx.direction === "in" ? "bg-emerald-500/20 text-emerald-400" : "bg-rose-500/20 text-rose-400"}`}>
+                            <span className={`rounded-full px-2 py-0.5 text-[11px] uppercase font-bold ${tx.direction === "in" ? "bg-status-success-bg text-status-success-fg" : "bg-status-danger-bg text-status-danger-fg"}`}>
                               {tx.direction}
                             </span>
                           </td>
@@ -263,8 +251,8 @@ export function SteelInventoryTransactionsPage() {
           </div>
         </section>
 
-        {status && <div className="text-sm text-green-400">{status}</div>}
-        {error && <div className="text-sm text-red-400">{error}</div>}
+        {status && <SuccessBanner message={status} onDismiss={() => setStatus("")} />}
+        {error && <MutationErrorBanner message={error} onDismiss={() => setError("")} />}
       </div>
     </main>
   );

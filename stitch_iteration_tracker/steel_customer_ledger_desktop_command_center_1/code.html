@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DPR.ai | Steel Customer Ledger</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-secondary": "#002c71",
+                        "inverse-primary": "#885200",
+                        "surface-container-lowest": "#0c0e13",
+                        "on-secondary-fixed-variant": "#00419f",
+                        "inverse-on-surface": "#2e3036",
+                        "on-error-container": "#ffdad6",
+                        "error-container": "#93000a",
+                        "border-default": "#333b48",
+                        "on-tertiary-fixed-variant": "#005320",
+                        "surface-primary": "#161a21",
+                        "secondary-container": "#0459d3",
+                        "on-surface-variant": "#d9c3ae",
+                        "secondary": "#b1c5ff",
+                        "on-tertiary-container": "#003f17",
+                        "tertiary-fixed-dim": "#62df7d",
+                        "surface-ground": "#0a0b0d",
+                        "on-secondary-fixed": "#001946",
+                        "surface-elevated": "#1c2029",
+                        "text-muted": "#64748b",
+                        "outline": "#a18d7b",
+                        "status-critical": "#dc2626",
+                        "on-background": "#e2e2e9",
+                        "primary": "#ffb868",
+                        "background": "#111318",
+                        "surface-tint": "#ffb868",
+                        "surface-raised": "#212633",
+                        "primary-container": "#e08c0f",
+                        "primary-fixed-dim": "#ffb868",
+                        "outline-variant": "#534435",
+                        "on-surface": "#e2e2e9",
+                        "text-primary": "#f1f5f9",
+                        "tertiary-container": "#33b559",
+                        "surface-variant": "#33353a",
+                        "on-secondary-container": "#d1dcff",
+                        "secondary-fixed": "#dae2ff",
+                        "error": "#ffb4ab",
+                        "surface-container": "#1e2025",
+                        "on-primary": "#482900",
+                        "status-caution": "#ea580c",
+                        "on-tertiary": "#003914",
+                        "secondary-fixed-dim": "#b1c5ff",
+                        "primary-fixed": "#ffddbb",
+                        "surface-container-highest": "#33353a",
+                        "on-primary-fixed": "#2b1700",
+                        "text-secondary": "#cbd5e1",
+                        "surface-container-high": "#282a2f",
+                        "on-error": "#690005",
+                        "surface-container-low": "#1a1b21",
+                        "border-subtle": "#252b36",
+                        "tertiary": "#62df7d",
+                        "surface-overlay": "#252b36",
+                        "surface": "#111318",
+                        "on-primary-container": "#502e00",
+                        "on-primary-fixed-variant": "#673d00",
+                        "border-strong": "#4a5568",
+                        "tertiary-fixed": "#7ffc97",
+                        "on-tertiary-fixed": "#002109",
+                        "surface-bright": "#37393f",
+                        "inverse-surface": "#e2e2e9",
+                        "surface-dim": "#111318",
+                        "surface-canvas": "#111318"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "md": "20px",
+                        "xl": "32px",
+                        "micro": "4px",
+                        "gutter": "16px",
+                        "margin-mobile": "16px",
+                        "margin-desktop": "32px",
+                        "lg": "24px",
+                        "unit": "4px",
+                        "sm": "12px",
+                        "xs": "8px",
+                        "base": "16px"
+                    },
+                    "fontFamily": {
+                        "metadata-xs": ["JetBrains Mono"],
+                        "panel-title": ["Inter"],
+                        "display-4xl": ["Inter"],
+                        "body-md": ["Inter"],
+                        "page-title-mobile": ["Inter"],
+                        "label-sm": ["JetBrains Mono"],
+                        "table-cell": ["Inter"],
+                        "page-title": ["Inter"]
+                    },
+                    "fontSize": {
+                        "metadata-xs": ["11px", {"lineHeight": "1.45", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "panel-title": ["18px", {"lineHeight": "1.40", "letterSpacing": "-0.010em", "fontWeight": "600"}],
+                        "display-4xl": ["36px", {"lineHeight": "1.15", "letterSpacing": "-0.026em", "fontWeight": "700"}],
+                        "body-md": ["14px", {"lineHeight": "1.50", "letterSpacing": "-0.006em", "fontWeight": "400"}],
+                        "page-title-mobile": ["20px", {"lineHeight": "1.25", "fontWeight": "600"}],
+                        "label-sm": ["12px", {"lineHeight": "1.45", "letterSpacing": "0.004em", "fontWeight": "500"}],
+                        "table-cell": ["13px", {"lineHeight": "1.50", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "page-title": ["24px", {"lineHeight": "1.25", "letterSpacing": "-0.018em", "fontWeight": "600"}]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            background-color: #0a0b0d;
+            font-family: 'Inter', sans-serif;
+            color: #e2e2e9;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+            font-size: 18px;
+        }
+        .scroll-hide::-webkit-scrollbar { display: none; }
+        .grid-layout {
+            display: grid;
+            grid-template-columns: 220px 1fr;
+            min-height: 100vh;
+        }
+        .form-input-dark {
+            background-color: #1c2029;
+            border: 1px solid #333b48;
+            color: #f1f5f9;
+            transition: all 150ms ease-in-out;
+        }
+        .form-input-dark:focus {
+            outline: none;
+            border-color: #ffb868;
+            box-shadow: 0 0 0 2px rgba(255, 184, 104, 0.2);
+        }
+    </style>
+</head>
+<body class="bg-surface-ground">
+<div class="grid-layout">
+<!-- SIDEBAR -->
+<aside class="flex flex-col h-screen fixed left-0 top-0 w-[220px] bg-surface-primary border-r border-border-strong py-base z-50">
+<div class="px-gutter mb-xl">
+<div class="font-panel-title text-panel-title font-bold text-on-surface">RedVortex ORG</div>
+<div class="font-metadata-xs text-metadata-xs text-text-muted mt-micro">Steel Industry • free plan</div>
+</div>
+<div class="flex-1 overflow-y-auto px-xs space-y-unit scroll-hide">
+<div class="px-gutter mb-xs text-text-muted font-metadata-xs text-metadata-xs uppercase tracking-widest">Operations</div>
+<a class="flex items-center gap-xs px-gutter py-xs font-label-sm text-label-sm text-on-surface-variant hover:bg-surface-elevated transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="factory">factory</span>
+                    Steel Batches
+                </a>
+<a class="flex items-center gap-xs px-gutter py-xs font-label-sm text-label-sm text-on-surface-variant hover:bg-surface-elevated transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="monitoring">monitoring</span>
+                    Steel Charts
+                </a>
+<a class="flex items-center gap-xs px-gutter py-xs font-label-sm text-label-sm bg-surface-variant text-primary border-r-2 border-primary" href="#">
+<span class="material-symbols-outlined" data-icon="groups">groups</span>
+                    Customers
+                </a>
+<a class="flex items-center gap-xs px-gutter py-xs font-label-sm text-label-sm text-on-surface-variant hover:bg-surface-elevated transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="conveyor_belt">conveyor_belt</span>
+                    Dispatch
+                </a>
+<div class="px-gutter mt-lg mb-xs text-text-muted font-metadata-xs text-metadata-xs uppercase tracking-widest">Review</div>
+<a class="flex items-center gap-xs px-gutter py-xs font-label-sm text-label-sm text-on-surface-variant hover:bg-surface-elevated transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="verified_user">verified_user</span>
+                    Approvals
+                </a>
+<a class="flex items-center gap-xs px-gutter py-xs font-label-sm text-label-sm text-on-surface-variant hover:bg-surface-elevated transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="document_scanner">document_scanner</span>
+                    OCR History
+                </a>
+<div class="px-gutter mt-lg mb-xs text-text-muted font-metadata-xs text-metadata-xs uppercase tracking-widest">Management</div>
+<a class="flex items-center gap-xs px-gutter py-xs font-label-sm text-label-sm text-on-surface-variant hover:bg-surface-elevated transition-colors duration-150" href="#">
+<span class="material-symbols-outlined" data-icon="speed">speed</span>
+                    Performance
+                </a>
+</div>
+<div class="mt-auto px-xs border-t border-border-subtle pt-base">
+<button class="w-full bg-primary-container/10 border border-primary-container text-primary px-gutter py-xs rounded-lg font-label-sm text-label-sm hover:bg-primary-container/20 transition-all">
+                    STEEL CORE PACK
+                </button>
+<div class="mt-base flex items-center gap-xs px-gutter py-xs font-label-sm text-label-sm text-on-surface-variant cursor-pointer hover:bg-surface-elevated">
+<span class="material-symbols-outlined" data-icon="manage_accounts">manage_accounts</span>
+                    Profile &amp; Tools
+                </div>
+</div>
+</aside>
+<!-- MAIN CONTENT -->
+<main class="ml-[220px] flex flex-col min-h-screen bg-background">
+<!-- TOP BAR -->
+<header class="h-[48px] w-full sticky top-0 z-40 flex items-center justify-between px-gutter bg-surface-primary border-b border-border-strong">
+<div class="flex items-center gap-lg">
+<span class="text-text-muted font-label-sm text-label-sm cursor-pointer hover:text-primary transition-colors">Hide Nav</span>
+<div class="flex flex-col">
+<h1 class="font-panel-title text-panel-title text-on-surface font-bold">Customers</h1>
+<p class="font-metadata-xs text-metadata-xs text-text-muted leading-none">Track customer ledger, payments, and outstanding exposure</p>
+</div>
+</div>
+<div class="flex items-center gap-base">
+<div class="flex gap-xs">
+<span class="bg-surface-raised px-xs py-micro rounded border border-border-subtle text-text-muted font-label-sm text-label-sm">Alerts <span class="text-status-critical">0</span></span>
+<span class="bg-surface-raised px-xs py-micro rounded border border-border-subtle text-text-muted font-label-sm text-label-sm">Review <span class="text-primary">0</span></span>
+<span class="bg-surface-raised px-xs py-micro rounded border border-border-subtle text-text-muted font-label-sm text-label-sm">Commands</span>
+</div>
+<button class="bg-primary px-base py-micro rounded text-on-primary font-label-sm text-label-sm font-bold uppercase tracking-wider shadow-sm hover:opacity-90 active:scale-95 transition-all">WORKSPACE</button>
+</div>
+</header>
+<div class="p-gutter space-y-gutter">
+<!-- LIVE REMINDERS -->
+<div class="w-full bg-[#0d162a] border border-blue-900/50 rounded-xl p-base flex items-center justify-between shadow-lg">
+<div class="flex items-center gap-base">
+<div class="h-10 w-10 rounded-full bg-blue-950 flex items-center justify-center text-secondary border border-blue-800">
+<span class="material-symbols-outlined" data-icon="notification_important">notification_important</span>
+</div>
+<div>
+<span class="font-label-sm text-label-sm text-primary uppercase tracking-widest block mb-1">Live Reminders</span>
+<span class="font-body-md text-body-md text-on-surface font-semibold">Attendance review is waiting</span>
+<span class="font-metadata-xs text-metadata-xs text-text-muted ml-base">1 attendance issue needs closure</span>
+</div>
+</div>
+<button class="bg-surface-container-high hover:bg-surface-bright text-on-surface px-lg py-sm rounded border border-border-strong font-label-sm text-label-sm transition-colors">
+                        Review Attendance
+                    </button>
+</div>
+<!-- HERO -->
+<section class="relative overflow-hidden bg-surface-raised border border-border-strong rounded-xl p-xl shadow-2xl">
+<div class="relative z-10">
+<span class="font-label-sm text-label-sm text-primary uppercase tracking-[0.2em] block mb-xs">Steel Customer Ledger</span>
+<h2 class="font-display-4xl text-display-4xl text-on-surface max-w-2xl leading-tight">Add the buyer before receivables start moving</h2>
+<p class="font-body-md text-body-md text-text-muted mt-base max-w-xl">Keep buyer setup, receivables, and recovery context in one place before invoices and dispatches stack up.</p>
+</div>
+<div class="absolute right-0 top-0 h-full w-1/3 bg-gradient-to-l from-primary/10 to-transparent pointer-events-none opacity-20"></div>
+</section>
+<!-- TOOL STRIP & KPI -->
+<div class="space-y-base">
+<div class="flex items-center gap-gutter border-b border-border-subtle">
+<button class="px-base py-sm font-label-sm text-label-sm text-primary border-b-2 border-primary">Steel Hub</button>
+<button class="px-base py-sm font-label-sm text-label-sm text-text-muted hover:text-on-surface transition-colors">Invoices</button>
+<button class="px-base py-sm font-label-sm text-label-sm text-text-muted hover:text-on-surface transition-colors">Dispatches</button>
+</div>
+<div class="grid grid-cols-5 gap-base">
+<div class="bg-surface-primary border border-border-subtle p-base rounded-lg hover:border-border-strong transition-all">
+<div class="font-metadata-xs text-metadata-xs text-text-muted mb-xs">Customers</div>
+<div class="font-page-title text-page-title text-on-surface">1</div>
+</div>
+<div class="bg-surface-primary border border-border-subtle p-base rounded-lg hover:border-border-strong transition-all">
+<div class="font-metadata-xs text-metadata-xs text-text-muted mb-xs">Outstanding</div>
+<div class="font-page-title text-page-title text-on-surface">₹3,18,302</div>
+</div>
+<div class="bg-surface-primary border border-border-subtle p-base rounded-lg hover:border-border-strong transition-all">
+<div class="font-metadata-xs text-metadata-xs text-text-muted mb-xs">Overdue</div>
+<div class="font-page-title text-page-title text-status-caution">₹0</div>
+</div>
+<div class="bg-surface-primary border border-border-subtle p-base rounded-lg hover:border-border-strong transition-all">
+<div class="font-metadata-xs text-metadata-xs text-text-muted mb-xs">High Risk</div>
+<div class="font-page-title text-page-title text-status-critical">0</div>
+</div>
+<div class="bg-surface-primary border border-border-subtle p-base rounded-lg hover:border-border-strong transition-all">
+<div class="font-metadata-xs text-metadata-xs text-text-muted mb-xs">Open Follow-up</div>
+<div class="font-page-title text-page-title text-secondary">0</div>
+</div>
+</div>
+</div>
+<!-- SPLIT GRID -->
+<div class="grid grid-cols-12 gap-gutter items-start">
+<!-- LEFT: FORM -->
+<div class="col-span-7 bg-surface-primary border border-border-strong rounded-xl p-xl shadow-lg">
+<div class="flex items-center justify-between mb-lg">
+<div>
+<span class="font-metadata-xs text-metadata-xs text-text-muted uppercase">Create Customer</span>
+<h3 class="font-panel-title text-panel-title text-on-surface">Add buyer profile</h3>
+</div>
+</div>
+<form class="space-y-base">
+<div class="grid grid-cols-2 gap-base">
+<div class="col-span-2">
+<label class="font-metadata-xs text-metadata-xs text-text-muted block mb-micro">Customer Name</label>
+<input class="w-full form-input-dark rounded px-base py-sm font-body-md" placeholder="Buyer / customer name" type="text"/>
+</div>
+<div>
+<label class="font-metadata-xs text-metadata-xs text-text-muted block mb-micro">Contact Person</label>
+<input class="w-full form-input-dark rounded px-base py-sm font-body-md" placeholder="Primary contact person" type="text"/>
+</div>
+<div>
+<label class="font-metadata-xs text-metadata-xs text-text-muted block mb-micro">Designation</label>
+<input class="w-full form-input-dark rounded px-base py-sm font-body-md" placeholder="Purchase manager / owner" type="text"/>
+</div>
+<div>
+<label class="font-metadata-xs text-metadata-xs text-text-muted block mb-micro">Phone</label>
+<input class="w-full form-input-dark rounded px-base py-sm font-body-md" placeholder="9876543210" type="tel"/>
+</div>
+<div>
+<label class="font-metadata-xs text-metadata-xs text-text-muted block mb-micro">Email</label>
+<input class="w-full form-input-dark rounded px-base py-sm font-body-md" placeholder="buyer@example.com" type="email"/>
+</div>
+<div class="col-span-2">
+<label class="font-metadata-xs text-metadata-xs text-text-muted block mb-micro">Address</label>
+<textarea class="w-full form-input-dark rounded px-base py-sm font-body-md resize-none" placeholder="Billing / delivery address" rows="2"></textarea>
+</div>
+<div>
+<label class="font-metadata-xs text-metadata-xs text-text-muted block mb-micro">City</label>
+<input class="w-full form-input-dark rounded px-base py-sm font-body-md" type="text" value="Mumbai"/>
+</div>
+<div>
+<label class="font-metadata-xs text-metadata-xs text-text-muted block mb-micro">State</label>
+<input class="w-full form-input-dark rounded px-base py-sm font-body-md" type="text" value="Maharashtra"/>
+</div>
+<div>
+<label class="font-metadata-xs text-metadata-xs text-text-muted block mb-micro">GST</label>
+<input class="w-full form-input-dark rounded px-base py-sm font-body-md" placeholder="22AAAAA0000A1Z5" type="text"/>
+</div>
+<div>
+<label class="font-metadata-xs text-metadata-xs text-text-muted block mb-micro">PAN</label>
+<input class="w-full form-input-dark rounded px-base py-sm font-body-md" placeholder="ABCDE1234F" type="text"/>
+</div>
+<div>
+<label class="font-metadata-xs text-metadata-xs text-text-muted block mb-micro">Company Type</label>
+<select class="w-full form-input-dark rounded px-base py-sm font-body-md">
+<option>Trader</option>
+<option>Fabricator</option>
+<option>OEM</option>
+</select>
+</div>
+<div>
+<label class="font-metadata-xs text-metadata-xs text-text-muted block mb-micro">Status</label>
+<select class="w-full form-input-dark rounded px-base py-sm font-body-md">
+<option>Active</option>
+<option>On Hold</option>
+</select>
+</div>
+<div>
+<label class="font-metadata-xs text-metadata-xs text-text-muted block mb-micro">Credit Limit</label>
+<input class="w-full form-input-dark rounded px-base py-sm font-body-md" type="number" value="500000"/>
+</div>
+<div>
+<label class="font-metadata-xs text-metadata-xs text-text-muted block mb-micro">Payment Terms (days)</label>
+<input class="w-full form-input-dark rounded px-base py-sm font-body-md" type="number" value="30"/>
+</div>
+<div class="col-span-2">
+<label class="font-metadata-xs text-metadata-xs text-text-muted block mb-micro">Notes</label>
+<textarea class="w-full form-input-dark rounded px-base py-sm font-body-md resize-none" placeholder="Payment habits, follow-up notes, preferred material" rows="3"></textarea>
+</div>
+</div>
+<button class="w-fit px-xl py-base bg-secondary-container text-white font-bold rounded-lg hover:brightness-110 active:scale-95 transition-all shadow-lg" type="button">
+                                Create customer
+                            </button>
+</form>
+</div>
+<!-- RIGHT: DIRECTORY -->
+<div class="col-span-5 flex flex-col gap-gutter">
+<div class="bg-surface-primary border border-border-strong rounded-xl overflow-hidden shadow-lg flex-1">
+<div class="p-base border-b border-border-subtle bg-surface-raised flex items-center justify-between">
+<div>
+<span class="font-metadata-xs text-metadata-xs text-text-muted uppercase">Customer Directory</span>
+<h3 class="font-panel-title text-panel-title text-on-surface">Receivables at a glance</h3>
+</div>
+<div class="bg-surface-container-high border border-border-subtle rounded px-xs py-micro font-metadata-xs text-metadata-xs text-primary flex items-center gap-micro">
+<span class="material-symbols-outlined" style="font-size: 14px">help</span> Help
+                                </div>
+</div>
+<div class="p-base flex items-center justify-between bg-surface-container-low">
+<button class="font-label-sm text-label-sm text-on-surface border border-border-strong px-base py-micro rounded bg-surface-primary">View directory</button>
+<div class="flex items-center gap-xs font-label-sm text-label-sm text-text-muted">
+                                    Jobs <span class="bg-surface-container text-on-surface-variant px-xs rounded-full">0 recent</span>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-raised border-b border-border-subtle">
+<th class="px-base py-base font-metadata-xs text-metadata-xs text-text-muted uppercase">Customer</th>
+<th class="px-base py-base font-metadata-xs text-metadata-xs text-text-muted uppercase">Risk</th>
+<th class="px-base py-base font-metadata-xs text-metadata-xs text-text-muted uppercase">Lifecycle</th>
+<th class="px-base py-base font-metadata-xs text-metadata-xs text-text-muted uppercase">Outstanding</th>
+<th class="px-base py-base font-metadata-xs text-metadata-xs text-text-muted uppercase">Credit</th>
+<th class="px-base py-base font-metadata-xs text-metadata-xs text-text-muted uppercase text-right">Action</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-border-subtle">
+<tr class="hover:bg-surface-elevated transition-colors cursor-pointer group">
+<td class="px-base py-base">
+<div class="font-body-md text-body-md text-on-surface font-bold">SHIVAM GAUTAM</div>
+<div class="flex items-center gap-xs mt-micro">
+<span class="px-xs py-[1px] bg-surface-container rounded font-metadata-xs text-metadata-xs text-text-muted">DRAFT</span>
+<span class="font-metadata-xs text-metadata-xs text-text-muted">CUST-00001</span>
+</div>
+</td>
+<td class="px-base py-base">
+<span class="px-base py-micro bg-tertiary-container/20 text-tertiary font-label-sm text-label-sm rounded-full border border-tertiary-container/30">LOW</span>
+<div class="font-metadata-xs text-metadata-xs text-text-muted mt-micro">0 overdue</div>
+</td>
+<td class="px-base py-base">
+<div class="font-metadata-xs text-metadata-xs text-on-surface-variant font-bold">Clear</div>
+<div class="font-metadata-xs text-metadata-xs text-text-muted">No follow-up</div>
+</td>
+<td class="px-base py-base">
+<div class="font-table-cell text-table-cell text-on-surface font-bold">₹3,18,302</div>
+<div class="font-metadata-xs text-metadata-xs text-status-caution">Overdue ₹0</div>
+</td>
+<td class="px-base py-base">
+<div class="font-table-cell text-table-cell text-on-surface">No limit</div>
+<div class="font-metadata-xs text-metadata-xs text-text-muted">30 day terms</div>
+</td>
+<td class="px-base py-base text-right">
+<span class="text-primary font-label-sm text-label-sm hover:underline">View</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="p-base bg-surface-container-low border-t border-border-subtle">
+<div class="flex items-center gap-base">
+<div class="h-12 w-12 bg-surface-raised border border-border-strong rounded flex items-center justify-center">
+<span class="material-symbols-outlined text-text-muted" data-icon="pending_actions">pending_actions</span>
+</div>
+<div>
+<p class="font-body-md text-body-md text-on-surface">Sync pending...</p>
+<p class="font-metadata-xs text-metadata-xs text-text-muted">Ledger data updating from core ERP</p>
+</div>
+</div>
+</div>
+</div>
+<!-- AI INSIGHT CARD -->
+<div class="bg-gradient-to-br from-[#0c162d] to-[#0a0b0d] border border-blue-900/40 rounded-xl p-base relative overflow-hidden group">
+<div class="absolute -right-4 -top-4 opacity-10 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-[80px] text-primary" data-icon="bolt">bolt</span>
+</div>
+<div class="flex items-center gap-xs mb-xs">
+<span class="material-symbols-outlined text-primary" data-icon="auto_awesome" style="font-size: 16px">auto_awesome</span>
+<span class="font-label-sm text-label-sm text-primary uppercase">FactoryNerve AI Insight</span>
+</div>
+<p class="font-table-cell text-table-cell text-on-secondary-container">Predicted recovery probability for this segment is 94.2% based on historical trade cycles in Maharashtra.</p>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- ATMOSPHERIC OVERLAY -->
+<div class="fixed inset-0 pointer-events-none opacity-[0.03] mix-blend-overlay bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]"></div>
+<script>
+        // Micro-interaction for inputs
+        document.querySelectorAll('.form-input-dark').forEach(input => {
+            input.addEventListener('focus', () => {
+                input.parentElement.querySelector('label')?.classList.add('text-primary');
+            });
+            input.addEventListener('blur', () => {
+                input.parentElement.querySelector('label')?.classList.remove('text-primary');
+            });
+        });
+    </script>
+</body></html>

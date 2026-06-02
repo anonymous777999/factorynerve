@@ -19,7 +19,7 @@ export const NAV_ROLE_MAP: Record<NavItem["id"], string[]> = {
   customers: ["accountant", "manager", "owner"],
   "sales-invoices": ["accountant", "manager"],
   dispatch: ["supervisor", "manager", "owner"],
-  "attendance-review": ["supervisor"],
+  "attendance-review": ["supervisor", "manager"],
   approvals: ALL_ROLES,
   "review-documents": ["supervisor"],
   "ocr-history": ["operator", "supervisor", "manager", "admin", "owner"],

@@ -16,7 +16,7 @@ import { RecoveryBanner } from "@/components/ui/recovery-banner";
 import { Select } from "@/components/ui/select";
 import { SectionPanel } from "@/components/ui/section-panel";
 import { WorkstationShell } from "@/components/ui/workstation-shell";
-import { ErrorBanner } from "@/components/ocr/error-banner";
+import { SuccessBanner, MutationErrorBanner } from "@/shared/feedback";
 import { OcrVerificationQueueTable } from "@/components/ocr/verification-v2/ocr-verification-queue-table";
 import { OcrReviewWorkspace } from "@/components/ocr/verification-v2/ocr-review-workspace";
 import { formatApiErrorMessage } from "@/lib/api";
@@ -1007,23 +1007,22 @@ export default function OcrVerificationV2Page() {
     >
       <div className="space-y-md">
         {combinedError ? (
-          <ErrorBanner
+          <MutationErrorBanner
             message={combinedError}
-            actionLabel="Retry"
-            onAction={() => {
+            retryLabel="Retry"
+            onRetry={() => {
               setLocalError("");
               void queueQuery.refetch();
               void detailQuery.refetch();
               void templatesQuery.refetch();
             }}
+            onDismiss={() => setLocalError("")}
           />
         ) : null}
         {statusMessage ? (
-          <ErrorBanner
+          <SuccessBanner
             message={statusMessage}
-            tone="success"
-            actionLabel="Open queue"
-            onAction={() => route.openQueue()}
+            onDismiss={() => setStatusMessage("")}
           />
         ) : null}
 

@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>DPR.ai - Verify Email</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;family=JetBrains+Mono:wght@500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "surface-tint": "#ffb868",
+                      "on-tertiary-fixed-variant": "#005320",
+                      "border-subtle": "#252b36",
+                      "surface-variant": "#33353a",
+                      "surface-container-lowest": "#0c0e13",
+                      "tertiary-fixed-dim": "#62df7d",
+                      "surface-container-high": "#282a2f",
+                      "inverse-primary": "#885200",
+                      "surface": "#111318",
+                      "primary": "#ffb868",
+                      "surface-bright": "#37393f",
+                      "on-tertiary": "#003914",
+                      "on-primary-fixed": "#2b1700",
+                      "primary-fixed-dim": "#ffb868",
+                      "tertiary-fixed": "#7ffc97",
+                      "on-primary-fixed-variant": "#673d00",
+                      "surface-elevated": "#1c2029",
+                      "on-secondary-fixed-variant": "#00419f",
+                      "error": "#ffb4ab",
+                      "background": "#111318",
+                      "on-secondary-fixed": "#001946",
+                      "secondary-fixed-dim": "#b1c5ff",
+                      "inverse-surface": "#e2e2e9",
+                      "outline-variant": "#534435",
+                      "surface-raised": "#212633",
+                      "on-background": "#e2e2e9",
+                      "status-caution": "#ea580c",
+                      "text-secondary": "#cbd5e1",
+                      "surface-container": "#1e2025",
+                      "text-muted": "#64748b",
+                      "surface-canvas": "#111318",
+                      "surface-primary": "#161a21",
+                      "surface-container-low": "#1a1b21",
+                      "surface-overlay": "#252b36",
+                      "tertiary": "#62df7d",
+                      "on-error": "#690005",
+                      "primary-fixed": "#ffddbb",
+                      "secondary-container": "#0459d3",
+                      "on-tertiary-container": "#003f17",
+                      "on-secondary-container": "#d1dcff",
+                      "on-primary-container": "#502e00",
+                      "status-critical": "#dc2626",
+                      "on-primary": "#482900",
+                      "secondary-fixed": "#dae2ff",
+                      "inverse-on-surface": "#2e3036",
+                      "on-surface-variant": "#d9c3ae",
+                      "on-error-container": "#ffdad6",
+                      "surface-container-highest": "#33353a",
+                      "outline": "#a18d7b",
+                      "on-surface": "#e2e2e9",
+                      "tertiary-container": "#33b559",
+                      "surface-dim": "#111318",
+                      "secondary": "#b1c5ff",
+                      "border-strong": "#4a5568",
+                      "on-secondary": "#002c71",
+                      "border-default": "#333b48",
+                      "text-primary": "#f1f5f9",
+                      "on-tertiary-fixed": "#002109",
+                      "error-container": "#93000a",
+                      "surface-ground": "#0a0b0d",
+                      "primary-container": "#e08c0f"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "md": "20px",
+                      "base": "16px",
+                      "xl": "32px",
+                      "margin-desktop": "32px",
+                      "gutter": "16px",
+                      "micro": "4px",
+                      "unit": "4px",
+                      "sm": "12px",
+                      "lg": "24px",
+                      "margin-mobile": "16px",
+                      "xs": "8px"
+              },
+              "fontFamily": {
+                      "panel-title": [
+                              "Inter"
+                      ],
+                      "page-title-mobile": [
+                              "Inter"
+                      ],
+                      "body-md": [
+                              "Inter"
+                      ],
+                      "page-title": [
+                              "Inter"
+                      ],
+                      "display-4xl": [
+                              "Inter"
+                      ],
+                      "label-sm": [
+                              "JetBrains Mono"
+                      ],
+                      "table-cell": [
+                              "Inter"
+                      ],
+                      "metadata-xs": [
+                              "JetBrains Mono"
+                      ]
+              },
+              "fontSize": {
+                      "panel-title": [
+                              "18px",
+                              {
+                                      "lineHeight": "1.40",
+                                      "letterSpacing": "-0.010em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "page-title-mobile": [
+                              "20px",
+                              {
+                                      "lineHeight": "1.25",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "body-md": [
+                              "14px",
+                              {
+                                      "lineHeight": "1.50",
+                                      "letterSpacing": "-0.006em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "page-title": [
+                              "24px",
+                              {
+                                      "lineHeight": "1.25",
+                                      "letterSpacing": "-0.018em",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "display-4xl": [
+                              "36px",
+                              {
+                                      "lineHeight": "1.15",
+                                      "letterSpacing": "-0.026em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "1.45",
+                                      "letterSpacing": "0.004em",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "table-cell": [
+                              "13px",
+                              {
+                                      "lineHeight": "1.50",
+                                      "letterSpacing": "0em",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "metadata-xs": [
+                              "11px",
+                              {
+                                      "lineHeight": "1.45",
+                                      "letterSpacing": "0.05em",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+      },
+          },
+        }
+    </script>
+<style>
+        .glow-effect {
+            box-shadow: 0px 0px 8px rgba(47, 110, 232, 0.3);
+        }
+        body {
+            background-image: radial-gradient(circle at top right, rgba(255, 184, 104, 0.03), transparent 40%),
+                              radial-gradient(circle at bottom left, rgba(47, 110, 232, 0.03), transparent 40%);
+        }
+    </style>
+</head>
+<body class="bg-surface-canvas text-text-primary min-h-screen flex flex-col font-body-md selection:bg-primary selection:text-on-primary">
+<!-- TopAppBar -->
+<header class="bg-surface-primary dark:bg-surface-primary border-b border-border-strong flex justify-between items-center px-margin-desktop w-full z-50 docked full-width top-0 h-12">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-primary dark:text-primary" data-icon="factory" data-weight="fill" style="font-variation-settings: 'FILL' 1;">factory</span>
+<span class="font-panel-title text-panel-title text-primary dark:text-primary">DPR.ai</span>
+<span class="font-metadata-xs text-metadata-xs text-text-muted ml-sm border-l border-border-subtle pl-sm">Steel Industry</span>
+</div>
+<div class="flex items-center">
+<button class="font-label-sm text-label-sm text-text-muted hover:bg-surface-overlay transition-colors px-sm py-unit rounded active:scale-95 duration-100 uppercase tracking-widest">FACTORY OS</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-grow flex flex-col items-center justify-center p-margin-desktop relative">
+<!-- Verification Success Container -->
+<div class="w-full max-w-2xl bg-surface-elevated border-2 border-border-strong rounded-xl shadow-xl p-xl flex flex-col items-center text-center relative z-10 overflow-hidden">
+<!-- Ambient Background Glow inside card -->
+<div class="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-tertiary-container/10 via-transparent to-transparent opacity-50 pointer-events-none"></div>
+<!-- Success Icon -->
+<div class="w-16 h-16 rounded-full bg-surface-container-high border border-tertiary-fixed-dim flex items-center justify-center mb-lg relative">
+<div class="absolute inset-0 rounded-full border border-tertiary-fixed animate-ping opacity-20"></div>
+<span class="material-symbols-outlined text-tertiary-fixed text-3xl" data-icon="mark_email_read" data-weight="fill" style="font-variation-settings: 'FILL' 1;">mark_email_read</span>
+</div>
+<!-- Headers -->
+<h1 class="font-display-4xl text-display-4xl text-text-primary mb-sm">Email Verified</h1>
+<p class="font-body-md text-body-md text-text-secondary mb-xl max-w-md">Your identity vault has been successfully linked. Operational clearance granted for DPR.ai systems.</p>
+<!-- Workflow Graphic / Evidence -->
+<div class="w-full bg-surface-ground border border-border-default rounded-lg p-base mb-xl relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-tertiary-fixed to-transparent opacity-30 group-hover:opacity-100 transition-opacity duration-500"></div>
+<div class="flex items-center justify-between text-text-muted font-label-sm text-label-sm">
+<div class="flex flex-col items-center gap-xs">
+<div class="w-8 h-8 rounded bg-surface-raised border border-border-subtle flex items-center justify-center">
+<span class="material-symbols-outlined text-text-secondary text-sm" data-icon="badge">badge</span>
+</div>
+<span>ID Vault</span>
+</div>
+<div class="flex-grow flex items-center justify-center px-sm">
+<div class="h-px w-full bg-border-default relative">
+<div class="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-tertiary-fixed glow-effect"></div>
+<div class="absolute left-0 top-1/2 -translate-y-1/2 h-px bg-tertiary-fixed animate-[pulse_2s_ease-in-out_infinite]" style="width: 100%;"></div>
+</div>
+</div>
+<div class="flex flex-col items-center gap-xs">
+<div class="w-8 h-8 rounded bg-surface-raised border border-tertiary-fixed-dim flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary-fixed text-sm" data-icon="verified_user">verified_user</span>
+</div>
+<span class="text-tertiary-fixed">Cleared</span>
+</div>
+<div class="flex-grow flex items-center justify-center px-sm">
+<div class="h-px w-full bg-border-default relative">
+<div class="absolute left-0 top-1/2 -translate-y-1/2 h-px bg-tertiary-fixed" style="width: 50%;"></div>
+<span class="material-symbols-outlined absolute top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 text-text-muted text-xs bg-surface-ground px-1" data-icon="arrow_forward">arrow_forward</span>
+</div>
+</div>
+<div class="flex flex-col items-center gap-xs">
+<div class="w-8 h-8 rounded bg-surface-raised border border-border-subtle flex items-center justify-center">
+<span class="material-symbols-outlined text-text-secondary text-sm" data-icon="memory">memory</span>
+</div>
+<span>Core Sys</span>
+</div>
+</div>
+</div>
+<!-- Actions -->
+<div class="flex flex-col w-full max-w-sm gap-base">
+<button class="w-full bg-primary text-on-primary font-panel-title text-panel-title py-sm px-lg rounded flex items-center justify-center gap-xs hover:bg-surface-tint active:scale-[0.98] transition-all focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-surface-elevated">
+<span>Sign in to Workspace</span>
+<span class="material-symbols-outlined text-sm" data-icon="login">login</span>
+</button>
+<button class="w-full bg-surface-raised text-text-secondary font-label-sm text-label-sm py-sm px-lg rounded border border-border-default hover:bg-surface-overlay hover:text-text-primary active:scale-[0.98] transition-all">
+                    Request new link
+                </button>
+</div>
+<!-- Metadata Footer inside Card -->
+<div class="mt-lg pt-base border-t border-border-subtle w-full text-left flex justify-between items-center font-metadata-xs text-metadata-xs text-text-muted">
+<div class="flex items-center gap-xs">
+<span class="material-symbols-outlined text-[10px]" data-icon="lock">lock</span>
+<span>Securely Connected</span>
+</div>
+<span>TS: 2023-10-27T14:32:00Z</span>
+</div>
+</div>
+</main>
+</body></html>

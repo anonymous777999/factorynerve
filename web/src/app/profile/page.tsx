@@ -1,5 +1,5 @@
-import ProfilePage from "@/components/profile-page";
+import { ProfileWorkspace } from "@/features/profile";
 
 export default function ProfileRoutePage() {
-  return <ProfilePage />;
+  return <ProfileWorkspace />;
 }

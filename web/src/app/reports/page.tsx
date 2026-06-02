@@ -1,5 +1,5 @@
-import ReportsIntelligenceWorkspace from "@/components/reports-intelligence-workspace";
+import { ReportsListWorkspace } from "@/features/reports";
 
 export default function ReportsRoute() {
-  return <ReportsIntelligenceWorkspace />;
+  return <ReportsListWorkspace />;
 }

@@ -1,5 +1,5 @@
-import ForgotPasswordPage from "@/components/forgot-password-page";
+import { ForgotPasswordWorkspace } from "@/features/auth";
 
 export default function ForgotPasswordRoutePage() {
-  return <ForgotPasswordPage />;
+  return <ForgotPasswordWorkspace />;
 }

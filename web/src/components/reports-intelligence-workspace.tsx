@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ApiError } from "@/lib/api";
 import { getReportInsights, startRangeExcelJob, getReportJob, downloadReportJob, type ReportInsights, type ReportJob } from "@/lib/reports";
@@ -11,6 +11,7 @@ import { triggerBlobDownload } from "@/lib/reports";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { SuccessBanner, MutationErrorBanner } from "@/shared/feedback";
 
 function todayValue() {
     const now = new Date();
@@ -77,11 +78,20 @@ export default function ReportsIntelligenceWorkspace() {
         }
     }, [user]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    // Poll export job until done
+    // Poll export job until done — max 3 minutes (72 × 2500ms) to prevent permanent lock
+    const exportPollCountRef = useRef(0);
     useEffect(() => {
         if (!exportJob?.job_id) return;
         if (!["queued", "running", "canceling"].includes(exportJob.status)) return;
+        exportPollCountRef.current = 0;
         const timer = window.setInterval(async () => {
+            exportPollCountRef.current += 1;
+            if (exportPollCountRef.current > 72) {
+                setExportError("Export is taking too long. Try again.");
+                setExporting(false);
+                window.clearInterval(timer);
+                return;
+            }
             try {
                 const next = await getReportJob(exportJob.job_id);
                 setExportJob(next);
@@ -123,6 +133,7 @@ export default function ReportsIntelligenceWorkspace() {
     }, []);
 
     const handleUpdateReport = useCallback(() => {
+        setSelectedRange("Custom");
         loadInsights(startDate, endDate).catch(() => { });
     }, [loadInsights, startDate, endDate]);
 
@@ -195,14 +206,10 @@ export default function ReportsIntelligenceWorkspace() {
 
                 {/* Export feedback */}
                 {exportStatus ? (
-                    <div className="rounded-panel border border-status-success-border bg-status-success-bg px-4 py-3 text-sm text-status-success-fg">
-                        {exportStatus}
-                    </div>
+                    <SuccessBanner message={exportStatus} onDismiss={() => setExportStatus("")} />
                 ) : null}
                 {exportError ? (
-                    <div className="rounded-panel border border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">
-                        {exportError}
-                    </div>
+                    <MutationErrorBanner message={exportError} onDismiss={() => setExportError("")} />
                 ) : null}
 
                 {/* Date range controls */}
@@ -254,10 +261,11 @@ export default function ReportsIntelligenceWorkspace() {
                 </Card>
 
                 {insightsError ? (
-                    <div className="rounded-panel border border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">
-                        {insightsError} —{" "}
-                        <button type="button" className="underline" onClick={handleUpdateReport}>Retry</button>
-                    </div>
+                    <MutationErrorBanner
+                        message={insightsError}
+                        onRetry={handleUpdateReport}
+                        onDismiss={() => setInsightsError("")}
+                    />
                 ) : null}
 
                 {/* KPI summary row */}

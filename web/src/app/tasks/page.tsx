@@ -1,5 +1,5 @@
-import MyTasksPage from "@/components/my-tasks-page";
+import { MyTasksWorkspace } from "@/features/work-queue";
 
 export default function TasksRoute() {
-  return <MyTasksPage />;
+  return <MyTasksWorkspace />;
 }

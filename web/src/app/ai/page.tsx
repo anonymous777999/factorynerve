@@ -1,5 +1,5 @@
-import AiInsightsPage from "@/components/ai-insights-page";
+import { AiInsightsWorkspace } from "@/features/ai";
 
 export default function AiRoutePage() {
-  return <AiInsightsPage />;
+  return <AiInsightsWorkspace />;
 }

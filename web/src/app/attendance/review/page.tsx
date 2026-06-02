@@ -1,5 +1,5 @@
-import AttendanceReviewPage from "@/components/attendance-review-page";
+import { AttendanceReviewWorkspace } from "@/features/attendance";
 
 export default function Page() {
-  return <AttendanceReviewPage />;
+  return <AttendanceReviewWorkspace />;
 }

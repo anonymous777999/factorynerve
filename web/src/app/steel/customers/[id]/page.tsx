@@ -1,4 +1,4 @@
-import { SteelCustomerLedgerPage } from "@/components/steel-customer-ledger-page";
+import { SteelCustomerLedgerWorkspace } from "@/features/steel";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -6,5 +6,5 @@ type Props = {
 
 export default async function SteelCustomerLedgerRoute({ params }: Props) {
   const resolved = await params;
-  return <SteelCustomerLedgerPage customerId={Number(resolved.id)} />;
+  return <SteelCustomerLedgerWorkspace customerId={Number(resolved.id)} />;
 }

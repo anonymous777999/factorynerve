@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
+import { SuccessBanner, MutationErrorBanner } from "@/shared/feedback";
 import { ApiError } from "@/lib/api";
 import {
   createSteelItem,
@@ -15,28 +16,12 @@ import {
   type SteelStockItem,
 } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
-
-function formatKg(value: number | null | undefined) {
-  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value || 0);
-}
-
-function formatPercent(value: number | null | undefined) {
-  return `${(value || 0).toFixed(2)}%`;
-}
-
-function badgeTone(value: string | null | undefined) {
-  if (value === "green" || value === "approved") return "border-emerald-400/35 bg-emerald-400/12 text-emerald-200";
-  if (value === "yellow" || value === "pending" || value === "review" || value === "watch") return "border-amber-400/35 bg-amber-400/12 text-amber-200";
-  return "border-rose-400/35 bg-rose-400/12 text-rose-200";
-}
-
-function deriveOperationalZone(category: string) {
-  const cat = category.toLowerCase();
-  if (cat.includes("scrap")) return "Scrap Yard";
-  if (cat.includes("ingot") || cat.includes("billet")) return "Melt Shop WIP";
-  if (cat.includes("finished") || cat.includes("tmt") || cat.includes("round") || cat.includes("section")) return "Dispatch Yard";
-  return "Process Floor";
-}
+import {
+  formatKg,
+  formatPercent,
+  confidenceBadgeTone as badgeTone,
+  deriveOperationalZone,
+} from "@/features/steel/lib/steel-helpers";
 
 export function SteelInventoryPage() {
   const { user, activeFactory, loading, error: sessionError } = useSession();
@@ -137,20 +122,20 @@ export function SteelInventoryPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
+    <main className="min-h-screen bg-[var(--surface-app)] px-4 py-8 md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
+        <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 shadow-[var(--shadow-md)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Inventory Management</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Stock Balance & Material Master</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
+              <div className="text-xs font-medium tracking-wide text-text-tertiary">Inventory management</div>
+              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-text-primary md:text-4xl">Stock balance &amp; material master</h1>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-text-secondary">
                 Trusted stock levels across operational zones. Manage material definitions and monitor inventory health.
               </p>
             </div>
             <div className="flex gap-3">
               <Link href="/steel/inventory/transactions">
-                <Button variant="outline">Transaction History</Button>
+                <Button variant="outline">Transaction history</Button>
               </Link>
             </div>
           </div>
@@ -160,52 +145,90 @@ export function SteelInventoryPage() {
           <div className="space-y-6">
             <Card>
               <CardHeader>
-                <CardTitle>Live Stock Trust Board</CardTitle>
+                <CardTitle>Live stock trust board</CardTitle>
               </CardHeader>
               <CardContent>
                 <ResponsiveScrollArea
-                  className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]"
+                  className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-shell)]"
                   debugLabel="steel-inventory-board"
                 >
                   <table className="min-w-full text-left text-sm">
-                    <thead className="text-[var(--muted)]">
-                      <tr className="border-b border-[var(--border)]">
+                    <thead className="text-text-tertiary">
+                      <tr className="border-b border-[var(--border-subtle)]">
                         <th className="px-3 py-3 font-medium">Item</th>
                         <th className="px-3 py-3 font-medium">Zone</th>
                         <th className="px-3 py-3 font-medium">Balance (KG)</th>
-                        <th className="px-3 py-3 font-medium">Last Variance</th>
+                        <th className="px-3 py-3 font-medium">Last variance</th>
                         <th className="px-3 py-3 font-medium">Confidence</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {stock.map((row) => (
-                        <tr key={row.item_id} className="border-b border-[var(--border)]/60 last:border-none">
-                          <td className="px-3 py-3">
-                            <div className="font-semibold text-white">{row.name}</div>
-                            <div className="text-xs text-[var(--muted)]">{row.item_code} / {row.category.replace("_", " ")}</div>
-                          </td>
-                          <td className="px-3 py-3">
-                            <div className="font-medium text-white">{deriveOperationalZone(row.category)}</div>
-                          </td>
-                          <td className="px-3 py-3 font-mono text-white">{formatKg(row.stock_balance_kg)}</td>
-                          <td className="px-3 py-3">
-                            <div className="text-white">
-                              {row.last_variance_kg != null ? `${formatKg(row.last_variance_kg)} KG` : "-"}
-                            </div>
-                            <div className="text-xs text-[var(--muted)]">
-                              {row.last_variance_percent != null ? formatPercent(row.last_variance_percent) : ""}
-                            </div>
-                          </td>
-                          <td className="px-3 py-3">
-                            <span className={`inline-flex rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeTone(row.confidence_status)}`}>
-                              {row.confidence_status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
+                      {(() => {
+                        const maxBalance = stock.reduce(
+                          (acc, item) => Math.max(acc, item.stock_balance_kg || 0),
+                          0,
+                        );
+                        return stock.map((row) => {
+                          const balance = row.stock_balance_kg || 0;
+                          const ratio = maxBalance > 0 ? Math.max(0, Math.min(1, balance / maxBalance)) : 0;
+                          const fill =
+                            row.confidence_status === "green" || row.confidence_status === "approved"
+                              ? "var(--status-success-icon)"
+                              : row.confidence_status === "yellow" ||
+                                row.confidence_status === "watch" ||
+                                row.confidence_status === "review"
+                                ? "var(--status-warning-icon)"
+                                : "var(--status-danger-icon)";
+                          const variance = row.last_variance_kg ?? 0;
+                          const varianceTone =
+                            variance > 0
+                              ? "text-status-danger-fg"
+                              : variance < 0
+                                ? "text-status-warning-fg"
+                                : "text-text-secondary";
+                          return (
+                            <tr key={row.item_id} className="border-b border-[var(--border-subtle)] last:border-none">
+                              <td className="px-3 py-3">
+                                <div className="font-semibold text-text-primary">{row.name}</div>
+                                <div className="text-xs text-text-tertiary">{row.item_code} &middot; {row.category.replace("_", " ")}</div>
+                              </td>
+                              <td className="px-3 py-3">
+                                <div className="font-medium text-text-primary">{deriveOperationalZone(row.category)}</div>
+                              </td>
+                              <td className="px-3 py-3">
+                                <div className="font-mono tabular-nums text-text-primary">{formatKg(balance)}</div>
+                                {maxBalance > 0 ? (
+                                  <div className="mt-1.5 h-1.5 w-32 overflow-hidden rounded-full bg-[var(--surface-elevated)]">
+                                    <div
+                                      className="h-full rounded-full"
+                                      style={{
+                                        width: `${Math.max(2, ratio * 100)}%`,
+                                        background: fill,
+                                      }}
+                                    />
+                                  </div>
+                                ) : null}
+                              </td>
+                              <td className="px-3 py-3">
+                                <div className={`tabular-nums font-semibold ${varianceTone}`}>
+                                  {row.last_variance_kg != null ? `${variance > 0 ? "+" : ""}${formatKg(row.last_variance_kg)} KG` : "-"}
+                                </div>
+                                <div className="text-xs text-text-tertiary tabular-nums">
+                                  {row.last_variance_percent != null ? formatPercent(row.last_variance_percent) : ""}
+                                </div>
+                              </td>
+                              <td className="px-3 py-3">
+                                <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold ${badgeTone(row.confidence_status)}`}>
+                                  {row.confidence_status}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        });
+                      })()}
                       {!stock.length ? (
                         <tr>
-                          <td colSpan={5} className="px-3 py-8 text-center text-[var(--muted)]">No inventory items found.</td>
+                          <td colSpan={5} className="px-3 py-8 text-center text-text-tertiary">No inventory items found.</td>
                         </tr>
                       ) : null}
                     </tbody>
@@ -219,12 +242,12 @@ export function SteelInventoryPage() {
             {canManage && (
               <Card>
                 <CardHeader>
-                  <CardTitle>Add Material</CardTitle>
+                  <CardTitle>Add material</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <form onSubmit={handleCreateItem} className="space-y-4">
                     <div>
-                      <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Item Code</label>
+                      <label className="text-xs font-medium text-text-tertiary">Item code</label>
                       <Input
                         value={form.item_code}
                         onChange={(e) => setForm({ ...form, item_code: e.target.value.toUpperCase() })}
@@ -233,7 +256,7 @@ export function SteelInventoryPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Name</label>
+                      <label className="text-xs font-medium text-text-tertiary">Name</label>
                       <Input
                         value={form.name}
                         onChange={(e) => setForm({ ...form, name: e.target.value })}
@@ -242,20 +265,20 @@ export function SteelInventoryPage() {
                       />
                     </div>
                     <div>
-                      <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Category</label>
+                      <label className="text-xs font-medium text-text-tertiary">Category</label>
                       <Select
                         aria-label="Category"
                         value={form.category}
                         onChange={(e) => setForm({ ...form, category: e.target.value })}
                       >
-                        <option value="raw_material">Raw Material (Scrap)</option>
-                        <option value="wip">WIP (Ingot/Billet)</option>
-                        <option value="finished_goods">Finished Goods</option>
+                        <option value="raw_material">Raw material (scrap)</option>
+                        <option value="wip">WIP (ingot/billet)</option>
+                        <option value="finished_goods">Finished goods</option>
                         <option value="consumable">Consumable</option>
                       </Select>
                     </div>
                     <div>
-                      <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Rate per KG (INR)</label>
+                      <label className="text-xs font-medium text-text-tertiary">Rate per kg (INR)</label>
                       <Input
                         type="number"
                         value={form.current_rate_per_kg}
@@ -264,7 +287,7 @@ export function SteelInventoryPage() {
                       />
                     </div>
                     <Button type="submit" className="w-full" isBusy={busy} busyLabel="Creating...">
-                      Add to Master
+                      Add to master
                     </Button>
                   </form>
                 </CardContent>
@@ -273,22 +296,22 @@ export function SteelInventoryPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Quick Navigation</CardTitle>
+                <CardTitle>Quick navigation</CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
                 <Link href="/steel/reconciliations" className="block">
-                  <Button variant="outline" className="w-full justify-start text-sm">Stock Reconciliations</Button>
+                  <Button variant="outline" className="w-full justify-start text-sm">Stock reconciliations</Button>
                 </Link>
                 <Link href="/steel/batches" className="block">
-                  <Button variant="outline" className="w-full justify-start text-sm">Batch Traceability</Button>
+                  <Button variant="outline" className="w-full justify-start text-sm">Batch traceability</Button>
                 </Link>
               </CardContent>
             </Card>
           </div>
         </section>
 
-        {status && <div className="text-sm text-green-400">{status}</div>}
-        {error && <div className="text-sm text-red-400">{error}</div>}
+        {status && <SuccessBanner message={status} onDismiss={() => setStatus("")} />}
+        {error && <MutationErrorBanner message={error} onDismiss={() => setError("")} />}
       </div>
     </main>
   );

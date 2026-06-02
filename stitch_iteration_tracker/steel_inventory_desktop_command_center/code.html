@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Steel Inventory Command Center - FactoryNerve OS</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "text-muted": "#64748b",
+                        "error": "#ffb4ab",
+                        "primary-fixed": "#ffddbb",
+                        "surface-container-low": "#1a1b21",
+                        "on-secondary": "#002c71",
+                        "border-subtle": "#252b36",
+                        "on-secondary-fixed": "#001946",
+                        "surface-container": "#1e2025",
+                        "on-tertiary-container": "#003f17",
+                        "on-tertiary-fixed": "#002109",
+                        "on-primary": "#482900",
+                        "on-background": "#e2e2e9",
+                        "inverse-primary": "#885200",
+                        "on-tertiary": "#003914",
+                        "surface-container-highest": "#33353a",
+                        "primary-fixed-dim": "#ffb868",
+                        "outline": "#a18d7b",
+                        "on-secondary-container": "#d1dcff",
+                        "on-primary-fixed": "#2b1700",
+                        "surface-canvas": "#111318",
+                        "status-critical": "#dc2626",
+                        "on-surface-variant": "#d9c3ae",
+                        "border-default": "#333b48",
+                        "tertiary-container": "#33b559",
+                        "on-primary-container": "#502e00",
+                        "surface-dim": "#111318",
+                        "surface-container-lowest": "#0c0e13",
+                        "secondary-fixed-dim": "#b1c5ff",
+                        "error-container": "#93000a",
+                        "text-primary": "#f1f5f9",
+                        "on-tertiary-fixed-variant": "#005320",
+                        "surface": "#111318",
+                        "surface-primary": "#161a21",
+                        "surface-elevated": "#1c2029",
+                        "surface-tint": "#ffb868",
+                        "on-error": "#690005",
+                        "surface-ground": "#0a0b0d",
+                        "primary": "#ffb868",
+                        "on-surface": "#e2e2e9",
+                        "tertiary-fixed-dim": "#62df7d",
+                        "on-error-container": "#ffdad6",
+                        "surface-container-high": "#282a2f",
+                        "on-secondary-fixed-variant": "#00419f",
+                        "border-strong": "#4a5568",
+                        "surface-overlay": "#252b36",
+                        "secondary-container": "#0459d3",
+                        "secondary": "#b1c5ff",
+                        "text-secondary": "#cbd5e1",
+                        "surface-bright": "#37393f",
+                        "secondary-fixed": "#dae2ff",
+                        "outline-variant": "#534435",
+                        "on-primary-fixed-variant": "#673d00",
+                        "surface-variant": "#33353a",
+                        "surface-raised": "#212633",
+                        "tertiary": "#62df7d",
+                        "primary-container": "#e08c0f",
+                        "tertiary-fixed": "#7ffc97",
+                        "background": "#111318",
+                        "inverse-on-surface": "#2e3036",
+                        "status-caution": "#ea580c",
+                        "inverse-surface": "#e2e2e9"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "gutter": "16px",
+                        "md": "20px",
+                        "margin-mobile": "16px",
+                        "lg": "24px",
+                        "base": "16px",
+                        "xs": "8px",
+                        "margin-desktop": "32px",
+                        "unit": "4px",
+                        "xl": "32px",
+                        "sm": "12px",
+                        "micro": "4px"
+                    },
+                    "fontFamily": {
+                        "page-title-mobile": ["Inter"],
+                        "body-md": ["Inter"],
+                        "metadata-xs": ["JetBrains Mono"],
+                        "display-4xl": ["Inter"],
+                        "panel-title": ["Inter"],
+                        "page-title": ["Inter"],
+                        "table-cell": ["Inter"],
+                        "label-sm": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "page-title-mobile": ["20px", {"lineHeight": "1.25", "fontWeight": "600"}],
+                        "body-md": ["14px", {"lineHeight": "1.50", "letterSpacing": "-0.006em", "fontWeight": "400"}],
+                        "metadata-xs": ["11px", {"lineHeight": "1.45", "letterSpacing": "0.05em", "fontWeight": "600"}],
+                        "display-4xl": ["36px", {"lineHeight": "1.15", "letterSpacing": "-0.026em", "fontWeight": "700"}],
+                        "panel-title": ["18px", {"lineHeight": "1.40", "letterSpacing": "-0.010em", "fontWeight": "600"}],
+                        "page-title": ["24px", {"lineHeight": "1.25", "letterSpacing": "-0.018em", "fontWeight": "600"}],
+                        "table-cell": ["13px", {"lineHeight": "1.50", "letterSpacing": "0em", "fontWeight": "400"}],
+                        "label-sm": ["12px", {"lineHeight": "1.45", "letterSpacing": "0.004em", "fontWeight": "500"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        /* Custom scrollbar for high-density tables */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #111318;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #333b48;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4a5568;
+        }
+        .ai-glow {
+            box-shadow: 0px 0px 8px rgba(47, 110, 232, 0.3);
+        }
+        .operational-glow {
+            box-shadow: 0px 0px 8px rgba(224, 140, 15, 0.3);
+        }
+    </style>
+</head>
+<body class="bg-surface-canvas text-on-surface font-body-md h-screen overflow-hidden flex flex-col antialiased">
+<!-- TopAppBar -->
+<header class="bg-surface-primary dark:bg-surface-primary text-primary dark:text-primary border-b border-strong flex justify-between items-center w-full px-base docked full-width top h-12 flex-shrink-0 z-50">
+<div class="flex items-center gap-xs">
+<span class="text-panel-title font-panel-title font-bold text-primary dark:text-primary uppercase tracking-wider">DPR.AI</span>
+</div>
+<div class="flex items-center gap-base">
+<div class="relative hidden md:block">
+<span class="material-symbols-outlined absolute left-sm top-1/2 -translate-y-1/2 text-text-muted text-lg">search</span>
+<input class="bg-surface-raised border border-border-default rounded text-table-cell font-table-cell text-on-surface pl-8 pr-sm py-1 focus:outline-none focus:border-primary-container focus:ring-1 focus:ring-primary-container transition-all w-64 placeholder:text-text-muted" placeholder="Search inventory..." type="text"/>
+</div>
+<button class="text-metadata-xs font-metadata-xs text-text-muted hover:bg-surface-overlay transition-colors px-xs py-1 rounded">Review 0</button>
+<button class="text-metadata-xs font-metadata-xs text-on-primary-container bg-primary-container hover:bg-surface-overlay transition-colors px-sm py-1 rounded font-bold">Commands</button>
+<div class="flex items-center gap-xs border-l border-border-default pl-sm">
+<button class="text-text-muted hover:text-on-surface hover:bg-surface-overlay transition-colors p-1 rounded">
+<span class="material-symbols-outlined text-lg">notifications</span>
+</button>
+<button class="text-text-muted hover:text-on-surface hover:bg-surface-overlay transition-colors p-1 rounded">
+<span class="material-symbols-outlined text-lg">settings</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Layout -->
+<div class="flex flex-1 overflow-hidden">
+<!-- SideNavBar -->
+<nav class="bg-surface-canvas dark:bg-surface-canvas text-primary dark:text-primary border-r border-strong fixed left-0 top-12 h-[calc(100vh-3rem)] w-[220px] flex flex-col overflow-y-auto z-40 hidden lg:flex">
+<div class="p-4 border-b border-border-default">
+<div class="flex items-center gap-sm mb-xs">
+<div class="w-8 h-8 rounded bg-surface-raised border border-border-default flex items-center justify-center shrink-0">
+<span aria-label="Factory Logo" class="material-symbols-outlined text-text-muted text-sm">domain</span>
+</div>
+<div>
+<h2 class="text-label-sm font-label-sm font-semibold text-on-surface truncate">RedVortex ORG</h2>
+<p class="text-metadata-xs font-metadata-xs text-text-muted truncate">Steel Industry • Free Plan</p>
+</div>
+</div>
+<button class="w-full mt-sm py-1.5 px-sm bg-surface-raised border border-border-subtle rounded text-label-sm font-label-sm text-secondary flex items-center justify-center gap-xs hover:bg-surface-overlay transition-colors ai-glow">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">auto_awesome</span>
+                    AI Insights
+                </button>
+</div>
+<div class="flex-1 py-sm">
+<ul class="space-y-unit">
+<li>
+<a class="text-text-muted px-4 py-2 flex items-center gap-3 hover:bg-surface-container-low hover:text-on-surface Transition-all duration-200 ease-in-out text-label-sm font-label-sm" href="#">
+<span class="material-symbols-outlined text-lg">precision_manufacturing</span>
+                            Operations
+                        </a>
+</li>
+<li>
+<a class="text-text-muted px-4 py-2 flex items-center gap-3 hover:bg-surface-container-low hover:text-on-surface Transition-all duration-200 ease-in-out text-label-sm font-label-sm" href="#">
+<span class="material-symbols-outlined text-lg">factory</span>
+                            Assets
+                        </a>
+</li>
+<li>
+<a class="bg-surface-container-highest text-primary border-l-4 border-primary px-4 py-2 flex items-center gap-3 Transition-all duration-200 ease-in-out text-label-sm font-label-sm" href="#">
+<span class="material-symbols-outlined text-lg" style="font-variation-settings: 'FILL' 1;">inventory_2</span>
+                            Inventory
+                        </a>
+</li>
+<li>
+<a class="text-text-muted px-4 py-2 flex items-center gap-3 hover:bg-surface-container-low hover:text-on-surface Transition-all duration-200 ease-in-out text-label-sm font-label-sm" href="#">
+<span class="material-symbols-outlined text-lg">monitoring</span>
+                            Analytics
+                        </a>
+</li>
+<li>
+<a class="text-text-muted px-4 py-2 flex items-center gap-3 hover:bg-surface-container-low hover:text-on-surface Transition-all duration-200 ease-in-out text-label-sm font-label-sm" href="#">
+<span class="material-symbols-outlined text-lg">description</span>
+                            Reports
+                        </a>
+</li>
+</ul>
+</div>
+<div class="p-sm border-t border-border-default mt-auto space-y-unit">
+<a class="text-text-muted px-2 py-1.5 flex items-center gap-3 hover:bg-surface-container-low hover:text-on-surface Transition-all duration-200 ease-in-out text-metadata-xs font-metadata-xs rounded" href="#">
+<span class="material-symbols-outlined text-sm">account_circle</span>
+                    Profile
+                </a>
+<a class="text-text-muted px-2 py-1.5 flex items-center gap-3 hover:bg-surface-container-low hover:text-on-surface Transition-all duration-200 ease-in-out text-metadata-xs font-metadata-xs rounded" href="#">
+<span class="material-symbols-outlined text-sm">settings</span>
+                    Settings
+                </a>
+<a class="text-text-muted px-2 py-1.5 flex items-center gap-3 hover:bg-surface-container-low hover:text-on-surface Transition-all duration-200 ease-in-out text-metadata-xs font-metadata-xs rounded" href="#">
+<span class="material-symbols-outlined text-sm">logout</span>
+                    Sign Out
+                </a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 lg:ml-[220px] flex flex-col md:flex-row overflow-hidden">
+<!-- Central Canvas -->
+<div class="flex-1 flex flex-col p-base gap-base overflow-y-auto">
+<!-- Page Header -->
+<div class="flex justify-between items-end mb-xs shrink-0">
+<div>
+<h1 class="text-page-title font-page-title text-on-surface mb-unit">Inventory Command Center</h1>
+<p class="text-body-md font-body-md text-text-muted">Real-time stock monitoring and AI forecasting for RedVortex Main Plant.</p>
+</div>
+<div class="flex gap-sm">
+<button class="bg-surface-raised border border-border-default text-text-primary px-sm py-1.5 rounded text-label-sm font-label-sm hover:bg-surface-overlay flex items-center gap-xs transition-colors">
+<span class="material-symbols-outlined text-sm">download</span>
+                            Export Data
+                        </button>
+<button class="bg-primary-container text-on-primary-container px-sm py-1.5 rounded text-label-sm font-label-sm font-semibold hover:bg-opacity-90 flex items-center gap-xs transition-colors operational-glow">
+<span class="material-symbols-outlined text-sm">add</span>
+                            New Transaction
+                        </button>
+</div>
+</div>
+<!-- KPI Strip -->
+<div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-sm shrink-0">
+<div class="bg-surface-elevated border border-border-default rounded p-sm flex flex-col gap-xs">
+<span class="text-metadata-xs font-metadata-xs text-text-muted uppercase tracking-wider flex justify-between">
+                            Total Stock Value (INR)
+                            <span class="material-symbols-outlined text-text-muted text-xs">account_balance_wallet</span>
+</span>
+<div class="text-page-title font-page-title text-on-surface">₹42.8M</div>
+<div class="text-metadata-xs font-metadata-xs text-tertiary flex items-center gap-unit">
+<span class="material-symbols-outlined text-xs">trending_up</span> +2.4% vs last week
+                        </div>
+</div>
+<div class="bg-surface-elevated border border-border-default rounded p-sm flex flex-col gap-xs">
+<span class="text-metadata-xs font-metadata-xs text-text-muted uppercase tracking-wider flex justify-between">
+                            Inventory Health
+                            <span class="material-symbols-outlined text-text-muted text-xs">health_and_safety</span>
+</span>
+<div class="text-page-title font-page-title text-on-surface">94.2%</div>
+<div class="text-metadata-xs font-metadata-xs text-status-caution flex items-center gap-unit">
+<span class="material-symbols-outlined text-xs">warning</span> 3 anomalies detected
+                        </div>
+</div>
+<div class="bg-surface-elevated border border-border-default rounded p-sm flex flex-col gap-xs">
+<span class="text-metadata-xs font-metadata-xs text-text-muted uppercase tracking-wider flex justify-between">
+                            Inward Flow (MT)
+                            <span class="material-symbols-outlined text-text-muted text-xs">login</span>
+</span>
+<div class="text-page-title font-page-title text-on-surface font-metadata-xs">1,240.5</div>
+<div class="text-metadata-xs font-metadata-xs text-text-muted">Last 24 hours</div>
+</div>
+<div class="bg-surface-elevated border border-border-default rounded p-sm flex flex-col gap-xs">
+<span class="text-metadata-xs font-metadata-xs text-text-muted uppercase tracking-wider flex justify-between">
+                            Outward Flow (MT)
+                            <span class="material-symbols-outlined text-text-muted text-xs">logout</span>
+</span>
+<div class="text-page-title font-page-title text-on-surface font-metadata-xs">890.2</div>
+<div class="text-metadata-xs font-metadata-xs text-text-muted">Last 24 hours</div>
+</div>
+</div>
+<!-- Synchronized Chart Area -->
+<div class="bg-surface-elevated border border-border-default rounded p-sm flex flex-col min-h-[240px] shrink-0">
+<div class="flex justify-between items-center mb-sm border-b border-border-subtle pb-xs">
+<h3 class="text-panel-title font-panel-title text-on-surface flex items-center gap-xs">
+<span class="material-symbols-outlined text-secondary text-sm">insights</span>
+                            Stock Levels vs AI Forecast (7 Days)
+                        </h3>
+<div class="flex gap-xs">
+<span class="flex items-center gap-unit text-metadata-xs font-metadata-xs text-text-muted">
+<div class="w-2 h-2 rounded-full bg-border-strong"></div> Actual
+                            </span>
+<span class="flex items-center gap-unit text-metadata-xs font-metadata-xs text-secondary">
+<div class="w-2 h-2 rounded-full bg-secondary"></div> Forecast
+                            </span>
+</div>
+</div>
+<!-- Chart Placeholder -> generated abstract representation using CSS grids/gradients -->
+<div class="flex-1 flex items-end gap-1 px-sm py-xs relative">
+<!-- Y-axis labels -->
+<div class="absolute left-0 top-0 h-full flex flex-col justify-between text-metadata-xs font-metadata-xs text-text-muted pb-xs w-8 text-right pr-1">
+<span>2k</span>
+<span>1.5k</span>
+<span>1k</span>
+<span>500</span>
+</div>
+<div class="w-8 shrink-0"></div> <!-- Spacer for Y-axis -->
+<!-- Bars -->
+<div class="flex-1 flex items-end justify-around h-full border-b border-border-subtle pb-1 relative">
+<!-- Grid lines -->
+<div class="absolute inset-0 flex flex-col justify-between pointer-events-none">
+<div class="border-t border-border-subtle opacity-30 w-full h-0"></div>
+<div class="border-t border-border-subtle opacity-30 w-full h-0"></div>
+<div class="border-t border-border-subtle opacity-30 w-full h-0"></div>
+<div class="border-t border-border-subtle opacity-30 w-full h-0"></div>
+</div>
+<!-- Data points (simplified visual representation) -->
+<div class="w-8 flex flex-col justify-end items-center group relative z-10">
+<div class="w-4 bg-border-strong h-[40%] rounded-t opacity-80 group-hover:opacity-100 transition-opacity"></div>
+<div class="text-metadata-xs font-metadata-xs text-text-muted mt-1 absolute -bottom-5">Mon</div>
+</div>
+<div class="w-8 flex flex-col justify-end items-center group relative z-10">
+<div class="w-4 bg-border-strong h-[35%] rounded-t opacity-80 group-hover:opacity-100 transition-opacity"></div>
+<div class="text-metadata-xs font-metadata-xs text-text-muted mt-1 absolute -bottom-5">Tue</div>
+</div>
+<div class="w-8 flex flex-col justify-end items-center group relative z-10">
+<div class="w-4 bg-border-strong h-[50%] rounded-t opacity-80 group-hover:opacity-100 transition-opacity"></div>
+<div class="text-metadata-xs font-metadata-xs text-text-muted mt-1 absolute -bottom-5">Wed</div>
+</div>
+<div class="w-8 flex flex-col justify-end items-center group relative z-10">
+<div class="w-4 bg-secondary h-[45%] rounded-t opacity-80 group-hover:opacity-100 transition-opacity border border-secondary border-dashed ai-glow bg-opacity-20"></div>
+<div class="text-metadata-xs font-metadata-xs text-secondary mt-1 absolute -bottom-5">Thu</div>
+</div>
+<div class="w-8 flex flex-col justify-end items-center group relative z-10">
+<div class="w-4 bg-secondary h-[60%] rounded-t opacity-80 group-hover:opacity-100 transition-opacity border border-secondary border-dashed ai-glow bg-opacity-20"></div>
+<div class="text-metadata-xs font-metadata-xs text-secondary mt-1 absolute -bottom-5">Fri</div>
+</div>
+<div class="w-8 flex flex-col justify-end items-center group relative z-10">
+<div class="w-4 bg-secondary h-[55%] rounded-t opacity-80 group-hover:opacity-100 transition-opacity border border-secondary border-dashed ai-glow bg-opacity-20"></div>
+<div class="text-metadata-xs font-metadata-xs text-secondary mt-1 absolute -bottom-5">Sat</div>
+</div>
+<div class="w-8 flex flex-col justify-end items-center group relative z-10">
+<div class="w-4 bg-secondary h-[40%] rounded-t opacity-80 group-hover:opacity-100 transition-opacity border border-secondary border-dashed ai-glow bg-opacity-20"></div>
+<div class="text-metadata-xs font-metadata-xs text-secondary mt-1 absolute -bottom-5">Sun</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Inventory Master Table -->
+<div class="bg-surface-elevated border border-border-default rounded flex-1 flex flex-col min-h-[300px] overflow-hidden">
+<div class="p-sm border-b border-border-default flex justify-between items-center bg-surface-primary shrink-0">
+<h3 class="text-panel-title font-panel-title text-on-surface">Material Master</h3>
+<div class="flex gap-xs">
+<button class="text-text-muted hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-sm">filter_list</span></button>
+<button class="text-text-muted hover:text-on-surface transition-colors"><span class="material-symbols-outlined text-sm">more_vert</span></button>
+</div>
+</div>
+<div class="overflow-auto flex-1">
+<table class="w-full text-left border-collapse">
+<thead class="bg-surface-raised sticky top-0 z-20">
+<tr>
+<th class="p-sm text-metadata-xs font-metadata-xs text-text-muted uppercase border-b border-border-default font-semibold">ID</th>
+<th class="p-sm text-metadata-xs font-metadata-xs text-text-muted uppercase border-b border-border-default font-semibold">Material Name</th>
+<th class="p-sm text-metadata-xs font-metadata-xs text-text-muted uppercase border-b border-border-default font-semibold">Category</th>
+<th class="p-sm text-metadata-xs font-metadata-xs text-text-muted uppercase border-b border-border-default font-semibold w-32">Stock Level</th>
+<th class="p-sm text-metadata-xs font-metadata-xs text-text-muted uppercase border-b border-border-default font-semibold">Variance</th>
+<th class="p-sm text-metadata-xs font-metadata-xs text-text-muted uppercase border-b border-border-default font-semibold text-center">Status</th>
+<th class="p-sm text-metadata-xs font-metadata-xs text-text-muted uppercase border-b border-border-default font-semibold text-right">Valuation</th>
+</tr>
+</thead>
+<tbody class="text-table-cell font-table-cell divide-y divide-border-subtle">
+<tr class="hover:bg-surface-overlay transition-colors">
+<td class="p-sm font-metadata-xs text-text-secondary">MTL-8012</td>
+<td class="p-sm text-on-surface font-medium">Hot Rolled Coil (HRC)</td>
+<td class="p-sm text-text-muted">Raw Material</td>
+<td class="p-sm">
+<div class="w-full bg-surface-container rounded-full h-1.5 flex overflow-hidden">
+<div class="bg-tertiary h-full" style="width: 85%"></div>
+</div>
+<div class="text-metadata-xs font-metadata-xs text-text-muted mt-1">850 / 1000 MT</div>
+</td>
+<td class="p-sm text-text-muted">-</td>
+<td class="p-sm text-center">
+<span class="inline-block px-2 py-0.5 rounded text-metadata-xs font-metadata-xs bg-tertiary-container/20 text-tertiary border border-tertiary/30">OPTIMAL</span>
+</td>
+<td class="p-sm text-right font-metadata-xs text-on-surface">₹12.5M</td>
+</tr>
+<tr class="hover:bg-surface-overlay transition-colors">
+<td class="p-sm font-metadata-xs text-text-secondary">MTL-8015</td>
+<td class="p-sm text-on-surface font-medium">Cold Rolled Coil (CRC)</td>
+<td class="p-sm text-text-muted">Intermediate</td>
+<td class="p-sm">
+<div class="w-full bg-surface-container rounded-full h-1.5 flex overflow-hidden">
+<div class="bg-status-caution h-full" style="width: 25%"></div>
+</div>
+<div class="text-metadata-xs font-metadata-xs text-text-muted mt-1">120 / 480 MT</div>
+</td>
+<td class="p-sm text-text-muted">-</td>
+<td class="p-sm text-center">
+<span class="inline-block px-2 py-0.5 rounded text-metadata-xs font-metadata-xs bg-status-caution/20 text-status-caution border border-status-caution/30">LOW STOCK</span>
+</td>
+<td class="p-sm text-right font-metadata-xs text-on-surface">₹4.2M</td>
+</tr>
+<tr class="hover:bg-surface-overlay transition-colors bg-surface-container-low">
+<td class="p-sm font-metadata-xs text-text-secondary">MTL-8022</td>
+<td class="p-sm text-on-surface font-medium">Galvanized Sheets</td>
+<td class="p-sm text-text-muted">Finished Goods</td>
+<td class="p-sm">
+<div class="w-full bg-surface-container rounded-full h-1.5 flex overflow-hidden">
+<div class="bg-status-critical h-full" style="width: 95%"></div>
+</div>
+<div class="text-metadata-xs font-metadata-xs text-text-muted mt-1">950 / 1000 MT</div>
+</td>
+<td class="p-sm font-metadata-xs text-status-critical">+45 MT</td>
+<td class="p-sm text-center">
+<span class="inline-block px-2 py-0.5 rounded text-metadata-xs font-metadata-xs bg-status-critical/20 text-status-critical border border-status-critical/30">OVERSTOCK</span>
+</td>
+<td class="p-sm text-right font-metadata-xs text-on-surface">₹18.1M</td>
+</tr>
+<tr class="hover:bg-surface-overlay transition-colors">
+<td class="p-sm font-metadata-xs text-text-secondary">MTL-8040</td>
+<td class="p-sm text-on-surface font-medium">Steel Billets</td>
+<td class="p-sm text-text-muted">Raw Material</td>
+<td class="p-sm">
+<div class="w-full bg-surface-container rounded-full h-1.5 flex overflow-hidden">
+<div class="bg-tertiary h-full" style="width: 60%"></div>
+</div>
+<div class="text-metadata-xs font-metadata-xs text-text-muted mt-1">300 / 500 MT</div>
+</td>
+<td class="p-sm font-metadata-xs text-status-caution">-12 MT</td>
+<td class="p-sm text-center">
+<span class="inline-block px-2 py-0.5 rounded text-metadata-xs font-metadata-xs bg-tertiary-container/20 text-tertiary border border-tertiary/30">OPTIMAL</span>
+</td>
+<td class="p-sm text-right font-metadata-xs text-on-surface">₹8.0M</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Intelligence Rail (Right) -->
+<aside class="w-full md:w-[360px] bg-surface-container border-l border-border-default flex flex-col shrink-0 overflow-y-auto">
+<div class="p-sm border-b border-border-default bg-surface-elevated sticky top-0 z-30 flex items-center gap-xs">
+<span class="material-symbols-outlined text-secondary text-lg" style="font-variation-settings: 'FILL' 1;">smart_toy</span>
+<h2 class="text-panel-title font-panel-title text-secondary">Nerve Intelligence</h2>
+</div>
+<div class="p-sm space-y-md">
+<!-- AI Diagnostics -->
+<section class="space-y-sm">
+<h3 class="text-metadata-xs font-metadata-xs text-text-muted uppercase tracking-wider">Diagnostics</h3>
+<div class="bg-surface-raised border border-border-subtle rounded p-sm relative overflow-hidden group hover:border-primary-container transition-colors">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-status-caution"></div>
+<div class="flex items-start gap-sm pl-2">
+<span class="material-symbols-outlined text-status-caution text-base mt-0.5">warning</span>
+<div>
+<h4 class="text-label-sm font-label-sm text-on-surface font-semibold mb-1">Anomaly in Batch S-402</h4>
+<p class="text-metadata-xs font-metadata-xs text-text-muted mb-xs">Physical count variance detected (-12 MT) vs system ledger.</p>
+<button class="text-metadata-xs font-metadata-xs text-primary-fixed hover:underline focus:outline-none">Investigate</button>
+</div>
+</div>
+</div>
+<div class="bg-surface-raised border border-border-subtle rounded p-sm relative overflow-hidden group hover:border-secondary transition-colors">
+<div class="absolute left-0 top-0 bottom-0 w-1 bg-secondary"></div>
+<div class="flex items-start gap-sm pl-2">
+<span class="material-symbols-outlined text-secondary text-base mt-0.5">info</span>
+<div>
+<h4 class="text-label-sm font-label-sm text-on-surface font-semibold mb-1">Dead Stock Detected</h4>
+<p class="text-metadata-xs font-metadata-xs text-text-muted mb-xs">MTL-8022 has zero movement in past 45 days. High capital lockup.</p>
+<button class="text-metadata-xs font-metadata-xs text-secondary hover:underline focus:outline-none">View Details</button>
+</div>
+</div>
+</div>
+</section>
+<div class="border-t border-border-subtle"></div>
+<!-- Forecast & Reorder -->
+<section class="space-y-sm">
+<h3 class="text-metadata-xs font-metadata-xs text-text-muted uppercase tracking-wider flex justify-between items-center">
+                            Forecast &amp; Reorder
+                            <span class="material-symbols-outlined text-secondary text-xs">auto_awesome</span>
+</h3>
+<div class="bg-surface-canvas border border-border-subtle rounded divide-y divide-border-subtle">
+<div class="p-sm flex justify-between items-center hover:bg-surface-overlay transition-colors cursor-pointer">
+<div>
+<div class="text-label-sm font-label-sm text-on-surface">CRC (MTL-8015)</div>
+<div class="text-metadata-xs font-metadata-xs text-text-muted">Reorder by: Tomorrow</div>
+</div>
+<div class="text-right">
+<div class="text-label-sm font-label-sm text-status-caution">+360 MT</div>
+<div class="text-metadata-xs font-metadata-xs text-secondary flex items-center gap-unit justify-end">
+                                        98% <span class="material-symbols-outlined text-[10px]">check_circle</span>
+</div>
+</div>
+</div>
+<div class="p-sm flex justify-between items-center hover:bg-surface-overlay transition-colors cursor-pointer">
+<div>
+<div class="text-label-sm font-label-sm text-on-surface">Steel Billets (MTL-8040)</div>
+<div class="text-metadata-xs font-metadata-xs text-text-muted">Reorder by: Friday</div>
+</div>
+<div class="text-right">
+<div class="text-label-sm font-label-sm text-on-surface">+200 MT</div>
+<div class="text-metadata-xs font-metadata-xs text-secondary flex items-center gap-unit justify-end">
+                                        85% <span class="material-symbols-outlined text-[10px]">check_circle</span>
+</div>
+</div>
+</div>
+</div>
+<button class="w-full py-1.5 border border-secondary text-secondary rounded text-label-sm font-label-sm hover:bg-secondary/10 transition-colors">Review All Recommendations</button>
+</section>
+<div class="border-t border-border-subtle"></div>
+<!-- Stock Health Heatmap -->
+<section class="space-y-sm">
+<h3 class="text-metadata-xs font-metadata-xs text-text-muted uppercase tracking-wider">Zone Density Heatmap</h3>
+<div class="bg-surface-raised border border-border-subtle rounded p-sm h-32 relative flex flex-col justify-end">
+<!-- Abstract Heatmap representation -->
+<div class="absolute inset-0 m-sm rounded bg-surface-canvas grid grid-cols-4 grid-rows-3 gap-1 p-1">
+<div class="bg-tertiary/80 rounded-sm"></div>
+<div class="bg-tertiary/60 rounded-sm"></div>
+<div class="bg-status-caution/70 rounded-sm"></div>
+<div class="bg-tertiary/90 rounded-sm"></div>
+<div class="bg-tertiary/50 rounded-sm"></div>
+<div class="bg-status-critical/80 rounded-sm"></div>
+<div class="bg-status-caution/90 rounded-sm"></div>
+<div class="bg-tertiary/40 rounded-sm"></div>
+<div class="bg-tertiary/70 rounded-sm"></div>
+<div class="bg-tertiary/80 rounded-sm"></div>
+<div class="bg-tertiary/60 rounded-sm"></div>
+<div class="bg-status-caution/50 rounded-sm"></div>
+</div>
+<div class="relative z-10 flex justify-between w-full mt-auto bg-surface-raised/90 backdrop-blur-sm p-1 rounded-sm">
+<span class="text-metadata-xs font-metadata-xs text-text-muted">Optimal</span>
+<span class="text-metadata-xs font-metadata-xs text-text-muted">Critical</span>
+</div>
+</div>
+</section>
+</div>
+</aside>
+</main>
+</div>
+</body></html>

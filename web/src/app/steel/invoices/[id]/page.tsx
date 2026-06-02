@@ -1,5 +1,5 @@
-import { SteelInvoiceDetailPage } from "@/components/steel-invoice-detail-page";
+import { SteelInvoiceDetailWorkspace } from "@/features/steel";
 
 export default function SteelInvoiceDetailRoute() {
-  return <SteelInvoiceDetailPage />;
+  return <SteelInvoiceDetailWorkspace />;
 }
