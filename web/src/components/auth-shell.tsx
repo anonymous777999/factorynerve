@@ -19,7 +19,6 @@ type AuthShellProps = {
   children: ReactNode;
   cardClassName?: string;
   contentClassName?: string;
-  guidanceKey?: string;
 };
 
 export function AuthShell({
@@ -48,6 +47,7 @@ export function AuthShell({
 
   return (
     <AuthWorkstationShell
+      sidePanel="minimal"
       badge={badge}
       title={title}
       description={description}

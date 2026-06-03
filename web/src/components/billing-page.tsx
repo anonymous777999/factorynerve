@@ -12,6 +12,7 @@ import { BillingPlanSummaryCards } from "@/components/billing-plan-summary-cards
 import { BillingUsageDiagnostics } from "@/components/billing-usage-diagnostics";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
@@ -665,19 +666,33 @@ function BillingPageInner() {
     );
   }
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <BillingHeader
-          dashboardLabel={t("billing.billing.dashboard", "Dashboard")}
-          description={t(
-            "billing.billing.description",
-            "Review plan status, confirm the checkout fit, then pay through Razorpay.",
-          )}
-          plansLabel={t("billing.plans.title", "Plans")}
-          title={t("billing.billing.heading", "Plan status and live checkout")}
-          toolsTitle={t("billing.billing.tools", "Billing tools")}
-        />
-
+    <OperationalPageShell
+      className="factory-workstation-scope"
+      contentClassName="mx-auto max-w-7xl space-y-6"
+      eyebrow="Billing"
+      title={t("billing.billing.heading", "Plan status and live checkout")}
+      description={t(
+        "billing.billing.description",
+        "Review plan status, confirm the checkout fit, then pay through Razorpay.",
+      )}
+      actions={[
+        {
+          id: "plans",
+          label: t("billing.plans.title", "Plans"),
+          onAction: () => {
+            window.location.assign("/plans");
+          },
+        },
+        {
+          id: "dashboard",
+          label: t("billing.billing.dashboard", "Dashboard"),
+          variant: "outline",
+          onAction: () => {
+            window.location.assign("/dashboard");
+          },
+        },
+      ]}
+    >
         <BillingCheckoutSequence steps={checkoutSequenceSteps} />
 
         <BillingPlanSummaryCards cards={summaryCards} />
@@ -957,8 +972,7 @@ function BillingPageInner() {
 
         {status ? <div className="text-sm text-green-400">{status}</div> : null}
         {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }
 

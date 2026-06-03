@@ -24,8 +24,17 @@ export function CardHeader({ className, ...props }: React.HTMLAttributes<HTMLDiv
   return <div className={cn("ui-no-select ui-no-callout px-lg pt-lg", className)} {...props} />;
 }
 
-export function CardTitle({ className, ...props }: React.HTMLAttributes<HTMLHeadingElement>) {
-  return <h1 className={cn("ui-no-select ui-no-callout text-panel-title font-semibold tracking-[-0.02em] text-text-primary", className)} {...props} />;
+type CardTitleProps = React.HTMLAttributes<HTMLHeadingElement> & {
+  as?: "h1" | "h2" | "h3" | "h4";
+};
+
+export function CardTitle({ className, as: Tag = "h2", ...props }: CardTitleProps) {
+  return (
+    <Tag
+      className={cn("ui-no-select ui-no-callout text-panel-title font-semibold tracking-[-0.02em] text-text-primary", className)}
+      {...props}
+    />
+  );
 }
 
 export function CardContent({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {

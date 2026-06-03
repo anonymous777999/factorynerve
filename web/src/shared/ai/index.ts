@@ -11,3 +11,4 @@
 export { ConfidenceMeter, getConfidenceTone } from "./confidence-meter";
 export { AIDisclosure } from "./ai-disclosure";
 export { AnomalyStrip } from "./anomaly-strip";
+export { AiDisclosureBanner } from "./ai-disclosure-banner";

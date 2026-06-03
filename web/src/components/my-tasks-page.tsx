@@ -1,13 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import { GuidanceBlock } from "@/components/ui/guidance-block";
-import { Skeleton } from "@/components/ui/skeleton";
 import { getActiveWorkflowTemplate, type ActiveWorkflowTemplateContext } from "@/lib/auth";
 import { listUnreadAlerts, type AlertItem } from "@/lib/dashboard";
 import { getTodayEntries, type Entry } from "@/lib/entries";
@@ -73,6 +73,7 @@ export default function MyTasksPage() {
   useI18nNamespaces(["common", "tasks", "attendance"]);
 
   const { user, loading, activeFactory, error: sessionError } = useSession();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const [todayEntries, setTodayEntries] = useState<Entry[]>([]);
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
@@ -262,21 +263,14 @@ export default function MyTasksPage() {
 
   if (loading || (pageLoading && !hasLoadedOnce)) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-7xl space-y-6">
-          <Skeleton className="h-32 rounded-[2rem]" />
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <Skeleton key={index} className="h-36 rounded-2xl" />
-            ))}
-          </div>
-          <div className="grid gap-6 xl:grid-cols-2">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <Skeleton key={index} className="h-64 rounded-2xl" />
-            ))}
-          </div>
-        </div>
-      </main>
+      <OperationalPageShell
+        eyebrow={t("tasks.hero.eyebrow", "Daily Work")}
+        title={t("tasks.title", "My Tasks")}
+        isLoading
+        loadingTitle={t("tasks.loading", "Loading task board")}
+      >
+        <div />
+      </OperationalPageShell>
     );
   }
 
@@ -324,45 +318,43 @@ export default function MyTasksPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur md:flex-row md:items-end md:justify-between">
-          <div className="space-y-2">
-            <div className="text-sm uppercase tracking-[0.32em] text-[var(--accent)]">{t("tasks.hero.eyebrow", "Daily Work")}</div>
-            <h1 className="text-3xl font-semibold md:text-4xl">{t("tasks.title", "My Tasks")}</h1>
-            <p className="max-w-3xl text-sm text-[var(--muted)]">{t("tasks.hero.subtitle", "Start the next task and clear blockers.")}</p>
-          </div>
-          <div className="space-y-2 text-sm text-[var(--muted)]">
-            <div className="flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
-                {t("tasks.hero.active_factory", "Factory: {{value}}", { value: activeFactory?.name || user.factory_name })}
-              </span>
-              <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
-                {t("tasks.hero.workflow", "Workflow: {{value}}", { value: templateContext?.workflow_template_label || activeFactory?.workflow_template_label || "Standard" })}
-              </span>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button
-                variant="outline"
-                className="px-4 py-2 text-xs"
-                onClick={() => {
-                  void loadTasks({ background: true });
-                }}
-                disabled={refreshing}
-              >
-                {refreshing ? t("tasks.hero.refreshing", "Refreshing...") : t("tasks.hero.refresh", "Refresh Tasks")}
-              </Button>
-              <span className="text-xs text-[var(--muted)]">
-                {refreshing
-                  ? t("tasks.hero.updating", "Updating tasks...")
-                  : lastUpdatedAt
-                    ? t("tasks.hero.updated", "Updated {{value}}", { value: formatDateTime(lastUpdatedAt, locale) })
-                    : t("tasks.hero.live_updates", "Live updates every 25 seconds")}
-              </span>
-            </div>
-          </div>
-        </section>
-
+    <OperationalPageShell
+      contentClassName="space-y-6"
+      eyebrow={t("tasks.hero.eyebrow", "Daily Work")}
+      title={t("tasks.title", "My Tasks")}
+      description={t("tasks.hero.subtitle", "Start the next task and clear blockers.")}
+      metrics={[
+        { id: "factory", label: t("tasks.hero.active_factory", "Factory"), value: activeFactory?.name || user.factory_name || "-" },
+        {
+          id: "workflow",
+          label: t("tasks.hero.workflow", "Workflow"),
+          value: templateContext?.workflow_template_label || activeFactory?.workflow_template_label || "Standard",
+        },
+        { id: "pending", label: t("tasks.tile.pending_shifts", "Pending shifts"), value: pendingShifts },
+        { id: "alerts", label: t("tasks.tile.unread_alerts", "Unread alerts"), value: alerts.length },
+      ]}
+      actions={[
+        {
+          id: "refresh-tasks",
+          label: refreshing ? t("tasks.hero.refreshing", "Refreshing...") : t("tasks.hero.refresh", "Refresh Tasks"),
+          variant: "outline",
+          onAction: () => {
+            void loadTasks({ background: true });
+          },
+        },
+        ...(primaryTask
+          ? [
+              {
+                id: "start-next-task",
+                label: t("tasks.start_now", "Start now"),
+                onAction: () => {
+                  router.push(primaryTask.href);
+                },
+              },
+            ]
+          : []),
+      ]}
+    >
         <GuidanceBlock
           surfaceKey="my-tasks"
           title={t("tasks.steps.title", "Task tips")}
@@ -391,7 +383,7 @@ export default function MyTasksPage() {
 
         {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
         {refreshing ? (
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3 text-sm text-[var(--muted)]">
+          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3 text-sm text-text-secondary">
             {t("tasks.refreshing_background", "Refreshing task board in the background...")}
           </div>
         ) : null}
@@ -573,7 +565,6 @@ export default function MyTasksPage() {
             </CardContent>
           </Card>
         </section>
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

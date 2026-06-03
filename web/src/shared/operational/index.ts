@@ -24,3 +24,6 @@ export { LoadingBoundary } from "@/components/ui/loading-boundary";
 export { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 export { GuidanceHint, GuidanceBlock } from "@/components/ui/guidance-block";
 export { WorkflowPanel } from "@/components/ui/workflow-panel";
+export { RouteHeader } from "@/shared/operational/route-header";
+export { DisclosurePanel } from "@/shared/operational/disclosure-panel";
+export { OperationalPageShell } from "@/components/ui/operational-page-shell";

@@ -10,6 +10,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { LoadingBoundary } from "@/components/ui/loading-boundary";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { PageMain } from "@/components/ui/page-main";
 import { RecoveryBanner } from "@/components/ui/recovery-banner";
 import { StickyActionBar } from "@/components/ui/sticky-action-bar";
 import { ProductionRecordForm } from "@/components/steel/production-record/production-record-form";
@@ -370,17 +372,9 @@ export function SteelProductionRecordPage() {
     reviewRoute.reviewOpen,
   ]);
 
-  if (loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-text-secondary">
-        Loading production record workspace...
-      </main>
-    );
-  }
-
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <PageMain maxWidth="3xl" innerClassName="flex min-h-[50vh] items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Production Record</CardTitle>
@@ -394,71 +388,58 @@ export function SteelProductionRecordPage() {
             </Link>
           </CardContent>
         </Card>
-      </main>
+      </PageMain>
     );
   }
 
   if (!isSteelFactory) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-4xl">
-          <Card>
-            <CardHeader>
-              <CardTitle>Production recording is factory-aware</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-text-secondary">
-              <div>
-                Your active factory is{" "}
-                <span className="font-semibold text-text-primary">
-                  {activeFactory?.name || "not selected"}
-                </span>
-                .
-              </div>
-              <div>
-                Switch into a steel factory from the sidebar before recording a production batch.
-              </div>
-              <div className="flex gap-3">
-                <Link href="/steel">
-                  <Button>Open Steel Module</Button>
-                </Link>
-                <Link href="/settings">
-                  <Button variant="outline">Open Settings</Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+      <OperationalPageShell
+        title="Production recording is factory-aware"
+        description="Switch into a steel factory from the sidebar before recording a production batch."
+      >
+        <Card className="mx-auto max-w-4xl">
+          <CardContent className="space-y-4 py-lg text-sm text-text-secondary">
+            <div>
+              Your active factory is{" "}
+              <span className="font-semibold text-text-primary">
+                {activeFactory?.name || "not selected"}
+              </span>
+              .
+            </div>
+            <div className="flex gap-3">
+              <Link href="/steel">
+                <Button>Open Steel Module</Button>
+              </Link>
+              <Link href="/settings">
+                <Button variant="outline">Open Settings</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </OperationalPageShell>
     );
   }
 
   return (
-    <main className="min-h-screen bg-surface-app px-3 py-4 md:px-4 md:py-5">
-      <div className="mx-auto max-w-7xl space-y-4">
-        <section className="rounded-lg border border-border-subtle bg-surface-card px-6 py-4 shadow-lg">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="min-w-0 space-y-1">
-              <div className="text-xs uppercase tracking-wider text-text-tertiary">
-                Steel Production Record
-              </div>
-              <h1 className="text-2xl font-semibold text-white">
-                Keyboard-first operational capture
-              </h1>
-              <p className="max-w-3xl text-sm text-text-secondary">
-                Search materials, capture weights, review live yield and variance, then confirm
-                the ledger transformation before commit.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Link href="/steel/batches">
-                <Button variant="outline" size="compact" className="border-border-default text-text-primary hover:bg-surface-hover">
-                  Batch List
-                </Button>
-              </Link>
-              <Badge status={getSeverityBadgeStatus(metrics.severity)}>{metrics.severityLabel}</Badge>
-            </div>
-          </div>
-        </section>
+    <OperationalPageShell
+      eyebrow="Steel Production Record"
+      title="Keyboard-first operational capture"
+      description="Search materials, capture weights, review live yield and variance, then confirm the ledger transformation before commit."
+      isLoading={loading}
+      loadingTitle="Loading production record workspace..."
+      contentClassName="space-y-4"
+      filters={
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/steel/batches">
+            <Button variant="outline" size="compact">
+              Batch List
+            </Button>
+          </Link>
+          <Badge status={getSeverityBadgeStatus(metrics.severity)}>{metrics.severityLabel}</Badge>
+        </div>
+      }
+    >
 
         {(recoveryMode === "available" && activeDraft) || recoveryMode === "confirm-discard" ? (
           <RecoveryBanner
@@ -664,7 +645,6 @@ export function SteelProductionRecordPage() {
           outputItem={outputItem}
           metrics={metrics}
         />
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

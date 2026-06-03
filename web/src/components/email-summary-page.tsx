@@ -28,6 +28,7 @@ import { getSteelOverview, type SteelOverview } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
@@ -343,42 +344,42 @@ export default function EmailSummaryPage() {
   }
 
   return (
-    <main className="min-h-screen bg-surface-shell px-4 py-4 md:px-6">
-      <div className="mx-auto max-w-[1600px] flex flex-col gap-6">
-
-        {/* Modern Compact Unified Page Header */}
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-border-subtle pb-4">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 text-xs text-text-tertiary">
-              <span>{activeFactory?.name || user?.factory_name || "Factory"}</span>
-              <span className="text-[11px] text-text-tertiary/60">/</span>
-              <span>Reports</span>
-              <span className="text-[11px] text-text-tertiary/60">/</span>
-              <span className="text-text-secondary">Email Summary</span>
-            </div>
-            <h1 className="mt-1 text-2xl font-bold tracking-tight text-text-primary">
-              Compose trusted factory updates fast
-            </h1>
-            <p className="mt-1 text-xs text-text-secondary">
-              Review verified telemetry snapshots, verify OCR documents, inspect financial risks, and compile drafts.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link href="/reports">
-              <Button size="compact" variant="outline" className="text-xs">
-                View Reports
-              </Button>
-            </Link>
-            {steelMode && (
-              <Link href="/premium/dashboard">
-                <Button size="compact" variant="outline" className="text-xs">
-                  Owner Desk
-                </Button>
-              </Link>
-            )}
-          </div>
-        </header>
-
+    <OperationalPageShell
+      className="factory-workstation-scope"
+      contentClassName="mx-auto max-w-[1600px] flex flex-col gap-6"
+      eyebrow="Email Summary"
+      title="Compose trusted factory updates fast"
+      description="Review verified telemetry snapshots, verify OCR documents, inspect financial risks, and compile drafts."
+      metrics={[
+        {
+          id: "factory",
+          label: "Factory",
+          value: activeFactory?.name || user?.factory_name || "Factory",
+        },
+      ]}
+      actions={[
+        {
+          id: "reports",
+          label: "View Reports",
+          variant: "outline",
+          onAction: () => {
+            window.location.assign("/reports");
+          },
+        },
+        ...(steelMode
+          ? [
+              {
+                id: "owner-desk",
+                label: "Owner Desk",
+                variant: "outline" as const,
+                onAction: () => {
+                  window.location.assign("/premium/dashboard");
+                },
+              },
+            ]
+          : []),
+      ]}
+    >
         {/* 3-Lane Grid Structure */}
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[240px_1fr] xl:grid-cols-[280px_1fr_420px] items-start">
 
@@ -926,7 +927,6 @@ export default function EmailSummaryPage() {
           </div>
         )}
 
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

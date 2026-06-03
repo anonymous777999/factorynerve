@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { GuidanceBlock } from "@/components/ui/guidance-block";
+import { MetricStrip } from "@/components/ui/metric-strip";
 import { SettingsTabNav, type SettingsTabKey } from "@/components/settings-tab-nav";
 
 type SummaryCard = {
@@ -14,6 +15,8 @@ type SummaryCard = {
 };
 
 type SettingsShellProps = {
+  /** When true, header and metric strip are provided by OperationalPageShell. */
+  embedded?: boolean;
   title: string;
   heroTitle: string;
   heroSubtitle: string;
@@ -51,6 +54,7 @@ type SettingsShellProps = {
 };
 
 export function SettingsShell({
+  embedded = false,
   title,
   heroTitle,
   heroSubtitle,
@@ -68,42 +72,46 @@ export function SettingsShell({
 }: SettingsShellProps) {
   return (
     <>
-      <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
-        <div>
-          <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{title}</div>
-          <h1 className="mt-2 text-3xl font-semibold">{heroTitle}</h1>
-          <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">{heroSubtitle}</p>
-        </div>
-      </section>
+      {!embedded ? (
+        <section className="route-header">
+          <div className="route-header__grid">
+            <div className="route-header__copy">
+              <p className="route-header__eyebrow text-action-primary">{title}</p>
+              <h1 className="route-header__title">{heroTitle}</h1>
+              <p className="route-header__body">{heroSubtitle}</p>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
-      <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
-        <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
-          {toolsTitle}
-        </summary>
-        <div className="mt-4 flex flex-wrap gap-3">
+      <section className="route-panel">
+        <header className="route-panel__header flex flex-wrap items-center justify-between gap-3">
+          <p className="text-label font-semibold text-text-primary">{toolsTitle}</p>
+        </header>
+        <div className="route-panel__body flex flex-wrap gap-3">
           <Link href="/dashboard">
-            <Button variant="ghost">{toolLabels.board}</Button>
+            <Button variant="outline">{toolLabels.board}</Button>
           </Link>
           <Link href="/reports">
-            <Button>{toolLabels.reports}</Button>
+            <Button variant="outline">{toolLabels.reports}</Button>
           </Link>
           <Link href="/plans">
-            <Button variant="ghost">{toolLabels.plans}</Button>
+            <Button variant="outline">{toolLabels.plans}</Button>
           </Link>
           {canViewBilling ? (
             <Link href="/billing">
-              <Button variant="ghost">{toolLabels.billing}</Button>
+              <Button variant="outline">{toolLabels.billing}</Button>
             </Link>
           ) : null}
         </div>
-      </details>
+      </section>
 
       <GuidanceBlock
         surfaceKey="settings-flow"
         title={guidance.title}
         summary={guidance.summary}
         eyebrow={title}
-        className="border-[var(--border)] bg-[rgba(10,14,24,0.68)]"
+        className="route-panel"
       >
         <div className="grid gap-3 md:grid-cols-3">
           {[
@@ -111,29 +119,25 @@ export function SettingsShell({
             { step: guidance.rulesTitle, caption: guidance.rulesDetail },
             { step: guidance.verifyTitle, caption: guidance.verifyDetail },
           ].map((item) => (
-            <div
-              key={item.step}
-              className="rounded-[24px] border border-[var(--border)] bg-[rgba(10,14,24,0.68)] px-5 py-4"
-            >
-              <div className="text-sm font-semibold text-[var(--text)]">{item.step}</div>
-              <div className="mt-2 text-sm text-[var(--muted)]">{item.caption}</div>
+            <div key={item.step} className="rounded-panel border border-border-subtle bg-surface-shell px-5 py-4">
+              <p className="text-sm font-semibold text-text-primary">{item.step}</p>
+              <p className="mt-2 text-sm text-text-secondary">{item.caption}</p>
             </div>
           ))}
         </div>
       </GuidanceBlock>
 
-      <section className="grid gap-3 md:grid-cols-3">
-        {summaryCards.map((card) => (
-          <div
-            key={card.title}
-            className="rounded-[10px] bg-[var(--color-background-secondary)] px-5 py-4 text-[var(--color-text-primary)]"
-          >
-            <div className="mb-1 text-[12px] font-normal text-[var(--color-text-tertiary)]">{card.title}</div>
-            <div className="text-[22px] font-medium text-[var(--color-text-primary)]">{card.value}</div>
-            <div className="text-[12px] text-[var(--color-text-tertiary)]">{card.detail}</div>
-          </div>
-        ))}
-      </section>
+      {!embedded ? (
+        <MetricStrip
+          compact
+          items={summaryCards.map((card, index) => ({
+            id: `summary-${index}`,
+            label: card.title,
+            value: card.value,
+            detail: card.detail,
+          }))}
+        />
+      ) : null}
 
       <SettingsTabNav
         activeTab={activeTab}

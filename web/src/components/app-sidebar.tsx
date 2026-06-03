@@ -32,6 +32,7 @@ import {
 } from "lucide-react";
 
 import RoleGate from "@/shared/permissions/role-gate";
+import { PanelToggleButton } from "@/components/ui/panel-toggle-button";
 import { Select } from "@/components/ui/select";
 import type { Permissions } from "@/lib/auth";
 import type { AppLanguage } from "@/lib/i18n";
@@ -1101,20 +1102,17 @@ export function AppDesktopContextRail({
         <aside className="factory-context-rail hidden w-[16.5rem] shrink-0 xl:block">
           <div className="sticky top-4 space-y-3 px-3 py-3">
             <div className="factory-rail-card rounded-panel border border-border-subtle bg-surface-panel p-4 shadow-[var(--shadow-xs)]">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">Workspace</div>
-                  <div className="mt-2 text-lg font-semibold text-text-primary">{currentItem.label}</div>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="text-label-dense font-semibold text-text-tertiary">Workspace</div>
+                  <div className="mt-1 truncate text-base font-semibold text-text-primary">{currentItem.label}</div>
                 </div>
-                <button
-                  type="button"
-                  aria-label={translate ? translate("shell.hide_workspace", "Hide workspace") : "Hide workspace"}
-                  title={translate ? translate("shell.hide_workspace", "Hide workspace") : "Hide workspace"}
-                  className="ui-no-select ui-no-callout inline-flex h-11 shrink-0 items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-elevated px-3 text-xs font-semibold uppercase tracking-[0.14em] text-text-primary transition-colors duration-100 hover:border-border-strong hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
+                <PanelToggleButton
+                  kind="rail-right"
+                  expanded
                   onClick={onToggle}
-                >
-                  Hide
-                </button>
+                  aria-label={translate ? translate("shell.hide_workspace", "Hide workspace") : "Hide workspace"}
+                />
               </div>
               <div className="mt-2 text-sm leading-6 text-text-secondary">{currentItem.description}</div>
             </div>
@@ -1181,15 +1179,13 @@ export function AppDesktopContextRail({
       ) : null}
 
       {hidden ? (
-        <button
-          type="button"
-          aria-label={translate ? translate("shell.show_workspace", "Show workspace") : "Show workspace"}
-          title={translate ? translate("shell.show_workspace", "Show workspace") : "Show workspace"}
-          className="ui-no-select ui-no-callout fixed right-6 top-[calc(env(safe-area-inset-top,0px)+0.75rem)] z-sticky hidden min-h-[44px] items-center justify-center rounded-control border-[0.5px] border-border-default bg-surface-panel px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-text-primary shadow-xs transition-colors duration-100 hover:border-border-strong hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 xl:inline-flex"
+        <PanelToggleButton
+          kind="rail-right"
+          expanded={false}
+          docked
           onClick={onToggle}
-        >
-          Workspace
-        </button>
+          aria-label={translate ? translate("shell.show_workspace", "Show workspace") : "Show workspace"}
+        />
       ) : null}
     </>
   );

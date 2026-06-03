@@ -21,6 +21,10 @@ import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import { validatePhoneNumber } from "@/lib/validation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  PASSWORD_INPUT_TOGGLE_PADDING,
+  PasswordVisibilityToggle,
+} from "@/components/ui/password-visibility-toggle";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
@@ -79,10 +83,7 @@ function roleLabel(value: RoleOption["value"]) {
 
 function FieldLabel({ htmlFor, children }: { htmlFor: string; children: string }) {
   return (
-    <label
-      htmlFor={htmlFor}
-      className="mb-2 block text-label-dense font-medium uppercase tracking-[0.18em] text-text-secondary"
-    >
+    <label htmlFor={htmlFor} className="mb-2 block text-label font-medium text-text-secondary">
       {children}
     </label>
   );
@@ -147,18 +148,16 @@ function PasswordInput({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
-          className="factory-auth-input min-h-[40px] border-border-default bg-surface-elevated pl-10 pr-20 text-sm text-text-primary placeholder:text-text-tertiary focus:border-border-focus"
+          className={cn(
+            "factory-auth-input min-h-[40px] border-border-default bg-surface-elevated pl-10 text-sm text-text-primary placeholder:text-text-tertiary focus:border-border-focus",
+            PASSWORD_INPUT_TOGGLE_PADDING,
+          )}
           required
         />
-        <button
-          type="button"
-          onClick={() => setVisible((current) => !current)}
-          className="absolute right-2 top-1/2 inline-flex h-7 min-w-12 -translate-y-1/2 items-center justify-center rounded-control border border-border-default bg-surface-panel px-2 text-[10px] font-medium uppercase tracking-[0.16em] text-text-secondary transition hover:bg-surface-hover hover:text-text-primary"
-          aria-label={visible ? "Hide password" : "Show password"}
-          aria-pressed={visible}
-        >
-          {visible ? "Hide" : "Show"}
-        </button>
+        <PasswordVisibilityToggle
+          visible={visible}
+          onToggle={() => setVisible((current) => !current)}
+        />
       </div>
     </div>
   );
@@ -328,6 +327,7 @@ export default function RegisterPage() {
 
   return (
     <AuthWorkstationShell
+      sidePanel="standard"
       badge="Factory access provisioning"
       title="Identify Setup Operator"
       description="Configure the first organization profile, assign the initial role, then complete inbox verification before desktop access is released."
@@ -376,9 +376,7 @@ export default function RegisterPage() {
         <div className="space-y-4">
           {hasRedirectTarget ? (
             <div className="rounded-panel border border-border-focus bg-surface-selected p-4 text-sm text-text-primary">
-              <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
-                After verification
-              </div>
+              <p className="text-label-dense font-medium text-text-tertiary">After verification</p>
               <div className="mt-2 text-base font-semibold">
                 Sign in to continue into {nextDestination}.
               </div>
@@ -387,9 +385,7 @@ export default function RegisterPage() {
 
           {successState ? (
             <div className={cn("rounded-panel border p-4 text-sm", successState.panelTone)}>
-              <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-current/80">
-                Signup status
-              </div>
+              <p className="text-label-dense font-medium text-current/80">Signup status</p>
               <div className="mt-2 text-base font-semibold text-text-primary">{successState.title}</div>
               <div className="mt-2 leading-6">{successState.detail}</div>
             </div>
@@ -398,12 +394,10 @@ export default function RegisterPage() {
           <div className="rounded-panel border border-border-default bg-surface-panel p-4">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
-                  Pending identity
-                </div>
+                <p className="text-label-dense font-medium text-text-tertiary">Pending identity</p>
                 <div className="mt-2 text-base font-semibold text-text-primary">{email}</div>
               </div>
-              <div className="rounded-control border border-border-default bg-surface-elevated px-3 py-2 text-[11px] font-medium uppercase tracking-[0.18em] text-text-secondary">
+              <div className="rounded-control border border-border-default bg-surface-elevated px-3 py-2 text-label-dense font-medium text-text-secondary">
                 {isEmailFailure ? "Retry required" : isEmailDelivery ? "Inbox action" : "Link ready"}
               </div>
             </div>
@@ -426,9 +420,7 @@ export default function RegisterPage() {
 
             {success.verification_link ? (
               <div className="mt-4 rounded-panel border border-border-focus bg-surface-selected p-4">
-                <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
-                  Preview verification link
-                </div>
+                <p className="text-label-dense font-medium text-text-tertiary">Preview verification link</p>
                 <a
                   href={success.verification_link}
                   className="mt-3 inline-flex items-center gap-2 rounded-control border border-border-focus bg-surface-panel px-4 py-2 text-sm font-medium text-text-primary transition hover:bg-surface-hover"
@@ -445,7 +437,7 @@ export default function RegisterPage() {
             <Button type="button" variant="outline" onClick={onResend} isBusy={resending} busyLabel={t("auth.register.resending", "Sending...")}>
               {t("auth.register.resend", "Resend email")}
             </Button>
-            <Link href="/access" className="text-sm text-[var(--accent)] underline underline-offset-4">
+            <Link href="/access" className="factory-auth-link text-sm underline-offset-4">
               {t("auth.register.sign_in", "Sign in")}
             </Link>
           </div>
@@ -460,9 +452,7 @@ export default function RegisterPage() {
         <div className="space-y-5">
           {hasRedirectTarget ? (
             <div className="rounded-panel border border-border-focus bg-surface-selected p-4 text-sm text-text-primary">
-              <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
-                Start here first
-              </div>
+              <p className="text-label-dense font-medium text-text-tertiary">Start here first</p>
               <div className="mt-2 text-base font-semibold">
                 After verification, the user can continue into {nextDestination}.
               </div>
@@ -557,9 +547,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="rounded-panel border border-border-default bg-surface-shell p-4">
-              <div className="text-[11px] font-medium uppercase tracking-[0.22em] text-text-secondary">
-                Operational onboarding
-              </div>
+              <p className="text-label-dense font-medium text-text-tertiary">Operational onboarding</p>
               <div className="mt-2 text-sm font-medium text-text-primary">{roleLabel(selectedRole)}</div>
               <div className="mt-2 text-sm leading-6 text-text-secondary">{activeRoleDetail}</div>
               <div className="mt-3 text-xs leading-6 text-text-tertiary">
@@ -583,11 +571,9 @@ export default function RegisterPage() {
             </Button>
 
             <div className="flex items-center justify-between gap-4 border-t border-border-subtle pt-4">
-              <div className="text-xs uppercase tracking-[0.2em] text-text-secondary">
-                Existing operator?
-              </div>
+              <span className="text-label-dense text-text-secondary">Existing operator?</span>
               <div className="flex items-center gap-4">
-                <Link href="/access" className="text-sm text-[var(--accent)] underline underline-offset-4">
+                <Link href="/access" className="factory-auth-link text-sm underline-offset-4">
                   {t("auth.register.sign_in", "Sign in")}
                 </Link>
               </div>

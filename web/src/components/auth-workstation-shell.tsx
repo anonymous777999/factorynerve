@@ -28,7 +28,7 @@ type AuthWorkstationShellProps = {
   leftEyebrow: string;
   leftTitle: string;
   leftDescription: string;
-  steps: AuthWorkstationStep[];
+  steps?: AuthWorkstationStep[];
   supportTitle: string;
   supportDescription: string;
   supportItems: AuthWorkstationSupportItem[];
@@ -43,6 +43,8 @@ type AuthWorkstationShellProps = {
   children: ReactNode;
   panelClassName?: string;
   contentClassName?: string;
+  /** minimal = form-first (login/recovery); standard = onboarding (register) */
+  sidePanel?: "minimal" | "standard";
 };
 
 function StatusRail({ active }: { active: boolean }) {
@@ -50,10 +52,9 @@ function StatusRail({ active }: { active: boolean }) {
     <div
       className={cn(
         "h-1 flex-1 rounded-full border border-border-subtle/80",
-        active
-          ? "bg-[linear-gradient(90deg,var(--status-success-icon),color-mix(in_srgb,var(--status-success-icon)_60%,var(--action-primary)))] shadow-[var(--shadow-sm)]"
-          : "bg-surface-elevated",
+        active ? "bg-status-success-icon shadow-xs" : "bg-surface-elevated",
       )}
+      aria-hidden
     />
   );
 }
@@ -65,7 +66,7 @@ export function AuthWorkstationShell({
   leftEyebrow,
   leftTitle,
   leftDescription,
-  steps,
+  steps = [],
   supportTitle,
   supportDescription,
   supportItems,
@@ -80,118 +81,142 @@ export function AuthWorkstationShell({
   children,
   panelClassName,
   contentClassName,
+  sidePanel = "minimal",
 }: AuthWorkstationShellProps) {
+  const showFullSidePanel = sidePanel === "standard";
+
   return (
     <main className="factory-auth-scope factory-auth-shell">
       <header className="factory-auth-topbar">
         <Link href={homeHref} className="inline-flex items-center gap-3 text-text-primary">
-          <div className="inline-flex h-8 w-8 items-center justify-center rounded-control border border-border-default bg-surface-panel">
-            <Building2 className="h-4 w-4 text-[var(--action-primary)]" />
+          <div className="inline-flex h-8 w-8 items-center justify-center rounded-control border border-border-default bg-surface-panel shadow-xs">
+            <Building2 className="h-4 w-4 text-action-primary" />
           </div>
           <span className="text-page-title font-semibold tracking-tight">{homeLabel}</span>
         </Link>
 
-        <div className="flex items-center gap-8 text-[11px] font-medium uppercase tracking-[0.24em] text-text-secondary">
+        <div className="hidden items-center gap-6 text-label-dense font-medium text-text-secondary sm:flex">
           <span>{topMetaLabel}</span>
-          <span className="text-[var(--action-primary)]">{platformLabel}</span>
+          <span className="text-action-primary">{platformLabel}</span>
         </div>
       </header>
 
       <section className="factory-auth-grid">
-        <aside className="factory-auth-left">
-          <div className="space-y-8">
-            <div className="space-y-4">
-              <div className="factory-auth-metadata">{leftEyebrow}</div>
-              <h1 className="max-w-[15ch] text-[clamp(3rem,3.9vw,4.5rem)] font-semibold leading-[0.94] tracking-[-0.045em] text-text-primary">
+        <aside className="factory-auth-left" aria-label="System context">
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <p className="text-label-dense font-medium text-text-tertiary">{leftEyebrow}</p>
+              <h1 className="max-w-[22ch] text-page-title font-semibold leading-snug tracking-tight text-text-primary">
                 {leftTitle}
               </h1>
-              <p className="max-w-xl text-sm leading-6 text-text-secondary">{leftDescription}</p>
+              <p className="max-w-md text-body leading-6 text-text-secondary">{leftDescription}</p>
             </div>
 
             <div className="factory-auth-card factory-auth-card--support">
               <div className="flex items-center gap-3 border-b border-border-subtle pb-3">
                 <ShieldCheck className="h-4 w-4 text-status-success-icon" />
-                <div className="factory-auth-metadata text-status-success-fg">{statusValue}</div>
+                <p className="text-label font-medium text-status-success-fg">{statusValue}</p>
               </div>
 
-              <div className="mt-4 space-y-4 text-sm text-text-secondary">
+              <ul className="mt-4 space-y-3 text-sm text-text-secondary">
                 {supportItems.map((item, index) => (
-                  <div key={index} className="flex gap-3">
+                  <li key={index} className="flex gap-3">
                     <span className="mt-0.5 h-4 w-4 shrink-0 text-text-tertiary">{item.icon}</span>
-                    <div>{item.text}</div>
-                  </div>
+                    <span>{item.text}</span>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </div>
 
-            <div className="grid grid-cols-[1.18fr_0.82fr] gap-4">
-              <div className="factory-auth-card">
-                <div className="factory-auth-metadata">Provisioning workflow</div>
-                <div className="mt-4 space-y-4">
-                  {steps.map((step, index) => (
-                    <div key={`${step.title}-${index}`} className="flex gap-3">
-                      <div className="factory-auth-step-index">
-                        {String(index + 1).padStart(2, "0")}
-                      </div>
-                      <div>
-                        <div className="text-sm font-medium text-text-primary">{step.title}</div>
-                        <div className="mt-1 text-sm leading-6 text-text-secondary">{step.description}</div>
-                      </div>
+            {showFullSidePanel ? (
+              <div className="grid gap-4 lg:grid-cols-[1.18fr_0.82fr]">
+                <div className="factory-auth-card">
+                  <p className="text-label-dense font-medium text-text-tertiary">Provisioning workflow</p>
+                  <ol className="mt-4 space-y-4">
+                    {steps.map((step, index) => (
+                      <li key={`${step.title}-${index}`} className="flex gap-3">
+                        <div className="factory-auth-step-index" aria-hidden>
+                          {String(index + 1).padStart(2, "0")}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-text-primary">{step.title}</p>
+                          <p className="mt-1 text-sm leading-6 text-text-secondary">{step.description}</p>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+
+                <div className="factory-auth-card">
+                  <p className="text-label-dense font-medium text-text-tertiary">{statusLabel}</p>
+                  <div className="mt-4 flex gap-2" role="presentation">
+                    <StatusRail active />
+                    <StatusRail active />
+                    <StatusRail active={false} />
+                  </div>
+
+                  <div className="mt-5 space-y-4 text-sm text-text-secondary">
+                    <div>
+                      <p className="text-label-dense text-text-tertiary">Security posture</p>
+                      <p className="mt-1 font-medium text-text-primary">{supportTitle}</p>
                     </div>
-                  ))}
+                    <div>
+                      <p className="text-label-dense text-text-tertiary">Operational note</p>
+                      <p className="mt-1">{supportDescription}</p>
+                    </div>
+                    {metrics.map((metric) => (
+                      <div key={metric.label}>
+                        <p className="text-label-dense text-text-tertiary">{metric.label}</p>
+                        <p className="mt-1 font-medium text-text-primary">{metric.value}</p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-
+            ) : (
               <div className="factory-auth-card">
-                <div className="factory-auth-metadata">{statusLabel}</div>
-                <div className="mt-5 flex gap-2">
+                <p className="text-label-dense font-medium text-text-tertiary">{statusLabel}</p>
+                <div className="mt-3 flex gap-2" role="presentation">
                   <StatusRail active />
                   <StatusRail active />
                   <StatusRail active={false} />
                 </div>
-
-                <div className="mt-6 space-y-4 text-sm text-text-secondary">
-                  <div>
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-text-tertiary">Security posture</div>
-                    <div className="mt-1 text-sm font-medium text-text-primary">{supportTitle}</div>
-                  </div>
-                  <div>
-                    <div className="text-[11px] uppercase tracking-[0.18em] text-text-tertiary">Operational note</div>
-                    <div className="mt-1 text-sm text-text-secondary">{supportDescription}</div>
-                  </div>
-                  {metrics.map((metric) => (
-                    <div key={metric.label}>
-                      <div className="text-[11px] uppercase tracking-[0.18em] text-text-tertiary">{metric.label}</div>
-                      <div className="mt-1 text-sm font-medium text-text-primary">{metric.value}</div>
-                    </div>
-                  ))}
-                </div>
+                {metrics.length > 0 ? (
+                  <dl className="mt-4 space-y-3">
+                    {metrics.map((metric) => (
+                      <div key={metric.label}>
+                        <dt className="text-label-dense text-text-tertiary">{metric.label}</dt>
+                        <dd className="mt-0.5 text-sm font-medium text-text-primary">{metric.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                ) : null}
               </div>
-            </div>
+            )}
           </div>
 
-          <div className="flex items-center gap-2 pt-8 text-[11px] uppercase tracking-[0.22em] text-text-secondary">
-            <AlertTriangle className="h-3.5 w-3.5" />
+          <p className="factory-auth-footer-note flex items-center gap-2 pt-6 text-label-dense text-text-tertiary">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
             Emergency sysadmin: ext 4092
-          </div>
+          </p>
         </aside>
 
-        <section className="flex min-h-full items-center justify-center">
+        <section className="factory-auth-form-column">
           <div className={cn("factory-auth-panel", panelClassName)}>
-            <div className="border-b border-border-subtle pb-5">
+            <header className="border-b border-border-subtle pb-5">
               <div className="text-center">
-                <div className="inline-flex rounded-control border border-border-default bg-surface-shell px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-[0.24em] text-text-secondary">
+                <span className="inline-flex rounded-control border border-border-default bg-surface-shell px-3 py-1 text-label-dense font-medium text-text-secondary">
                   {badge}
-                </div>
+                </span>
               </div>
-              <h2 className="mt-4 text-center text-[2rem] font-semibold tracking-[-0.03em] text-text-primary">
+              <h2 className="mt-4 text-center text-page-title font-semibold tracking-tight text-text-primary">
                 {title}
               </h2>
-              <p className="mx-auto mt-3 max-w-[48ch] text-center text-sm leading-6 text-text-secondary">
+              <p className="mx-auto mt-3 max-w-[48ch] text-center text-body leading-6 text-text-secondary">
                 {description}
               </p>
               {rightHeaderSlot ? <div className="mt-4">{rightHeaderSlot}</div> : null}
-            </div>
+            </header>
 
             <div className={cn("mt-6", contentClassName)}>{children}</div>
           </div>

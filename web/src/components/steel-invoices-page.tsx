@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { PageMain } from "@/components/ui/page-main";
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
@@ -248,17 +251,9 @@ export function SteelInvoicesPage() {
     }
   };
 
-  if (loading || pageLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading steel invoicing...
-      </main>
-    );
-  }
-
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <PageMain maxWidth="3xl" innerClassName="flex min-h-[50vh] items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Invoicing</CardTitle>
@@ -270,73 +265,59 @@ export function SteelInvoicesPage() {
             </Link>
           </CardContent>
         </Card>
-      </main>
+      </PageMain>
     );
   }
 
   if (!isSteelFactory) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-4xl">
-          <Card>
-            <CardHeader>
-              <CardTitle>Steel invoicing is factory-aware</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-[var(--muted)]">
-              <div>
-                Your active factory is <span className="font-semibold text-[var(--text)]">{activeFactory?.name || "not selected"}</span>.
-              </div>
-              <div>Switch into a steel factory from the sidebar, or update the factory profile in Settings first.</div>
-              <div className="flex gap-3">
-                <Link href="/steel">
-                  <Button>Open Steel Module</Button>
-                </Link>
-                <Link href="/settings">
-                  <Button variant="outline">Open Settings</Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+      <OperationalPageShell
+        title="Steel invoicing is factory-aware"
+        description="Switch into a steel factory from the sidebar, or update the factory profile in Settings first."
+      >
+        <Card className="mx-auto max-w-4xl">
+          <CardContent className="space-y-4 py-lg text-sm text-text-secondary">
+            <div>
+              Your active factory is <span className="font-semibold text-text-primary">{activeFactory?.name || "not selected"}</span>.
+            </div>
+            <div className="flex gap-3">
+              <Link href="/steel">
+                <Button>Open Steel Module</Button>
+              </Link>
+              <Link href="/settings">
+                <Button variant="outline">Open Settings</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </OperationalPageShell>
     );
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Invoicing</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Create a steel invoice from finished goods</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Pick the buyer, add finished-goods lines, and let the server lock the invoice total before dispatch starts.
-              </p>
-            </div>
-            {/* AUDIT: BUTTON_CLUTTER - move cross-route steel actions into a secondary tools tray so invoice creation stays primary. */}
-            <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
-                Invoice tools
-                <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
-                <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
-              </summary>
-              <div className="flex flex-wrap gap-3 border-t border-[var(--border)] px-4 py-4">
-                <Link href="/steel">
-                  <Button variant="outline">Steel hub</Button>
-                </Link>
-                <Link href="/steel/customers">
-                  <Button variant="ghost">Customers</Button>
-                </Link>
-                <Link href="/steel/dispatches">
-                  <Button variant="ghost">Dispatches</Button>
-                </Link>
-              </div>
-            </details>
+    <OperationalPageShell
+      eyebrow="Steel Invoicing"
+      title="Create a steel invoice from finished goods"
+      description="Pick the buyer, add finished-goods lines, and let the server lock the invoice total before dispatch starts."
+      isLoading={loading || pageLoading}
+      loadingTitle="Loading steel invoicing..."
+      contentClassName="space-y-6"
+      filters={
+        <DisclosurePanel title="Invoice tools" className="w-full sm:max-w-xs sm:ml-auto">
+          <div className="flex flex-wrap gap-3">
+            <Link href="/steel">
+              <Button variant="outline">Steel hub</Button>
+            </Link>
+            <Link href="/steel/customers">
+              <Button variant="ghost">Customers</Button>
+            </Link>
+            <Link href="/steel/dispatches">
+              <Button variant="ghost">Dispatches</Button>
+            </Link>
           </div>
-        </section>
-
-        {/* AUDIT: FLOW_BROKEN - add a short three-step sequence so the invoice journey points to a clear finish. */}
+        </DisclosurePanel>
+      }
+    >
         <section className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader><CardTitle className="text-base">Recent Invoices</CardTitle></CardHeader>
@@ -527,13 +508,8 @@ export function SteelInvoicesPage() {
             </CardHeader>
             <CardContent>
               {/* AUDIT: DENSITY_OVERLOAD - keep invoice history available but collapsed so the creation form stays dominant. */}
-              <details className="group rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
-                  Review recent invoices
-                  <span className="text-xs text-[var(--muted)] transition group-open:hidden">{invoices.length} items</span>
-                  <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
-                </summary>
-                <ResponsiveScrollArea className="border-t border-[var(--border)]" debugLabel="steel-invoices-history">
+              <DisclosurePanel title={`Review recent invoices (${invoices.length})`} defaultOpen={false}>
+                <ResponsiveScrollArea debugLabel="steel-invoices-history">
                   <table className="min-w-full text-left text-sm">
                     <thead className="text-[var(--muted)]">
                       <tr className="border-b border-[var(--border)]">
@@ -574,14 +550,13 @@ export function SteelInvoicesPage() {
                     </tbody>
                   </table>
                 </ResponsiveScrollArea>
-              </details>
+              </DisclosurePanel>
             </CardContent>
           </Card>
         </section>
 
         {status ? <SuccessBanner message={status} onDismiss={() => setStatus("")} /> : null}
         {error || sessionError ? <MutationErrorBanner message={error || sessionError} onDismiss={() => setError("")} /> : null}
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

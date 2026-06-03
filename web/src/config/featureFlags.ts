@@ -5,9 +5,8 @@ export const USE_TANSTACK_TABLE =
 // OCR verification v2 is now the default migrated experience.
 export const NEW_OCR_VERIFY = true;
 
-// Governed OCR execution workspace — disabled until the infinite-loop bugs
-// in useOCRExecutionWorkspace and useGovernedOcrVerificationController are
-// fully resolved. Falls back to the stable OcrVerificationV2Page.
+// Governed OCR execution workspace — disabled until controller stability is verified.
+// Production default: OcrVerificationV2Page (legacy-ui). Opt-in: ?workspace=governed when true.
 export const USE_GOVERNED_OCR_WORKSPACE = false;
 
 // Explicit opt-in for URL param guard redirects on auth token routes.

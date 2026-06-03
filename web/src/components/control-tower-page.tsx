@@ -9,7 +9,9 @@ import { getControlTower, type ControlTowerPayload, type FactorySummary } from "
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import { DashboardPageSkeleton } from "@/components/page-skeletons";
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
 
 function factoryTone(factory: FactorySummary) {
   if (factory.is_active_context) {
@@ -72,37 +74,37 @@ export default function ControlTowerPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-8">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Control Tower</div>
-              <h1 className="mt-2 text-3xl font-semibold">Factory context</h1>
-              <p className="mt-3 max-w-3xl text-sm text-[var(--muted)]">
-                Compare sites. Switch context.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* AUDIT: BUTTON_CLUTTER - keep route jumps and refresh in a secondary tray so context switching stays primary. */}
-        <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
-          <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
-            Control tools
-          </summary>
-          <div className="mt-4 flex flex-wrap gap-3">
+    <OperationalPageShell
+      className="factory-workstation-scope"
+      contentClassName="mx-auto max-w-7xl space-y-8"
+      eyebrow="Control Tower"
+      title="Factory context"
+      description="Compare sites. Switch context."
+      metrics={[
+        { id: "factories", label: "Factories", value: payload?.factories.length ?? "-" },
+        { id: "members", label: "Members", value: String(totals.members) },
+      ]}
+      actions={[
+        {
+          id: "refresh",
+          label: loading ? "Refreshing..." : "Refresh",
+          variant: "outline",
+          onAction: () => {
+            void loadControlTower();
+          },
+        },
+      ]}
+    >
+        <DisclosurePanel title="Control tools" variant="ghost">
+          <div className="flex flex-wrap gap-3">
             <Link href="/dashboard">
               <Button variant="outline">Board</Button>
             </Link>
             <Link href="/settings">
               <Button variant="outline">Settings</Button>
             </Link>
-            <Button variant="outline" onClick={() => void loadControlTower()} disabled={loading}>
-              {loading ? "Refreshing..." : "Refresh"}
-            </Button>
           </div>
-        </details>
+        </DisclosurePanel>
 
         {error ? (
           <Card>
@@ -231,7 +233,6 @@ export default function ControlTowerPage() {
             </section>
           </>
         ) : null}
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

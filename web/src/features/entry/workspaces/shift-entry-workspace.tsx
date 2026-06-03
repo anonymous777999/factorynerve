@@ -23,6 +23,7 @@ import {
 import { coerceIntegerInput } from "@/lib/validation";
 import { signalWorkflowRefresh } from "@/lib/workflow-sync";
 import { EntryPageSkeleton } from "@/components/page-skeletons";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import { Button } from "@/components/ui/button";
 import { GuidanceHint } from "@/components/ui/guidance-block";
 import { Input } from "@/components/ui/input";
@@ -602,39 +603,28 @@ export default function ShiftEntryWorkspace() {
       : "Next";
 
   return (
-    <main className="min-h-screen bg-[var(--surface-app)] px-4 pb-28 pt-6 text-text-primary md:px-6 lg:pb-10 lg:pt-8">
+    <>
+      <OperationalPageShell
+        className="bg-[var(--surface-app)] pb-28 text-text-primary lg:pb-10"
+        contentClassName="mx-auto max-w-7xl space-y-5"
+        eyebrow="Shift entry"
+        title="Finish one shift before the next one starts piling up"
+        description="Move step by step, keep the live shift visible, and let drafts or offline sync protect the entry in the background."
+        tone={online ? "success" : "warning"}
+        toneLabel={online ? "Online" : "Offline"}
+        metrics={[
+          { id: "factory", label: "Factory", value: factoryLabel },
+          { id: "queue", label: "Offline queue", value: queueCount },
+          { id: "step", label: "Step", value: `${activeStep + 1} / ${STEP_DEFINITIONS.length}` },
+          { id: "progress", label: "Progress", value: `${Math.round(progressPercent)}%` },
+        ]}
+      >
       <SubmitConfirmationModal
         confirmation={submitConfirmation}
         onDismiss={() => setSubmitConfirmation(null)}
       />
-      <div className="mx-auto max-w-7xl">
-        <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-[var(--status-info-border)] bg-[var(--status-info-bg)] px-4 py-1 text-xs font-medium text-[var(--status-info-fg)]">
-              Shift entry
-            </div>
-            <h1 className="mt-4 text-3xl font-semibold tracking-tight md:text-4xl text-text-primary">Finish one shift before the next one starts piling up</h1>
-            <p className="mt-3 max-w-2xl text-sm leading-6 text-text-secondary">
-              Move step by step, keep the live shift visible, and let drafts or offline sync protect the entry in the background.
-            </p>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 py-2 text-xs text-text-secondary">
-              {factoryLabel}
-            </span>
-            <span
-              className={`rounded-full border px-4 py-2 text-xs ${online
-                ? "border-[var(--status-success-border)] bg-[var(--status-success-bg)] text-[var(--status-success-fg)]"
-                : "border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] text-[var(--status-warning-fg)]"
-                }`}
-            >
-              {online ? "Online" : "Offline"}
-            </span>
-          </div>
-        </header>
-
-        <details className="mt-5 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-shell)] p-4">
+        <details className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-shell)] p-4">
           <summary className="cursor-pointer list-none text-sm font-semibold text-text-primary marker:hidden">
             Entry tools
           </summary>
@@ -1248,7 +1238,7 @@ export default function ShiftEntryWorkspace() {
             </div>
           </aside>
         </div>
-      </div>
+      </OperationalPageShell>
 
       <div className="safe-bottom-inset fixed inset-x-0 bottom-0 z-20 border-t border-[var(--border-subtle)] bg-[var(--surface-card)] px-4 py-4 lg:hidden">
         <div className="mx-auto flex max-w-xl items-center gap-3">
@@ -1270,6 +1260,6 @@ export default function ShiftEntryWorkspace() {
           </Button>
         </div>
       </div>
-    </main>
+    </>
   );
 }

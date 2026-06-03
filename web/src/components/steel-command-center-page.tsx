@@ -8,6 +8,10 @@ import { IndustrialFactoryDashboard } from "@/components/dashboard/industrial-fa
 import { KPIBox } from "@/components/dashboard/kpi-box";
 import { SteelQuickActionRow, SteelStatusStrip, SteelTopPriorityCard } from "@/components/steel-summary-primitives";
 import { Button } from "@/components/ui/button";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { PageMain } from "@/components/ui/page-main";
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
+import { TabNav } from "@/shared/primitives/tab-nav";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
@@ -254,85 +258,69 @@ export function SteelCommandCenterPage() {
     ],
   );
 
-  if (loading || pageLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading steel command center...
-      </main>
-    );
-  }
-
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <PageMain maxWidth="3xl" innerClassName="flex min-h-[50vh] items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Operations</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-[var(--status-danger-fg)]">{sessionError || "Please sign in to continue."}</div>
+            <div className="text-sm text-status-danger-fg">{sessionError || "Please sign in to continue."}</div>
             <Link href="/access">
               <Button>Open Access</Button>
             </Link>
           </CardContent>
         </Card>
-      </main>
+      </PageMain>
     );
   }
 
   if (!canAccessSteelControl) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-4xl">
-          <Card>
-            <CardHeader>
-              <CardTitle>Steel Control is restricted</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-[var(--muted)]">
-              <div>
-                This command center is available to authorized <span className="font-semibold text-[var(--text)]">owner/manager</span> roles only.
-              </div>
-              <div>You can still use daily workflows from Work Queue, Attendance, OCR, and role-specific steel pages.</div>
-              <div className="flex flex-wrap gap-3">
-                <Link href="/work-queue">
-                  <Button>Open Work Queue</Button>
-                </Link>
-                <Link href="/dashboard">
-                  <Button variant="outline">Open Today Board</Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+      <OperationalPageShell
+        title="Steel Control is restricted"
+        description="This command center is available to authorized owner/manager roles only."
+      >
+        <Card className="mx-auto max-w-4xl">
+          <CardContent className="space-y-4 py-lg text-sm text-text-secondary">
+            <div>You can still use daily workflows from Work Queue, Attendance, OCR, and role-specific steel pages.</div>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/work-queue">
+                <Button>Open Work Queue</Button>
+              </Link>
+              <Link href="/dashboard">
+                <Button variant="outline">Open Today Board</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </OperationalPageShell>
     );
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="surface-panel-strong rounded-[2rem] p-6">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Operations</div>
-              <h1 className="mt-2 text-3xl font-semibold text-[var(--text)] md:text-4xl">Run the steel desk from one trusted control lane</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--text-secondary)]">
-                Start with live stock trust, then move into batch, sales, and risk lanes without losing the factory context.
-              </p>
+    <OperationalPageShell
+      eyebrow="Steel Operations"
+      title="Run the steel desk from one trusted control lane"
+      description="Start with live stock trust, then move into batch, sales, and risk lanes without losing the factory context."
+      isLoading={loading || pageLoading}
+      loadingTitle="Loading steel command center..."
+      contentClassName="space-y-6"
+      filters={
+        <div className="surface-panel-soft rounded-3xl px-4 py-3 text-sm text-text-secondary">
+          <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Active Steel Factory</div>
+          <div className="mt-2 font-semibold text-text-primary">{overview?.factory.name || activeFactory?.name}</div>
+          <div className="mt-1">{overview?.factory.factory_code || activeFactory?.factory_code || "Code pending"}</div>
+          {canSeeFinancials ? (
+            <div className="mt-3 space-y-2">
+              <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Owner Report Date</div>
+              <Input aria-label="Owner report date" type="date" value={ownerReportDate} onChange={(event) => setOwnerReportDate(event.target.value)} />
             </div>
-            <div className="surface-panel-soft rounded-3xl px-4 py-3 text-sm text-[var(--text-secondary)]">
-              <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Active Steel Factory</div>
-              <div className="mt-2 font-semibold text-[var(--text)]">{overview?.factory.name || activeFactory?.name}</div>
-              <div className="mt-1">{overview?.factory.factory_code || activeFactory?.factory_code || "Code pending"}</div>
-              {canSeeFinancials ? (
-                <div className="mt-3 space-y-2">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Owner Report Date</div>
-                  <Input aria-label="Owner report date" type="date" value={ownerReportDate} onChange={(event) => setOwnerReportDate(event.target.value)} />
-                </div>
-              ) : null}
-            </div>
-          </div>
-        </section>
+          ) : null}
+        </div>
+      }
+    >
 
         <SteelStatusStrip
           overallStatus={overallStatus}
@@ -394,12 +382,14 @@ export function SteelCommandCenterPage() {
 
         <section className="surface-panel rounded-[1.7rem] p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div>
+            <div className="min-w-0 flex-1 space-y-3">
               <div className="text-xs uppercase tracking-[0.24em] text-[var(--accent)]">Quick Actions</div>
-              <h2 className="mt-2 text-2xl font-semibold text-[var(--text)]">Move from signal to steel action fast</h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-[var(--text-secondary)]">
-                What is happening: the summary strip and KPI cards show health, drift, and commercial movement. Is it good or bad: read the badge and comparison row. What should you do next: use one of the direct actions below.
-              </p>
+              <h2 className="text-2xl font-semibold text-[var(--text)]">Move from signal to steel action fast</h2>
+              <DisclosurePanel title="How to read signals and act" defaultOpen={false}>
+                <p className="max-w-3xl text-sm leading-6 text-text-secondary">
+                  What is happening: the summary strip and KPI cards show health, drift, and commercial movement. Is it good or bad: read the badge and comparison row. What should you do next: use one of the direct actions beside this panel.
+                </p>
+              </DisclosurePanel>
             </div>
             <SteelQuickActionRow
               actions={quickActions}
@@ -445,34 +435,20 @@ export function SteelCommandCenterPage() {
           </Card>
         ) : null}
 
-        <section className="surface-panel-soft rounded-[1.5rem] p-3">
-          <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
-            {STEEL_CONTROL_TABS.map((tab) => {
-              const active = activeTab === tab.id;
-              const disabled = !isSteelFactory && tab.id !== "overview";
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => {
-                    if (!disabled) {
-                      navigateTab(tab.id);
-                    }
-                  }}
-                  disabled={disabled}
-                  className={
-                    active
-                      ? "rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-selected)] px-4 py-3 text-left text-[var(--text-primary)] shadow-[var(--shadow-sm)] transition duration-150"
-                      : "rounded-2xl border border-[var(--border)] bg-[var(--surface-hover)] px-4 py-3 text-left text-[var(--text)] transition duration-150 hover:-translate-y-0.5 hover:border-[var(--border-subtle)] hover:bg-[var(--surface-active)] disabled:cursor-not-allowed disabled:opacity-45"
-                  }
-                >
-                  <div className="text-sm font-semibold">{tab.label}</div>
-                  <div className={`mt-1 text-xs ${active ? "text-[var(--text-primary)]" : "text-[var(--text-secondary)]"}`}>{tab.hint}</div>
-                </button>
-              );
-            })}
-          </div>
-        </section>
+        <TabNav
+          tabs={STEEL_CONTROL_TABS.map((tab) => ({
+            id: tab.id,
+            label: tab.label,
+            hint: tab.hint,
+            disabled: !isSteelFactory && tab.id !== "overview",
+          }))}
+          activeTab={activeTab}
+          onTabChange={(tabId) => {
+            if (isSteelControlTab(tabId)) {
+              navigateTab(tabId);
+            }
+          }}
+        />
 
         <section className="grid gap-4 xl:grid-cols-4">
           {steelHubSections.map((section) => (
@@ -510,7 +486,7 @@ export function SteelCommandCenterPage() {
                   <CardTitle className="text-xl">Invoices</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="text-sm text-[var(--muted)]">
+                  <div className="text-sm text-text-secondary">
                     {profitSummary?.invoice_count || 0} invoice{(profitSummary?.invoice_count || 0) === 1 ? "" : "s"} recorded for the active steel factory.
                   </div>
                   <Link href="/steel/invoices">
@@ -524,7 +500,7 @@ export function SteelCommandCenterPage() {
                   <CardTitle className="text-xl">Dispatch</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="text-sm text-[var(--muted)]">
+                  <div className="text-sm text-text-secondary">
                     {profitSummary?.dispatch_count || 0} dispatch{(profitSummary?.dispatch_count || 0) === 1 ? "" : "es"} linked to steel movement and gate pass control.
                   </div>
                   <Link href="/steel/dispatches">
@@ -538,7 +514,7 @@ export function SteelCommandCenterPage() {
                   <CardTitle className="text-xl">Customers & Collections</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="text-sm text-[var(--muted)]">
+                  <div className="text-sm text-text-secondary">
                     {canSeeFinancials
                       ? `${formatCurrency(profitSummary?.outstanding_invoice_amount_inr || 0)} still outstanding across current invoice exposure.`
                       : "Open customer ledger, invoice history, and payment tracking from one place."}
@@ -1004,8 +980,15 @@ export function SteelCommandCenterPage() {
           </>
         ) : null}
 
+        {activeTab === "inventory" && canSeeFinancials ? (
+          <DisclosurePanel title="Owner control board reference" defaultOpen={false}>
+            <p className="text-sm text-text-secondary">
+              Top loss batch, highest risk operator, and best profit batch summaries live in the inventory lane sidebar while financial access is enabled.
+            </p>
+          </DisclosurePanel>
+        ) : null}
+
         {error || sessionError ? <div className="text-sm text-[var(--status-danger-fg)]">{error || sessionError}</div> : null}
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

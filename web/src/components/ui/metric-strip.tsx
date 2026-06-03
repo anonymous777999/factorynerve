@@ -25,7 +25,7 @@ export function MetricStrip({ className, compact = false, items }: MetricStripPr
         <section
           key={item.id}
           className={cn(
-            "rounded-overlay border border-border-subtle bg-surface-card px-lg shadow-[var(--shadow-xs)]",
+            "hover-lift rounded-overlay border border-border-subtle bg-surface-card px-lg shadow-[var(--shadow-xs)]",
             compact ? "space-y-xs py-md" : "space-y-sm py-lg",
           )}
         >

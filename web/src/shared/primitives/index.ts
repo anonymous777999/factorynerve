@@ -17,6 +17,7 @@ export { Label } from "@/components/ui/label";
 export { Select } from "@/components/ui/select";
 export { Skeleton } from "@/components/ui/skeleton";
 export { Textarea } from "@/components/ui/textarea";
+export { TabNav } from "@/shared/primitives/tab-nav";
 export { SafeText } from "@/components/ui/safe-text";
 export { StatusBadge } from "@/components/ui/status-badge";
 export { ConfidenceBadge } from "@/components/ui/confidence-badge";

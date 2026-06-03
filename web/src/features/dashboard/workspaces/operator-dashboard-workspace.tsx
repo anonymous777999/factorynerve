@@ -1,282 +1,230 @@
 "use client";
 
-/**
- * OperatorDashboardWorkspace — the worker-mode dashboard.
- *
- * Renders the operator's "ready for shift" home: factory + status,
- * single dominant action, quick actions, today's summary, alerts,
- * and shift status cards.
- *
- * Designed as a presentational component: all state and async loading
- * stays in the parent `DashboardHome` so the route entry can keep one
- * stable session lifecycle. A future step can convert the parent into
- * a thin selector that lazy-loads this workspace + the management
- * counterpart based on role.
- */
-
 import Link from "next/link";
 
 import { Button } from "@/components/ui/button";
+import { SectionPanel } from "@/components/ui/section-panel";
+import { StatusBadge } from "@/components/ui/status-badge";
+import { WorkstationShell } from "@/components/ui/workstation-shell";
+import { cn } from "@/lib/utils";
 
 import type { AlertItem } from "@/lib/dashboard";
 import type { Entry } from "@/lib/entries";
 import type { ShiftValue } from "@/features/entry/lib/entry-helpers";
 
-import {
-    attendanceStatusTone as _attendanceStatusTone,
-    formatDateTime,
-    formatShift,
-    severityTone,
-} from "../lib/dashboard-helpers";
-
-// re-export to satisfy the lint expectation that helpers are referenced
-void _attendanceStatusTone;
+import { formatDateTime, formatShift, severityTone } from "../lib/dashboard-helpers";
 
 export type WorkerStatus = {
-    label: string;
-    tone: string;
-    title: string;
-    detail: string;
+  label: string;
+  tone: string;
+  title: string;
+  detail: string;
 };
 
 export type WorkerPrimaryAction = {
-    href: string;
-    label: string;
-    detail: string;
+  href: string;
+  label: string;
+  detail: string;
 };
 
 export type WorkerQuickAction = {
-    key: string;
-    label: string;
-    href: string;
-    meta: string;
+  key: string;
+  label: string;
+  href: string;
+  meta: string;
 };
 
 export type TodayShiftCard = {
-    shift: ShiftValue;
-    entry: Entry | null;
+  shift: ShiftValue;
+  entry: Entry | null;
 };
 
 export type OperatorDashboardWorkspaceProps = {
-    /** Active factory display name. */
-    factoryName: string;
-    /** Network state for the small "Online/Offline" pill. */
-    online: boolean;
-    /** "Punch in recorded" / "Entry saved" success message. */
-    status?: string | null;
-    /** Local error message. */
-    error?: string | null;
-    /** Session error (typically auth refresh failure). */
-    sessionError?: string | null;
-    /** Worker status for the hero panel. */
-    workerStatus: WorkerStatus;
-    /** Single dominant action. */
-    workerPrimaryAction: WorkerPrimaryAction;
-    /** Quick action grid. */
-    workerQuickActions: WorkerQuickAction[];
-    /** Number of completed shifts today. */
-    completedShifts: number;
-    /** Number of pending shifts today. */
-    pendingShifts: number;
-    /** Offline queue count for the aside. */
-    queueCount: number;
-    /** Sync handler when there's a queue. */
-    onSync: () => void;
-    /** Whether sync is in progress. */
-    syncing: boolean;
-    /** Top alerts for the aside. */
-    alerts: AlertItem[];
-    /** Today's shift status cards. */
-    todayShiftCards: TodayShiftCard[];
-    /** Locale for date formatting. */
-    locale: string;
-    /** Mark-alert-read handler. */
-    onMarkAlertRead: (alertId: number) => void;
+  factoryName: string;
+  online: boolean;
+  status?: string | null;
+  error?: string | null;
+  sessionError?: string | null;
+  workerStatus: WorkerStatus;
+  workerPrimaryAction: WorkerPrimaryAction;
+  workerQuickActions: WorkerQuickAction[];
+  completedShifts: number;
+  pendingShifts: number;
+  queueCount: number;
+  onSync: () => void;
+  syncing: boolean;
+  alerts: AlertItem[];
+  todayShiftCards: TodayShiftCard[];
+  locale: string;
+  onMarkAlertRead: (alertId: number) => void;
 };
 
+function statusBannerClass(tone: "success" | "danger") {
+  return tone === "success"
+    ? "border-status-success-border bg-status-success-bg text-status-success-fg"
+    : "border-status-danger-border bg-status-danger-bg text-status-danger-fg";
+}
+
 export function OperatorDashboardWorkspace({
-    factoryName,
-    online,
-    status,
-    error,
-    sessionError,
-    workerStatus,
-    workerPrimaryAction,
-    workerQuickActions,
-    completedShifts,
-    pendingShifts,
-    queueCount,
-    onSync,
-    syncing,
-    alerts,
-    todayShiftCards,
-    locale,
-    onMarkAlertRead,
+  factoryName,
+  online,
+  status,
+  error,
+  sessionError,
+  workerStatus,
+  workerPrimaryAction,
+  workerQuickActions,
+  completedShifts,
+  pendingShifts,
+  queueCount,
+  onSync,
+  syncing,
+  alerts,
+  todayShiftCards,
+  locale,
+  onMarkAlertRead,
 }: OperatorDashboardWorkspaceProps) {
-    return (
-        <main className="min-h-screen bg-[var(--surface-industrial-deep)] px-4 py-6 md:px-6 lg:py-8">
-            <div className="mx-auto max-w-6xl space-y-8">
-                {status ? (
-                    <div className="rounded-[20px] border border-[var(--status-success-border)] bg-[var(--status-success-bg)] px-4 py-3 text-sm text-[var(--status-success-fg)]">
-                        {status}
-                    </div>
-                ) : null}
-                {error || sessionError ? (
-                    <div className="rounded-[20px] border border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] px-4 py-3 text-sm text-[var(--status-danger-fg)]">
-                        {error || sessionError}
-                    </div>
-                ) : null}
+  const rail = (
+    <aside className="route-rail space-y-lg">
+      <SectionPanel title="Today's summary" eyebrow="Shift pulse">
+        <dl className="space-y-3 text-sm text-text-secondary">
+          <div className="flex items-center justify-between gap-3">
+            <dt>Completed</dt>
+            <dd className="font-semibold tabular-nums text-text-primary">{completedShifts}</dd>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <dt>Pending</dt>
+            <dd className="font-semibold tabular-nums text-text-primary">{pendingShifts}</dd>
+          </div>
+          <div className="flex items-center justify-between gap-3">
+            <dt>Offline queue</dt>
+            <dd className="font-semibold tabular-nums text-text-primary">{queueCount}</dd>
+          </div>
+        </dl>
+        {queueCount > 0 ? (
+          <Button variant="outline" className="mt-4 w-full" onClick={onSync} disabled={syncing}>
+            {syncing ? "Syncing..." : "Sync saved"}
+          </Button>
+        ) : null}
+      </SectionPanel>
 
-                <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
-                    <section className="rounded-[32px] border border-[var(--border)] bg-[var(--surface-panel)] p-6 shadow-[0_24px_80px_rgba(6,10,18,0.48)]">
-                        <div className="flex items-center justify-between gap-3">
-                            <div className="text-base font-semibold text-[var(--text-primary)]">{factoryName}</div>
-                            <span
-                                className={`rounded-full border px-3 py-1 text-xs ${online
-                                        ? "border-[var(--status-success-border)] bg-[var(--status-success-bg)] text-[var(--status-success-fg)]"
-                                        : "border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] text-[var(--status-warning-fg)]"
-                                    }`}
-                            >
-                                {online ? "Online" : "Offline"}
-                            </span>
-                        </div>
+      <SectionPanel title="Alerts" eyebrow="Signals">
+        {alerts.length ? (
+          <div className="space-y-3">
+            {alerts.slice(0, 2).map((alert) => (
+              <div key={alert.id} className={cn("rounded-panel border px-4 py-3", severityTone(alert.severity))}>
+                <p className="text-sm font-medium">{alert.message}</p>
+                <p className="mt-2 text-xs text-text-tertiary">{formatDateTime(alert.created_at, locale)}</p>
+                <button
+                  type="button"
+                  className="mt-3 text-xs font-semibold text-action-primary underline underline-offset-4"
+                  onClick={() => onMarkAlertRead(alert.id)}
+                >
+                  Mark done
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="rounded-panel border border-status-success-border bg-status-success-bg px-4 py-3 text-sm text-status-success-fg">
+            No alerts right now.
+          </p>
+        )}
+      </SectionPanel>
 
-                        <div className="mt-8">
-                            <div className="text-xl font-semibold md:text-2xl">Ready for shift</div>
-                            <div
-                                className={`mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold ${workerStatus.tone}`}
-                            >
-                                <span className="h-2.5 w-2.5 rounded-full bg-current opacity-80" />
-                                Status: {workerStatus.label}
-                            </div>
-                            <div className="mt-5 text-2xl font-semibold md:text-3xl">{workerStatus.title}</div>
-                            <div className="mt-2 text-sm text-[var(--text-secondary)]">{workerStatus.detail}</div>
-                        </div>
+      <SectionPanel title="Shift status" eyebrow="Today">
+        <ul className="space-y-3">
+          {todayShiftCards.map(({ shift, entry }) => (
+            <li
+              key={shift}
+              className={cn(
+                "flex items-center justify-between rounded-panel border px-4 py-3",
+                entry
+                  ? "border-status-success-border bg-status-success-bg"
+                  : "border-border-subtle bg-surface-shell",
+              )}
+            >
+              <span className="text-sm font-medium text-text-primary">{formatShift(shift)}</span>
+              <span className={cn("text-xs font-semibold", entry ? "text-status-success-fg" : "text-text-tertiary")}>
+                {entry ? "Done" : "Pending"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </SectionPanel>
+    </aside>
+  );
 
-                        <div className="mt-8">
-                            <div className="text-xs font-medium text-[var(--text-tertiary)]">Main action</div>
-                            <Link
-                                href={workerPrimaryAction.href}
-                                className="mt-3 inline-flex h-20 w-full items-center justify-center rounded-[28px] border border-transparent bg-[var(--action-primary)] px-6 text-xl font-semibold text-[var(--action-primary-text)] transition hover:bg-[var(--action-primary-hover)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-industrial-deep)]"
-                            >
-                                {workerPrimaryAction.label}
-                            </Link>
-                            <div className="mt-3 text-sm text-[var(--text-secondary)]">{workerPrimaryAction.detail}</div>
-                        </div>
+  return (
+    <WorkstationShell
+      className="factory-workstation-scope"
+      eyebrow="Operations board"
+      title="Ready for shift"
+      description={workerPrimaryAction.detail}
+      toneLabel={workerStatus.label}
+      tone={online ? "success" : "warning"}
+      metrics={[
+        { id: "factory", label: "Factory", value: factoryName },
+        { id: "completed", label: "Completed", value: String(completedShifts) },
+        { id: "pending", label: "Pending", value: String(pendingShifts) },
+        { id: "queue", label: "Queue", value: String(queueCount) },
+      ]}
+      rail={rail}
+    >
+      {status ? (
+        <div className={cn("rounded-panel border px-4 py-3 text-sm", statusBannerClass("success"))} role="status">
+          {status}
+        </div>
+      ) : null}
+      {error || sessionError ? (
+        <div className={cn("rounded-panel border px-4 py-3 text-sm", statusBannerClass("danger"))} role="alert">
+          {error || sessionError}
+        </div>
+      ) : null}
 
-                        <div className="mt-8">
-                            <div className="text-xs font-medium text-[var(--text-tertiary)]">Quick actions</div>
-                            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
-                                {workerQuickActions.map((action) => (
-                                    <Link
-                                        key={action.key}
-                                        href={action.href}
-                                        className={`${action.key === "tasks" ? "col-span-2 sm:col-span-1" : ""
-                                            } rounded-[24px] border border-[var(--border)] bg-[var(--surface-industrial-raised)] px-4 py-4 text-center transition hover:border-[var(--action-primary)] hover:bg-[var(--surface-overlay)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--action-primary)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--surface-industrial-deep)]`}
-                                    >
-                                        <div className="text-base font-semibold text-[var(--text-inverse)]">{action.label}</div>
-                                        <div className="mt-1 text-xs text-[var(--text-tertiary)]">{action.meta}</div>
-                                    </Link>
-                                ))}
-                            </div>
-                        </div>
+      <SectionPanel
+        title={workerStatus.title}
+        eyebrow="Current shift"
+        description={workerStatus.detail}
+        meta={
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge tone={online ? "success" : "warning"}>{online ? "Online" : "Offline"}</StatusBadge>
+            <span className={cn("inline-flex items-center gap-2 rounded-panel px-3 py-1 text-xs font-semibold", workerStatus.tone)}>
+              <span className="h-2 w-2 rounded-full bg-current opacity-80" aria-hidden />
+              {workerStatus.label}
+            </span>
+          </div>
+        }
+      >
+        <div className="space-y-2">
+          <p className="text-label-dense text-text-tertiary">Main action</p>
+          <Link
+            href={workerPrimaryAction.href}
+            className="inline-flex h-14 w-full items-center justify-center rounded-control border border-transparent bg-action-primary px-6 text-lg font-semibold text-action-primary-text transition hover:bg-action-primary-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border-focus focus-visible:ring-offset-2"
+          >
+            {workerPrimaryAction.label}
+          </Link>
+        </div>
+      </SectionPanel>
 
-                        <div className="mt-8 rounded-[24px] border border-[var(--border)] bg-[var(--surface-industrial-raised)] px-4 py-4">
-                            <div className="text-xs font-medium text-[var(--text-tertiary)]">Today&apos;s summary</div>
-                            <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                                <div className="rounded-[20px] border border-[var(--border)] bg-[var(--surface-industrial-raised)] px-4 py-3">
-                                    <div className="text-xs text-[var(--text-tertiary)]">Completed</div>
-                                    <div className="mt-2 text-2xl font-semibold tabular-nums text-[var(--text-inverse)]">
-                                        {completedShifts}
-                                    </div>
-                                </div>
-                                <div className="rounded-[20px] border border-[var(--border)] bg-[var(--surface-industrial-raised)] px-4 py-3">
-                                    <div className="text-xs text-[var(--text-tertiary)]">Pending</div>
-                                    <div className="mt-2 text-2xl font-semibold tabular-nums text-[var(--text-inverse)]">
-                                        {pendingShifts}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
+      <SectionPanel title="Quick actions" eyebrow="Lanes">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+          {workerQuickActions.map((action) => (
+            <Link
+              key={action.key}
+              href={action.href}
+              className={cn(
+                "rounded-panel border border-border-default bg-surface-card px-4 py-4 text-center shadow-xs transition hover:border-border-strong hover:bg-surface-hover focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+                action.key === "tasks" && "col-span-2 sm:col-span-1",
+              )}
+            >
+              <div className="text-sm font-semibold text-text-primary">{action.label}</div>
+              <div className="mt-1 text-label-dense text-text-tertiary">{action.meta}</div>
+            </Link>
+          ))}
+        </div>
+      </SectionPanel>
 
-                    <aside className="space-y-6">
-                        <div className="rounded-[28px] border border-[var(--border)] bg-[var(--surface-panel)] p-5 shadow-[var(--shadow-md)]">
-                            <div className="text-xs font-medium text-[var(--text-tertiary)]">Today&apos;s summary</div>
-                            <div className="mt-4 space-y-6 text-sm text-[var(--text-secondary)]">
-                                <div className="flex items-center justify-between">
-                                    <span>Completed</span>
-                                    <span className="font-semibold tabular-nums text-[var(--text-inverse)]">{completedShifts}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span>Pending</span>
-                                    <span className="font-semibold tabular-nums text-[var(--text-inverse)]">{pendingShifts}</span>
-                                </div>
-                                <div className="flex items-center justify-between">
-                                    <span>Offline</span>
-                                    <span className="font-semibold tabular-nums text-[var(--text-inverse)]">{queueCount}</span>
-                                </div>
-                            </div>
-                            {queueCount > 0 ? (
-                                <Button variant="outline" className="mt-4 h-11 w-full" onClick={onSync} disabled={syncing}>
-                                    {syncing ? "Syncing..." : "Sync saved"}
-                                </Button>
-                            ) : null}
-                        </div>
-
-                        <div className="rounded-[28px] border border-[var(--border)] bg-[var(--surface-industrial-raised)] p-5">
-                            <div className="text-xs font-medium text-[var(--text-tertiary)]">Alerts</div>
-                            {alerts.length ? (
-                                <div className="mt-4 space-y-6">
-                                    {alerts.slice(0, 2).map((alert) => (
-                                        <div
-                                            key={alert.id}
-                                            className={`rounded-[20px] border px-4 py-3 ${severityTone(alert.severity)}`}
-                                        >
-                                            <div className="text-sm font-medium">{alert.message}</div>
-                                            <div className="mt-2 text-xs opacity-70">{formatDateTime(alert.created_at, locale)}</div>
-                                            <button
-                                                type="button"
-                                                className="mt-3 rounded-control text-xs font-semibold underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
-                                                onClick={() => onMarkAlertRead(alert.id)}
-                                            >
-                                                Mark done
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="mt-4 rounded-[20px] border border-[var(--status-success-border)] bg-[var(--status-success-bg)] px-4 py-3 text-sm text-[var(--status-success-fg)]">
-                                    No alerts right now.
-                                </div>
-                            )}
-                        </div>
-
-                        <div className="rounded-[28px] border border-[var(--border)] bg-[var(--surface-industrial-raised)] p-5">
-                            <div className="text-xs font-medium text-[var(--text-tertiary)]">Shift status</div>
-                            <div className="mt-4 space-y-6">
-                                {todayShiftCards.map(({ shift, entry }) => (
-                                    <div
-                                        key={shift}
-                                        className={`flex items-center justify-between rounded-[20px] border px-4 py-3 ${entry
-                                                ? "border-[var(--status-success-border)] bg-[var(--status-success-bg)]"
-                                                : "border-[var(--border)] bg-[var(--surface-industrial-raised)]"
-                                            }`}
-                                    >
-                                        <span className="text-sm font-medium text-[var(--text-inverse)]">{formatShift(shift)}</span>
-                                        <span
-                                            className={`text-xs font-semibold ${entry ? "text-[var(--status-success-fg)]" : "text-[var(--text-tertiary)]"
-                                                }`}
-                                        >
-                                            {entry ? "Done" : "Pending"}
-                                        </span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    </aside>
-                </div>
-            </div>
-        </main>
-    );
+    </WorkstationShell>
+  );
 }

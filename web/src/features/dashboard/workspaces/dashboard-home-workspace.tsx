@@ -15,6 +15,8 @@ import { useSession } from "@/lib/use-session";
 import { signalWorkflowRefresh, subscribeToWorkflowRefresh } from "@/lib/workflow-sync";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
 import { DashboardPageSkeleton } from "@/components/page-skeletons";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { AnomalyStrip } from "@/shared/ai";
@@ -1445,7 +1447,7 @@ export default function DashboardHome() {
         <Card className="w-full max-w-xl border border-[var(--border)] bg-[var(--card)] shadow-xl">
           <CardHeader>
             <CardTitle className="text-2xl">DPR.ai Web Frontend</CardTitle>
-            <p className="text-sm text-[var(--muted)]">
+            <p className="text-sm text-text-secondary">
               {t("dashboard.session.missing", "No active cookie session found. Continue to the access screen.")}
             </p>
           </CardHeader>
@@ -1494,14 +1496,50 @@ export default function DashboardHome() {
   }
 
   return (
-    <main className="operational-page" data-component="dashboard-home">
-      <div className="operational-page__inner route-workspace mx-auto max-w-[1440px]">
+    <OperationalPageShell
+      className="factory-workstation-scope"
+      contentClassName="route-workspace mx-auto max-w-[1440px]"
+      eyebrow={headerEyebrow}
+      title={headerTitle}
+      description={headerCopy}
+      liveIndicator
+      liveLabel="System: Ready"
+      metrics={[
+        {
+          id: "factory",
+          label: t("dashboard.metric.factory", "Factory"),
+          value: activeFactory?.name || user.factory_name || "-",
+        },
+        {
+          id: "pending",
+          label: t("dashboard.metric.pending_shift", "Pending"),
+          value: String(queueCount),
+        },
+        {
+          id: "alerts",
+          label: t("dashboard.metric.alerts", "Alerts"),
+          value: String(state.alerts.length),
+        },
+      ]}
+      actions={
+        primaryAction
+          ? [
+              {
+                id: "primary-action",
+                label: primaryAction.action,
+                onAction: () => {
+                  window.location.assign(primaryAction.href);
+                },
+              },
+            ]
+          : []
+      }
+    >
+      <div data-component="dashboard-home">
         <AnomalyStrip count={anomalyCount} topMessage={topAnomaly?.message} reviewHref="/ai" />
         <section className="factory-dashboard-strip">
           <div className="factory-dashboard-reminder">
-            <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--action-primary)]">
-              Live Reminders
-            </div>
+            <p className="zone-eyebrow zone-eyebrow--accent">Live reminders</p>
             <p className="mt-1 max-w-2xl text-sm leading-6 text-text-secondary">
               The next actions are synced across attendance, entry, scan, review, and queue.
             </p>
@@ -1509,9 +1547,9 @@ export default function DashboardHome() {
           <div className="factory-dashboard-reminder">
             <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
               <div>
-                <div className="inline-flex rounded-sm border border-border-subtle bg-surface-elevated px-2 py-1 font-mono text-[11px] uppercase tracking-[0.18em] text-text-secondary">
+                <span className="inline-flex rounded-control border border-border-subtle bg-surface-elevated px-2 py-1 text-label-dense font-medium text-text-secondary">
                   Action now
-                </div>
+                </span>
                 <div className="mt-3 max-w-[14ch] text-[18px] font-semibold leading-[1.35] text-text-primary">
                   {primaryAction?.title || "Keep the next lane moving"}
                 </div>
@@ -1533,48 +1571,10 @@ export default function DashboardHome() {
           </div>
         </section>
 
-        <section className="route-header">
-          <div className="route-header__grid">
-            <div className="route-header__copy">
-              <div className="route-header__eyebrow">{headerEyebrow}</div>
-              <h1 className="route-header__title">{headerTitle}</h1>
-              <p className="route-header__body">{headerCopy}</p>
-              <div className="route-header__meta">
-                <div className="route-header__meta-item">
-                  <span>Factory</span>
-                  <strong>{activeFactory?.name || user.factory_name || "-"}</strong>
-                </div>
-                <div className="route-header__meta-item">
-                  <span>Pending</span>
-                  <strong>{queueCount}</strong>
-                </div>
-                <div className="route-header__meta-item">
-                  <span>Alerts</span>
-                  <strong>{state.alerts.length}</strong>
-                </div>
-                <div className="route-header__meta-item ml-auto">
-                  <span className="inline-flex h-2 w-2 rounded-full bg-[var(--status-success-fg)] shadow-[0_0_10px_rgba(34,197,94,0.55)]" />
-                  <strong>System: Ready</strong>
-                </div>
-              </div>
-            </div>
-            {/* AUDIT: BUTTON_CLUTTER — The hero now keeps only the immediate board actions; logout and report navigation stay available from the shell and secondary routes below. */}
-            <div className="route-header__actions">
-              {primaryAction ? (
-                <Link href={primaryAction.href}>
-                  <Button className="h-10 px-5 text-[11px] font-semibold uppercase tracking-[0.18em]">
-                    {primaryAction.action}
-                  </Button>
-                </Link>
-              ) : null}
-            </div>
-          </div>
-        </section>
-
         <section className="factory-node-grid">
           {dashboardNodeCards.map((node) => (
             <div key={node.label} className="factory-node-card">
-              <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-text-secondary">
+              <span className="zone-eyebrow">
                 {node.label}
               </span>
               <div className="flex items-center gap-2">
@@ -1588,25 +1588,19 @@ export default function DashboardHome() {
         <section className="factory-telemetry-grid">
           {dashboardTelemetryCards.map((card) => (
             <div key={card.label} className="factory-telemetry-card">
-              <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">
+              <span className="zone-eyebrow text-text-tertiary">
                 {card.label}
               </span>
-              <div className={`mt-4 text-[32px] font-bold leading-none ${card.accentClass}`}>{card.value}</div>
+              <div className={`mt-4 text-panel-title font-semibold tabular-nums leading-none ${card.accentClass}`}>{card.value}</div>
             </div>
           ))}
         </section>
 
-        {/* AUDIT: BUTTON_CLUTTER - move board maintenance actions into a secondary tray so the main work lane stays obvious. */}
-        <details className="route-panel">
-          <summary className="factory-dashboard-toolbar cursor-pointer list-none marker:hidden">
-            <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
-              Board Tools
-            </div>
-            <span className="text-sm text-text-secondary">
-              Refresh and sync controls stay nearby without crowding the primary lane.
-            </span>
-          </summary>
-          <div className="route-panel__body flex flex-wrap gap-3 border-t-0 px-4 pb-4 pt-0">
+        <DisclosurePanel title="Board tools" defaultOpen>
+          <p className="mb-3 text-sm text-text-secondary">
+            Refresh and sync controls stay visible without crowding the primary lane.
+          </p>
+          <div className="flex flex-wrap gap-3">
             <Button variant="outline" onClick={() => loadDashboard()}>
               {dashboardLoading
                 ? t("dashboard.action.refreshing", "Refreshing...")
@@ -1620,12 +1614,12 @@ export default function DashboardHome() {
               </Button>
             ) : null}
           </div>
-        </details>
+        </DisclosurePanel>
 
         <section className="factory-zone">
           <div className="factory-zone__header">
             <div>
-              <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--action-primary)]">
+              <div className="zone-eyebrow zone-eyebrow--accent">
                 Critical Operational Zone
               </div>
               <div className="mt-2 text-lg font-semibold text-text-primary">
@@ -1647,7 +1641,7 @@ export default function DashboardHome() {
                 {dashboardNodeCards.map((node) => (
                   <div key={node.label} className="factory-critical-strip__node">
                     <span className={`inline-flex h-1.5 w-1.5 rounded-full ${node.tone}`} />
-                    <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-secondary">{node.label}</span>
+                    <span className="text-label-dense text-text-secondary">{node.label}</span>
                     <span className="text-xs text-text-primary">{node.status}</span>
                   </div>
                 ))}
@@ -1657,7 +1651,7 @@ export default function DashboardHome() {
               <div className="factory-critical-strip__metrics">
                 {dashboardTelemetryCards.map((card) => (
                   <div key={card.label} className="factory-critical-strip__metric">
-                    <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary">{card.label}</div>
+                    <div className="zone-eyebrow text-text-tertiary">{card.label}</div>
                     <div className={`text-[30px] font-semibold leading-none ${card.accentClass}`}>{card.value}</div>
                     <div className="text-xs leading-5 text-text-secondary">
                       {card.label === "Trusted OCR"
@@ -1673,7 +1667,7 @@ export default function DashboardHome() {
               </div>
               <div className="factory-critical-strip__aside">
                 <div>
-                  <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary">Queue urgency</div>
+                  <div className="zone-eyebrow text-text-tertiary">Queue urgency</div>
                   <div className="mt-2 text-base font-semibold text-text-primary">
                     {primaryAction?.title || "Keep the next lane moving"}
                   </div>
@@ -1696,7 +1690,7 @@ export default function DashboardHome() {
         <section className="factory-zone">
           <div className="factory-zone__header">
             <div>
-              <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--action-primary)]">
+              <div className="zone-eyebrow zone-eyebrow--accent">
                 Active Workflow Zone
               </div>
               <div className="mt-2 text-lg font-semibold text-text-primary">
@@ -1718,7 +1712,7 @@ export default function DashboardHome() {
                 <div className="factory-workflow-lane__chips">
                   {lane.metrics.map((metric) => (
                     <div key={metric.label} className="factory-workflow-chip">
-                      <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">{metric.label}</span>
+                      <span className="text-label-dense text-text-tertiary">{metric.label}</span>
                       <span className="text-sm font-semibold text-text-primary">{metric.value}</span>
                     </div>
                   ))}
@@ -1745,7 +1739,7 @@ export default function DashboardHome() {
         <section className="factory-zone">
           <div className="factory-zone__header">
             <div>
-              <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--action-primary)]">
+              <div className="zone-eyebrow zone-eyebrow--accent">
                 Live Operational Feed
               </div>
               <div className="mt-2 text-lg font-semibold text-text-primary">
@@ -1764,7 +1758,7 @@ export default function DashboardHome() {
                       <div className="mt-1 text-xs leading-5 text-text-secondary">{item.detail}</div>
                       <div className="mt-2 text-[11px] text-text-tertiary">{item.time}</div>
                     </div>
-                    <Link href={item.href} className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--action-primary)]">
+                    <Link href={item.href} className="text-label-dense font-semibold text-action-primary">
                       {item.action}
                     </Link>
                   </div>
@@ -1777,19 +1771,19 @@ export default function DashboardHome() {
               <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-text-tertiary">Escalation Summary</div>
               <div className="mt-4 space-y-3">
                 <div className="factory-workflow-chip w-full justify-between">
-                  <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">Unread Alerts</span>
+                  <span className="text-label-dense text-text-tertiary">Unread Alerts</span>
                   <span className="text-sm font-semibold text-text-primary">{state.alerts.length}</span>
                 </div>
                 <div className="factory-workflow-chip w-full justify-between">
-                  <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">OCR Pending</span>
+                  <span className="text-label-dense text-text-tertiary">OCR Pending</span>
                   <span className="text-sm font-semibold text-text-primary">{state.ocrSummary?.pending_documents ?? 0}</span>
                 </div>
                 <div className="factory-workflow-chip w-full justify-between">
-                  <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">Queue Backlog</span>
+                  <span className="text-label-dense text-text-tertiary">Queue Backlog</span>
                   <span className="text-sm font-semibold text-text-primary">{queueCount}</span>
                 </div>
                 <div className="factory-workflow-chip w-full justify-between">
-                  <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">Signals</span>
+                  <span className="text-label-dense text-text-tertiary">Signals</span>
                   <span className="text-sm font-semibold text-text-primary">{anomalyCount}</span>
                 </div>
               </div>
@@ -1800,7 +1794,7 @@ export default function DashboardHome() {
         <section className="factory-zone">
           <div className="factory-zone__header">
             <div>
-              <div className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--action-primary)]">
+              <div className="zone-eyebrow zone-eyebrow--accent">
                 Operational Intelligence Zone
               </div>
               <div className="mt-2 text-lg font-semibold text-text-primary">
@@ -1811,14 +1805,14 @@ export default function DashboardHome() {
           <div className="factory-intelligence-grid">
             <div className="factory-intelligence-panel">
               <div className="border-b border-border-subtle px-4 py-4">
-                <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary">Live Production Activity</div>
+                <div className="zone-eyebrow text-text-tertiary">Live Production Activity</div>
                 <div className="mt-2 text-lg font-semibold text-text-primary">Shift throughput and operational events</div>
               </div>
               <div className="px-4 py-4">
                 {recentEntries.length ? (
                   <ResponsiveScrollArea debugLabel="dashboard-recent-entries">
                     <table className="min-w-full text-left text-sm">
-                      <thead className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
+                      <thead className="section-label text-text-tertiary">
                         <tr className="border-b border-[var(--border)]">
                           <th className="px-3 py-3 font-medium">{t("table.date", "Date")}</th>
                           <th className="px-3 py-3 font-medium">{t("table.shift", "Shift")}</th>
@@ -1853,11 +1847,11 @@ export default function DashboardHome() {
             </div>
 
             <div className="factory-intelligence-panel px-4 py-4">
-              <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary">Workflow Bottlenecks</div>
+              <div className="zone-eyebrow text-text-tertiary">Workflow Bottlenecks</div>
               <div className="mt-2 text-lg font-semibold text-text-primary">OCR anomalies, review pressure, and pending intelligence</div>
               <div className="factory-intelligence-stack mt-4">
                 <div className="rounded-sm border border-border-subtle bg-surface-panel px-3 py-3">
-                  <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">OCR Trust</div>
+                  <div className="text-label-dense text-text-tertiary">OCR Trust</div>
                   <div className="mt-2 text-sm text-text-secondary">
                     {state.ocrSummary
                       ? `${state.ocrSummary.pending_documents} pending docs, ${state.ocrSummary.trusted_documents} trusted docs, ${state.ocrSummary.trusted_rows} trusted rows.`
@@ -1865,7 +1859,7 @@ export default function DashboardHome() {
                   </div>
                 </div>
                 <div className="rounded-sm border border-border-subtle bg-surface-panel px-3 py-3">
-                  <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">Top Signals</div>
+                  <div className="text-label-dense text-text-tertiary">Top Signals</div>
                   <div className="mt-3 space-y-3">
                     {state.anomalyPreview?.items?.length ? (
                       state.anomalyPreview.items.slice(0, 3).map((item) => (
@@ -1882,7 +1876,7 @@ export default function DashboardHome() {
                   </div>
                 </div>
                 <div className="rounded-sm border border-border-subtle bg-surface-panel px-3 py-3">
-                  <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">Pending Review Intelligence</div>
+                  <div className="text-label-dense text-text-tertiary">Pending Review Intelligence</div>
                   <div className="mt-2 text-sm text-text-secondary">
                     {canReview
                       ? `Review lanes should absorb ${state.alerts.length} alerts and ${state.ocrSummary?.pending_documents ?? 0} OCR exceptions before downstream exports.`
@@ -1893,25 +1887,25 @@ export default function DashboardHome() {
             </div>
 
             <div className="factory-intelligence-panel px-4 py-4">
-              <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-tertiary">Operational Recommendations</div>
+              <div className="zone-eyebrow text-text-tertiary">Operational Recommendations</div>
               <div className="mt-2 text-lg font-semibold text-text-primary">Usage, escalation summary, and recommended next moves</div>
               <div className="factory-intelligence-stack mt-4">
                 <div className="rounded-sm border border-border-subtle bg-surface-panel px-3 py-3">
-                  <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">Usage Snapshot</div>
+                  <div className="text-label-dense text-text-tertiary">Usage Snapshot</div>
                   <div className="mt-2 text-sm text-text-secondary">
                     {state.usage?.plan ? `${state.usage.plan} plan • ${state.usage.period || "Current period"}` : "Usage summary is available when plan data resolves."}
                   </div>
                   <div className="mt-3 space-y-2">
                     {dashboardSnapshotCards.slice(0, 3).map((card) => (
                       <div key={card.label} className="factory-workflow-chip w-full justify-between">
-                        <span className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">{card.label}</span>
+                        <span className="text-label-dense text-text-tertiary">{card.label}</span>
                         <span className="text-sm font-semibold text-text-primary">{card.value}</span>
                       </div>
                     ))}
                   </div>
                 </div>
                 <div className="rounded-sm border border-border-subtle bg-surface-panel px-3 py-3">
-                  <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-text-tertiary">Recommendations</div>
+                  <div className="text-label-dense text-text-tertiary">Recommendations</div>
                   <div className="mt-3 space-y-3">
                     {operationalRecommendations.map((recommendation, index) => (
                       <div key={index} className="text-sm leading-6 text-text-secondary">
@@ -1966,7 +1960,7 @@ export default function DashboardHome() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="text-sm leading-6 text-[var(--muted)]">
+              <div className="text-sm leading-6 text-text-secondary">
                 {primaryAction?.detail || t("dashboard.primary.fallback_detail", "Keep the floor moving with the next best action.")}
               </div>
               {primaryAction ? (
@@ -1974,7 +1968,7 @@ export default function DashboardHome() {
                   <Button>{primaryAction.action}</Button>
                 </Link>
               ) : null}
-              <div className="text-xs text-[var(--muted)]">
+              <div className="text-xs text-text-secondary">
                 {online
                   ? t("dashboard.network.live", "Network is live. Actions will sync in real time.")
                   : t("dashboard.network.offline", "Offline mode active. Your entries save locally and sync later.")}
@@ -1992,15 +1986,15 @@ export default function DashboardHome() {
             <CardContent className="space-y-6 text-sm">
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
-                  <div className="text-xs text-[var(--muted)]">{t("dashboard.metric.alerts", "Alerts")}</div>
+                  <div className="text-xs text-text-secondary">{t("dashboard.metric.alerts", "Alerts")}</div>
                   <div className="mt-1 text-lg font-semibold">{state.alerts.length}</div>
                 </div>
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
-                  <div className="text-xs text-[var(--muted)]">{t("dashboard.metric.signals", "Signals")}</div>
+                  <div className="text-xs text-text-secondary">{t("dashboard.metric.signals", "Signals")}</div>
                   <div className="mt-1 text-lg font-semibold">{anomalyCount}</div>
                 </div>
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
-                  <div className="text-xs text-[var(--muted)]">{t("dashboard.metric.pending_shift", "Pending Shift")}</div>
+                  <div className="text-xs text-text-secondary">{t("dashboard.metric.pending_shift", "Pending Shift")}</div>
                   <div className="mt-1 text-lg font-semibold">{pendingShifts}</div>
                 </div>
               </div>
@@ -2060,25 +2054,22 @@ export default function DashboardHome() {
               {/* AUDIT: DENSITY_OVERLOAD — The dashboard now spotlights the first few next routes and tucks the long route list into a secondary tray. */}
               {secondaryActions.slice(0, 3).map((card) => (
                 <div key={`${card.eyebrow}-${card.href}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{card.eyebrow}</div>
+                  <div className="text-xs uppercase tracking-[0.18em] text-text-secondary">{card.eyebrow}</div>
                   <div className="mt-1 text-sm font-semibold">{card.title}</div>
-                  <div className="mt-1 text-xs text-[var(--muted)]">{card.detail}</div>
+                  <div className="mt-1 text-xs text-text-secondary">{card.detail}</div>
                   <Link href={card.href} className="mt-2 inline-block text-xs text-[var(--accent)] underline underline-offset-4">
                     {card.action}
                   </Link>
                 </div>
               ))}
               {secondaryActions.length > 3 || dashboardQuickLinks.length ? (
-                <details className="rounded-2xl border border-[var(--border)] bg-[var(--surface-panel)] p-3">
-                  <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-                    More routes
-                  </summary>
-                  <div className="mt-3 space-y-6">
+                <DisclosurePanel title="More routes" variant="ghost" className="rounded-2xl">
+                  <div className="space-y-6">
                     {secondaryActions.slice(3).map((card) => (
                       <div key={`${card.eyebrow}-${card.href}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
-                        <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{card.eyebrow}</div>
+                        <div className="text-xs uppercase tracking-[0.18em] text-text-secondary">{card.eyebrow}</div>
                         <div className="mt-1 text-sm font-semibold">{card.title}</div>
-                        <div className="mt-1 text-xs text-[var(--muted)]">{card.detail}</div>
+                        <div className="mt-1 text-xs text-text-secondary">{card.detail}</div>
                         <Link href={card.href} className="mt-2 inline-block text-xs text-[var(--accent)] underline underline-offset-4">
                           {card.action}
                         </Link>
@@ -2094,7 +2085,7 @@ export default function DashboardHome() {
                       ))}
                     </div>
                   </div>
-                </details>
+                </DisclosurePanel>
               ) : null}
             </CardContent>
           </Card>
@@ -2110,7 +2101,7 @@ export default function DashboardHome() {
                 {t("dashboard.steel.title", "Steel Control is now a separate module")}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-6 text-sm text-[var(--muted)]">
+            <CardContent className="space-y-6 text-sm text-text-secondary">
               <div>
                 {t(
                   "dashboard.steel.copy",
@@ -2142,10 +2133,10 @@ export default function DashboardHome() {
           {dashboardSnapshotCards.map((card, index) => (
             <Card key={`${card.label}-${card.href}`} className="factory-dashboard-card">
               <CardHeader>
-                <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">{card.label}</div>
+                <div className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-secondary">{card.label}</div>
                 <CardTitle>{card.value}</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-6 text-sm text-[var(--muted)]">
+              <CardContent className="space-y-6 text-sm text-text-secondary">
                 <div>{card.detail}</div>
                 {index === dashboardSnapshotCards.length - 1 && user?.role === "operator" ? (
                   <div className="flex flex-wrap gap-3">
@@ -2172,7 +2163,7 @@ export default function DashboardHome() {
 
         {/* AUDIT: BUTTON_CLUTTER — Organization and deep analytics context now sit behind a compact reveal so the operational home stays action-first. */}
         <details className="hidden rounded-[0.35rem] border border-[var(--border)] bg-[var(--surface-overlay)] p-4">
-          <summary className="cursor-pointer list-none text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
+          <summary className="cursor-pointer list-none text-sm font-semibold uppercase tracking-[0.2em] text-text-secondary">
             {t("dashboard.section.advanced", "Context")}
           </summary>
           <div className="mt-[var(--space-md)] space-y-6">
@@ -2180,29 +2171,29 @@ export default function DashboardHome() {
               <section className="grid gap-4 lg:grid-cols-3">
                 <Card>
                   <CardHeader>
-                    <div className="text-sm text-[var(--muted)]">{t("dashboard.factory.active", "Active Factory")}</div>
+                    <div className="text-sm text-text-secondary">{t("dashboard.factory.active", "Active Factory")}</div>
                     <CardTitle>{activeFactory?.name || user.factory_name || "-"}</CardTitle>
                   </CardHeader>
-                  <CardContent className="text-sm text-[var(--muted)]">
+                  <CardContent className="text-sm text-text-secondary">
                     {activeFactory?.industry_label || t("dashboard.factory.general", "General Manufacturing")}
                     {activeFactory?.workflow_template_label ? ` - ${activeFactory.workflow_template_label}` : ""}
                   </CardContent>
                 </Card>
                 <Card>
                   <CardHeader>
-                    <div className="text-sm text-[var(--muted)]">{t("dashboard.organization.title", "Organization")}</div>
+                    <div className="text-sm text-text-secondary">{t("dashboard.organization.title", "Organization")}</div>
                     <CardTitle>{organization?.name || t("dashboard.organization.current", "Current organization")}</CardTitle>
                   </CardHeader>
-                  <CardContent className="text-sm text-[var(--muted)]">
+                  <CardContent className="text-sm text-text-secondary">
                     {t("common.plan", "Plan")} {organization?.plan || state.usage?.plan || "-"} - {t("shell.accessible_factories", "accessible factories")} {organization?.accessible_factories || factories.length || 1}
                   </CardContent>
                 </Card>
                 <Card>
                   <CardHeader>
-                    <div className="text-sm text-[var(--muted)]">{t("dashboard.control_tower.title", "Control Tower")}</div>
+                    <div className="text-sm text-text-secondary">{t("dashboard.control_tower.title", "Control Tower")}</div>
                     <CardTitle>{organization?.total_factories || factories.length || 1}</CardTitle>
                   </CardHeader>
-                  <CardContent className="text-sm text-[var(--muted)]">
+                  <CardContent className="text-sm text-text-secondary">
                     {t(
                       "dashboard.control_tower.copy",
                       "Switch factory from the left rail to move across sites without leaving the current workflow.",
@@ -2216,18 +2207,18 @@ export default function DashboardHome() {
               <Card>
                 <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <div className="text-sm text-[var(--muted)]">{t("dashboard.production_trend", "Production Trend")}</div>
+                    <div className="text-sm text-text-secondary">{t("dashboard.production_trend", "Production Trend")}</div>
                     <CardTitle className="text-xl">{t("dashboard.last_7_days", "Last 7 Days")}</CardTitle>
                   </div>
                   {state.usage?.plan ? (
-                    <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+                    <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs uppercase tracking-[0.2em] text-text-secondary">
                       {state.usage.plan}
                     </span>
                   ) : null}
                 </CardHeader>
                 <CardContent>
                   {state.analyticsLocked ? (
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-text-secondary">
                       {t(
                         "dashboard.analytics.plan_gated",
                         "Weekly analytics are plan-gated. The dashboard handles that cleanly and keeps the rest of the page live.",
@@ -2262,12 +2253,12 @@ export default function DashboardHome() {
                                 style={{ height: `${Math.max(8, Math.min(100, point.production_percent))}%` }}
                               />
                             </div>
-                            <div className="text-xs text-[var(--muted)]">{formatDate(point.date, locale).split(" ").slice(0, 2).join(" ")}</div>
+                            <div className="text-xs text-text-secondary">{formatDate(point.date, locale).split(" ").slice(0, 2).join(" ")}</div>
                             <div className="text-sm font-semibold">{point.production_percent.toFixed(0)}%</div>
                           </div>
                         ))}
                       </div>
-                      <div className="text-xs text-[var(--muted)]">
+                      <div className="text-xs text-text-secondary">
                         {t(
                           "dashboard.analytics.note",
                           "Attendance and units are available too; richer charts can layer on top of this in the next migration slice.",
@@ -2275,7 +2266,7 @@ export default function DashboardHome() {
                       </div>
                     </div>
                   ) : (
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-text-secondary">
                       {t("dashboard.analytics.empty", "No weekly analytics data yet.")}
                     </div>
                   )}
@@ -2284,18 +2275,18 @@ export default function DashboardHome() {
 
               <Card>
                 <CardHeader>
-                  <div className="text-sm text-[var(--muted)]">{t("dashboard.plan_limits.title", "Plan & Limits")}</div>
+                  <div className="text-sm text-text-secondary">{t("dashboard.plan_limits.title", "Plan & Limits")}</div>
                   <CardTitle className="text-xl">{state.usage?.plan ? `${state.usage.plan} ${t("common.plan", "plan")}` : t("dashboard.usage_summary", "Usage summary")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
                   <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-                    <div className="text-sm text-[var(--muted)]">{t("dashboard.current_period", "Current period")}</div>
+                    <div className="text-sm text-text-secondary">{t("dashboard.current_period", "Current period")}</div>
                     <div className="mt-1 text-lg font-semibold">{state.usage?.period || "-"}</div>
                   </div>
                   <div className="space-y-6">
                     <div>
                       <div className="mb-2 flex items-center justify-between text-sm">
-                        <span className="text-[var(--muted)]">{t("dashboard.requests", "Requests")}</span>
+                        <span className="text-text-secondary">{t("dashboard.requests", "Requests")}</span>
                         <span>
                           {state.usage?.requests_used ?? 0}
                           {state.usage?.max_requests ? ` / ${state.usage.max_requests}` : ` / ${t("dashboard.unlimited", "Unlimited")}`}
@@ -2315,7 +2306,7 @@ export default function DashboardHome() {
                     ) : null}
                     <div>
                       <div className="mb-2 flex items-center justify-between text-sm">
-                        <span className="text-[var(--muted)]">{t("dashboard.credits", "Credits")}</span>
+                        <span className="text-text-secondary">{t("dashboard.credits", "Credits")}</span>
                         <span>
                           {state.usage?.credits_used ?? 0}
                           {state.usage?.max_credits ? ` / ${state.usage.max_credits}` : ` / ${t("dashboard.unlimited", "Unlimited")}`}
@@ -2353,7 +2344,7 @@ export default function DashboardHome() {
               <Card>
                 <CardHeader className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                   <div>
-                    <div className="text-sm text-[var(--muted)]">{t("dashboard.ai.title", "AI Anomaly Radar")}</div>
+                    <div className="text-sm text-text-secondary">{t("dashboard.ai.title", "AI Anomaly Radar")}</div>
                     <CardTitle className="text-xl">{t("dashboard.ai.subtitle", "Factory drift preview")}</CardTitle>
                   </div>
                   <Link href="/ai">
@@ -2362,7 +2353,7 @@ export default function DashboardHome() {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {state.anomalyLocked ? (
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-text-secondary">
                       {t(
                         "dashboard.ai.upgrade",
                         "Anomaly radar is available on Growth and higher plans. Upgrade to surface high-risk output and downtime spikes here.",
@@ -2370,30 +2361,30 @@ export default function DashboardHome() {
                     </div>
                   ) : state.anomalyPreview ? (
                     <>
-                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                      <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-text-secondary">
                         {state.anomalyPreview.summary}
                       </div>
                       <div className="grid gap-3 sm:grid-cols-3">
                         <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-panel)] p-4">
-                          <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                          <div className="text-xs uppercase tracking-[0.18em] text-text-secondary">
                             {t("dashboard.metric.signals", "Signals")}
                           </div>
                           <div className="mt-2 text-2xl font-semibold">{state.anomalyPreview.items.length}</div>
                         </div>
                         <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-panel)] p-4">
-                          <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                          <div className="text-xs uppercase tracking-[0.18em] text-text-secondary">
                             {t("dashboard.window", "Window")}
                           </div>
                           <div className="mt-2 text-2xl font-semibold">{state.anomalyPreview.days}d</div>
                         </div>
                         <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface-panel)] p-4">
-                          <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{t("dashboard.mode", "Mode")}</div>
+                          <div className="text-xs uppercase tracking-[0.18em] text-text-secondary">{t("dashboard.mode", "Mode")}</div>
                           <div className="mt-2 text-2xl font-semibold">{t("dashboard.preview", "Preview")}</div>
                         </div>
                       </div>
                     </>
                   ) : (
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-text-secondary">
                       {t("dashboard.ai.empty", "No anomaly preview available yet.")}
                     </div>
                   )}
@@ -2402,7 +2393,7 @@ export default function DashboardHome() {
 
               <Card>
                 <CardHeader>
-                  <div className="text-sm text-[var(--muted)]">{t("dashboard.top_signals", "Top Signals")}</div>
+                  <div className="text-sm text-text-secondary">{t("dashboard.top_signals", "Top Signals")}</div>
                   <CardTitle className="text-xl">{t("dashboard.attention.now", "What needs attention right now")}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -2426,7 +2417,7 @@ export default function DashboardHome() {
                       </div>
                     ))
                   ) : (
-                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                    <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-text-secondary">
                       {t("dashboard.ai.no_signals", "No anomaly signals are active in the current preview window.")}
                     </div>
                   )}
@@ -2440,7 +2431,7 @@ export default function DashboardHome() {
           <Card className="factory-dashboard-card">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <div className="text-sm text-[var(--muted)]">{t("dashboard.unread_alerts", "Unread Alerts")}</div>
+                <div className="text-sm text-text-secondary">{t("dashboard.unread_alerts", "Unread Alerts")}</div>
                 <CardTitle className="text-xl">{state.alerts.length} {t("dashboard.active", "active")}</CardTitle>
               </div>
             </CardHeader>
@@ -2468,7 +2459,7 @@ export default function DashboardHome() {
                   </div>
                 ))
               ) : (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-text-secondary">
                   {t("dashboard.alert.none", "No unread alerts right now.")}
                 </div>
               )}
@@ -2477,14 +2468,14 @@ export default function DashboardHome() {
 
           <Card className="factory-dashboard-table">
             <CardHeader>
-              <div className="text-sm text-[var(--muted)]">{t("dashboard.recent_entries", "Recent Entries")}</div>
+              <div className="text-sm text-text-secondary">{t("dashboard.recent_entries", "Recent Entries")}</div>
               <CardTitle className="text-xl">{t("dashboard.recent_activity", "Latest production activity")}</CardTitle>
             </CardHeader>
             <CardContent>
               {recentEntries.length ? (
                 <ResponsiveScrollArea debugLabel="dashboard-recent-entries">
                   <table className="min-w-full text-left text-sm">
-                    <thead className="font-mono text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">
+                    <thead className="section-label text-text-tertiary">
                       <tr className="border-b border-[var(--border)]">
                         <th className="px-3 py-3 font-medium">{t("table.date", "Date")}</th>
                         <th className="px-3 py-3 font-medium">{t("table.shift", "Shift")}</th>
@@ -2505,7 +2496,7 @@ export default function DashboardHome() {
                             {entry.units_produced} / {entry.units_target}
                           </td>
                           <td className="px-3 py-3">{entry.downtime_minutes} {t("table.min", "min")}</td>
-                          <td className="px-3 py-3 text-[var(--muted)]">{formatDateTime(entry.created_at, locale)}</td>
+                          <td className="px-3 py-3 text-text-secondary">{formatDateTime(entry.created_at, locale)}</td>
                           <td className="px-3 py-3">
                             <Link href={`/entry/${entry.id}`} className="text-[var(--accent)] underline underline-offset-4">
                               {t("common.open", "Open")}
@@ -2517,7 +2508,7 @@ export default function DashboardHome() {
                   </table>
                 </ResponsiveScrollArea>
               ) : (
-                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
+                <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-text-secondary">
                   {t("dashboard.entries.empty", "No entries submitted yet.")}
                 </div>
               )}
@@ -2528,6 +2519,6 @@ export default function DashboardHome() {
         {status ? <div className="text-sm text-[var(--status-success-fg)]">{status}</div> : null}
         {error || sessionError ? <div className="text-sm text-[var(--status-danger-fg)]">{error || sessionError}</div> : null}
       </div>
-    </main>
+    </OperationalPageShell>
   );
 }

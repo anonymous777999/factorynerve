@@ -19,6 +19,7 @@ import { getSteelOverview, type SteelOverview } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
 
@@ -658,27 +659,29 @@ export default function PremiumDashboardPage() {
     : [];
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8" data-component="premium-dashboard-page">
-      <div className="mx-auto max-w-[1500px] space-y-6">
-        <section className="rounded-[2rem] border border-[color-mix(in_srgb,var(--action-primary)_18%,transparent)] bg-[radial-gradient(circle_at_top_left,color-mix(in_srgb,var(--action-primary)_18%,transparent),rgba(11,14,20,0.92)_50%)] p-6 shadow-[0_40px_120px_rgba(3,8,20,0.45)]">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-[0.32em] text-[color-mix(in_srgb,var(--action-primary)_88%,transparent)]">
-                Owner Intelligence
-              </div>
-              <h1 className="text-3xl font-semibold text-[var(--text)]">Read the owner signals before you jump into a desk</h1>
-              <p className="max-w-4xl text-sm leading-6 text-[var(--muted)]">
-                Start with money at risk, trust gaps, and responsibility signals, then open the exact workflow that needs attention.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="outline" onClick={() => void handleExportPdf()}>
-                Executive PDF
-              </Button>
-            </div>
-          </div>
-
-          <div className="mt-6 flex flex-wrap items-center gap-3 text-xs">
+    <OperationalPageShell
+      className="factory-workstation-scope"
+      contentClassName="mx-auto max-w-[1500px]"
+      eyebrow="Owner Intelligence"
+      title="Read the owner signals before you jump into a desk"
+      description="Start with money at risk, trust gaps, and responsibility signals, then open the exact workflow that needs attention."
+      metrics={[
+        { id: "tier", label: "Tier", value: dashboard?.plan?.toUpperCase() || "PREMIUM" },
+        { id: "generated", label: "Generated", value: dashboard ? formatDateTime(dashboard.generated_at) : "-" },
+      ]}
+      actions={[
+        {
+          id: "executive-pdf",
+          label: "Executive PDF",
+          variant: "outline",
+          onAction: () => {
+            void handleExportPdf();
+          },
+        },
+      ]}
+    >
+      <div data-component="premium-dashboard-page" className="space-y-6">
+          <div className="flex flex-wrap items-center gap-3 text-xs">
             <span className="rounded-full border border-[color-mix(in_srgb,var(--action-primary)_34%,transparent)] bg-[color-mix(in_srgb,var(--action-primary)_14%,transparent)] px-4 py-2 text-[var(--text)]">
               Tier: {dashboard?.plan?.toUpperCase() || "PREMIUM"}
             </span>
@@ -705,7 +708,6 @@ export default function PremiumDashboardPage() {
               </span>
             ) : null}
           </div>
-        </section>
 
         {/* AUDIT: BUTTON_CLUTTER - keep route jumps in a secondary tray so the owner signal board stays primary. */}
         <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
@@ -833,7 +835,7 @@ export default function PremiumDashboardPage() {
 
             {steelLayerVisible ? (
               <section className="space-y-6">
-                <Card className="border-[rgba(239,68,68,0.18)] bg-[linear-gradient(135deg,rgba(42,16,16,0.96),rgba(14,20,30,0.92))]">
+                <Card className="border-[rgba(239,68,68,0.18)] bg-surface-panel">
                   <CardHeader className="space-y-3">
                     <div className="text-xs font-semibold uppercase tracking-[0.28em] text-red-200">Owner Risk Desk</div>
                     <CardTitle className="text-2xl">Where am I losing money, why, and what should I check first?</CardTitle>
@@ -1271,6 +1273,6 @@ export default function PremiumDashboardPage() {
         {steelWarning ? <div className="text-sm text-amber-300">{steelWarning}</div> : null}
         {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
-    </main>
+    </OperationalPageShell>
   );
 }

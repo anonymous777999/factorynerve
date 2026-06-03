@@ -154,20 +154,16 @@
   --color-border-info: 115 168 239;
 
   /* --- Text Hierarchy --- */
-  --text-primary: hsl(var(--_prim-neutral-800));
-  /* headings, labels, key data */
-  --text-secondary: hsl(var(--_prim-neutral-600));
+  --text-primary: #2c2a26;
+  /* warm near-black — operational design Tier 1 */
+  --text-secondary: #5c584f;
   /* supporting text, descriptions */
-  --text-tertiary: hsl(210 9% 42%);
-  /* placeholders, hints, metadata — Task 27: darkened from neutral-500 (46%)
-     to reach WCAG AA 4.5:1 on shell/app/panel/card surfaces (was 3.98–4.46:1) */
-  --text-disabled: hsl(var(--_prim-neutral-400));
-  /* disabled fields — exempt from contrast minimums (WCAG 1.4.3 inactive controls) */
-  --text-inverse: hsl(var(--_prim-neutral-0));
-  /* text on dark/colored surfaces */
-  --text-link: #175FCC;
-  /* Task 27: darkened from #1D6EEB to reach 4.5:1 on light surfaces (was 4.00–4.48:1) */
-  --text-link-hover: #1453B0;
+  --text-tertiary: #7a756c;
+  /* placeholders, hints, metadata */
+  --text-disabled: #a8a49c;
+  --text-inverse: #f7f6f4;
+  --text-link: #2f6ae6;
+  --text-link-hover: #3d7fff;
   --text-danger: hsl(var(--_prim-red-700));
   --text-success: hsl(var(--_prim-green-700));
   --text-warning: hsl(var(--_prim-amber-700));
@@ -175,26 +171,26 @@
   /* --- Surface Hierarchy ---
      Rule: each level must be visually distinguishable from its neighbors.
      app-bg < shell < panel < card < elevated < overlay */
-  --surface-app: hsl(210 16% 94%);
-  --surface-shell: hsl(210 16% 96%);
-  --surface-panel: hsl(210 17% 98%);
-  --surface-card: hsl(0 0% 100%);
-  --surface-elevated: hsl(0 0% 100%);
-  --surface-overlay: hsl(210 20% 99%);
-  --surface-hover: hsl(210 15% 95%);
-  --surface-active: hsl(210 14% 92%);
-  --surface-selected: hsl(213 46% 91%);
-  --surface-skeleton: hsl(210 12% 90%);
-  --surface-skeleton-shine: hsl(210 14% 94%);
-  --surface-industrial-deep: hsl(210 16% 95%);
-  --surface-industrial-raised: hsl(210 14% 97%);
-  --surface-industrial-card: hsl(210 12% 99%);
+  --surface-app: #f7f6f4;
+  --surface-shell: #f3f2ef;
+  --surface-panel: #faf9f7;
+  --surface-card: #ffffff;
+  --surface-elevated: #ffffff;
+  --surface-overlay: #f5f4f1;
+  --surface-hover: #efeeea;
+  --surface-active: #e8e6e1;
+  --surface-selected: #e8eefb;
+  --surface-skeleton: #ebeae6;
+  --surface-skeleton-shine: #f3f2ef;
+  --surface-industrial-deep: #f7f6f4;
+  --surface-industrial-raised: #f3f2ef;
+  --surface-industrial-card: #faf9f7;
 
   /* --- Border System --- */
-  --border-subtle: hsl(210 14% 86%);
-  --border-default: hsl(210 11% 80%);
-  --border-strong: hsl(210 10% 69%);
-  --border-focus: hsl(var(--_prim-blue-400));
+  --border-subtle: #ebeae6;
+  --border-default: #e0ddd6;
+  --border-strong: #cfc9bf;
+  --border-focus: #3d7fff;
   /* keyboard focus rings */
   --border-danger: hsl(var(--_prim-red-400));
   /* error state inputs */
@@ -202,9 +198,9 @@
   /* valid/synced inputs */
 
   /* --- Action / Interactive --- */
-  --action-primary: #1D6EEB;
-  --action-primary-hover: #2379F3;
-  --action-primary-active: #175FCC;
+  --action-primary: #3d7fff;
+  --action-primary-hover: #5b94ff;
+  --action-primary-active: #2f6ae6;
   --action-primary-text: hsl(var(--_prim-neutral-0));
   --action-secondary: hsl(var(--_prim-neutral-0));
   --action-secondary-hover: hsl(var(--_prim-neutral-100));
@@ -423,9 +419,9 @@
 
 :root {
   /* Font families */
-  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
-  --font-mono: "JetBrains Mono", "Fira Code", "Cascadia Code", ui-monospace, monospace;
-  --font-numeric: "Tabular", "Inter", system-ui, sans-serif;
+  --font-sans: var(--font-plex-sans, var(--font-inter)), system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-plex-mono), "JetBrains Mono", ui-monospace, monospace;
+  --font-numeric: var(--font-plex-sans, var(--font-inter)), system-ui, sans-serif;
   /* tabular-nums */
 
   /* Type scale — operational (not consumer) sizing */
@@ -674,6 +670,40 @@
     0 0 0 1px rgba(255, 255, 255, 0.07);
   /* No glow — explicit reset */
   --glow-none: none;
+
+  /* Premium layer — easing aliases */
+  --ease-snappy: cubic-bezier(0.2, 0, 0, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-overshoot: cubic-bezier(0.34, 1.4, 0.64, 1);
+  --ease-premium-enter: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Depth (Tier B cap 4deg via components) */
+  --perspective-workstation: 1200px;
+  --tilt-max-deg: 4deg;
+
+  /* Semantic status glows (point-of-use) */
+  --glow-warning: 0 0 0 1px color-mix(in srgb, var(--status-warning-border) 80%, transparent),
+    0 0 12px color-mix(in srgb, var(--status-warning-fg) 22%, transparent);
+  --glow-processing: 0 0 0 1px color-mix(in srgb, var(--status-processing-border) 80%, transparent),
+    0 0 14px color-mix(in srgb, var(--status-processing-fg) 24%, transparent);
+  --glow-focus-input: inset 0 0 0 1px var(--border-focus),
+    0 0 0 3px color-mix(in srgb, var(--action-primary) 20%, transparent);
+
+  /* Glass — overlays/drawers only */
+  --glass-blur: 12px;
+  --glass-bg: color-mix(in srgb, var(--surface-overlay) 88%, transparent);
+  --glass-border: color-mix(in srgb, var(--border-default) 60%, transparent);
+
+  /* Ambient (static; no animation on Tier B) */
+  --ambient-primary: radial-gradient(
+    ellipse 80% 50% at 50% -20%,
+    color-mix(in srgb, var(--action-primary) 12%, transparent),
+    transparent 70%
+  );
+
+  /* Stagger entrances */
+  --stagger-step: 40ms;
+  --stagger-max: 320ms;
 }
 
 /* Respect prefers-reduced-motion — always */
@@ -702,61 +732,46 @@
 
 [data-theme="dark"] {
 
-  /* Text */
-  --text-primary: #F0F4F8;
-  --text-secondary: #8A9BB0;
-  --text-tertiary: #566880;
-  --text-disabled: #374455;
-  --text-inverse: hsl(var(--_prim-neutral-900));
-  --text-link: #5B9CF6;
-  --text-link-hover: #93C5FD;
-  --text-danger: #F87171;
-  --text-success: #4ADE80;
-  --text-warning: #FBBF24;
+  /* Text — factorynerve-profile.html reference */
+  --text-primary: #e2e6f0;
+  --text-secondary: #9aa3b8;
+  --text-tertiary: #6b7494;
+  --text-disabled: #4a5168;
+  --text-inverse: #0f1117;
+  --text-link: #3d7fff;
+  --text-link-hover: #6b9aff;
+  --text-danger: #f87171;
+  --text-success: #4ade80;
+  --text-warning: #fbbf24;
 
-  /* Surfaces — calmer, deeper, more differentiated layers */
-  --surface-app: #08090c;
-  /* true floor — near black, not blue-tinted */
-  --surface-shell: #0d0e12;
-  /* nav/sidebar — 1 step up */
-  --surface-panel: #111318;
-  /* panels, section backgrounds */
-  --surface-card: #161920;
-  /* cards, raised containers */
-  --surface-elevated: #1c2028;
-  /* inputs, interactive surfaces */
-  --surface-overlay: #212630;
-  /* hover states, row highlights */
-  --surface-hover: #1a1e27;
-  /* hover tint */
-  --surface-active: #1f2430;
-  /* pressed/active */
-  --surface-selected: #12233f;
-  /* selected rows, active nav items */
-  --surface-skeleton: #111420;
-  /* skeleton base */
-  --surface-skeleton-shine: #181c2a;
-  /* skeleton shimmer */
-  --surface-industrial-deep: #08090c;
-  --surface-industrial-raised: #0d0e12;
-  --surface-industrial-card: #111318;
+  /* Surfaces — profile mock: bg → sidebar → card stack */
+  --surface-app: #0f1117;
+  --surface-shell: #13151e;
+  --surface-panel: #161a24;
+  --surface-card: #181c28;
+  --surface-elevated: #1c2030;
+  --surface-overlay: #222838;
+  --surface-hover: #1a1f2c;
+  --surface-active: #232a3c;
+  --surface-selected: #1a2744;
+  --surface-skeleton: #141820;
+  --surface-skeleton-shine: #1c2030;
+  --surface-industrial-deep: #0f1117;
+  --surface-industrial-raised: #13151e;
+  --surface-industrial-card: #181c28;
 
-  /* Borders — whisper-thin, rgba-based for depth */
-  --border-subtle: rgba(255, 255, 255, 0.05);
-  /* barely visible — section dividers */
-  --border-default: rgba(255, 255, 255, 0.09);
-  /* standard borders */
-  --border-strong: rgba(255, 255, 255, 0.16);
-  /* emphasis, focused containers */
-  --border-focus: #4f78e8;
-  /* indigo focus ring */
-  --border-danger: #EF4444;
-  --border-success: #22C55E;
+  /* Borders — profile mock hex borders */
+  --border-subtle: #1f2433;
+  --border-default: #252a3a;
+  --border-strong: #2e3450;
+  --border-focus: #3d7fff;
+  --border-danger: #ef4444;
+  --border-success: #22c55e;
 
-  /* Actions */
-  --action-primary: #4f78e8;
-  --action-primary-hover: #5d84ed;
-  --action-primary-active: #3e66d4;
+  /* Actions — profile accent blue */
+  --action-primary: #3d7fff;
+  --action-primary-hover: #5b94ff;
+  --action-primary-active: #2f6ae6;
   --action-primary-text: #ffffff;
   --action-secondary: rgba(255, 255, 255, 0.06);
   --action-secondary-hover: rgba(255, 255, 255, 0.10);
@@ -767,8 +782,8 @@
   --action-disabled-text: rgba(255, 255, 255, 0.25);
 
   /* Focus ring — clean indigo glow */
-  --focus-ring: 0 0 0 2px #08090c, 0 0 0 4px #4f78e8;
-  --focus-ring-danger: 0 0 0 2px #08090c, 0 0 0 4px #EF4444;
+  --focus-ring: 0 0 0 2px #0f1117, 0 0 0 4px #3d7fff;
+  --focus-ring-danger: 0 0 0 2px #0f1117, 0 0 0 4px #ef4444;
 
   /* Status — dark mode */
   --status-success-fg: #86EFAC;
@@ -786,10 +801,10 @@
   --status-danger-border: rgba(239, 68, 68, 0.20);
   --status-danger-icon: #EF4444;
 
-  --status-processing-fg: #A5B4FC;
-  --status-processing-bg: rgba(79, 120, 232, 0.10);
-  --status-processing-border: rgba(79, 120, 232, 0.20);
-  --status-processing-icon: #6366F1;
+  --status-processing-fg: #a5b4fc;
+  --status-processing-bg: rgba(61, 127, 255, 0.10);
+  --status-processing-border: rgba(61, 127, 255, 0.20);
+  --status-processing-icon: #3d7fff;
 
   --status-paused-fg: #94A3B8;
   --status-paused-bg: rgba(100, 116, 139, 0.10);
@@ -814,11 +829,11 @@
   --status-info-fg: #93C5FD;
   --status-info-bg: rgba(79, 120, 232, 0.10);
   --status-info-border: rgba(79, 120, 232, 0.18);
-  --status-info-icon: #4f78e8;
+  --status-info-icon: #3d7fff;
 
   /* Workflow */
-  --workflow-active: #4f78e8;
-  --workflow-active-bg: rgba(79, 120, 232, 0.10);
+  --workflow-active: #3d7fff;
+  --workflow-active-bg: rgba(61, 127, 255, 0.10);
   --workflow-complete: #22C55E;
   --workflow-complete-bg: rgba(22, 163, 74, 0.10);
   --workflow-blocked: #EF4444;

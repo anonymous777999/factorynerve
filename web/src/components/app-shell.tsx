@@ -15,6 +15,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import type { BadgeStatus } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PanelToggleButton } from "@/components/ui/panel-toggle-button";
 import {
   CommandPalette,
   type CommandPaletteItem,
@@ -340,15 +341,16 @@ function AppShellFrame({
               ) : (
                 <div className={cn("flex min-h-[48px] flex-wrap items-center justify-between gap-3 px-6", focusMode ? "py-2" : "py-2.5")}>
                   <div className="flex min-w-0 items-center gap-3">
-                    <Button
-                      size="compact"
-                      variant="outline"
+                    <PanelToggleButton
+                      kind="nav-sidebar"
+                      expanded={shell.sidebarOpen}
                       onClick={shell.toggleSidebar}
-                      aria-label={shell.sidebarOpen ? "Hide sidebar" : "Show sidebar"}
-                      className="h-8 border-border-default bg-surface-elevated px-3 text-[11px] font-semibold uppercase tracking-[0.18em] text-text-primary hover:border-border-strong hover:bg-surface-hover"
-                    >
-                      {shell.sidebarOpen ? "Hide Nav" : "Show Nav"}
-                    </Button>
+                      aria-label={
+                        shell.sidebarOpen
+                          ? shell.t("shell.hide_sidebar", "Hide sidebar")
+                          : shell.t("shell.show_sidebar", "Show sidebar")
+                      }
+                    />
                     <div className="h-4 w-px bg-border-default" />
                     <div className="min-w-0 space-y-0.5">
                       <div className="flex flex-wrap items-center gap-2">

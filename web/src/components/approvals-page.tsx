@@ -45,7 +45,7 @@ import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import { StickyActionBar } from "@/components/ui/sticky-action-bar";
 import { Textarea } from "@/components/ui/textarea";
 import { useRegisterCommands } from "@/providers/command-registry-provider";
@@ -1750,20 +1750,14 @@ export default function ApprovalsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-7xl space-y-6">
-          <Skeleton className="h-36 rounded-[2rem]" />
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <Skeleton key={index} className="h-36 rounded-2xl" />
-            ))}
-          </div>
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.95fr)]">
-            <Skeleton className="h-[36rem] rounded-2xl" />
-            <Skeleton className="h-[36rem] rounded-2xl" />
-          </div>
-        </div>
-      </main>
+      <OperationalPageShell
+        eyebrow="Review"
+        title="Review Queue"
+        isLoading
+        loadingTitle="Loading review queue"
+      >
+        <div />
+      </OperationalPageShell>
     );
   }
 
@@ -1820,46 +1814,38 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <main className="operational-page">
-      <div className="operational-page__inner route-workspace">
-        {/* AUDIT: FLOW_BROKEN - lead the screen with the next review action instead of a passive inbox summary. */}
-        <section className="route-header">
-          <div className="route-header__grid">
-            <div className="route-header__copy">
-              <div className="route-header__eyebrow">Review</div>
-              <h1 className="route-header__title">Review Queue</h1>
-              <p className="route-header__body">Close the next review first, then work down the backlog with context still in view.</p>
-              <div className="route-header__meta">
-                <div className="route-header__meta-item">
-                  <span>Factory</span>
-                  <strong>{activeFactory?.name || user.factory_name}</strong>
-                </div>
-                <div className="route-header__meta-item">
-                  <span>Refreshed</span>
-                  <strong>{refreshedLabel}</strong>
-                </div>
-                <div className="route-header__meta-item">
-                  <span>Open</span>
-                  <strong>{filteredTasks.length}</strong>
-                </div>
-              </div>
-            </div>
-            <div className="route-header__actions">
-              {nextReviewItem ? (
-                <Button
-                  className="px-4 py-2 text-xs"
-                  onClick={() => openItem(nextReviewItem.key, typeof window !== "undefined" && window.innerWidth < 1024)}
-                >
-                  Review next
-                </Button>
-              ) : null}
-              <Button variant="outline" className="px-4 py-2 text-xs" onClick={() => void loadInbox()}>
-                {busy ? "Refreshing..." : "Refresh"}
-              </Button>
-            </div>
-          </div>
-        </section>
-
+    <OperationalPageShell
+      className="route-workspace"
+      eyebrow="Review"
+      title="Review Queue"
+      description="Close the next review first, then work down the backlog with context still in view."
+      tone={urgentTaskCount > 0 ? "warning" : "processing"}
+      toneLabel={urgentTaskCount > 0 ? "Urgent queue" : "Queue stable"}
+      metrics={[
+        { id: "factory", label: "Factory", value: activeFactory?.name || user.factory_name || "-" },
+        { id: "refreshed", label: "Refreshed", value: refreshedLabel },
+        { id: "open", label: "Open", value: filteredTasks.length },
+        { id: "urgent", label: "Urgent", value: urgentTaskCount },
+      ]}
+      actions={[
+        ...(nextReviewItem
+          ? [
+              {
+                id: "review-next",
+                label: "Review next",
+                onAction: () =>
+                  openItem(nextReviewItem.key, typeof window !== "undefined" && window.innerWidth < 1024),
+              },
+            ]
+          : []),
+        {
+          id: "refresh-approvals",
+          label: busy ? "Refreshing..." : "Refresh",
+          variant: "outline" as const,
+          onAction: () => void loadInbox(),
+        },
+      ]}
+    >
         <StickyActionBar
           variant="page"
           status={urgentTaskCount > 0 ? "warning" : "info"}
@@ -2543,7 +2529,6 @@ export default function ApprovalsPage() {
             </div>
           </div>
         </section>
-      </div>
 
       <ConfirmationModal
         open={Boolean(bulkConfirmDecision)}
@@ -2629,6 +2614,6 @@ export default function ApprovalsPage() {
           />
         </div>
       ) : null}
-    </main>
+    </OperationalPageShell>
   );
 }

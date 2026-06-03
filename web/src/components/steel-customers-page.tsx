@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { PageMain } from "@/components/ui/page-main";
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
@@ -306,69 +309,58 @@ export function SteelCustomersPage() {
     }
   };
 
-  if (loading || pageLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading steel customer ledger...
-      </main>
-    );
-  }
-
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <PageMain maxWidth="3xl" innerClassName="flex min-h-[50vh] items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Customers</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
+            <div className="text-sm text-status-danger-fg">{sessionError || "Please sign in to continue."}</div>
             <Link href="/access">
               <Button>Open Access</Button>
             </Link>
           </CardContent>
         </Card>
-      </main>
+      </PageMain>
     );
   }
 
   if (!isSteelFactory) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-4xl">
-          <Card>
-            <CardHeader>
-              <CardTitle>Steel customer ledger is factory-aware</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-[var(--muted)]">
-              <div>
-                Your active factory is <span className="font-semibold text-[var(--text)]">{activeFactory?.name || "not selected"}</span>.
-              </div>
-              <div>Switch into a steel factory from the sidebar, or update the factory profile in Settings first.</div>
-              <div className="flex gap-3">
-                <Link href="/steel">
-                  <Button>Open Steel Module</Button>
-                </Link>
-                <Link href="/settings">
-                  <Button variant="outline">Open Settings</Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+      <OperationalPageShell
+        title="Steel customer ledger is factory-aware"
+        description="Switch into a steel factory from the sidebar, or update the factory profile in Settings first."
+      >
+        <Card className="mx-auto max-w-4xl">
+          <CardContent className="space-y-4 py-lg text-sm text-text-secondary">
+            <div>
+              Your active factory is <span className="font-semibold text-text-primary">{activeFactory?.name || "not selected"}</span>.
+            </div>
+            <div className="flex gap-3">
+              <Link href="/steel">
+                <Button>Open Steel Module</Button>
+              </Link>
+              <Link href="/settings">
+                <Button variant="outline">Open Settings</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </OperationalPageShell>
     );
   }
 
   if (!canManage) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-4">
+      <PageMain maxWidth="4xl" innerClassName="flex min-h-[50vh] items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Customer Ledger</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-[var(--muted)]">The customer ledger and commercial exposure tracking are available to managers and owners.</div>
+            <div className="text-sm text-text-secondary">The customer ledger and commercial exposure tracking are available to managers and owners.</div>
             <div className="flex gap-3">
               <Link href="/steel">
                 <Button>Back to Steel Hub</Button>
@@ -379,31 +371,21 @@ export function SteelCustomersPage() {
             </div>
           </CardContent>
         </Card>
-      </main>
+      </PageMain>
     );
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Customer Ledger</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Add the buyer before receivables start moving</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Keep buyer setup, receivables, and recovery context in one place before invoices and dispatches stack up.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* AUDIT: BUTTON_CLUTTER - keep route jumps available in a secondary tray so customer creation stays primary. */}
-        <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(10,14,24,0.78)] p-5">
-          <summary className="cursor-pointer list-none text-sm font-semibold text-white marker:hidden">
-            Ledger tools
-          </summary>
-          <div className="mt-4 flex flex-wrap gap-3">
+    <OperationalPageShell
+      eyebrow="Steel Customer Ledger"
+      title="Add the buyer before receivables start moving"
+      description="Keep buyer setup, receivables, and recovery context in one place before invoices and dispatches stack up."
+      isLoading={loading || pageLoading}
+      loadingTitle="Loading steel customer ledger..."
+      contentClassName="space-y-6"
+      filters={
+        <DisclosurePanel title="Ledger tools">
+          <div className="flex flex-wrap gap-3">
             <Link href="/steel">
               <Button variant="outline">Steel hub</Button>
             </Link>
@@ -414,8 +396,9 @@ export function SteelCustomersPage() {
               <Button variant="ghost">Dispatches</Button>
             </Link>
           </div>
-        </details>
-
+        </DisclosurePanel>
+      }
+    >
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <Card>
             <CardHeader><CardTitle className="text-base">Customers</CardTitle></CardHeader>
@@ -663,12 +646,9 @@ export function SteelCustomersPage() {
             </CardHeader>
             <CardContent>
               {/* AUDIT: DENSITY_OVERLOAD - keep the full receivables directory available in a secondary reveal so the create form remains the first move. */}
-              <details className="rounded-[24px] border border-[var(--border)] bg-[rgba(12,18,28,0.56)] p-4" open={customers.length <= 6}>
-                <summary className="cursor-pointer list-none text-sm font-semibold text-white marker:hidden">
-                  View directory
-                </summary>
+              <DisclosurePanel title="View directory" defaultOpen={customers.length <= 6}>
                 <ResponsiveScrollArea
-                  className="mt-4 rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]"
+                  className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]"
                   debugLabel="steel-customers-directory"
                 >
                   <table className="min-w-full text-left text-sm">
@@ -737,14 +717,13 @@ export function SteelCustomersPage() {
                     </tbody>
                   </table>
                 </ResponsiveScrollArea>
-              </details>
+              </DisclosurePanel>
             </CardContent>
           </Card>
         </section>
 
         {status ? <div className="text-sm text-green-400">{status}</div> : null}
-        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
-      </div>
-    </main>
+        {error || sessionError ? <div className="text-sm text-status-danger-fg">{error || sessionError}</div> : null}
+    </OperationalPageShell>
   );
 }

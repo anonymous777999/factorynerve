@@ -4,8 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import { Select } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import { SuccessBanner, MutationErrorBanner } from "@/shared/feedback";
 import { ApiError } from "@/lib/api";
 import {
@@ -340,17 +340,88 @@ export default function AttendancePage() {
     }
   }
 
-  if (loading || (pageLoading && Boolean(user) && !hasLoadedOnce)) {
-    return (
-      <main className="min-h-screen bg-[var(--surface-app)] px-4 py-8 md:px-6">
-        <div className="mx-auto max-w-6xl space-y-6">
-          <Skeleton className="h-[28rem] rounded-2xl" />
-          <div className="hidden gap-6 lg:grid lg:grid-cols-[minmax(0,1fr)_360px]">
-            <Skeleton className="h-[22rem] rounded-2xl" />
-            <Skeleton className="h-[22rem] rounded-2xl" />
+  const summaryRail = (
+    <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 shadow-[var(--shadow-sm)]">
+      <div className="text-xs font-medium text-text-tertiary">{t("attendance.summary.title", "Today's summary")}</div>
+
+      <div className="mt-6 space-y-4 text-sm text-text-secondary">
+        <div className="flex items-center justify-between">
+          <span>{t("attendance.summary.worked", "Worked")}</span>
+          <span className="font-semibold text-text-primary tabular-nums">{workedTime}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span>{t("attendance.summary.last_punch", "Last punch")}</span>
+          <span className="font-semibold text-text-primary tabular-nums">{formatTime(lastActionAt, locale)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span>{t("attendance.summary.shift", "Shift")}</span>
+          <span className="font-semibold text-text-primary">{shiftLabel(displayShift)}</span>
+        </div>
+        <div className="flex items-center justify-between">
+          <span>{t("attendance.summary.shift_status", "Shift status")}</span>
+          <span className="font-semibold text-text-primary">{statusLabel(today?.status)}</span>
+        </div>
+      </div>
+
+      {summaryAlert ? (
+        <div className="mt-6 rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] px-4 py-4 text-sm text-[var(--status-warning-fg)]">
+          {summaryAlert}
+        </div>
+      ) : null}
+
+      {today?.late_warning ? (
+        <div className="mt-4 rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] px-4 py-4 text-sm text-[var(--status-warning-fg)]">
+          {today.late_warning}
+        </div>
+      ) : null}
+
+      <details className="mt-6 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-shell)] px-4 py-4">
+        <summary className="cursor-pointer list-none text-sm font-semibold text-text-primary">{t("attendance.summary.shift_details", "Shift details")}</summary>
+        <div className="mt-4 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 py-4">
+          <div className="text-xs font-medium text-text-tertiary">{t("attendance.summary.shift_status", "Shift status")}</div>
+          <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold text-text-primary">
+            <span className={`h-2.5 w-2.5 rounded-full ${statusMeta.dot}`} />
+            {formatAttendanceStatusLabel(today?.status)}
+          </div>
+          <div className="mt-4 text-sm text-text-secondary">
+            {today?.status === "working"
+              ? t("attendance.summary.timer_running", "Timer is running for the open shift.")
+              : today?.status === "late"
+                ? t("attendance.summary.late_recorded", "Late recorded: {{duration}}.", { duration: formatDuration(today?.late_minutes || 0) })
+                : today?.status === "missed_punch"
+                  ? t("attendance.summary.needs_review", "This record now needs supervisor review.")
+                  : today?.status === "completed"
+                    ? t("attendance.summary.closed", "Today's attendance is already closed.")
+                    : t("attendance.summary.ready", "Ready for the next punch action.")}
           </div>
         </div>
-      </main>
+
+        <div className="mt-4 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 py-4 text-sm text-text-secondary">
+          <div className="flex items-center justify-between">
+            <span>{t("attendance.summary.factory", "Factory")}</span>
+            <span className="font-semibold text-text-primary">{factoryName}</span>
+          </div>
+          <div className="mt-3 flex items-center justify-between">
+            <span>{t("attendance.summary.refresh", "Refresh")}</span>
+            <span className="font-semibold text-text-primary">{refreshing ? t("attendance.summary.refresh_running", "Running") : t("attendance.summary.refresh_auto", "Auto")}</span>
+          </div>
+        </div>
+      </details>
+    </div>
+  );
+
+  if (loading || (pageLoading && Boolean(user) && !hasLoadedOnce)) {
+    return (
+      <OperationalPageShell
+        eyebrow={t("attendance.title", "Attendance")}
+        title={t("attendance.punch.station", "Operator punch station")}
+        description={t("attendance.punch.subtitle", "Punch in at shift start and punch out when work is done.")}
+        isLoading
+        loadingTitle="Loading attendance"
+        metrics={[]}
+      >
+        <div />
+      </OperationalPageShell>
     );
   }
 
@@ -371,7 +442,7 @@ export default function AttendancePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--surface-app)] px-4 py-6 text-text-primary md:px-6 lg:py-8">
+    <>
       {justPunched ? (
         <div
           className="animate-fade-in fixed inset-x-4 top-4 z-50 mx-auto max-w-md rounded-xl px-4 py-4 text-center text-white shadow-[var(--shadow-xl)]"
@@ -392,7 +463,28 @@ export default function AttendancePage() {
           </div>
         </div>
       ) : null}
-      <div className="mx-auto max-w-6xl">
+      <OperationalPageShell
+        eyebrow={t("attendance.title", "Attendance")}
+        title={t("attendance.punch.station", "Operator punch station")}
+        description={t("attendance.punch.subtitle", "Punch in at shift start and punch out when work is done.")}
+        tone={today?.status === "working" ? "success" : today?.status === "missed_punch" ? "warning" : "default"}
+        toneLabel={statusLabel(today?.status)}
+        metrics={[
+          { id: "factory", label: t("attendance.summary.factory", "Factory"), value: factoryName },
+          { id: "worked", label: t("attendance.summary.worked", "Worked"), value: workedTime },
+          { id: "shift", label: t("attendance.summary.shift", "Shift"), value: shiftLabel(displayShift) },
+          { id: "last-punch", label: t("attendance.summary.last_punch", "Last punch"), value: formatTime(lastActionAt, locale) },
+        ]}
+        rail={summaryRail}
+        actions={[
+          {
+            id: "refresh-attendance",
+            label: refreshing ? t("common.loading", "Loading...") : t("common.refresh", "Refresh"),
+            variant: "outline",
+            onAction: () => void loadAttendance({ background: true }),
+          },
+        ]}
+      >
         {status ? (
           <SuccessBanner
             className="mb-4"
@@ -411,7 +503,6 @@ export default function AttendancePage() {
           <MutationErrorBanner className="mb-4" message={sessionError} />
         ) : null}
 
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
           <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 shadow-[var(--shadow-md)]">
             <div className="text-base font-semibold text-text-primary">{factoryName}</div>
 
@@ -513,78 +604,7 @@ export default function AttendancePage() {
               </div>
             ) : null}
           </section>
-
-          <aside className="hidden lg:block">
-            <div className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 shadow-[var(--shadow-sm)]">
-              <div className="text-xs font-medium text-text-tertiary">{t("attendance.summary.title", "Today's summary")}</div>
-
-              <div className="mt-6 space-y-4 text-sm text-text-secondary">
-                <div className="flex items-center justify-between">
-                  <span>{t("attendance.summary.worked", "Worked")}</span>
-                  <span className="font-semibold text-text-primary tabular-nums">{workedTime}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>{t("attendance.summary.last_punch", "Last punch")}</span>
-                  <span className="font-semibold text-text-primary tabular-nums">{formatTime(lastActionAt, locale)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>{t("attendance.summary.shift", "Shift")}</span>
-                  <span className="font-semibold text-text-primary">{shiftLabel(displayShift)}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span>{t("attendance.summary.shift_status", "Shift status")}</span>
-                  <span className="font-semibold text-text-primary">{statusLabel(today?.status)}</span>
-                </div>
-              </div>
-
-              {summaryAlert ? (
-                <div className="mt-6 rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] px-4 py-4 text-sm text-[var(--status-warning-fg)]">
-                  {summaryAlert}
-                </div>
-              ) : null}
-
-              {today?.late_warning ? (
-                <div className="mt-4 rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] px-4 py-4 text-sm text-[var(--status-warning-fg)]">
-                  {today.late_warning}
-                </div>
-              ) : null}
-
-              <details className="mt-6 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-shell)] px-4 py-4">
-                <summary className="cursor-pointer list-none text-sm font-semibold text-text-primary">{t("attendance.summary.shift_details", "Shift details")}</summary>
-                <div className="mt-4 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 py-4">
-                  <div className="text-xs font-medium text-text-tertiary">{t("attendance.summary.shift_status", "Shift status")}</div>
-                  <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold text-text-primary">
-                    <span className={`h-2.5 w-2.5 rounded-full ${statusMeta.dot}`} />
-                    {formatAttendanceStatusLabel(today?.status)}
-                  </div>
-                  <div className="mt-4 text-sm text-text-secondary">
-                    {today?.status === "working"
-                      ? t("attendance.summary.timer_running", "Timer is running for the open shift.")
-                      : today?.status === "late"
-                        ? t("attendance.summary.late_recorded", "Late recorded: {{duration}}.", { duration: formatDuration(today?.late_minutes || 0) })
-                        : today?.status === "missed_punch"
-                          ? t("attendance.summary.needs_review", "This record now needs supervisor review.")
-                          : today?.status === "completed"
-                            ? t("attendance.summary.closed", "Today's attendance is already closed.")
-                            : t("attendance.summary.ready", "Ready for the next punch action.")}
-                  </div>
-                </div>
-
-                <div className="mt-4 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-elevated)] px-4 py-4 text-sm text-text-secondary">
-                  <div className="flex items-center justify-between">
-                    <span>{t("attendance.summary.factory", "Factory")}</span>
-                    <span className="font-semibold text-text-primary">{factoryName}</span>
-                  </div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <span>{t("attendance.summary.refresh", "Refresh")}</span>
-                    <span className="font-semibold text-text-primary">{refreshing ? t("attendance.summary.refresh_running", "Running") : t("attendance.summary.refresh_auto", "Auto")}</span>
-                  </div>
-                </div>
-              </details>
-            </div>
-          </aside>
-        </div>
-      </div>
-    </main>
+      </OperationalPageShell>
+    </>
   );
 }

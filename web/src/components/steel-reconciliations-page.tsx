@@ -21,6 +21,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { Input } from "@/components/ui/input";
 import { LoadingBoundary } from "@/components/ui/loading-boundary";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { PageMain } from "@/components/ui/page-main";
 import { OperationalDrawer } from "@/components/ui/operational-drawer";
 import { Select } from "@/components/ui/select";
 import { StickyActionBar } from "@/components/ui/sticky-action-bar";
@@ -282,21 +284,9 @@ export function SteelReconciliationsPage() {
     [],
   );
 
-  if (loading || (isSteelFactory && (reconciliationsQuery.isLoading || stockQuery.isLoading) && !reconciliationsQuery.data)) {
-    return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-7xl">
-          <LoadingBoundary isLoading loadingTitle="Loading stock review" loadingRows={8}>
-            <div />
-          </LoadingBoundary>
-        </div>
-      </main>
-    );
-  }
-
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <PageMain maxWidth="3xl" innerClassName="flex min-h-[50vh] items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Reconciliations</CardTitle>
@@ -308,43 +298,36 @@ export function SteelReconciliationsPage() {
             </Link>
           </CardContent>
         </Card>
-      </main>
+      </PageMain>
     );
   }
 
   if (!isSteelFactory) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-4xl">
-          <Card>
-            <CardHeader>
-              <CardTitle>Steel reconciliations are factory-aware</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-text-secondary">
-              <div>
-                Your active factory is <span className="font-semibold text-text-primary">{activeFactory?.name || "not selected"}</span>.
-              </div>
-              <div>Switch into a steel factory from the sidebar, or update the factory profile in Settings first.</div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+      <OperationalPageShell
+        title="Steel reconciliations are factory-aware"
+        description="Switch into a steel factory from the sidebar, or update the factory profile in Settings first."
+      >
+        <Card className="mx-auto max-w-4xl">
+          <CardContent className="space-y-4 py-lg text-sm text-text-secondary">
+            <div>
+              Your active factory is <span className="font-semibold text-text-primary">{activeFactory?.name || "not selected"}</span>.
+            </div>
+          </CardContent>
+        </Card>
+      </OperationalPageShell>
     );
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-panel border border-border-default bg-surface-panel px-lg py-lg shadow-xs">
-          <div className="max-w-4xl">
-            <div className="text-xs font-medium tracking-wide text-text-tertiary">Steel Reconciliations</div>
-            <h1 className="mt-2 text-3xl font-semibold text-text-primary md:text-4xl">Stock mismatches</h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-text-secondary">
-              Reconciliation compares your physical stock count against the system ledger so you can close inventory trust gaps without leaving the list workflow.
-            </p>
-          </div>
-        </section>
-
+    <OperationalPageShell
+      eyebrow="Steel Reconciliations"
+      title="Stock mismatches"
+      description="Reconciliation compares your physical stock count against the system ledger so you can close inventory trust gaps without leaving the list workflow."
+      isLoading={loading || ((reconciliationsQuery.isLoading || stockQuery.isLoading) && !reconciliationsQuery.data)}
+      loadingTitle="Loading stock review..."
+      contentClassName="space-y-6"
+    >
         <StickyActionBar
           variant="page"
           status="warning"
@@ -628,7 +611,6 @@ export function SteelReconciliationsPage() {
             Rejection reason: {rejectionReasonValue?.trim() || "Add a reason in the drawer before confirming."}
           </p>
         </ConfirmationModal>
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

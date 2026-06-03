@@ -4,7 +4,6 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { Eye, EyeOff } from "lucide-react";
 
 import { CameraCapture } from "@/components/ocr/camera-capture";
 import { EditToolbar } from "@/components/ocr/edit-toolbar";
@@ -17,6 +16,7 @@ import { RawDataView } from "@/components/ocr/RawDataView";
 import { ShareLinkGenerator } from "@/components/ocr/share-link-generator";
 import { UploadBox } from "@/components/ocr/upload-box";
 import { Button } from "@/components/ui/button";
+import { PanelToggleButton } from "@/components/ui/panel-toggle-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { Select } from "@/components/ui/select";
@@ -1781,7 +1781,12 @@ export default function OcrScanPage() {
       />
 
       <main className="factory-ocr-scope px-4 py-4 md:px-6 md:py-5">
-        <div className="factory-ocr-shell">
+        <div
+          className={cn(
+            "factory-ocr-shell",
+            step === "processing" && "status-glow-processing",
+          )}
+        >
           <div className="factory-ocr-header">
             <div className="factory-ocr-header__meta">
               <div className="max-w-3xl">
@@ -2282,36 +2287,30 @@ export default function OcrScanPage() {
                 </section>
 
                 {reviewRailCollapsed ? (
-                  <button
-                    type="button"
-                    className="ocr-rail-peek"
+                  <PanelToggleButton
+                    kind="rail-right"
+                    expanded={false}
                     onClick={() => setReviewRailCollapsed(false)}
                     aria-label="Show review rail"
                     title="Show review rail"
-                  >
-                    <Eye aria-hidden="true" size={16} />
-                    <span>Review rail</span>
-                  </button>
+                    className="ocr-review-rail-expand self-stretch"
+                  />
                 ) : (
                   <aside className="ocr-workstation-panel ocr-review-rail">
                     <div className="ocr-workstation-panel__header">
-                      <div>
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">
-                          Review rail
-                        </div>
-                        <div className="mt-1 text-sm font-semibold text-text-primary">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-label-dense font-semibold text-text-tertiary">Review rail</div>
+                        <div className="mt-1 truncate text-sm font-semibold text-text-primary">
                           {step === "export" ? "Ready for export" : "Verification active"}
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        className="ocr-panel-eye-button"
+                      <PanelToggleButton
+                        kind="rail-right"
+                        expanded
                         onClick={() => setReviewRailCollapsed(true)}
                         aria-label="Hide review rail"
                         title="Hide review rail"
-                      >
-                        <EyeOff aria-hidden="true" size={16} />
-                      </button>
+                      />
                     </div>
                     <div className="ocr-review-rail__body">
                       <div className="ocr-rail-metric" data-tone="success">

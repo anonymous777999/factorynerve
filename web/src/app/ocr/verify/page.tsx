@@ -45,7 +45,8 @@ export default async function OcrVerifyRoutePage({
     redirect(canonicalHref);
   }
 
-  if (USE_GOVERNED_OCR_WORKSPACE && (workspaceOverride === "governed" || !workspaceOverride)) {
+  // Canonical production path: V2 verification workspace (token-aligned, queue layout).
+  if (USE_GOVERNED_OCR_WORKSPACE && workspaceOverride === "governed") {
     return <GovernedOcrVerificationPage />;
   }
 

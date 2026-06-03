@@ -10,6 +10,7 @@ import { useSession } from "@/lib/use-session";
 import { triggerBlobDownload } from "@/lib/reports";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import { Input } from "@/components/ui/input";
 import { SuccessBanner, MutationErrorBanner } from "@/shared/feedback";
 
@@ -180,30 +181,30 @@ export default function ReportsIntelligenceWorkspace() {
     }
 
     return (
-        <main className="operational-page">
-            <div className="operational-page__inner mx-auto max-w-[1440px] space-y-6">
-
-                {/* Header */}
-                <section className="route-header">
-                    <div className="route-header__grid">
-                        <div className="route-header__copy">
-                            <div className="route-header__eyebrow">Reports & Exports</div>
-                            <h1 className="route-header__title">Production reports</h1>
-                            <p className="route-header__body">
-                                Review output, exports, and operating signals across the selected date range.
-                            </p>
-                        </div>
-                        <div className="route-header__actions">
-                            <Button onClick={handleExportExcel} disabled={exporting}>
-                                {exporting ? "Exporting..." : "Export Excel"}
-                            </Button>
-                            <Link href="/email-summary">
-                                <Button variant="outline">Email summary</Button>
-                            </Link>
-                        </div>
-                    </div>
-                </section>
-
+        <OperationalPageShell
+            className="factory-workstation-scope"
+            contentClassName="mx-auto max-w-[1440px] space-y-6"
+            eyebrow="Reports & Exports"
+            title="Production reports"
+            description="Review output, exports, and operating signals across the selected date range."
+            actions={[
+                {
+                    id: "export-excel",
+                    label: exporting ? "Exporting..." : "Export Excel",
+                    onAction: () => {
+                        void handleExportExcel();
+                    },
+                },
+                {
+                    id: "email-summary",
+                    label: "Email summary",
+                    variant: "outline",
+                    onAction: () => {
+                        window.location.assign("/email-summary");
+                    },
+                },
+            ]}
+        >
                 {/* Export feedback */}
                 {exportStatus ? (
                     <SuccessBanner message={exportStatus} onDismiss={() => setExportStatus("")} />
@@ -461,7 +462,6 @@ export default function ReportsIntelligenceWorkspace() {
                     </Link>
                 </div>
 
-            </div>
-        </main>
+        </OperationalPageShell>
     );
 }

@@ -15,6 +15,8 @@ import {
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
 import { Field, Label } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -321,31 +323,19 @@ export default function SettingsAttendancePage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.9)] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">Attendance Admin</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Keep roster and shifts ready for review</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Update the team profile first, then shape the shift windows that power punch, live board, and review logic.
-              </p>
-            </div>
-            {/* AUDIT: BUTTON_CLUTTER - move companion attendance routes into a secondary tray so the active admin editor stays primary. */}
-            <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
-                Attendance tools
-                <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
-                <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
-              </summary>
-              <div className="flex flex-wrap gap-3 border-t border-[var(--border)] px-4 py-4">
-                <Link href="/attendance/review"><Button variant="ghost">Review</Button></Link>
-                <Link href="/attendance/reports"><Button variant="ghost">Reports</Button></Link>
-              </div>
-            </details>
+    <OperationalPageShell
+      className="factory-workstation-scope"
+      contentClassName="mx-auto max-w-7xl space-y-6"
+      eyebrow="Attendance Admin"
+      title="Keep roster and shifts ready for review"
+      description="Update the team profile first, then shape the shift windows that power punch, live board, and review logic."
+    >
+        <DisclosurePanel title="Attendance tools" variant="ghost">
+          <div className="flex flex-wrap gap-3">
+            <Link href="/attendance/review"><Button variant="ghost">Review</Button></Link>
+            <Link href="/attendance/reports"><Button variant="ghost">Reports</Button></Link>
           </div>
-        </section>
+        </DisclosurePanel>
 
         {status ? <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
         {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
@@ -482,7 +472,6 @@ export default function SettingsAttendancePage() {
             </Card>
           </section>
         )}
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

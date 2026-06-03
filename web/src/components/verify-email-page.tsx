@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { Lock, Mail, ShieldCheck } from "lucide-react";
 
 import { ApiError } from "@/lib/api";
 import { AUTH_ROUTE_PARAM_GUARDS } from "@/config/featureFlags";
 import { validateEmailVerificationToken, verifyEmail } from "@/lib/auth";
 import { useI18n, useI18nNamespaces } from "@/lib/i18n";
-import { AuthShell } from "@/components/auth-shell";
+import { AuthWorkstationShell } from "@/components/auth-workstation-shell";
 import { Button } from "@/components/ui/button";
 
 export default function VerifyEmailPage() {
@@ -120,77 +121,76 @@ export default function VerifyEmailPage() {
     }
   };
 
-  // AUDIT: TEXT_NOISE - shorten the auth-shell narrative so the verification action stays primary
   return (
-    <AuthShell
+    <AuthWorkstationShell
+      sidePanel="minimal"
       badge={t("auth.verify.badge", "Email Verification")}
       title={t("auth.verify.title", "Verify email")}
       description={t("auth.verify.description", "Confirm your email address so the account can sign in securely.")}
-      journeyTitle={t("auth.verify.journey_title", "Use inbox ownership as the final activation gate.")}
-      journeyDescription={t("auth.verify.journey_description", "Verification turns a pending signup into a real account or confirms ownership on an existing local account.")}
-      steps={[
-        {
-          title: t("auth.verify.step_1_title", "Open the verification link"),
-          description: t("auth.verify.step_1_detail", "The inbox owner proves they can open the secure verification email."),
-        },
-        {
-          title: t("auth.verify.step_2_title", "Confirm account activation"),
-          description: t("auth.verify.step_2_detail", "Pending signups become real accounts only after the token is redeemed."),
-        },
-        {
-          title: t("auth.verify.step_3_title", "Return to sign in"),
-          description: t("auth.verify.step_3_detail", "Once verification succeeds, sign in with the same email and password."),
-        },
-      ]}
+      leftEyebrow={t("auth.shell.guardrails", "Guardrails")}
+      leftTitle={t("auth.verify.journey_title", "Use inbox ownership as the final activation gate.")}
+      leftDescription={t("auth.verify.journey_description", "Verification turns a pending signup into a real account or confirms ownership on an existing local account.")}
       supportTitle={t("auth.verify.support_title", "Why we verify before login")}
       supportDescription={t("auth.verify.support_description", "This keeps every activated account tied to a reachable email owner before factory access starts.")}
-      cardClassName="max-w-xl"
+      supportItems={[
+        {
+          icon: <ShieldCheck className="h-4 w-4" />,
+          text: t("auth.verify.step_1_detail", "The inbox owner proves they can open the secure verification email."),
+        },
+        {
+          icon: <Lock className="h-4 w-4" />,
+          text: t("auth.verify.step_2_detail", "Pending signups become real accounts only after the token is redeemed."),
+        },
+        {
+          icon: <Mail className="h-4 w-4" />,
+          text: t("auth.verify.step_3_detail", "Once verification succeeds, sign in with the same email and password."),
+        },
+      ]}
+      panelClassName="max-w-xl"
       contentClassName="space-y-5"
-      guidanceKey="auth-verify-help"
     >
       {resolvedVerifying ? (
-            <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell p-4 text-sm text-text-secondary">
-              {t("auth.verify.verifying", "Checking your verification link...")}
+        <div className="rounded-panel border border-border-default bg-surface-shell p-4 text-sm text-text-secondary" role="status">
+          {t("auth.verify.verifying", "Checking your verification link...")}
+        </div>
+      ) : null}
+
+      {status ? (
+        <div className="rounded-panel border border-status-success-border bg-status-success-bg p-4 text-sm text-status-success-fg" role="status">
+          <div>{status}</div>
+          {verificationFinished ? (
+            <div className="mt-3 rounded-panel border border-border-default bg-surface-shell p-3 text-xs text-text-primary">
+              {t("auth.verify.next_step", "Next step: return to sign in and use the same email and password from registration.")}
             </div>
           ) : null}
+        </div>
+      ) : null}
 
-          {status ? (
-            <div className="rounded-panel border-[0.5px] border-status-success-border bg-status-success-bg p-4 text-sm text-status-success-fg">
-              <div>{status}</div>
-              {verificationFinished ? (
-                <div className="mt-3 rounded-panel border-[0.5px] border-border-default bg-surface-shell p-3 text-xs text-text-primary">
-                  {t("auth.verify.next_step", "Next step: return to sign in and use the same email and password from registration.")}
-                </div>
-              ) : null}
-            </div>
-          ) : null}
+      {resolvedError ? (
+        <div className="rounded-panel border border-status-danger-border bg-status-danger-bg p-4 text-sm text-status-danger-fg" role="alert">
+          {resolvedError}
+        </div>
+      ) : null}
 
-          {resolvedError ? (
-            <div className="rounded-panel border-[0.5px] border-status-danger-border bg-status-danger-bg p-4 text-sm text-status-danger-fg">
-              {resolvedError}
-            </div>
-          ) : null}
-
-          {resolvedValid && !resolvedVerifying ? (
-            <>
-              {/* AUDIT: DENSITY_OVERLOAD - add one compact prep card so the verify CTA reads as the clear next move */}
-              <div className="rounded-panel border-[0.5px] border-border-default bg-surface-shell p-4 text-sm text-text-primary">
-                {t("auth.verify.prep", "Confirm this link once, then return to sign in with the same registration email.")}
-              </div>
-              <Button type="button" onClick={onVerify} disabled={loading} className="factory-auth-cta w-full border-transparent">
-                {loading ? t("auth.verify.loading", "Verifying...") : isPendingSignupToken ? t("auth.verify.activate_account", "Activate account") : t("auth.verify.action", "Verify email")}
-              </Button>
-            </>
-          ) : null}
-
-          <div className="flex flex-wrap gap-3">
-            <Link href="/register">
-              <Button variant="outline">{t("auth.verify.register", "Register")}</Button>
-            </Link>
-            <Link href={loginHref}>
-              <Button>{t("auth.verify.sign_in", "Sign in")}</Button>
-            </Link>
+      {resolvedValid && !resolvedVerifying ? (
+        <>
+          <div className="rounded-panel border border-border-default bg-surface-shell p-4 text-sm text-text-primary">
+            {t("auth.verify.prep", "Confirm this link once, then return to sign in with the same registration email.")}
           </div>
-    </AuthShell>
+          <Button type="button" onClick={onVerify} disabled={loading} className="factory-auth-cta w-full border-transparent">
+            {loading ? t("auth.verify.loading", "Verifying...") : isPendingSignupToken ? t("auth.verify.activate_account", "Activate account") : t("auth.verify.action", "Verify email")}
+          </Button>
+        </>
+      ) : null}
+
+      <div className="flex flex-wrap gap-3">
+        <Link href="/register">
+          <Button variant="outline">{t("auth.verify.register", "Register")}</Button>
+        </Link>
+        <Link href={loginHref}>
+          <Button>{t("auth.verify.sign_in", "Sign in")}</Button>
+        </Link>
+      </div>
+    </AuthWorkstationShell>
   );
 }

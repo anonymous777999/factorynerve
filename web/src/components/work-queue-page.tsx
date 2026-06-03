@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
@@ -29,7 +30,7 @@ import { useSession } from "@/lib/use-session";
 import { subscribeToWorkflowRefresh } from "@/lib/workflow-sync";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import { SuccessBanner, MutationErrorBanner } from "@/shared/feedback";
 
 const ALL_SHIFTS = ["morning", "evening", "night"] as const;
@@ -200,6 +201,7 @@ function workerSectionAccent(tone: WorkerTaskSectionTone) {
 }
 
 export default function WorkQueuePage() {
+  const router = useRouter();
   const { t } = useI18n();
   useI18nNamespaces(["common", "queue"]);
   const { user, loading, error: sessionError, activeFactory, organization } = useSession();
@@ -986,20 +988,14 @@ export default function WorkQueuePage() {
 
   if (loading || (pageLoading && Boolean(user) && !hasLoadedOnce)) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-7xl space-y-6">
-          <Skeleton className="h-40 rounded-[2rem]" />
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <Skeleton key={index} className="h-32 rounded-2xl" />
-            ))}
-          </div>
-          <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-            <Skeleton className="h-[32rem] rounded-2xl" />
-            <Skeleton className="h-[32rem] rounded-2xl" />
-          </div>
-        </div>
-      </main>
+      <OperationalPageShell
+        eyebrow={t("queue.title", "Work Queue")}
+        title={t("queue.title", "Work Queue")}
+        isLoading
+        loadingTitle={t("queue.loading", "Loading work queue")}
+      >
+        <div />
+      </OperationalPageShell>
     );
   }
 
@@ -1029,8 +1025,35 @@ export default function WorkQueuePage() {
 
   if (isWorkerQueue) {
     return (
-      <main className="min-h-screen bg-[var(--surface-industrial-deep)] px-4 py-6 md:px-6 lg:py-8">
-        <div className="mx-auto max-w-6xl space-y-4">
+      <OperationalPageShell
+        className="bg-[var(--surface-industrial-deep)]"
+        contentClassName="mx-auto max-w-6xl space-y-4"
+        eyebrow={activeFactory?.name || user.factory_name || "Factory"}
+        title={t("queue.title", "Work Queue")}
+        description={
+          refreshing
+            ? t("queue.actions.updating", "Updating queue...")
+            : lastUpdatedAt
+              ? t("queue.actions.updated", "Updated {{value}}", { value: formatDateTime(lastUpdatedAt) })
+              : t("queue.actions.live_updates", "Live updates every 25 seconds")
+        }
+        toneLabel={workerQueueStatus.label}
+        metrics={[
+          { id: "pending", label: "Pending", value: workerPendingCount },
+          { id: "completed", label: "Completed", value: state.todayEntries.length },
+          { id: "alerts", label: "Critical alerts", value: workerCriticalAlerts.length },
+        ]}
+        actions={[
+          {
+            id: "refresh-worker-queue",
+            label: refreshing ? t("queue.actions.refreshing", "Refreshing...") : t("common.refresh", "Refresh"),
+            variant: "outline",
+            onAction: () => {
+              void loadQueue({ background: true });
+            },
+          },
+        ]}
+      >
           {error ? (
             <MutationErrorBanner message={error} onDismiss={() => setError("")} />
           ) : null}
@@ -1050,41 +1073,6 @@ export default function WorkQueuePage() {
               ))}
             </section>
           ) : null}
-
-          <section className="rounded-[32px] border border-border-subtle bg-surface-card p-6 shadow-[var(--shadow-sm)]">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <div className="text-[11px] font-semibold uppercase tracking-wide text-action-primary">
-                  {activeFactory?.name || user.factory_name || "Factory"}
-                </div>
-                <h1 className="mt-2 text-3xl font-semibold text-text-primary">{t("queue.title", "Work Queue")}</h1>
-                <div className="mt-3 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold tracking-wide text-text-secondary">
-                  <span className={`rounded-full border px-3 py-1 ${workerQueueStatus.tone}`}>
-                    {workerQueueStatus.label}
-                  </span>
-                </div>
-              </div>
-              <div className="space-y-2 text-sm text-text-secondary sm:text-right">
-                <Button
-                  variant="outline"
-                  className="h-11 px-5"
-                  onClick={() => {
-                    void loadQueue({ background: true });
-                  }}
-                  disabled={refreshing}
-                >
-                  {refreshing ? t("queue.actions.refreshing", "Refreshing...") : t("common.refresh", "Refresh")}
-                </Button>
-                <div className="text-xs text-text-tertiary">
-                  {refreshing
-                    ? t("queue.actions.updating", "Updating queue...")
-                    : lastUpdatedAt
-                      ? t("queue.actions.updated", "Updated {{value}}", { value: formatDateTime(lastUpdatedAt) })
-                      : t("queue.actions.live_updates", "Live updates every 25 seconds")}
-                </div>
-              </div>
-            </div>
-          </section>
 
           <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_320px]">
             <section className="space-y-4">
@@ -1200,14 +1188,45 @@ export default function WorkQueuePage() {
               </div>
             </aside>
           </div>
-        </div>
-      </main>
+      </OperationalPageShell>
     );
   }
 
   return (
-    <main className="operational-page control-center-workspace">
-      <div className="operational-page__inner">
+    <OperationalPageShell
+      className="control-center-workspace"
+      contentClassName="space-y-6"
+      eyebrow="Daily coordination"
+      title="Work queue"
+      description="See the next task and act fast."
+      metrics={[
+        { id: "open", label: "Open items", value: filterCounts.all },
+        { id: "today", label: "Today", value: filterCounts.today },
+        { id: "review", label: "Review", value: filterCounts.review },
+        { id: "alerts", label: "Unread alerts", value: state.alerts.length },
+      ]}
+      actions={[
+        ...(nextUpItem
+          ? [
+              {
+                id: "queue-next-up",
+                label: nextUpItem.action,
+                onAction: () => {
+                  router.push(nextUpItem.href);
+                },
+              },
+            ]
+          : []),
+        {
+          id: "refresh-queue",
+          label: refreshing ? "Refreshing..." : "Refresh queue",
+          variant: "outline" as const,
+          onAction: () => {
+            void loadQueue({ background: true });
+          },
+        },
+      ]}
+    >
         {/* AUDIT: FLOW_BROKEN - Added a short operating sequence so the queue reads as process-next work, not a wall of diagnostics. */}
         <section className="grid gap-4 md:grid-cols-3">
           {[
@@ -1226,74 +1245,33 @@ export default function WorkQueuePage() {
           ))}
         </section>
 
-        <section className="operational-hero bg-surface-card border-border-subtle">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-wide text-text-secondary">Daily coordination</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl text-text-primary">Work queue</h1>
-              {/* AUDIT: TEXT_NOISE - The hero now states the operating outcome once and leaves the detailed coordination logic to the queue itself. */}
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-text-secondary">
-                See the next task and act fast.
-              </p>
-            </div>
-            <div className="space-y-3 text-sm text-text-secondary">
-              <div className="flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full border border-border-subtle bg-surface-panel px-3 py-1.5">
-                  Factory: <span className="font-semibold text-text-primary">{activeFactory?.name || user.factory_name}</span>
-                </span>
-                <span className="rounded-full border border-border-subtle bg-surface-panel px-3 py-1.5">
-                  Org: <span className="font-semibold text-text-primary">{organization?.name || "Current organization"}</span>
-                </span>
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant="outline"
-                  className="px-4 py-2 text-xs"
-                  onClick={() => {
-                    void loadQueue({ background: true });
-                  }}
-                  disabled={refreshing}
-                >
-                  {refreshing ? "Refreshing..." : "Refresh queue"}
-                </Button>
-                <span className="text-xs text-text-tertiary">
-                  {refreshing
-                    ? "Updating queue..."
-                    : lastUpdatedAt
-                      ? `Updated ${formatDateTime(lastUpdatedAt)}`
-                      : "Live updates every 25 seconds"}
-                </span>
-              </div>
-            </div>
+        <details className="rounded-panel border border-border-subtle bg-surface-panel px-4 py-3 text-sm text-text-secondary">
+          <summary className="cursor-pointer list-none font-semibold text-text-primary">Queue tools</summary>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs text-text-secondary">
+            <span className="rounded-full border border-border-subtle bg-surface-panel px-3 py-1.5">
+              Factory: <span className="font-semibold text-text-primary">{activeFactory?.name || user.factory_name}</span>
+            </span>
+            <span className="rounded-full border border-border-subtle bg-surface-panel px-3 py-1.5">
+              Org: <span className="font-semibold text-text-primary">{organization?.name || "Current organization"}</span>
+            </span>
+            <span className="rounded-full border border-border-subtle bg-surface-panel px-3 py-1.5">
+              {refreshing
+                ? "Updating queue..."
+                : lastUpdatedAt
+                  ? `Updated ${formatDateTime(lastUpdatedAt)}`
+                  : "Live updates every 25 seconds"}
+            </span>
           </div>
-
-          {nextUpItem ? (
-            <div className="mt-5 flex flex-wrap gap-3">
-              {/* AUDIT: BUTTON_CLUTTER - The hero now exposes the next queue action first and moves route shortcuts behind a compact tools tray. */}
-              <Link href={nextUpItem.href}>
-                <Button>{nextUpItem.action}</Button>
-              </Link>
-              <details className="rounded-full border border-border-subtle bg-surface-panel px-3 py-2 text-sm text-text-secondary">
-                <summary className="cursor-pointer list-none">Tools</summary>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  {quickActions.map((action) => (
-                    <Link key={action.href} href={action.href}>
-                      <Button variant={action.variant || "outline"}>{action.label}</Button>
-                    </Link>
-                  ))}
-                </div>
-              </details>
-            </div>
-          ) : quickActions.length ? (
-            <div className="mt-5 flex flex-wrap gap-3">
+          {quickActions.length ? (
+            <div className="mt-3 flex flex-wrap gap-2">
               {quickActions.map((action) => (
                 <Link key={action.href} href={action.href}>
-                  <Button variant={action.variant || "primary"}>{action.label}</Button>
+                  <Button variant={action.variant || "outline"}>{action.label}</Button>
                 </Link>
               ))}
             </div>
           ) : null}
-        </section>
+        </details>
 
         {error ? <MutationErrorBanner message={error} onDismiss={() => setError("")} /> : null}
         {sessionError ? <MutationErrorBanner message={sessionError} /> : null}
@@ -1533,7 +1511,6 @@ export default function WorkQueuePage() {
             </div>
           </details>
         </section>
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

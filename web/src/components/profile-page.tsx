@@ -7,6 +7,8 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { PasswordField } from "@/components/password-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
 import { Field, Label } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { API_BASE_URL, ApiError } from "@/lib/api";
@@ -556,16 +558,17 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[var(--color-background-primary)] px-4 py-6 md:px-8 lg:py-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <section className="rounded-[1.75rem] border-[0.5px] border-[color:var(--color-border-secondary)] bg-[linear-gradient(135deg,var(--color-background-secondary),rgba(var(--color-border-info),0.08))] p-6 shadow-[0_20px_56px_rgba(15,23,42,0.08)]">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[var(--color-text-secondary)]">
-            Profile
-          </div>
-          <h1 className="mt-2 text-3xl font-semibold text-[var(--color-text-primary)]">Your account</h1>
-          {/* AUDIT: TEXT_NOISE - shorten the hero copy so identity and security actions feel more immediate */}
-          <p className="mt-2 max-w-3xl text-sm text-[var(--color-text-secondary)]">Manage your profile and access.</p>
-        </section>
+    <OperationalPageShell
+      className="factory-workstation-scope"
+      contentClassName="mx-auto max-w-6xl space-y-6"
+      eyebrow="Profile"
+      title="Your account"
+      description="Manage your profile and access."
+      metrics={[
+        { id: "name", label: "Name", value: profile.name || "-" },
+        { id: "role", label: "Role", value: profile.role || "-" },
+      ]}
+    >
 
         {sessionError ? (
           <div className="rounded-[20px] border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">
@@ -1082,10 +1085,9 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent className={sectionContentClass("actions")}>
             {/* AUDIT: BUTTON_CLUTTER - move rare account-level actions into a secondary tray so edit and security stay primary */}
-            <details className="rounded-[1.25rem] border-[0.5px] border-[color:var(--color-border-secondary)] bg-[var(--color-background-primary)] px-4 py-4">
-              <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--color-text-primary)]">Open account actions</summary>
-              <div className="mt-4 text-sm text-[var(--color-text-secondary)]">Use these only when you are leaving this account or changing workspace context.</div>
-              <div className="mt-4 flex flex-wrap gap-3">
+            <DisclosurePanel title="Open account actions" variant="ghost">
+              <p className="mb-4 text-sm text-text-secondary">Use these only when you are leaving this account or changing workspace context.</p>
+              <div className="flex flex-wrap gap-3">
                 <Button
                   variant="ghost"
                   onClick={() => {
@@ -1105,10 +1107,9 @@ export default function ProfilePage() {
                   {accountBusy === "switch" ? "Switching..." : "Switch account"}
                 </Button>
               </div>
-            </details>
+            </DisclosurePanel>
           </CardContent>
         </Card>
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

@@ -22,6 +22,7 @@ import { useSession } from "@/lib/use-session";
 import { coerceIntegerInput } from "@/lib/validation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -276,7 +277,16 @@ export default function EntryDetailPage() {
   };
 
   if (sessionLoading || loading) {
-    return <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">Loading entry detail...</main>;
+    return (
+      <OperationalPageShell
+        eyebrow="Entry Detail"
+        title="Entry detail"
+        isLoading
+        loadingTitle="Loading entry detail"
+      >
+        <div />
+      </OperationalPageShell>
+    );
   }
 
   if (!user || !entry) {
@@ -298,18 +308,18 @@ export default function EntryDetailPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
-          <div className="space-y-2">
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Entry Detail</div>
-            <h1 className="text-3xl font-semibold">Entry detail</h1>
-            <p className="text-sm text-[var(--muted)]">
-              {formatDate(entry.date)} | {entry.shift} | submitted by {entry.submitted_by || `User ${entry.user_id || "-"}`} | status {entry.status}
-            </p>
-          </div>
-        </section>
-
+    <OperationalPageShell
+      contentClassName="mx-auto max-w-6xl space-y-6"
+      eyebrow="Entry Detail"
+      title="Entry detail"
+      description={`${formatDate(entry.date)} | ${entry.shift} | submitted by ${entry.submitted_by || `User ${entry.user_id || "-"}`} | status ${entry.status}`}
+      metrics={[
+        { id: "units", label: "Units", value: `${entry.units_produced} / ${entry.units_target}` },
+        { id: "performance", label: "Performance", value: `${performance.toFixed(1)}%` },
+        { id: "status", label: "Status", value: entry.status },
+        { id: "submitted", label: "Submitted", value: formatDateTime(entry.created_at) },
+      ]}
+    >
         {/* AUDIT: BUTTON_CLUTTER - keep route jumps available in a secondary tray so review stays primary. */}
         <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
           <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
@@ -655,7 +665,6 @@ export default function EntryDetailPage() {
 
         {status ? <div className="text-sm text-green-400">{status}</div> : null}
         {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

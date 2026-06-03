@@ -21,10 +21,11 @@ import { signalWorkflowRefresh, subscribeToWorkflowRefresh } from "@/lib/workflo
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { GuidanceBlock } from "@/components/ui/guidance-block";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { QueueWorkspaceLayout } from "@/components/ui/queue-workspace-layout";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { SuccessBanner, MutationErrorBanner } from "@/shared/feedback";
 
@@ -294,18 +295,6 @@ function infoCardClasses(severity: ReviewSeverity) {
   if (severity === "critical") return "border-[var(--status-danger-border)] bg-[var(--status-danger-bg)]";
   if (severity === "warning") return "border-[var(--status-warning-border)] bg-[var(--status-warning-bg)]";
   return "border-[var(--status-info-border)] bg-[var(--status-info-bg)]";
-}
-
-function SummaryCard({ label, value, helper }: { label: string; value: number | string; helper: string }) {
-  return (
-    <Card className="border-[var(--border)] bg-[var(--card-strong)]">
-      <CardHeader className="pb-2">
-        <div className="text-sm text-[var(--muted)]">{label}</div>
-        <CardTitle className="text-3xl">{value}</CardTitle>
-      </CardHeader>
-      <CardContent className="text-sm text-[var(--muted)]">{helper}</CardContent>
-    </Card>
-  );
 }
 
 function EmptyQueueState({ filtered }: { filtered: boolean }) {
@@ -844,23 +833,340 @@ export default function AttendanceReviewPage() {
     }
   }
 
-  if (loading || (pageLoading && user && canReview && !hasLoadedOnce)) {
-    return (
-      <main className="operational-page">
-        <div className="operational-page__inner">
-          <Skeleton className="h-40 rounded-[2rem]" />
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <Skeleton key={index} className="h-32 rounded-2xl" />
+  const reviewMetrics = [
+    { id: "pending", label: "Pending review", value: derivedItems.length, detail: "Attendance rows still waiting for a supervisor decision." },
+    { id: "critical", label: "High priority", value: highPriorityCount, detail: "Critical issues that can affect payroll or shift closure.", tone: "error" as const },
+    { id: "regularizations", label: "Regularizations", value: regularizationCount, detail: "Worker-submitted requests that need final approval." },
+    { id: "late", label: "Late signals", value: lateSignals, detail: "Records with late arrival data that should be confirmed.", tone: "warning" as const },
+  ];
+
+  const reviewFilters = (
+    <div className="space-y-4">
+      <div className="flex flex-wrap gap-3">
+        <Link href="/attendance">
+          <Button variant="outline" className="px-4 py-2 text-xs">My Attendance</Button>
+        </Link>
+        <Link href="/attendance/live">
+          <Button variant="outline" className="px-4 py-2 text-xs">Live Board</Button>
+        </Link>
+        {canManage ? (
+          <Link href="/settings/attendance">
+            <Button variant="outline" className="px-4 py-2 text-xs">Admin</Button>
+          </Link>
+        ) : null}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <div className="xl:col-span-2">
+          <label className="text-sm text-text-secondary">Search</label>
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search name, department, role, or issue"
+          />
+        </div>
+        <div>
+          <label className="text-sm text-text-secondary">Review date</label>
+          <Input aria-label="Review date" type="date" value={attendanceDate} onChange={(event) => setAttendanceDate(event.target.value)} />
+        </div>
+        <div>
+          <label className="text-sm text-text-secondary">Issue type</label>
+          <Select aria-label="Issue type" value={issueFilter} onChange={(event) => setIssueFilter(event.target.value as "all" | ReviewIssueType)}>
+            {ISSUE_TYPE_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
             ))}
+          </Select>
+        </div>
+        <div>
+          <label className="text-sm text-text-secondary">Shift</label>
+          <Select aria-label="Shift" value={shiftFilter} onChange={(event) => setShiftFilter(event.target.value)}>
+            <option value="all">All shifts</option>
+            <option value="morning">Morning</option>
+            <option value="evening">Evening</option>
+            <option value="night">Night</option>
+          </Select>
+        </div>
+        <div>
+          <label className="text-sm text-text-secondary">Department</label>
+          <Select aria-label="Department" value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)}>
+            <option value="all">All departments</option>
+            {departmentOptions.map((department) => (
+              <option key={department} value={department}>
+                {department}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
+    </div>
+  );
+
+  const reviewQueue = nextReview ? (
+    <Card className="route-table-anchor border-[var(--border)] bg-surface-panel">
+      <CardHeader className="space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <div className="text-sm text-text-secondary">Review next</div>
+            <CardTitle className="text-xl">Top attendance issue</CardTitle>
           </div>
-          <Skeleton className="h-40 rounded-2xl" />
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(320px,0.95fr)]">
-            <Skeleton className="h-[36rem] rounded-2xl" />
-            <Skeleton className="hidden h-[36rem] rounded-2xl lg:block" />
+          <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityClasses(nextReview.severity))}>
+            {nextReview.severityLabel}
+          </span>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="surface-accent px-5 py-5">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityClasses(nextReview.severity))}>
+                  {nextReview.issueLabel}
+                </span>
+                <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-secondary">
+                  {formatShift(nextReview.item.shift)}
+                </span>
+                <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-secondary">
+                  {formatDate(nextReview.item.attendance_date)}
+                </span>
+              </div>
+              <div>
+                <div className="text-2xl font-semibold text-text-primary">{nextReview.item.name}</div>
+                <div className="mt-2 text-sm text-text-secondary">
+                  ID {nextReview.item.user_code} | {nextReview.item.department || "No department"} | {formatRole(nextReview.item.role)}
+                </div>
+              </div>
+              <div className="max-w-3xl text-sm leading-6 text-text-primary">{nextReview.headline}</div>
+              <div className="flex flex-wrap gap-2 text-xs text-text-secondary">
+                <span className="rounded-full border border-[var(--border)] px-3 py-1">Attendance {formatAttendanceStatusLabel(nextReview.item.status)}</span>
+                <span className="rounded-full border border-[var(--border)] px-3 py-1">Review {formatAttendanceReviewStatusLabel(nextReview.item.review_status)}</span>
+                {nextReview.issueType === "missed_punch" ? (
+                  <span className={cn("rounded-full px-3 py-1 font-semibold uppercase tracking-[0.14em]", severityClasses("critical"))}>
+                    Missed punch
+                  </span>
+                ) : null}
+                <span className="rounded-full border border-[var(--border)] px-3 py-1">Punch in {formatDateTime(nextReview.item.punch_in_at)}</span>
+                <span className="rounded-full border border-[var(--border)] px-3 py-1">Punch out {formatDateTime(nextReview.item.punch_out_at)}</span>
+              </div>
+            </div>
+            <div className="flex flex-col items-start gap-3 sm:items-end">
+              <Button
+                className="px-4 py-2 text-xs"
+                onClick={() =>
+                  openReview(
+                    nextReview.item.attendance_id,
+                    typeof window !== "undefined" && window.innerWidth < 1024,
+                    nextReview.item.regularization || nextReview.issueType === "missed_punch" ? "fix" : "details",
+                  )
+                }
+              >
+                Review next
+              </Button>
+              <div className="rounded-2xl border border-[var(--border)] bg-[rgba(10,14,24,0.78)] px-4 py-3 text-sm text-text-secondary">
+                Worked {formatMinutes(nextReview.item.worked_minutes)}
+              </div>
+            </div>
           </div>
         </div>
-      </main>
+
+        <details className="group rounded-3xl border border-[var(--border)] bg-[var(--card-strong)]">
+          <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-5 py-4">
+            <div>
+              <div className="text-sm text-text-secondary">Backlog</div>
+              <div className="mt-1 text-lg font-semibold text-text-primary">More attendance issues</div>
+            </div>
+            <span className="rounded-full border border-[var(--border)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-text-primary">
+              {remainingFilteredItems.length} more
+            </span>
+          </summary>
+          <div className="border-t border-[var(--border)]">
+            {remainingFilteredItems.length ? (
+              <>
+                <Card className="hidden rounded-none border-0 bg-transparent shadow-none lg:block">
+                  <CardHeader className="flex flex-row items-center justify-between gap-3">
+                    <div>
+                      <div className="text-sm text-text-secondary">Review board</div>
+                      <CardTitle className="text-xl">Attendance issues by priority</CardTitle>
+                    </div>
+                    <div className="text-sm text-text-secondary">Critical items stay at the top for faster closure.</div>
+                  </CardHeader>
+                  <CardContent className="px-0 pb-0">
+                    <ResponsiveScrollArea debugLabel="attendance-review-backlog-table">
+                      <table className="min-w-full border-separate border-spacing-0">
+                        <thead>
+                          <tr className="text-left text-xs uppercase tracking-[0.14em] text-text-secondary">
+                            <th className="px-6 py-3">Employee</th>
+                            <th className="px-4 py-3">Date</th>
+                            <th className="px-4 py-3">Shift</th>
+                            <th className="px-4 py-3">Punch In</th>
+                            <th className="px-4 py-3">Punch Out</th>
+                            <th className="px-4 py-3">Issue</th>
+                            <th className="px-4 py-3">Status</th>
+                            <th className="px-6 py-3 text-right">Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {remainingFilteredItems.map((review) => {
+                            const isActive = review.item.attendance_id === selectedAttendanceId;
+                            return (
+                              <tr
+                                key={review.item.attendance_id}
+                                className={cn(
+                                  "cursor-pointer border-t border-[var(--border)]/60 text-sm transition hover:bg-[rgba(255,255,255,0.02)]",
+                                  isActive ? "bg-[rgba(34,211,238,0.08)]" : "bg-transparent",
+                                )}
+                                onClick={() =>
+                                  openReview(
+                                    review.item.attendance_id,
+                                    false,
+                                    review.item.regularization || review.issueType === "missed_punch" ? "fix" : "details",
+                                  )
+                                }
+                              >
+                                <td className="px-6 py-4 align-top">
+                                  <div className="flex items-start gap-3">
+                                    <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--status-info-bg)] text-sm font-semibold text-[var(--status-info-fg)]">
+                                      {getAvatarLabel(review.item.name)}
+                                    </div>
+                                    <div>
+                                      <div className="font-semibold text-text-primary">{review.item.name}</div>
+                                      <div className="mt-1 text-xs text-text-secondary">
+                                        ID {review.item.user_code} | {review.item.department || "No department"}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-4 text-text-primary">{formatDate(review.item.attendance_date)}</td>
+                                <td className="px-4 py-4 text-text-primary">{formatShift(review.item.shift)}</td>
+                                <td className="px-4 py-4 text-text-primary">{formatDateTime(review.item.punch_in_at)}</td>
+                                <td className="px-4 py-4 text-text-primary">{formatDateTime(review.item.punch_out_at)}</td>
+                                <td className="px-4 py-4">
+                                  <div className="space-y-2">
+                                    <span
+                                      className={cn(
+                                        "inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]",
+                                        severityClasses(review.severity),
+                                      )}
+                                    >
+                                      {review.issueLabel}
+                                    </span>
+                                    <div className="max-w-[17rem] text-xs leading-5 text-text-secondary">{review.headline}</div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-4">
+                                  <div className="text-sm font-semibold text-text-primary">
+                                    {formatAttendanceReviewStatusLabel(review.item.review_status)}
+                                  </div>
+                                  <div className="mt-1 text-xs text-text-secondary">{formatAttendanceStatusLabel(review.item.status)}</div>
+                                  {review.issueType === "missed_punch" ? (
+                                    <div className="mt-2">
+                                      <span className={cn("rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]", severityClasses("critical"))}>
+                                        Missed punch
+                                      </span>
+                                    </div>
+                                  ) : null}
+                                </td>
+                                <td className="px-6 py-4 text-right">
+                                  <Button
+                                    className="px-4 py-2 text-xs"
+                                    onClick={(event) => {
+                                      event.stopPropagation();
+                                      openReview(
+                                        review.item.attendance_id,
+                                        false,
+                                        review.item.regularization || review.issueType === "missed_punch" ? "fix" : "details",
+                                      );
+                                    }}
+                                  >
+                                    Review
+                                  </Button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </ResponsiveScrollArea>
+                  </CardContent>
+                </Card>
+
+                <div className="space-y-4 p-5 lg:hidden">
+                  {remainingFilteredItems.map((review) => (
+                    <Card key={review.item.attendance_id} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+                      <CardContent className="space-y-4 px-5 py-5">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <div className="text-lg font-semibold text-text-primary">{review.item.name}</div>
+                            <div className="mt-1 text-sm text-text-secondary">
+                              {review.item.department || "No department"} | {formatShift(review.item.shift)}
+                            </div>
+                          </div>
+                          <span
+                            className={cn(
+                              "rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]",
+                              severityClasses(review.severity),
+                            )}
+                          >
+                            {review.severityLabel}
+                          </span>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div className="text-sm font-semibold text-text-primary">{review.issueLabel}</div>
+                          <div className="text-sm leading-6 text-text-secondary">{review.headline}</div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 text-sm">
+                          <div className="rounded-2xl border border-[var(--border)] bg-[rgba(10,14,24,0.78)] p-3">
+                            <div className="text-text-secondary">Date</div>
+                            <div className="mt-1 font-semibold text-text-primary">{formatDate(review.item.attendance_date)}</div>
+                          </div>
+                          <div className="rounded-2xl border border-[var(--border)] bg-[rgba(10,14,24,0.78)] p-3">
+                            <div className="text-text-secondary">Worked</div>
+                            <div className="mt-1 font-semibold text-text-primary">{formatMinutes(review.item.worked_minutes)}</div>
+                          </div>
+                        </div>
+
+                        <Button
+                          className="w-full"
+                          onClick={() =>
+                            openReview(
+                              review.item.attendance_id,
+                              true,
+                              review.item.regularization || review.issueType === "missed_punch" ? "fix" : "details",
+                            )
+                          }
+                        >
+                          {review.actionLabel}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <div className="px-5 py-5 text-sm text-text-secondary">Only the featured attendance issue is waiting right now.</div>
+            )}
+          </div>
+        </details>
+      </CardContent>
+    </Card>
+  ) : (
+    <EmptyQueueState filtered={derivedItems.length > 0} />
+  );
+
+  if (loading || (pageLoading && user && canReview && !hasLoadedOnce)) {
+    return (
+      <OperationalPageShell
+        eyebrow="Attendance Review"
+        title="Close the next attendance exception fast"
+        description="Review missed punches and correction requests."
+        isLoading
+        loadingTitle="Loading attendance review"
+        metrics={[]}
+      >
+        <div />
+      </OperationalPageShell>
     );
   }
 
@@ -891,7 +1197,7 @@ export default function AttendanceReviewPage() {
             <CardTitle>Attendance Review</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-[var(--muted)]">
+            <div className="text-sm text-text-secondary">
               Attendance review is available to supervisor, manager, admin, and owner roles.
             </div>
             <div className="flex flex-wrap gap-3">
@@ -909,62 +1215,39 @@ export default function AttendanceReviewPage() {
   }
 
   return (
-    <main className="operational-page">
-      <div className="operational-page__inner route-workspace">
-        {/* AUDIT: FLOW_BROKEN - lead the screen with the next attendance review instead of a broad review-board description. */}
-        <section className="route-header">
-          <div className="route-header__grid">
-            <div className="route-header__copy">
-              <div className="route-header__eyebrow">Attendance Review</div>
-              <h1 className="route-header__title">Close the next attendance exception fast</h1>
-              <p className="route-header__body">
-                Review missed punches and correction requests for {payload?.factory_name || activeFactory?.name || user.factory_name}, then move through the rest of the queue without losing fix context.
-              </p>
-              <div className="route-header__meta">
-                <div className="route-header__meta-item">
-                  <span>Factory</span>
-                  <strong>{payload?.factory_name || activeFactory?.name || user.factory_name}</strong>
-                </div>
-                <div className="route-header__meta-item">
-                  <span>Updated</span>
-                  <strong>{refreshing ? "Refreshing..." : lastUpdatedAt ? formatDateTime(lastUpdatedAt) : "Live / 25s"}</strong>
-                </div>
-                <div className="route-header__meta-item">
-                  <span>Open</span>
-                  <strong>{filteredItems.length}</strong>
-                </div>
-              </div>
-            </div>
-
-            <div className="route-header__actions">
-              {nextReview ? (
-                <Button
-                  className="px-4 py-2 text-xs"
-                  onClick={() =>
+    <>
+      <OperationalPageShell
+        eyebrow="Attendance Review"
+        title="Close the next attendance exception fast"
+        description={`Review missed punches and correction requests for ${payload?.factory_name || activeFactory?.name || user.factory_name}, then move through the rest of the queue without losing fix context.`}
+        toneLabel={refreshing ? "Refreshing..." : lastUpdatedAt ? formatDateTime(lastUpdatedAt) : "Live / 25s"}
+        metrics={reviewMetrics}
+        filters={reviewFilters}
+        actions={[
+          ...(nextReview
+            ? [
+                {
+                  id: "review-next",
+                  label: "Review next",
+                  onAction: () =>
                     openReview(
                       nextReview.item.attendance_id,
                       typeof window !== "undefined" && window.innerWidth < 1024,
                       nextReview.item.regularization || nextReview.issueType === "missed_punch" ? "fix" : "details",
-                    )
-                  }
-                >
-                  Review next
-                </Button>
-              ) : null}
-              <Button
-                variant="outline"
-                className="px-4 py-2 text-xs"
-                onClick={() => {
-                  void loadReview({ background: true });
-                }}
-                disabled={refreshing || busyId != null}
-              >
-                {refreshing ? "Refreshing..." : "Refresh"}
-              </Button>
-            </div>
-          </div>
-        </section>
-
+                    ),
+                },
+              ]
+            : []),
+          {
+            id: "refresh",
+            label: refreshing ? "Refreshing..." : "Refresh",
+            variant: "outline" as const,
+            onAction: () => {
+              void loadReview({ background: true });
+            },
+          },
+        ]}
+      >
         <GuidanceBlock
           surfaceKey="attendance-review-flow"
           title="Review tips"
@@ -1013,367 +1296,12 @@ export default function AttendanceReviewPage() {
           <MutationErrorBanner message={sessionError} />
         ) : null}
 
-        {/* AUDIT: DENSITY_OVERLOAD - collapse queue pulse metrics until the reviewer wants backlog context. */}
-        <details className="group route-panel">
-          <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
-            <div>
-              <div className="text-sm text-[var(--muted)]">Queue pulse</div>
-              <div className="mt-1 text-xl font-semibold text-[var(--text)]">Attendance load and risk</div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border border-[var(--border)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text)]">
-                Open {derivedItems.length}
-              </span>
-              <span className="rounded-full border border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--status-danger-fg)]">
-                Critical {highPriorityCount}
-              </span>
-            </div>
-          </summary>
-          <div className="grid gap-4 border-t border-[var(--border)] px-6 py-6 md:grid-cols-2 xl:grid-cols-4">
-            <SummaryCard label="Pending review" value={derivedItems.length} helper="Attendance rows still waiting for a supervisor decision." />
-            <SummaryCard label="High priority" value={highPriorityCount} helper="Critical issues that can affect payroll or shift closure." />
-            <SummaryCard label="Regularizations" value={regularizationCount} helper="Worker-submitted requests that need final approval." />
-            <SummaryCard label="Late signals" value={lateSignals} helper="Records with late arrival data that should be confirmed." />
-          </div>
-        </details>
-
-        {/* AUDIT: BUTTON_CLUTTER - move route jumps and filters into one tools tray so the issue queue stays primary. */}
-        <details className="group route-panel">
-          <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
-            <div>
-              <div className="text-sm text-[var(--muted)]">Review tools</div>
-              <div className="mt-1 text-xl font-semibold text-[var(--text)]">Routes and filters</div>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border border-[var(--border)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text)]">
-                Showing {filteredItems.length} of {derivedItems.length}
-              </span>
-            </div>
-          </summary>
-          <div className="space-y-4 border-t border-[var(--border)] px-6 py-6">
-            <div className="flex flex-wrap gap-3">
-              <Link href="/attendance">
-                <Button variant="outline" className="px-4 py-2 text-xs">My Attendance</Button>
-              </Link>
-              <Link href="/attendance/live">
-                <Button variant="outline" className="px-4 py-2 text-xs">Live Board</Button>
-              </Link>
-              {canManage ? (
-                <Link href="/settings/attendance">
-                  <Button variant="outline" className="px-4 py-2 text-xs">Admin</Button>
-                </Link>
-              ) : null}
-            </div>
-
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-              <div className="xl:col-span-2">
-                <label className="text-sm text-[var(--muted)]">Search</label>
-                <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  placeholder="Search name, department, role, or issue"
-                />
-              </div>
-              <div>
-                <label className="text-sm text-[var(--muted)]">Review date</label>
-                <Input aria-label="Review date" type="date" value={attendanceDate} onChange={(event) => setAttendanceDate(event.target.value)} />
-              </div>
-              <div>
-                <label className="text-sm text-[var(--muted)]">Issue type</label>
-                <Select aria-label="Issue type" value={issueFilter} onChange={(event) => setIssueFilter(event.target.value as "all" | ReviewIssueType)}>
-                  {ISSUE_TYPE_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm text-[var(--muted)]">Shift</label>
-                <Select aria-label="Shift" value={shiftFilter} onChange={(event) => setShiftFilter(event.target.value)}>
-                  <option value="all">All shifts</option>
-                  <option value="morning">Morning</option>
-                  <option value="evening">Evening</option>
-                  <option value="night">Night</option>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm text-[var(--muted)]">Department</label>
-                <Select aria-label="Department" value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)}>
-                  <option value="all">All departments</option>
-                  {departmentOptions.map((department) => (
-                    <option key={department} value={department}>
-                      {department}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            </div>
-          </div>
-        </details>
-
-        <section className="route-grid-main route-grid-main--sidebar">
-          <div className="route-stack">
-            {nextReview ? (
-              <>
-                {/* AUDIT: FLOW_BROKEN - feature the next attendance issue before the wider backlog so the first move is obvious. */}
-                <Card className="route-table-anchor border-[var(--border)] bg-surface-panel">
-                  <CardHeader className="space-y-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div>
-                        <div className="text-sm text-[var(--muted)]">Review next</div>
-                        <CardTitle className="text-xl">Top attendance issue</CardTitle>
-                      </div>
-                      <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityClasses(nextReview.severity))}>
-                        {nextReview.severityLabel}
-                      </span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="surface-accent px-5 py-5">
-                      <div className="flex flex-wrap items-start justify-between gap-4">
-                        <div className="space-y-3">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityClasses(nextReview.severity))}>
-                              {nextReview.issueLabel}
-                            </span>
-                            <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
-                              {formatShift(nextReview.item.shift)}
-                            </span>
-                            <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
-                              {formatDate(nextReview.item.attendance_date)}
-                            </span>
-                          </div>
-                          <div>
-                            <div className="text-2xl font-semibold text-[var(--text)]">{nextReview.item.name}</div>
-                            <div className="mt-2 text-sm text-[var(--muted)]">
-                              ID {nextReview.item.user_code} | {nextReview.item.department || "No department"} | {formatRole(nextReview.item.role)}
-                            </div>
-                          </div>
-                          <div className="max-w-3xl text-sm leading-6 text-[var(--text)]">{nextReview.headline}</div>
-                          <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
-                            <span className="rounded-full border border-[var(--border)] px-3 py-1">Attendance {formatAttendanceStatusLabel(nextReview.item.status)}</span>
-                            <span className="rounded-full border border-[var(--border)] px-3 py-1">Review {formatAttendanceReviewStatusLabel(nextReview.item.review_status)}</span>
-                            {nextReview.issueType === "missed_punch" ? (
-                              <span className={cn("rounded-full px-3 py-1 font-semibold uppercase tracking-[0.14em]", severityClasses("critical"))}>
-                                Missed punch
-                              </span>
-                            ) : null}
-                            <span className="rounded-full border border-[var(--border)] px-3 py-1">Punch in {formatDateTime(nextReview.item.punch_in_at)}</span>
-                            <span className="rounded-full border border-[var(--border)] px-3 py-1">Punch out {formatDateTime(nextReview.item.punch_out_at)}</span>
-                          </div>
-                        </div>
-                        <div className="flex flex-col items-start gap-3 sm:items-end">
-                          <Button
-                            className="px-4 py-2 text-xs"
-                            onClick={() =>
-                              openReview(
-                                nextReview.item.attendance_id,
-                                typeof window !== "undefined" && window.innerWidth < 1024,
-                                nextReview.item.regularization || nextReview.issueType === "missed_punch" ? "fix" : "details",
-                              )
-                            }
-                          >
-                            Review next
-                          </Button>
-                          <div className="rounded-2xl border border-[var(--border)] bg-[rgba(10,14,24,0.78)] px-4 py-3 text-sm text-[var(--muted)]">
-                            Worked {formatMinutes(nextReview.item.worked_minutes)}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* AUDIT: DENSITY_OVERLOAD - keep the rest of the issue queue available, but tuck it below the featured next item. */}
-                    <details className="group rounded-3xl border border-[var(--border)] bg-[var(--card-strong)]">
-                      <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-5 py-4">
-                        <div>
-                          <div className="text-sm text-[var(--muted)]">Backlog</div>
-                          <div className="mt-1 text-lg font-semibold text-[var(--text)]">More attendance issues</div>
-                        </div>
-                        <span className="rounded-full border border-[var(--border)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text)]">
-                          {remainingFilteredItems.length} more
-                        </span>
-                      </summary>
-                      <div className="border-t border-[var(--border)]">
-                        {remainingFilteredItems.length ? (
-                          <>
-                            <Card className="hidden rounded-none border-0 bg-transparent shadow-none lg:block">
-                              <CardHeader className="flex flex-row items-center justify-between gap-3">
-                                <div>
-                                  <div className="text-sm text-[var(--muted)]">Review board</div>
-                                  <CardTitle className="text-xl">Attendance issues by priority</CardTitle>
-                                </div>
-                                <div className="text-sm text-[var(--muted)]">Critical items stay at the top for faster closure.</div>
-                              </CardHeader>
-                              <CardContent className="px-0 pb-0">
-                                <ResponsiveScrollArea debugLabel="attendance-review-backlog-table">
-                                  <table className="min-w-full border-separate border-spacing-0">
-                                    <thead>
-                                      <tr className="text-left text-xs uppercase tracking-[0.14em] text-[var(--muted)]">
-                                        <th className="px-6 py-3">Employee</th>
-                                        <th className="px-4 py-3">Date</th>
-                                        <th className="px-4 py-3">Shift</th>
-                                        <th className="px-4 py-3">Punch In</th>
-                                        <th className="px-4 py-3">Punch Out</th>
-                                        <th className="px-4 py-3">Issue</th>
-                                        <th className="px-4 py-3">Status</th>
-                                        <th className="px-6 py-3 text-right">Action</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {remainingFilteredItems.map((review) => {
-                                        const isActive = review.item.attendance_id === selectedAttendanceId;
-                                        return (
-                                          <tr
-                                            key={review.item.attendance_id}
-                                            className={cn(
-                                              "cursor-pointer border-t border-[var(--border)]/60 text-sm transition hover:bg-[rgba(255,255,255,0.02)]",
-                                              isActive ? "bg-[rgba(34,211,238,0.08)]" : "bg-transparent",
-                                            )}
-                                            onClick={() =>
-                                              openReview(
-                                                review.item.attendance_id,
-                                                false,
-                                                review.item.regularization || review.issueType === "missed_punch" ? "fix" : "details",
-                                              )
-                                            }
-                                          >
-                                            <td className="px-6 py-4 align-top">
-                                              <div className="flex items-start gap-3">
-                                                <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--status-info-bg)] text-sm font-semibold text-[var(--status-info-fg)]">
-                                                  {getAvatarLabel(review.item.name)}
-                                                </div>
-                                                <div>
-                                                  <div className="font-semibold text-[var(--text)]">{review.item.name}</div>
-                                                  <div className="mt-1 text-xs text-[var(--muted)]">
-                                                    ID {review.item.user_code} | {review.item.department || "No department"}
-                                                  </div>
-                                                </div>
-                                              </div>
-                                            </td>
-                                            <td className="px-4 py-4 text-[var(--text)]">{formatDate(review.item.attendance_date)}</td>
-                                            <td className="px-4 py-4 text-[var(--text)]">{formatShift(review.item.shift)}</td>
-                                            <td className="px-4 py-4 text-[var(--text)]">{formatDateTime(review.item.punch_in_at)}</td>
-                                            <td className="px-4 py-4 text-[var(--text)]">{formatDateTime(review.item.punch_out_at)}</td>
-                                            <td className="px-4 py-4">
-                                              <div className="space-y-2">
-                                                <span
-                                                  className={cn(
-                                                    "inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]",
-                                                    severityClasses(review.severity),
-                                                  )}
-                                                >
-                                                  {review.issueLabel}
-                                                </span>
-                                                <div className="max-w-[17rem] text-xs leading-5 text-[var(--muted)]">{review.headline}</div>
-                                              </div>
-                                            </td>
-                                            <td className="px-4 py-4">
-                                              <div className="text-sm font-semibold text-[var(--text)]">
-                                                {formatAttendanceReviewStatusLabel(review.item.review_status)}
-                                              </div>
-                                              <div className="mt-1 text-xs text-[var(--muted)]">{formatAttendanceStatusLabel(review.item.status)}</div>
-                                              {review.issueType === "missed_punch" ? (
-                                                <div className="mt-2">
-                                                  <span className={cn("rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]", severityClasses("critical"))}>
-                                                    Missed punch
-                                                  </span>
-                                                </div>
-                                              ) : null}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                              <Button
-                                                className="px-4 py-2 text-xs"
-                                                onClick={(event) => {
-                                                  event.stopPropagation();
-                                                  openReview(
-                                                    review.item.attendance_id,
-                                                    false,
-                                                    review.item.regularization || review.issueType === "missed_punch" ? "fix" : "details",
-                                                  );
-                                                }}
-                                              >
-                                                Review
-                                              </Button>
-                                            </td>
-                                          </tr>
-                                        );
-                                      })}
-                                    </tbody>
-                                  </table>
-                                </ResponsiveScrollArea>
-                              </CardContent>
-                            </Card>
-
-                            <div className="space-y-4 p-5 lg:hidden">
-                              {remainingFilteredItems.map((review) => (
-                                <Card key={review.item.attendance_id} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
-                                  <CardContent className="space-y-4 px-5 py-5">
-                                    <div className="flex items-start justify-between gap-3">
-                                      <div>
-                                        <div className="text-lg font-semibold text-[var(--text)]">{review.item.name}</div>
-                                        <div className="mt-1 text-sm text-[var(--muted)]">
-                                          {review.item.department || "No department"} | {formatShift(review.item.shift)}
-                                        </div>
-                                      </div>
-                                      <span
-                                        className={cn(
-                                          "rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]",
-                                          severityClasses(review.severity),
-                                        )}
-                                      >
-                                        {review.severityLabel}
-                                      </span>
-                                    </div>
-
-                                    <div className="space-y-2">
-                                      <div className="text-sm font-semibold text-[var(--text)]">{review.issueLabel}</div>
-                                      <div className="text-sm leading-6 text-[var(--muted)]">{review.headline}</div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 gap-3 text-sm">
-                                      <div className="rounded-2xl border border-[var(--border)] bg-[rgba(10,14,24,0.78)] p-3">
-                                        <div className="text-[var(--muted)]">Date</div>
-                                        <div className="mt-1 font-semibold text-[var(--text)]">{formatDate(review.item.attendance_date)}</div>
-                                      </div>
-                                      <div className="rounded-2xl border border-[var(--border)] bg-[rgba(10,14,24,0.78)] p-3">
-                                        <div className="text-[var(--muted)]">Worked</div>
-                                        <div className="mt-1 font-semibold text-[var(--text)]">{formatMinutes(review.item.worked_minutes)}</div>
-                                      </div>
-                                    </div>
-
-                                    <Button
-                                      className="w-full"
-                                      onClick={() =>
-                                        openReview(
-                                          review.item.attendance_id,
-                                          true,
-                                          review.item.regularization || review.issueType === "missed_punch" ? "fix" : "details",
-                                        )
-                                      }
-                                    >
-                                      {review.actionLabel}
-                                    </Button>
-                                  </CardContent>
-                                </Card>
-                              ))}
-                            </div>
-                          </>
-                        ) : (
-                          <div className="px-5 py-5 text-sm text-[var(--muted)]">Only the featured attendance issue is waiting right now.</div>
-                        )}
-                      </div>
-                    </details>
-                  </CardContent>
-                </Card>
-              </>
-            ) : (
-              <EmptyQueueState filtered={derivedItems.length > 0} />
-            )}
-          </div>
-
-          <div className="hidden lg:block">
-            <div className="sticky top-24">
+        <QueueWorkspaceLayout
+          queueTitle={`Showing ${filteredItems.length} of ${derivedItems.length}`}
+          workspaceTitle="Review panel"
+          queue={reviewQueue}
+          workspace={
+            <div className="hidden lg:block">
               <ReviewDetailPanel
                 review={selectedReview}
                 form={selectedForm}
@@ -1385,9 +1313,9 @@ export default function AttendanceReviewPage() {
                 busyId={busyId}
               />
             </div>
-          </div>
-        </section>
-      </div>
+          }
+        />
+      </OperationalPageShell>
 
       {mobileDetailOpen ? (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(4,8,16,0.96)] px-4 py-4 lg:hidden">
@@ -1405,6 +1333,6 @@ export default function AttendanceReviewPage() {
           />
         </div>
       ) : null}
-    </main>
+    </>
   );
 }

@@ -15,6 +15,8 @@ import {
 import { getQuotaHealth, quotaLabel } from "@/lib/quota-health";
 import type { BillingStatus } from "@/lib/settings";
 import { useSession } from "@/lib/use-session";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { ResponsiveScrollArea } from "./ui/responsive-scroll-area";
@@ -185,34 +187,36 @@ export default function PlansPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("billing.plans.title", "Plans")}</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Plans</h1>
-              {/* AUDIT: TEXT_NOISE - shorten the hero copy so plan choice stays more prominent than pricing narration */}
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">{t("billing.plans.description", "Choose plan. Add OCR only if needed.")}</p>
-            </div>
-            {/* AUDIT: BUTTON_CLUTTER - move billing and dashboard jumps into a secondary tools tray so plan cards own the decision flow */}
-            <details className="w-full min-w-0 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4 sm:w-auto sm:min-w-[240px]">
-            <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("billing.plans.tools", "Plan tools")}</summary>
-            <div className="mt-4 flex flex-wrap gap-3">
-              <Link href="/billing">
-                  <Button>{canViewBilling ? t("billing.billing.title", "Billing") : t("billing.plans.access_help", "Access help")}</Button>
-              </Link>
-              <Link href="/dashboard">
-                  <Button variant="outline">{t("billing.billing.dashboard", "Dashboard")}</Button>
-              </Link>
-            </div>
-          </details>
-          </div>
-
-          {/* AUDIT: DENSITY_OVERLOAD - tuck billing context into a secondary summary so the hero stays focused on choosing a plan */}
-          <details className="mt-5 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-            <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">Current billing context</summary>
-            <div className="mt-4 flex flex-wrap gap-3 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+    <OperationalPageShell
+      className="factory-workstation-scope"
+      contentClassName="mx-auto max-w-7xl space-y-6"
+      eyebrow={t("billing.plans.title", "Plans")}
+      title="Plans"
+      description={t("billing.plans.description", "Choose plan. Add OCR only if needed.")}
+      metrics={[
+        { id: "current-plan", label: "Current plan", value: currentPlan || "free" },
+        { id: "ocr-packs", label: "OCR packs", value: formatActiveAddons(billingSnapshot?.active_addons) },
+      ]}
+      actions={[
+        {
+          id: "billing",
+          label: canViewBilling ? t("billing.billing.title", "Billing") : t("billing.plans.access_help", "Access help"),
+          onAction: () => {
+            window.location.assign("/billing");
+          },
+        },
+        {
+          id: "dashboard",
+          label: t("billing.billing.dashboard", "Dashboard"),
+          variant: "outline",
+          onAction: () => {
+            window.location.assign("/dashboard");
+          },
+        },
+      ]}
+    >
+        <DisclosurePanel title="Current billing context" variant="ghost">
+            <div className="flex flex-wrap gap-3 text-xs uppercase tracking-[0.18em] text-text-secondary">
               <span className={`rounded-full px-3 py-1 ${badgeClass("blue")}`}>
                 Current plan: {currentPlan || "free"}
               </span>
@@ -223,14 +227,10 @@ export default function PlansPage() {
                 Last upgrade: {lastUpgrade || "Not recorded"}
               </span>
             </div>
-          </details>
-        </section>
+        </DisclosurePanel>
 
-        {/* AUDIT: FLOW_BROKEN - add a clear pricing sequence so the page leads users from plan choice into add-ons and billing */}
-        {/* AUDIT: DENSITY_OVERLOAD - keep usage health visible but secondary so it does not compete with plan cards */}
-        <details className="rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-5 py-5">
-          <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">Current AI usage</summary>
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
+        <DisclosurePanel title="Current AI usage">
+          <div className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardHeader>
                 <div className="flex items-start justify-between gap-3">
@@ -289,7 +289,7 @@ export default function PlansPage() {
               </CardContent>
             </Card>
           </div>
-        </details>
+        </DisclosurePanel>
 
         <section className="grid gap-6 xl:grid-cols-3">
           {plans.map((plan) => {
@@ -426,8 +426,7 @@ export default function PlansPage() {
         </section>
 
         {plans.length ? (
-          <details className="rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-5 py-5">
-            <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">Compare all plans</summary>
+          <DisclosurePanel title="Compare all plans">
             <ResponsiveScrollArea
               className="mt-4 rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]"
               debugLabel="plans-compare-table"
@@ -497,7 +496,7 @@ export default function PlansPage() {
                 </tbody>
               </table>
             </ResponsiveScrollArea>
-          </details>
+          </DisclosurePanel>
         ) : null}
 
         {!canViewBilling ? (
@@ -521,7 +520,6 @@ export default function PlansPage() {
         </Card>
 
         {(error || sessionError) && !plansLoading ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

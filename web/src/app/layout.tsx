@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans, Inter } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { cn } from "@/lib/utils";
@@ -20,6 +20,20 @@ const inter = Inter({
   weight: ["400", "500", "600"],
 });
 
+const ibmPlexSans = IBM_Plex_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-plex-sans",
+  weight: ["400", "500", "600"],
+});
+
+const ibmPlexMono = IBM_Plex_Mono({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-plex-mono",
+  weight: ["400", "500"],
+});
+
 export const metadata: Metadata = {
   title: "DPR.ai Web",
   description: "Modern production-ready frontend for DPR.ai",
@@ -37,8 +51,8 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#09111B" },
-    { media: "(prefers-color-scheme: light)", color: "#f0f2f5" },
+    { media: "(prefers-color-scheme: dark)", color: "#0f1117" },
+    { media: "(prefers-color-scheme: light)", color: "#f7f6f4" },
   ],
   width: "device-width",
   initialScale: 1,
@@ -61,7 +75,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={cn("h-full antialiased", inter.variable)}
+      className={cn("h-full antialiased", inter.variable, ibmPlexSans.variable, ibmPlexMono.variable)}
       data-theme="dark"
       data-density="default"
     >

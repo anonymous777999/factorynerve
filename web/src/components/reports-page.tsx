@@ -33,6 +33,8 @@ import { useSession } from "@/lib/use-session";
 import { ReportsPageSkeleton } from "@/components/page-skeletons";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
 import { Field, Label } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
@@ -682,67 +684,72 @@ export default function ReportsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8" data-component="reports-page">
-      <div className="mx-auto max-w-7xl">
-        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur overflow-hidden">
-          <div className="min-w-0">
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("reports.title", "Reports")}</div>
-            <h1 className="mt-2 text-3xl font-semibold break-words max-w-full">{t("reports.hero.title", "Factory reports")}</h1>
-            {/* AUDIT: TEXT_NOISE - The hero now states the outcome once and lets the step strip explain the workflow. */}
-            <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
-              {t("reports.hero.subtitle", "Set range. Export trusted output.")}
-            </p>
-            <div className="mt-4 flex flex-wrap gap-2 text-xs">
-              <span className="rounded-full border border-cyan-400/25 bg-[rgba(34,211,238,0.08)] px-3 py-1 text-cyan-100">
-                {t("reports.hero.trusted_outputs", "Trusted outputs only")}
-              </span>
-              <span className="rounded-full border border-white/10 bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[var(--muted)]">
-                {activeFactory?.name || t("reports.hero.current_factory", "Current factory")}
-              </span>
-            </div>
+    <OperationalPageShell
+      className="factory-workstation-scope"
+      contentClassName="mx-auto max-w-7xl"
+      eyebrow={t("reports.title", "Reports")}
+      title={t("reports.hero.title", "Factory reports")}
+      description={t("reports.hero.subtitle", "Set range. Export trusted output.")}
+      metrics={[
+        {
+          id: "factory",
+          label: t("reports.hero.current_factory", "Current factory"),
+          value: activeFactory?.name || "-",
+        },
+        {
+          id: "trusted",
+          label: t("reports.hero.trusted_outputs", "Trusted outputs"),
+          value: "Active",
+        },
+      ]}
+      actions={[
+        {
+          id: "export-excel",
+          label: busy ? t("reports.actions.working", "Working...") : t("reports.actions.export_excel", "Export Excel"),
+          onAction: () => {
+            void handleRangeExcelJob();
+          },
+        },
+        ...(!isAccountant
+          ? [
+              {
+                id: "refresh",
+                label:
+                  refreshing || refreshingInsights
+                    ? t("reports.actions.refreshing", "Refreshing...")
+                    : t("reports.actions.refresh", "Refresh"),
+                variant: "outline" as const,
+                onAction: () => {
+                  handleRefreshAll();
+                },
+              },
+            ]
+          : []),
+      ]}
+    >
+      <div data-component="reports-page" className="space-y-6">
+        <DisclosurePanel title={t("reports.actions.more", "More")} variant="ghost">
+          <div className="flex flex-wrap gap-2">
+            <Link href="/dashboard">
+              <Button variant="outline">{t("reports.actions.dashboard", "Dashboard")}</Button>
+            </Link>
+            <Link href="/email-summary">
+              <Button variant="outline">{t("reports.actions.email_desk", "Email Desk")}</Button>
+            </Link>
+            <Link href="/entry">
+              <Button variant="outline">{t("reports.actions.new_entry", "New Entry")}</Button>
+            </Link>
           </div>
-          <div className="min-w-0 space-y-3">
-            <div className="flex flex-wrap items-center gap-3">
-              {/* AUDIT: BUTTON_CLUTTER - Kept the main export launch visible and moved route-jump utilities into a compact tray. */}
-              <Button onClick={handleRangeExcelJob} disabled={busy}>
-                {busy ? t("reports.actions.working", "Working...") : t("reports.actions.export_excel", "Export Excel")}
-              </Button>
-              <details className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.03)] px-3 py-2 text-sm text-[var(--muted)]">
-                <summary className="cursor-pointer list-none">{t("reports.actions.more", "More")}</summary>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <Link href="/dashboard">
-                    <Button variant="outline">{t("reports.actions.dashboard", "Dashboard")}</Button>
-                  </Link>
-                  <Link href="/email-summary">
-                    <Button variant="outline">{t("reports.actions.email_desk", "Email Desk")}</Button>
-                  </Link>
-                  <Link href="/entry">
-                    <Button variant="outline">{t("reports.actions.new_entry", "New Entry")}</Button>
-                  </Link>
-                </div>
-              </details>
-            </div>
-            {!isAccountant ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant="outline"
-                  className="px-4 py-2 text-xs"
-                  onClick={handleRefreshAll}
-                  disabled={loadingRows || loadingInsights || refreshing || refreshingInsights}
-                >
-                  {refreshing || refreshingInsights ? t("reports.actions.refreshing", "Refreshing...") : t("reports.actions.refresh", "Refresh")}
-                </Button>
-                <span className="text-xs text-[var(--muted)]">
-                  {refreshing || refreshingInsights
-                    ? t("reports.actions.updating", "Updating reports...")
-                    : lastUpdatedAt
-                      ? t("reports.actions.updated", "Updated {{value}}", { value: formatDateTime(lastUpdatedAt) })
-                      : t("reports.actions.live_updates", "Live updates every 40 seconds")}
-                </span>
-              </div>
-            ) : null}
-          </div>
-        </section>
+        </DisclosurePanel>
+        {!isAccountant ? (
+          <p className="text-xs text-text-secondary">
+            {refreshing || refreshingInsights
+              ? t("reports.actions.updating", "Updating reports...")
+              : lastUpdatedAt
+                ? t("reports.actions.updated", "Updated {{value}}", { value: formatDateTime(lastUpdatedAt) })
+                : t("reports.actions.live_updates", "Live updates every 40 seconds")}
+          </p>
+        ) : null}
 
         {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
         {refreshing || refreshingInsights ? (
@@ -1177,6 +1184,6 @@ export default function ReportsPage() {
         {status ? <div className="text-sm text-green-400">{status}</div> : null}
         {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
-    </main>
+    </OperationalPageShell>
   );
 }

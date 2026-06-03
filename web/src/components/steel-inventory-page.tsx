@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
@@ -96,51 +97,35 @@ export function SteelInventoryPage() {
     }
   };
 
-  if (loading || pageLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading steel inventory...
-      </main>
-    );
-  }
-
   if (!isSteelFactory) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-4xl text-center">
-          <Card>
-            <CardHeader>
-              <CardTitle>Steel inventory is factory-aware</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-[var(--muted)]">
-              <div>Switch into a steel factory from the sidebar to open the stock board.</div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+      <OperationalPageShell
+        title="Steel inventory is factory-aware"
+        description="Switch into a steel factory from the sidebar to open the stock board."
+      >
+        <Card className="mx-auto max-w-4xl text-center">
+          <CardContent className="py-lg text-sm text-text-secondary">
+            <div>Switch into a steel factory from the sidebar to open the stock board.</div>
+          </CardContent>
+        </Card>
+      </OperationalPageShell>
     );
   }
 
   return (
-    <main className="min-h-screen bg-[var(--surface-app)] px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-2xl border border-[var(--border-subtle)] bg-[var(--surface-card)] p-6 shadow-[var(--shadow-md)]">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="text-xs font-medium tracking-wide text-text-tertiary">Inventory management</div>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-text-primary md:text-4xl">Stock balance &amp; material master</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-text-secondary">
-                Trusted stock levels across operational zones. Manage material definitions and monitor inventory health.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Link href="/steel/inventory/transactions">
-                <Button variant="outline">Transaction history</Button>
-              </Link>
-            </div>
-          </div>
-        </section>
-
+    <OperationalPageShell
+      eyebrow="Inventory management"
+      title="Stock balance & material master"
+      description="Trusted stock levels across operational zones. Manage material definitions and monitor inventory health."
+      isLoading={loading || pageLoading}
+      loadingTitle="Loading steel inventory..."
+      contentClassName="space-y-6"
+      filters={
+        <Link href="/steel/inventory/transactions">
+          <Button variant="outline" size="compact">Transaction history</Button>
+        </Link>
+      }
+    >
         <section className="grid gap-6 xl:grid-cols-[1fr_350px]">
           <div className="space-y-6">
             <Card>
@@ -310,7 +295,6 @@ export function SteelInventoryPage() {
 
         {status && <SuccessBanner message={status} onDismiss={() => setStatus("")} />}
         {error && <MutationErrorBanner message={error} onDismiss={() => setError("")} />}
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

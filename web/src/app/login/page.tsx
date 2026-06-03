@@ -137,7 +137,9 @@ export default function LoginPage() {
     }
   };
 
-  const canResendVerification = error.toLowerCase().includes("verify your email");
+  const canResendVerification =
+    error.toLowerCase().includes("verify your email") ||
+    error.toLowerCase().includes("verify your email before");
 
   const onResendVerification = async () => {
     if (!email) {

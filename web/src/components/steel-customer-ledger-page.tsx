@@ -4,6 +4,9 @@ import Link from "next/link";
 import { ChangeEvent, useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { PageMain } from "@/components/ui/page-main";
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
@@ -393,61 +396,50 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
     }
   };
 
-  if (loading || pageLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading customer ledger...
-      </main>
-    );
-  }
-
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <PageMain maxWidth="3xl" innerClassName="flex min-h-[50vh] items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Customer Ledger</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
+            <div className="text-sm text-status-danger-fg">{sessionError || "Please sign in to continue."}</div>
             <Link href="/access">
               <Button>Open Access</Button>
             </Link>
           </CardContent>
         </Card>
-      </main>
+      </PageMain>
     );
   }
 
   if (!isSteelFactory) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-4xl">
-          <Card>
-            <CardHeader>
-              <CardTitle>Steel customer ledger is factory-aware</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-[var(--muted)]">
-              <div>
-                Your active factory is <span className="font-semibold text-[var(--text)]">{activeFactory?.name || "not selected"}</span>.
-              </div>
-              <div>Switch into a steel factory from the sidebar, or update the factory profile in Settings first.</div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+      <OperationalPageShell
+        title="Steel customer ledger is factory-aware"
+        description="Switch into a steel factory from the sidebar, or update the factory profile in Settings first."
+      >
+        <Card className="mx-auto max-w-4xl">
+          <CardContent className="space-y-4 py-lg text-sm text-text-secondary">
+            <div>
+              Your active factory is <span className="font-semibold text-text-primary">{activeFactory?.name || "not selected"}</span>.
+            </div>
+          </CardContent>
+        </Card>
+      </OperationalPageShell>
     );
   }
 
   if (!canManage) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-4">
+      <PageMain maxWidth="4xl" innerClassName="flex min-h-[50vh] items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Customer Ledger</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-[var(--muted)]">The customer ledger and detailed commercial exposure tracking are available to managers and owners.</div>
+            <div className="text-sm text-text-secondary">The customer ledger and detailed commercial exposure tracking are available to managers and owners.</div>
             <div className="flex gap-3">
               <Link href="/steel">
                 <Button>Back to Steel Hub</Button>
@@ -458,49 +450,39 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
             </div>
           </CardContent>
         </Card>
-      </main>
+      </PageMain>
     );
   }
 
   if (!ledger) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-4">
+      <PageMain maxWidth="4xl" innerClassName="flex min-h-[50vh] items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Customer Ledger</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{error || "Customer ledger not found."}</div>
+            <div className="text-sm text-status-danger-fg">{error || "Customer ledger not found."}</div>
             <Link href="/steel/customers">
               <Button>Back to Customers</Button>
             </Link>
           </CardContent>
         </Card>
-      </main>
+      </PageMain>
     );
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Customer Ledger</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{ledger.customer.name}</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Start with recovery risk, then move into payments, verification, and follow-up without leaving the buyer record.
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* AUDIT: BUTTON_CLUTTER - keep route jumps available in a secondary tray so recovery review stays primary. */}
-        <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
-          <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
-            Ledger tools
-          </summary>
-          <div className="mt-4 flex flex-wrap gap-3">
+    <OperationalPageShell
+      eyebrow="Customer Ledger"
+      title={ledger.customer.name}
+      description="Start with recovery risk, then move into payments, verification, and follow-up without leaving the buyer record."
+      isLoading={loading || pageLoading}
+      loadingTitle="Loading customer ledger..."
+      contentClassName="space-y-6"
+      filters={
+        <DisclosurePanel title="Ledger tools">
+          <div className="flex flex-wrap gap-3">
             <Link href="/steel/customers">
               <Button variant="outline">Customers</Button>
             </Link>
@@ -508,8 +490,9 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
               <Button variant="ghost">Invoices</Button>
             </Link>
           </div>
-        </details>
-
+        </DisclosurePanel>
+      }
+    >
         <section className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader><CardTitle className="text-base">Invoice Total</CardTitle></CardHeader>
@@ -537,12 +520,8 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
         </section>
 
         {ledger.alerts.length ? (
-          // AUDIT: DENSITY_OVERLOAD - keep the full alert list available in a secondary reveal so the recovery cards stay first.
-          <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5" open={ledger.alerts.length <= 2}>
-            <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
-              Risk alerts
-            </summary>
-            <section className="mt-4 grid gap-3">
+          <DisclosurePanel title="Risk alerts" defaultOpen={ledger.alerts.length <= 2}>
+            <section className="grid gap-3">
               {ledger.alerts.map((alert, index) => (
                 <div
                   key={`${alert.title}-${index}`}
@@ -553,7 +532,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                 </div>
               ))}
             </section>
-          </details>
+          </DisclosurePanel>
         ) : null}
 
         <section className="grid gap-4 xl:grid-cols-3">
@@ -1164,8 +1143,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
         </section>
 
         {status ? <div className="text-sm text-green-400">{status}</div> : null}
-        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
-      </div>
-    </main>
+        {error || sessionError ? <div className="text-sm text-status-danger-fg">{error || sessionError}</div> : null}
+    </OperationalPageShell>
   );
 }

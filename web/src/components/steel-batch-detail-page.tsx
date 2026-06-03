@@ -5,6 +5,9 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { PageMain } from "@/components/ui/page-main";
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { getSteelBatchDetail, type SteelBatchDetail } from "@/lib/steel";
@@ -107,23 +110,15 @@ export function SteelBatchDetailPage() {
     [inputMovement, outputMovement],
   );
 
-  if (sessionLoading || loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading steel batch traceability...
-      </main>
-    );
-  }
-
   if (!user || !detail) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <PageMain maxWidth="3xl" innerClassName="flex min-h-[50vh] items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Batch Detail</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{error || sessionError || "Batch not found."}</div>
+            <div className="text-sm text-status-danger-fg">{error || sessionError || "Batch not found."}</div>
             <div className="flex gap-3">
               <Link href="/steel">
                 <Button variant="outline">Back to Steel</Button>
@@ -136,49 +131,46 @@ export function SteelBatchDetailPage() {
             </div>
           </CardContent>
         </Card>
-      </main>
+      </PageMain>
     );
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-4xl">
-              <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-[var(--muted)] mb-4">
-                <span className="text-[var(--accent)] font-bold">Production</span>
-                <span>→</span>
-                <span>Invoice</span>
-                <span>→</span>
-                <span>Dispatch</span>
-                <span>→</span>
-                <span>Reconciliation</span>
-              </div>
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Batch Traceability</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{detail.batch.batch_code}</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Start with the batch loss signal, then inspect traceability and audit evidence before leaving this record.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2">
-                <span className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${badgeTone(detail.batch.severity)}`}>
-                  {detail.batch.severity}
-                </span>
-                <span className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${badgeTone(detail.batch.status)}`}>
-                  {detail.batch.status}
-                </span>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/steel/invoices">
-                <Button>Create Invoice</Button>
-              </Link>
-              <Link href="/steel">
-                <Button variant="outline">Back to Steel</Button>
-              </Link>
-            </div>
+    <OperationalPageShell
+      eyebrow="Steel Batch Traceability"
+      title={detail.batch.batch_code}
+      description="Start with the batch loss signal, then inspect traceability and audit evidence before leaving this record."
+      isLoading={sessionLoading || loading}
+      loadingTitle="Loading steel batch traceability..."
+      contentClassName="space-y-6"
+      filters={
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-text-secondary">
+            <span className="font-bold text-[var(--accent)]">Production</span>
+            <span>→</span>
+            <span>Invoice</span>
+            <span>→</span>
+            <span>Dispatch</span>
+            <span>→</span>
+            <span>Reconciliation</span>
           </div>
-        </section>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${badgeTone(detail.batch.severity)}`}>
+              {detail.batch.severity}
+            </span>
+            <span className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${badgeTone(detail.batch.status)}`}>
+              {detail.batch.status}
+            </span>
+            <Link href="/steel/invoices">
+              <Button size="compact">Create Invoice</Button>
+            </Link>
+            <Link href="/steel">
+              <Button variant="outline" size="compact">Back to Steel</Button>
+            </Link>
+          </div>
+        </div>
+      }
+    >
 
         <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
           <CardHeader>
@@ -347,11 +339,8 @@ export function SteelBatchDetailPage() {
             </CardHeader>
             <CardContent>
               {/* AUDIT: DENSITY_OVERLOAD - keep full audit evidence available in a secondary reveal so the ledger trace stays primary. */}
-              <details className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,24,0.62)] p-4" open={detail.audit_events.length <= 2}>
-                <summary className="cursor-pointer list-none text-sm font-medium text-[var(--text)] marker:hidden">
-                  View audit
-                </summary>
-                <div className="mt-4 space-y-3">
+              <DisclosurePanel title="View audit" defaultOpen={detail.audit_events.length <= 2}>
+                <div className="space-y-3">
                   {detail.audit_events.length ? (
                     detail.audit_events.map((event) => (
                       <div key={event.id} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm">
@@ -369,13 +358,12 @@ export function SteelBatchDetailPage() {
                     </div>
                   )}
                 </div>
-              </details>
+              </DisclosurePanel>
             </CardContent>
           </Card>
         </section>
 
-        {error ? <div className="text-sm text-red-400">{error}</div> : null}
-      </div>
-    </main>
+        {error ? <div className="text-sm text-status-danger-fg">{error}</div> : null}
+    </OperationalPageShell>
   );
 }

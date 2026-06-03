@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ApiError, formatApiErrorMessage } from "@/lib/api";
@@ -23,6 +24,7 @@ import { triggerBlobDownload } from "@/lib/reports";
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import { OcrGuideCard } from "@/components/ocr-guide-card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -71,6 +73,7 @@ type OcrPageProps = {
 };
 
 export default function OcrPage({ initialJob = null }: OcrPageProps) {
+  const router = useRouter();
   const { user, loading, error: sessionError } = useSession();
   const [runtime, setRuntime] = useState<OcrStatus | null>(null);
   const [templates, setTemplates] = useState<OcrTemplate[]>([]);
@@ -303,9 +306,14 @@ export default function OcrPage({ initialJob = null }: OcrPageProps) {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading OCR workspace...
-      </main>
+      <OperationalPageShell
+        eyebrow="OCR"
+        title="Logbook OCR and template manager"
+        isLoading
+        loadingTitle="Loading OCR workspace"
+      >
+        <div />
+      </OperationalPageShell>
     );
   }
 
@@ -355,34 +363,23 @@ export default function OcrPage({ initialJob = null }: OcrPageProps) {
   const metadataRows = formatMetadata(job);
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
-          <div>
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">
-              OCR
-            </div>
-            <h1 className="mt-2 text-3xl font-semibold">Logbook OCR and template manager</h1>
-            <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
-              Run OCR jobs, check the queue, and keep templates ready for repeat layouts.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/ocr/history">
-              <Button>OCR History</Button>
-            </Link>
-            <Link href="/ocr/scan">
-              <Button variant="outline">Scan a Document</Button>
-            </Link>
-            <Link href="/ocr/verify">
-              <Button variant="outline">Open Verification</Button>
-            </Link>
-            <Link href="/dashboard">
-              <Button variant="outline">Dashboard</Button>
-            </Link>
-          </div>
-        </section>
-
+    <OperationalPageShell
+      contentClassName="space-y-6"
+      eyebrow="OCR"
+      title="Logbook OCR and template manager"
+      description="Run OCR jobs, check the queue, and keep templates ready for repeat layouts."
+      metrics={[
+        { id: "runtime", label: "OCR Runtime", value: runtime?.installed ? "Ready" : "Not Installed" },
+        { id: "languages", label: "Languages", value: runtime?.languages?.length || 0 },
+        { id: "templates", label: "Templates", value: templateGate ? "Plan gated" : templates.length },
+        { id: "job", label: "Current job", value: job?.status || "Idle" },
+      ]}
+      actions={[
+        { id: "ocr-history", label: "OCR History", onAction: () => router.push("/ocr/history") },
+        { id: "ocr-scan", label: "Scan a Document", variant: "outline", onAction: () => router.push("/ocr/scan") },
+        { id: "ocr-verify", label: "Open Verification", variant: "outline", onAction: () => router.push("/ocr/verify") },
+      ]}
+    >
         <OcrGuideCard
           pageKey="ocr-home"
           title="OCR tips"
@@ -684,7 +681,6 @@ export default function OcrPage({ initialJob = null }: OcrPageProps) {
 
         {status ? <div className="text-sm text-green-400">{status}</div> : null}
         {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

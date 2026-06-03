@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { useMemo, useState, useCallback } from "react";
 
-import { OcrShell } from "@/components/ocr/ocr-shell";
+import { OcrNotificationDropdown } from "@/components/ocr/ocr-notification-dropdown";
+import { AiDisclosureBanner } from "@/shared/ai";
+import { FilterBar } from "@/components/ui/filter-bar";
+import { LoadingBoundary } from "@/components/ui/loading-boundary";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { PageMain } from "@/components/ui/page-main";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DataTable } from "@/components/ui/data-table/data-table";
@@ -178,6 +183,295 @@ export default function OcrHistoryPage() {
     setNotifications((prev) => prev.filter((n) => n.id !== id));
   }, []);
 
+  const clearAllFilters = useCallback(() => {
+    setStatusFilter("all");
+    setExportStateFilter("all");
+    setDocumentTypeFilter("all");
+    setReviewerIdFilter(null);
+    setConfidenceFilter("all");
+    setUpdatedAfterFilter("");
+    setUpdatedBeforeFilter("");
+  }, []);
+
+  const historyMetrics = useMemo(
+    () => [
+      { id: "total", label: "Documents tracked", value: records.length },
+      { id: "approved", label: "Approved", value: summary.approved },
+      { id: "pending", label: "Pending review", value: summary.pending },
+      { id: "rejected", label: "Rejected", value: summary.rejected },
+    ],
+    [records.length, summary.approved, summary.pending, summary.rejected],
+  );
+
+  const historyFilterBar = useMemo(
+    () => (
+      <FilterBar
+        title="History filters"
+        resultCount={`${records.length} records`}
+        fields={[
+          {
+            id: "status",
+            label: "Status",
+            type: "select" as const,
+            value: statusFilter === "all" ? "" : statusFilter,
+            options: [
+              { label: "Pending", value: "pending" },
+              { label: "Approved", value: "approved" },
+              { label: "Rejected", value: "rejected" },
+              { label: "Draft", value: "draft" },
+            ],
+            onValueChange: (value) =>
+              setStatusFilter((value || "all") as OcrVerifyQueueFilters["status"]),
+          },
+          {
+            id: "export",
+            label: "Export",
+            type: "select" as const,
+            value: exportStateFilter === "all" ? "" : exportStateFilter,
+            options: [
+              { label: "Pending", value: "pending" },
+              { label: "Exported", value: "exported" },
+              { label: "Failed", value: "failed" },
+              { label: "JSON", value: "json_generated" },
+            ],
+            onValueChange: (value) => setExportStateFilter((value || "all") as typeof exportStateFilter),
+          },
+          {
+            id: "document-type",
+            label: "Document type",
+            type: "select" as const,
+            value: documentTypeFilter === "all" ? "" : documentTypeFilter,
+            options: documentTypeOptions
+              .filter((type) => type !== "all")
+              .map((type) => ({ label: type, value: type })),
+            onValueChange: (value) => setDocumentTypeFilter(value || "all"),
+          },
+          {
+            id: "reviewer",
+            label: "Reviewer",
+            type: "select" as const,
+            value: reviewerIdFilter == null ? "" : String(reviewerIdFilter),
+            options: reviewerOptions.map(([id, name]) => ({
+              label: name,
+              value: String(id),
+            })),
+            onValueChange: (value) =>
+              setReviewerIdFilter(value ? Number(value) : null),
+          },
+          {
+            id: "confidence",
+            label: "Confidence",
+            type: "select" as const,
+            value: confidenceFilter === "all" ? "" : confidenceFilter,
+            options: [
+              { label: "High (85%+)", value: "high" },
+              { label: "Medium (60–84%)", value: "medium" },
+              { label: "Low (<60%)", value: "low" },
+            ],
+            onValueChange: (value) =>
+              setConfidenceFilter((value || "all") as typeof confidenceFilter),
+          },
+          {
+            id: "updated-after",
+            label: "Updated after",
+            type: "date" as const,
+            value: updatedAfterFilter,
+            onValueChange: setUpdatedAfterFilter,
+          },
+          {
+            id: "updated-before",
+            label: "Updated before",
+            type: "date" as const,
+            value: updatedBeforeFilter,
+            onValueChange: setUpdatedBeforeFilter,
+          },
+        ]}
+        onClearAll={clearAllFilters}
+        activeFilters={[
+          ...(statusFilter !== "all"
+            ? [{ id: "status", label: "Status", value: statusFilter, onClear: () => setStatusFilter("all") }]
+            : []),
+          ...(exportStateFilter !== "all"
+            ? [
+                {
+                  id: "export",
+                  label: "Export",
+                  value: exportStateFilter,
+                  onClear: () => setExportStateFilter("all"),
+                },
+              ]
+            : []),
+          ...(documentTypeFilter !== "all"
+            ? [
+                {
+                  id: "doc-type",
+                  label: "Type",
+                  value: documentTypeFilter,
+                  onClear: () => setDocumentTypeFilter("all"),
+                },
+              ]
+            : []),
+          ...(reviewerIdFilter != null
+            ? [
+                {
+                  id: "reviewer",
+                  label: "Reviewer",
+                  value: String(reviewerIdFilter),
+                  onClear: () => setReviewerIdFilter(null),
+                },
+              ]
+            : []),
+          ...(confidenceFilter !== "all"
+            ? [
+                {
+                  id: "confidence",
+                  label: "Confidence",
+                  value: confidenceFilter,
+                  onClear: () => setConfidenceFilter("all"),
+                },
+              ]
+            : []),
+          ...(updatedAfterFilter
+            ? [
+                {
+                  id: "after",
+                  label: "After",
+                  value: updatedAfterFilter,
+                  onClear: () => setUpdatedAfterFilter(""),
+                },
+              ]
+            : []),
+          ...(updatedBeforeFilter
+            ? [
+                {
+                  id: "before",
+                  label: "Before",
+                  value: updatedBeforeFilter,
+                  onClear: () => setUpdatedBeforeFilter(""),
+                },
+              ]
+            : []),
+        ]}
+        actions={
+          <Button variant="outline" size="compact" onClick={() => void historyQuery.refetch()}>
+            Refresh
+          </Button>
+        }
+      />
+    ),
+    [
+      clearAllFilters,
+      confidenceFilter,
+      documentTypeFilter,
+      documentTypeOptions,
+      exportStateFilter,
+      historyQuery,
+      records.length,
+      reviewerIdFilter,
+      reviewerOptions,
+      statusFilter,
+      updatedAfterFilter,
+      updatedBeforeFilter,
+    ],
+  );
+
+  const historyRail = useMemo(
+    () => (
+      <div className="space-y-md">
+        <div className="flex justify-end">
+          <OcrNotificationDropdown
+            notifications={notifications}
+            onDismiss={handleDismissNotification}
+          />
+        </div>
+        <div className="rounded-panel border border-border-subtle bg-surface-shell p-md">
+          <p className="text-label-dense font-semibold uppercase tracking-wide text-text-secondary">
+            Audit workspace
+          </p>
+          <div className="mt-sm grid gap-sm sm:grid-cols-2">
+            <div className="rounded-overlay border border-border-subtle bg-surface-card px-md py-sm">
+              <p className="text-label-dense text-text-secondary">Records tracked</p>
+              <p className="mt-xs text-title font-semibold tabular-nums text-text-primary">{records.length}</p>
+            </div>
+            <div className="rounded-overlay border border-border-subtle bg-surface-card px-md py-sm">
+              <p className="text-label-dense text-text-secondary">Low confidence</p>
+              <p className="mt-xs text-title font-semibold tabular-nums text-text-primary">
+                {auditTriage.lowConfidence}
+              </p>
+            </div>
+            <div className="rounded-overlay border border-border-subtle bg-surface-card px-md py-sm">
+              <p className="text-label-dense text-text-secondary">Export failures</p>
+              <p className="mt-xs text-title font-semibold tabular-nums text-text-primary">
+                {auditTriage.exportFailures}
+              </p>
+            </div>
+            <div className="rounded-overlay border border-border-subtle bg-surface-card px-md py-sm">
+              <p className="text-label-dense text-text-secondary">Latest update</p>
+              <p className="mt-xs text-body font-medium text-text-primary">{summary.latest}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-panel border border-border-subtle bg-surface-shell p-md">
+          <p className="text-label-dense font-semibold uppercase tracking-wide text-text-secondary">
+            Selected record
+          </p>
+          <div className="mt-sm space-y-sm text-body text-text-secondary">
+            {selectedRecord ? (
+              <>
+                <div>
+                  <p className="font-medium text-text-primary">
+                    {selectedRecord.source_filename || `Document #${selectedRecord.id}`}
+                  </p>
+                  <p className="mt-xs text-label-dense text-text-tertiary">
+                    Type: {selectedRecord.doc_type_hint || "table"} · Status: {selectedRecord.status}
+                  </p>
+                </div>
+                <ConfidenceMeter
+                  value={selectedRecord.avg_confidence || 0}
+                  showLabel
+                />
+                {selectedRecord.reviewed_by_name ? (
+                  <p className="text-label-dense text-text-tertiary">
+                    Reviewed by {selectedRecord.reviewed_by_name}
+                  </p>
+                ) : null}
+                {selectedEvents.length > 0 ? (
+                  <div className="space-y-xs">
+                    {selectedEvents.slice(0, 6).map((event) => (
+                      <div
+                        key={event.id}
+                        className="rounded-overlay border border-border-subtle bg-surface-card px-sm py-sm text-label-dense"
+                      >
+                        <p className="font-medium text-text-primary">{event.event_type}</p>
+                        <p>{event.actor || "System"}</p>
+                        <p className="text-text-tertiary">{formatTimestamp(event.created_at)}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-text-tertiary">No audit events for this record yet.</p>
+                )}
+              </>
+            ) : (
+              <p className="text-text-tertiary">Select a row to inspect audit detail.</p>
+            )}
+          </div>
+        </div>
+      </div>
+    ),
+    [
+      auditTriage.exportFailures,
+      auditTriage.lowConfidence,
+      handleDismissNotification,
+      notifications,
+      records.length,
+      selectedEvents,
+      selectedRecord,
+      summary.latest,
+    ],
+  );
+
   const columns = useMemo(
     () => [
       columnHelper.accessor((record) => record.source_filename || `Document #${record.id}`, {
@@ -271,15 +565,21 @@ export default function OcrHistoryPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-surface-app text-label-dense text-text-secondary">
-        Loading OCR history...
-      </main>
+      <OperationalPageShell
+        eyebrow="Document"
+        title="OCR history"
+        description="Loading verification records..."
+        isLoading
+        loadingTitle="Loading OCR history"
+      >
+        <div />
+      </OperationalPageShell>
     );
   }
 
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-md">
+      <PageMain maxWidth="3xl" innerClassName="flex min-h-[50vh] items-center justify-center px-md">
         <EmptyState
           className="w-full"
           title="OCR history requires sign-in"
@@ -292,13 +592,13 @@ export default function OcrHistoryPage() {
             </Link>
           }
         />
-      </main>
+      </PageMain>
     );
   }
 
   if (!canAccess) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-md">
+      <PageMain maxWidth="3xl" innerClassName="flex min-h-[50vh] items-center justify-center px-md">
         <EmptyState
           className="w-full"
           title="OCR history is not available for this role"
@@ -311,247 +611,53 @@ export default function OcrHistoryPage() {
             </Link>
           }
         />
-      </main>
+      </PageMain>
     );
   }
 
   return (
-    <OcrShell
-      title="Recent OCR documents"
-      subtitle="Reopen past runs, check their status, and download the latest export."
-      step="result"
-      notifications={notifications}
-      onDismissNotification={handleDismissNotification}
-      sideContent={
-        <div className="space-y-4">
-          <div className="factory-ocr-console factory-ocr-console--subtle rounded-[0.45rem] p-4">
-            <div className="factory-ocr-card-title">Audit workspace</div>
-            <div className="mt-3 factory-ocr-panel-grid">
-              <div className="factory-ocr-data-card">
-                <div className="factory-ocr-data-card__label">Records tracked</div>
-                <div className="factory-ocr-data-card__value">{records.length}</div>
-              </div>
-              <div className="factory-ocr-data-card">
-                <div className="factory-ocr-data-card__label">Low confidence</div>
-                <div className="factory-ocr-data-card__value">{auditTriage.lowConfidence}</div>
-              </div>
-              <div className="factory-ocr-data-card">
-                <div className="factory-ocr-data-card__label">Export failures</div>
-                <div className="factory-ocr-data-card__value">{auditTriage.exportFailures}</div>
-              </div>
-              <div className="factory-ocr-data-card">
-                <div className="factory-ocr-data-card__label">Latest update</div>
-                <div className="factory-ocr-data-card__value">{summary.latest}</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="factory-ocr-console factory-ocr-console--subtle rounded-[0.45rem] p-4">
-            <div className="factory-ocr-card-title">Selected record</div>
-            <div className="mt-3 space-y-3 text-sm leading-6 text-text-secondary">
-              {selectedRecord ? (
-                <>
-                  <div>
-                    <div className="font-medium text-text-primary">{selectedRecord.source_filename || `Document #${selectedRecord.id}`}</div>
-                    <div className="mt-1 text-xs text-text-tertiary">
-                      Type: {selectedRecord.doc_type_hint || "table"} &middot; Status: {selectedRecord.status}
-                    </div>
-                  </div>
-                  <ConfidenceMeter
-                    value={selectedRecord.avg_confidence || 0}
-                    showLabel
-                  />
-                  {selectedRecord.reviewed_by_name ? (
-                    <div className="text-xs text-text-tertiary">Reviewed by {selectedRecord.reviewed_by_name}</div>
-                  ) : null}
-                </>
-              ) : (
-                <div className="text-text-tertiary">Select a row to see details.</div>
-              )}
-            </div>
-          </div>
-
-          <div className="factory-ocr-console factory-ocr-console--subtle rounded-[0.45rem] p-4">
-            <div className="factory-ocr-card-title">Review lineage</div>
-            <div className="mt-3 space-y-3 text-sm leading-6 text-text-secondary">
-              {selectedEvents.length > 0 ? (
-                selectedEvents.slice(0, 6).map((event) => (
-                  <div key={event.id} className="rounded-[0.35rem] border border-border-subtle bg-surface-shell px-3 py-3">
-                    <div className="font-medium text-text-primary">{event.event_type}</div>
-                    <div>{event.actor || "System"}</div>
-                    <div>{formatTimestamp(event.created_at)}</div>
-                  </div>
-                ))
-              ) : (
-                <div className="rounded-[0.35rem] border border-border-subtle bg-surface-shell px-3 py-3">
-                  No audit events are available for the selected record.
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      }
+    <OperationalPageShell
+      eyebrow="Document"
+      title="OCR history"
+      description="Reopen past runs, check their status, and download the latest export."
+      tone="synced"
+      toneLabel="Audit trail"
+      metrics={historyMetrics}
+      filters={historyFilterBar}
+      rail={historyRail}
+      actions={[
+        {
+          id: "scan",
+          label: "New scan",
+          variant: "outline",
+          onAction: () => {
+            window.location.href = "/ocr/scan";
+          },
+        },
+      ]}
     >
-      {/* Stats row */}
-      <div className="factory-ocr-panel-grid factory-ocr-panel-grid--four mb-4">
-        <div className="factory-ocr-data-card">
-          <div className="factory-ocr-data-card__label">Documents tracked</div>
-          <div className="factory-ocr-data-card__value">{records.length}</div>
-        </div>
-        <div className="factory-ocr-data-card">
-          <div className="factory-ocr-data-card__label">Approved</div>
-          <div className="factory-ocr-data-card__value">{summary.approved}</div>
-        </div>
-        <div className="factory-ocr-data-card">
-          <div className="factory-ocr-data-card__label">Pending review</div>
-          <div className="factory-ocr-data-card__value">{summary.pending}</div>
-        </div>
-        <div className="factory-ocr-data-card">
-          <div className="factory-ocr-data-card__label">Rejected</div>
-          <div className="factory-ocr-data-card__value">{summary.rejected}</div>
-        </div>
-      </div>
+      <AiDisclosureBanner
+        source="AI-extracted OCR data"
+        lowConfidenceCount={auditTriage.lowConfidence}
+        totalCount={records.length}
+        reviewHref="/ocr/verify"
+      />
 
-      {/* Filters */}
-      <div className="mb-4 rounded-[0.45rem] border border-border-subtle bg-surface-shell p-4">
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <label className="space-y-2 text-sm text-text-secondary">
-            <span className="text-text-primary">Status</span>
-            <select
-              className="input w-full"
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as OcrVerifyQueueFilters["status"])}
-            >
-              <option value="all">All</option>
-              <option value="pending">Pending</option>
-              <option value="approved">Approved</option>
-              <option value="rejected">Rejected</option>
-              <option value="draft">Draft</option>
-            </select>
-          </label>
-
-          <label className="space-y-2 text-sm text-text-secondary">
-            <span className="text-text-primary">Export</span>
-            <select
-              className="input w-full"
-              value={exportStateFilter}
-              onChange={(event) => setExportStateFilter(event.target.value as typeof exportStateFilter)}
-            >
-              <option value="all">All</option>
-              <option value="pending">Pending</option>
-              <option value="exported">Exported</option>
-              <option value="failed">Failed</option>
-              <option value="json_generated">JSON</option>
-            </select>
-          </label>
-
-          <label className="space-y-2 text-sm text-text-secondary">
-            <span className="text-text-primary">Document type</span>
-            <select
-              className="input w-full"
-              value={documentTypeFilter}
-              onChange={(event) => setDocumentTypeFilter(event.target.value)}
-            >
-              {documentTypeOptions.map((type) => (
-                <option key={type} value={type}>
-                  {type === "all" ? "All" : type}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="space-y-2 text-sm text-text-secondary">
-            <span className="text-text-primary">Reviewer</span>
-            <select
-              className="input w-full"
-              value={reviewerIdFilter ?? "all"}
-              onChange={(event) =>
-                setReviewerIdFilter(event.target.value === "all" ? null : Number(event.target.value))
-              }
-            >
-              <option value="all">All</option>
-              {reviewerOptions.map(([id, name]) => (
-                <option key={id} value={id}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
-
-        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <label className="space-y-2 text-sm text-text-secondary">
-            <span className="text-text-primary">Confidence</span>
-            <select
-              className="input w-full"
-              value={confidenceFilter}
-              onChange={(event) => setConfidenceFilter(event.target.value as typeof confidenceFilter)}
-            >
-              <option value="all">All</option>
-              <option value="high">High (85%+)</option>
-              <option value="medium">Medium (60–84%)</option>
-              <option value="low">Low (&lt;60%)</option>
-            </select>
-          </label>
-          <label className="space-y-2 text-sm text-text-secondary">
-            <span className="text-text-primary">Updated after</span>
-            <input
-              className="input w-full"
-              type="date"
-              value={updatedAfterFilter}
-              onChange={(event) => setUpdatedAfterFilter(event.target.value)}
-            />
-          </label>
-          <label className="space-y-2 text-sm text-text-secondary">
-            <span className="text-text-primary">Updated before</span>
-            <input
-              className="input w-full"
-              type="date"
-              value={updatedBeforeFilter}
-              onChange={(event) => setUpdatedBeforeFilter(event.target.value)}
-            />
-          </label>
-          <div className="flex items-end">
-            <Button
-              size="compact"
-              variant="outline"
-              className="w-full"
-              onClick={() => {
-                setStatusFilter("all");
-                setExportStateFilter("all");
-                setDocumentTypeFilter("all");
-                setReviewerIdFilter(null);
-                setConfidenceFilter("all");
-                setUpdatedAfterFilter("");
-                setUpdatedBeforeFilter("");
-              }}
-            >
-              Reset filters
-            </Button>
-          </div>
-        </div>
-      </div>
-
-      {/* Table — outer div has a fixed pixel height via inline style; DataTable fills it and scrolls inside */}
-      {historyQuery.isLoading ? (
-        <div className="flex h-64 items-center justify-center rounded-[0.45rem] border border-border-subtle bg-surface-elevated">
-          <div className="text-text-secondary">Loading OCR history...</div>
-        </div>
-      ) : historyQuery.isError ? (
-        <div className="flex h-64 items-center justify-center rounded-[0.45rem] border border-border-subtle bg-surface-elevated">
-          <div className="text-error">Error loading OCR history: {historyQuery.error?.message}</div>
-        </div>
-      ) : records.length === 0 ? (
-        <div className="flex h-64 items-center justify-center rounded-[0.45rem] border border-border-subtle bg-surface-elevated">
-          <div className="text-text-secondary">No OCR records found</div>
-        </div>
-      ) : (
-        /* Fixed-height container — inline style guarantees height in block-flow layout.
-           calc(100vh - 500px): topbar 48 + OCR header 160 + padding 32 +
-           stats 72 + filters 140 + gaps 48 = ~500px above the table. */
+      <LoadingBoundary
+        isLoading={historyQuery.isLoading}
+        hasData={records.length > 0}
+        isEmpty={!historyQuery.isLoading && records.length === 0}
+        isError={historyQuery.isError}
+        error={historyQuery.error instanceof Error ? historyQuery.error : null}
+        loadingTitle="Loading OCR history"
+        loadingRows={8}
+        emptyTitle="No OCR records found"
+        emptyMessage="Adjust filters or start a new scan to populate history."
+        onRetry={() => void historyQuery.refetch()}
+      >
         <div
-          className="rounded-[0.45rem] border border-border-subtle bg-surface-shell overflow-hidden flex flex-col"
-          style={{ height: "calc(100vh - 500px)", minHeight: "400px" }}
+          className="mt-md flex flex-col overflow-hidden rounded-panel border border-border-subtle bg-surface-shell"
+          style={{ height: "calc(100vh - 28rem)", minHeight: "400px" }}
         >
           <DataTable<OcrHistoryItem>
             ariaLabel="OCR history"
@@ -564,7 +670,7 @@ export default function OcrHistoryPage() {
             enableStickyFirstColumn
             enableVirtualization={records.length > 20}
             overscan={5}
-            className="flex flex-col flex-1 min-h-0"
+            className="flex min-h-0 flex-1 flex-col"
             scrollAreaClassName="flex-1 min-h-0"
             viewportClassName="!max-h-none h-full overflow-y-auto"
             emptyTitle="No OCR documents match the current filters"
@@ -581,7 +687,7 @@ export default function OcrHistoryPage() {
             onSearchChange={setSearch}
           />
         </div>
-      )}
-    </OcrShell>
+      </LoadingBoundary>
+    </OperationalPageShell>
   );
 }

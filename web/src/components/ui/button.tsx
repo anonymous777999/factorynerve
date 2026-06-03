@@ -32,7 +32,7 @@ const variants: Record<ButtonVariant, string> = {
 const sizes: Record<ButtonSize, string> = {
   default: "px-[var(--space-4)] text-[length:var(--text-base)]",
   compact: "px-[var(--space-4)] text-[length:var(--text-sm)]",
-  icon: "aspect-square px-0 text-[length:var(--text-sm)]",
+  icon: "h-8 min-h-8 w-8 min-w-8 px-0 text-[length:var(--text-sm)]",
 };
 
 function resolveVariant(variant: ButtonVariant): ResolvedButtonVariant {

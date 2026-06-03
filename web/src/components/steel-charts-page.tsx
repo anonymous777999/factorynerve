@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { IndustrialFactoryDashboard } from "@/components/dashboard/industrial-factory-dashboard";
 import { Button } from "@/components/ui/button";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { PageMain } from "@/components/ui/page-main";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { buildSteelDashboardData, type IndustrialDashboardData } from "@/lib/industrial-dashboard";
 import {
@@ -22,6 +25,7 @@ import { useSession } from "@/lib/use-session";
 const CHART_ACCESS_ROLES = ["supervisor", "accountant", "manager", "admin", "owner"] as const;
 
 export function SteelChartsPage() {
+  const router = useRouter();
   const { user, activeFactory, loading, error: sessionError } = useSession();
   const [overview, setOverview] = useState<SteelOverview | null>(null);
   const [dashboardData, setDashboardData] = useState<Partial<Record<"today" | "7d" | "30d", IndustrialDashboardData>>>();
@@ -85,80 +89,66 @@ export function SteelChartsPage() {
     }
   };
 
-  if (loading || pageLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading steel charts...
-      </main>
-    );
-  }
-
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <PageMain maxWidth="3xl" innerClassName="flex min-h-[50vh] items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Charts</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
+            <div className="text-sm text-status-danger-fg">{sessionError || "Please sign in to continue."}</div>
             <Link href="/access">
               <Button>Open Access</Button>
             </Link>
           </CardContent>
         </Card>
-      </main>
+      </PageMain>
     );
   }
 
   if (!canAccessCharts) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-4xl">
-          <Card>
-            <CardHeader>
-              <CardTitle>Steel Charts access is role-based</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-[var(--muted)]">
-              <div>
-                Your current role is <span className="font-semibold text-[var(--text)]">{user.role}</span>.
-              </div>
-              <div>Supervisor, accountant, manager, admin, or owner access is required to open steel charts.</div>
-              <Link href="/work-queue">
-                <Button variant="outline">Open Work Queue</Button>
-              </Link>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+      <OperationalPageShell
+        title="Steel Charts access is role-based"
+        description="Supervisor, accountant, manager, admin, or owner access is required to open steel charts."
+      >
+        <Card className="mx-auto max-w-4xl">
+          <CardContent className="space-y-4 py-lg text-sm text-text-secondary">
+            <div>
+              Your current role is <span className="font-semibold text-text-primary">{user.role}</span>.
+            </div>
+            <Link href="/work-queue">
+              <Button variant="outline">Open Work Queue</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </OperationalPageShell>
     );
   }
 
   if (!isSteelFactory) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-4xl">
-          <Card>
-            <CardHeader>
-              <CardTitle>Steel charts need a steel factory</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-[var(--muted)]">
-              <div>
-                Your active factory is <span className="font-semibold text-[var(--text)]">{activeFactory?.name || "not selected"}</span>.
-              </div>
-              <div>Switch into a steel factory from the sidebar, then reopen this chart board for live steel KPIs.</div>
-              <div className="flex flex-wrap gap-3">
-                <Link href="/settings">
-                  <Button variant="outline">Open Settings</Button>
-                </Link>
-                <Link href="/analytics">
-                  <Button variant="ghost">Open Analytics</Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+      <OperationalPageShell
+        title="Steel charts need a steel factory"
+        description="Switch into a steel factory from the sidebar, then reopen this chart board for live steel KPIs."
+      >
+        <Card className="mx-auto max-w-4xl">
+          <CardContent className="space-y-4 py-lg text-sm text-text-secondary">
+            <div>
+              Your active factory is <span className="font-semibold text-text-primary">{activeFactory?.name || "not selected"}</span>.
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/settings">
+                <Button variant="outline">Open Settings</Button>
+              </Link>
+              <Link href="/analytics">
+                <Button variant="ghost">Open Analytics</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </OperationalPageShell>
     );
   }
 
@@ -166,46 +156,43 @@ export function SteelChartsPage() {
   const chartRecordCoverage = batchCount + invoiceCount + dispatchCount;
 
   return (
-    <main className="min-h-screen bg-surface-app px-4 py-8 text-text-primary md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-border-subtle bg-surface-panel p-6 shadow-[var(--shadow-sm)]">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.28em] text-text-tertiary">Steel Charts</div>
-              <h1 className="mt-2 text-2xl font-semibold text-text-primary md:text-4xl">
-                Track steel trends without leaving the chart board
-              </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-text-secondary">
-                Use the chart board below to compare ranges, trace drift, and investigate over-time patterns in {activeFactory?.name || "your factory"}.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full bg-surface-card px-3 py-1 text-text-secondary">
-                  Factory {activeFactory?.name || "not selected"}
-                </span>
-                <span className="rounded-full bg-surface-card px-3 py-1 text-text-secondary">
-                  {chartRecordCoverage} recent records feeding charts
-                </span>
-                <span className="rounded-full bg-surface-card px-3 py-1 text-text-secondary">
-                  {overview?.financial_access ? "Financial view enabled" : "Financial view restricted"}
-                </span>
-                <span className="rounded-full bg-surface-card px-3 py-1 text-text-secondary">
-                  Highest loss day {topLossDay}
-                </span>
-              </div>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="primary" disabled={refreshing} onClick={() => void handleRefresh()}>
-                {refreshing ? "Refreshing..." : "Refresh"}
-              </Button>
-              <Link href="/steel">
-                <Button variant="ghost">
-                  Open steel hub
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </section>
-
+    <OperationalPageShell
+      eyebrow="Steel Charts"
+      title="Track steel trends without leaving the chart board"
+      description={`Use the chart board below to compare ranges, trace drift, and investigate over-time patterns in ${activeFactory?.name || "your factory"}.`}
+      isLoading={loading || pageLoading}
+      loadingTitle="Loading steel charts..."
+      contentClassName="space-y-6"
+      actions={[
+        {
+          id: "refresh",
+          label: refreshing ? "Refreshing..." : "Refresh",
+          onAction: () => void handleRefresh(),
+          variant: "primary",
+        },
+        {
+          id: "steel-hub",
+          label: "Open steel hub",
+          onAction: () => router.push("/steel"),
+        },
+      ]}
+      filters={
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full bg-surface-card px-3 py-1 text-text-secondary">
+            Factory {activeFactory?.name || "not selected"}
+          </span>
+          <span className="rounded-full bg-surface-card px-3 py-1 text-text-secondary">
+            {chartRecordCoverage} recent records feeding charts
+          </span>
+          <span className="rounded-full bg-surface-card px-3 py-1 text-text-secondary">
+            {overview?.financial_access ? "Financial view enabled" : "Financial view restricted"}
+          </span>
+          <span className="rounded-full bg-surface-card px-3 py-1 text-text-secondary">
+            Highest loss day {topLossDay}
+          </span>
+        </div>
+      }
+    >
         {error || sessionError ? (
           <div className="rounded-2xl border border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">
             {error || sessionError}
@@ -247,7 +234,6 @@ export function SteelChartsPage() {
             </Card>
           )}
         </section>
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

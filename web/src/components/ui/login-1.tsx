@@ -13,8 +13,12 @@ import {
 
 import { AuthWorkstationShell } from "@/components/auth-workstation-shell";
 import { Button } from "@/components/ui/button";
+import { Field, HelperText, Label } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  PASSWORD_INPUT_TOGGLE_PADDING,
+  PasswordVisibilityToggle,
+} from "@/components/ui/password-visibility-toggle";
 import { cn } from "@/lib/utils";
 
 type StatusTone = "neutral" | "success" | "error";
@@ -45,7 +49,7 @@ type LoginOneProps = {
 
 function providerButtonClasses(disabled?: boolean) {
   return cn(
-    "factory-auth-provider flex min-h-[56px] w-full items-center justify-between rounded-panel px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
+    "factory-auth-provider flex min-h-[52px] w-full items-center justify-between rounded-panel px-4 py-3 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2",
     disabled
       ? "cursor-not-allowed text-text-tertiary opacity-75"
       : "text-text-primary",
@@ -88,40 +92,27 @@ export function LoginOne({
 }: LoginOneProps) {
   return (
     <AuthWorkstationShell
+      sidePanel="minimal"
       badge="Secure access"
-      title="Identify User"
-      description="Continue with a supported provider or use your work credentials to initialize the operational session."
+      title="Identify user"
+      description="Use your work credentials or a connected provider to start an operational session."
       leftEyebrow="Authentication lane"
       leftTitle={title}
       leftDescription={subtitle}
-      steps={[
-        {
-          title: "Validate operator identity",
-          description: "Use the registered inbox or a connected provider to start a traceable session.",
-        },
-        {
-          title: "Confirm access controls",
-          description: "Verification and role context determine which desk opens after sign-in.",
-        },
-        {
-          title: "Resume factory workflow",
-          description: "After authentication, continue directly into the assigned operational workspace.",
-        },
-      ]}
       supportTitle="Factory-safe account flow"
-      supportDescription="High-trust login stays compact, keyboard-first, and tightly bound to verified factory identities."
+      supportDescription="Shift-change login stays compact, keyboard-first, and bound to verified factory identities."
       supportItems={[
         {
           icon: <ShieldCheck className="h-4 w-4" />,
-          text: "Secure connection remains active before any workspace or control desk is released.",
+          text: "Secure connection stays active before any workspace is released.",
         },
         {
           icon: <Lock className="h-4 w-4" />,
-          text: "Role routing and factory context are restored only after session rules pass verification.",
+          text: "Role routing and factory context restore only after session rules pass.",
         },
         {
           icon: <Mail className="h-4 w-4" />,
-          text: "Verification resend and recovery actions stay attached to the same registered work inbox.",
+          text: "Verification resend and recovery stay on the same registered work inbox.",
         },
       ]}
       metrics={redirectHint ? [{ label: "Requested destination", value: redirectHint }] : []}
@@ -129,7 +120,7 @@ export function LoginOne({
       contentClassName="space-y-5"
     >
       <form onSubmit={onSubmit} className="space-y-5">
-        <div className="space-y-3">
+        <div>
           <button
             type="button"
             onClick={onGoogleLogin}
@@ -142,26 +133,20 @@ export function LoginOne({
               </span>
               <span>
                 <span className="block text-sm font-semibold text-current">Continue with Google</span>
-                <span className="block text-[11px] uppercase tracking-[0.16em] text-text-secondary">Work account</span>
+                <span className="block text-label-dense text-text-secondary">Work account</span>
               </span>
             </span>
             <ArrowRight className="h-4 w-4" />
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="h-px flex-1 bg-border-subtle" />
-          <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.22em] text-text-secondary">
-            Operator email
-          </span>
-          <div className="h-px flex-1 bg-border-subtle" />
+        <div className="factory-auth-divider" aria-hidden>
+          Or use work email
         </div>
 
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email" className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-secondary">
-              Work email
-            </Label>
+          <Field>
+            <Label htmlFor="email">Work email</Label>
             <div className="relative">
               <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-text-tertiary" />
               <Input
@@ -175,14 +160,12 @@ export function LoginOne({
                 className="factory-auth-input min-h-[40px] pl-10"
               />
             </div>
-          </div>
+          </Field>
 
-          <div className="space-y-2">
+          <Field>
             <div className="flex items-center justify-between gap-3">
-              <Label htmlFor="password" className="font-mono text-[11px] uppercase tracking-[0.18em] text-text-secondary">
-                Password
-              </Label>
-              <Link href={forgotPasswordHref} className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--action-primary)] hover:text-[var(--action-primary-hover)]">
+              <Label htmlFor="password">Password</Label>
+              <Link href={forgotPasswordHref} className="factory-auth-link">
                 Forgot password?
               </Link>
             </div>
@@ -196,17 +179,16 @@ export function LoginOne({
                 value={password}
                 onChange={(event) => onPasswordChange(event.target.value)}
                 placeholder="Enter your password"
-                className="factory-auth-input min-h-[40px] pl-10 pr-20"
+                className={cn("factory-auth-input min-h-[40px] pl-10", PASSWORD_INPUT_TOGGLE_PADDING)}
               />
-              <button
-                type="button"
-                onClick={onTogglePassword}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-control border border-border-default bg-surface-shell px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-text-secondary transition hover:border-border-strong hover:bg-surface-hover hover:text-text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
-              >
-                {showPassword ? "Hide" : "Show"}
-              </button>
+              {onTogglePassword ? (
+                <PasswordVisibilityToggle
+                  visible={showPassword}
+                  onToggle={onTogglePassword}
+                />
+              ) : null}
             </div>
-          </div>
+          </Field>
 
           <Button type="submit" className="factory-auth-cta h-[42px] w-full border-transparent" isBusy={loading} busyLabel="Signing in...">
             Sign in
@@ -214,7 +196,7 @@ export function LoginOne({
         </div>
 
         {statusMessage ? (
-          <div className={cn("rounded-panel border px-4 py-4 text-sm leading-6", statusClasses(statusTone))}>
+          <div className={cn("rounded-panel border px-4 py-4 text-sm leading-6", statusClasses(statusTone))} role="status">
             <div>{statusMessage}</div>
             {canResendVerification && onResendVerification ? (
               <div className="mt-4 flex flex-wrap items-center gap-3">
@@ -226,22 +208,15 @@ export function LoginOne({
                 >
                   {resendingVerification ? "Sending..." : "Resend verification"}
                 </Button>
-                <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-current/80">
-                  Use the same signup inbox.
-                </span>
+                <HelperText className="text-current/80">Use the same signup inbox.</HelperText>
               </div>
             ) : null}
           </div>
         ) : null}
 
         <div className="flex items-center justify-between gap-4 border-t border-border-subtle pt-4">
-          <div className="font-mono text-[11px] uppercase tracking-[0.2em] text-text-secondary">
-            Need provisioning?
-          </div>
-          <Link
-            href={createAccountHref}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-[var(--action-primary)] transition hover:text-[var(--action-primary-hover)]"
-          >
+          <span className="text-label-dense text-text-secondary">Need provisioning?</span>
+          <Link href={createAccountHref} className="inline-flex items-center gap-2 text-sm font-semibold text-action-primary transition hover:text-action-primary-hover">
             Create account
             <ArrowRight className="h-4 w-4" />
           </Link>

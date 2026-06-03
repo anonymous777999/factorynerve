@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
@@ -264,60 +266,52 @@ export default function AiInsightsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
-          <div className="max-w-4xl space-y-3">
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("ai.title", "AI Insights")}</div>
-            <h1 className="text-3xl font-semibold">{t("ai.hero.title", "Operations questions")}</h1>
-            <p className="max-w-3xl text-sm text-[var(--muted)]">{t("ai.hero.subtitle", "Ask first. Drift on demand.")}</p>
-            <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
-              <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
-                {t("ai.hero.plan", "Plan")}: <span className="font-semibold text-[var(--text)] capitalize">{usage?.plan || "-"}</span>
-              </span>
-              <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
-                {refreshing
-                  ? t("ai.hero.refreshing", "Refreshing AI...")
-                  : lastUpdatedAt
-                    ? t("ai.hero.updated", "Updated {{value}}", { value: formatDateTime(lastUpdatedAt, locale) })
-                    : t("ai.hero.live_updates", "Live updates every 45s")}
-              </span>
-            </div>
+    <OperationalPageShell
+      className="factory-workstation-scope"
+      contentClassName="mx-auto max-w-7xl space-y-6"
+      eyebrow={t("ai.title", "AI Insights")}
+      title={t("ai.hero.title", "Operations questions")}
+      description={t("ai.hero.subtitle", "Ask first. Drift on demand.")}
+      metrics={[
+        { id: "plan", label: t("ai.hero.plan", "Plan"), value: usage?.plan || "-" },
+        {
+          id: "updated",
+          label: "Status",
+          value: refreshing
+            ? t("ai.hero.refreshing", "Refreshing AI...")
+            : lastUpdatedAt
+              ? formatDateTime(lastUpdatedAt, locale)
+              : t("ai.hero.live_updates", "Live updates every 45s"),
+        },
+      ]}
+      actions={[
+        {
+          id: "ask",
+          label: t("ai.actions.ask", "Ask AI"),
+          onAction: () => {
+            document.getElementById("nlq-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          },
+        },
+        {
+          id: "refresh",
+          label: refreshing ? t("ai.actions.refreshing", "Refreshing...") : t("common.refresh", "Refresh"),
+          variant: "outline",
+          onAction: () => {
+            void loadAiHome({ background: true, selectedDays: Number(days) || 14 });
+          },
+        },
+      ]}
+    >
+        <DisclosurePanel title={t("ai.actions.more_tools", "More tools")} variant="ghost">
+          <div className="flex flex-wrap gap-3">
+            <Link href="/entry">
+              <Button variant="outline" className="px-4 py-2 text-xs">{t("ai.actions.entry", "DPR Entry")}</Button>
+            </Link>
+            <Link href="/reports">
+              <Button variant="outline" className="px-4 py-2 text-xs">{t("ai.actions.reports", "Reports")}</Button>
+            </Link>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              className="px-4 py-2 text-xs"
-              onClick={() => document.getElementById("nlq-card")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            >
-              {t("ai.actions.ask", "Ask AI")}
-            </Button>
-            <Button
-              variant="outline"
-              className="px-4 py-2 text-xs"
-              onClick={() => {
-                void loadAiHome({ background: true, selectedDays: Number(days) || 14 });
-              }}
-              disabled={refreshing}
-            >
-              {refreshing ? t("ai.actions.refreshing", "Refreshing...") : t("common.refresh", "Refresh")}
-            </Button>
-            <details className="group">
-              <summary className="list-none">
-                <Button variant="outline" className="px-4 py-2 text-xs">
-                  {t("ai.actions.more_tools", "More tools")}
-                </Button>
-              </summary>
-              <div className="mt-3 flex flex-wrap gap-3 rounded-[1.35rem] border border-[var(--border)] bg-[rgba(10,14,24,0.82)] p-3">
-                <Link href="/entry">
-                  <Button variant="outline" className="px-4 py-2 text-xs">{t("ai.actions.entry", "DPR Entry")}</Button>
-                </Link>
-                <Link href="/reports">
-                  <Button variant="outline" className="px-4 py-2 text-xs">{t("ai.actions.reports", "Reports")}</Button>
-                </Link>
-              </div>
-            </details>
-          </div>
-        </section>
+        </DisclosurePanel>
 
         {refreshing ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3 text-sm text-[var(--muted)]">
@@ -554,7 +548,6 @@ export default function AiInsightsPage() {
 
         {status ? <div className="text-sm text-emerald-300">{status}</div> : null}
         {error || sessionError ? <div className="text-sm text-red-300">{error || sessionError}</div> : null}
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

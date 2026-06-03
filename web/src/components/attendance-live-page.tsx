@@ -16,7 +16,7 @@ import { DataTable } from "@/components/ui/data-table/data-table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { FilterBar } from "@/components/ui/filter-bar";
 import { LoadingBoundary } from "@/components/ui/loading-boundary";
-import { StickyActionBar } from "@/components/ui/sticky-action-bar";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import {
   formatAttendanceStatusLabel,
   getLiveAttendance,
@@ -211,15 +211,100 @@ export default function AttendanceLivePage() {
     [locale, t],
   );
 
+  const liveMetrics = useMemo(
+    () => [
+      {
+        id: "factory",
+        label: t("attendance.live.cards.factory", "Factory"),
+        value: attendanceQuery.data?.factory_name || activeFactory?.name || user?.factory_name || "-",
+        detail: t("attendance.live.cards.date", "{{value}}", {
+          value: attendanceQuery.data?.attendance_date || attendanceDate,
+        }),
+      },
+      {
+        id: "working",
+        label: t("attendance.live.cards.working", "Working"),
+        value: attendanceQuery.data?.totals.working || 0,
+        detail: t("attendance.live.cards.working_detail", "Open punch."),
+        tone: "success" as const,
+      },
+      {
+        id: "closed",
+        label: t("attendance.live.cards.closed", "Closed"),
+        value: attendanceQuery.data?.totals.completed || 0,
+        detail: t("attendance.live.cards.closed_detail", "Closed rows."),
+        tone: "synced" as const,
+      },
+      {
+        id: "not_punched",
+        label: t("attendance.live.cards.not_punched", "Not Punched"),
+        value: attendanceQuery.data?.totals.not_punched || 0,
+        detail: t("attendance.live.cards.not_punched_detail", "Punch missing."),
+        tone: "warning" as const,
+      },
+    ],
+    [activeFactory?.name, attendanceDate, attendanceQuery.data, t, user?.factory_name],
+  );
+
+  const filterBar = (
+    <FilterBar
+      fields={[
+        {
+          id: "attendance_date",
+          label: t("attendance.live.filters.date", "Attendance Date"),
+          type: "date",
+          value: attendanceDate,
+          onValueChange: (value) => updateParams({ attendance_date: value }),
+        },
+        {
+          id: "status",
+          label: "Status",
+          type: "select",
+          value: filter,
+          onValueChange: (value) => updateParams({ status: value === "all" ? null : value }),
+          options: [
+            { label: t("attendance.live.filters.working", "Working"), value: "working" },
+            { label: t("attendance.live.filters.missed_punch", "Missed Punch"), value: "missed_punch" },
+            { label: t("attendance.live.filters.not_punched", "Not Punched"), value: "not_punched" },
+            { label: t("attendance.live.filters.completed", "Closed"), value: "completed" },
+          ],
+          placeholder: t("attendance.live.filters.all", "All"),
+        },
+      ]}
+      activeFilters={[
+        filter !== "all"
+          ? {
+              id: "status",
+              label: "Status",
+              value: filter.replaceAll("_", " "),
+              onClear: () => updateParams({ status: null }),
+            }
+          : null,
+        attendanceDate !== todayValue()
+          ? {
+              id: "attendance_date",
+              label: "Date",
+              value: attendanceDate,
+              onClear: () => updateParams({ attendance_date: todayValue() }),
+            }
+          : null,
+      ].filter(Boolean) as Array<{ id: string; label: string; value: string; onClear: () => void }>}
+      onClearAll={() => updateParams({ attendance_date: todayValue(), status: null })}
+    />
+  );
+
   if (loading || (!attendanceQuery.data && attendanceQuery.isLoading && user && canReview)) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-7xl">
-          <LoadingBoundary isLoading loadingTitle="Loading attendance board" loadingRows={8}>
-            <div />
-          </LoadingBoundary>
-        </div>
-      </main>
+      <OperationalPageShell
+        eyebrow={t("attendance.live.title", "Attendance Board")}
+        title={t("attendance.live.hero.title", "Live attendance")}
+        description={t("attendance.live.hero.subtitle", "Next signal first.")}
+        isLoading
+        loadingTitle="Loading attendance board"
+        metrics={[]}
+      >
+        <div />
+      </OperationalPageShell>
     );
   }
 
@@ -269,201 +354,86 @@ export default function AttendanceLivePage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-panel border border-border-default bg-surface-panel px-lg py-lg shadow-xs">
-          <div className="max-w-4xl">
-            <div className="text-sm uppercase tracking-wide text-text-secondary">
-              {t("attendance.live.title", "Attendance Board")}
-            </div>
-            <h1 className="mt-2 text-3xl font-semibold text-text-primary md:text-4xl">
-              {t("attendance.live.hero.title", "Live attendance")}
-            </h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-text-secondary">
-              {t("attendance.live.hero.subtitle", "Next signal first.")}
-            </p>
-          </div>
-        </section>
-
-        <StickyActionBar
-          variant="page"
-          status={liveMode ? "success" : "secondary"}
-          statusLabel={liveMode ? "Live mode on" : "Live mode off"}
-          title="Attendance live grid"
-          description="React Query refresh owns the live cadence, and filters stay in the URL."
-          meta={
-            attendanceQuery.data?.attendance_date
-              ? `Date ${attendanceQuery.data.attendance_date} • ${attendanceQuery.data.totals.total_people} people`
-              : undefined
-          }
-          leftSlot={
-            <div className="flex min-w-0 items-center gap-sm">
-              {liveMode ? <span className="h-2.5 w-2.5 rounded-full bg-status-success-icon" /> : null}
-              <div className="min-w-0 space-y-xs">
-                <div className="flex flex-wrap items-center gap-sm">
-                  <Badge status={liveMode ? "success" : "secondary"} size="compact">
-                    {liveMode ? "Live mode on" : "Live mode off"}
-                  </Badge>
-                  <span className="text-label font-semibold text-text-primary">Attendance live grid</span>
-                </div>
-                <p className="text-label-dense text-text-secondary">
-                  {attendanceQuery.isFetching && attendanceQuery.data
-                    ? "Updating in the background."
-                    : liveMode
-                      ? "Automatic refresh every 5 seconds."
-                      : "Background refresh paused."}
-                </p>
-              </div>
-            </div>
-          }
-          primaryAction={{
-            id: "open-review-queue",
-            label: t("attendance.live.tools.review_queue", "Review Queue"),
-            onAction: () => router.push(reviewQueueHref),
-          }}
-          secondaryAction={{
-            id: "toggle-live",
-            label: liveMode ? "Pause live" : "Resume live",
-            variant: "outline",
-            onAction: () => updateParams({ live: liveMode ? "false" : "true" }),
-          }}
-          tertiaryAction={{
-            id: "refresh-live",
-            label: attendanceQuery.isFetching ? "Refreshing" : t("common.refresh", "Refresh"),
-            variant: "ghost",
-            disabled: attendanceQuery.isFetching,
-            onAction: () => {
-              void attendanceQuery.refetch();
-            },
-          }}
-        />
-
-        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-text-secondary">{t("attendance.live.cards.factory", "Factory")}</div>
-              <CardTitle>{attendanceQuery.data?.factory_name || activeFactory?.name || user.factory_name}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-text-secondary">
-              {t("attendance.live.cards.date", "{{value}}", { value: attendanceQuery.data?.attendance_date || attendanceDate })}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-text-secondary">{t("attendance.live.cards.working", "Working")}</div>
-              <CardTitle>{attendanceQuery.data?.totals.working || 0}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-text-secondary">
-              {t("attendance.live.cards.working_detail", "Open punch.")}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-text-secondary">{t("attendance.live.cards.closed", "Closed")}</div>
-              <CardTitle>{attendanceQuery.data?.totals.completed || 0}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-text-secondary">
-              {t("attendance.live.cards.closed_detail", "Closed rows.")}
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <div className="text-sm text-text-secondary">{t("attendance.live.cards.not_punched", "Not Punched")}</div>
-              <CardTitle>{attendanceQuery.data?.totals.not_punched || 0}</CardTitle>
-            </CardHeader>
-            <CardContent className="text-sm text-text-secondary">
-              {t("attendance.live.cards.not_punched_detail", "Punch missing.")}
-            </CardContent>
-          </Card>
-        </section>
-
-        <FilterBar
-          fields={[
-            {
-              id: "attendance_date",
-              label: t("attendance.live.filters.date", "Attendance Date"),
-              type: "date",
-              value: attendanceDate,
-              onValueChange: (value) => updateParams({ attendance_date: value }),
-            },
-            {
-              id: "status",
-              label: "Status",
-              type: "select",
-              value: filter,
-              onValueChange: (value) => updateParams({ status: value === "all" ? null : value }),
-              options: [
-                { label: t("attendance.live.filters.working", "Working"), value: "working" },
-                { label: t("attendance.live.filters.missed_punch", "Missed Punch"), value: "missed_punch" },
-                { label: t("attendance.live.filters.not_punched", "Not Punched"), value: "not_punched" },
-                { label: t("attendance.live.filters.completed", "Closed"), value: "completed" },
-              ],
-              placeholder: t("attendance.live.filters.all", "All"),
-            },
-          ]}
-          activeFilters={[
-            filter !== "all"
-              ? {
-                id: "status",
-                label: "Status",
-                value: filter.replaceAll("_", " "),
-                onClear: () => updateParams({ status: null }),
-              }
-              : null,
-            attendanceDate !== todayValue()
-              ? {
-                id: "attendance_date",
-                label: "Date",
-                value: attendanceDate,
-                onClear: () => updateParams({ attendance_date: todayValue() }),
-              }
-              : null,
-          ].filter(Boolean) as Array<{ id: string; label: string; value: string; onClear: () => void }>}
-          onClearAll={() => updateParams({ attendance_date: todayValue(), status: null })}
-        />
-
-        <LoadingBoundary
-          isLoading={attendanceQuery.isLoading}
-          isFetching={attendanceQuery.isFetching}
-          isError={attendanceQuery.isError}
-          error={attendanceQuery.error ?? null}
-          hasData={rows.length > 0}
-          isEmpty={filteredRows.length === 0}
-          onRetry={() => {
+    <OperationalPageShell
+      eyebrow={t("attendance.live.title", "Attendance Board")}
+      title={t("attendance.live.hero.title", "Live attendance")}
+      description={
+        attendanceQuery.isFetching && attendanceQuery.data
+          ? "Updating in the background."
+          : liveMode
+            ? "Automatic refresh every 5 seconds. Filters stay in the URL."
+            : "Background refresh paused. Filters stay in the URL."
+      }
+      liveIndicator={liveMode}
+      liveLabel={liveMode ? "Live mode on" : "Live mode off"}
+      tone={liveMode ? undefined : "paused"}
+      toneLabel={liveMode ? undefined : "Live mode off"}
+      metrics={liveMetrics}
+      filters={filterBar}
+      actions={[
+        {
+          id: "open-review-queue",
+          label: t("attendance.live.tools.review_queue", "Review Queue"),
+          onAction: () => router.push(reviewQueueHref),
+        },
+        {
+          id: "toggle-live",
+          label: liveMode ? "Pause live" : "Resume live",
+          variant: "outline",
+          onAction: () => updateParams({ live: liveMode ? "false" : "true" }),
+        },
+        {
+          id: "refresh-live",
+          label: attendanceQuery.isFetching ? "Refreshing" : t("common.refresh", "Refresh"),
+          variant: "ghost",
+          onAction: () => {
             void attendanceQuery.refetch();
-          }}
-          emptyFallback={
-            <EmptyState
-              title={t("attendance.live.table.no_rows", "No attendance rows match this filter yet.")}
-              description="Clear the live filters or pick another date to widen the board."
-              action={
-                <Button variant="outline" onClick={() => updateParams({ attendance_date: todayValue(), status: null })}>
-                  Clear filters
-                </Button>
-              }
-            />
-          }
-        >
-          <DataTable<AttendanceRow>
-            ariaLabel="Attendance live rows"
-            columns={columns}
-            data={filteredRows}
-            activeRowId={nextAttentionRow?.rowId ?? null}
-            enableSorting
-            emptyMessage={t("attendance.live.table.no_rows", "No attendance rows match this filter yet.")}
-            emptyTitle="No matching rows"
-            onRowClick={(row) => {
-              const params = new URLSearchParams();
-              params.set("attendance_date", attendanceQuery.data?.attendance_date || attendanceDate);
-              if (row.attendance_id) {
-                params.set("focus", String(row.attendance_id));
-                params.set("tab", "fix");
-              }
-              router.push(`/attendance/review?${params.toString()}`);
-            }}
+          },
+        },
+      ]}
+    >
+      <LoadingBoundary
+        isLoading={attendanceQuery.isLoading}
+        isFetching={attendanceQuery.isFetching}
+        isError={attendanceQuery.isError}
+        error={attendanceQuery.error ?? null}
+        hasData={rows.length > 0}
+        isEmpty={filteredRows.length === 0}
+        onRetry={() => {
+          void attendanceQuery.refetch();
+        }}
+        emptyFallback={
+          <EmptyState
+            title={t("attendance.live.table.no_rows", "No attendance rows match this filter yet.")}
+            description="Clear the live filters or pick another date to widen the board."
+            action={
+              <Button variant="outline" onClick={() => updateParams({ attendance_date: todayValue(), status: null })}>
+                Clear filters
+              </Button>
+            }
           />
-        </LoadingBoundary>
-      </div>
-    </main>
+        }
+      >
+        <DataTable<AttendanceRow>
+          ariaLabel="Attendance live rows"
+          columns={columns}
+          data={filteredRows}
+          activeRowId={nextAttentionRow?.rowId ?? null}
+          getRowState={(row) => (row.status === "missed_punch" ? "processing" : null)}
+          enableSorting
+          emptyMessage={t("attendance.live.table.no_rows", "No attendance rows match this filter yet.")}
+          emptyTitle="No matching rows"
+          onRowClick={(row) => {
+            const params = new URLSearchParams();
+            params.set("attendance_date", attendanceQuery.data?.attendance_date || attendanceDate);
+            if (row.attendance_id) {
+              params.set("focus", String(row.attendance_id));
+              params.set("tab", "fix");
+            }
+            router.push(`/attendance/review?${params.toString()}`);
+          }}
+        />
+      </LoadingBoundary>
+    </OperationalPageShell>
   );
 }

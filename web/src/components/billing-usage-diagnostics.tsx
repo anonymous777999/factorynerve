@@ -1,5 +1,7 @@
 "use client";
 
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
+
 type UsageMeter = {
   label: string;
   value: string;
@@ -37,11 +39,8 @@ export function BillingUsageDiagnostics({
   summaryQuota,
 }: BillingUsageDiagnosticsProps) {
   return (
-    <details className="min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-4 py-5 sm:px-5">
-      <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">
-        Usage summary
-      </summary>
-      <div className="mt-4 space-y-4 text-sm">
+    <DisclosurePanel title="Usage summary" className="min-w-0">
+      <div className="space-y-4 text-sm">
         {[requestsMeter, creditsMeter].map((meter) => (
           <div key={meter.label}>
             <div className="mb-2 flex items-center justify-between">
@@ -110,6 +109,6 @@ export function BillingUsageDiagnostics({
           </div>
         ) : null}
       </div>
-    </details>
+    </DisclosurePanel>
   );
 }

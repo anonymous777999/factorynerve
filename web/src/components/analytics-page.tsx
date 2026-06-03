@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
@@ -242,38 +243,37 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <main className="operational-page" data-component="analytics-page">
-      <div className="operational-page__inner route-workspace">
-        <section className="route-header">
-          <div className="route-header__grid">
-            <div className="route-header__copy">
-              <div className="route-header__eyebrow">{t("analytics.title", "Analytics")}</div>
-              <h1 className="route-header__title">{t("analytics.hero.title", "Performance")}</h1>
-              <p className="route-header__body">{t("analytics.hero.subtitle", "Week first. Trends on demand.")}</p>
-              <div className="route-header__meta">
-                <span className="route-header__meta-item">Plan <strong>{usage?.plan || "-"}</strong></span>
-                <span className="route-header__meta-item">Weekly avg <strong>{weeklyAverage.toFixed(1)}%</strong></span>
-                <span className="route-header__meta-item">Trend <strong>{trends?.production_trend || "stable"}</strong></span>
-              </div>
-            </div>
-            <div className="route-header__actions">
-              <Link href="/reports">
-                <Button>{t("ai.actions.reports", "Reports")}</Button>
-              </Link>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  void loadAnalytics({ background: true });
-                }}
-                disabled={refreshing}
-              >
-                {refreshing ? t("analytics.tools.refreshing", "Refreshing...") : t("common.refresh", "Refresh")}
-              </Button>
-            </div>
-          </div>
-        </section>
-
-        {refreshing ? <div className="operational-panel px-4 py-3 text-sm text-[var(--muted)]">{t("analytics.refreshing_background", "Refreshing analytics...")}</div> : null}
+    <OperationalPageShell
+      className="factory-workstation-scope"
+      contentClassName="route-workspace"
+      eyebrow={t("analytics.title", "Analytics")}
+      title={t("analytics.hero.title", "Performance")}
+      description={t("analytics.hero.subtitle", "Week first. Trends on demand.")}
+      metrics={[
+        { id: "plan", label: "Plan", value: usage?.plan || "-" },
+        { id: "weekly-avg", label: "Weekly avg", value: `${weeklyAverage.toFixed(1)}%` },
+        { id: "trend", label: "Trend", value: trends?.production_trend || "stable" },
+      ]}
+      actions={[
+        {
+          id: "reports",
+          label: t("ai.actions.reports", "Reports"),
+          onAction: () => {
+            window.location.assign("/reports");
+          },
+        },
+        {
+          id: "refresh",
+          label: refreshing ? t("analytics.tools.refreshing", "Refreshing...") : t("common.refresh", "Refresh"),
+          variant: "outline",
+          onAction: () => {
+            void loadAnalytics({ background: true });
+          },
+        },
+      ]}
+    >
+      <div data-component="analytics-page">
+        {refreshing ? <div className="operational-panel px-4 py-3 text-sm text-text-secondary">{t("analytics.refreshing_background", "Refreshing analytics...")}</div> : null}
         {locked ? <div className="operational-panel border-status-info-border bg-status-info-bg px-4 py-3 text-sm text-status-info-fg">{locked}</div> : null}
 
         <section className="route-grid-main route-grid-main--sidebar">
@@ -433,6 +433,6 @@ export default function AnalyticsPage() {
 
         {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
-    </main>
+    </OperationalPageShell>
   );
 }

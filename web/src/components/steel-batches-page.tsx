@@ -7,6 +7,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { PageMain } from "@/components/ui/page-main";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   DataTable,
@@ -254,17 +256,9 @@ export function SteelBatchesPage() {
       : null,
   ].filter(Boolean) as Array<{ id: string; label: string; value: string; onClear: () => void }>;
 
-  if (loading || (!user && !sessionError)) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-text-secondary">
-        Loading steel batches...
-      </main>
-    );
-  }
-
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <PageMain maxWidth="3xl" innerClassName="flex min-h-[50vh] items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Batches</CardTitle>
@@ -276,51 +270,44 @@ export function SteelBatchesPage() {
             </Link>
           </CardContent>
         </Card>
-      </main>
+      </PageMain>
     );
   }
 
   if (!isSteelFactory) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-4xl">
-          <Card>
-            <CardHeader>
-              <CardTitle>Steel batches are factory-aware</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-text-secondary">
-              <div>
-                Your active factory is <span className="font-semibold text-text-primary">{activeFactory?.name || "not selected"}</span>.
-              </div>
-              <div>Switch into a steel factory from the sidebar, or update the factory profile in Settings first.</div>
-              <div className="flex gap-3">
-                <Link href="/steel">
-                  <Button>Open Steel Module</Button>
-                </Link>
-                <Link href="/settings">
-                  <Button variant="outline">Open Settings</Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+      <OperationalPageShell
+        title="Steel batches are factory-aware"
+        description="Switch into a steel factory from the sidebar, or update the factory profile in Settings first."
+      >
+        <Card className="mx-auto max-w-4xl">
+          <CardContent className="space-y-4 py-lg text-sm text-text-secondary">
+            <div>
+              Your active factory is <span className="font-semibold text-text-primary">{activeFactory?.name || "not selected"}</span>.
+            </div>
+            <div className="flex gap-3">
+              <Link href="/steel">
+                <Button>Open Steel Module</Button>
+              </Link>
+              <Link href="/settings">
+                <Button variant="outline">Open Settings</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </OperationalPageShell>
     );
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-panel border border-border-default bg-surface-panel px-lg py-lg shadow-xs">
-          <div className="max-w-4xl">
-            <div className="text-sm uppercase tracking-wide text-text-secondary">Steel Batches</div>
-            <h1 className="mt-2 text-3xl font-semibold text-text-primary md:text-4xl">Investigate production batches</h1>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-text-secondary">
-              Continue from batch signals into a governed production list, then open the batch trace that needs attention.
-            </p>
-          </div>
-        </section>
-
+    <OperationalPageShell
+      eyebrow="Steel Batches"
+      title="Investigate production batches"
+      description="Continue from batch signals into a governed production list, then open the batch trace that needs attention."
+      isLoading={loading || (!user && !sessionError)}
+      loadingTitle="Loading steel batches..."
+      contentClassName="space-y-6"
+    >
         {source === "charts" ? (
           <div className="rounded-panel border border-border-subtle bg-surface-shell px-md py-sm text-sm text-text-secondary">
             Showing batches from steel performance overview.
@@ -419,7 +406,6 @@ export function SteelBatchesPage() {
             viewportSize="lg"
           />
         </LoadingBoundary>
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }
