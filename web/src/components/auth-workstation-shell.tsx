@@ -87,17 +87,22 @@ export function AuthWorkstationShell({
 
   return (
     <main className="factory-auth-scope factory-auth-shell">
+      {/* Ambient Forge Overlays */}
+      <div className="factory-auth-noise" />
+      <div className="factory-auth-glow factory-auth-glow--orange" />
+      <div className="factory-auth-glow factory-auth-glow--blue" />
+
       <header className="factory-auth-topbar">
         <Link href={homeHref} className="inline-flex items-center gap-3 text-text-primary">
           <div className="inline-flex h-8 w-8 items-center justify-center rounded-control border border-border-default bg-surface-panel shadow-xs">
-            <Building2 className="h-4 w-4 text-action-primary" />
+            <Building2 className="h-4 w-4 text-accent-orange-amber" />
           </div>
-          <span className="text-page-title font-semibold tracking-tight">{homeLabel}</span>
+          <span className="font-display text-lg font-bold uppercase tracking-wider">{homeLabel}</span>
         </Link>
 
-        <div className="hidden items-center gap-6 text-label-dense font-medium text-text-secondary sm:flex">
+        <div className="hidden items-center gap-6 text-label-dense font-mono font-medium text-text-secondary sm:flex">
           <span>{topMetaLabel}</span>
-          <span className="text-action-primary">{platformLabel}</span>
+          <span className="text-accent-orange-amber font-semibold uppercase">{platformLabel}</span>
         </div>
       </header>
 
@@ -105,17 +110,17 @@ export function AuthWorkstationShell({
         <aside className="factory-auth-left" aria-label="System context">
           <div className="space-y-6">
             <div className="space-y-3">
-              <p className="text-label-dense font-medium text-text-tertiary">{leftEyebrow}</p>
-              <h1 className="max-w-[22ch] text-page-title font-semibold leading-snug tracking-tight text-text-primary">
+              <p className="text-label-dense font-mono font-medium text-text-tertiary">{leftEyebrow}</p>
+              <h1 className="max-w-[22ch] font-display text-2xl font-bold uppercase tracking-wider leading-snug text-text-primary">
                 {leftTitle}
               </h1>
               <p className="max-w-md text-body leading-6 text-text-secondary">{leftDescription}</p>
             </div>
 
             <div className="factory-auth-card factory-auth-card--support">
-              <div className="flex items-center gap-3 border-b border-border-subtle pb-3">
+              <div className="flex items-center gap-3 border-b border-border-default pb-3">
                 <ShieldCheck className="h-4 w-4 text-status-success-icon" />
-                <p className="text-label font-medium text-status-success-fg">{statusValue}</p>
+                <p className="text-label font-mono font-medium text-status-success-fg uppercase tracking-wider">{statusValue}</p>
               </div>
 
               <ul className="mt-4 space-y-3 text-sm text-text-secondary">
@@ -131,7 +136,7 @@ export function AuthWorkstationShell({
             {showFullSidePanel ? (
               <div className="grid gap-4 lg:grid-cols-[1.18fr_0.82fr]">
                 <div className="factory-auth-card">
-                  <p className="text-label-dense font-medium text-text-tertiary">Provisioning workflow</p>
+                  <p className="text-label-dense font-mono font-medium text-text-tertiary uppercase tracking-wider">Provisioning workflow</p>
                   <ol className="mt-4 space-y-4">
                     {steps.map((step, index) => (
                       <li key={`${step.title}-${index}`} className="flex gap-3">
@@ -139,7 +144,7 @@ export function AuthWorkstationShell({
                           {String(index + 1).padStart(2, "0")}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-text-primary">{step.title}</p>
+                          <p className="text-sm font-semibold text-text-primary">{step.title}</p>
                           <p className="mt-1 text-sm leading-6 text-text-secondary">{step.description}</p>
                         </div>
                       </li>
@@ -148,7 +153,7 @@ export function AuthWorkstationShell({
                 </div>
 
                 <div className="factory-auth-card">
-                  <p className="text-label-dense font-medium text-text-tertiary">{statusLabel}</p>
+                  <p className="text-label-dense font-mono font-medium text-text-tertiary uppercase tracking-wider">{statusLabel}</p>
                   <div className="mt-4 flex gap-2" role="presentation">
                     <StatusRail active />
                     <StatusRail active />
@@ -157,17 +162,17 @@ export function AuthWorkstationShell({
 
                   <div className="mt-5 space-y-4 text-sm text-text-secondary">
                     <div>
-                      <p className="text-label-dense text-text-tertiary">Security posture</p>
-                      <p className="mt-1 font-medium text-text-primary">{supportTitle}</p>
+                      <p className="text-label-dense font-mono text-text-tertiary">Security posture</p>
+                      <p className="mt-1 font-semibold text-text-primary">{supportTitle}</p>
                     </div>
                     <div>
-                      <p className="text-label-dense text-text-tertiary">Operational note</p>
+                      <p className="text-label-dense font-mono text-text-tertiary">Operational note</p>
                       <p className="mt-1">{supportDescription}</p>
                     </div>
                     {metrics.map((metric) => (
                       <div key={metric.label}>
-                        <p className="text-label-dense text-text-tertiary">{metric.label}</p>
-                        <p className="mt-1 font-medium text-text-primary">{metric.value}</p>
+                        <p className="text-label-dense font-mono text-text-tertiary">{metric.label}</p>
+                        <p className="mt-1 font-semibold text-text-primary">{metric.value}</p>
                       </div>
                     ))}
                   </div>
@@ -175,7 +180,7 @@ export function AuthWorkstationShell({
               </div>
             ) : (
               <div className="factory-auth-card">
-                <p className="text-label-dense font-medium text-text-tertiary">{statusLabel}</p>
+                <p className="text-label-dense font-mono font-medium text-text-tertiary uppercase tracking-wider">{statusLabel}</p>
                 <div className="mt-3 flex gap-2" role="presentation">
                   <StatusRail active />
                   <StatusRail active />
@@ -185,8 +190,8 @@ export function AuthWorkstationShell({
                   <dl className="mt-4 space-y-3">
                     {metrics.map((metric) => (
                       <div key={metric.label}>
-                        <dt className="text-label-dense text-text-tertiary">{metric.label}</dt>
-                        <dd className="mt-0.5 text-sm font-medium text-text-primary">{metric.value}</dd>
+                        <dt className="text-label-dense font-mono text-text-tertiary">{metric.label}</dt>
+                        <dd className="mt-0.5 text-sm font-semibold text-text-primary">{metric.value}</dd>
                       </div>
                     ))}
                   </dl>
@@ -195,7 +200,7 @@ export function AuthWorkstationShell({
             )}
           </div>
 
-          <p className="factory-auth-footer-note flex items-center gap-2 pt-6 text-label-dense text-text-tertiary">
+          <p className="factory-auth-footer-note flex items-center gap-2 pt-6 text-label-dense font-mono text-text-tertiary">
             <AlertTriangle className="h-3.5 w-3.5 shrink-0" aria-hidden />
             Emergency sysadmin: ext 4092
           </p>
@@ -203,13 +208,13 @@ export function AuthWorkstationShell({
 
         <section className="factory-auth-form-column">
           <div className={cn("factory-auth-panel", panelClassName)}>
-            <header className="border-b border-border-subtle pb-5">
+            <header className="border-b border-border-default pb-5">
               <div className="text-center">
-                <span className="inline-flex rounded-control border border-border-default bg-surface-shell px-3 py-1 text-label-dense font-medium text-text-secondary">
+                <span className="inline-flex rounded-control border border-border-default bg-surface-shell px-3 py-1 text-label-dense font-mono font-medium text-text-secondary uppercase tracking-wider">
                   {badge}
                 </span>
               </div>
-              <h2 className="mt-4 text-center text-page-title font-semibold tracking-tight text-text-primary">
+              <h2 className="mt-4 text-center font-display text-2xl font-bold uppercase tracking-wider text-text-primary">
                 {title}
               </h2>
               <p className="mx-auto mt-3 max-w-[48ch] text-center text-body leading-6 text-text-secondary">

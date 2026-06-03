@@ -18,9 +18,11 @@
    ============================================================ */
 
 :root {
-  /* --- Font families — IBM Plex (profile mock) with Inter fallback --- */
-  --font-body: var(--font-plex-sans, var(--font-inter)), system-ui, -apple-system, sans-serif;
-  --font-display: var(--font-plex-sans, var(--font-inter)), system-ui, -apple-system, sans-serif;
+  /* --- Font families — Barlow Condensed for display, DM Sans for body, Bebas Neue for numeric KPIs --- */
+  --font-body: var(--font-dm-sans, var(--font-plex-sans, var(--font-inter))), system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-barlow-condensed, var(--font-plex-sans, var(--font-inter))), system-ui, -apple-system, sans-serif;
+  --font-bebas-neue: var(--font-bebas-neue), 'Bebas Neue', sans-serif;
+  --ease-industrial: cubic-bezier(0.16, 1, 0.3, 1);
 
   /* --- Primary color scale (not in tokens.css — globals-specific) --- */
   --color-primary: #3b82f6;
@@ -162,6 +164,28 @@
    ============================================================ */
 
 [data-theme="dark"] {
+  /* Steel Forge Dark Theme Custom Properties */
+  --bg-app: #0D0F12;
+  --bg-shell: #111418;
+  --surface-app: #0D0F12;
+  --surface-shell: #111418;
+  --surface-panel: #1A1D24;
+  --surface-card: #22262F;
+  --surface-elevated: #2B303C;
+  --border-default: rgba(255, 255, 255, 0.06);
+  --border-strong: rgba(255, 255, 255, 0.12);
+
+  /* Accents */
+  --accent-orange-amber: #F97316;
+  --accent-orange-glow: rgba(249, 115, 22, 0.12);
+  --accent-blue-electric: #38BDF8;
+  --accent-blue-glow: rgba(56, 189, 248, 0.12);
+
+  /* Primary Text Override for High Contrast */
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #64748B;
+
   /* AI processing foreground — lightened from #4338ca (1.89:1 on tint, 2.05:1 dot)
      to indigo-200 so text reaches ~10:1 and the dot reaches ~10:1 (3:1 UI). */
   --ai-processing-fg: #c7d2fe;
@@ -209,6 +233,19 @@ td.numeric,
 [class*="font-mono"] {
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1;
+}
+
+.operational-page .font-mono.text-\[var\(--type-numeric-md\)\],
+.operational-page .route-metric__value,
+.operational-page .metric-value,
+.operational-page .kpi-value,
+.operational-page .route-metric .route-metric__value {
+  font-family: var(--font-bebas-neue), var(--font-mono), sans-serif;
+  font-size: clamp(2rem, 3.2vw, 3.5rem) !important;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+  color: var(--text-primary);
+  line-height: 1;
 }
 
 /* Labels — uniform across all forms, tables, sidebars */
@@ -444,12 +481,14 @@ input[type="reset"] {
 .hover-lift {
   transition:
     transform var(--motion-base) var(--ease-smooth),
+    border-color var(--motion-base) var(--ease-smooth),
     box-shadow var(--motion-base) var(--ease-smooth);
 }
 
 .hover-lift:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  border-color: var(--border-strong) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28), 0 0 12px var(--accent-orange-glow);
 }
 
 .btn-press:active:not(:disabled) {
@@ -1810,14 +1849,19 @@ input[type="checkbox"] {
 
 /* Auth routes inherit global semantic tokens (factorynerve-profile palette). */
 .factory-auth-scope {
-  background: var(--surface-app);
+  background: var(--bg-app);
   color: var(--text-primary);
+  position: relative;
+  overflow: hidden;
 }
 
 .factory-auth-shell {
   min-height: 100vh;
   min-height: 100dvh;
   color: var(--text-primary);
+  font-family: var(--font-body);
+  position: relative;
+  z-index: 2;
 }
 
 .factory-auth-topbar {
@@ -1828,8 +1872,8 @@ input[type="checkbox"] {
   height: 48px;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid var(--border-subtle);
-  background: var(--surface-shell);
+  border-bottom: 1px solid var(--border-default);
+  background: var(--bg-shell);
   box-shadow: var(--shadow-xs);
   padding-inline: clamp(1rem, 3vw, 2rem);
 }
@@ -1848,7 +1892,7 @@ input[type="checkbox"] {
 @media (min-width: 1024px) {
   .factory-auth-grid {
     grid-template-columns: minmax(320px, 0.95fr) minmax(400px, 1.05fr);
-    gap: 2rem;
+    gap: 2.5rem;
     align-items: start;
   }
 }
@@ -1858,7 +1902,7 @@ input[type="checkbox"] {
   flex-direction: column;
   justify-content: space-between;
   gap: 1.5rem;
-  border-right: 1px solid var(--border-subtle);
+  border-right: 1px solid var(--border-default);
   padding-right: 2rem;
 }
 
@@ -1879,14 +1923,15 @@ input[type="checkbox"] {
 
 .factory-auth-card {
   border-radius: var(--radius-md);
+  border: 1px solid var(--border-default);
   background: var(--surface-panel);
   padding: 1.25rem;
   box-shadow: var(--shadow-sm);
 }
 
 .factory-auth-card--support {
-  background: var(--surface-industrial-raised);
-  border: 1px solid var(--border-subtle);
+  background: var(--surface-panel);
+  border: 1px solid var(--border-strong);
 }
 
 .factory-auth-panel {
@@ -1899,6 +1944,10 @@ input[type="checkbox"] {
   box-shadow:
     var(--shadow-inset),
     var(--shadow-lg);
+  
+  /* Entrance transition */
+  opacity: 0;
+  animation: fadeSlideUp 0.45s var(--ease-industrial) forwards;
 }
 
 .factory-auth-footer-note {
@@ -1928,48 +1977,71 @@ input[type="checkbox"] {
 
 .factory-auth-input {
   border-color: var(--border-default);
-  background: var(--surface-elevated);
+  background: var(--bg-shell);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.02),
     inset 0 0 0 1px rgba(255, 255, 255, 0.01);
+  transition: border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard);
 }
 
 .factory-auth-input:focus {
-  border-color: var(--border-focus) !important;
+  border-color: var(--accent-orange-amber) !important;
   box-shadow:
-    0 0 0 1px rgba(61, 127, 255, 0.6),
-    0 0 0 4px rgba(61, 127, 255, 0.08);
+    0 0 0 1px var(--accent-orange-amber),
+    0 0 0 4px var(--accent-orange-glow);
 }
 
 .factory-auth-provider {
   border: 1px solid var(--border-default);
-  background: var(--surface-card);
+  background: var(--bg-shell);
   box-shadow: var(--shadow-sm);
+  transition: border-color var(--motion-fast) var(--ease-standard),
+    background-color var(--motion-fast) var(--ease-standard);
 }
 
 .factory-auth-provider:hover:not(:disabled) {
   border-color: var(--border-strong);
-  background: var(--surface-hover);
+  background: var(--surface-panel);
 }
 
 .factory-auth-cta {
-  background: var(--action-primary);
-  color: var(--action-primary-text);
+  background: linear-gradient(180deg, #F97316 0%, #D97706 100%);
+  color: #FFFFFF !important;
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  border-radius: var(--radius-sm);
   box-shadow: var(--shadow-sm);
+  transition: filter var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
 }
 
 .factory-auth-cta:hover:not(:disabled) {
-  background: var(--action-primary-hover);
-  box-shadow: var(--shadow-md);
+  filter: brightness(1.12);
+  box-shadow:
+    0 0 12px var(--accent-orange-glow),
+    var(--shadow-md);
+}
+
+.factory-auth-cta:active:not(:disabled) {
+  transform: scale(0.98);
 }
 
 .factory-auth-divider {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  color: var(--text-tertiary);
-  font-size: var(--text-label, 12px);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
   font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .factory-auth-divider::before,
@@ -1977,18 +2049,72 @@ input[type="checkbox"] {
   content: "";
   height: 1px;
   flex: 1;
-  background: var(--border-subtle);
+  background: var(--border-default);
 }
 
 .factory-auth-link {
   font-size: 12px;
   font-weight: 600;
-  color: var(--action-primary);
+  color: var(--text-secondary);
   transition: color var(--motion-fast) var(--ease-standard);
 }
 
 .factory-auth-link:hover {
-  color: var(--action-primary-hover);
+  color: var(--accent-orange-amber);
+}
+
+/* --- Atmospheric Layer Elements --- */
+.factory-auth-noise {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  opacity: 0.02;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+}
+
+.factory-auth-glow {
+  position: absolute;
+  border-radius: 9999px;
+  z-index: 0;
+  filter: blur(120px);
+  pointer-events: none;
+  opacity: 0.65;
+}
+
+.factory-auth-glow--orange {
+  width: 45vw;
+  height: 45vw;
+  max-width: 600px;
+  max-height: 600px;
+  right: -10%;
+  bottom: -15%;
+  background: radial-gradient(circle, var(--accent-orange-glow) 0%, transparent 70%);
+}
+
+.factory-auth-glow--blue {
+  width: 35vw;
+  height: 35vw;
+  max-width: 500px;
+  max-height: 500px;
+  left: -5%;
+  top: -10%;
+  background: radial-gradient(circle, var(--accent-blue-glow) 0%, transparent 70%);
+}
+
+/* --- Keyframe Animations --- */
+@keyframes fadeSlideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Logged-in app shell — uses tokens.css; flat workshop floor per profile mock. */
@@ -2042,7 +2168,7 @@ input[type="checkbox"] {
   position: absolute;
   inset: auto 0 0 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(79, 120, 232, 0.7), transparent);
+  background: linear-gradient(90deg, transparent, var(--accent-orange-amber), transparent);
   opacity: 0.9;
 }
 
@@ -2062,14 +2188,14 @@ input[type="checkbox"] {
 
 .factory-nav-link-active {
   border-color: transparent;
-  border-left: 2px solid var(--action-primary);
+  border-left: 2px solid var(--accent-orange-amber);
   border-radius: 0 0.35rem 0.35rem 0;
-  background: rgba(79, 120, 232, 0.07);
+  background: rgba(249, 115, 22, 0.06);
   box-shadow: none;
 }
 
 .factory-nav-link-active:hover {
-  background: rgba(79, 120, 232, 0.10);
+  background: rgba(249, 115, 22, 0.09);
 }
 
 .factory-context-rail {
@@ -2103,8 +2229,9 @@ input[type="checkbox"] {
 .factory-workstation-scope .route-header {
   position: relative;
   padding: 1.5rem;
+  border-left: 2px solid var(--accent-orange-amber);
   background:
-    radial-gradient(circle at top right, rgba(79, 120, 232, 0.08), transparent 22%),
+    radial-gradient(circle at top right, var(--accent-orange-glow), transparent 36%),
     linear-gradient(180deg, rgba(255, 255, 255, 0.028), rgba(255, 255, 255, 0)),
     var(--surface-elevated);
 }
@@ -2116,14 +2243,16 @@ input[type="checkbox"] {
   font-size: 11px;
   letter-spacing: 0.22em;
   color: var(--text-tertiary);
+  text-transform: uppercase;
 }
 
 .factory-workstation-scope .route-header__title {
   max-width: 18ch;
-  font-family: var(--font-body);
-  font-size: clamp(2rem, 2.2vw, 2.35rem);
+  font-family: var(--font-display);
+  font-size: clamp(2.2rem, 2.5vw, 2.75rem);
   font-weight: 700;
-  letter-spacing: -0.04em;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .factory-workstation-scope .route-header__body {

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { IBM_Plex_Mono, IBM_Plex_Sans, Inter } from "next/font/google";
+import { IBM_Plex_Mono, IBM_Plex_Sans, Inter, Barlow_Condensed, DM_Sans, Bebas_Neue } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
 import { cn } from "@/lib/utils";
@@ -32,6 +32,27 @@ const ibmPlexMono = IBM_Plex_Mono({
   display: "swap",
   variable: "--font-plex-mono",
   weight: ["400", "500"],
+});
+
+const barlowCondensed = Barlow_Condensed({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-barlow-condensed",
+  weight: ["400", "500", "600", "700"],
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-dm-sans",
+  weight: ["400", "500", "700"],
+});
+
+const bebasNeue = Bebas_Neue({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-bebas-neue",
+  weight: ["400"],
 });
 
 export const metadata: Metadata = {
@@ -75,7 +96,15 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={cn("h-full antialiased", inter.variable, ibmPlexSans.variable, ibmPlexMono.variable)}
+      className={cn(
+        "h-full antialiased",
+        inter.variable,
+        ibmPlexSans.variable,
+        ibmPlexMono.variable,
+        barlowCondensed.variable,
+        dmSans.variable,
+        bebasNeue.variable
+      )}
       data-theme="dark"
       data-density="default"
     >
