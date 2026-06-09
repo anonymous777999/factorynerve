@@ -131,7 +131,7 @@ export function ErrorFeedbackPrompt({
       className="safe-fixed-right fixed right-4 top-[calc(env(safe-area-inset-top,0px)+5rem)] z-[72] w-[min(92vw,24rem)] rounded-[1.4rem] border border-red-400/20 bg-[rgba(24,10,12,0.97)] p-4 shadow-[0_18px_60px_rgba(3,8,20,0.45)] animate-[feedback-sheet-in_180ms_ease-out]"
       data-feedback-ignore-action="true"
     >
-      <div className="text-sm font-semibold text-white">Report this issue?</div>
+      <div className="text-sm font-semibold text-text-primary">Report this issue?</div>
       <div className="mt-2 text-sm text-red-100">{snapshot.message}</div>
       <div className="mt-1 text-xs text-red-100/70">
         One click sends the route, device, and recent error details.

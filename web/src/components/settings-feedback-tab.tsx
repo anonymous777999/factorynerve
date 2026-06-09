@@ -16,6 +16,7 @@ import {
 import { pushAppToast } from "@/lib/toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, Label } from "@/components/ui/field";
 import { Select } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
@@ -197,27 +198,27 @@ export default function SettingsFeedbackTab({ active }: Props) {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button variant="outline" onClick={handleExport} disabled={loading || exporting}>
+            <Button variant="ghost" onClick={handleExport} disabled={loading || exporting}>
               {exporting ? "Exporting..." : "Export CSV"}
             </Button>
-            <Button variant="outline" onClick={() => void loadFeedback()} disabled={loading}>
+            <Button variant="ghost" onClick={() => void loadFeedback()} disabled={loading}>
               {loading ? "Refreshing..." : "Refresh"}
             </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-[12rem_12rem_12rem_1fr]">
-            <div>
-              <label className="text-sm text-[var(--muted)]">Status</label>
+            <Field>
+              <Label>Status</Label>
               <Select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as FeedbackStatus | "all")}>
                 <option value="all">All</option>
                 <option value="open">Open</option>
                 <option value="triaged">Triaged</option>
                 <option value="resolved">Resolved</option>
               </Select>
-            </div>
-            <div>
-              <label className="text-sm text-[var(--muted)]">Type</label>
+            </Field>
+            <Field>
+              <Label>Type</Label>
               <Select value={typeFilter} onChange={(event) => setTypeFilter(event.target.value as FeedbackType | "all")}>
                 <option value="all">All</option>
                 <option value="issue">Issue</option>
@@ -225,14 +226,14 @@ export default function SettingsFeedbackTab({ active }: Props) {
                 <option value="suggestion">Suggestion</option>
                 <option value="alert_problem">Alert problem</option>
               </Select>
-            </div>
-            <div>
-              <label className="text-sm text-[var(--muted)]">Sort</label>
+            </Field>
+            <Field>
+              <Label>Sort</Label>
               <Select value={sortFilter} onChange={(event) => setSortFilter(event.target.value as FeedbackSort)}>
                 <option value="recency">Recency</option>
                 <option value="frequency">Frequency</option>
               </Select>
-            </div>
+            </Field>
             <div className="flex items-end text-sm text-[var(--muted)]">{itemCountLabel}</div>
           </div>
 
@@ -240,7 +241,7 @@ export default function SettingsFeedbackTab({ active }: Props) {
             <div className="grid gap-3 xl:grid-cols-4">
               {recurringGroups.map((row) => (
                 <div key={row.group_key} className="rounded-2xl border border-[rgba(62,166,255,0.22)] bg-[rgba(20,24,36,0.86)] p-4">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
+                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
                     Recurring issue
                   </div>
                   <div className="mt-2 text-sm font-semibold text-white">{row.group_occurrences} reports</div>
@@ -276,27 +277,27 @@ export default function SettingsFeedbackTab({ active }: Props) {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="flex flex-wrap gap-2">
-                        <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                        <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
                           {formatTypeLabel(row.type)}
                         </span>
-                        <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]", badgeTone(row.status))}>
+                        <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", badgeTone(row.status))}>
                           {formatStatusLabel(row.status)}
                         </span>
-                        <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                        <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
                           {formatSourceLabel(row.source)}
                         </span>
                         {row.rating ? (
-                          <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                          <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
                             {row.rating === "up" ? "Helpful" : "Not helpful"}
                           </span>
                         ) : null}
                         {row.mood ? (
-                          <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                          <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
                             {row.mood}
                           </span>
                         ) : null}
                         {row.group_occurrences > 1 ? (
-                          <span className="rounded-full border border-[rgba(62,166,255,0.26)] bg-[rgba(62,166,255,0.12)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-100">
+                          <span className="rounded-full border border-[rgba(62,166,255,0.26)] bg-[rgba(62,166,255,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-100">
                             {row.group_occurrences} similar
                           </span>
                         ) : null}
@@ -341,15 +342,15 @@ export default function SettingsFeedbackTab({ active }: Props) {
                     </div>
                   </div>
 
-                  <div className="mt-4">
-                    <label className="text-sm text-[var(--muted)]">Resolution note</label>
+                  <Field className="mt-4 mb-0">
+                    <Label>Resolution note</Label>
                     <Textarea
                       rows={3}
                       value={notes[row.id] ?? row.resolution_note ?? ""}
                       onChange={(event) => setNotes((current) => ({ ...current, [row.id]: event.target.value }))}
                       placeholder="Optional note for the support or product team."
                     />
-                  </div>
+                  </Field>
 
                   {row.resolved_at ? (
                     <div className="mt-3 text-xs text-[var(--muted)]">
@@ -361,7 +362,7 @@ export default function SettingsFeedbackTab({ active }: Props) {
                   <div className="mt-4 flex flex-wrap justify-end gap-3">
                     {row.status !== "open" ? (
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => void handleStatusUpdate(row, "open")}
                         disabled={pendingId === row.id}
                       >
@@ -370,7 +371,7 @@ export default function SettingsFeedbackTab({ active }: Props) {
                     ) : null}
                     {row.status !== "triaged" ? (
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         onClick={() => void handleStatusUpdate(row, "triaged")}
                         disabled={pendingId === row.id}
                       >

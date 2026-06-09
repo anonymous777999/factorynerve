@@ -2,8 +2,9 @@
 
 import type { OcrCell, OcrDebugPayload, OcrRoutingMeta, OcrScanQuality, OcrTokenUsage } from "@/lib/ocr";
 
-const OCR_UI_STORAGE_KEY = "dpr:ocr-ui-state";
 const MAX_STORED_IMAGE_BYTES = 1_400_000;
+const OCR_UI_STATE_STORAGE_KEY = "dpr:ocr-scan-ui-state:v2";
+const MAX_STORED_STATE_BYTES = 550_000;
 
 export type RawCell = OcrCell;
 
@@ -36,10 +37,15 @@ export type PersistedOcrUiState = {
 };
 
 export function loadOcrUiState() {
-  if (typeof window === "undefined") return null;
+  if (typeof window === "undefined") {
+    return null;
+  }
+
   try {
-    const raw = window.sessionStorage.getItem(OCR_UI_STORAGE_KEY);
-    if (!raw) return null;
+    const raw = window.sessionStorage.getItem(OCR_UI_STATE_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
     return JSON.parse(raw) as PersistedOcrUiState;
   } catch {
     return null;
@@ -47,21 +53,44 @@ export function loadOcrUiState() {
 }
 
 export function saveOcrUiState(value: PersistedOcrUiState) {
-  if (typeof window === "undefined") return;
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const writeState = (state: PersistedOcrUiState) => {
+    window.sessionStorage.setItem(OCR_UI_STATE_STORAGE_KEY, JSON.stringify(state));
+  };
+
   try {
-    window.sessionStorage.setItem(OCR_UI_STORAGE_KEY, JSON.stringify(value));
+    writeState(value);
   } catch {
-    // Ignore storage failures; OCR still works without local restoration.
+    const reduced: PersistedOcrUiState = {
+      ...value,
+      debug: null,
+      imageDataUrl: null,
+      preparedImageDataUrl: null,
+      rawText: null,
+      tokenUsage: null,
+    };
+
+    try {
+      const serialized = JSON.stringify(reduced);
+      if (serialized.length <= MAX_STORED_STATE_BYTES) {
+        window.sessionStorage.setItem(OCR_UI_STATE_STORAGE_KEY, serialized);
+      } else {
+        clearOcrUiState();
+      }
+    } catch {
+      clearOcrUiState();
+    }
   }
 }
 
 export function clearOcrUiState() {
-  if (typeof window === "undefined") return;
-  try {
-    window.sessionStorage.removeItem(OCR_UI_STORAGE_KEY);
-  } catch {
-    // Ignore storage failures.
+  if (typeof window === "undefined") {
+    return;
   }
+  window.sessionStorage.removeItem(OCR_UI_STATE_STORAGE_KEY);
 }
 
 export async function fileToDataUrl(file: File | null) {

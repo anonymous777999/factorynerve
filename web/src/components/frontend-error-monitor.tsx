@@ -16,6 +16,7 @@ function isChunkLoadFailure(message?: string | null, stack?: string | null) {
   return (
     combined.includes("chunkloaderror") ||
     combined.includes("loading chunk") ||
+    combined.includes("failed to load chunk") ||
     combined.includes("failed to fetch dynamically imported module") ||
     combined.includes("loading css chunk")
   );

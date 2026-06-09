@@ -141,6 +141,10 @@ export type OcrPreviewResult = {
   reprocess_count?: number | null;
   user_corrected?: boolean | null;
   review_required?: boolean | null;
+  previous_confidence?: number | null;
+  confidence_dropped?: boolean;
+  confidence_improved?: boolean;
+  last_reprocessed_at?: string | null;
   columns: number;
   avg_confidence: number;
   warnings: string[];
@@ -200,6 +204,16 @@ export type OcrWarpResult = {
   corners: number[][] | null;
 };
 
+export type OcrAuditEventRecord = {
+  id: number;
+  document_id: number;
+  event_type: string;
+  actor?: string | null;
+  actor_user_id?: number | null;
+  event_metadata: Record<string, unknown>;
+  created_at?: string | null;
+};
+
 export type OcrVerificationRecord = {
   id: number;
   org_id?: string | null;
@@ -228,6 +242,13 @@ export type OcrVerificationRecord = {
   cell_sources?: Array<Array<string | null>>;
   raw_column_added: boolean;
   status: "draft" | "pending" | "approved" | "rejected";
+  export_state?: string | null;
+  last_action?: string | null;
+  reviewed_by?: number | null;
+  reviewed_by_name?: string | null;
+  exported_by?: number | null;
+  exported_by_name?: string | null;
+  audit_events?: OcrAuditEventRecord[];
   reviewer_notes?: string | null;
   rejection_reason?: string | null;
   submitted_at?: string | null;
@@ -242,6 +263,44 @@ export type OcrVerificationRecord = {
   export_url?: string | null;
   created_at?: string | null;
   updated_at?: string | null;
+};
+
+export type OcrHistoryItem = {
+  id: number;
+  source_filename?: string | null;
+  doc_type_hint?: string | null;
+  status: "draft" | "pending" | "approved" | "rejected";
+  export_state: string;
+  avg_confidence: number;
+  created_at?: string | null;
+  updated_at?: string | null;
+  reviewed_by?: number | null;
+  reviewed_by_name?: string | null;
+  approved_by?: number | null;
+  approved_by_name?: string | null;
+  exported_by?: number | null;
+  exported_by_name?: string | null;
+  last_action?: string | null;
+  warnings: string[];
+  scan_quality?: OcrScanQuality | null;
+};
+
+export type OcrHistoryPage = {
+  items: OcrHistoryItem[];
+  next_cursor?: string | null;
+  has_more: boolean;
+};
+
+export type OcrVerificationListFilters = {
+  search?: string;
+  status?: string;
+  exportState?: "all" | "pending" | "exported" | "failed" | "json_generated";
+  documentType?: string;
+  reviewerId?: number | null;
+  minConfidence?: number | null;
+  maxConfidence?: number | null;
+  updatedAfter?: string | null;
+  updatedBefore?: string | null;
 };
 
 export type OcrVerificationSavePayload = {
@@ -430,14 +489,6 @@ export async function previewOcrLogbook(payload: {
   if (payload.forceRefresh) {
     formData.set("force_refresh", "true");
   }
-  console.info("[OCR] /ocr/logbook payload", {
-    model: payload.model || "auto",
-    columns: payload.columns,
-    language: payload.language,
-    docTypeHint: payload.docTypeHint || "table",
-    documentHash: payload.documentHash || "none",
-    forceRefresh: !!payload.forceRefresh,
-  });
   return withOcrWakeRetry(
     () =>
       apiFetch<OcrPreviewResult>("/ocr/logbook", {
@@ -585,13 +636,85 @@ function buildVerificationFormData(payload: OcrVerificationSavePayload) {
 }
 
 export async function listOcrVerifications(
-  status?: string,
+  filters: OcrVerificationListFilters = {},
   options: OcrRequestOptions = {},
 ) {
-  const params = status
-    ? `?verification_status=${encodeURIComponent(status)}`
-    : "";
-  return apiFetch<OcrVerificationRecord[]>(`/ocr/verifications${params}`, {
+  const params = new URLSearchParams();
+  if (filters.search) {
+    params.set("search", filters.search);
+  }
+  if (filters.status && filters.status !== "all") {
+    params.set("verification_status", filters.status);
+  }
+  if (filters.exportState && filters.exportState !== "all") {
+    params.set("export_state", filters.exportState);
+  }
+  if (filters.documentType) {
+    params.set("document_type", filters.documentType);
+  }
+  if (filters.reviewerId != null) {
+    params.set("reviewed_by", String(filters.reviewerId));
+  }
+  if (filters.minConfidence != null) {
+    params.set("min_confidence", String(filters.minConfidence));
+  }
+  if (filters.maxConfidence != null) {
+    params.set("max_confidence", String(filters.maxConfidence));
+  }
+  if (filters.updatedAfter) {
+    params.set("updated_after", filters.updatedAfter);
+  }
+  if (filters.updatedBefore) {
+    params.set("updated_before", filters.updatedBefore);
+  }
+
+  const queryString = params.toString();
+  return apiFetch<OcrVerificationRecord[]>(`/ocr/verifications${queryString ? `?${queryString}` : ""}`, {
+    signal: options.signal,
+  });
+}
+
+export async function listOcrHistory(
+  filters: OcrVerificationListFilters = {},
+  cursor?: string | null,
+  limit: number = 50,
+  options: OcrRequestOptions = {},
+) {
+  const params = new URLSearchParams();
+  if (cursor) {
+    params.set("cursor", cursor);
+  }
+  params.set("limit", String(limit));
+  if (filters.search) {
+    params.set("search", filters.search);
+  }
+  if (filters.status && filters.status !== "all") {
+    params.set("verification_status", filters.status);
+  }
+  if (filters.exportState && filters.exportState !== "all") {
+    params.set("export_state", filters.exportState);
+  }
+  if (filters.documentType) {
+    params.set("document_type", filters.documentType);
+  }
+  if (filters.reviewerId != null) {
+    params.set("reviewed_by", String(filters.reviewerId));
+  }
+  if (filters.minConfidence != null) {
+    params.set("min_confidence", String(filters.minConfidence));
+  }
+  if (filters.maxConfidence != null) {
+    params.set("max_confidence", String(filters.maxConfidence));
+  }
+  if (filters.updatedAfter) {
+    params.set("updated_after", filters.updatedAfter);
+  }
+  if (filters.updatedBefore) {
+    params.set("updated_before", filters.updatedBefore);
+  }
+
+  const queryString = params.toString();
+  return apiFetch<OcrHistoryPage>(`/ocr/history${queryString ? `?${queryString}` : ""}`, {
     signal: options.signal,
   });
 }

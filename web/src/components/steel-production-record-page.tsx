@@ -2,246 +2,649 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { ApiError } from "@/lib/api";
+import { LoadingBoundary } from "@/components/ui/loading-boundary";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { PageMain } from "@/components/ui/page-main";
+import { RecoveryBanner } from "@/components/ui/recovery-banner";
+import { StickyActionBar } from "@/components/ui/sticky-action-bar";
+import { ProductionRecordForm } from "@/components/steel/production-record/production-record-form";
+import { ProductionRecordReviewModal } from "@/components/steel/production-record/production-record-review-modal";
+import { ProductionRecordSidebar } from "@/components/steel/production-record/production-record-sidebar";
+import { useSteelProductionRecordRouteState } from "@/hooks/use-steel-production-record-route-state";
 import {
-  createSteelBatch,
-  listSteelItems,
-  type SteelItem,
-} from "@/lib/steel";
+  useClearSteelProductionDraftMutation,
+  useCreateSteelBatchMutation,
+  useSaveSteelProductionDraftMutation,
+  useSteelItemsQuery,
+  useSteelProductionDraftQuery,
+} from "@/hooks/use-steel-queries";
+import {
+  buildSteelProductionRecordDraft,
+  createEmptySteelProductionRecordValues,
+  formatDraftTimestamp,
+  hasSteelProductionRecordDraftContent,
+  saveSteelProductionRecordDraft,
+  steelProductionRecordSchema,
+  type SteelProductionRecordDraft,
+  type SteelProductionRecordFormValues,
+} from "@/lib/steel-production-record";
+import {
+  calculateSteelProductionRecordMetrics,
+  getSeverityBadgeStatus,
+} from "@/lib/steel-production-record-metrics";
 import { useSession } from "@/lib/use-session";
 
-function todayValue() {
-  const now = new Date();
-  const offset = now.getTimezoneOffset() * 60000;
-  return new Date(now.getTime() - offset).toISOString().slice(0, 10);
+type RecoveryMode = "available" | "confirm-discard" | "hidden";
+
+function normalizeBatchCode(value: string) {
+  return value.trim().toUpperCase();
+}
+
+function isShortcutKey(event: KeyboardEvent, key: string) {
+  return (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === key;
 }
 
 export function SteelProductionRecordPage() {
   const router = useRouter();
+  const reviewRoute = useSteelProductionRecordRouteState();
   const { user, activeFactory, loading, error: sessionError } = useSession();
-  const [items, setItems] = useState<SteelItem[]>([]);
-  const [pageLoading, setPageLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [status, setStatus] = useState("");
-  const [error, setError] = useState("");
-
-  const [form, setForm] = useState({
-    batch_code: "",
-    production_date: todayValue(),
-    input_item_id: "",
-    output_item_id: "",
-    input_quantity_kg: "",
-    expected_output_kg: "",
-    actual_output_kg: "",
-    notes: "",
-  });
+  const [statusMessage, setStatusMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [recoveryMode, setRecoveryMode] = useState<RecoveryMode>("hidden");
+  const [recoveryScope, setRecoveryScope] = useState("");
+  const formRef = useRef<HTMLFormElement | null>(null);
 
   const isSteelFactory = (activeFactory?.industry_type || "").toLowerCase() === "steel";
-  const canRecord = Boolean(user && ["owner", "admin", "manager", "supervisor"].includes(user.role));
+  const canRecord = Boolean(
+    user && ["owner", "admin", "manager", "supervisor"].includes(user.role),
+  );
 
-  const loadData = useCallback(async () => {
-    if (!isSteelFactory) {
-      setPageLoading(false);
-      return;
-    }
-    setPageLoading(true);
-    try {
-      const payload = await listSteelItems();
-      setItems(payload.items || []);
-      setError("");
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not load items.");
-    } finally {
-      setPageLoading(false);
-    }
-  }, [isSteelFactory]);
+  const draftIdentity = useMemo(
+    () => ({
+      factoryId: activeFactory?.factory_id ?? null,
+      userId: user?.id ?? null,
+    }),
+    [activeFactory?.factory_id, user?.id],
+  );
+  const draftScopeKey = `${draftIdentity.factoryId ?? "unknown-factory"}:${draftIdentity.userId ?? "anonymous"}`;
+  const draftEnabled = Boolean(user && isSteelFactory);
+
+  const defaultValues = useMemo(() => createEmptySteelProductionRecordValues(), []);
+  const { control, formState, getValues, handleSubmit, reset, setFocus, trigger, watch } =
+    useForm<SteelProductionRecordFormValues>({
+      resolver: zodResolver(steelProductionRecordSchema),
+      mode: "onBlur",
+      reValidateMode: "onBlur",
+      defaultValues,
+    });
+
+  const watchedValues = watch();
+  const itemsQuery = useSteelItemsQuery(Boolean(user && isSteelFactory));
+  const createBatchMutation = useCreateSteelBatchMutation();
+  const draftQuery = useSteelProductionDraftQuery(draftIdentity, draftEnabled);
+  const saveDraftMutation = useSaveSteelProductionDraftMutation(draftIdentity);
+  const clearDraftMutation = useClearSteelProductionDraftMutation(draftIdentity);
+  const items = itemsQuery.data ?? [];
+  const activeDraft = draftQuery.data ?? null;
+  const draftUpdatedAt = activeDraft?.updatedAt ?? null;
 
   useEffect(() => {
-    if (!user || !isSteelFactory) {
-      setPageLoading(false);
+    if (recoveryScope === draftScopeKey) {
       return;
     }
-    void loadData();
-  }, [isSteelFactory, loadData, user]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setStatus("");
-    setError("");
-    try {
-      const payload = await createSteelBatch({
-        batch_code: form.batch_code || null,
-        production_date: form.production_date,
-        input_item_id: Number(form.input_item_id),
-        output_item_id: Number(form.output_item_id),
-        input_quantity_kg: Number(form.input_quantity_kg),
-        expected_output_kg: Number(form.expected_output_kg),
-        actual_output_kg: Number(form.actual_output_kg),
-        notes: form.notes || null,
-      });
-      setStatus("Batch recorded successfully.");
-      // Redirect to the new batch trace
-      router.push(`/steel/batches/${payload.batch.id}`);
-    } catch (reason) {
-      setError(reason instanceof ApiError ? reason.message : "Could not record batch.");
-    } finally {
-      setBusy(false);
+    setRecoveryScope(draftScopeKey);
+    setRecoveryMode("hidden");
+  }, [draftScopeKey, recoveryScope]);
+
+  useEffect(() => {
+    if (!draftEnabled || draftQuery.isPending) {
+      return;
     }
-  };
 
-  if (loading || pageLoading) {
+    if (!activeDraft) {
+      if (!formState.isDirty) {
+        setRecoveryMode("hidden");
+      }
+      return;
+    }
+
+    setRecoveryMode((currentMode) => {
+      if (currentMode === "confirm-discard") {
+        return currentMode;
+      }
+      return formState.isDirty ? "hidden" : "available";
+    });
+  }, [activeDraft, draftEnabled, draftQuery.isPending, formState.isDirty]);
+
+  const itemOptions = useMemo(
+    () =>
+      items.map((item) => ({
+        value: String(item.id),
+        label: `${item.item_code} - ${item.name}`,
+        meta: item.category,
+        keywords: [item.item_code, item.name, item.category],
+      })),
+    [items],
+  );
+
+  const itemById = useMemo(
+    () => new Map(items.map((item) => [String(item.id), item])),
+    [items],
+  );
+  const inputItem = itemById.get(watchedValues.input_item_id) ?? null;
+  const outputItem = itemById.get(watchedValues.output_item_id) ?? null;
+  const metrics = useMemo(
+    () =>
+      calculateSteelProductionRecordMetrics({
+        inputItemId: watchedValues.input_item_id,
+        outputItemId: watchedValues.output_item_id,
+        inputQuantityKg: watchedValues.input_quantity_kg,
+        expectedOutputKg: watchedValues.expected_output_kg,
+        actualOutputKg: watchedValues.actual_output_kg,
+      }),
+    [
+      watchedValues.actual_output_kg,
+      watchedValues.expected_output_kg,
+      watchedValues.input_item_id,
+      watchedValues.input_quantity_kg,
+      watchedValues.output_item_id,
+    ],
+  );
+
+  const persistDraftSnapshot = useEffectEvent(
+    async (reason: "autosave" | "manual"): Promise<SteelProductionRecordDraft | null> => {
+      if (!draftEnabled) {
+        return null;
+      }
+
+      const values = getValues();
+      if (!hasSteelProductionRecordDraftContent(values)) {
+        if (reason === "manual") {
+          setErrorMessage("Enter at least one production field before saving a local draft.");
+          setStatusMessage("");
+        }
+        return null;
+      }
+
+      const draft = buildSteelProductionRecordDraft(values);
+
+      try {
+        await saveDraftMutation.mutateAsync(draft);
+        if (reason === "manual") {
+          setStatusMessage("Saved the local production draft.");
+          setErrorMessage("");
+        }
+        return draft;
+      } catch (error) {
+        if (reason === "manual") {
+          setErrorMessage(
+            error instanceof Error ? error.message : "Could not save the local production draft.",
+          );
+          setStatusMessage("");
+        }
+        return null;
+      }
+    },
+  );
+
+  const persistDraftBeforeUnload = useEffectEvent(() => {
+    if (!draftEnabled || !formState.isDirty) {
+      return;
+    }
+
+    const values = getValues();
+    if (!hasSteelProductionRecordDraftContent(values)) {
+      return;
+    }
+
+    const draft = buildSteelProductionRecordDraft(values);
+    void saveSteelProductionRecordDraft(draftIdentity, draft);
+  });
+
+  const clearDraftState = useEffectEvent(async () => {
+    await clearDraftMutation.mutateAsync();
+    setRecoveryMode("hidden");
+  });
+
+  const resetWorkspace = useEffectEvent((message: string) => {
+    reset(createEmptySteelProductionRecordValues());
+    setStatusMessage(message);
+    setErrorMessage("");
+    setRecoveryMode("hidden");
+    setTimeout(() => setFocus("batch_code"), 0);
+  });
+
+  const handleResumeDraft = useEffectEvent(async () => {
+    if (!activeDraft) {
+      return;
+    }
+
+    reset(activeDraft.values);
+    setRecoveryMode("hidden");
+    setStatusMessage("Recovered the locally saved production draft.");
+    setErrorMessage("");
+    await trigger();
+    setTimeout(() => setFocus("batch_code"), 0);
+  });
+
+  const handleDiscardDraft = useEffectEvent(async () => {
+    if (recoveryMode !== "confirm-discard") {
+      setRecoveryMode("confirm-discard");
+      return;
+    }
+
+    await clearDraftState();
+    resetWorkspace("Discarded the local draft and reset the production workspace.");
+  });
+
+  const openReviewModal = useEffectEvent(async () => {
+    const valid = await trigger();
+    if (!valid) {
+      setErrorMessage("Resolve the highlighted production fields before reviewing the ledger commit.");
+      setStatusMessage("");
+      return;
+    }
+
+    setErrorMessage("");
+    reviewRoute.openReview();
+  });
+
+  const onSubmit = useEffectEvent(async (values: SteelProductionRecordFormValues) => {
+    setStatusMessage("");
+    setErrorMessage("");
+
+    try {
+      const payload = await createBatchMutation.mutateAsync({
+        batch_code: normalizeBatchCode(values.batch_code) || null,
+        production_date: values.production_date,
+        input_item_id: Number(values.input_item_id),
+        output_item_id: Number(values.output_item_id),
+        input_quantity_kg: Number(values.input_quantity_kg),
+        expected_output_kg: Number(values.expected_output_kg),
+        actual_output_kg: Number(values.actual_output_kg),
+        notes: values.notes.trim() || null,
+      });
+
+      await clearDraftState();
+      reset(createEmptySteelProductionRecordValues());
+      reviewRoute.closeReview();
+      router.push(`/steel/batches/${payload.batch.id}`);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "Could not record the production batch.",
+      );
+      reviewRoute.closeReview();
+    }
+  });
+
+  useEffect(() => {
+    if (!draftEnabled || !formState.isDirty) {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void persistDraftSnapshot("autosave");
+    }, 10_000);
+
+    return () => window.clearInterval(intervalId);
+  }, [draftEnabled, formState.isDirty, persistDraftSnapshot]);
+
+  useEffect(() => {
+    if (!draftEnabled) {
+      return;
+    }
+
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (!formState.isDirty) {
+        return;
+      }
+
+      persistDraftBeforeUnload();
+      event.preventDefault();
+      event.returnValue = "";
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        persistDraftBeforeUnload();
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("pagehide", persistDraftBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("pagehide", persistDraftBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [draftEnabled, formState.isDirty, persistDraftBeforeUnload]);
+
+  useEffect(() => {
+    if (!canRecord || !isSteelFactory) {
+      return;
+    }
+
+    const handleWindowKeyDown = (event: KeyboardEvent) => {
+      if (reviewRoute.reviewOpen) {
+        return;
+      }
+
+      const target = event.target;
+      const isInsideForm = target instanceof HTMLElement && !!formRef.current?.contains(target);
+      if (!isInsideForm) {
+        return;
+      }
+
+      if (isShortcutKey(event, "s")) {
+        event.preventDefault();
+        void persistDraftSnapshot("manual");
+        return;
+      }
+
+      if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+        event.preventDefault();
+        void openReviewModal();
+        return;
+      }
+
+      if (event.key === "Escape" && target instanceof HTMLElement) {
+        target.blur();
+      }
+    };
+
+    window.addEventListener("keydown", handleWindowKeyDown);
+    return () => window.removeEventListener("keydown", handleWindowKeyDown);
+  }, [
+    canRecord,
+    isSteelFactory,
+    openReviewModal,
+    persistDraftSnapshot,
+    reviewRoute.reviewOpen,
+  ]);
+
+  if (!user) {
     return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading production record...
-      </main>
+      <PageMain maxWidth="3xl" innerClassName="flex min-h-[50vh] items-center justify-center px-4">
+        <Card className="w-full">
+          <CardHeader>
+            <CardTitle>Production Record</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="text-sm text-status-danger-fg">
+              {sessionError || "Please sign in to continue."}
+            </div>
+            <Link href="/access">
+              <Button>Open Access</Button>
+            </Link>
+          </CardContent>
+        </Card>
+      </PageMain>
+    );
+  }
+
+  if (!isSteelFactory) {
+    return (
+      <OperationalPageShell
+        title="Production recording is factory-aware"
+        description="Switch into a steel factory from the sidebar before recording a production batch."
+      >
+        <Card className="mx-auto max-w-4xl">
+          <CardContent className="space-y-4 py-lg text-sm text-text-secondary">
+            <div>
+              Your active factory is{" "}
+              <span className="font-semibold text-text-primary">
+                {activeFactory?.name || "not selected"}
+              </span>
+              .
+            </div>
+            <div className="flex gap-3">
+              <Link href="/steel">
+                <Button>Open Steel Module</Button>
+              </Link>
+              <Link href="/settings">
+                <Button variant="outline">Open Settings</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </OperationalPageShell>
     );
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-4xl space-y-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Production Desk</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Manual Batch Recording</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Record material conversion (input to output) and variance signals directly into the ledger.
-              </p>
-            </div>
-            <div className="flex gap-3">
-              <Link href="/steel/batches">
-                <Button variant="outline">Batch List</Button>
-              </Link>
-            </div>
-          </div>
-        </section>
+    <OperationalPageShell
+      eyebrow="Steel Production Record"
+      title="Keyboard-first operational capture"
+      description="Search materials, capture weights, review live yield and variance, then confirm the ledger transformation before commit."
+      isLoading={loading}
+      loadingTitle="Loading production record workspace..."
+      contentClassName="space-y-4"
+      filters={
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/steel/batches">
+            <Button variant="outline" size="compact">
+              Batch List
+            </Button>
+          </Link>
+          <Badge status={getSeverityBadgeStatus(metrics.severity)}>{metrics.severityLabel}</Badge>
+        </div>
+      }
+    >
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Record Production Batch</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {!canRecord ? (
-              <div className="py-4 text-sm text-amber-200">
-                Supervisor or higher access required to record production batches.
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Batch Code (Optional)</label>
-                    <Input
-                      value={form.batch_code}
-                      onChange={(e) => setForm({ ...form, batch_code: e.target.value.toUpperCase() })}
-                      placeholder="e.g. BT-2026-001"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Production Date</label>
-                    <Input
-                      type="date"
-                      value={form.production_date}
-                      onChange={(e) => setForm({ ...form, production_date: e.target.value })}
-                      required
-                    />
-                  </div>
-                </div>
+        {(recoveryMode === "available" && activeDraft) || recoveryMode === "confirm-discard" ? (
+          <RecoveryBanner
+            kind="unsaved-draft"
+            statusLabel={recoveryMode === "confirm-discard" ? "Confirm discard" : "Draft recovery"}
+            title={
+              recoveryMode === "confirm-discard"
+                ? "Discard the saved production draft?"
+                : "A locally saved production draft is available"
+            }
+            description={
+              recoveryMode === "confirm-discard"
+                ? "This clears the saved recovery snapshot for this factory and operator. Choose keep draft if you want to preserve it."
+                : "Resume to restore the last saved field state, or discard only after confirming you no longer need this recovery point."
+            }
+            meta={draftUpdatedAt ? `Last saved ${formatDraftTimestamp(draftUpdatedAt)}` : undefined}
+            primaryAction={{
+              id: "resume-production-draft",
+              label: recoveryMode === "confirm-discard" ? "Keep draft" : "Resume draft",
+              onAction:
+                recoveryMode === "confirm-discard"
+                  ? () => setRecoveryMode(activeDraft ? "available" : "hidden")
+                  : () => void handleResumeDraft(),
+            }}
+            secondaryAction={{
+              id:
+                recoveryMode === "confirm-discard"
+                  ? "confirm-discard-production-draft"
+                  : "discard-production-draft",
+              label: recoveryMode === "confirm-discard" ? "Confirm discard" : "Discard draft",
+              variant: "outline",
+              onAction: () => void handleDiscardDraft(),
+            }}
+          />
+        ) : null}
 
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div>
-                    <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Input Material (Scrap/Billet)</label>
-                    <Select
-                      value={form.input_item_id}
-                      onChange={(e) => setForm({ ...form, input_item_id: e.target.value })}
-                      required
+        {statusMessage ? (
+          <RecoveryBanner
+            kind="reconnecting"
+            statusLabel="Operational continuity"
+            title={statusMessage}
+            description="The production workspace remains locally recoverable while you continue data entry."
+          />
+        ) : null}
+
+        {errorMessage ? (
+          <RecoveryBanner
+            kind="sync-failure"
+            statusLabel="Action required"
+            title="Production record needs attention"
+            description={errorMessage}
+          />
+        ) : null}
+
+        <div className="grid gap-4 xl:grid-cols-[minmax(0,1.45fr)_22rem]">
+          <LoadingBoundary
+            isLoading={itemsQuery.isLoading || draftQuery.isLoading}
+            isFetching={itemsQuery.isFetching || draftQuery.isFetching}
+            isError={itemsQuery.isError || draftQuery.isError}
+            error={
+              itemsQuery.error instanceof Error
+                ? itemsQuery.error
+                : draftQuery.error instanceof Error
+                  ? draftQuery.error
+                  : null
+            }
+            hasData={items.length > 0}
+            isEmpty={!itemsQuery.isLoading && items.length === 0}
+            loadingTitle="Loading steel items"
+            loadingMessage="Preparing governed inventory choices for this production record."
+            emptyTitle="No steel items are available yet"
+            emptyMessage="Create inventory items first so production batches can map input and output materials."
+            errorTitle="Steel items could not be loaded"
+            errorMessage="Retry to restore governed item ownership for this workflow."
+            onRetry={() => {
+              void itemsQuery.refetch();
+              void draftQuery.refetch();
+            }}
+          >
+            <div className="space-y-4">
+              <Card className="bg-surface-card border-border-subtle">
+                <CardHeader className="px-6 pt-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <CardTitle className="text-xl text-white">Production lane</CardTitle>
+                      <div className="mt-1 text-sm text-text-secondary">
+                        Keyboard-first operational capture. Search materials, capture weights, review live yield.
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 text-xs text-text-tertiary">
+                      <span>Cmd/Ctrl+S save</span>
+                      <span>Cmd/Ctrl+Enter verify</span>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="px-6 pb-6">
+                  {!canRecord ? (
+                    <div className="py-4 text-sm text-status-warning-fg">
+                      Supervisor or higher access is required to record production batches.
+                    </div>
+                  ) : (
+                    <form
+                      ref={formRef}
+                      onSubmit={(event) => event.preventDefault()}
+                      className="space-y-4"
+                      noValidate
                     >
-                      <option value="">Select Input</option>
-                      {items.map((item) => (
-                        <option key={item.id} value={item.id}>{item.item_code} - {item.name}</option>
-                      ))}
-                    </Select>
-                  </div>
-                  <div>
-                    <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Output Material (Ingot/TMT)</label>
-                    <Select
-                      value={form.output_item_id}
-                      onChange={(e) => setForm({ ...form, output_item_id: e.target.value })}
-                      required
-                    >
-                      <option value="">Select Output</option>
-                      {items.map((item) => (
-                        <option key={item.id} value={item.id}>{item.item_code} - {item.name}</option>
-                      ))}
-                    </Select>
-                  </div>
-                </div>
+                      <ProductionRecordForm control={control} itemOptions={itemOptions} />
+                    </form>
+                  )}
+                </CardContent>
+              </Card>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                  <div>
-                    <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Input Qty (KG)</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={form.input_quantity_kg}
-                      onChange={(e) => setForm({ ...form, input_quantity_kg: e.target.value })}
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Expected Output (KG)</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={form.expected_output_kg}
-                      onChange={(e) => setForm({ ...form, expected_output_kg: e.target.value })}
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Actual Output (KG)</label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={form.actual_output_kg}
-                      onChange={(e) => setForm({ ...form, actual_output_kg: e.target.value })}
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
-                </div>
+              {metrics.warnings.length ? (
+                <RecoveryBanner
+                  kind={metrics.severity === "critical" ? "sync-failure" : "offline"}
+                  statusLabel={metrics.severityLabel}
+                  title={metrics.statusLabel}
+                  description={metrics.warnings[0]}
+                  meta={
+                    metrics.warnings.length > 1
+                      ? `${metrics.warnings.length} operational checks are currently active.`
+                      : "One operational check is currently active."
+                  }
+                />
+              ) : null}
+            </div>
+          </LoadingBoundary>
 
-                <div>
-                  <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Notes</label>
-                  <Input
-                    value={form.notes}
-                    onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                    placeholder="Process observations, downtime, etc."
-                  />
-                </div>
+          <ProductionRecordSidebar
+            inputItem={inputItem}
+            outputItem={outputItem}
+            metrics={metrics}
+          />
+        </div>
 
-                <div className="pt-4">
-                  <Button type="submit" className="w-full h-12 text-lg" disabled={busy}>
-                    {busy ? "Recording Batch..." : "Record Production Batch"}
-                  </Button>
-                </div>
-              </form>
-            )}
-          </CardContent>
-        </Card>
+        {canRecord ? (
+          <StickyActionBar
+            status={
+              createBatchMutation.isPending
+                ? "processing"
+                : saveDraftMutation.isPending
+                  ? "processing"
+                  : formState.isDirty
+                    ? "draft"
+                    : getSeverityBadgeStatus(metrics.severity)
+            }
+            statusLabel={
+              createBatchMutation.isPending
+                ? "Posting batch"
+                : saveDraftMutation.isPending
+                  ? "Saving draft"
+                  : formState.isDirty
+                    ? "Unsaved changes"
+                    : metrics.severityLabel
+            }
+            title="Operational action flow"
+            description="Save locally at any point, then verify the transformation before committing it to the production ledger."
+            meta={
+              draftUpdatedAt
+                ? `Autosave ${formatDraftTimestamp(draftUpdatedAt)} | ${metrics.statusLabel}`
+                : `No local draft saved yet | ${metrics.statusLabel}`
+            }
+            primaryAction={{
+              id: "verify-production-record",
+              label: "Verify Batch",
+              onAction: () => void openReviewModal(),
+              disabled: createBatchMutation.isPending,
+              shortcutHint: "Cmd+Enter",
+            }}
+            secondaryAction={{
+              id: "save-production-draft",
+              label: "Save Draft",
+              variant: "outline",
+              onAction: () => void persistDraftSnapshot("manual"),
+              disabled: createBatchMutation.isPending,
+              shortcutHint: "Cmd+S",
+            }}
+            tertiaryAction={{
+              id: activeDraft ? "discard-production-draft" : "reset-form",
+              label: activeDraft ? "Discard Draft" : "Reset Form",
+              variant: "ghost",
+              onAction: activeDraft
+                ? () => void handleDiscardDraft()
+                : () => {
+                  void (async () => {
+                    await clearDraftState();
+                    resetWorkspace("Reset the form to a fresh production record.");
+                  })();
+                },
+              disabled: createBatchMutation.isPending,
+            }}
+          />
+        ) : null}
 
-        {status && <div className="text-sm text-green-400">{status}</div>}
-        {error && <div className="text-sm text-red-400">{error}</div>}
-      </div>
-    </main>
+        <ProductionRecordReviewModal
+          open={reviewRoute.reviewOpen}
+          onOpenChange={(open) => reviewRoute.setReviewOpen(open)}
+          onConfirm={() => void handleSubmit((values) => void onSubmit(values))()}
+          confirmBusy={createBatchMutation.isPending}
+          values={watchedValues}
+          inputItem={inputItem}
+          outputItem={outputItem}
+          metrics={metrics}
+        />
+    </OperationalPageShell>
   );
 }

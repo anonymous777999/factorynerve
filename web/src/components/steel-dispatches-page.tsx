@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { DispatchDebugPanel } from "@/components/steel-dispatches-debug";
 import { Button } from "@/components/ui/button";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { PageMain } from "@/components/ui/page-main";
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
@@ -55,7 +57,7 @@ function dispatchStatusBadgeClass(status: SteelDispatchStatus) {
   if (status === "exited") return "border-cyan-400/35 bg-cyan-500/12 text-cyan-200";
   if (status === "loaded") return "border-amber-400/35 bg-amber-500/12 text-amber-200";
   if (status === "cancelled") return "border-rose-400/35 bg-rose-500/12 text-rose-200";
-  return "border-slate-400/35 bg-slate-500/12 text-slate-200";
+  return "border-slate-400/35 bg-surface-panel/12 text-text-secondary";
 }
 
 export function SteelDispatchesPage() {
@@ -436,115 +438,86 @@ export function SteelDispatchesPage() {
     }
   };
 
-  if (loading || pageLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading steel dispatch...
-      </main>
-    );
-  }
-
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <PageMain maxWidth="3xl" innerClassName="flex min-h-[50vh] items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Dispatch</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
+            <div className="text-sm text-status-danger-fg">{sessionError || "Please sign in to continue."}</div>
             <Link href="/access">
               <Button>Open Access</Button>
             </Link>
           </CardContent>
         </Card>
-      </main>
+      </PageMain>
     );
   }
 
   if (!isSteelFactory) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-4xl">
-          <Card>
-            <CardHeader>
-              <CardTitle>Steel dispatch is factory-aware</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4 text-sm text-[var(--muted)]">
-              <div>
-                Your active factory is <span className="font-semibold text-[var(--text)]">{activeFactory?.name || "not selected"}</span>.
-              </div>
-              <div>Switch into a steel factory from the sidebar, or update the factory profile in Settings first.</div>
-              <div className="flex gap-3">
-                <Link href="/steel">
-                  <Button>Open Steel Module</Button>
-                </Link>
-                <Link href="/settings">
-                  <Button variant="outline">Open Settings</Button>
-                </Link>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </main>
+      <OperationalPageShell
+        title="Steel dispatch is factory-aware"
+        description="Switch into a steel factory from the sidebar, or update the factory profile in Settings first."
+      >
+        <Card className="mx-auto max-w-4xl">
+          <CardContent className="space-y-4 py-lg text-sm text-text-secondary">
+            <div>
+              Your active factory is <span className="font-semibold text-text-primary">{activeFactory?.name || "not selected"}</span>.
+            </div>
+            <div className="flex gap-3">
+              <Link href="/steel">
+                <Button>Open Steel Module</Button>
+              </Link>
+              <Link href="/settings">
+                <Button variant="outline">Open Settings</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </OperationalPageShell>
     );
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Dispatch</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Create a truck-ready steel dispatch</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Pick the invoice, assign the material load, and save the truck movement once the dispatch checks clear.
-              </p>
-              <div className="mt-4 flex flex-wrap gap-2 text-xs">
-                <span className="rounded-full border border-[var(--border)] bg-[rgba(12,18,28,0.72)] px-3 py-1 text-[var(--muted)]">
-                  {selectedInvoice?.invoice.invoice_number ? `Invoice ${selectedInvoice.invoice.invoice_number}` : "No invoice selected"}
-                </span>
-                <span className="rounded-full border border-[var(--border)] bg-[rgba(12,18,28,0.72)] px-3 py-1 text-[var(--muted)]">
-                  {selectedLines.length} material line{selectedLines.length === 1 ? "" : "s"} selected
-                </span>
-                <span className="rounded-full border border-[var(--border)] bg-[rgba(12,18,28,0.72)] px-3 py-1 text-[var(--muted)]">
-                  {readyChecklistCount}/{dispatchChecklist.length} readiness checks clear
-                </span>
-              </div>
-            </div>
-            {/* AUDIT: BUTTON_CLUTTER - move route jumps into a secondary tools tray so dispatch creation stays primary. */}
-            <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
-                Dispatch tools
-                <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
-                <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
-              </summary>
-              <div className="flex flex-wrap gap-3 border-t border-[var(--border)] px-4 py-4">
-                <Link href="/steel">
-                  <Button variant="outline">Steel hub</Button>
-                </Link>
-                <Link href="/steel/customers">
-                  <Button variant="ghost">Customers</Button>
-                </Link>
-                <Link href="/steel/invoices">
-                  <Button variant="ghost">Invoices</Button>
-                </Link>
-              </div>
-            </details>
+    <OperationalPageShell
+      eyebrow="Steel Dispatch"
+      title="Create a truck-ready steel dispatch"
+      description="Pick the invoice, assign the material load, and save the truck movement once the dispatch checks clear."
+      isLoading={loading || pageLoading}
+      loadingTitle="Loading steel dispatch..."
+      contentClassName="space-y-6"
+      filters={
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex flex-wrap gap-2 text-xs">
+            <span className="rounded-full border border-border-subtle bg-surface-panel px-3 py-1 text-text-secondary">
+              {selectedInvoice?.invoice.invoice_number ? `Invoice ${selectedInvoice.invoice.invoice_number}` : "No invoice selected"}
+            </span>
+            <span className="rounded-full border border-border-subtle bg-surface-panel px-3 py-1 text-text-secondary">
+              {selectedLines.length} material line{selectedLines.length === 1 ? "" : "s"} selected
+            </span>
+            <span className="rounded-full border border-border-subtle bg-surface-panel px-3 py-1 text-text-secondary">
+              {readyChecklistCount}/{dispatchChecklist.length} readiness checks clear
+            </span>
           </div>
-        </section>
-
-        {/* DEBUG PANEL - Remove after diagnosing invoice selection issue */}
-        <DispatchDebugPanel
-          invoices={invoices}
-          selectedInvoiceId={selectedInvoiceId}
-          selectedInvoice={selectedInvoice}
-          lineDrafts={lineDrafts}
-          error={error}
-        />
-
-        {/* AUDIT: FLOW_BROKEN - add a short sequence so the screen points from invoice selection to truck release. */}
+          <DisclosurePanel title="Dispatch tools" className="w-full sm:max-w-xs">
+            <div className="flex flex-wrap gap-3">
+              <Link href="/steel">
+                <Button variant="outline">Steel hub</Button>
+              </Link>
+              <Link href="/steel/customers">
+                <Button variant="ghost">Customers</Button>
+              </Link>
+              <Link href="/steel/invoices">
+                <Button variant="ghost">Invoices</Button>
+              </Link>
+            </div>
+          </DisclosurePanel>
+        </div>
+      }
+    >
         <section className="grid gap-4 md:grid-cols-4">
           <Card>
             <CardHeader><CardTitle className="text-base">Recent Dispatches</CardTitle></CardHeader>
@@ -576,7 +549,7 @@ export function SteelDispatchesPage() {
             <CardContent className="space-y-5">
               <div>
                 <label className="text-sm text-[var(--muted)]">Invoice</label>
-                <Select value={selectedInvoiceId} onChange={(event) => setSelectedInvoiceId(event.target.value)}>
+                <Select aria-label="Invoice" value={selectedInvoiceId} onChange={(event) => setSelectedInvoiceId(event.target.value)}>
                   <option value="">Select invoice</option>
                   {invoices.map((invoice) => (
                     <option key={invoice.id} value={invoice.id}>
@@ -645,7 +618,7 @@ export function SteelDispatchesPage() {
               <div className="grid gap-4 md:grid-cols-3">
                 <div>
                   <label className="text-sm text-[var(--muted)]">Dispatch Date</label>
-                  <Input type="date" value={dispatchDate} onChange={(event) => setDispatchDate(event.target.value)} />
+                  <Input aria-label="Dispatch date" type="date" value={dispatchDate} onChange={(event) => setDispatchDate(event.target.value)} />
                 </div>
                 <div>
                   <label className="text-sm text-[var(--muted)]">Truck Number</label>
@@ -658,7 +631,7 @@ export function SteelDispatchesPage() {
                 </div>
                 <div>
                   <label className="text-sm text-[var(--muted)]">Vehicle Type</label>
-                  <Select value={vehicleType} onChange={(event) => setVehicleType(event.target.value as SteelVehicleType)}>
+                  <Select aria-label="Vehicle type" value={vehicleType} onChange={(event) => setVehicleType(event.target.value as SteelVehicleType)}>
                     <option value="truck">Truck</option>
                     <option value="trailer">Trailer</option>
                     <option value="pickup">Pickup</option>
@@ -686,11 +659,11 @@ export function SteelDispatchesPage() {
                 </div>
                 <div>
                   <label className="text-sm text-[var(--muted)]">Entry Time</label>
-                  <Input type="datetime-local" value={entryTime} onChange={(event) => setEntryTime(event.target.value)} />
+                  <Input aria-label="Entry time" type="datetime-local" value={entryTime} onChange={(event) => setEntryTime(event.target.value)} />
                 </div>
                 <div>
                   <label className="text-sm text-[var(--muted)]">Exit Time</label>
-                  <Input type="datetime-local" value={exitTime} onChange={(event) => setExitTime(event.target.value)} />
+                  <Input aria-label="Exit time" type="datetime-local" value={exitTime} onChange={(event) => setExitTime(event.target.value)} />
                 </div>
               </div>
 
@@ -730,7 +703,7 @@ export function SteelDispatchesPage() {
                   </div>
                   <ResponsiveScrollArea debugLabel="steel-dispatch-allocation">
                     <table className="min-w-full text-left text-sm">
-                      <thead className="text-[var(--muted)]">
+                      <thead className="text-text-secondary">
                         <tr className="border-b border-[var(--border)]">
                           <th className="px-3 py-3 font-medium">Material</th>
                           <th className="px-3 py-3 font-medium">Ordered</th>
@@ -759,6 +732,7 @@ export function SteelDispatchesPage() {
                                   type="number"
                                   min="0"
                                   step="0.01"
+                                  aria-label={`Dispatch weight (KG) for ${line.item_code}`}
                                   value={draft?.weight_kg || ""}
                                   onChange={(event) =>
                                     setLineDrafts((current) =>
@@ -912,15 +886,10 @@ export function SteelDispatchesPage() {
             </CardHeader>
             <CardContent>
               {/* AUDIT: DENSITY_OVERLOAD - keep history available but collapsed so the create-dispatch flow stays dominant. */}
-              <details className="group rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
-                  Review recent dispatches
-                  <span className="text-xs text-[var(--muted)] transition group-open:hidden">{dispatches.length} items</span>
-                  <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
-                </summary>
-                <ResponsiveScrollArea className="border-t border-[var(--border)]" debugLabel="steel-dispatch-history">
+              <DisclosurePanel title={`Review recent dispatches (${dispatches.length})`} defaultOpen={false}>
+                <ResponsiveScrollArea debugLabel="steel-dispatch-history">
                   <table className="min-w-full text-left text-sm">
-                    <thead className="text-[var(--muted)]">
+                    <thead className="text-text-secondary">
                       <tr className="border-b border-[var(--border)]">
                         <th className="px-3 py-3 font-medium">Dispatch</th>
                         <th className="px-3 py-3 font-medium">Gate Pass</th>
@@ -965,7 +934,7 @@ export function SteelDispatchesPage() {
                     </tbody>
                   </table>
                 </ResponsiveScrollArea>
-              </details>
+              </DisclosurePanel>
             </CardContent>
           </Card>
         </section>
@@ -978,8 +947,7 @@ export function SteelDispatchesPage() {
           </div>
         ) : null}
         {status ? <div className="text-sm text-green-400">{status}</div> : null}
-        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
-      </div>
-    </main>
+        {error || sessionError ? <div className="text-sm text-status-danger-fg">{error || sessionError}</div> : null}
+    </OperationalPageShell>
   );
 }

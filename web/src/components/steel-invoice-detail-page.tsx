@@ -5,6 +5,9 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { PageMain } from "@/components/ui/page-main";
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { getSteelInvoiceDetail, type SteelInvoiceDetail } from "@/lib/steel";
@@ -47,12 +50,12 @@ function formatDateTime(value?: string | null) {
 }
 
 function dispatchStatusBadgeClass(status: string | null | undefined) {
-  if (status === "delivered") return "border-emerald-400/35 bg-emerald-500/12 text-emerald-200";
-  if (status === "dispatched") return "border-cyan-400/35 bg-cyan-500/12 text-cyan-200";
-  if (status === "exited") return "border-cyan-400/35 bg-cyan-500/12 text-cyan-200";
-  if (status === "loaded") return "border-amber-400/35 bg-amber-500/12 text-amber-200";
-  if (status === "cancelled") return "border-rose-400/35 bg-rose-500/12 text-rose-200";
-  return "border-slate-400/35 bg-slate-500/12 text-slate-200";
+  if (status === "delivered") return "border-status-success-border bg-status-success-bg text-status-success-fg";
+  if (status === "dispatched") return "border-status-processing-border bg-status-processing-bg text-status-processing-fg";
+  if (status === "exited") return "border-status-processing-border bg-status-processing-bg text-status-processing-fg";
+  if (status === "loaded") return "border-status-warning-border bg-status-warning-bg text-status-warning-fg";
+  if (status === "cancelled") return "border-status-danger-border bg-status-danger-bg text-status-danger-fg";
+  return "border-slate-400/35 bg-surface-panel/12 text-text-secondary";
 }
 
 export function SteelInvoiceDetailPage() {
@@ -92,23 +95,15 @@ export function SteelInvoiceDetailPage() {
     void loadDetail();
   }, [loadDetail, sessionLoading, user]);
 
-  if (sessionLoading || loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading steel invoice detail...
-      </main>
-    );
-  }
-
   if (!user || !detail) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <PageMain maxWidth="3xl" innerClassName="flex min-h-[50vh] items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Invoice Detail</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{error || sessionError || "Invoice not found."}</div>
+            <div className="text-sm text-status-danger-fg">{error || sessionError || "Invoice not found."}</div>
             <div className="flex gap-3">
               <Link href="/steel/invoices">
                 <Button variant="outline">Back to Invoices</Button>
@@ -121,7 +116,7 @@ export function SteelInvoiceDetailPage() {
             </div>
           </CardContent>
         </Card>
-      </main>
+      </PageMain>
     );
   }
 
@@ -129,11 +124,11 @@ export function SteelInvoiceDetailPage() {
   const linkedDispatches = detail.dispatches || [];
   const dispatchedWeight = Number(
     detail.dispatch_summary?.dispatched_weight_kg ||
-      invoiceLines.reduce((sum, line) => sum + Number(line.dispatched_weight_kg || 0), 0),
+    invoiceLines.reduce((sum, line) => sum + Number(line.dispatched_weight_kg || 0), 0),
   );
   const remainingWeight = Number(
     detail.dispatch_summary?.remaining_weight_kg ||
-      invoiceLines.reduce((sum, line) => sum + Number(line.remaining_weight_kg || 0), 0),
+    invoiceLines.reduce((sum, line) => sum + Number(line.remaining_weight_kg || 0), 0),
   );
   const fullyDispatchedCount = invoiceLines.filter(
     (line) => Number(line.remaining_weight_kg || 0) <= 0.001,
@@ -157,52 +152,45 @@ export function SteelInvoiceDetailPage() {
     : "All invoice weight is already tied to completed dispatch activity.";
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-4xl">
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)] mb-4">
-                <span>Production</span>
-                <span>→</span>
-                <span className="text-[var(--accent)] font-bold">Invoice</span>
-                <span>→</span>
-                <span>Dispatch</span>
-                <span>→</span>
-                <span>Reconciliation</span>
-              </div>
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Invoice</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{detail.invoice.invoice_number}</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Check dispatch progress, open the next truck action, and keep the commercial record aligned with steel movement.
-              </p>
-            </div>
-            {/* AUDIT: BUTTON_CLUTTER - move route jumps into a secondary tools tray so the dispatch handoff stays primary. */}
-            <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
-                Invoice tools
-                <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
-                <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
-              </summary>
-              <div className="flex flex-wrap gap-3 border-t border-[var(--border)] px-4 py-4">
-                <Link href="/steel/invoices">
-                  <Button variant="outline">Invoices</Button>
-                </Link>
-                {detail.invoice.customer_id ? (
-                  <Link href={`/steel/customers/${detail.invoice.customer_id}`}>
-                    <Button variant="ghost">Customer</Button>
-                  </Link>
-                ) : null}
-                <Link href="/steel/dispatches">
-                  <Button variant="ghost">Dispatches</Button>
-                </Link>
-                <Link href="/steel">
-                  <Button variant="ghost">Steel hub</Button>
-                </Link>
-              </div>
-            </details>
+    <OperationalPageShell
+      eyebrow="Steel Invoice"
+      title={detail.invoice.invoice_number}
+      description="Check dispatch progress, open the next truck action, and keep the commercial record aligned with steel movement."
+      isLoading={sessionLoading || loading}
+      loadingTitle="Loading steel invoice detail..."
+      contentClassName="space-y-6"
+      filters={
+        <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-text-secondary">
+            <span>Production</span>
+            <span>→</span>
+            <span className="font-bold text-[var(--accent)]">Invoice</span>
+            <span>→</span>
+            <span>Dispatch</span>
+            <span>→</span>
+            <span>Reconciliation</span>
           </div>
-        </section>
+          <DisclosurePanel title="Invoice tools" className="w-full sm:max-w-xs">
+            <div className="flex flex-wrap gap-3">
+              <Link href="/steel/invoices">
+                <Button variant="outline" size="compact">Invoices</Button>
+              </Link>
+              {detail.invoice.customer_id ? (
+                <Link href={`/steel/customers/${detail.invoice.customer_id}`}>
+                  <Button variant="ghost" size="compact">Customer</Button>
+                </Link>
+              ) : null}
+              <Link href="/steel/dispatches">
+                <Button variant="ghost" size="compact">Dispatches</Button>
+              </Link>
+              <Link href="/steel">
+                <Button variant="ghost" size="compact">Steel hub</Button>
+              </Link>
+            </div>
+          </DisclosurePanel>
+        </div>
+      }
+    >
 
         {/* AUDIT: FLOW_BROKEN - add a short next-step sequence so the invoice detail leads directly into dispatch follow-through. */}
         {/* AUDIT: FLOW_BROKEN - feature the next dispatch action before supporting audit context so the page has a clear operational handoff. */}
@@ -287,7 +275,7 @@ export function SteelInvoiceDetailPage() {
               <div className="text-xl font-semibold text-white">{formatKg(dispatchedWeight)} KG</div>
               <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
                 <div
-                  className="h-full bg-[var(--accent)] transition-all"
+                  className="h-full bg-[var(--accent)] transition-[width] duration-300 ease-out"
                   style={{ width: `${Math.min(100, dispatchCompletionPercent)}%` }}
                 />
               </div>
@@ -354,15 +342,15 @@ export function SteelInvoiceDetailPage() {
                         <td className="px-3 py-3">{formatCurrency(line.line_total)}</td>
                         <td className="px-3 py-3">
                           {Number(line.remaining_weight_kg || 0) <= 0.001 ? (
-                            <span className="inline-flex rounded-full border border-emerald-400/35 bg-emerald-500/12 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-emerald-200">
+                            <span className="inline-flex rounded-full border border-emerald-400/35 bg-emerald-500/12 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-emerald-200">
                               Dispatched
                             </span>
                           ) : Number(line.dispatched_weight_kg || 0) > 0 ? (
-                            <span className="inline-flex rounded-full border border-amber-400/35 bg-amber-500/12 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-amber-200">
+                            <span className="inline-flex rounded-full border border-amber-400/35 bg-amber-500/12 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-status-warning-fg">
                               Partial
                             </span>
                           ) : (
-                            <span className="inline-flex rounded-full border border-slate-400/35 bg-slate-500/12 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-200">
+                            <span className="inline-flex rounded-full border border-slate-400/35 bg-surface-panel/12 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-text-secondary">
                               Open
                             </span>
                           )}
@@ -415,7 +403,7 @@ export function SteelInvoiceDetailPage() {
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
                             <div
-                              className={`inline-flex rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${dispatchStatusBadgeClass(dispatch.status)}`}
+                              className={`inline-flex rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${dispatchStatusBadgeClass(dispatch.status)}`}
                             >
                               {dispatch.status}
                             </div>
@@ -488,8 +476,7 @@ export function SteelInvoiceDetailPage() {
           </Card>
         </section>
 
-        {error ? <div className="text-sm text-red-400">{error}</div> : null}
-      </div>
-    </main>
+        {error ? <div className="text-sm text-status-danger-fg">{error}</div> : null}
+    </OperationalPageShell>
   );
 }

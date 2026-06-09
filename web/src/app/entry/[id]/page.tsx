@@ -1,5 +1,5 @@
-import EntryDetailPage from "@/components/entry-detail-page";
+import { EntryDetailWorkspace } from "@/features/entry";
 
 export default function EntryDetailRoute() {
-  return <EntryDetailPage />;
+  return <EntryDetailWorkspace />;
 }

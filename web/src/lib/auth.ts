@@ -103,6 +103,12 @@ type AuthResponse = AuthContext & {
   token_type: string;
 };
 
+type PartialAuthResponse = Partial<AuthResponse> & {
+  access_token?: string;
+  refresh_token?: string | null;
+  token_type?: string;
+};
+
 export type RegisterResponse = {
   message: string;
   email: string;
@@ -301,6 +307,32 @@ function mergeAuthContextWithUserPermissions(context: AuthContext, user: Current
   };
 }
 
+async function hydrateAuthResponse(
+  response: PartialAuthResponse,
+  options?: { timeoutMs?: number; source?: string },
+): Promise<AuthResponse> {
+  const timeoutMs = options?.timeoutMs ?? 8000;
+  const context =
+    response.user && typeof response.user === "object"
+      ? (response as AuthContext)
+      : await getAuthContext({ timeoutMs });
+  const currentUser = await getMe({ timeoutMs });
+  const mergedResponse: AuthResponse = {
+    access_token: response.access_token ?? "",
+    refresh_token: response.refresh_token ?? null,
+    token_type: response.token_type ?? "bearer",
+    ...context,
+    user: mergeCurrentUserWithPermissions({
+      ...context.user,
+      ...currentUser,
+      permissions: currentUser.permissions,
+    }),
+  };
+  primeRoleRevision(mergedResponse.user.role_revision);
+  primeSession(mergedResponse);
+  return mergedResponse;
+}
+
 export async function recoverWorkspaceContextFromError(status: number): Promise<AuthContext | null> {
   const snapshot = getSessionSnapshot();
   const recoveryPlan = resolveWorkspaceRecoveryPlan(
@@ -367,7 +399,7 @@ export function resolveWorkspaceRecoveryPlan(
 
 export async function login(email: string, password: string): Promise<AuthResponse> {
   const performLogin = async () => {
-    const response = await apiFetch<AuthResponse>(
+    const response = await apiFetch<PartialAuthResponse>(
       "/auth/v2/login",
       {
         method: "POST",
@@ -375,18 +407,7 @@ export async function login(email: string, password: string): Promise<AuthRespon
       },
       { cookieAuth: true },
     );
-    primeRoleRevision(response.user.role_revision);
-    const currentUser = await getMe();
-    const mergedResponse = {
-      ...response,
-      user: mergeCurrentUserWithPermissions({
-        ...response.user,
-        ...currentUser,
-        permissions: currentUser.permissions,
-      }),
-    };
-    primeSession(mergedResponse);
-    return mergedResponse;
+    return hydrateAuthResponse(response, { timeoutMs: 8000, source: "login" });
   };
 
   return withBackendWakeRetry(performLogin, {
@@ -433,18 +454,7 @@ export async function refresh(): Promise<AuthResponse> {
       retryMessage: "DPR.ai is waking up. Please wait a few seconds and refresh your session again.",
     },
   );
-  primeRoleRevision(response.user.role_revision);
-  const currentUser = await getMe();
-  const mergedResponse = {
-    ...response,
-    user: mergeCurrentUserWithPermissions({
-      ...response.user,
-      ...currentUser,
-      permissions: currentUser.permissions,
-    }),
-  };
-  primeSession(mergedResponse);
-  return mergedResponse;
+  return hydrateAuthResponse(response, { timeoutMs: 8000, source: "refresh" });
 }
 
 export async function requestPasswordReset(email: string): Promise<PasswordForgotResponse> {
@@ -555,9 +565,9 @@ export async function getMe(options?: {
     async () =>
       mergeCurrentUserWithPermissions(
         await apiFetch<CurrentUser>(
-        "/auth/me",
-        { signal: options?.signal },
-        { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:me" },
+          "/auth/me",
+          { signal: options?.signal },
+          { timeoutMs: options?.timeoutMs ?? 8000, cacheTtlMs: 30_000, cacheKey: "session:me" },
         ),
       ),
     {
@@ -615,18 +625,7 @@ export async function selectFactory(factoryId: string): Promise<AuthResponse> {
       retryMessage: "DPR.ai is waking up. Please wait a few seconds before switching factory context again.",
     },
   );
-  primeRoleRevision(response.user.role_revision);
-  const currentUser = await getMe();
-  const mergedResponse = {
-    ...response,
-    user: mergeCurrentUserWithPermissions({
-      ...response.user,
-      ...currentUser,
-      permissions: currentUser.permissions,
-    }),
-  };
-  primeSession(mergedResponse);
-  return mergedResponse;
+  return hydrateAuthResponse(response, { timeoutMs: 8000, source: "select_factory" });
 }
 
 export async function getActiveWorkflowTemplate(): Promise<ActiveWorkflowTemplateContext> {

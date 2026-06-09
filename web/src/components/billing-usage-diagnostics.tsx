@@ -1,5 +1,7 @@
 "use client";
 
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
+
 type UsageMeter = {
   label: string;
   value: string;
@@ -37,11 +39,8 @@ export function BillingUsageDiagnostics({
   summaryQuota,
 }: BillingUsageDiagnosticsProps) {
   return (
-    <details className="min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-4 py-5 sm:px-5">
-      <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">
-        Usage summary
-      </summary>
-      <div className="mt-4 space-y-4 text-sm">
+    <DisclosurePanel title="Usage summary" className="min-w-0">
+      <div className="space-y-4 text-sm">
         {[requestsMeter, creditsMeter].map((meter) => (
           <div key={meter.label}>
             <div className="mb-2 flex items-center justify-between">
@@ -62,7 +61,7 @@ export function BillingUsageDiagnostics({
         <div className="rounded-3xl border border-[var(--border)] bg-[rgba(8,14,24,0.72)] p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-sm font-semibold text-white">AI Quota Usage</div>
+              <div className="text-sm font-semibold text-text-primary">AI Quota Usage</div>
               <div className="mt-1 text-xs leading-5 text-[var(--muted)]">Live AI usage</div>
             </div>
             <span className="rounded-full border border-sky-400/30 bg-sky-400/15 px-3 py-1 text-[11px] uppercase tracking-[0.18em] text-sky-200">
@@ -110,6 +109,6 @@ export function BillingUsageDiagnostics({
           </div>
         ) : null}
       </div>
-    </details>
+    </DisclosurePanel>
   );
 }

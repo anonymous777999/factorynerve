@@ -1,5 +1,5 @@
-import SettingsAttendancePage from "@/components/settings-attendance-page";
+import { SettingsAttendanceWorkspace } from "@/features/settings";
 
 export default function Page() {
-  return <SettingsAttendancePage />;
+  return <SettingsAttendanceWorkspace />;
 }

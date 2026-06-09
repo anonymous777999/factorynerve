@@ -32,8 +32,8 @@ function ToolbarButton({
       className={cn(
         "h-10 rounded-full border px-4 text-sm font-medium transition duration-200 disabled:cursor-not-allowed disabled:opacity-45",
         active
-          ? "border-[#185FA5] bg-[#185FA5] text-white"
-          : "border-[#d9e1e8] bg-white text-[#344054] hover:border-[#185FA5]/35 hover:text-[#185FA5]",
+          ? "border-accent bg-accent text-white"
+          : "border-border-subtle bg-white text-text-primary hover:border-accent/35 hover:text-accent",
       )}
     >
       {label}
@@ -43,7 +43,7 @@ function ToolbarButton({
 
 export function EditToolbar(props: EditToolbarProps) {
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-[20px] border border-[#e3e8ef] bg-white px-3 py-2.5 shadow-sm">
+    <div className="flex flex-wrap items-center gap-2 rounded-[20px] border border-border-subtle bg-white px-3 py-2.5 shadow-sm">
       <ToolbarButton label="+ Row" onClick={props.onAddRow} />
       <ToolbarButton label="+ Col" onClick={props.onAddColumn} />
       <ToolbarButton label="Undo" onClick={props.onUndo} disabled={!props.canUndo} />

@@ -1,0 +1,149 @@
+{
+    "version": "1.0.0",
+    "description": "Decision log for architectural and design decisions",
+    "decisions": [
+        {
+            "id": "001",
+            "date": "2024-01-15",
+            "category": "architecture",
+            "title": "AppShell Scroll Ownership",
+            "decision": "AppShell owns page scroll via .factory-workstation-frame with overflow-y-auto",
+            "rationale": "Centralized scroll ownership prevents layout instability and ensures consistent sticky behavior across all routes",
+            "alternatives": [
+                "Page-level scroll containers - rejected due to inconsistency and sticky header issues",
+                "Body-level scroll - rejected due to breaking sticky elements"
+            ],
+            "impact": "All pages must render into AppShell's scroll container, not create their own",
+            "status": "active"
+        },
+        {
+            "id": "002",
+            "date": "2024-01-15",
+            "category": "design",
+            "title": "Single Indigo Accent Color",
+            "decision": "Use single indigo accent (#6366f1) for all primary actions, links, focus states",
+            "rationale": "Single accent creates clear visual hierarchy and modern professional feel, avoiding cluttered multi-accent designs",
+            "alternatives": [
+                "Warm orange #c56d2d - rejected as dated and cyberpunk",
+                "Multiple accents - rejected as confusing and cluttered"
+            ],
+            "impact": "All primary actions, links, and focus states use indigo #6366f1",
+            "status": "active"
+        },
+        {
+            "id": "003",
+            "date": "2024-01-15",
+            "category": "design",
+            "title": "Sentence Case Typography",
+            "decision": "Use sentence case for all UI text (labels, buttons, headings)",
+            "rationale": "Sentence case is more readable, modern, and respectful compared to UPPERCASE which feels aggressive and dated",
+            "alternatives": [
+                "UPPERCASE - rejected as aggressive, hard to read, dated",
+                "Title Case - rejected as too formal for operational software"
+            ],
+            "impact": "All UI text must use sentence case except acronyms (OCR, API, ID)",
+            "status": "active"
+        },
+        {
+            "id": "004",
+            "date": "2024-01-15",
+            "category": "design",
+            "title": "No Gradient Backgrounds",
+            "decision": "Use solid colors only, no gradient backgrounds or glow effects",
+            "rationale": "Gradients and glows create cyberpunk/SOC dashboard aesthetic, not modern professional operational software",
+            "alternatives": [
+                "Warm gradient backgrounds - rejected as dated and cyberpunk",
+                "Colored radial gradients - rejected as visually overwhelming"
+            ],
+            "impact": "All backgrounds must be solid colors from design tokens",
+            "status": "active"
+        },
+        {
+            "id": "005",
+            "date": "2024-01-15",
+            "category": "design",
+            "title": "Inter Font Family",
+            "decision": "Use Inter for all UI text, JetBrains Mono only for code/technical data",
+            "rationale": "Inter is modern, readable, and operational. IBM Plex Sans feels dated and too warm",
+            "alternatives": [
+                "IBM Plex Sans - rejected as dated",
+                "Space Grotesk - rejected as too decorative",
+                "System fonts - rejected as inconsistent"
+            ],
+            "impact": "All UI text uses Inter, monospace reserved for code/IDs/timestamps",
+            "status": "active"
+        },
+        {
+            "id": "006",
+            "date": "2024-01-15",
+            "category": "architecture",
+            "title": "40px Default Row Height",
+            "decision": "Use 40px default row height (36px compact, 48px comfortable)",
+            "rationale": "40px provides modern breathable density with good touch targets, 34px feels cramped and dated",
+            "alternatives": [
+                "34px - rejected as too cramped, poor touch targets",
+                "44px - rejected as too loose for operational density"
+            ],
+            "impact": "All tables and lists use 40px row height by default",
+            "status": "active"
+        },
+        {
+            "id": "007",
+            "date": "2024-01-15",
+            "category": "design",
+            "title": "Surface Differentiation Over Borders",
+            "decision": "Use different background shades to create hierarchy, not heavy borders",
+            "rationale": "Surface differentiation creates clean modern hierarchy, heavy borders feel cluttered and dated",
+            "alternatives": [
+                "Border differentiation - rejected as cluttered",
+                "Heavy borders - rejected as dated"
+            ],
+            "impact": "Use subtle 1px borders with surface shade differences for hierarchy",
+            "status": "active"
+        },
+        {
+            "id": "008",
+            "date": "2024-01-15",
+            "category": "architecture",
+            "title": "Explicit Height Containment",
+            "decision": "All scroll containers must have explicit height (h-[calc(100dvh-200px)] or similar)",
+            "rationale": "Explicit height prevents layout instability and ensures scroll works correctly",
+            "alternatives": [
+                "Implicit height - rejected as causes scroll failures",
+                "Percentage height - rejected as unreliable in flex layouts"
+            ],
+            "impact": "All scroll containers require explicit height constraint",
+            "status": "active"
+        },
+        {
+            "id": "009",
+            "date": "2024-01-15",
+            "category": "design",
+            "title": "14px Body Text",
+            "decision": "Use 14px for primary body text, 13px for table cells",
+            "rationale": "14px is readable and operational, 11-12px is too small for body text",
+            "alternatives": [
+                "16px - rejected as too large for operational density",
+                "12px - rejected as too small, accessibility concern"
+            ],
+            "impact": "All body text uses 14px, tables use 13px for density",
+            "status": "active"
+        },
+        {
+            "id": "010",
+            "date": "2024-01-15",
+            "category": "design",
+            "title": "Functional Motion Only",
+            "decision": "Motion is functional (state changes) only, not decorative. Max 150ms transitions",
+            "rationale": "Decorative animations are distracting and slow down operational workflows",
+            "alternatives": [
+                "Decorative animations - rejected as distracting",
+                "Slow transitions (300ms+) - rejected as sluggish"
+            ],
+            "impact": "All transitions ≤150ms, no decorative animations",
+            "status": "active"
+        }
+    ],
+    "pendingDecisions": [],
+    "deprecatedDecisions": []
+}

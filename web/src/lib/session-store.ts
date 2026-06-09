@@ -214,8 +214,9 @@ export async function ensureSessionLoaded(loader: () => Promise<CurrentUser | Au
       if (sessionState.loadedAt > loadStartedAt) {
         return;
       }
+      const nextState = applySessionPayload(payload);
       setSessionState({
-        ...applySessionPayload(payload),
+        ...nextState,
         loading: false,
         error: "",
         loadedAt: Date.now(),

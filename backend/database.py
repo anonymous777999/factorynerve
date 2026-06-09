@@ -729,8 +729,19 @@ def _ensure_ocr_verification_columns() -> None:
                 conn.exec_driver_sql("ALTER TABLE ocr_verifications ADD COLUMN routing_meta JSON")
             if "raw_text" not in columns:
                 conn.exec_driver_sql("ALTER TABLE ocr_verifications ADD COLUMN raw_text TEXT")
+            if "export_state" not in columns:
+                conn.exec_driver_sql("ALTER TABLE ocr_verifications ADD COLUMN export_state VARCHAR(32) DEFAULT 'pending' NOT NULL")
+            if "last_action" not in columns:
+                conn.exec_driver_sql("ALTER TABLE ocr_verifications ADD COLUMN last_action VARCHAR(40) DEFAULT 'uploaded' NOT NULL")
+            if "reviewed_by" not in columns:
+                conn.exec_driver_sql("ALTER TABLE ocr_verifications ADD COLUMN reviewed_by INTEGER")
+            if "exported_by" not in columns:
+                conn.exec_driver_sql("ALTER TABLE ocr_verifications ADD COLUMN exported_by INTEGER")
             conn.exec_driver_sql(
                 "CREATE INDEX IF NOT EXISTS ix_ocr_verifications_document_hash ON ocr_verifications (document_hash)"
+            )
+            conn.exec_driver_sql(
+                "CREATE INDEX IF NOT EXISTS ix_ocr_verifications_export_state ON ocr_verifications (export_state)"
             )
             conn.commit()
     except Exception:

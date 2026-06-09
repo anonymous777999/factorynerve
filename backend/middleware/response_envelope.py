@@ -42,6 +42,26 @@ def _is_enveloped(payload: Any) -> bool:
 
 
 def _normalize_error(payload: Any, status_code: int) -> dict[str, Any]:
+    if isinstance(payload, str) and payload.strip():
+        return {
+            "success": False,
+            "error": {
+                "code": "error",
+                "message": payload.strip(),
+                "details": payload,
+            },
+        }
+
+    if isinstance(payload, dict) and "message" in payload and "detail" not in payload:
+        return {
+            "success": False,
+            "error": {
+                "code": str(payload.get("code") or payload.get("error") or "error"),
+                "message": str(payload.get("message") or "Request failed."),
+                "details": payload,
+            },
+        }
+
     detail = payload.get("detail") if isinstance(payload, dict) and "detail" in payload else payload
     code = "error"
     message = "Request failed."

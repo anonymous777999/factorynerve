@@ -1,6 +1,14 @@
 import type { ReactNode } from "react";
 
+import { Badge, type BadgeStatus } from "@/components/ui/badge";
+import { OcrNotificationDropdown } from "@/components/ocr/ocr-notification-dropdown";
 import { cn } from "@/lib/utils";
+
+type Notification = {
+  id: string;
+  message: string;
+  type: "success" | "error" | "info";
+};
 
 type OcrShellProps = {
   title: string;
@@ -10,14 +18,23 @@ type OcrShellProps = {
   sideContent?: ReactNode;
   mobile?: boolean;
   className?: string;
+  notifications?: Notification[];
+  onDismissNotification?: (id: string) => void;
 };
 
 const STEP_LABELS: Array<{ key: OcrShellProps["step"]; label: string }> = [
   { key: "entry", label: "Upload" },
   { key: "prepare", label: "Prepare" },
-  { key: "processing", label: "Process" },
+  { key: "processing", label: "Review" },
   { key: "result", label: "Export" },
 ];
+
+const shellStatusMap: Record<OcrShellProps["step"], { label: string; status: BadgeStatus }> = {
+  entry: { label: "Intake ready", status: "draft" },
+  prepare: { label: "Draft setup", status: "paused" },
+  processing: { label: "Review active", status: "processing" },
+  result: { label: "Output ready", status: "synced" },
+};
 
 export function OcrShell({
   title,
@@ -25,67 +42,73 @@ export function OcrShell({
   step,
   children,
   sideContent,
-  mobile = false,
   className,
+  notifications = [],
+  onDismissNotification,
 }: OcrShellProps) {
   const activeIndex = STEP_LABELS.findIndex((item) => item.key === step);
+  const shellStatus = shellStatusMap[step];
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#0d1218_0%,#111820_100%)] px-4 py-4 md:px-6 md:py-6">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-4">
-        <section className="rounded-[32px] border border-black/10 bg-[#f8f8f6] px-5 py-5 text-[#101418] shadow-[0_24px_80px_rgba(3,8,20,0.22)] md:px-7 md:py-6">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-            <div className="max-w-3xl">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#6b7280]">
-                OCR Workspace
+    <main className="factory-ocr-scope flex flex-col px-4 py-4 md:px-6 md:py-5">
+      <div className="factory-ocr-shell flex flex-col">
+        <section className="factory-ocr-header flex-shrink-0">
+          <div className="factory-ocr-header__meta">
+            <div className="max-w-4xl">
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="factory-ocr-header__eyebrow">OCR Workstation</span>
+                <Badge status={shellStatus.status}>{shellStatus.label}</Badge>
               </div>
-              <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#0f1720] md:text-[2.1rem]">
-                {title}
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-[#66707c]">{subtitle}</p>
+              <h1 className="factory-ocr-header__title">{title}</h1>
+              <p className="factory-ocr-header__subtitle">{subtitle}</p>
             </div>
-            <div className="grid grid-cols-4 gap-2 sm:min-w-[26rem]">
-              {STEP_LABELS.map((item, index) => {
-                const state =
-                  index < activeIndex ? "done" : index === activeIndex ? "current" : "idle";
-                return (
-                  <div
-                    key={item.key}
-                    className={cn(
-                      "rounded-[18px] border px-3 py-3 text-center transition duration-200",
-                      state === "done"
-                        ? "border-[#d0d7dd] bg-white text-[#111827]"
-                        : state === "current"
-                          ? "border-[#111827] bg-[#111827] text-white"
-                          : "border-[#e7eaee] bg-[#f3f4f6] text-[#8a93a0]",
-                    )}
-                  >
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em]">
-                      {index + 1}
-                    </div>
-                    <div className="mt-1 text-sm font-medium">{item.label}</div>
-                  </div>
-                );
-              })}
+            <div className="flex items-start gap-4">
+              <div className="factory-ocr-telemetry">
+                <div className="factory-ocr-telemetry__item">
+                  <div className="factory-ocr-telemetry__label">Mode</div>
+                  <div className="factory-ocr-telemetry__value">Queue-oriented review</div>
+                </div>
+                <div className="factory-ocr-telemetry__item">
+                  <div className="factory-ocr-telemetry__label">Priority</div>
+                  <div className="factory-ocr-telemetry__value">Operator throughput</div>
+                </div>
+                <div className="factory-ocr-telemetry__item">
+                  <div className="factory-ocr-telemetry__label">State</div>
+                  <div className="factory-ocr-telemetry__value">{shellStatus.label}</div>
+                </div>
+              </div>
+              <OcrNotificationDropdown
+                notifications={notifications}
+                onDismiss={onDismissNotification}
+              />
             </div>
+          </div>
+          <div className="factory-ocr-stagebar">
+            {STEP_LABELS.map((item, index) => {
+              const state = index < activeIndex ? "done" : index === activeIndex ? "current" : "idle";
+              return (
+                <div key={item.key} className="factory-ocr-stagepill" data-state={state}>
+                  <span className="factory-ocr-stagepill__index">{index + 1}</span>
+                  <span className="factory-ocr-stagepill__label">{item.label}</span>
+                </div>
+              );
+            })}
           </div>
         </section>
 
         <section
           className={cn(
-            "grid gap-4",
-            sideContent
-              ? "xl:grid-cols-[minmax(0,1fr)_20rem]"
-              : "",
-            mobile ? "" : "",
+            "factory-ocr-history-layout mt-2",
             className,
           )}
         >
-          <div className="rounded-[32px] border border-black/10 bg-[#f8f8f6] p-4 shadow-[0_20px_60px_rgba(3,8,20,0.18)] md:p-6">
+          <div className="factory-ocr-console rounded-[0.45rem] p-4 md:p-5">
             {children}
           </div>
           {sideContent ? (
-            <aside className="space-y-4 xl:sticky xl:top-6 xl:self-start">{sideContent}</aside>
+            <aside className="space-y-4">
+              {sideContent}
+            </aside>
           ) : null}
         </section>
       </div>

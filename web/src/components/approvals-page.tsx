@@ -4,26 +4,31 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
-  approveAttendanceReview,
   listAttendanceReview,
-  rejectAttendanceReview,
   type AttendanceReviewFinalStatus,
   type AttendanceReviewItem,
   type AttendanceReviewPayload,
 } from "@/lib/attendance";
 import { listUnreadAlerts, markAlertRead, type AlertItem } from "@/lib/dashboard";
-import { approveEntry, listEntries, rejectEntry, type Entry } from "@/lib/entries";
+import { listEntries, type Entry } from "@/lib/entries";
 import {
-  approveOcrVerification,
+  attendanceApprovalAdapter,
+  entryApprovalAdapter,
+  ocrApprovalAdapter,
+  reconciliationApprovalAdapter,
+  getAttendanceIssueLabel as adapterGetAttendanceIssueLabel,
+  getAttendanceSeverity as adapterGetAttendanceSeverity,
+  getEntrySeverity as adapterGetEntrySeverity,
+  getOcrSeverity as adapterGetOcrSeverity,
+  getReconciliationSeverity as adapterGetReconciliationSeverity,
+} from "@/features/approvals/adapters";
+import {
   listOcrVerifications,
-  rejectOcrVerification,
   type OcrVerificationRecord,
 } from "@/lib/ocr";
 import {
-  approveSteelReconciliation,
   getSteelOverview,
   listSteelReconciliations,
-  rejectSteelReconciliation,
   type SteelBatch,
   type SteelOverview,
   type SteelReconciliation,
@@ -33,12 +38,17 @@ import { signalWorkflowRefresh, subscribeToWorkflowRefresh } from "@/lib/workflo
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { SuccessBanner, MutationErrorBanner } from "@/shared/feedback";
+import type { CommandPaletteItem } from "@/components/ui/command-palette";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
-import { Skeleton } from "@/components/ui/skeleton";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { StickyActionBar } from "@/components/ui/sticky-action-bar";
 import { Textarea } from "@/components/ui/textarea";
+import { useRegisterCommands } from "@/providers/command-registry-provider";
 
 type InboxState = {
   pendingAttendanceReviews: AttendanceReviewItem[];
@@ -244,41 +254,41 @@ function severityWeight(severity: ReviewSeverity) {
 function severityClasses(severity: ReviewSeverity) {
   switch (severity) {
     case "critical":
-      return "border-red-400/40 bg-[rgba(239,68,68,0.12)] text-red-100";
+      return "border-status-danger-border bg-status-danger-bg text-status-danger-fg";
     case "high":
-      return "border-orange-400/40 bg-[rgba(249,115,22,0.12)] text-orange-100";
+      return "border-status-warning-border bg-status-warning-bg text-status-warning-fg";
     case "warning":
-      return "border-amber-400/40 bg-[rgba(245,158,11,0.12)] text-amber-100";
+      return "border-status-warning-border bg-status-warning-bg text-status-warning-fg";
     default:
-      return "border-emerald-400/30 bg-[rgba(34,197,94,0.12)] text-emerald-100";
+      return "border-status-success-border bg-status-success-bg text-status-success-fg";
   }
 }
 
 function typeClasses(kind: TaskKind | SignalKind) {
   switch (kind) {
     case "attendance":
-      return "border-violet-400/30 bg-[rgba(167,139,250,0.12)] text-violet-100";
+      return "border-status-info-border bg-status-info-bg text-status-info-fg";
     case "entry":
-      return "border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100";
+      return "border-status-info-border bg-status-info-bg text-status-info-fg";
     case "ocr":
-      return "border-cyan-400/30 bg-[rgba(34,211,238,0.12)] text-cyan-100";
+      return "border-status-processing-border bg-status-processing-bg text-status-processing-fg";
     case "reconciliation":
-      return "border-orange-400/30 bg-[rgba(249,115,22,0.12)] text-orange-100";
+      return "border-status-processing-border bg-status-processing-bg text-status-processing-fg";
     case "batch":
-      return "border-fuchsia-400/30 bg-[rgba(217,70,239,0.12)] text-fuchsia-100";
+      return "border-status-warning-border bg-status-warning-bg text-status-warning-fg";
     default:
-      return "border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100";
+      return "border-status-warning-border bg-status-warning-bg text-status-warning-fg";
   }
 }
 
 function ageClasses(ageBand: AgeBand) {
   switch (ageBand) {
     case "stale":
-      return "text-red-200";
+      return "text-status-danger-fg";
     case "aging":
-      return "text-amber-200";
+      return "text-status-warning-fg";
     default:
-      return "text-emerald-200";
+      return "text-status-success-fg";
   }
 }
 
@@ -305,17 +315,7 @@ function getAgeMeta(value?: string | null) {
 }
 
 function getEntrySeverity(entry: Entry) {
-  const performance = entry.units_target > 0 ? (entry.units_produced / entry.units_target) * 100 : null;
-  if (entry.quality_issues || (performance != null && performance < 50) || entry.downtime_minutes >= 90) {
-    return "critical" as ReviewSeverity;
-  }
-  if ((performance != null && performance < 75) || entry.downtime_minutes >= 30) {
-    return "high" as ReviewSeverity;
-  }
-  if (entry.downtime_minutes > 0 || entry.manpower_absent > 0 || (performance != null && performance < 100)) {
-    return "warning" as ReviewSeverity;
-  }
-  return "info" as ReviewSeverity;
+  return adapterGetEntrySeverity(entry) as ReviewSeverity;
 }
 
 function normalizeAttendanceStatus(status?: string | null) {
@@ -327,30 +327,11 @@ function normalizeAttendanceStatus(status?: string | null) {
 }
 
 function getAttendanceIssueLabel(item: AttendanceReviewItem) {
-  const requestType = item.regularization?.request_type || "";
-  if (requestType === "missed_punch") return "Missed punch";
-  if (requestType === "status_correction") return "Status correction";
-  if (requestType === "shift_correction") return "Shift correction";
-  if (requestType === "timing_correction") return "Timing correction";
-  if (!item.punch_in_at || !item.punch_out_at || item.status === "missed_punch") return "Missed punch";
-  if (item.status === "absent") return "Absent status";
-  if (item.late_minutes > 0) return "Late entry";
-  if (item.overtime_minutes > 0) return "Overtime check";
-  return "Attendance review";
+  return adapterGetAttendanceIssueLabel(item);
 }
 
 function getAttendanceSeverity(item: AttendanceReviewItem) {
-  const issueLabel = getAttendanceIssueLabel(item);
-  if (item.status === "absent" || issueLabel === "Missed punch" || issueLabel === "Status correction") {
-    return "critical" as ReviewSeverity;
-  }
-  if (issueLabel === "Shift correction" || issueLabel === "Late entry" || issueLabel === "Timing correction") {
-    return "high" as ReviewSeverity;
-  }
-  if (item.overtime_minutes > 0 || item.review_reason.trim().length > 0) {
-    return "warning" as ReviewSeverity;
-  }
-  return "info" as ReviewSeverity;
+  return adapterGetAttendanceSeverity(item) as ReviewSeverity;
 }
 
 function normalizeAttendance(item: AttendanceReviewItem): AttendanceTaskItem {
@@ -407,10 +388,7 @@ function canRunTaskDecision(item: ReviewTaskItem, decision: BulkDecision) {
 }
 
 function getOcrSeverity(record: OcrVerificationRecord) {
-  if (record.avg_confidence < 60 || record.warnings.length >= 3) return "critical" as ReviewSeverity;
-  if (record.avg_confidence < 75 || record.warnings.length >= 1) return "high" as ReviewSeverity;
-  if (record.avg_confidence < 88) return "warning" as ReviewSeverity;
-  return "info" as ReviewSeverity;
+  return adapterGetOcrSeverity(record) as ReviewSeverity;
 }
 
 function getConfidenceSeverity(status?: string | null) {
@@ -515,7 +493,7 @@ function normalizeOcr(record: OcrVerificationRecord, canApproveOcr: boolean): Oc
     canReject: canApproveOcr,
     typeLabel: "OCR review",
     title: record.source_filename || `Verification #${record.id}`,
-    headline: `${record.columns} columns • ${Math.round(record.avg_confidence)}% confidence • ${record.language.toUpperCase()}`,
+    headline: `${record.columns} columns • ${Math.round(record.avg_confidence)}% confidence • ${record.language}`,
     description: warnings || "No warnings raised on the queued document.",
     recommendation:
       canApproveOcr
@@ -531,7 +509,7 @@ function normalizeOcr(record: OcrVerificationRecord, canApproveOcr: boolean): Oc
     openLabel: "Open document review",
     facts: [
       { label: "Template", value: record.template_name || "-" },
-      { label: "Language", value: record.language.toUpperCase() },
+      { label: "Language", value: record.language },
       { label: "Columns", value: formatNumber(record.columns) },
       { label: "Confidence", value: `${Math.round(record.avg_confidence)}%` },
       { label: "Warnings", value: record.warnings.length ? record.warnings.join(" • ") : "None" },
@@ -555,7 +533,7 @@ function normalizeReconciliation(record: SteelReconciliation, canApprove: boolea
     canReject: canApprove,
     typeLabel: "Stock review",
     title: record.item_name || record.item_code || `Item #${record.item_id}`,
-    headline: `Variance ${formatNumber(record.variance_kg, 1)} KG • ${formatNumber(record.variance_percent, 1)}% • ${record.confidence_status.toUpperCase()} confidence`,
+    headline: `Variance ${formatNumber(record.variance_kg, 1)} KG • ${formatNumber(record.variance_percent, 1)}% • ${record.confidence_status} confidence`,
     description: record.notes?.trim() || "Physical stock count needs a decision before it changes trust in the inventory book.",
     recommendation:
       canApprove
@@ -574,7 +552,7 @@ function normalizeReconciliation(record: SteelReconciliation, canApprove: boolea
       { label: "Physical qty", value: `${formatNumber(record.physical_qty_kg, 1)} KG` },
       { label: "Variance", value: `${formatNumber(record.variance_kg, 1)} KG` },
       { label: "Variance %", value: `${formatNumber(record.variance_percent, 1)}%` },
-      { label: "Confidence", value: record.confidence_status.toUpperCase() },
+      { label: "Confidence", value: record.confidence_status },
       { label: "Counted by", value: record.counted_by_name || "-" },
       { label: "Counted at", value: formatDateTime(record.counted_at) },
       { label: "Notes", value: record.notes || "-" },
@@ -1078,16 +1056,16 @@ function QueueDetailPanel({
               onChange={(event) => onNoteChange(event.target.value)}
               placeholder="Capture why you approved, what you checked, or the reason for rejection."
             />
-            <div className={cn("mt-2 text-xs", approveNeedsNote ? "text-amber-200" : "text-[var(--muted)]")}>
+            <div className={cn("mt-2 text-xs", approveNeedsNote ? "text-status-warning-fg" : "text-[var(--muted)]")}>
               {noteGuidance}
             </div>
           </div>
         ) : null}
 
         {restrictedReason ? (
-          <div className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.08)] px-4 py-4">
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-100">Escalation needed</div>
-            <div className="mt-2 text-sm leading-6 text-amber-100">{restrictedReason}</div>
+          <div className="rounded-2xl border border-status-warning-border bg-status-warning-bg px-4 py-4">
+            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-status-warning-fg">Escalation needed</div>
+            <div className="mt-2 text-sm leading-6 text-status-warning-fg">{restrictedReason}</div>
           </div>
         ) : null}
 
@@ -1168,7 +1146,7 @@ export default function ApprovalsPage() {
       const tasks: Array<Promise<unknown>> = [
         listAttendanceReview(undefined, 14),
         listEntries({ status: ["pending"], page: 1, page_size: 12 }),
-        listOcrVerifications("pending"),
+        listOcrVerifications({ status: "pending" }),
         listUnreadAlerts(),
       ];
       if (steelMode) {
@@ -1512,23 +1490,27 @@ export default function ApprovalsPage() {
       if (decision === "approve") {
         switch (item.kind) {
           case "attendance":
-            await approveAttendanceReview(item.source.attendance_id, {
-              regularization_id: item.source.regularization?.id || null,
-              final_status: deriveAttendanceFinalStatus(item.source),
-              note: note || null,
+            await attendanceApprovalAdapter.approve(item.source.attendance_id, {
+              notes: note || undefined,
+              extra: {
+                regularizationId: item.source.regularization?.id ?? null,
+                finalStatus: deriveAttendanceFinalStatus(item.source),
+              },
             });
             return;
           case "entry":
-            await approveEntry(item.source.id);
+            await entryApprovalAdapter.approve(item.source.id, {
+              notes: note || undefined,
+            });
             return;
           case "ocr":
             if (!item.canApprove) throw new Error("Selected OCR item requires manager or higher approval.");
-            await approveOcrVerification(item.source.id, note);
+            await ocrApprovalAdapter.approve(item.source.id, { notes: note });
             return;
           case "reconciliation":
             if (!item.canApprove) throw new Error("Selected stock item requires admin or owner approval.");
-            await approveSteelReconciliation(item.source.id, {
-              approver_notes: note || null,
+            await reconciliationApprovalAdapter.approve(item.source.id, {
+              notes: note || undefined,
             });
             return;
         }
@@ -1540,24 +1522,23 @@ export default function ApprovalsPage() {
 
       switch (item.kind) {
         case "attendance":
-          await rejectAttendanceReview(item.source.attendance_id, {
-            regularization_id: item.source.regularization?.id || null,
-            note,
+          await attendanceApprovalAdapter.reject(item.source.attendance_id, {
+            reason: note,
+            extra: {
+              regularizationId: item.source.regularization?.id ?? null,
+            },
           });
           return;
         case "entry":
-          await rejectEntry(item.source.id, note);
+          await entryApprovalAdapter.reject(item.source.id, { reason: note });
           return;
         case "ocr":
           if (!item.canReject) throw new Error("Selected OCR item requires manager or higher rejection.");
-          await rejectOcrVerification(item.source.id, note, note);
+          await ocrApprovalAdapter.reject(item.source.id, { reason: note });
           return;
         case "reconciliation":
           if (!item.canReject) throw new Error("Selected stock item requires admin or owner rejection.");
-          await rejectSteelReconciliation(item.source.id, {
-            rejection_reason: note,
-            approver_notes: note,
-          });
+          await reconciliationApprovalAdapter.reject(item.source.id, { reason: note });
           return;
       }
     },
@@ -1726,23 +1707,57 @@ export default function ApprovalsPage() {
   const sla24DprCount = taskItems.filter((item) => item.ageBand === "stale" && item.kind === "entry").length;
   const sla24OcrCount = taskItems.filter((item) => item.ageBand === "stale" && item.kind === "ocr").length;
   const sla24StockCount = taskItems.filter((item) => item.ageBand === "stale" && item.kind === "reconciliation").length;
+  const approvalCommands = useMemo<CommandPaletteItem[]>(
+    () => {
+      const commands: CommandPaletteItem[] = [];
+
+      if (nextReviewItem) {
+        commands.push({
+          id: "approvals-review-next",
+          group: "Actions",
+          label: "Review next approval",
+          description: "Open the next decision item from the queue.",
+          shortcut: "Shift R",
+          onSelect: () => openItem(nextReviewItem.key, false),
+        });
+      }
+
+      if (selectedApproveCount > 0) {
+        commands.push({
+          id: "approvals-approve-selected",
+          group: "Actions",
+          label: `Approve ${selectedApproveCount} selected`,
+          description: "Open bulk approval confirmation for the selected review items.",
+          onSelect: () => openBulkDecisionConfirm("approve"),
+        });
+      }
+
+      if (selectedRejectCount > 0) {
+        commands.push({
+          id: "approvals-reject-selected",
+          group: "Actions",
+          label: `Reject ${selectedRejectCount} selected`,
+          description: "Open bulk rejection confirmation for the selected review items.",
+          onSelect: () => openBulkDecisionConfirm("reject"),
+        });
+      }
+
+      return commands;
+    },
+    [nextReviewItem, openBulkDecisionConfirm, openItem, selectedApproveCount, selectedRejectCount],
+  );
+  useRegisterCommands("approvals-page", approvalCommands);
 
   if (loading) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
-        <div className="mx-auto max-w-7xl space-y-6">
-          <Skeleton className="h-36 rounded-[2rem]" />
-          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-            {Array.from({ length: 4 }).map((_, index) => (
-              <Skeleton key={index} className="h-36 rounded-2xl" />
-            ))}
-          </div>
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(320px,0.95fr)]">
-            <Skeleton className="h-[36rem] rounded-2xl" />
-            <Skeleton className="h-[36rem] rounded-2xl" />
-          </div>
-        </div>
-      </main>
+      <OperationalPageShell
+        eyebrow="Review"
+        title="Review Queue"
+        isLoading
+        loadingTitle="Loading review queue"
+      >
+        <div />
+      </OperationalPageShell>
     );
   }
 
@@ -1799,44 +1814,88 @@ export default function ApprovalsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        {/* AUDIT: FLOW_BROKEN - lead the screen with the next review action instead of a passive inbox summary. */}
-        <section className="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur md:flex-row md:items-end md:justify-between">
-          <div className="space-y-3">
-            <div className="text-sm uppercase tracking-[0.32em] text-[var(--accent)]">Review</div>
-            <h1 className="text-3xl font-semibold md:text-4xl">Review Queue</h1>
-            <p className="max-w-3xl text-sm text-[var(--muted)]">Close the next review first, then work down the backlog with context still in view.</p>
-            <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
-              <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
-                Factory: <span className="font-semibold text-[var(--text)]">{activeFactory?.name || user.factory_name}</span>
-              </span>
-              <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
-                Refreshed: <span className="font-semibold text-[var(--text)]">{refreshedLabel}</span>
-              </span>
-            </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {nextReviewItem ? (
-              <Button
-                className="px-4 py-2 text-xs"
-                onClick={() => openItem(nextReviewItem.key, typeof window !== "undefined" && window.innerWidth < 1024)}
-              >
-                Review next
-              </Button>
-            ) : null}
-            <Button variant="outline" className="px-4 py-2 text-xs" onClick={() => void loadInbox()}>
-              {busy ? "Refreshing..." : "Refresh"}
-            </Button>
-          </div>
-        </section>
+    <OperationalPageShell
+      className="route-workspace"
+      eyebrow="Review"
+      title="Review Queue"
+      description="Close the next review first, then work down the backlog with context still in view."
+      tone={urgentTaskCount > 0 ? "warning" : "processing"}
+      toneLabel={urgentTaskCount > 0 ? "Urgent queue" : "Queue stable"}
+      metrics={[
+        { id: "factory", label: "Factory", value: activeFactory?.name || user.factory_name || "-" },
+        { id: "refreshed", label: "Refreshed", value: refreshedLabel },
+        { id: "open", label: "Open", value: filteredTasks.length },
+        { id: "urgent", label: "Urgent", value: urgentTaskCount },
+      ]}
+      actions={[
+        ...(nextReviewItem
+          ? [
+              {
+                id: "review-next",
+                label: "Review next",
+                onAction: () =>
+                  openItem(nextReviewItem.key, typeof window !== "undefined" && window.innerWidth < 1024),
+              },
+            ]
+          : []),
+        {
+          id: "refresh-approvals",
+          label: busy ? "Refreshing..." : "Refresh",
+          variant: "outline" as const,
+          onAction: () => void loadInbox(),
+        },
+      ]}
+    >
+        <StickyActionBar
+          variant="page"
+          status={urgentTaskCount > 0 ? "warning" : "info"}
+          statusLabel={urgentTaskCount > 0 ? "Urgent queue" : "Queue stable"}
+          title="Approval workflow"
+          description="Keep the next decision visible, then batch the backlog when the same call applies."
+          selectedCount={selectedTaskCount}
+          primaryAction={
+            nextReviewItem
+              ? {
+                id: "review-next-approval",
+                label: "Review next",
+                onAction: () => openItem(nextReviewItem.key, typeof window !== "undefined" && window.innerWidth < 1024),
+              }
+              : undefined
+          }
+          secondaryAction={
+            selectedApproveCount > 0
+              ? {
+                id: "bulk-approve-selection",
+                label: `Approve ${selectedApproveCount}`,
+                variant: "outline",
+                onAction: () => openBulkDecisionConfirm("approve"),
+              }
+              : undefined
+          }
+          tertiaryAction={
+            selectedRejectCount > 0
+              ? {
+                id: "bulk-reject-selection",
+                label: `Reject ${selectedRejectCount}`,
+                variant: "ghost",
+                onAction: () => openBulkDecisionConfirm("reject"),
+              }
+              : {
+                id: "refresh-approvals",
+                label: busy ? "Refreshing" : "Refresh",
+                variant: "ghost",
+                disabled: busy,
+                onAction: () => void loadInbox(),
+              }
+          }
+        />
 
         <GuidanceBlock
           surfaceKey="approvals-flow"
           title="Queue tips"
           summary="Open this only when you want the quick lane logic."
           eyebrow="Review"
-          className="border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl"
+          className="border-[var(--border)] bg-surface-panel shadow-xs"
         >
           <div className="grid gap-4 md:grid-cols-3">
             {[
@@ -1860,7 +1919,7 @@ export default function ApprovalsPage() {
                 body: "Approve, reject, or escalate from the detail panel without losing your place in the queue.",
               },
             ].map((item) => (
-              <Card key={item.title} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+              <Card key={item.title} className="border-[var(--border)] bg-surface-panel">
                 <CardContent className="space-y-3 px-5 py-5">
                   <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
                   <div className="text-xl font-semibold text-[var(--text)]">{item.title}</div>
@@ -1871,29 +1930,33 @@ export default function ApprovalsPage() {
           </div>
         </GuidanceBlock>
 
-        {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
-        {status ? <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
+        {error ? (
+          <MutationErrorBanner message={error} onDismiss={() => setError("")} />
+        ) : null}
+        {status ? (
+          <SuccessBanner message={status} onDismiss={() => setStatus("")} />
+        ) : null}
 
         {/* AUDIT: DENSITY_OVERLOAD - collapse backlog analytics and SLA diagnostics until the reviewer asks for them. */}
-        <details className="group rounded-[2rem] border border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl">
+        <details className="group route-panel">
           <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
             <div>
               <div className="text-sm text-[var(--muted)]">Queue pulse</div>
               <div className="mt-1 text-xl font-semibold text-[var(--text)]">Backlog mix and SLA health</div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <QueueStatPill label="Urgent" value={urgentTaskCount} tone="border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100" />
-              <QueueStatPill label="Open" value={filteredTasks.length} tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
-              <QueueStatPill label="24h+" value={staleTaskCount} tone="border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100" />
-              <QueueStatPill label="Signals" value={signalCount} tone="border-fuchsia-400/30 bg-[rgba(217,70,239,0.12)] text-fuchsia-100" />
+              <QueueStatPill label="Urgent" value={urgentTaskCount} tone="border-status-danger-border bg-status-danger-bg text-status-danger-fg" />
+              <QueueStatPill label="Open" value={filteredTasks.length} tone="border-status-info-border bg-status-info-bg text-status-info-fg" />
+              <QueueStatPill label="24h+" value={staleTaskCount} tone="border-status-warning-border bg-status-warning-bg text-status-warning-fg" />
+              <QueueStatPill label="Signals" value={signalCount} tone="border-status-processing-border bg-status-processing-bg text-status-processing-fg" />
             </div>
           </summary>
           <div className="space-y-6 border-t border-[var(--border)] px-6 py-6">
             <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-              <SummaryMetric label="Urgent reviews" value={urgentTaskCount} helper="Critical first" tone="border-red-400/30 bg-[rgba(239,68,68,0.12)] text-red-100" />
-              <SummaryMetric label="Open tasks" value={filteredTasks.length} helper="Decision queue" tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
-              <SummaryMetric label="24h breaches" value={staleTaskCount} helper="Oldest first" tone="border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100" />
-              <SummaryMetric label="Signals" value={signalCount} helper="Needs routing" tone="border-fuchsia-400/30 bg-[rgba(217,70,239,0.12)] text-fuchsia-100" />
+              <SummaryMetric label="Urgent reviews" value={urgentTaskCount} helper="Critical first" tone="border-status-danger-border bg-status-danger-bg text-status-danger-fg" />
+              <SummaryMetric label="Open tasks" value={filteredTasks.length} helper="Decision queue" tone="border-status-info-border bg-status-info-bg text-status-info-fg" />
+              <SummaryMetric label="24h breaches" value={staleTaskCount} helper="Oldest first" tone="border-status-warning-border bg-status-warning-bg text-status-warning-fg" />
+              <SummaryMetric label="Signals" value={signalCount} helper="Needs routing" tone="border-status-processing-border bg-status-processing-bg text-status-processing-fg" />
             </section>
 
             <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
@@ -1928,20 +1991,20 @@ export default function ApprovalsPage() {
                   <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{metric.total}</div>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs">
                     <span className="rounded-full border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-3 py-1 text-red-100">Urgent {metric.urgent}</span>
-                    <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-amber-100">8h+ {metric.aging}</span>
+                    <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-status-warning-fg">8h+ {metric.aging}</span>
                   </div>
                 </div>
               ))}
             </section>
 
             <section className="grid gap-4 lg:grid-cols-2">
-              <div className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.08)] p-4">
+              <div className="rounded-2xl border border-status-warning-border bg-status-warning-bg p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-200">8h+ waiting</div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-status-warning-fg">8h+ waiting</div>
                     <div className="mt-1 text-3xl font-semibold text-[var(--text)]">{sla8TaskCount}</div>
                   </div>
-                  <div className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.14)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-amber-100">
+                  <div className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.14)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-status-warning-fg">
                     Urgent: {sla8UrgentCount}
                   </div>
                 </div>
@@ -1956,7 +2019,7 @@ export default function ApprovalsPage() {
               <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.1)] p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-red-200">24h+ breached</div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-status-danger-fg">24h+ breached</div>
                     <div className="mt-1 text-3xl font-semibold text-[var(--text)]">{sla24TaskCount}</div>
                   </div>
                   <div className="rounded-full border border-red-400/30 bg-[rgba(239,68,68,0.16)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-red-100">
@@ -1977,17 +2040,17 @@ export default function ApprovalsPage() {
           </div>
         </details>
 
-        <section className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.95fr)]">
-          <div className="space-y-6">
+        <section className="route-grid-main route-grid-main--sidebar">
+          <div className="route-stack">
             {/* AUDIT: BUTTON_CLUTTER - move presets, filters, and bulk actions into one tools tray so they stop crowding the review lane. */}
-            <details className="group rounded-[2rem] border border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl">
+            <details className="group route-panel">
               <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
                 <div>
                   <div className="text-sm text-[var(--muted)]">Review tools</div>
                   <div className="mt-1 text-xl font-semibold text-[var(--text)]">Presets, filters, and bulk actions</div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <QueueStatPill label="Preset" value={presetLabel(activePreset)} tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
+                  <QueueStatPill label="Preset" value={presetLabel(activePreset)} tone="border-status-info-border bg-status-info-bg text-status-info-fg" />
                   <QueueStatPill label="Filters" value={hasActiveFilters ? activeFilterCount : "none"} />
                   <QueueStatPill label="Selected" value={selectedTaskCount} />
                 </div>
@@ -2023,14 +2086,14 @@ export default function ApprovalsPage() {
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
                       <QueueStatPill label="Selected" value={selectedTaskCount} />
-                      <QueueStatPill label="Approve" value={selectedApproveCount} tone="border-emerald-400/30 bg-[rgba(34,197,94,0.12)] text-emerald-100" />
-                      <QueueStatPill label="Reject" value={selectedRejectCount} tone="border-rose-400/30 bg-[rgba(244,63,94,0.12)] text-rose-100" />
+                      <QueueStatPill label="Approve" value={selectedApproveCount} tone="border-status-success-border bg-status-success-bg text-status-success-fg" />
+                      <QueueStatPill label="Reject" value={selectedRejectCount} tone="border-status-danger-border bg-status-danger-bg text-status-danger-fg" />
                       {selectedNoDecisionCount > 0 ? (
-                        <QueueStatPill label="Restricted" value={selectedNoDecisionCount} tone="border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100" />
+                        <QueueStatPill label="Restricted" value={selectedNoDecisionCount} tone="border-status-warning-border bg-status-warning-bg text-status-warning-fg" />
                       ) : null}
                     </div>
                     {selectedNoDecisionCount > 0 ? (
-                      <div className="mt-3 text-xs text-amber-200">{selectedNoDecisionCount} selected item(s) are role-restricted and cannot be actioned.</div>
+                      <div className="mt-3 text-xs text-status-warning-fg">{selectedNoDecisionCount} selected item(s) are role-restricted and cannot be actioned.</div>
                     ) : null}
                     <div className="mt-4">
                       <label className="text-sm text-[var(--muted)]">Shared note</label>
@@ -2074,7 +2137,7 @@ export default function ApprovalsPage() {
                         {bulkRejectBusy ? "Rejecting..." : "Reject selected"}
                       </Button>
                     </div>
-                    <div className={cn("mt-3 text-xs", bulkApproveReasonMissing || bulkRejectReasonMissing ? "text-amber-200" : "text-[var(--muted)]")}>
+                    <div className={cn("mt-3 text-xs", bulkApproveReasonMissing || bulkRejectReasonMissing ? "text-status-warning-fg" : "text-[var(--muted)]")}>
                       {bulkRejectReasonMissing
                         ? "Bulk rejection is blocked until a reason note is added."
                         : bulkApproveReasonMissing
@@ -2099,7 +2162,7 @@ export default function ApprovalsPage() {
                   <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                     <div>
                       <label className="text-sm text-[var(--muted)]">Task type</label>
-                      <Select value={taskFilter} onChange={(event) => setTaskFilter(event.target.value as TaskFilter)}>
+                      <Select aria-label="Task type" value={taskFilter} onChange={(event) => setTaskFilter(event.target.value as TaskFilter)}>
                         <option value="all">All review work</option>
                         <option value="attendance">Attendance review</option>
                         <option value="entry">DPR entries</option>
@@ -2109,7 +2172,7 @@ export default function ApprovalsPage() {
                     </div>
                     <div>
                       <label className="text-sm text-[var(--muted)]">Severity</label>
-                      <Select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value as SeverityFilter)}>
+                      <Select aria-label="Severity" value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value as SeverityFilter)}>
                         <option value="all">All severities</option>
                         <option value="critical">Critical</option>
                         <option value="high">High</option>
@@ -2119,7 +2182,7 @@ export default function ApprovalsPage() {
                     </div>
                     <div>
                       <label className="text-sm text-[var(--muted)]">Queue age</label>
-                      <Select value={ageFilter} onChange={(event) => setAgeFilter(event.target.value as AgeFilter)}>
+                      <Select aria-label="Queue age" value={ageFilter} onChange={(event) => setAgeFilter(event.target.value as AgeFilter)}>
                         <option value="all">All ages</option>
                         <option value="sla8">8h+ waiting (SLA)</option>
                         <option value="stale">24h+ waiting</option>
@@ -2137,7 +2200,7 @@ export default function ApprovalsPage() {
             </details>
 
             {/* AUDIT: FLOW_BROKEN - feature the next review item before the wider backlog so the first move is obvious. */}
-            <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
+            <Card className="route-table-anchor border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
               <CardHeader className="space-y-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
@@ -2145,23 +2208,23 @@ export default function ApprovalsPage() {
                     <CardTitle className="text-xl">Start with the top decision</CardTitle>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <QueueStatPill label="Open" value={filteredTasks.length} tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
+                    <QueueStatPill label="Open" value={filteredTasks.length} tone="border-status-info-border bg-status-info-bg text-status-info-fg" />
                     <QueueStatPill
                       label={restrictedTaskCount ? "Escalation" : "Priority"}
                       value={restrictedTaskCount || "risk-ranked"}
                       tone={
                         restrictedTaskCount
-                          ? "border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100"
+                          ? "border-status-warning-border bg-status-warning-bg text-status-warning-fg"
                           : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] text-[var(--text)]"
                       }
                     />
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
-                  <QueueStatPill label="Attendance" value={attendanceTaskCount} tone="border-violet-400/30 bg-[rgba(167,139,250,0.12)] text-violet-100" />
-                  <QueueStatPill label="DPR" value={dprTaskCount} tone="border-sky-400/30 bg-[rgba(56,189,248,0.12)] text-sky-100" />
-                  <QueueStatPill label="OCR" value={ocrTaskCount} tone="border-cyan-400/30 bg-[rgba(34,211,238,0.12)] text-cyan-100" />
-                  <QueueStatPill label="Stock" value={stockTaskCount} tone="border-orange-400/30 bg-[rgba(249,115,22,0.12)] text-orange-100" />
+                  <QueueStatPill label="Attendance" value={attendanceTaskCount} tone="border-status-info-border bg-status-info-bg text-status-info-fg" />
+                  <QueueStatPill label="DPR" value={dprTaskCount} tone="border-status-info-border bg-status-info-bg text-status-info-fg" />
+                  <QueueStatPill label="OCR" value={ocrTaskCount} tone="border-status-processing-border bg-status-processing-bg text-status-processing-fg" />
+                  <QueueStatPill label="Stock" value={stockTaskCount} tone="border-status-processing-border bg-status-processing-bg text-status-processing-fg" />
                 </div>
                 <div className="text-sm text-[var(--muted)]">
                   {restrictedTaskCount
@@ -2194,7 +2257,7 @@ export default function ApprovalsPage() {
                           <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[var(--muted)]">{latestActivityLabel(nextReviewItem)}</span>
                           <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[var(--muted)]">{nextReviewItem.statusLabel}</span>
                           {!nextReviewItem.canApprove && !nextReviewItem.canReject ? (
-                            <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-amber-100">Escalation needed</span>
+                            <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-status-warning-fg">Escalation needed</span>
                           ) : null}
                         </div>
                       </div>
@@ -2249,7 +2312,7 @@ export default function ApprovalsPage() {
                           <QueueStatPill
                             label="Escalation"
                             value={remainingFilteredTasks.filter((item) => !item.canApprove && !item.canReject).length}
-                            tone="border-amber-400/30 bg-[rgba(245,158,11,0.12)] text-amber-100"
+                            tone="border-status-warning-border bg-status-warning-bg text-status-warning-fg"
                           />
                         ) : null}
                       </div>
@@ -2316,7 +2379,7 @@ export default function ApprovalsPage() {
                                           <div className="mt-2 flex flex-wrap gap-2 text-xs">
                                             <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[var(--muted)]">{latestActivityLabel(item)}</span>
                                             {!item.canApprove && !item.canReject ? (
-                                              <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-amber-100">Escalation needed</span>
+                                              <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-status-warning-fg">Escalation needed</span>
                                             ) : null}
                                           </div>
                                         </td>
@@ -2379,7 +2442,7 @@ export default function ApprovalsPage() {
                                   <div className="flex flex-wrap gap-2 text-xs">
                                     <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[var(--muted)]">{latestActivityLabel(item)}</span>
                                     {!item.canApprove && !item.canReject ? (
-                                      <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-amber-100">Escalation needed</span>
+                                      <span className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-status-warning-fg">Escalation needed</span>
                                     ) : null}
                                   </div>
                                   <div className="flex flex-wrap gap-3">
@@ -2413,7 +2476,7 @@ export default function ApprovalsPage() {
                   <div className="text-sm text-[var(--muted)]">Signals</div>
                   <div className="mt-1 text-xl font-semibold text-[var(--text)]">Routing and acknowledgements</div>
                 </div>
-                <QueueStatPill label="Open" value={signalCount} tone="border-fuchsia-400/30 bg-[rgba(217,70,239,0.12)] text-fuchsia-100" />
+                <QueueStatPill label="Open" value={signalCount} tone="border-status-processing-border bg-status-processing-bg text-status-processing-fg" />
               </summary>
               <div className="space-y-3 border-t border-[var(--border)] px-6 py-6">
                 {filteredSignals.length ? (
@@ -2466,92 +2529,75 @@ export default function ApprovalsPage() {
             </div>
           </div>
         </section>
-      </div>
 
-      {bulkConfirmDecision ? (
-        <div className="fixed inset-0 z-[55] flex items-center justify-center bg-[rgba(5,10,18,0.84)] px-4 py-4">
-          <Card className="w-full max-w-2xl border-[var(--border)] bg-[rgba(17,21,33,0.98)] shadow-2xl">
-            <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Confirm bulk decision</div>
-              <CardTitle className="text-2xl">
-                {bulkConfirmDecision === "approve" ? "Approve selected tasks?" : "Reject selected tasks?"}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div className="rounded-xl border border-[var(--border)] bg-[var(--card-strong)] px-3 py-3">
-                  <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">Selected</div>
-                  <div className="mt-1 text-xl font-semibold">{selectedTaskItems.length}</div>
-                </div>
-                <div className="rounded-xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-3 py-3">
-                  <div className="text-[11px] uppercase tracking-[0.14em] text-emerald-100">Will process</div>
-                  <div className="mt-1 text-xl font-semibold text-emerald-100">{bulkConfirmEligibleItems.length}</div>
-                </div>
-                <div className="rounded-xl border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-3">
-                  <div className="text-[11px] uppercase tracking-[0.14em] text-amber-100">Restricted</div>
-                  <div className="mt-1 text-xl font-semibold text-amber-100">{bulkConfirmRestrictedItems.length}</div>
-                </div>
+      <ConfirmationModal
+        open={Boolean(bulkConfirmDecision)}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeBulkDecisionConfirm();
+          }
+        }}
+        title={bulkConfirmDecision === "approve" ? "Approve selected tasks?" : "Reject selected tasks?"}
+        description={
+          bulkConfirmDecision === "approve"
+            ? "Eligible items will be approved, and restricted items will remain untouched."
+            : "Rejection note is required and will be written to each eligible selected item."
+        }
+        primaryActionLabel={
+          bulkConfirmDecision === "approve"
+            ? `Approve ${bulkConfirmEligibleItems.length} task${bulkConfirmEligibleItems.length === 1 ? "" : "s"}`
+            : `Reject ${bulkConfirmEligibleItems.length} task${bulkConfirmEligibleItems.length === 1 ? "" : "s"}`
+        }
+        secondaryActionLabel="Cancel"
+        onConfirm={confirmBulkDecision}
+        confirmBusy={bulkBusy}
+        confirmDisabled={!bulkConfirmEligibleItems.length || bulkApproveReasonMissing || bulkRejectReasonMissing}
+        status={bulkConfirmDecision === "approve" ? "warning" : "destructive"}
+        statusLabel={bulkConfirmDecision === "approve" ? "Bulk approval" : "Bulk rejection"}
+      >
+        <div className="space-y-4 text-sm text-text-secondary">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="rounded-panel border border-border-subtle bg-surface-shell px-3 py-3">
+              <div className="text-[11px] uppercase tracking-[0.14em] text-text-secondary">Selected</div>
+              <div className="mt-1 text-xl font-semibold text-text-primary">{selectedTaskItems.length}</div>
+            </div>
+            <div className="rounded-panel border border-status-success-border bg-status-success-bg px-3 py-3">
+              <div className="text-[11px] uppercase tracking-[0.14em] text-status-success-fg">Will process</div>
+              <div className="mt-1 text-xl font-semibold text-status-success-fg">{bulkConfirmEligibleItems.length}</div>
+            </div>
+            <div className="rounded-panel border border-status-warning-border bg-status-warning-bg px-3 py-3">
+              <div className="text-[11px] uppercase tracking-[0.14em] text-status-warning-fg">Restricted</div>
+              <div className="mt-1 text-xl font-semibold text-status-warning-fg">{bulkConfirmRestrictedItems.length}</div>
+            </div>
+          </div>
+          <p className={cn(bulkApproveReasonMissing || bulkRejectReasonMissing ? "text-status-warning-fg" : "text-text-secondary")}>
+            {bulkConfirmDecision === "approve"
+              ? bulkApproveReasonMissing
+                ? "High-risk approval note missing. Add one shared review note before confirming."
+                : "Approval note coverage is ready."
+              : bulkRejectReasonMissing
+                ? "Reason note missing. Add it before confirming."
+                : "Reason note ready."}
+          </p>
+          {bulkConfirmRestrictedItems.length ? (
+            <div className="rounded-panel border border-status-warning-border bg-status-warning-bg px-4 py-4">
+              <div className="text-xs font-semibold uppercase tracking-[0.16em] text-status-warning-fg">
+                Restricted items (not processed)
               </div>
-
-              <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-                <div className="text-sm text-[var(--muted)]">
-                  {bulkConfirmDecision === "approve"
-                    ? "Eligible items will be approved, restricted items will remain untouched."
-                    : "Rejection note is required and will be written to each eligible selected item."}
-                </div>
-                {bulkConfirmDecision === "approve" ? (
-                  <div className={cn("mt-2 text-xs", bulkApproveReasonMissing ? "text-amber-200" : "text-emerald-200")}>
-                    {bulkApproveReasonMissing
-                      ? "High-risk approval note missing. Add one shared review note before confirming."
-                      : "Approval note coverage is ready."}
+              <div className="mt-2 space-y-1 text-xs text-status-warning-fg">
+                {bulkConfirmRestrictedItems.slice(0, 5).map((item) => (
+                  <div key={`restricted:${item.key}`}>
+                    {item.typeLabel}: {item.title}
                   </div>
-                ) : (
-                  <div className={cn("mt-2 text-xs", bulkRejectReasonMissing ? "text-red-200" : "text-emerald-200")}>
-                    {bulkRejectReasonMissing ? "Reason note missing. Add it before confirming." : "Reason note ready."}
-                  </div>
-                )}
+                ))}
+                {bulkConfirmRestrictedItems.length > 5 ? (
+                  <div>+{bulkConfirmRestrictedItems.length - 5} more</div>
+                ) : null}
               </div>
-
-              {bulkConfirmRestrictedItems.length ? (
-                <div className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.1)] px-4 py-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-100">
-                    Restricted items (not processed)
-                  </div>
-                  <div className="mt-2 space-y-1 text-xs text-amber-100">
-                    {bulkConfirmRestrictedItems.slice(0, 5).map((item) => (
-                      <div key={`restricted:${item.key}`}>
-                        {item.typeLabel}: {item.title}
-                      </div>
-                    ))}
-                    {bulkConfirmRestrictedItems.length > 5 ? (
-                      <div>+{bulkConfirmRestrictedItems.length - 5} more</div>
-                    ) : null}
-                  </div>
-                </div>
-              ) : null}
-
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button variant="outline" className="px-4 py-2 text-xs" onClick={closeBulkDecisionConfirm} disabled={bulkBusy}>
-                  Cancel
-                </Button>
-                <Button
-                  className="px-4 py-2 text-xs"
-                  onClick={confirmBulkDecision}
-                  disabled={bulkBusy || !bulkConfirmEligibleItems.length || bulkApproveReasonMissing || bulkRejectReasonMissing}
-                >
-                  {bulkConfirmDecision === "approve"
-                    ? bulkApproveBusy
-                      ? "Approving..."
-                      : "Confirm approve"
-                    : bulkRejectBusy
-                      ? "Rejecting..."
-                      : "Confirm reject"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+            </div>
+          ) : null}
         </div>
-      ) : null}
+      </ConfirmationModal>
 
       {mobileDetailOpen ? (
         <div className="fixed inset-0 z-50 overflow-y-auto bg-[rgba(4,8,16,0.96)] px-4 py-4 lg:hidden">
@@ -2568,6 +2614,6 @@ export default function ApprovalsPage() {
           />
         </div>
       ) : null}
-    </main>
+    </OperationalPageShell>
   );
 }

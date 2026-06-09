@@ -19,6 +19,8 @@ export type SteelInventoryTransaction = {
   transaction_type: string;
   quantity_kg: number;
   direction?: "in" | "out" | null;
+  reference_type?: string | null;
+  reference_id?: number | null;
   notes?: string | null;
   created_at: string;
 };
@@ -573,8 +575,12 @@ export async function getSteelOverview() {
   return apiFetch<SteelOverview>("/steel/overview", {}, { cacheTtlMs: 10_000, cacheKey: "steel:overview" });
 }
 
-export async function listSteelItems() {
-  return apiFetch<{ items: SteelItem[] }>("/steel/inventory/items", {}, { cacheTtlMs: 10_000, cacheKey: "steel:items" });
+export async function listSteelItems(options?: { signal?: AbortSignal }) {
+  return apiFetch<{ items: SteelItem[] }>(
+    "/steel/inventory/items",
+    { signal: options?.signal },
+    { cacheTtlMs: 10_000, cacheKey: "steel:items" },
+  );
 }
 
 export async function listSteelStock() {
@@ -616,7 +622,7 @@ export async function createSteelTransaction(payload: {
 }
 
 export async function listSteelTransactions(limit = 100) {
-  return apiFetch<{ items: any[] }>(`/steel/inventory/transactions?limit=${encodeURIComponent(String(limit))}`, {}, { cacheTtlMs: 5_000, cacheKey: `steel:transactions:${limit}` });
+  return apiFetch<{ items: SteelInventoryTransaction[] }>(`/steel/inventory/transactions?limit=${encodeURIComponent(String(limit))}`, {}, { cacheTtlMs: 5_000, cacheKey: `steel:transactions:${limit}` });
 }
 
 export async function reconcileSteelStock(payload: {

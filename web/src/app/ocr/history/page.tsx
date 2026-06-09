@@ -1,5 +1,5 @@
-import OcrHistoryPage from "@/components/ocr-history-page";
+import { OcrHistoryWorkspace } from "@/features/ocr";
 
 export default function OcrHistoryRoutePage() {
-  return <OcrHistoryPage />;
+  return <OcrHistoryWorkspace />;
 }

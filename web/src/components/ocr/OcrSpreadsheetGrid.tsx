@@ -16,29 +16,43 @@ import { getOcrConfidenceTier, type OcrCell } from "@/lib/ocr";
 interface OcrSpreadsheetGridProps {
   rows: OcrCell[][];
   headers: string[];
+  activeCell?: { row: number; column: number } | null;
+  onActiveCellChange?: (cell: { row: number; column: number } | null) => void;
   onCellEdit: (rowIndex: number, columnIndex: number, value: string) => void;
   isReadOnly: boolean;
 }
 
+type CellSource = "ocr" | "ai" | "corrected" | "manual" | "unknown" | null;
+
 type RowData = Record<string, OcrCell>;
 
-function normalizeCell(cell: OcrCell): { value: string; confidence?: number | null } {
+function normalizeCell(cell: OcrCell): {
+  value: string;
+  confidence: number | null;
+  source: CellSource;
+} {
   if (typeof cell === "string") {
-    return { value: cell, confidence: null };
+    return { value: cell, confidence: null, source: null };
   }
-  return { value: cell.value, confidence: cell.confidence };
+  return {
+    value: cell.value,
+    confidence: cell.confidence ?? null,
+    source: (cell.source ?? null) as CellSource,
+  };
 }
 
+// Sprint 2 Task 24: Confidence accent ribbon on the left edge of each cell.
+// Calm semantic colors (no glow, no pulsing) that pair with the status badge.
 function getConfidenceClass(tier: "high" | "medium" | "review_required"): string {
-  if (tier === "review_required") return "border-l-4 border-l-red-400";
-  if (tier === "medium") return "border-l-4 border-l-amber-400";
-  return "border-l-4 border-l-emerald-400";
+  if (tier === "review_required") return "border-l-4 border-l-status-danger-border";
+  if (tier === "medium") return "border-l-4 border-l-status-warning-border";
+  return "border-l-4 border-l-status-synced-border";
 }
 
 function getConfidenceBadgeClass(tier: "high" | "medium" | "review_required"): string {
-  if (tier === "review_required") return "border-red-200 bg-red-100 text-red-700";
-  if (tier === "medium") return "border-amber-200 bg-amber-100 text-amber-700";
-  return "border-emerald-200 bg-emerald-100 text-emerald-700";
+  if (tier === "review_required") return "border-status-danger-border bg-status-danger-bg text-status-danger-fg";
+  if (tier === "medium") return "border-status-warning-border bg-status-warning-bg text-status-warning-fg";
+  return "border-status-synced-border bg-status-synced-bg text-status-synced-fg";
 }
 
 function getConfidenceLabel(tier: "high" | "medium" | "review_required") {
@@ -47,13 +61,33 @@ function getConfidenceLabel(tier: "high" | "medium" | "review_required") {
   return "Verified";
 }
 
+// Sprint 2 Task 24: AI-generated content uses calm indigo tint; user-corrected
+// content uses neutral surface. This makes AI content visually distinct from
+// user-entered data without alarming color shifts.
+function getCellSurfaceClass(source: CellSource, isSelected: boolean): string {
+  if (isSelected) return "bg-surface-selected";
+  if (source === "corrected" || source === "manual") {
+    return "bg-surface-shell";
+  }
+  // ocr / ai / unknown / null all treated as AI-extracted content.
+  // Direct rgba avoids unreliable var()+opacity-modifier syntax (see ConfidenceBadge note).
+  return "bg-ai-processing-bg";
+}
+
 function isNumericValue(value: string): boolean {
   if (!value || typeof value !== "string") return false;
   const trimmed = value.trim();
   return /^[\u20b9$\u20ac\u00a3\u00a5]?\s*-?\d[\d,]*(?:\.\d+)?%?$/.test(trimmed);
 }
 
-export function OcrSpreadsheetGrid({ rows, headers, onCellEdit, isReadOnly }: OcrSpreadsheetGridProps) {
+export function OcrSpreadsheetGrid({
+  rows,
+  headers,
+  activeCell,
+  onActiveCellChange,
+  onCellEdit,
+  isReadOnly,
+}: OcrSpreadsheetGridProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; columnIndex: number } | null>(null);
   const [draftValue, setDraftValue] = useState("");
@@ -73,14 +107,16 @@ export function OcrSpreadsheetGrid({ rows, headers, onCellEdit, isReadOnly }: Oc
     return headers.map((header, columnIndex) => ({
       id: `col_${columnIndex}`,
       accessorKey: `col_${columnIndex}`,
-      header: () => <div className="font-semibold text-sm truncate text-white">{header}</div>,
+      header: () => <div className="truncate text-xs font-semibold uppercase tracking-[0.08em] text-text-secondary">{header}</div>,
       cell: (info) => {
         const rowIndex = info.row.index;
         const cell = info.getValue() as OcrCell;
-        const { value, confidence } = normalizeCell(cell);
+        const { value, confidence, source } = normalizeCell(cell);
         const confidenceTier = getOcrConfidenceTier(confidence ?? undefined);
         const isEditing = editingCell?.rowIndex === rowIndex && editingCell?.columnIndex === columnIndex;
+        const isSelected = activeCell?.row === rowIndex && activeCell?.column === columnIndex;
         const isNumeric = isNumericValue(value);
+        const isUserEdited = source === "corrected" || source === "manual";
 
         if (isEditing) {
           return (
@@ -105,22 +141,29 @@ export function OcrSpreadsheetGrid({ rows, headers, onCellEdit, isReadOnly }: Oc
                   setDraftValue("");
                 }
               }}
-              className="w-full h-full px-3 py-2 border-2 border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-[#1a1a1a]"
+              className="h-full w-full border-2 border-border-focus bg-surface-panel px-3 py-2 text-text-primary outline-none focus:ring-2 focus:ring-border-focus"
               style={{ fontFamily: 'Inter, "Noto Sans Devanagari", sans-serif' }}
             />
           );
         }
 
+        const surfaceClass = getCellSurfaceClass(source, isSelected);
+        const titleParts = [getConfidenceLabel(confidenceTier)];
+        if (isUserEdited) titleParts.push("User edited");
+        else titleParts.push("AI extracted");
+
         return (
           <div
-            className={`flex w-full h-full items-center gap-2 px-3 py-2 cursor-text truncate text-[#1a1a1a] ${getConfidenceClass(confidenceTier)} ${isNumeric ? "text-right font-variant-numeric-tabular" : ""}`}
+            className={`flex h-full w-full cursor-text items-center gap-2 truncate px-3 py-2 text-text-primary transition-colors duration-[80ms] ${surfaceClass} ${getConfidenceClass(confidenceTier)} ${isSelected ? "ring-1 ring-inset ring-border-focus" : ""} ${isNumeric ? "text-right font-variant-numeric-tabular" : ""}`}
             onClick={() => {
+              onActiveCellChange?.({ row: rowIndex, column: columnIndex });
               if (!isReadOnly) {
                 setEditingCell({ rowIndex, columnIndex });
                 setDraftValue(value);
               }
             }}
-            title={getConfidenceLabel(confidenceTier)}
+            title={titleParts.join(" · ")}
+            data-cell-source={source ?? "ai"}
             style={{
               fontFamily: 'Inter, "Noto Sans Devanagari", sans-serif',
               fontSize: "14px",
@@ -129,9 +172,18 @@ export function OcrSpreadsheetGrid({ rows, headers, onCellEdit, isReadOnly }: Oc
             }}
           >
             <span className="truncate">{value || "\u00A0"}</span>
-            <span className={`ml-auto rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] ${getConfidenceBadgeClass(confidenceTier)}`}>
-              {getConfidenceLabel(confidenceTier)}
-            </span>
+            {isUserEdited ? (
+              <span
+                aria-label="User edited"
+                className="ml-auto inline-flex items-center rounded-full border border-border-default bg-surface-card px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-text-secondary"
+              >
+                Edited
+              </span>
+            ) : (
+              <span className={`ml-auto rounded-full border px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] ${getConfidenceBadgeClass(confidenceTier)}`}>
+                {getConfidenceLabel(confidenceTier)}
+              </span>
+            )}
           </div>
         );
       },
@@ -140,7 +192,7 @@ export function OcrSpreadsheetGrid({ rows, headers, onCellEdit, isReadOnly }: Oc
       maxSize: MAX_COLUMN_WIDTH,
       enableResizing: true,
     }));
-  }, [draftValue, editingCell, headers, isReadOnly, onCellEdit]);
+  }, [activeCell, draftValue, editingCell, headers, isReadOnly, onActiveCellChange, onCellEdit]);
 
   const table = useReactTable({
     data: tableData,
@@ -167,32 +219,62 @@ export function OcrSpreadsheetGrid({ rows, headers, onCellEdit, isReadOnly }: Oc
       : 0;
 
   return (
-    <div className="w-full h-full flex flex-col border border-[#d0d0d0] rounded-lg overflow-hidden bg-white shadow-sm">
+    <div className="flex h-full min-h-0 w-full flex-col overflow-hidden border border-border-default bg-surface-panel shadow-sm">
+      {/* Sprint 2 Task 24: Calm indigo banner clarifies that this grid holds AI-extracted
+          values. User-edited cells fall back to a neutral surface so operators can tell
+          AI content from their own corrections at a glance. */}
+      <div className="flex flex-wrap items-center gap-3 border-b border-ai-processing-border bg-ai-processing-bg px-4 py-3">
+        <div className="flex items-center gap-2">
+          <span
+            aria-hidden="true"
+            className="h-2 w-2 rounded-full bg-ai-processing-fg"
+          />
+          <span className="text-xs font-medium uppercase tracking-[0.14em] text-ai-processing-fg">
+            AI extracted
+          </span>
+        </div>
+        <span className="text-xs text-text-secondary">
+          Tinted cells are AI output. Edited cells return to a neutral surface and show an &ldquo;Edited&rdquo; tag.
+        </span>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-1 rounded-full border border-status-synced-border bg-status-synced-bg px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-status-synced-fg">
+            Verified
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-status-warning-border bg-status-warning-bg px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-status-warning-fg">
+            Check
+          </span>
+          <span className="inline-flex items-center gap-1 rounded-full border border-status-danger-border bg-status-danger-bg px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-status-danger-fg">
+            Review
+          </span>
+        </div>
+      </div>
       <div
         ref={containerRef}
-        className="flex-1 overflow-auto"
-        style={{ height: "600px" }}
+        className="min-h-0 flex-1 overflow-auto"
       >
-        <table className="w-full border-collapse">
+        <table className="w-full border-separate border-spacing-0">
           <thead className="sticky top-0 z-10 shadow-md">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
+                <th className="sticky left-0 z-20 w-12 border border-border-default bg-surface-panel px-2 py-2 text-center text-[11px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">
+                  Row
+                </th>
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="border border-[#d0d0d0] bg-[#1e3a5f] px-3 py-3 text-left relative"
+                    className="relative border border-border-default bg-surface-panel px-3 py-2 text-left"
                     style={{
                       width: header.getSize(),
                       fontWeight: 600,
                       fontFamily: 'Inter, "Noto Sans Devanagari", sans-serif',
-                      fontSize: "14px",
+                      fontSize: "12px",
                     }}
                   >
                     {flexRender(header.column.columnDef.header, header.getContext())}
                     <div
                       onMouseDown={header.getResizeHandler()}
                       onTouchStart={header.getResizeHandler()}
-                      className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none ${header.column.getIsResizing() ? "bg-blue-400" : "bg-[#d0d0d0] hover:bg-blue-300"}`}
+                      className={`absolute right-0 top-0 h-full w-1 cursor-col-resize select-none touch-none ${header.column.getIsResizing() ? "bg-border-focus" : "bg-border-default hover:bg-border-focus"}`}
                     />
                   </th>
                 ))}
@@ -211,12 +293,15 @@ export function OcrSpreadsheetGrid({ rows, headers, onCellEdit, isReadOnly }: Oc
               return (
                 <tr
                   key={row.id}
-                  className={`hover:bg-[#e8f0fe] transition-colors ${isEvenRow ? "bg-white" : "bg-[#f8f9fa]"}`}
+                  className={`transition-colors hover:bg-surface-selected ${isEvenRow ? "bg-surface-shell" : "bg-surface-panel"}`}
                 >
+                  <td className="sticky left-0 z-10 border border-border-default bg-surface-shell px-2 text-center text-xs font-semibold text-text-tertiary">
+                    {virtualRow.index + 1}
+                  </td>
                   {row.getVisibleCells().map((cell) => (
                     <td
                       key={cell.id}
-                      className="border border-[#d0d0d0]"
+                      className="border border-border-default"
                       style={{ width: cell.column.getSize(), height: "40px" }}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}

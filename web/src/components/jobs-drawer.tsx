@@ -53,7 +53,15 @@ function getDownloadPath(job: JobRecord) {
 }
 
 function getOpenLink(job: JobRecord) {
-  return job.context?.route || null;
+  // job identifier field: job_id
+  return `/ocr/jobs/${job.job_id}`;
+}
+
+function getOpenLabel(job: JobRecord) {
+  if (ACTIVE_STATUSES.has(job.status)) {
+    return "Resume";
+  }
+  return "View";
 }
 
 async function downloadJob(job: JobRecord) {
@@ -89,7 +97,7 @@ function buildToastForTransition(job: JobRecord) {
       description: job.message || "The result is ready.",
       tone: "success" as const,
       actionHref: openLink || undefined,
-      actionLabel: openLink ? "Open" : undefined,
+      actionLabel: openLink ? getOpenLabel(job) : undefined,
     };
   }
   if (job.status === "failed") {
@@ -98,7 +106,7 @@ function buildToastForTransition(job: JobRecord) {
       description: job.error || job.message || "The job did not finish successfully.",
       tone: "error" as const,
       actionHref: openLink || undefined,
-      actionLabel: openLink ? "Review" : undefined,
+      actionLabel: openLink ? getOpenLabel(job) : undefined,
     };
   }
   if (job.status === "canceled") {
@@ -107,10 +115,22 @@ function buildToastForTransition(job: JobRecord) {
       description: "The queued job was stopped before completion.",
       tone: "info" as const,
       actionHref: openLink || undefined,
-      actionLabel: openLink ? "Open" : undefined,
+      actionLabel: openLink ? getOpenLabel(job) : undefined,
     };
   }
   return null;
+}
+
+const FOCUSABLE_SELECTOR =
+  'a[href], area[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), iframe, [tabindex]:not([tabindex="-1"]), [contenteditable="true"]';
+
+function getFocusableElements(container: HTMLElement | null) {
+  if (!container) {
+    return [];
+  }
+  return Array.from(container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+    (element) => !element.hasAttribute("disabled") && element.getAttribute("aria-hidden") !== "true",
+  );
 }
 
 export function JobsDrawer() {
@@ -121,6 +141,9 @@ export function JobsDrawer() {
   const [error, setError] = useState("");
   const [actionKey, setActionKey] = useState<string | null>(null);
   const seenStatuses = useRef<Map<string, JobStatus>>(new Map());
+  const panelRef = useRef<HTMLElement | null>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
+  const titleId = "jobs-drawer-title";
 
   const loadJobs = useCallback(async () => {
     try {
@@ -217,6 +240,61 @@ export function JobsDrawer() {
     });
   }, [jobs]);
 
+  // Keyboard accessibility: trap focus while the drawer is open, close on Escape,
+  // and restore focus to the trigger when the drawer closes (matches OperationalDrawer).
+  useEffect(() => {
+    if (!open || typeof document === "undefined") {
+      return;
+    }
+
+    previousActiveElementRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    const focusTarget = getFocusableElements(panelRef.current)[0] ?? panelRef.current;
+    focusTarget?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const focusableElements = getFocusableElements(panelRef.current);
+      if (focusableElements.length === 0) {
+        event.preventDefault();
+        panelRef.current?.focus();
+        return;
+      }
+
+      const currentIndex = focusableElements.indexOf(document.activeElement as HTMLElement);
+      const lastIndex = focusableElements.length - 1;
+
+      if (event.shiftKey) {
+        if (currentIndex <= 0) {
+          event.preventDefault();
+          focusableElements[lastIndex]?.focus();
+        }
+        return;
+      }
+
+      if (currentIndex === lastIndex) {
+        event.preventDefault();
+        focusableElements[0]?.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previousActiveElementRef.current?.focus();
+    };
+  }, [open]);
+
   const handleCancel = useCallback(
     async (job: JobRecord) => {
       const nextKey = `${job.job_id}:cancel`;
@@ -262,7 +340,7 @@ export function JobsDrawer() {
           description: "A fresh background job has been queued and will appear at the top of the list shortly.",
           tone: "success",
           actionHref: getOpenLink(queued) || undefined,
-          actionLabel: getOpenLink(queued) ? "Open" : undefined,
+          actionLabel: getOpenLink(queued) ? getOpenLabel(queued) : undefined,
         });
         await loadJobs();
       } catch (err) {
@@ -301,18 +379,23 @@ export function JobsDrawer() {
       </Button>
 
       {open ? (
-        <div className="fixed inset-0 z-50">
+        <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-labelledby={titleId}>
           <button
             type="button"
             className="absolute inset-0 bg-[rgba(3,8,20,0.6)]"
             onClick={() => setOpen(false)}
             aria-label="Close jobs drawer"
+            tabIndex={-1}
           />
-          <aside className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-[var(--border)] bg-[rgba(10,14,22,0.98)] p-5 shadow-2xl backdrop-blur">
+          <aside
+            ref={panelRef}
+            tabIndex={-1}
+            className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-[var(--border)] bg-[rgba(10,14,22,0.98)] p-5 shadow-2xl outline-none backdrop-blur"
+          >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">Background Jobs</div>
-                <h2 className="mt-2 text-2xl font-semibold">Track exports and AI work</h2>
+                <h2 id={titleId} className="mt-2 text-2xl font-semibold">Track exports and AI work</h2>
                 <p className="mt-2 text-sm text-[var(--muted)]">
                   You can leave the current page and still watch reports, summaries, and OCR jobs finish here.
                 </p>
@@ -372,7 +455,7 @@ export function JobsDrawer() {
                           {!isActive ? (
                             <button
                               type="button"
-                              className="mt-1 text-[10px] font-semibold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--text)]"
+                              className="mt-1 text-[11px] font-semibold uppercase tracking-wider text-[var(--muted)] hover:text-[var(--text)]"
                               onClick={() => handleDismiss(job.job_id)}
                             >
                               Dismiss
@@ -381,7 +464,7 @@ export function JobsDrawer() {
                         </div>
                       </div>
                       <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                        <div className="h-full rounded-full bg-[var(--accent)] transition-all" style={{ width: progressWidth(job.progress) }} />
+                        <div className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-300 ease-out" style={{ width: progressWidth(job.progress) }} />
                       </div>
                       <div className="mt-3 text-sm text-[var(--text)]">{job.message}</div>
                       {job.error ? <div className="mt-2 text-sm text-red-400">{job.error}</div> : null}
@@ -389,7 +472,7 @@ export function JobsDrawer() {
                         {getOpenLink(job) ? (
                           <Link href={getOpenLink(job)!}>
                             <Button variant="outline" className="h-8 px-3 text-xs">
-                              Open
+                              {getOpenLabel(job)}
                             </Button>
                           </Link>
                         ) : null}

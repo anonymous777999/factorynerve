@@ -1,6 +1,7 @@
 "use client";
 
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
 
 type InvoiceRow = {
   amountLabel: string;
@@ -18,11 +19,8 @@ type BillingInvoiceHistoryProps = {
 
 export function BillingInvoiceHistory({ emptyLabel, invoices }: BillingInvoiceHistoryProps) {
   return (
-    <details className="min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-4 py-5 sm:px-5">
-      <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">
-        Invoice history
-      </summary>
-      <div className="mt-4">
+    <DisclosurePanel title="Invoice history" className="min-w-0">
+      <div>
         {invoices.length ? (
           <ResponsiveScrollArea debugLabel="billing-invoice-history">
             <table className="min-w-full text-left text-sm">
@@ -56,6 +54,6 @@ export function BillingInvoiceHistory({ emptyLabel, invoices }: BillingInvoiceHi
           </div>
         )}
       </div>
-    </details>
+    </DisclosurePanel>
   );
 }

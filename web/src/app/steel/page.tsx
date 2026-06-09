@@ -1,5 +1,5 @@
-﻿import { SteelCommandCenterPage } from "@/components/steel-command-center-page";
+﻿import { SteelCommandCenterWorkspace } from "@/features/steel";
 
 export default function SteelPage() {
-  return <SteelCommandCenterPage />;
+  return <SteelCommandCenterWorkspace />;
 }

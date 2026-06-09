@@ -21,6 +21,7 @@ from backend.models.user import User, UserRole
 from backend.rbac import require_any_role
 from backend.security import get_current_user
 from backend.tenancy import resolve_org_id
+from backend.services.auth_sync_service import inspect_auth_state
 from backend.utils import get_config
 
 try:
@@ -45,6 +46,11 @@ class FrontendErrorPayload(BaseModel):
     release: str | None = Field(default=None, max_length=255)
     user_agent: str | None = Field(default=None, max_length=1000)
     extra: dict[str, Any] | None = None
+
+
+class AuthRuntimeInspectRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+    password_probe: str | None = Field(default=None, min_length=1, max_length=128)
 
 
 class OpsAlertHistoryItem(BaseModel):
@@ -189,6 +195,28 @@ def ai_dashboard(request: Request) -> dict[str, Any]:
 def ai_governance(request: Request) -> dict[str, Any]:
     _require_metrics_token(request)
     return governance_snapshot()
+
+
+@router.post("/auth/runtime-inspect")
+def auth_runtime_inspect(
+    payload: AuthRuntimeInspectRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    _require_metrics_token(request)
+    return {
+        "deployment_marker": "auth-reset-sync-e2e-2026-05-21",
+        "app": config.app_name,
+        "app_env": config.app_env,
+        "app_version": "0.3.0",
+        "enable_auth_secure_env": (os.getenv("ENABLE_AUTH_SECURE", "") or "").strip().lower(),
+        "release_version_env": os.getenv("NEXT_PUBLIC_RELEASE_VERSION"),
+        "auth_state": inspect_auth_state(
+            db,
+            email=payload.email,
+            password_probe=payload.password_probe,
+        ),
+    }
 
 
 @router.get("/alerts", response_model=OpsAlertHistoryResponse)

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { ApiError, formatApiErrorMessage } from "@/lib/api";
@@ -23,6 +24,7 @@ import { triggerBlobDownload } from "@/lib/reports";
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import { OcrGuideCard } from "@/components/ocr-guide-card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -66,12 +68,17 @@ function formatMetadata(job: OcrJobPayload | null) {
   ];
 }
 
-export default function OcrPage() {
+type OcrPageProps = {
+  initialJob?: OcrJobPayload | null;
+};
+
+export default function OcrPage({ initialJob = null }: OcrPageProps) {
+  const router = useRouter();
   const { user, loading, error: sessionError } = useSession();
   const [runtime, setRuntime] = useState<OcrStatus | null>(null);
   const [templates, setTemplates] = useState<OcrTemplate[]>([]);
   const [templateGate, setTemplateGate] = useState("");
-  const [job, setJob] = useState<OcrJobPayload | null>(null);
+  const [job, setJob] = useState<OcrJobPayload | null>(initialJob);
   const [mode, setMode] = useState<"ledger" | "table">("ledger");
   const [mock, setMock] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -121,6 +128,10 @@ export default function OcrPage() {
       setError(err instanceof Error ? err.message : "Could not load OCR runtime.");
     });
   }, [canUseOcr, loadRuntime]);
+
+  useEffect(() => {
+    setJob(initialJob);
+  }, [initialJob]);
 
   useEffect(() => {
     if (!job?.job_id) return;
@@ -295,9 +306,14 @@ export default function OcrPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading OCR workspace...
-      </main>
+      <OperationalPageShell
+        eyebrow="OCR"
+        title="Logbook OCR and template manager"
+        isLoading
+        loadingTitle="Loading OCR workspace"
+      >
+        <div />
+      </OperationalPageShell>
     );
   }
 
@@ -347,34 +363,23 @@ export default function OcrPage() {
   const metadataRows = formatMetadata(job);
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
-          <div>
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">
-              OCR
-            </div>
-            <h1 className="mt-2 text-3xl font-semibold">Logbook OCR and template manager</h1>
-            <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
-              Run OCR jobs, check the queue, and keep templates ready for repeat layouts.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-3">
-            <Link href="/ocr/scan">
-              <Button>Scan a Document</Button>
-            </Link>
-            <Link href="/ocr/verify">
-              <Button>Open Verification</Button>
-            </Link>
-            <Link href="/dashboard">
-              <Button variant="outline">Dashboard</Button>
-            </Link>
-            <Link href="/email-summary">
-              <Button variant="outline">Email Summary</Button>
-            </Link>
-          </div>
-        </section>
-
+    <OperationalPageShell
+      contentClassName="space-y-6"
+      eyebrow="OCR"
+      title="Logbook OCR and template manager"
+      description="Run OCR jobs, check the queue, and keep templates ready for repeat layouts."
+      metrics={[
+        { id: "runtime", label: "OCR Runtime", value: runtime?.installed ? "Ready" : "Not Installed" },
+        { id: "languages", label: "Languages", value: runtime?.languages?.length || 0 },
+        { id: "templates", label: "Templates", value: templateGate ? "Plan gated" : templates.length },
+        { id: "job", label: "Current job", value: job?.status || "Idle" },
+      ]}
+      actions={[
+        { id: "ocr-history", label: "OCR History", onAction: () => router.push("/ocr/history") },
+        { id: "ocr-scan", label: "Scan a Document", variant: "outline", onAction: () => router.push("/ocr/scan") },
+        { id: "ocr-verify", label: "Open Verification", variant: "outline", onAction: () => router.push("/ocr/verify") },
+      ]}
+    >
         <OcrGuideCard
           pageKey="ocr-home"
           title="OCR tips"
@@ -441,7 +446,7 @@ export default function OcrPage() {
             <CardContent className="space-y-4">
               <div>
                 <label className="text-sm text-[var(--muted)]">OCR Mode</label>
-                <Select value={mode} onChange={(event) => setMode(event.target.value as "ledger" | "table") }>
+                <Select aria-label="OCR mode" value={mode} onChange={(event) => setMode(event.target.value as "ledger" | "table")}>
                   <option value="ledger">Ledger to Excel</option>
                   <option value="table">Table Scan to Excel</option>
                 </Select>
@@ -449,6 +454,7 @@ export default function OcrPage() {
               <div>
                 <label className="text-sm text-[var(--muted)]">Image File</label>
                 <Input
+                  aria-label="Image file"
                   type="file"
                   accept="image/*"
                   onChange={(event) => setFile(event.target.files?.[0] || null)}
@@ -489,7 +495,7 @@ export default function OcrPage() {
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-white/10">
                     <div
-                      className="h-full rounded-full bg-[var(--accent)] transition-all"
+                      className="h-full rounded-full bg-[var(--accent)] transition-[width] duration-300 ease-out"
                       style={{ width: `${Math.max(4, Math.min(100, Number(job.progress || 0)))}%` }}
                     />
                   </div>
@@ -604,12 +610,13 @@ export default function OcrPage() {
             <CardContent className="space-y-4">
               <div>
                 <label className="text-sm text-[var(--muted)]">Template Name</label>
-                <Input value={templateName} onChange={(event) => setTemplateName(event.target.value)} />
+                <Input aria-label="Template name" value={templateName} onChange={(event) => setTemplateName(event.target.value)} />
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="text-sm text-[var(--muted)]">Columns</label>
                   <Input
+                    aria-label="Columns"
                     type="number"
                     min={1}
                     max={8}
@@ -619,7 +626,7 @@ export default function OcrPage() {
                 </div>
                 <div>
                   <label className="text-sm text-[var(--muted)]">Language</label>
-                  <Select value={templateLanguage} onChange={(event) => setTemplateLanguage(event.target.value)}>
+                  <Select aria-label="Language" value={templateLanguage} onChange={(event) => setTemplateLanguage(event.target.value)}>
                     {TEMPLATE_LANGUAGES.map((language) => (
                       <option key={language} value={language}>
                         {language}
@@ -630,7 +637,7 @@ export default function OcrPage() {
               </div>
               <div>
                 <label className="text-sm text-[var(--muted)]">Header Mode</label>
-                <Select value={templateHeaderMode} onChange={(event) => setTemplateHeaderMode(event.target.value)}>
+                <Select aria-label="Header mode" value={templateHeaderMode} onChange={(event) => setTemplateHeaderMode(event.target.value)}>
                   {TEMPLATE_HEADER_MODES.map((headerMode) => (
                     <option key={headerMode} value={headerMode}>
                       {headerMode}
@@ -658,6 +665,7 @@ export default function OcrPage() {
               <div>
                 <label className="text-sm text-[var(--muted)]">Sample Images</label>
                 <Input
+                  aria-label="Sample images"
                   type="file"
                   accept="image/*"
                   multiple
@@ -673,7 +681,6 @@ export default function OcrPage() {
 
         {status ? <div className="text-sm text-green-400">{status}</div> : null}
         {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

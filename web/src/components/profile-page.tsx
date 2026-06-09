@@ -7,6 +7,9 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import { PasswordField } from "@/components/password-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
+import { Field, Label } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { API_BASE_URL, ApiError } from "@/lib/api";
 import {
@@ -190,6 +193,12 @@ async function buildCroppedProfileFile(file: File, dimensions: PhotoDimensions, 
 function roleCanSubmit(role?: string | null) {
   return ["operator", "supervisor", "manager", "admin", "owner"].includes(role || "");
 }
+
+const profileSurfaceClass =
+  "rounded-[1.5rem] border-[0.5px] border-[color:var(--color-border-secondary)] bg-[var(--color-background-secondary)] shadow-[0_18px_48px_rgba(15,23,42,0.08)]";
+
+const profileStatClass =
+  "rounded-[1rem] border-[0.5px] border-[color:var(--color-border-tertiary)] bg-[var(--color-background-primary)] px-4 py-4";
 
 export default function ProfilePage() {
   const { user, loading, error: sessionError, activeFactory, organization } = useSession();
@@ -549,16 +558,17 @@ export default function ProfilePage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#0B0F19] px-4 py-6 md:px-8 lg:py-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <section className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(18,24,36,0.96),rgba(11,15,25,0.98))] p-6 shadow-[0_24px_80px_rgba(6,10,18,0.42)]">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[rgba(62,166,255,0.88)]">
-            Profile
-          </div>
-          <h1 className="mt-2 text-3xl font-semibold text-white">Your account</h1>
-          {/* AUDIT: TEXT_NOISE - shorten the hero copy so identity and security actions feel more immediate */}
-          <p className="mt-2 max-w-3xl text-sm text-slate-300">Manage your profile and access.</p>
-        </section>
+    <OperationalPageShell
+      className="factory-workstation-scope"
+      contentClassName="mx-auto max-w-6xl space-y-6"
+      eyebrow="Profile"
+      title="Your account"
+      description="Manage your profile and access."
+      metrics={[
+        { id: "name", label: "Name", value: profile.name || "-" },
+        { id: "role", label: "Role", value: profile.role || "-" },
+      ]}
+    >
 
         {sessionError ? (
           <div className="rounded-[20px] border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">
@@ -568,15 +578,15 @@ export default function ProfilePage() {
 
         <section className="grid gap-6 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)]">
           <div className="space-y-6">
-            <Card className="rounded-[2rem] border-white/10 bg-[rgba(20,24,36,0.9)]">
+            <Card className={profileSurfaceClass}>
               <CardHeader className="pb-0">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-sm text-slate-400">Identity</div>
-                    <CardTitle className="mt-2 text-2xl text-white">Profile</CardTitle>
+                    <div className="text-sm text-[var(--color-text-secondary)]">Identity</div>
+                    <CardTitle className="mt-2 text-2xl text-[var(--color-text-primary)]">Profile</CardTitle>
                   </div>
                   <Button
-                    variant={editingProfile ? "outline" : "primary"}
+                    variant={editingProfile ? "ghost" : "primary"}
                     className="h-10 px-4"
                     onClick={() => {
                       setEditingProfile((current) => !current);
@@ -606,7 +616,7 @@ export default function ProfilePage() {
                 />
                 <div className="flex flex-col gap-6 sm:flex-row sm:items-start">
                   <div className="flex flex-col items-center sm:items-start">
-                    <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[2rem] border border-[rgba(62,166,255,0.24)] bg-[linear-gradient(135deg,rgba(34,211,238,0.14),rgba(96,165,250,0.22))] text-2xl font-semibold text-white shadow-[0_16px_40px_rgba(34,211,238,0.14)]">
+                    <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-[2rem] border-[0.5px] border-[color:var(--color-border-info)] bg-[rgba(var(--color-border-info),0.12)] text-2xl font-semibold text-[var(--color-text-primary)] shadow-[0_16px_40px_rgba(15,23,42,0.08)]">
                       {displayPhotoUrl ? (
                         <img
                           src={displayPhotoUrl}
@@ -617,11 +627,11 @@ export default function ProfilePage() {
                         profileInitials
                       )}
                     </div>
-                    <div className="mt-3 text-xs uppercase tracking-[0.18em] text-slate-400">Profile Photo</div>
+                    <div className="mt-3 text-xs uppercase tracking-[0.18em] text-[var(--color-text-secondary)]">Profile Photo</div>
                     <div className="mt-4 flex w-full flex-col gap-2 sm:w-auto">
                       {/* AUDIT: BUTTON_CLUTTER - keep photo tools available, but shorten the labels so they read like a compact toolset */}
                       <Button
-                        variant="outline"
+                        variant="ghost"
                         className="h-10 px-4"
                         onClick={() => {
                           setPhotoMessage("");
@@ -646,7 +656,7 @@ export default function ProfilePage() {
                       </Button>
                       {profile.profile_picture || selectedPhotoPreview ? (
                         <Button
-                          variant="ghost"
+                        variant="destructive"
                           className="h-10 px-4"
                           onClick={() => {
                             if (selectedPhotoPreview) {
@@ -667,11 +677,11 @@ export default function ProfilePage() {
 
                   <div className="min-w-0 flex-1 space-y-4">
                     {selectedPhotoPreview ? (
-                      <div className="rounded-[1.7rem] border border-[rgba(62,166,255,0.26)] bg-[rgba(8,12,20,0.56)] p-4">
-                        <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Crop selection</div>
+                      <div className="rounded-[1.25rem] border-[0.5px] border-[color:var(--color-border-info)] bg-[rgba(var(--color-border-info),0.08)] p-4">
+                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">Crop selection</div>
                         <div className="mt-3 grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
                           <div>
-                            <div className="relative aspect-square overflow-hidden rounded-[1.7rem] border border-white/10 bg-[rgba(15,23,42,0.9)]">
+                            <div className="relative aspect-square overflow-hidden rounded-[1.25rem] border-[0.5px] border-[color:var(--color-border-secondary)] bg-[var(--color-background-primary)]">
                               {cropPreviewStyle ? (
                                 <>
                                   <img
@@ -681,13 +691,13 @@ export default function ProfilePage() {
                                     style={cropPreviewStyle}
                                   />
                                   <div className="pointer-events-none absolute inset-0 border border-[rgba(62,166,255,0.45)] shadow-[inset_0_0_0_999px_rgba(4,8,16,0.28)]" />
-                                  <div className="pointer-events-none absolute inset-[14%] rounded-[1.35rem] border border-dashed border-white/35" />
+                                  <div className="pointer-events-none absolute inset-[14%] rounded-[1rem] border border-dashed border-[color:var(--color-border-secondary)]" />
                                 </>
                               ) : null}
                             </div>
                             <div className="mt-4 grid gap-4">
                               <label className="space-y-2">
-                                <div className="flex items-center justify-between text-sm text-slate-300">
+                                <div className="flex items-center justify-between text-sm text-[var(--color-text-secondary)]">
                                   <span>Zoom</span>
                                   <span>{photoCrop.zoom.toFixed(1)}x</span>
                                 </div>
@@ -707,7 +717,7 @@ export default function ProfilePage() {
                                 />
                               </label>
                               <label className="space-y-2">
-                                <div className="flex items-center justify-between text-sm text-slate-300">
+                                <div className="flex items-center justify-between text-sm text-[var(--color-text-secondary)]">
                                   <span>Left / Right</span>
                                   <span>{photoCrop.offsetX > 0 ? `+${photoCrop.offsetX}` : photoCrop.offsetX}%</span>
                                 </div>
@@ -727,7 +737,7 @@ export default function ProfilePage() {
                                 />
                               </label>
                               <label className="space-y-2">
-                                <div className="flex items-center justify-between text-sm text-slate-300">
+                                <div className="flex items-center justify-between text-sm text-[var(--color-text-secondary)]">
                                   <span>Up / Down</span>
                                   <span>{photoCrop.offsetY > 0 ? `+${photoCrop.offsetY}` : photoCrop.offsetY}%</span>
                                 </div>
@@ -748,10 +758,10 @@ export default function ProfilePage() {
                               </label>
                             </div>
                           </div>
-                          <div className="min-w-0 rounded-[1.7rem] border border-white/10 bg-[rgba(15,23,42,0.64)] p-4">
-                            <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Final preview</div>
+                          <div className="min-w-0 rounded-[1.25rem] border-[0.5px] border-[color:var(--color-border-secondary)] bg-[var(--color-background-primary)] p-4">
+                            <div className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">Final preview</div>
                             <div className="mt-4 flex items-center gap-4">
-                              <div className="h-24 w-24 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[rgba(8,12,20,0.9)]">
+                              <div className="h-24 w-24 overflow-hidden rounded-[1rem] border-[0.5px] border-[color:var(--color-border-tertiary)] bg-[var(--color-background-secondary)]">
                                 {cropPreviewStyle ? (
                                   <div className="relative h-full w-full overflow-hidden">
                                     <img
@@ -764,8 +774,8 @@ export default function ProfilePage() {
                                 ) : null}
                               </div>
                               <div className="min-w-0 flex-1">
-                                <div className="text-sm font-semibold text-white">{selectedPhotoFile?.name || "Selected image"}</div>
-                                <div className="mt-2 text-sm text-slate-300">
+                                <div className="text-sm font-semibold text-[var(--color-text-primary)]">{selectedPhotoFile?.name || "Selected image"}</div>
+                                <div className="mt-2 text-sm text-[var(--color-text-secondary)]">
                                   Adjust the crop until the face sits cleanly inside the frame, then save it.
                                 </div>
                               </div>
@@ -778,14 +788,14 @@ export default function ProfilePage() {
                                 {photoBusy === "upload" ? "Uploading..." : "Save photo"}
                               </Button>
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 onClick={() => setPhotoCrop(DEFAULT_PHOTO_CROP)}
                                 disabled={photoBusy !== null}
                               >
                                 Reset crop
                               </Button>
                               <Button
-                                variant="outline"
+                                variant="ghost"
                                 onClick={clearSelectedPhoto}
                                 disabled={photoBusy !== null}
                               >
@@ -802,20 +812,18 @@ export default function ProfilePage() {
 
                     {editingProfile ? (
                       <div className="grid gap-4 md:grid-cols-2">
-                        <div>
-                          <label className="text-sm text-slate-400">Name</label>
+                        <Field>
+                          <Label>Name</Label>
                           <Input
-                            className="mt-2"
                             value={profileForm.name}
                             onChange={(event) =>
                               setProfileForm((current) => ({ ...current, name: event.target.value }))
                             }
                           />
-                        </div>
-                        <div>
-                          <label className="text-sm text-slate-400">Phone</label>
+                        </Field>
+                        <Field>
+                          <Label>Phone</Label>
                           <Input
-                            className="mt-2"
                             type="tel"
                             autoComplete="tel"
                             inputMode="tel"
@@ -825,19 +833,19 @@ export default function ProfilePage() {
                               setProfileForm((current) => ({ ...current, phone_number: event.target.value }))
                             }
                           />
-                        </div>
-                        <div>
-                          <div className="text-sm text-slate-400">Email</div>
-                          <div className="mt-2 rounded-2xl border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-3 text-sm text-white">
+                        </Field>
+                        <Field>
+                          <Label>Email</Label>
+                          <div className="rounded-[8px] border-[0.5px] border-[color:var(--color-border-secondary)] bg-[var(--color-background-primary)] px-3 py-2 text-sm text-[var(--color-text-primary)]">
                             {profile.email}
                           </div>
-                        </div>
-                        <div>
-                          <div className="text-sm text-slate-400">Role</div>
-                          <div className="mt-2 rounded-2xl border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-3 text-sm text-white">
+                        </Field>
+                        <Field>
+                          <Label>Role</Label>
+                          <div className="rounded-[8px] border-[0.5px] border-[color:var(--color-border-secondary)] bg-[var(--color-background-primary)] px-3 py-2 text-sm text-[var(--color-text-primary)]">
                             {formatRole(profile.role)}
                           </div>
-                        </div>
+                        </Field>
                         <div className="md:col-span-2 flex flex-wrap items-center gap-3 pt-1">
                           <Button onClick={handleProfileSave} disabled={profileBusy}>
                             {profileBusy ? "Saving..." : "Save"}
@@ -848,21 +856,21 @@ export default function ProfilePage() {
                       </div>
                     ) : (
                       <div className="grid gap-3 md:grid-cols-2">
-                        <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                          <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Name</div>
-                          <div className="mt-2 text-sm font-semibold text-white">{profile.name}</div>
+                        <div className={profileStatClass}>
+                          <div className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">Name</div>
+                          <div className="mt-2 text-sm font-semibold text-[var(--color-text-primary)]">{profile.name}</div>
                         </div>
-                        <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                          <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Role</div>
-                          <div className="mt-2 text-sm font-semibold text-white">{formatRole(profile.role)}</div>
+                        <div className={profileStatClass}>
+                          <div className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">Role</div>
+                          <div className="mt-2 text-sm font-semibold text-[var(--color-text-primary)]">{formatRole(profile.role)}</div>
                         </div>
-                        <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                          <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Phone</div>
-                          <div className="mt-2 text-sm font-semibold text-white">{profile.phone_number || "Not added"}</div>
+                        <div className={profileStatClass}>
+                          <div className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">Phone</div>
+                          <div className="mt-2 text-sm font-semibold text-[var(--color-text-primary)]">{profile.phone_number || "Not added"}</div>
                         </div>
-                        <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                          <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Email</div>
-                          <div className="mt-2 break-all text-sm font-semibold text-white">{profile.email}</div>
+                        <div className={profileStatClass}>
+                          <div className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">Email</div>
+                          <div className="mt-2 break-all text-sm font-semibold text-[var(--color-text-primary)]">{profile.email}</div>
                         </div>
                       </div>
                     )}
@@ -871,32 +879,33 @@ export default function ProfilePage() {
               </CardContent>
             </Card>
 
-            <Card className="rounded-[2rem] border-white/10 bg-[rgba(20,24,36,0.9)]">
+            <Card className={profileSurfaceClass}>
               <CardHeader className="pb-0">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <div className="text-sm text-slate-400">Security</div>
-                    <CardTitle className="mt-2 text-2xl text-white">Password and sessions</CardTitle>
+                    <div className="text-sm text-[var(--color-text-secondary)]">Security</div>
+                    <CardTitle className="mt-2 text-2xl text-[var(--color-text-primary)]">Password and sessions</CardTitle>
                   </div>
-                  <button
-                    type="button"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-[rgba(8,12,20,0.5)] text-lg text-white lg:hidden"
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 lg:hidden"
                     onClick={() => toggleSection("security")}
                     aria-label="Toggle security section"
                   >
                     {expandedSections.security ? "-" : "+"}
-                  </button>
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className={sectionContentClass("security")}>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Last Login</div>
-                    <div className="mt-2 text-sm font-semibold text-white">{formatShortDate(profile.last_login)}</div>
+                  <div className={profileStatClass}>
+                    <div className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">Last Login</div>
+                    <div className="mt-2 text-sm font-semibold text-[var(--color-text-primary)]">{formatShortDate(profile.last_login)}</div>
                   </div>
-                  <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Active Devices</div>
-                    <div className="mt-2 text-sm font-semibold text-white">
+                  <div className={profileStatClass}>
+                    <div className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">Active Devices</div>
+                    <div className="mt-2 text-sm font-semibold text-[var(--color-text-primary)]">
                       {sessionSummary ? sessionSummary.active_devices : "-"}
                     </div>
                   </div>
@@ -904,7 +913,7 @@ export default function ProfilePage() {
 
                 <div className="flex flex-wrap gap-3">
                   <Button
-                    variant={showPasswordForm ? "outline" : "primary"}
+                    variant={showPasswordForm ? "ghost" : "primary"}
                     onClick={() => {
                       setShowPasswordForm((current) => !current);
                       setSecurityMessage("");
@@ -914,7 +923,7 @@ export default function ProfilePage() {
                     {showPasswordForm ? "Cancel" : "Change password"}
                   </Button>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => {
                       void handleLogoutAllDevices();
                     }}
@@ -925,7 +934,7 @@ export default function ProfilePage() {
                 </div>
 
                 {showPasswordForm ? (
-                  <div className="space-y-4 rounded-[1.7rem] border border-white/10 bg-[rgba(8,12,20,0.5)] p-5">
+                  <div className="space-y-4 rounded-[1.25rem] border-[0.5px] border-[color:var(--color-border-secondary)] bg-[var(--color-background-primary)] p-5">
                     <PasswordField
                       label="Current Password"
                       value={passwordForm.old_password}
@@ -947,7 +956,7 @@ export default function ProfilePage() {
                       onChange={(value) => setPasswordForm((current) => ({ ...current, confirm_password: value }))}
                       required
                     />
-                    <div className="text-xs text-slate-400">
+                    <div className="text-xs text-[var(--color-text-secondary)]">
                       Use at least 12 characters with mixed case, a number, and a symbol.
                     </div>
                     <div className="flex flex-wrap items-center gap-3">
@@ -955,7 +964,7 @@ export default function ProfilePage() {
                         {passwordBusy ? "Updating..." : "Update Password"}
                       </Button>
                       <Link href="/forgot-password">
-                        <Button variant="outline">Forgot Password</Button>
+                        <Button variant="ghost">Forgot Password</Button>
                       </Link>
                     </div>
                   </div>
@@ -968,44 +977,45 @@ export default function ProfilePage() {
           </div>
 
           <div className="space-y-6">
-            <Card className="rounded-[2rem] border-white/10 bg-[rgba(20,24,36,0.9)]">
+            <Card className={profileSurfaceClass}>
               <CardHeader className="pb-0">
                 <div className="flex items-center justify-between gap-4">
                   <div>
-                    <div className="text-sm text-slate-400">Workspace</div>
-                    <CardTitle className="mt-2 text-2xl text-white">Current access</CardTitle>
+                    <div className="text-sm text-[var(--color-text-secondary)]">Workspace</div>
+                    <CardTitle className="mt-2 text-2xl text-[var(--color-text-primary)]">Current access</CardTitle>
                   </div>
-                  <button
-                    type="button"
-                    className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-[rgba(8,12,20,0.5)] text-lg text-white lg:hidden"
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-10 w-10 lg:hidden"
                     onClick={() => toggleSection("workspace")}
                     aria-label="Toggle workspace section"
                   >
                     {expandedSections.workspace ? "-" : "+"}
-                  </button>
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent className={sectionContentClass("workspace")}>
                 <div className="grid gap-3 md:grid-cols-2">
-                  <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Factory</div>
-                    <div className="mt-2 text-sm font-semibold text-white">
+                  <div className={profileStatClass}>
+                    <div className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">Factory</div>
+                    <div className="mt-2 text-sm font-semibold text-[var(--color-text-primary)]">
                       {activeFactory?.name || profile.factory_name || "Factory not assigned"}
                     </div>
                   </div>
-                  <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Role</div>
-                    <div className="mt-2 text-sm font-semibold text-white">{formatRole(profile.role)}</div>
+                  <div className={profileStatClass}>
+                    <div className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">Role</div>
+                    <div className="mt-2 text-sm font-semibold text-[var(--color-text-primary)]">{formatRole(profile.role)}</div>
                   </div>
-                  <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Status</div>
+                  <div className={profileStatClass}>
+                    <div className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">Status</div>
                     <div className="mt-2 text-sm font-semibold text-emerald-200">
                       {profile.is_active ? "Active" : "Inactive"}
                     </div>
                   </div>
-                  <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Organization</div>
-                    <div className="mt-2 text-sm font-semibold text-white">
+                  <div className={profileStatClass}>
+                    <div className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">Organization</div>
+                    <div className="mt-2 text-sm font-semibold text-[var(--color-text-primary)]">
                       {organization?.name || "Current organization"}
                     </div>
                   </div>
@@ -1014,36 +1024,37 @@ export default function ProfilePage() {
             </Card>
 
             {showActivity ? (
-              <Card className="rounded-[2rem] border-white/10 bg-[rgba(20,24,36,0.9)]">
+              <Card className={profileSurfaceClass}>
                 <CardHeader className="pb-0">
                   <div className="flex items-center justify-between gap-4">
                     <div>
-                      <div className="text-sm text-slate-400">Activity</div>
-                      <CardTitle className="mt-2 text-2xl text-white">Recent work</CardTitle>
+                      <div className="text-sm text-[var(--color-text-secondary)]">Activity</div>
+                      <CardTitle className="mt-2 text-2xl text-[var(--color-text-primary)]">Recent work</CardTitle>
                     </div>
-                    <button
-                      type="button"
-                      className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-[rgba(8,12,20,0.5)] text-lg text-white lg:hidden"
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-10 w-10 lg:hidden"
                       onClick={() => toggleSection("activity")}
                       aria-label="Toggle activity section"
                     >
                       {expandedSections.activity ? "-" : "+"}
-                    </button>
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent className={sectionContentClass("activity")}>
                   <div className="grid gap-3">
-                    <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                      <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Entries Today</div>
-                      <div className="mt-2 text-2xl font-semibold text-white">{activity.entriesToday}</div>
+                    <div className={profileStatClass}>
+                      <div className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">Entries Today</div>
+                      <div className="mt-2 text-2xl font-semibold text-[var(--color-text-primary)]">{activity.entriesToday}</div>
                     </div>
-                    <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                      <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Pending Sync</div>
-                      <div className="mt-2 text-2xl font-semibold text-white">{activity.pendingSync}</div>
+                    <div className={profileStatClass}>
+                      <div className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">Pending Sync</div>
+                      <div className="mt-2 text-2xl font-semibold text-[var(--color-text-primary)]">{activity.pendingSync}</div>
                     </div>
-                    <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                      <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Last Action</div>
-                      <div className="mt-2 text-sm font-semibold text-white">
+                    <div className={profileStatClass}>
+                      <div className="text-xs uppercase tracking-[0.16em] text-[var(--color-text-secondary)]">Last Action</div>
+                      <div className="mt-2 text-sm font-semibold text-[var(--color-text-primary)]">
                         {formatDateTime(activity.lastAction)}
                       </div>
                     </div>
@@ -1054,31 +1065,31 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        <Card className="rounded-[2rem] border-white/10 bg-[rgba(20,24,36,0.9)]">
+        <Card className={profileSurfaceClass}>
           <CardHeader className="pb-0">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <div className="text-sm text-slate-400">Actions</div>
-                <CardTitle className="mt-2 text-2xl text-white">Account tools</CardTitle>
+                <div className="text-sm text-[var(--color-text-secondary)]">Actions</div>
+                <CardTitle className="mt-2 text-2xl text-[var(--color-text-primary)]">Account tools</CardTitle>
               </div>
-              <button
-                type="button"
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-[rgba(8,12,20,0.5)] text-lg text-white lg:hidden"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-10 w-10 lg:hidden"
                 onClick={() => toggleSection("actions")}
                 aria-label="Toggle actions section"
               >
                 {expandedSections.actions ? "-" : "+"}
-              </button>
+              </Button>
             </div>
           </CardHeader>
           <CardContent className={sectionContentClass("actions")}>
             {/* AUDIT: BUTTON_CLUTTER - move rare account-level actions into a secondary tray so edit and security stay primary */}
-            <details className="rounded-[1.7rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-              <summary className="cursor-pointer list-none text-sm font-semibold text-white">Open account actions</summary>
-              <div className="mt-4 text-sm text-slate-300">Use these only when you are leaving this account or changing workspace context.</div>
-              <div className="mt-4 flex flex-wrap gap-3">
+            <DisclosurePanel title="Open account actions" variant="ghost">
+              <p className="mb-4 text-sm text-text-secondary">Use these only when you are leaving this account or changing workspace context.</p>
+              <div className="flex flex-wrap gap-3">
                 <Button
-                  variant="outline"
+                  variant="ghost"
                   onClick={() => {
                     void handleLogout();
                   }}
@@ -1087,6 +1098,7 @@ export default function ProfilePage() {
                   {accountBusy === "logout" ? "Logging out..." : "Logout"}
                 </Button>
                 <Button
+                  variant="primary"
                   onClick={() => {
                     void handleSwitchAccount();
                   }}
@@ -1095,10 +1107,9 @@ export default function ProfilePage() {
                   {accountBusy === "switch" ? "Switching..." : "Switch account"}
                 </Button>
               </div>
-            </details>
+            </DisclosurePanel>
           </CardContent>
         </Card>
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

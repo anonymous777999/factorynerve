@@ -22,6 +22,7 @@ import { useSession } from "@/lib/use-session";
 import { coerceIntegerInput } from "@/lib/validation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -209,8 +210,8 @@ export default function EntryDetailPage() {
   const canDelete = user?.role === "manager" || user?.role === "admin" || user?.role === "owner";
   const canRegenerate = Boolean(
     user &&
-      entry &&
-      (user.id === entry.user_id || user.role === "manager" || user.role === "admin" || user.role === "owner"),
+    entry &&
+    (user.id === entry.user_id || user.role === "manager" || user.role === "admin" || user.role === "owner"),
   );
   const canEdit = useMemo(() => {
     if (!user || !entry) return false;
@@ -276,7 +277,16 @@ export default function EntryDetailPage() {
   };
 
   if (sessionLoading || loading) {
-    return <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">Loading entry detail...</main>;
+    return (
+      <OperationalPageShell
+        eyebrow="Entry Detail"
+        title="Entry detail"
+        isLoading
+        loadingTitle="Loading entry detail"
+      >
+        <div />
+      </OperationalPageShell>
+    );
   }
 
   if (!user || !entry) {
@@ -298,18 +308,18 @@ export default function EntryDetailPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-6xl space-y-6">
-        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
-          <div className="space-y-2">
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Entry Detail</div>
-            <h1 className="text-3xl font-semibold">Entry detail</h1>
-            <p className="text-sm text-[var(--muted)]">
-              {formatDate(entry.date)} | {entry.shift} | submitted by {entry.submitted_by || `User ${entry.user_id || "-"}`} | status {entry.status}
-            </p>
-          </div>
-        </section>
-
+    <OperationalPageShell
+      contentClassName="mx-auto max-w-6xl space-y-6"
+      eyebrow="Entry Detail"
+      title="Entry detail"
+      description={`${formatDate(entry.date)} | ${entry.shift} | submitted by ${entry.submitted_by || `User ${entry.user_id || "-"}`} | status ${entry.status}`}
+      metrics={[
+        { id: "units", label: "Units", value: `${entry.units_produced} / ${entry.units_target}` },
+        { id: "performance", label: "Performance", value: `${performance.toFixed(1)}%` },
+        { id: "status", label: "Status", value: entry.status },
+        { id: "submitted", label: "Submitted", value: formatDateTime(entry.created_at) },
+      ]}
+    >
         {/* AUDIT: BUTTON_CLUTTER - keep route jumps available in a secondary tray so review stays primary. */}
         <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
           <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
@@ -509,115 +519,120 @@ export default function EntryDetailPage() {
                     Edit entry
                   </summary>
                   <div className="mt-4 space-y-4">
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="text-sm text-[var(--muted)]">Units Target</label>
-                      <Input
-                        type="number"
-                        min={1}
-                        step={1}
-                        inputMode="numeric"
-                        value={edit.units_target}
-                        onChange={(event) => updateIntegerEditField(setEdit, "units_target", event.target.value, 1)}
-                      />
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="text-sm text-[var(--muted)]">Units Target</label>
+                        <Input
+                          aria-label="Units target"
+                          type="number"
+                          min={1}
+                          step={1}
+                          inputMode="numeric"
+                          value={edit.units_target}
+                          onChange={(event) => updateIntegerEditField(setEdit, "units_target", event.target.value, 1)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-[var(--muted)]">Units Produced</label>
+                        <Input
+                          aria-label="Units produced"
+                          type="number"
+                          min={1}
+                          step={1}
+                          inputMode="numeric"
+                          value={edit.units_produced}
+                          onChange={(event) => updateIntegerEditField(setEdit, "units_produced", event.target.value, 1)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-[var(--muted)]">Manpower Present</label>
+                        <Input
+                          aria-label="Manpower present"
+                          type="number"
+                          min={1}
+                          step={1}
+                          inputMode="numeric"
+                          value={edit.manpower_present}
+                          onChange={(event) => updateIntegerEditField(setEdit, "manpower_present", event.target.value, 1)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-[var(--muted)]">Manpower Absent</label>
+                        <Input
+                          aria-label="Manpower absent"
+                          type="number"
+                          min={0}
+                          step={1}
+                          inputMode="numeric"
+                          value={edit.manpower_absent}
+                          onChange={(event) => updateIntegerEditField(setEdit, "manpower_absent", event.target.value, 0)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-sm text-[var(--muted)]">Downtime Minutes</label>
+                        <Input
+                          aria-label="Downtime minutes"
+                          type="number"
+                          min={0}
+                          step={1}
+                          inputMode="numeric"
+                          value={edit.downtime_minutes}
+                          onChange={(event) => updateIntegerEditField(setEdit, "downtime_minutes", event.target.value, 0)}
+                        />
+                      </div>
                     </div>
                     <div>
-                      <label className="text-sm text-[var(--muted)]">Units Produced</label>
-                      <Input
-                        type="number"
-                        min={1}
-                        step={1}
-                        inputMode="numeric"
-                        value={edit.units_produced}
-                        onChange={(event) => updateIntegerEditField(setEdit, "units_produced", event.target.value, 1)}
-                      />
+                      <label className="text-sm text-[var(--muted)]">Downtime Reason</label>
+                      <Input aria-label="Downtime reason" value={edit.downtime_reason} onChange={(event) => setEdit((prev) => ({ ...prev, downtime_reason: event.target.value }))} />
                     </div>
                     <div>
-                      <label className="text-sm text-[var(--muted)]">Manpower Present</label>
-                      <Input
-                        type="number"
-                        min={1}
-                        step={1}
-                        inputMode="numeric"
-                        value={edit.manpower_present}
-                        onChange={(event) => updateIntegerEditField(setEdit, "manpower_present", event.target.value, 1)}
-                      />
+                      <label className="text-sm text-[var(--muted)]">Materials Used</label>
+                      <Textarea aria-label="Materials used" rows={3} value={edit.materials_used} onChange={(event) => setEdit((prev) => ({ ...prev, materials_used: event.target.value }))} />
                     </div>
                     <div>
-                      <label className="text-sm text-[var(--muted)]">Manpower Absent</label>
-                      <Input
-                        type="number"
-                        min={0}
-                        step={1}
-                        inputMode="numeric"
-                        value={edit.manpower_absent}
-                        onChange={(event) => updateIntegerEditField(setEdit, "manpower_absent", event.target.value, 0)}
-                      />
+                      <label className="flex items-center gap-3 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={edit.quality_issues}
+                          onChange={(event) => setEdit((prev) => ({ ...prev, quality_issues: event.target.checked }))}
+                        />
+                        Quality issues present?
+                      </label>
                     </div>
+                    {edit.quality_issues ? (
+                      <div>
+                        <label className="text-sm text-[var(--muted)]">Quality Details</label>
+                        <Textarea aria-label="Quality details" rows={3} value={edit.quality_details} onChange={(event) => setEdit((prev) => ({ ...prev, quality_details: event.target.value }))} />
+                      </div>
+                    ) : null}
                     <div>
-                      <label className="text-sm text-[var(--muted)]">Downtime Minutes</label>
-                      <Input
-                        type="number"
-                        min={0}
-                        step={1}
-                        inputMode="numeric"
-                        value={edit.downtime_minutes}
-                        onChange={(event) => updateIntegerEditField(setEdit, "downtime_minutes", event.target.value, 0)}
-                      />
+                      <label className="text-sm text-[var(--muted)]">Notes</label>
+                      <Textarea aria-label="Notes" rows={4} value={edit.notes} onChange={(event) => setEdit((prev) => ({ ...prev, notes: event.target.value }))} />
                     </div>
-                  </div>
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Downtime Reason</label>
-                    <Input value={edit.downtime_reason} onChange={(event) => setEdit((prev) => ({ ...prev, downtime_reason: event.target.value }))} />
-                  </div>
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Materials Used</label>
-                    <Textarea rows={3} value={edit.materials_used} onChange={(event) => setEdit((prev) => ({ ...prev, materials_used: event.target.value }))} />
-                  </div>
-                  <div>
-                    <label className="flex items-center gap-3 text-sm">
-                      <input
-                        type="checkbox"
-                        checked={edit.quality_issues}
-                        onChange={(event) => setEdit((prev) => ({ ...prev, quality_issues: event.target.checked }))}
-                      />
-                      Quality issues present?
-                    </label>
-                  </div>
-                  {edit.quality_issues ? (
-                    <div>
-                      <label className="text-sm text-[var(--muted)]">Quality Details</label>
-                      <Textarea rows={3} value={edit.quality_details} onChange={(event) => setEdit((prev) => ({ ...prev, quality_details: event.target.value }))} />
-                    </div>
-                  ) : null}
-                  <div>
-                    <label className="text-sm text-[var(--muted)]">Notes</label>
-                    <Textarea rows={4} value={edit.notes} onChange={(event) => setEdit((prev) => ({ ...prev, notes: event.target.value }))} />
-                  </div>
-                  <Button
-                    onClick={() =>
-                      handleAction(async () => {
-                        const next = await updateEntry(entry.id, {
-                          units_target: edit.units_target,
-                          units_produced: edit.units_produced,
-                          manpower_present: edit.manpower_present,
-                          manpower_absent: edit.manpower_absent,
-                          downtime_minutes: edit.downtime_minutes,
-                          downtime_reason: edit.downtime_reason || null,
-                          materials_used: edit.materials_used || null,
-                          quality_issues: edit.quality_issues,
-                          quality_details: edit.quality_details || null,
-                          notes: edit.notes || null,
-                        });
-                        setEntry(next);
-                        setEdit(mapEntryToEditState(next));
-                        setStatus("Entry updated.");
-                      })
-                    }
-                    disabled={busy}
-                  >
-                    Save entry
-                  </Button>
+                    <Button
+                      onClick={() =>
+                        handleAction(async () => {
+                          const next = await updateEntry(entry.id, {
+                            units_target: edit.units_target,
+                            units_produced: edit.units_produced,
+                            manpower_present: edit.manpower_present,
+                            manpower_absent: edit.manpower_absent,
+                            downtime_minutes: edit.downtime_minutes,
+                            downtime_reason: edit.downtime_reason || null,
+                            materials_used: edit.materials_used || null,
+                            quality_issues: edit.quality_issues,
+                            quality_details: edit.quality_details || null,
+                            notes: edit.notes || null,
+                          });
+                          setEntry(next);
+                          setEdit(mapEntryToEditState(next));
+                          setStatus("Entry updated.");
+                        })
+                      }
+                      disabled={busy}
+                    >
+                      Save entry
+                    </Button>
                   </div>
                 </details>
               ) : (
@@ -650,7 +665,6 @@ export default function EntryDetailPage() {
 
         {status ? <div className="text-sm text-green-400">{status}</div> : null}
         {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

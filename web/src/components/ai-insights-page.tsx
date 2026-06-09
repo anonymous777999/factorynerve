@@ -3,9 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ApiError } from "@/lib/api";
@@ -265,97 +266,56 @@ export default function AiInsightsPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
-          <div className="max-w-4xl space-y-3">
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("ai.title", "AI Insights")}</div>
-            <h1 className="text-3xl font-semibold">{t("ai.hero.title", "Ask an operations question")}</h1>
-            <p className="max-w-3xl text-sm text-[var(--muted)]">{t("ai.hero.subtitle", "Ask now. Check drift only when needed.")}</p>
-            <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
-              <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
-                {t("ai.hero.plan", "Plan")}: <span className="font-semibold text-[var(--text)] capitalize">{usage?.plan || "-"}</span>
-              </span>
-              <span className="rounded-full border border-[var(--border)] px-3 py-1.5">
-                {refreshing
-                  ? t("ai.hero.refreshing", "Refreshing AI...")
-                  : lastUpdatedAt
-                    ? t("ai.hero.updated", "Updated {{value}}", { value: formatDateTime(lastUpdatedAt, locale) })
-                    : t("ai.hero.live_updates", "Live updates every 45s")}
-              </span>
-            </div>
+    <OperationalPageShell
+      className="factory-workstation-scope"
+      contentClassName="mx-auto max-w-7xl space-y-6"
+      eyebrow={t("ai.title", "AI Insights")}
+      title={t("ai.hero.title", "Operations questions")}
+      description={t("ai.hero.subtitle", "Ask first. Drift on demand.")}
+      metrics={[
+        { id: "plan", label: t("ai.hero.plan", "Plan"), value: usage?.plan || "-" },
+        {
+          id: "updated",
+          label: "Status",
+          value: refreshing
+            ? t("ai.hero.refreshing", "Refreshing AI...")
+            : lastUpdatedAt
+              ? formatDateTime(lastUpdatedAt, locale)
+              : t("ai.hero.live_updates", "Live updates every 45s"),
+        },
+      ]}
+      actions={[
+        {
+          id: "ask",
+          label: t("ai.actions.ask", "Ask AI"),
+          onAction: () => {
+            document.getElementById("nlq-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+          },
+        },
+        {
+          id: "refresh",
+          label: refreshing ? t("ai.actions.refreshing", "Refreshing...") : t("common.refresh", "Refresh"),
+          variant: "outline",
+          onAction: () => {
+            void loadAiHome({ background: true, selectedDays: Number(days) || 14 });
+          },
+        },
+      ]}
+    >
+        <DisclosurePanel title={t("ai.actions.more_tools", "More tools")} variant="ghost">
+          <div className="flex flex-wrap gap-3">
+            <Link href="/entry">
+              <Button variant="outline" className="px-4 py-2 text-xs">{t("ai.actions.entry", "DPR Entry")}</Button>
+            </Link>
+            <Link href="/reports">
+              <Button variant="outline" className="px-4 py-2 text-xs">{t("ai.actions.reports", "Reports")}</Button>
+            </Link>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              className="px-4 py-2 text-xs"
-              onClick={() => document.getElementById("nlq-card")?.scrollIntoView({ behavior: "smooth", block: "start" })}
-            >
-              {t("ai.actions.ask", "Ask AI")}
-            </Button>
-            <Button
-              variant="outline"
-              className="px-4 py-2 text-xs"
-              onClick={() => {
-                void loadAiHome({ background: true, selectedDays: Number(days) || 14 });
-              }}
-              disabled={refreshing}
-            >
-              {refreshing ? t("ai.actions.refreshing", "Refreshing...") : t("common.refresh", "Refresh")}
-            </Button>
-            <details className="group">
-              <summary className="list-none">
-                <Button variant="outline" className="px-4 py-2 text-xs">
-                  {t("ai.actions.more_tools", "More tools")}
-                </Button>
-              </summary>
-              <div className="mt-3 flex flex-wrap gap-3 rounded-[1.35rem] border border-[var(--border)] bg-[rgba(10,14,24,0.82)] p-3">
-                <Link href="/entry">
-                  <Button variant="outline" className="px-4 py-2 text-xs">{t("ai.actions.entry", "DPR Entry")}</Button>
-                </Link>
-                <Link href="/reports">
-                  <Button variant="outline" className="px-4 py-2 text-xs">{t("ai.actions.reports", "Reports")}</Button>
-                </Link>
-              </div>
-            </details>
-          </div>
-        </section>
-
-        <GuidanceBlock
-          surfaceKey="ai-insights"
-          title={t("ai.steps.title", "How this works")}
-          summary={t("ai.steps.summary", "Ask first. Open quota or drift only when you need more context.")}
-          eyebrow={t("ai.steps.eyebrow", "On demand")}
-          autoOpenVisits={1}
-          className="border border-[var(--border)] bg-[rgba(18,22,34,0.92)]"
-        >
-          <div className="grid gap-3 md:grid-cols-3">
-            {[
-              {
-                title: t("ai.steps.ask_title", "Ask"),
-                body: t("ai.steps.ask_body", "Type the KPI or trend question you need answered right now."),
-              },
-              {
-                title: t("ai.steps.answer_title", "Check answer"),
-                body: nlqResult
-                  ? t("ai.steps.answer_body_ready", "Latest answer came from {{provider}}.", { provider: nlqResult.provider })
-                  : t("ai.steps.answer_body_empty", "The answer panel stays ready for the next NLQ result."),
-              },
-              {
-                title: t("ai.steps.investigate_title", "Investigate"),
-                body: t("ai.steps.investigate_body", "Use anomaly drift and quota context only when you need to validate or extend the answer."),
-              },
-            ].map((item) => (
-              <div key={item.title} className="rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.42)] px-4 py-4">
-                <div className="text-sm font-semibold text-[var(--text)]">{item.title}</div>
-                <div className="mt-2 text-sm leading-6 text-[var(--muted)]">{item.body}</div>
-              </div>
-            ))}
-          </div>
-        </GuidanceBlock>
+        </DisclosurePanel>
 
         {refreshing ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3 text-sm text-[var(--muted)]">
-            {t("ai.refreshing_background", "Refreshing AI insights in the background...")}
+            {t("ai.refreshing_background", "Refreshing AI insights...")}
           </div>
         ) : null}
 
@@ -384,7 +344,7 @@ export default function AiInsightsPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-                <div className="text-xs uppercase tracking-[0.18em] text-white/80">{summaryHealth.detail}</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-text-primary/80">{summaryHealth.detail}</div>
                 <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
                   <div className={`h-2 rounded-full ${summaryHealth.barClass}`} style={{ width: `${summaryHealth.percent}%` }} />
                 </div>
@@ -404,7 +364,7 @@ export default function AiInsightsPage() {
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-                <div className="text-xs uppercase tracking-[0.18em] text-white/80">{smartHealth.detail}</div>
+                <div className="text-xs uppercase tracking-[0.18em] text-text-primary/80">{smartHealth.detail}</div>
                 <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
                   <div className={`h-2 rounded-full ${smartHealth.barClass}`} style={{ width: `${smartHealth.percent}%` }} />
                 </div>
@@ -435,7 +395,7 @@ export default function AiInsightsPage() {
             <CardContent className="space-y-4">
               <div>
                 <label className="text-sm text-[var(--muted)]">{t("ai.query.label", "Question")}</label>
-                <Input value={question} onChange={(event) => setQuestion(event.target.value)} />
+                <Input aria-label={t("ai.query.label", "Question")} value={question} onChange={(event) => setQuestion(event.target.value)} />
               </div>
               <div className="flex flex-wrap gap-3">
                 <Button onClick={handleQuestion} disabled={queryBusy}>
@@ -457,7 +417,7 @@ export default function AiInsightsPage() {
                         <div key={preset.id} className="flex items-center gap-2">
                           <button
                             type="button"
-                            className="rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm font-semibold transition hover:border-[rgba(62,166,255,0.4)] hover:text-white"
+                            className="rounded-full border border-[var(--border)] bg-[var(--card)] px-4 py-2 text-sm font-semibold transition hover:border-[rgba(62,166,255,0.4)] hover:text-text-primary"
                             onClick={() => setQuestion(preset.question)}
                           >
                             {preset.label}
@@ -588,7 +548,6 @@ export default function AiInsightsPage() {
 
         {status ? <div className="text-sm text-emerald-300">{status}</div> : null}
         {error || sessionError ? <div className="text-sm text-red-300">{error || sessionError}</div> : null}
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }

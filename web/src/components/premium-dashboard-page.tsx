@@ -19,6 +19,7 @@ import { getSteelOverview, type SteelOverview } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
 
@@ -79,7 +80,7 @@ function levelClasses(level: number) {
     case 2:
       return "bg-[rgba(34,197,94,0.75)]";
     case 1:
-      return "bg-[rgba(62,166,255,0.55)]";
+      return "bg-[color-mix(in_srgb,var(--action-primary)_55%,transparent)]";
     default:
       return "bg-[rgba(255,255,255,0.06)]";
   }
@@ -168,7 +169,12 @@ function TimelineChart({ points }: { points: DerivedTimelinePoint[] }) {
 
   return (
     <div className="space-y-4">
-      <svg viewBox={`0 0 ${width} ${height}`} className="w-full overflow-visible rounded-3xl border border-[var(--border)] bg-[rgba(10,14,22,0.8)] p-2">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="w-full overflow-visible rounded-3xl border border-[var(--border)] bg-[rgba(10,14,22,0.8)] p-2"
+        role="img"
+        aria-label={`Production trend line chart showing units produced and performance percentage across ${points.length} day${points.length === 1 ? "" : "s"}. A per-day data summary follows below the chart.`}
+      >
         {Array.from({ length: 4 }).map((_, index) => {
           const y = padding + (index * (height - padding * 2)) / 3;
           return (
@@ -183,14 +189,14 @@ function TimelineChart({ points }: { points: DerivedTimelinePoint[] }) {
             />
           );
         })}
-        <path d={unitPath} fill="none" stroke="#3EA6FF" strokeWidth="4" strokeLinecap="round" />
-        <path d={perfPath} fill="none" stroke="#2DD4BF" strokeWidth="3" strokeLinecap="round" />
+        <path d={unitPath} fill="none" stroke="var(--action-primary)" strokeWidth="4" strokeLinecap="round" />
+        <path d={perfPath} fill="none" stroke="var(--status-success-fg)" strokeWidth="3" strokeLinecap="round" />
         {points.map((point, index) => {
           const x = padding + (index * (width - padding * 2)) / Math.max(1, points.length - 1);
           const unitY = height - padding - (point.units / maxUnits) * (height - padding * 2);
           return (
             <g key={point.date}>
-              <circle cx={x} cy={unitY} r="4" fill="#3EA6FF" />
+              <circle cx={x} cy={unitY} r="4" fill="var(--action-primary)" />
             </g>
           );
         })}
@@ -229,11 +235,10 @@ function FactoryChart({
             key={item.factoryId}
             type="button"
             onClick={() => onSelect(active ? null : item.factoryId)}
-            className={`w-full rounded-2xl border p-4 text-left transition ${
-              active
-                ? "border-[rgba(62,166,255,0.45)] bg-[rgba(62,166,255,0.14)]"
-                : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[rgba(62,166,255,0.25)]"
-            }`}
+            className={`w-full rounded-2xl border p-4 text-left transition ${active
+              ? "border-[color-mix(in_srgb,var(--action-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--action-primary)_14%,transparent)]"
+              : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[color-mix(in_srgb,var(--action-primary)_25%,transparent)]"
+              }`}
           >
             <div className="flex items-center justify-between gap-3">
               <div>
@@ -245,7 +250,7 @@ function FactoryChart({
               <div className="text-xs text-[var(--muted)]">{item.downtime} min downtime</div>
             </div>
             <div className="mt-3 h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
-              <div className="h-2 rounded-full bg-[linear-gradient(90deg,#3EA6FF,#2DD4BF)]" style={{ width: `${width}%` }} />
+              <div className="h-2 rounded-full bg-[var(--action-primary)]" style={{ width: `${width}%` }} />
             </div>
           </button>
         );
@@ -272,18 +277,17 @@ function ShiftChart({
             key={item.shift}
             type="button"
             onClick={() => onSelect(active ? null : item.shift)}
-            className={`rounded-2xl border p-4 text-left transition ${
-              active
-                ? "border-[rgba(45,212,191,0.45)] bg-[rgba(45,212,191,0.14)]"
-                : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[rgba(45,212,191,0.28)]"
-            }`}
+            className={`rounded-2xl border p-4 text-left transition ${active
+              ? "border-[color-mix(in_srgb,var(--action-primary)_45%,transparent)] bg-[color-mix(in_srgb,var(--action-primary)_14%,transparent)]"
+              : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[color-mix(in_srgb,var(--action-primary)_28%,transparent)]"
+              }`}
           >
             <div className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">{shiftLabel(item.shift)}</div>
             <div className="mt-3 text-2xl font-semibold text-[var(--text)]">{item.performance.toFixed(1)}%</div>
             <div className="mt-1 text-sm text-[var(--muted)]">{item.units} units - {item.downtime} min downtime</div>
             <div className="mt-3 h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
               <div
-                className="h-2 rounded-full bg-[linear-gradient(90deg,#2DD4BF,#84CC16)]"
+                className="h-2 rounded-full bg-[var(--action-primary)]"
                 style={{ width: `${Math.max(5, Math.min(100, item.performance))}%` }}
               />
             </div>
@@ -602,81 +606,83 @@ export default function PremiumDashboardPage() {
   const stockTrustHotspots = steelOverview?.low_confidence_items.slice(0, 3) || [];
   const ownerRiskCards = steelOverview
     ? [
-        {
-          label: "Money at risk",
-          value: steelOverview.financial_access
-            ? formatCurrency(steelOverview.anomaly_summary.total_estimated_leakage_value_inr)
-            : "Restricted",
-          helper: `Estimated leakage from ${steelOverview.anomaly_summary.ranked_batch_count} ranked anomaly batch${steelOverview.anomaly_summary.ranked_batch_count === 1 ? "" : "es"}.`,
-          tone: "border-red-400/30 bg-[rgba(239,68,68,0.12)]",
-          href: "/steel?tab=risk",
-          action: "Open Risk Review",
-        },
-        {
-          label: "Stock trust",
-          value: `${Number(steelOverview.confidence_counts.red || 0)} red / ${Number(steelOverview.confidence_counts.yellow || 0)} watch`,
-          helper: `${stockTrustHotspots.length} low-confidence stock hotspot${stockTrustHotspots.length === 1 ? "" : "s"} need owner attention.`,
-          tone: "border-amber-400/30 bg-[rgba(245,158,11,0.12)]",
-          href: "/steel/reconciliations",
-          action: "Open Stock Review",
-        },
-        {
-          label: "Dispatch exposure",
-          value: steelOverview.financial_access
-            ? formatCurrency(steelOverview.profit_summary?.outstanding_invoice_amount_inr)
-            : "Restricted",
-          helper: `${formatKg(steelOverview.profit_summary?.outstanding_invoice_weight_kg)} still not realized from invoices already raised.`,
-          tone: "border-sky-400/30 bg-[rgba(56,189,248,0.12)]",
-          href: "/steel/dispatches",
-          action: "Open Dispatch",
-        },
-        {
-          label: "Repeated anomalies",
-          value: `${Number(steelOverview.anomaly_summary.high_batches || 0) + Number(steelOverview.anomaly_summary.critical_batches || 0)} batch signals`,
-          helper: `Highest anomaly score ${Number(steelOverview.anomaly_summary.highest_anomaly_score || 0).toFixed(1)} across current steel data.`,
-          tone: "border-fuchsia-400/30 bg-[rgba(217,70,239,0.12)]",
-          href: "/steel/charts",
-          action: "Open Steel Charts",
-        },
-        {
-          label: "Top responsibility signal",
-          value:
-            steelOverview.anomaly_summary.highest_risk_operator?.name ||
-            steelOverview.anomaly_summary.highest_loss_day?.date ||
-            "No repeated risk yet",
-          helper: steelOverview.anomaly_summary.highest_risk_operator
-            ? `${steelOverview.anomaly_summary.highest_risk_operator.high_risk_batches} high-risk batch${steelOverview.anomaly_summary.highest_risk_operator.high_risk_batches === 1 ? "" : "es"} linked to the top operator signal.`
-            : "Responsibility analytics will sharpen as more approved steel data flows in.",
-          tone: "border-emerald-400/30 bg-[rgba(34,197,94,0.12)]",
-          href: "/reports",
-          action: "Open Reports",
-        },
-      ]
+      {
+        label: "Money at risk",
+        value: steelOverview.financial_access
+          ? formatCurrency(steelOverview.anomaly_summary.total_estimated_leakage_value_inr)
+          : "Restricted",
+        helper: `Estimated leakage from ${steelOverview.anomaly_summary.ranked_batch_count} ranked anomaly batch${steelOverview.anomaly_summary.ranked_batch_count === 1 ? "" : "es"}.`,
+        tone: "border-red-400/30 bg-[rgba(239,68,68,0.12)]",
+        href: "/steel?tab=risk",
+        action: "Open Risk Review",
+      },
+      {
+        label: "Stock trust",
+        value: `${Number(steelOverview.confidence_counts.red || 0)} red / ${Number(steelOverview.confidence_counts.yellow || 0)} watch`,
+        helper: `${stockTrustHotspots.length} low-confidence stock hotspot${stockTrustHotspots.length === 1 ? "" : "s"} need owner attention.`,
+        tone: "border-amber-400/30 bg-[rgba(245,158,11,0.12)]",
+        href: "/steel/reconciliations",
+        action: "Open Stock Review",
+      },
+      {
+        label: "Dispatch exposure",
+        value: steelOverview.financial_access
+          ? formatCurrency(steelOverview.profit_summary?.outstanding_invoice_amount_inr)
+          : "Restricted",
+        helper: `${formatKg(steelOverview.profit_summary?.outstanding_invoice_weight_kg)} still not realized from invoices already raised.`,
+        tone: "border-sky-400/30 bg-[rgba(56,189,248,0.12)]",
+        href: "/steel/dispatches",
+        action: "Open Dispatch",
+      },
+      {
+        label: "Repeated anomalies",
+        value: `${Number(steelOverview.anomaly_summary.high_batches || 0) + Number(steelOverview.anomaly_summary.critical_batches || 0)} batch signals`,
+        helper: `Highest anomaly score ${Number(steelOverview.anomaly_summary.highest_anomaly_score || 0).toFixed(1)} across current steel data.`,
+        tone: "border-fuchsia-400/30 bg-[rgba(217,70,239,0.12)]",
+        href: "/steel/charts",
+        action: "Open Steel Charts",
+      },
+      {
+        label: "Top responsibility signal",
+        value:
+          steelOverview.anomaly_summary.highest_risk_operator?.name ||
+          steelOverview.anomaly_summary.highest_loss_day?.date ||
+          "No repeated risk yet",
+        helper: steelOverview.anomaly_summary.highest_risk_operator
+          ? `${steelOverview.anomaly_summary.highest_risk_operator.high_risk_batches} high-risk batch${steelOverview.anomaly_summary.highest_risk_operator.high_risk_batches === 1 ? "" : "es"} linked to the top operator signal.`
+          : "Responsibility analytics will sharpen as more approved steel data flows in.",
+        tone: "border-emerald-400/30 bg-[rgba(34,197,94,0.12)]",
+        href: "/reports",
+        action: "Open Reports",
+      },
+    ]
     : [];
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8" data-component="premium-dashboard-page">
-      <div className="mx-auto max-w-[1500px] space-y-6">
-        <section className="rounded-[2rem] border border-[rgba(62,166,255,0.18)] bg-[radial-gradient(circle_at_top_left,rgba(62,166,255,0.18),rgba(11,14,20,0.92)_50%)] p-6 shadow-[0_40px_120px_rgba(3,8,20,0.45)]">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-[0.32em] text-[rgba(62,166,255,0.88)]">
-                Owner Intelligence
-              </div>
-              <h1 className="text-3xl font-semibold text-[var(--text)]">Read the owner signals before you jump into a desk</h1>
-              <p className="max-w-4xl text-sm leading-6 text-[var(--muted)]">
-                Start with money at risk, trust gaps, and responsibility signals, then open the exact workflow that needs attention.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Button variant="outline" onClick={() => void handleExportPdf()}>
-                Executive PDF
-              </Button>
-            </div>
-          </div>
-
-          <div className="mt-6 flex flex-wrap items-center gap-3 text-xs">
-            <span className="rounded-full border border-[rgba(45,212,191,0.34)] bg-[rgba(45,212,191,0.14)] px-4 py-2 text-[var(--text)]">
+    <OperationalPageShell
+      className="factory-workstation-scope"
+      contentClassName="mx-auto max-w-[1500px]"
+      eyebrow="Owner Intelligence"
+      title="Read the owner signals before you jump into a desk"
+      description="Start with money at risk, trust gaps, and responsibility signals, then open the exact workflow that needs attention."
+      metrics={[
+        { id: "tier", label: "Tier", value: dashboard?.plan?.toUpperCase() || "PREMIUM" },
+        { id: "generated", label: "Generated", value: dashboard ? formatDateTime(dashboard.generated_at) : "-" },
+      ]}
+      actions={[
+        {
+          id: "executive-pdf",
+          label: "Executive PDF",
+          variant: "outline",
+          onAction: () => {
+            void handleExportPdf();
+          },
+        },
+      ]}
+    >
+      <div data-component="premium-dashboard-page" className="space-y-6">
+          <div className="flex flex-wrap items-center gap-3 text-xs">
+            <span className="rounded-full border border-[color-mix(in_srgb,var(--action-primary)_34%,transparent)] bg-[color-mix(in_srgb,var(--action-primary)_14%,transparent)] px-4 py-2 text-[var(--text)]">
               Tier: {dashboard?.plan?.toUpperCase() || "PREMIUM"}
             </span>
             {dashboard?.enterprise_mode ? (
@@ -684,7 +690,7 @@ export default function PremiumDashboardPage() {
                 Enterprise mode active
               </span>
             ) : (
-              <span className="rounded-full border border-[rgba(62,166,255,0.25)] bg-[rgba(62,166,255,0.1)] px-4 py-2 text-[var(--text)]">
+              <span className="rounded-full border border-[color-mix(in_srgb,var(--action-primary)_25%,transparent)] bg-[color-mix(in_srgb,var(--action-primary)_10%,transparent)] px-4 py-2 text-[var(--text)]">
                 Factory premium surface
               </span>
             )}
@@ -702,7 +708,6 @@ export default function PremiumDashboardPage() {
               </span>
             ) : null}
           </div>
-        </section>
 
         {/* AUDIT: BUTTON_CLUTTER - keep route jumps in a secondary tray so the owner signal board stays primary. */}
         <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
@@ -730,7 +735,7 @@ export default function PremiumDashboardPage() {
             <div className="grid gap-3 sm:grid-cols-4">
               <div>
                 <div className="mb-2 text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Window</div>
-                <Select value={String(days)} onChange={(event) => setDays(Number(event.target.value))}>
+                <Select aria-label="Window" value={String(days)} onChange={(event) => setDays(Number(event.target.value))}>
                   <option value="7">Last 7 days</option>
                   <option value="14">Last 14 days</option>
                   <option value="30">Last 30 days</option>
@@ -738,7 +743,7 @@ export default function PremiumDashboardPage() {
               </div>
               <div>
                 <div className="mb-2 text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Factory</div>
-                <Select value={selectedFactoryId || ""} onChange={(event) => setSelectedFactoryId(event.target.value || null)}>
+                <Select aria-label="Factory" value={selectedFactoryId || ""} onChange={(event) => setSelectedFactoryId(event.target.value || null)}>
                   <option value="">All factories</option>
                   {(dashboard?.filters.factories || []).map((factory) => (
                     <option key={factory.id} value={factory.id}>
@@ -749,7 +754,7 @@ export default function PremiumDashboardPage() {
               </div>
               <div>
                 <div className="mb-2 text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Shift</div>
-                <Select value={selectedShift || ""} onChange={(event) => setSelectedShift(event.target.value || null)}>
+                <Select aria-label="Shift" value={selectedShift || ""} onChange={(event) => setSelectedShift(event.target.value || null)}>
                   <option value="">All shifts</option>
                   {(dashboard?.filters.shifts || []).map((item) => (
                     <option key={item.id} value={item.id}>
@@ -760,7 +765,7 @@ export default function PremiumDashboardPage() {
               </div>
               <div>
                 <div className="mb-2 text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Audit Action</div>
-                <Select value={auditAction} onChange={(event) => setAuditAction(event.target.value)}>
+                <Select aria-label="Audit action" value={auditAction} onChange={(event) => setAuditAction(event.target.value)}>
                   <option value="">All actions</option>
                   {auditActions.map((action) => (
                     <option key={action} value={action}>
@@ -779,7 +784,9 @@ export default function PremiumDashboardPage() {
               <CardTitle>Owner Intelligence Plan Gate</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="text-sm text-[var(--muted)]">{locked}</div>
+              <div className="rounded-2xl border border-status-info-border bg-status-info-bg px-4 py-3 text-sm text-status-info-fg">
+                {locked}
+              </div>
               <div className="grid gap-3 md:grid-cols-3">
                 {[
                   "Money-at-risk cards with INR exposure",
@@ -815,7 +822,7 @@ export default function PremiumDashboardPage() {
                     <CardTitle className="text-2xl">{value}</CardTitle>
                   </CardHeader>
                 </Card>
-                ))}
+              ))}
             </section>
 
             {selectedFactoryMismatch ? (
@@ -828,7 +835,7 @@ export default function PremiumDashboardPage() {
 
             {steelLayerVisible ? (
               <section className="space-y-6">
-                <Card className="border-[rgba(239,68,68,0.18)] bg-[linear-gradient(135deg,rgba(42,16,16,0.96),rgba(14,20,30,0.92))]">
+                <Card className="border-[rgba(239,68,68,0.18)] bg-surface-panel">
                   <CardHeader className="space-y-3">
                     <div className="text-xs font-semibold uppercase tracking-[0.28em] text-red-200">Owner Risk Desk</div>
                     <CardTitle className="text-2xl">Where am I losing money, why, and what should I check first?</CardTitle>
@@ -1017,7 +1024,7 @@ export default function PremiumDashboardPage() {
                     <CardContent className="space-y-3">
                       {topBatchSignals.length ? (
                         topBatchSignals.map((item) => (
-                          <Link key={`batch:${item.id}`} href={`/steel/batches/${item.id}`} className="block rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 transition hover:border-[rgba(62,166,255,0.3)]">
+                          <Link key={`batch:${item.id}`} href={`/steel/batches/${item.id}`} className="block rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 transition hover:border-[color-mix(in_srgb,var(--action-primary)_30%,transparent)]">
                             <div className="flex items-center justify-between gap-3">
                               <div className="text-sm font-semibold text-[var(--text)]">{item.batch_code}</div>
                               <div className="text-xs text-[var(--muted)]">Score {item.anomaly_score.toFixed(1)}</div>
@@ -1100,7 +1107,7 @@ export default function PremiumDashboardPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="rounded-2xl border border-[rgba(62,166,255,0.2)] bg-[rgba(62,166,255,0.08)] p-4 text-sm leading-6 text-[var(--text)]/90">
+                    <div className="rounded-2xl border border-[color-mix(in_srgb,var(--action-primary)_20%,transparent)] bg-[color-mix(in_srgb,var(--action-primary)_8%,transparent)] p-4 text-sm leading-6 text-[var(--text)]/90">
                       {ocrSummary.trust_note}
                     </div>
                   </CardContent>
@@ -1145,7 +1152,7 @@ export default function PremiumDashboardPage() {
                   {(dashboard.insights || []).map((insight) => (
                     <div
                       key={insight}
-                      className="rounded-2xl border border-[rgba(62,166,255,0.16)] bg-[rgba(62,166,255,0.08)] p-4 text-sm leading-6 text-[var(--text)]/90"
+                      className="rounded-2xl border border-[color-mix(in_srgb,var(--action-primary)_16%,transparent)] bg-[color-mix(in_srgb,var(--action-primary)_8%,transparent)] p-4 text-sm leading-6 text-[var(--text)]/90"
                     >
                       {insight}
                     </div>
@@ -1197,7 +1204,7 @@ export default function PremiumDashboardPage() {
                     <div className="grid min-w-max lg:min-w-[980px] grid-cols-[100px_repeat(24,minmax(0,1fr))] gap-2">
                       <div />
                       {Array.from({ length: 24 }).map((_, hour) => (
-                        <div key={hour} className="text-center text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
+                        <div key={hour} className="text-center text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">
                           {hour.toString().padStart(2, "0")}
                         </div>
                       ))}
@@ -1266,6 +1273,6 @@ export default function PremiumDashboardPage() {
         {steelWarning ? <div className="text-sm text-amber-300">{steelWarning}</div> : null}
         {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
       </div>
-    </main>
+    </OperationalPageShell>
   );
 }

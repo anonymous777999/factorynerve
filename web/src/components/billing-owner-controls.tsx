@@ -1,5 +1,6 @@
 "use client";
 
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 
@@ -40,11 +41,8 @@ export function BillingOwnerControls({
   onUpdatePlan,
 }: BillingOwnerControlsProps) {
   return (
-    <details className="min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(20,24,36,0.88)] px-4 py-5 sm:px-5">
-      <summary className="cursor-pointer list-none text-lg font-semibold text-[var(--text)]">
-        Plan controls
-      </summary>
-      <div className="mt-4 space-y-6">
+    <DisclosurePanel title="Plan controls" className="min-w-0">
+      <div className="space-y-6">
         <div className="space-y-3">
           <div className="text-sm font-semibold">Scheduled downgrade</div>
           {pendingDowngradeDetail ? (
@@ -58,7 +56,7 @@ export function BillingOwnerControls({
             </div>
           ) : (
             <div className="space-y-3">
-              <Select value={downgradePlan} onChange={(event) => onDowngradePlanChange(event.target.value)}>
+              <Select aria-label="Select plan to schedule downgrade" value={downgradePlan} onChange={(event) => onDowngradePlanChange(event.target.value)}>
                 {planOptions.map((plan) => (
                   <option key={plan.id} value={plan.id}>
                     {plan.name}
@@ -79,7 +77,7 @@ export function BillingOwnerControls({
               This emergency control is enabled by environment flag. Keep it off for normal billing so Razorpay stays the
               only upgrade path.
             </div>
-            <Select value={overridePlan} onChange={(event) => onOverridePlanChange(event.target.value)}>
+            <Select aria-label="Select plan for manual org override" value={overridePlan} onChange={(event) => onOverridePlanChange(event.target.value)}>
               {planOptions.map((plan) => (
                 <option key={plan.id} value={plan.id}>
                   {plan.name}
@@ -98,6 +96,6 @@ export function BillingOwnerControls({
           </div>
         ) : null}
       </div>
-    </details>
+    </DisclosurePanel>
   );
 }

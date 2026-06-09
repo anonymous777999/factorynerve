@@ -54,26 +54,26 @@ export function GuidanceBlock({
   const isExpanded = ready ? expanded : false;
 
   return (
-    <section className={cn("overflow-hidden rounded-[1.6rem] border border-[var(--border)] bg-[var(--card)]", className)}>
+    <section className={cn("overflow-hidden rounded-panel border border-border-default bg-surface-card", className)}>
       <button
         type="button"
-        className="flex w-full items-start justify-between gap-4 px-5 py-4 text-left"
+        className="flex w-full items-start justify-between gap-md px-lg py-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-inset"
         onClick={() => setExpanded(!isExpanded)}
         aria-expanded={isExpanded}
       >
         <div>
-          <div className={cn("text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]", eyebrowClassName)}>
+          <div className={cn("text-label-dense font-semibold uppercase tracking-wide text-text-tertiary", eyebrowClassName)}>
             {eyebrow}
           </div>
-          <div className={cn("mt-1 text-lg font-semibold text-[var(--text)]", titleClassName)}>{title}</div>
-          {summary ? <div className={cn("mt-2 text-sm leading-6 text-[var(--muted)]", summaryClassName)}>{summary}</div> : null}
+          <div className={cn("mt-xs text-panel-title font-semibold text-text-primary", titleClassName)}>{title}</div>
+          {summary ? <div className={cn("mt-sm text-body text-text-secondary", summaryClassName)}>{summary}</div> : null}
         </div>
-        <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
+        <span className="shrink-0 text-label-dense font-semibold uppercase tracking-wide text-workflow-active">
           {isExpanded ? expandedLabel : collapsedLabel}
         </span>
       </button>
       {isExpanded ? (
-        <div className={cn("border-t border-[var(--border)] px-5 py-5", contentClassName)}>
+        <div className={cn("border-t border-border-subtle px-lg py-lg", contentClassName)}>
           {children}
         </div>
       ) : null}

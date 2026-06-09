@@ -45,6 +45,7 @@ import { SettingsUsageTab } from "@/components/settings-usage-tab";
 import { SettingsUsersTab } from "@/components/settings-users-tab";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 
 const USER_ROLES = ["attendance", "operator", "supervisor", "accountant", "manager", "admin", "owner"];
 const SETTINGS_TABS: SettingsTabKey[] = ["factory", "users", "usage", "alerts", "feedback"];
@@ -469,7 +470,7 @@ export default function SettingsPage() {
                 </Button>
               </Link>
               <Link href="/reports">
-                <Button variant="outline">{t("dashboard.action.open_reports", "Open Reports")}</Button>
+                <Button variant="ghost">{t("dashboard.action.open_reports", "Open Reports")}</Button>
               </Link>
             </div>
           </CardContent>
@@ -478,10 +479,49 @@ export default function SettingsPage() {
     );
   }
 
+  const settingsMetrics = [
+    {
+      id: "current-factory",
+      label: t("settings.cards.current_factory", "Current Factory"),
+      value: factory.factory_name || user.factory_name || "-",
+      detail: `${factory.industry_label || factory.factory_type || t("settings.cards.factory_type_empty", "Factory type not set yet.")} · ${factory.workflow_template_label || t("settings.cards.no_template", "No template")}`,
+    },
+    {
+      id: "factory-network",
+      label: t("settings.cards.factory_network", "Factory Network"),
+      value: controlTower?.organization.total_factories || factoryDirectory.length || 1,
+      detail:
+        controlTower?.organization.industry_breakdown.length
+          ? controlTower.organization.industry_breakdown
+              .map((item) => `${item.industry_label}: ${item.count}`)
+              .join(" · ")
+          : t("settings.cards.factory_network_empty", "Visible factories in your current organization."),
+    },
+    {
+      id: "active-users",
+      label: t("settings.cards.active_users", "Active Users"),
+      value: activeCount,
+      detail: t("settings.cards.plan_status", "Plan {{plan}} · Billing status: {{status}}", {
+        plan: billing?.plan || usage?.plan || "-",
+        status: billing?.status || "-",
+      }),
+    },
+  ];
+
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
+    <OperationalPageShell
+      className="factory-workstation-scope"
+      contentClassName="mx-auto max-w-7xl space-y-6"
+      eyebrow={t("settings.title", "Settings")}
+      title={t("settings.hero.title", "Keep factory setup and team control in one admin lane")}
+      description={t(
+        "settings.hero.subtitle",
+        "Update factory setup, manage people, and check plan posture without leaving the admin workspace.",
+      )}
+      metrics={settingsMetrics}
+    >
         <SettingsShell
+          embedded
           title={t("settings.title", "Settings")}
           heroTitle={t("settings.hero.title", "Keep factory setup and team control in one admin lane")}
           heroSubtitle={t(
@@ -714,9 +754,16 @@ export default function SettingsPage() {
           ) : null}
         </SettingsShell>
 
-        {status ? <div className="text-sm text-green-400">{status}</div> : null}
-        {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
-      </div>
-    </main>
+        {status ? (
+          <div className="rounded-panel border border-status-success-border bg-status-success-bg px-4 py-3 text-sm text-status-success-fg">
+            {status}
+          </div>
+        ) : null}
+        {error || sessionError ? (
+          <div className="rounded-panel border border-status-danger-border bg-status-danger-bg px-4 py-3 text-sm text-status-danger-fg">
+            {error || sessionError}
+          </div>
+        ) : null}
+    </OperationalPageShell>
   );
 }

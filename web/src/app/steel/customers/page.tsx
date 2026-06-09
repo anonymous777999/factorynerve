@@ -1,5 +1,5 @@
-import { SteelCustomersPage } from "@/components/steel-customers-page";
+import { SteelCustomersWorkspace } from "@/features/steel";
 
 export default function SteelCustomersRoute() {
-  return <SteelCustomersPage />;
+  return <SteelCustomersWorkspace />;
 }

@@ -12,14 +12,17 @@ import {
   approveOcrVerification,
   createOcrVerification,
   getOcrVerification,
+  listOcrHistory,
   listOcrTemplates,
   listOcrVerifications,
   rejectOcrVerification,
   submitOcrVerification,
   updateOcrVerification,
+  type OcrHistoryItem,
   type OcrTemplate,
   type OcrVerificationRecord,
   type OcrVerificationSavePayload,
+  type OcrVerificationListFilters,
 } from "@/lib/ocr";
 
 function sortVerifications(records: OcrVerificationRecord[]) {
@@ -37,6 +40,28 @@ function sortVerifications(records: OcrVerificationRecord[]) {
   };
 
   return [...records].sort((left, right) => {
+    if (weight(right.status) !== weight(left.status)) {
+      return weight(right.status) - weight(left.status);
+    }
+    return new Date(right.updated_at || 0).getTime() - new Date(left.updated_at || 0).getTime();
+  });
+}
+
+function sortHistoryItems(items: OcrHistoryItem[]) {
+  const weight = (status: OcrHistoryItem["status"]) => {
+    switch (status) {
+      case "pending":
+        return 4;
+      case "rejected":
+        return 3;
+      case "draft":
+        return 2;
+      default:
+        return 1;
+    }
+  };
+
+  return [...items].sort((left, right) => {
     if (weight(right.status) !== weight(left.status)) {
       return weight(right.status) - weight(left.status);
     }
@@ -81,15 +106,40 @@ export function useOcrVerifyQueueQuery(filters: OcrVerifyQueueFilters, enabled: 
   });
 }
 
+export function useOcrHistoryQuery(filters: OcrVerifyQueueFilters, enabled: boolean) {
+  const queryFilters: OcrVerificationListFilters = {
+    search: filters.search || undefined,
+    status: filters.status !== "all" ? filters.status : undefined,
+    exportState: filters.exportState && filters.exportState !== "all" ? filters.exportState : undefined,
+    documentType: filters.documentType || undefined,
+    reviewerId: filters.reviewerId,
+    minConfidence: filters.minConfidence ?? undefined,
+    maxConfidence: filters.maxConfidence ?? undefined,
+    updatedAfter: filters.updatedAfter || undefined,
+    updatedBefore: filters.updatedBefore || undefined,
+  };
+
+  return useQuery<OcrHistoryItem[]>({
+    queryKey: queryKeys.ocrVerify.history(filters),
+    queryFn: async ({ signal }) => {
+      const page = await listOcrHistory(queryFilters, null, 100, { signal });
+      return page.items;
+    },
+    select: (items) => sortHistoryItems(items),
+    enabled,
+  });
+}
+
 export function useOcrVerifyDetailQuery(id: number | null, enabled: boolean) {
   return useQuery<OcrVerificationRecord>({
-    queryKey: id != null ? queryKeys.ocrVerify.detail(id) : [...queryKeys.ocrVerify.root(), "detail", "idle"],
+    queryKey: id != null ? queryKeys.ocrVerify.detail(id) : queryKeys.ocrVerify.detailIdle(),
     queryFn: ({ signal }) => getOcrVerification(id as number, { signal }),
     enabled: enabled && id != null,
   });
 }
 
 export function useOcrVerifyRecordMutation<TVariables>(
+  invalidationMode: "create" | "update",
   options: UseMutationOptions<OcrVerificationRecord, Error, TVariables>,
 ) {
   const queryClient = useQueryClient();
@@ -98,14 +148,18 @@ export function useOcrVerifyRecordMutation<TVariables>(
     ...options,
     onSuccess: async (record, variables, onMutateResult, context) => {
       queryClient.setQueryData(queryKeys.ocrVerify.detail(record.id), record);
-      await queryClient.invalidateQueries({ queryKey: queryKeys.ocrVerify.root() });
+      if (invalidationMode === "update") {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.ocrVerify.detail(record.id) });
+      }
+      await queryClient.invalidateQueries({ queryKey: queryKeys.ocrVerify.queueRoot() });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.ocrVerify.historyRoot() });
       await options.onSuccess?.(record, variables, onMutateResult, context);
     },
   });
 }
 
 export function useCreateOcrVerificationMutation() {
-  return useOcrVerifyRecordMutation<OcrVerificationSavePayload>({
+  return useOcrVerifyRecordMutation<OcrVerificationSavePayload>("create", {
     mutationFn: createOcrVerification,
   });
 }
@@ -114,19 +168,19 @@ export function useUpdateOcrVerificationMutation() {
   return useOcrVerifyRecordMutation<{
     id: number;
     payload: Omit<OcrVerificationSavePayload, "file">;
-  }>({
+  }>("update", {
     mutationFn: ({ id, payload }) => updateOcrVerification(id, payload),
   });
 }
 
 export function useSubmitOcrVerificationMutation() {
-  return useOcrVerifyRecordMutation<{ id: number; reviewerNotes?: string }>({
+  return useOcrVerifyRecordMutation<{ id: number; reviewerNotes?: string }>("update", {
     mutationFn: ({ id, reviewerNotes }) => submitOcrVerification(id, reviewerNotes),
   });
 }
 
 export function useApproveOcrVerificationMutation() {
-  return useOcrVerifyRecordMutation<{ id: number; reviewerNotes?: string }>({
+  return useOcrVerifyRecordMutation<{ id: number; reviewerNotes?: string }>("update", {
     mutationFn: ({ id, reviewerNotes }) => approveOcrVerification(id, reviewerNotes),
   });
 }
@@ -136,7 +190,7 @@ export function useRejectOcrVerificationMutation() {
     id: number;
     rejectionReason: string;
     reviewerNotes?: string;
-  }>({
+  }>("update", {
     mutationFn: ({ id, rejectionReason, reviewerNotes }) =>
       rejectOcrVerification(id, rejectionReason, reviewerNotes),
   });

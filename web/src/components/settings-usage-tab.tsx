@@ -8,61 +8,57 @@ type SettingsUsageTabProps = {
   usage: UsageSummary | null;
 };
 
+function StatCard({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-panel border border-border-subtle bg-surface-shell p-4">
+      <div className="text-label-dense font-medium text-text-tertiary">{label}</div>
+      <div className="mt-1 font-mono text-xl font-semibold tabular-nums text-text-primary">{value}</div>
+    </div>
+  );
+}
+
 export function SettingsUsageTab({ billing, usage }: SettingsUsageTabProps) {
   return (
     <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">Usage Summary</CardTitle>
+          <CardTitle>Usage summary</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-              <div className="text-sm text-[var(--muted)]">Requests Used</div>
-              <div className="mt-1 text-xl font-semibold">{usage?.requests_used ?? 0}</div>
-            </div>
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-              <div className="text-sm text-[var(--muted)]">Credits Used</div>
-              <div className="mt-1 text-xl font-semibold">{usage?.credits_used ?? 0}</div>
-            </div>
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-              <div className="text-sm text-[var(--muted)]">Request Limit</div>
-              <div className="mt-1 text-xl font-semibold">{usage?.max_requests || "Unlimited"}</div>
-            </div>
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-              <div className="text-sm text-[var(--muted)]">Rate Limit / min</div>
-              <div className="mt-1 text-xl font-semibold">{usage?.rate_limit_per_minute ?? "-"}</div>
-            </div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <StatCard label="Requests used" value={usage?.requests_used ?? 0} />
+            <StatCard label="Credits used" value={usage?.credits_used ?? 0} />
+            <StatCard label="Request limit" value={usage?.max_requests || "Unlimited"} />
+            <StatCard label="Rate limit / min" value={usage?.rate_limit_per_minute ?? "-"} />
           </div>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-xl">Billing Status</CardTitle>
+          <CardTitle>Billing status</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4 text-sm">
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-            <div className="text-[var(--muted)]">Plan</div>
-            <div className="mt-1 text-lg font-semibold">{billing?.plan || "-"}</div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <StatCard label="Plan" value={billing?.plan || "-"} />
+            <StatCard label="Status" value={billing?.status || "-"} />
           </div>
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-            <div className="text-[var(--muted)]">Status</div>
-            <div className="mt-1 text-lg font-semibold">{billing?.status || "-"}</div>
-          </div>
-          <div className="grid gap-4 md:grid-cols-2">
-            <div>
-              <div className="text-[var(--muted)]">Trial Ends</div>
-              <div>{billing?.trial_end_at || "-"}</div>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="rounded-panel border border-border-subtle bg-surface-shell p-4">
+              <div className="text-label-dense font-medium text-text-tertiary">Trial ends</div>
+              <div className="mt-1 font-mono text-sm text-text-primary">{billing?.trial_end_at || "-"}</div>
             </div>
-            <div>
-              <div className="text-[var(--muted)]">Current Period End</div>
-              <div>{billing?.current_period_end_at || "-"}</div>
+            <div className="rounded-panel border border-border-subtle bg-surface-shell p-4">
+              <div className="text-label-dense font-medium text-text-tertiary">Period end</div>
+              <div className="mt-1 font-mono text-sm text-text-primary">{billing?.current_period_end_at || "-"}</div>
             </div>
           </div>
           {billing?.pending_plan ? (
-            <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
-              Pending plan: {billing.pending_plan} effective at {billing.pending_plan_effective_at || "-"}
+            <div className="rounded-panel border border-border-subtle bg-surface-shell p-4 text-sm text-text-secondary">
+              Pending plan: <span className="font-medium text-text-primary">{billing.pending_plan}</span>
+              {billing.pending_plan_effective_at ? (
+                <span className="ml-2 text-text-tertiary">effective {billing.pending_plan_effective_at}</span>
+              ) : null}
             </div>
           ) : null}
         </CardContent>

@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { CameraCapture } from "@/components/ocr/camera-capture";
 import { EditToolbar } from "@/components/ocr/edit-toolbar";
@@ -16,10 +16,14 @@ import { RawDataView } from "@/components/ocr/RawDataView";
 import { ShareLinkGenerator } from "@/components/ocr/share-link-generator";
 import { UploadBox } from "@/components/ocr/upload-box";
 import { Button } from "@/components/ui/button";
+import { PanelToggleButton } from "@/components/ui/panel-toggle-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmationModal } from "@/components/ui/confirmation-modal";
 import { Select } from "@/components/ui/select";
 import { USE_TANSTACK_TABLE } from "@/config/featureFlags";
 import { formatApiErrorMessage } from "@/lib/api";
+import { warmBackendConnection } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 import { pushAppToast } from "@/lib/toast";
 import { transferBlob } from "@/lib/blob-transfer";
 import { rasterizeDocumentForOcr } from "@/lib/document-rasterize";
@@ -53,12 +57,11 @@ import {
 } from "@/lib/ocr-export";
 import {
   clearOcrUiState,
-  dataUrlToFile,
-  fileToDataUrl,
   loadOcrUiState,
   saveOcrUiState,
 } from "@/lib/ocr-ui-state";
-import { warmBackendConnection } from "@/lib/auth";
+import { useOcrScanRouteState } from "@/hooks/use-ocr-scan-route-state";
+import { queryKeys } from "@/lib/query-keys";
 import { useSession } from "@/lib/use-session";
 import { signalWorkflowRefresh } from "@/lib/workflow-sync";
 
@@ -67,13 +70,13 @@ const DataTableGrid = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="rounded-[28px] border border-[#e3e8ef] bg-white p-6">
-        <div className="h-5 w-36 animate-pulse rounded-full bg-[#e6ebf1]" />
+      <div className="rounded-panel border border-border-subtle bg-surface-card p-6">
+        <div className="h-5 w-36 animate-pulse rounded-full bg-surface-skeleton" />
         <div className="mt-5 grid gap-2">
           {Array.from({ length: 5 }, (_, rowIndex) => (
             <div key={rowIndex} className="grid grid-cols-4 gap-2">
               {Array.from({ length: 4 }, (_, columnIndex) => (
-                <div key={`${rowIndex}-${columnIndex}`} className="h-10 animate-pulse rounded-[14px] bg-[#f4f6f8]" />
+                <div key={`${rowIndex}-${columnIndex}`} className="h-10 animate-pulse rounded-md bg-surface-skeleton" />
               ))}
             </div>
           ))}
@@ -88,13 +91,13 @@ const OcrSpreadsheetGrid = dynamic(
   {
     ssr: false,
     loading: () => (
-      <div className="rounded-[28px] border border-[#e3e8ef] bg-white p-6">
-        <div className="h-5 w-36 animate-pulse rounded-full bg-[#e6ebf1]" />
+      <div className="rounded-panel border border-border-subtle bg-surface-card p-6">
+        <div className="h-5 w-36 animate-pulse rounded-full bg-surface-skeleton" />
         <div className="mt-5 grid gap-2">
           {Array.from({ length: 5 }, (_, rowIndex) => (
             <div key={rowIndex} className="grid grid-cols-4 gap-2">
               {Array.from({ length: 4 }, (_, columnIndex) => (
-                <div key={`${rowIndex}-${columnIndex}`} className="h-10 animate-pulse rounded-[14px] bg-[#f4f6f8]" />
+                <div key={`${rowIndex}-${columnIndex}`} className="h-10 animate-pulse rounded-md bg-surface-skeleton" />
               ))}
             </div>
           ))}
@@ -110,6 +113,7 @@ type OcrColumnType = "text" | "number" | "date";
 type ActiveCell = { row: number; column: number } | null;
 type ModelOption = "auto" | "claude-haiku-4-5-20251001" | "claude-sonnet-4-6" | "claude-opus-4-7";
 type ViewMode = "spreadsheet" | "raw";
+type ImageFitMode = "free" | "width" | "height";
 
 type ResultPreview = {
   type: string;
@@ -364,14 +368,6 @@ function extractPreviewTable(result: OcrPreviewResult) {
     Array.from({ length: columnCount }, (_, index) => stringifySheetCell(row[index])),
   );
 
-  console.log("EXTRACT OUTPUT:", {
-    sheetHeaders,
-    sheetRows,
-    normalizedHeaders,
-    normalizedRows,
-    willCreateSheets: normalizedRows.length > 0
-  });
-
   return {
     sheets: normalizedRows.length
       ? [{ columns: normalizedHeaders, rows: normalizedRows }]
@@ -583,20 +579,18 @@ function buildBoundingBox(
 }
 
 function statusBannerClass(tone: "error" | "success" | "warning") {
-  if (tone === "success") return "border-emerald-200 bg-emerald-50 text-emerald-900";
-  if (tone === "warning") return "border-amber-200 bg-amber-50 text-amber-900";
-  return "border-red-200 bg-red-50 text-red-900";
+  if (tone === "success") return "factory-ocr-status";
+  if (tone === "warning") return "factory-ocr-status";
+  return "factory-ocr-status";
 }
 
 export default function OcrScanPage() {
-  const pathname = usePathname();
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const queryClient = useQueryClient();
+  const route = useOcrScanRouteState();
   const { user, loading, error: sessionError } = useSession();
   const { isMobile, ready: deviceReady } = useOcrDevice();
 
   const [step, setStep] = useState<OcrFlowStep>("upload");
-  const [cameraOpen, setCameraOpen] = useState(false);
   const [processingStage, setProcessingStage] = useState<ProcessingStage>("uploaded");
   const [busy, setBusy] = useState(false);
   const [savingDraft, setSavingDraft] = useState(false);
@@ -604,6 +598,7 @@ export default function OcrScanPage() {
   const [shareBusy, setShareBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [statusTone, setStatusTone] = useState<"error" | "success" | "warning">("success");
+  const [draftSaveError, setDraftSaveError] = useState("");
   const [remoteUrl, setRemoteUrl] = useState("");
   const [recentRecords, setRecentRecords] = useState<OcrVerificationRecord[]>([]);
   const [sourceFilename, setSourceFilename] = useState("");
@@ -619,39 +614,54 @@ export default function OcrScanPage() {
   const [confidenceMatrix, setConfidenceMatrix] = useState<OcrConfidenceMatrix>([]);
   const [editableHeaders, setEditableHeaders] = useState<string[]>([]);
   const [editableRows, setEditableRows] = useState<OcrCell[][]>([]);
+  // TODO: requires backend endpoint for persistence
   const [columnTypes, setColumnTypes] = useState<OcrColumnType[]>([]);
+  // TODO: requires backend endpoint for persistence
   const [headerRowEnabled, setHeaderRowEnabled] = useState(false);
+  // TODO: requires backend endpoint for persistence
   const [showLowConfidence, setShowLowConfidence] = useState(true);
+  // TODO: requires backend endpoint for persistence
   const [activeCell, setActiveCell] = useState<ActiveCell>(null);
+  // TODO: requires backend endpoint for persistence
   const [zoom, setZoom] = useState(1);
+  const [imageFitMode, setImageFitMode] = useState<ImageFitMode>("width");
+  const [magnifierEnabled, setMagnifierEnabled] = useState(false);
+  const [magnifierPoint, setMagnifierPoint] = useState({ x: 50, y: 50, visible: false });
   const [documentHash, setDocumentHash] = useState<string | null>(null);
   const [savedId, setSavedId] = useState<number | null>(null);
   const [draftDirty, setDraftDirty] = useState(false);
   const [shareLink, setShareLink] = useState<string | null>(null);
+
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+  const [pendingCancelAction, setPendingCancelAction] = useState<(() => void) | null>(null);
+  const [confirmTitle, setConfirmTitle] = useState("Replace existing scan?");
+  const [confirmDescription, setConfirmDescription] = useState(
+    "This will overwrite your current scan. This cannot be undone.",
+  );
+  const [confirmLabel, setConfirmLabel] = useState("Replace");
   const [shareExpiresAt, setShareExpiresAt] = useState<string | null>(null);
+  // TODO: requires backend endpoint for persistence
   const [selectedModel, setSelectedModel] = useState<ModelOption>("auto");
   const [restored, setRestored] = useState(false);
+  // TODO: requires backend endpoint for persistence
   const [viewMode, setViewMode] = useState<ViewMode>("spreadsheet");
+  const [reviewRailCollapsed, setReviewRailCollapsed] = useState(false);
   const [imageLoadError, setImageLoadError] = useState(false);
   const [imageRetryCount, setImageRetryCount] = useState(0);
 
   const uploadInputRef = useRef<HTMLInputElement | null>(null);
+  const sourceViewerRef = useRef<HTMLDivElement | null>(null);
+  const sourceDragRef = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const historyRef = useRef<TableSnapshot[]>([]);
   const historyIndexRef = useRef(-1);
   const imageRetryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [, setHistoryVersion] = useState(0);
 
   const canUseOcr = canUseOcrScan(user?.role);
-  const requestedStep = useMemo(
-    () => normalizeOcrFlowStep(searchParams.get("step")),
-    [searchParams],
-  );
-  const requestedVerificationId = useMemo(() => {
-    const raw = searchParams.get("verification_id");
-    if (!raw) return null;
-    const parsed = Number(raw);
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : null;
-  }, [searchParams]);
+  const requestedStep = route.step;
+  const requestedVerificationId = route.verificationId;
+  const cameraOpen = route.panel === "camera";
   const displayPreviewUrl = preparedPreviewUrl || originalUrl;
   const rerunSourceFile = originalFile || preparedPreviewFile || finalUploadFile;
   const canRerunWithSelectedModel = Boolean(rerunSourceFile);
@@ -674,6 +684,77 @@ export default function OcrScanPage() {
       ),
     [activeCell, editableHeaders.length, editableRows.length, resultPreview?.scanQuality],
   );
+  const suspiciousRowCount = useMemo(() => {
+    const rows = new Set<number>();
+    confidenceMatrix.forEach((row, rowIndex) => {
+      if (row.some((confidence) => confidence != null && confidence < 0.78)) {
+        rows.add(rowIndex);
+      }
+    });
+    editableRows.forEach((row, rowIndex) => {
+      if (row.some((cell) => typeof cell === "object" && cell.reviewRequired)) {
+        rows.add(rowIndex);
+      }
+    });
+    return rows.size;
+  }, [confidenceMatrix, editableRows]);
+  const activeCellLabel = activeCell
+    ? `R${activeCell.row + 1}: ${editableHeaders[activeCell.column] || `Column ${activeCell.column + 1}`}`
+    : "No cell selected";
+  const scanQualityBand = resultPreview?.scanQuality?.confidence_band || "review";
+  const scanLooksBlurry = scanQualityBand === "low" || Boolean(
+    resultPreview?.warnings.some((warning) => warning.toLowerCase().includes("blur")),
+  );
+
+  const updateMagnifierPoint = useCallback((event: PointerEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = ((event.clientX - rect.left) / Math.max(rect.width, 1)) * 100;
+    const y = ((event.clientY - rect.top) / Math.max(rect.height, 1)) * 100;
+    setMagnifierPoint({
+      x: Math.max(0, Math.min(100, x)),
+      y: Math.max(0, Math.min(100, y)),
+      visible: true,
+    });
+  }, []);
+
+  const handleSourcePointerDown = useCallback((event: PointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    const viewer = sourceViewerRef.current;
+    if (!viewer) return;
+    sourceDragRef.current = {
+      x: event.clientX,
+      y: event.clientY,
+      left: viewer.scrollLeft,
+      top: viewer.scrollTop,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }, []);
+
+  const handleSourcePointerMove = useCallback((event: PointerEvent<HTMLDivElement>) => {
+    updateMagnifierPoint(event);
+    const viewer = sourceViewerRef.current;
+    const drag = sourceDragRef.current;
+    if (!viewer || !drag) return;
+    viewer.scrollLeft = drag.left - (event.clientX - drag.x);
+    viewer.scrollTop = drag.top - (event.clientY - drag.y);
+  }, [updateMagnifierPoint]);
+
+  const handleSourcePointerUp = useCallback((event: PointerEvent<HTMLDivElement>) => {
+    sourceDragRef.current = null;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+  }, []);
+
+  const resetImageInspection = useCallback(() => {
+    setZoom(1);
+    setImageFitMode("width");
+    setMagnifierPoint((point) => ({ ...point, visible: false }));
+    if (sourceViewerRef.current) {
+      sourceViewerRef.current.scrollLeft = 0;
+      sourceViewerRef.current.scrollTop = 0;
+    }
+  }, []);
 
   const applySnapshot = useCallback((snapshot: TableSnapshot) => {
     setEditableHeaders(snapshot.headers);
@@ -708,10 +789,6 @@ export default function OcrScanPage() {
   const canUndo = historyIndexRef.current > 0;
   const canRedo = historyIndexRef.current >= 0 && historyIndexRef.current < historyRef.current.length - 1;
 
-  useEffect(() => {
-    console.info("[OCR] Model selection changed", selectedModel);
-  }, [selectedModel]);
-
   const loadRecentRecords = useCallback(async () => {
     try {
       const records = await listOcrVerifications();
@@ -725,22 +802,6 @@ export default function OcrScanPage() {
     if (!canUseOcr) return;
     void loadRecentRecords();
   }, [canUseOcr, loadRecentRecords]);
-
-  const replaceWorkflowRoute = useCallback((nextStep: OcrFlowStep, verificationId: number | null) => {
-    const next = new URLSearchParams(searchParams.toString());
-    next.set("step", nextStep);
-    if (verificationId != null) {
-      next.set("verification_id", String(verificationId));
-    } else {
-      next.delete("verification_id");
-    }
-    const query = next.toString();
-    const nextHref = query ? `${pathname}?${query}` : pathname;
-    const currentHref = searchParams.toString() ? `${pathname}?${searchParams.toString()}` : pathname;
-    if (nextHref !== currentHref) {
-      router.replace(nextHref, { scroll: false });
-    }
-  }, [pathname, router, searchParams]);
 
   useEffect(() => {
     if (!originalUrl || !originalUrl.startsWith("blob:")) return;
@@ -816,162 +877,100 @@ export default function OcrScanPage() {
     }
   }, [resetHistory]);
 
+  const restorePersistedDraft = useCallback(async () => {
+    const persisted = loadOcrUiState();
+    if (!persisted) {
+      setStep("upload");
+      return;
+    }
+
+    if (persisted.savedId) {
+      await openRecentRecord(persisted.savedId, {
+        statusMessage: `Recovered OCR draft #${persisted.savedId}.`,
+        targetStep: normalizeOcrFlowStep(persisted.step) ?? "preview",
+      });
+      return;
+    }
+
+    const restoredStep = normalizeOcrFlowStep(persisted.step) ?? "upload";
+    const safeStep =
+      restoredStep === "processing" && !persisted.rows?.length
+        ? "upload"
+        : restoredStep;
+
+    setStep(safeStep);
+    setSourceFilename(persisted.fileName || "");
+    setOriginalUrl(persisted.imageDataUrl?.startsWith("data:") ? persisted.imageDataUrl : "");
+    setPreparedPreviewUrl(
+      persisted.preparedImageDataUrl?.startsWith("data:") ? persisted.preparedImageDataUrl : "",
+    );
+    setResultPreview(
+      persisted.headers?.length || persisted.rows?.length
+        ? {
+          type: persisted.resultType || "table",
+          title: persisted.title || persisted.fileName || "OCR Extraction",
+          headers: persisted.headers || [],
+          rows: cloneRows((persisted.rows as OcrCell[][] | undefined) || []),
+          rawText: persisted.rawText ?? null,
+          language: persisted.language || "auto",
+          avgConfidence: persisted.confidence ?? null,
+          warnings: persisted.warnings || [],
+          scanQuality: persisted.scanQuality ?? null,
+          routingMeta: persisted.routingMeta ?? null,
+          routingLabel: persisted.routingMeta?.model_tier ?? null,
+          tokenUsage: persisted.tokenUsage ?? null,
+          debug: persisted.debug ?? null,
+          reused: false,
+        }
+        : null,
+    );
+    setEditableHeaders(persisted.headers || []);
+    setEditableRows(cloneRows((persisted.rows as OcrCell[][] | undefined) || []));
+    setColumnTypes(persisted.columnTypes || []);
+    setHeaderRowEnabled(Boolean(persisted.headerRowEnabled));
+    setShowLowConfidence(persisted.showLowConfidence ?? true);
+    setDocumentHash(persisted.documentHash ?? null);
+    setSelectedModel(toModelOption(persisted.selectedModel));
+    setViewMode("spreadsheet");
+    setStatus(
+      safeStep === "upload" && restoredStep === "processing"
+        ? "Previous OCR processing was interrupted. Re-run the document when ready."
+        : persisted.status || "Recovered local OCR draft.",
+    );
+    setStatusTone(safeStep === "upload" && restoredStep === "processing" ? "warning" : "success");
+    resetHistory({
+      headers: persisted.headers || [],
+      rows: cloneRows((persisted.rows as OcrCell[][] | undefined) || []),
+      columnTypes: persisted.columnTypes || inferColumnTypes((persisted.rows as OcrCell[][] | undefined) || [], (persisted.headers || []).length),
+      headerRowEnabled: Boolean(persisted.headerRowEnabled),
+    });
+  }, [openRecentRecord, resetHistory]);
+
   useEffect(() => {
     if (restored || typeof window === "undefined") return;
     if (requestedVerificationId != null) {
       void openRecentRecord(requestedVerificationId, {
         statusMessage: `Opened OCR draft #${requestedVerificationId}.`,
-        targetStep: requestedStep ?? undefined,
+        targetStep: requestedStep,
       }).finally(() => {
         setRestored(true);
       });
       return;
     }
-    const snapshot = loadOcrUiState();
-    if (!snapshot) {
-      setStep(requestedStep || "upload");
-      setRestored(true);
-      return;
-    }
 
-    let cancelled = false;
-    void (async () => {
-      if (snapshot.imageDataUrl && snapshot.fileName && snapshot.fileType) {
-        const file = await dataUrlToFile(snapshot.imageDataUrl, snapshot.fileName, snapshot.fileType);
-        if (cancelled) return;
-        setSourceFilename(snapshot.fileName || "");
-        setOriginalFile(file);
-        setOriginalUrl(snapshot.imageDataUrl);
-      }
-      if (snapshot.preparedImageDataUrl && snapshot.fileName && snapshot.fileType) {
-        const file = await dataUrlToFile(snapshot.preparedImageDataUrl, snapshot.fileName, snapshot.fileType);
-        if (cancelled) return;
-        setPreparedPreviewFile(file);
-        setPreparedPreviewUrl(snapshot.preparedImageDataUrl);
-      }
-      if (cancelled) return;
-      const restoredStep =
-        snapshot.step === "entry"
-          ? "upload"
-          : snapshot.step === "result"
-            ? "preview"
-            : snapshot.step === "prepare"
-              ? "preview"
-              : (snapshot.step as OcrFlowStep) || "upload";
-      setStep(requestedStep || restoredStep);
-      setStatus(snapshot.status || "");
-      setDocumentHash(snapshot.documentHash || null);
-      setSavedId(snapshot.savedId ?? null);
-      setSelectedModel(toModelOption(snapshot.selectedModel));
-      setShowLowConfidence(snapshot.showLowConfidence ?? true);
-      setHeaderRowEnabled(snapshot.headerRowEnabled ?? false);
-      if (snapshot.title || snapshot.headers?.length || snapshot.rows?.length) {
-        const headers = snapshot.headers || defaultHeaders((snapshot.rows?.[0] || []).length || 1);
-        const rows = snapshot.rows || [];
-        const nextTypes = snapshot.columnTypes || inferColumnTypes(rows, headers.length);
-        setResultPreview({
-          type: snapshot.resultType || "table",
-          title: snapshot.title || "OCR Extraction",
-          headers,
-          rows,
-          rawText: snapshot.rawText ?? null,
-          language: snapshot.language || "auto",
-          avgConfidence: snapshot.confidence ?? null,
-          warnings: snapshot.warnings || [],
-          scanQuality: snapshot.scanQuality ?? null,
-          routingMeta: snapshot.routingMeta ?? null,
-          routingLabel: snapshot.routingMeta?.model_tier ?? null,
-          tokenUsage: snapshot.tokenUsage ?? snapshot.routingMeta?.usage ?? null,
-          debug: snapshot.debug ?? buildDebugPayloadFromRouting(snapshot.routingMeta, snapshot.tokenUsage ?? snapshot.routingMeta?.usage ?? null),
-        });
-        resetHistory({
-          headers,
-          rows,
-          columnTypes: nextTypes,
-          headerRowEnabled: snapshot.headerRowEnabled ?? false,
-        });
-      }
+    void restorePersistedDraft().finally(() => {
       setRestored(true);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [openRecentRecord, requestedStep, requestedVerificationId, resetHistory, restored]);
+    });
+  }, [openRecentRecord, requestedStep, requestedVerificationId, restorePersistedDraft, restored]);
 
   useEffect(() => {
     if (!restored) return;
-    let cancelled = false;
-    void (async () => {
-      const imageDataUrl = await fileToDataUrl(originalFile);
-      const preparedImageDataUrl = await fileToDataUrl(preparedPreviewFile);
-      if (cancelled) return;
-      saveOcrUiState({
-        step,
-        fileName: sourceFilename || originalFile?.name,
-        fileType: originalFile?.type,
-        imageDataUrl,
-        preparedImageDataUrl,
-        headers: editableHeaders,
-        rows: editableRows,
-        columnTypes,
-        title: resultPreview?.title,
-        resultType: resultPreview?.type,
-        rawText: resultPreview?.rawText ?? null,
-        language: resultPreview?.language ?? "auto",
-        confidence: resultPreview?.avgConfidence ?? null,
-        warnings: resultPreview?.warnings ?? [],
-        scanQuality: resultPreview?.scanQuality ?? null,
-        routingMeta: resultPreview?.routingMeta ?? null,
-        tokenUsage: resultPreview?.tokenUsage ?? null,
-        debug: resultPreview?.debug ?? null,
-        documentHash,
-        savedId,
-        status,
-        selectedModel,
-        showLowConfidence,
-        headerRowEnabled,
-      });
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    columnTypes,
-    documentHash,
-    editableHeaders,
-    editableRows,
-    headerRowEnabled,
-    originalFile,
-    preparedPreviewFile,
-    restored,
-    resultPreview?.avgConfidence,
-    resultPreview?.debug,
-    resultPreview?.language,
-    resultPreview?.rawText,
-    resultPreview?.routingMeta,
-    resultPreview?.scanQuality,
-    resultPreview?.tokenUsage,
-    resultPreview?.title,
-    resultPreview?.type,
-    resultPreview?.warnings,
-    savedId,
-    selectedModel,
-    showLowConfidence,
-    sourceFilename,
-    status,
-    step,
-  ]);
-
-  useEffect(() => {
-    if (!restored) return;
-    replaceWorkflowRoute(step, savedId);
-  }, [replaceWorkflowRoute, restored, savedId, step]);
+    route.replaceStep(step, savedId);
+  }, [restored, route, savedId, step]);
 
   const resetFlow = useCallback(() => {
     setStep("upload");
     setBusy(false);
-    setCameraOpen(false);
     setProcessingStage("uploaded");
     setStatus("");
     setRemoteUrl("");
@@ -991,6 +990,9 @@ export default function OcrScanPage() {
     setShowLowConfidence(true);
     setActiveCell(null);
     setZoom(1);
+    setImageFitMode("width");
+    setMagnifierEnabled(false);
+    setMagnifierPoint({ x: 50, y: 50, visible: false });
     setDocumentHash(null);
     setSavedId(null);
     setDraftDirty(false);
@@ -1000,7 +1002,38 @@ export default function OcrScanPage() {
     historyRef.current = [];
     historyIndexRef.current = -1;
     clearOcrUiState();
-  }, []);
+    route.closeCamera();
+  }, [route]);
+
+  const persistDraftMutation = useMutation<
+    OcrVerificationRecord,
+    Error,
+    {
+      verificationId: number | null;
+      payload: Omit<Parameters<typeof updateOcrVerification>[1], never>;
+      file: File | null;
+    }
+  >({
+    mutationFn: async ({ verificationId, payload, file }) => {
+      if (verificationId) {
+        return updateOcrVerification(verificationId, payload);
+      }
+      return createOcrVerification({
+        ...payload,
+        file,
+      });
+    },
+    onSuccess: async (record) => {
+      setSavedId(record.id);
+      setDraftDirty(false);
+      setDraftSaveError("");
+      await queryClient.invalidateQueries({ queryKey: queryKeys.ocrVerify.detail(record.id) });
+      await queryClient.invalidateQueries({ queryKey: queryKeys.ocrVerify.queueRoot() });
+    },
+    onError: (error) => {
+      setDraftSaveError(formatApiErrorMessage(error, "Could not autosave this OCR draft."));
+    },
+  });
 
   const persistStructuredDraft = useCallback(async () => {
     if (!resultPreview) {
@@ -1026,15 +1059,13 @@ export default function OcrScanPage() {
     };
 
     setSavingDraft(true);
+    setDraftSaveError("");
     try {
-      const record = savedId
-        ? await updateOcrVerification(savedId, payload)
-        : await createOcrVerification({
-          ...payload,
-          file: finalUploadFile || preparedPreviewFile || originalFile,
-        });
-      setSavedId(record.id);
-      setDraftDirty(false);
+      const record = await persistDraftMutation.mutateAsync({
+        verificationId: savedId,
+        payload,
+        file: finalUploadFile || preparedPreviewFile || originalFile,
+      });
       return record;
     } finally {
       setSavingDraft(false);
@@ -1046,6 +1077,7 @@ export default function OcrScanPage() {
     finalUploadFile,
     originalFile,
     preparedPreviewFile,
+    persistDraftMutation,
     resultPreview,
     savedId,
     sourceFilename,
@@ -1068,9 +1100,66 @@ export default function OcrScanPage() {
             tone: "error",
           });
         });
-    }, 900);
+    }, 800);
     return () => window.clearTimeout(timer);
   }, [draftDirty, persistStructuredDraft, resultPreview]);
+
+  useEffect(() => {
+    if (!restored) {
+      return;
+    }
+
+    const shouldPersistLocally = !savedId || draftDirty || step === "processing";
+    if (!shouldPersistLocally) {
+      clearOcrUiState();
+      return;
+    }
+
+    saveOcrUiState({
+      step,
+      fileName: sourceFilename || originalFile?.name || "",
+      fileType: originalFile?.type || "",
+      imageDataUrl: originalUrl.startsWith("data:") ? originalUrl : null,
+      preparedImageDataUrl: preparedPreviewUrl.startsWith("data:") ? preparedPreviewUrl : null,
+      headers: editableHeaders,
+      rows: editableRows,
+      columnTypes,
+      title: resultPreview?.title,
+      resultType: resultPreview?.type,
+      rawText: resultPreview?.rawText ?? null,
+      language: resultPreview?.language ?? null,
+      confidence: resultPreview?.avgConfidence ?? null,
+      warnings: resultPreview?.warnings || [],
+      scanQuality: resultPreview?.scanQuality ?? null,
+      routingMeta: resultPreview?.routingMeta ?? null,
+      tokenUsage: resultPreview?.tokenUsage ?? null,
+      debug: resultPreview?.debug ?? null,
+      documentHash,
+      savedId,
+      status,
+      selectedModel,
+      showLowConfidence,
+      headerRowEnabled,
+    });
+  }, [
+    columnTypes,
+    documentHash,
+    draftDirty,
+    editableHeaders,
+    editableRows,
+    headerRowEnabled,
+    originalFile,
+    originalUrl,
+    preparedPreviewUrl,
+    restored,
+    resultPreview,
+    savedId,
+    selectedModel,
+    showLowConfidence,
+    sourceFilename,
+    status,
+    step,
+  ]);
 
   const processFile = useCallback(async (file: File, sourceName: string, model: ModelOption = "auto", forceRefresh = false) => {
     setBusy(true);
@@ -1113,8 +1202,6 @@ export default function OcrScanPage() {
 
       const extractTimer = window.setTimeout(() => setProcessingStage("extract"), 500);
       const confidenceTimer = window.setTimeout(() => setProcessingStage("confidence"), 1300);
-
-      console.info("[OCR] Selected model", model, "forceRefresh", forceRefresh);
       let result: OcrPreviewResult;
       try {
         result = await previewOcrLogbook({
@@ -1139,7 +1226,6 @@ export default function OcrScanPage() {
       const isLargeDataset = rowCount > 500 || colCount > 50;
 
       if (isLargeDataset) {
-        console.warn(`Large dataset detected: ${rowCount} rows × ${colCount} columns`);
         setProcessingWarning(
           `Large document (${rowCount} rows × ${colCount} columns). Performance may be affected.`
         );
@@ -1173,12 +1259,6 @@ export default function OcrScanPage() {
         reviewRequired: result.review_required ?? null,
       };
 
-      console.info("[OCR] OCR response", {
-        requestedModel: model,
-        finalModel: result.routing?.provider_model || result.routing?.selected_model || "unknown",
-        tokenUsage: result.token_usage ?? result.routing?.usage ?? null,
-      });
-
       setResultPreview(nextPreview);
       setConfidenceMatrix(result.cell_confidence || []);
       resetHistory({
@@ -1190,30 +1270,35 @@ export default function OcrScanPage() {
       setDraftDirty(false);
       setActiveCell(null);
       setZoom(1);
+      setImageFitMode("width");
+      setMagnifierPoint({ x: 50, y: 50, visible: false });
       setStep("preview");
 
-      let draftSaveFailed = false;
-      if (result.reused_verification_id) {
-        setSavedId(result.reused_verification_id);
-      } else {
-        // If this was a fresh scan after a cached one, check confidence delta
-        const previousConf = (result as any).previous_confidence;
-        if (forceRefresh && previousConf != null) {
-          if ((result as any).confidence_dropped) {
-            const keepOriginal = !window.confirm(
-              "Fresh scan looks less reliable than the saved result.\n\nDo you want to use the new result anyway? Click Cancel to keep your previous result."
-            );
-            if (keepOriginal) {
-              // Re-run without force_refresh to get the cached one back
-              void processFile(file, sourceName, model, false);
-              return;
-            }
-          } else if ((result as any).confidence_improved) {
-            setStatus("Scan updated with a cleaner read.");
+      const finalizeAfterSave = (draftSaveFailed: boolean) => {
+        if (!draftSaveFailed && !status) {
+          if (warpSkipped) {
+            setStatus("Sheet ready to review. Perspective correction was skipped for this image.");
+            setStatusTone("warning");
+          } else if (result.scan_quality?.confidence_band === "low") {
+            setStatus("Image quality may affect accuracy.");
+            setStatusTone("warning");
+          } else if (result.cached) {
+            const ageText = result.cache_age_hours ? ` (${Math.round(result.cache_age_hours)}h ago)` : "";
+            setStatus(`Instant result from cache${ageText}. Review before approval.`);
+            setStatusTone("success");
+          } else if (result.reused) {
+            setStatus("Existing OCR draft reopened.");
+            setStatusTone("success");
+          } else {
+            setStatus("Sheet ready to review.");
             setStatusTone("success");
           }
         }
+        signalWorkflowRefresh("ocr-scan");
+        void loadRecentRecords();
+      };
 
+      const saveDraft = async (): Promise<boolean> => {
         try {
           const saved = await createOcrVerification({
             templateId: null,
@@ -1235,35 +1320,49 @@ export default function OcrScanPage() {
             file: prepared.file,
           });
           setSavedId(saved.id);
+          return false;
         } catch (saveReason) {
-          draftSaveFailed = true;
           setSavedId(null);
           setStatus(humanDraftSaveError(saveReason));
           setStatusTone("warning");
+          return true;
         }
-      }
+      };
 
-      if (!draftSaveFailed && !status) {
-        if (warpSkipped) {
-          setStatus("Sheet ready to review. Perspective correction was skipped for this image.");
-          setStatusTone("warning");
-        } else if (result.scan_quality?.confidence_band === "low") {
-          setStatus("Image quality may affect accuracy.");
-          setStatusTone("warning");
-        } else if (result.cached) {
-          const ageText = result.cache_age_hours ? ` (${Math.round(result.cache_age_hours)}h ago)` : "";
-          setStatus(`⚡ Instant result from cache${ageText} — no AI cost incurred.`);
-          setStatusTone("success");
-        } else if (result.reused) {
-          setStatus("Existing OCR draft reopened.");
-          setStatusTone("success");
-        } else {
-          setStatus("Sheet ready to review.");
+      if (result.reused_verification_id) {
+        setSavedId(result.reused_verification_id);
+        finalizeAfterSave(false);
+      } else {
+        // If this was a fresh scan after a cached one, check confidence delta
+        const previousConf = result.previous_confidence;
+        if (forceRefresh && previousConf != null && result.confidence_dropped) {
+          // Defer the decision to an accessible confirmation modal instead of a
+          // blocking window.confirm. Confirm = keep the fresh (less reliable) scan;
+          // cancel = re-run without force_refresh to restore the previous result.
+          setConfirmTitle("Replace existing scan?");
+          setConfirmDescription(
+            "The fresh scan looks less reliable than your saved result. Replace it with the new read, or cancel to keep your previous result.",
+          );
+          setConfirmLabel("Replace");
+          setPendingAction(() => () => {
+            void (async () => {
+              const draftSaveFailed = await saveDraft();
+              finalizeAfterSave(draftSaveFailed);
+            })();
+          });
+          setPendingCancelAction(() => () => {
+            void processFile(file, sourceName, model, false);
+          });
+          setConfirmOpen(true);
+          return;
+        }
+        if (forceRefresh && previousConf != null && result.confidence_improved) {
+          setStatus("Scan updated with a cleaner read.");
           setStatusTone("success");
         }
+        const draftSaveFailed = await saveDraft();
+        finalizeAfterSave(draftSaveFailed);
       }
-      signalWorkflowRefresh("ocr-scan");
-      void loadRecentRecords();
     } catch (reason) {
       console.error("OCR extraction error:", reason);
       setStatus(humanExtractError(reason));
@@ -1302,6 +1401,7 @@ export default function OcrScanPage() {
     }
 
     const nextUrl = URL.createObjectURL(workingFile);
+    route.closeCamera();
     setSourceFilename(file.name);
     setOriginalFile(workingFile);
     setOriginalUrl(nextUrl);
@@ -1312,7 +1412,7 @@ export default function OcrScanPage() {
     setConfidenceMatrix([]);
     setDraftDirty(false);
     void processFile(workingFile, file.name, selectedModel);
-  }, [originalUrl, preparedPreviewUrl, processFile, selectedModel]);
+  }, [originalUrl, preparedPreviewUrl, processFile, route, selectedModel]);
 
   const handleRerunWithSelectedModel = useCallback((forceRefresh?: boolean) => {
     if (!rerunSourceFile) {
@@ -1585,7 +1685,7 @@ export default function OcrScanPage() {
 
   if (loading || !deviceReady || !restored) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#f4f7fb] text-sm text-[#667085]">
+      <main className="factory-ocr-scope flex min-h-screen items-center justify-center text-sm text-text-secondary">
         Loading OCR workspace...
       </main>
     );
@@ -1631,9 +1731,39 @@ export default function OcrScanPage() {
 
   return (
     <>
+      <ConfirmationModal
+        open={confirmOpen}
+        onOpenChange={(next) => {
+          if (!next) {
+            // Treat dismiss/cancel as the cancel action.
+            const cancel = pendingCancelAction;
+            setConfirmOpen(false);
+            setPendingAction(null);
+            setPendingCancelAction(null);
+            cancel?.();
+          }
+        }}
+        title={confirmTitle}
+        description={confirmDescription}
+        status="error"
+        statusLabel="Destructive"
+        primaryActionLabel={confirmLabel}
+        onConfirm={() => {
+          const action = pendingAction;
+          setConfirmOpen(false);
+          setPendingAction(null);
+          setPendingCancelAction(null);
+          action?.();
+        }}
+      >
+        <p className="text-body text-text-secondary">
+          Choose {confirmLabel} to continue, or Cancel to keep your current result.
+        </p>
+      </ConfirmationModal>
+
       {cameraOpen ? (
         <CameraCapture
-          onClose={() => setCameraOpen(false)}
+          onClose={() => route.closeCamera()}
           onCapture={chooseFile}
           onUploadInstead={() => uploadInputRef.current?.click()}
         />
@@ -1650,47 +1780,63 @@ export default function OcrScanPage() {
         }}
       />
 
-      <main className="bg-[#f4f7fb] px-4 py-4 md:px-6 md:py-6">
-        <div className="mx-auto max-w-[1800px] space-y-5">
-          <div className="rounded-[28px] border border-[#e3e8ef] bg-white px-4 py-4 shadow-[0_24px_64px_rgba(15,23,42,0.06)] md:px-5">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+      <main className="factory-ocr-scope px-4 py-4 md:px-6 md:py-5">
+        <div
+          className={cn(
+            "factory-ocr-shell",
+            step === "processing" && "status-glow-processing",
+          )}
+        >
+          <div className="factory-ocr-header">
+            <div className="factory-ocr-header__meta">
               <div className="max-w-3xl">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#667085]">
+                <div className="factory-ocr-header__eyebrow">
                   Document Scan
                 </div>
-                <h1 className="mt-2 text-[2rem] font-semibold tracking-tight text-[#101828] md:text-[2.35rem]">
+                <h1 className="factory-ocr-header__title">
                   Scan & Review
                 </h1>
+                <p className="factory-ocr-header__subtitle">
+                  Queue-first OCR intake with persistent source context, extraction telemetry, and operator correction flow.
+                </p>
               </div>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {STEP_LABELS.map((item, index) => {
-                  const activeIndex = STEP_LABELS.findIndex((stepItem) => stepItem.key === step);
-                  const state = index < activeIndex ? "done" : index === activeIndex ? "current" : "idle";
-                  return (
-                    <div
-                      key={item.key}
-                      className={[
-                        "rounded-[18px] border px-3 py-3 text-center transition duration-200",
-                        state === "done"
-                          ? "border-[#cfe0f0] bg-[#f7fbff] text-[#185FA5]"
-                          : state === "current"
-                            ? "border-[#185FA5] bg-[#185FA5] text-white"
-                            : "border-[#e7edf3] bg-[#f8fafc] text-[#98a2b3]",
-                      ].join(" ")}
-                    >
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em]">
-                        {index + 1}
-                      </div>
-                      <div className="mt-1 text-sm font-medium">{item.label}</div>
+              <div className="factory-ocr-telemetry">
+                <div className="factory-ocr-telemetry__item">
+                  <div className="factory-ocr-telemetry__label">Queue visibility</div>
+                  <div className="factory-ocr-telemetry__value">{recentRecords.length} recent drafts</div>
+                </div>
+                <div className="factory-ocr-telemetry__item">
+                  <div className="factory-ocr-telemetry__label">Correction focus</div>
+                  <div className="factory-ocr-telemetry__value">{visibleLowConfidenceCount} low-confidence cells</div>
+                </div>
+                <div className="factory-ocr-telemetry__item">
+                  <div className="factory-ocr-telemetry__label">Stage state</div>
+                  <div className="factory-ocr-telemetry__value">{STEP_LABELS.find((item) => item.key === step)?.label}</div>
+                </div>
+              </div>
+            </div>
+            <div className="factory-ocr-stagebar">
+              {STEP_LABELS.map((item, index) => {
+                const activeIndex = STEP_LABELS.findIndex((stepItem) => stepItem.key === step);
+                const state = index < activeIndex ? "done" : index === activeIndex ? "current" : "idle";
+                return (
+                  <div
+                    key={item.key}
+                    className="factory-ocr-stagepill"
+                    data-state={state}
+                  >
+                    <div className="factory-ocr-stagepill__index">
+                      {index + 1}
                     </div>
-                  );
-                })}
-              </div>
+                    <div className="factory-ocr-stagepill__label">{item.label}</div>
+                  </div>
+                );
+              })}
             </div>
           </div>
 
           {status ? (
-            <div className={`rounded-[22px] border px-4 py-3 text-sm ${statusBannerClass(statusTone)}`}>
+            <div className={statusBannerClass(statusTone)} data-tone={statusTone}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <span>{status}</span>
                 {statusTone === "error" ? (
@@ -1711,24 +1857,29 @@ export default function OcrScanPage() {
               </div>
             </div>
           ) : null}
+          {draftSaveError ? (
+            <div className="factory-ocr-status" data-tone="error">
+              Autosave issue: {draftSaveError}
+            </div>
+          ) : null}
 
           {step === "upload" ? (
             isMobile ? (
               <div className="mx-auto max-w-lg">
                 <MobileEntry
                   recentCount={recentRecords.length}
-                  onOpenCamera={() => setCameraOpen(true)}
+                  onOpenCamera={() => route.openCamera()}
                   onOpenUpload={() => uploadInputRef.current?.click()}
                 />
                 {recentRecords.length ? (
-                  <div className="mt-4 rounded-[24px] border border-[#e3e8ef] bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.05)]">
-                    <div className="text-sm font-medium text-[#101828]">Recent uploads</div>
+                  <div className="mt-4 rounded-panel border border-border-subtle bg-surface-card p-4 shadow-[0_16px_40px_rgba(15,23,42,0.05)]">
+                    <div className="text-sm font-medium text-text-primary">Recent uploads</div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {recentRecords.slice(0, 4).map((record) => (
                         <button
                           key={record.id}
                           type="button"
-                          className="rounded-full border border-[#dbe3eb] bg-[#f8fafc] px-3 py-1.5 text-xs text-[#344054]"
+                          className="rounded-full border border-border-subtle bg-surface-shell px-3 py-1.5 text-xs text-text-primary"
                           onClick={() => void openRecentRecord(record.id)}
                         >
                           {record.source_filename || `Document #${record.id}`}
@@ -1760,7 +1911,45 @@ export default function OcrScanPage() {
             />
           ) : null}
 
-          {step === "preview" && resultPreview?.cached && (
+          {step === "preview" && resultPreview && resultPreview.cached ? (
+            <div className={`rounded-[0.45rem] border px-4 py-3 text-sm shadow-sm ${resultPreview.cacheTrust === "low" ? "border-status-warning-border bg-status-warning-bg text-status-warning-fg" : "border-status-info-border bg-status-info-bg text-status-info-fg"}`}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <div className="font-semibold">
+                    {resultPreview.cacheTrust === "low" ? "Cached result - low confidence" : "Loaded from recent scan cache"}
+                  </div>
+                  <div className="mt-0.5 text-xs opacity-90">
+                    {resultPreview.cacheTrust === "low"
+                      ? "Fresh scan recommended for better accuracy."
+                      : `${Math.round(resultPreview.cacheAgeHours || 0)}h old. Review before approval.`}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="rounded-control border border-current/30 px-3 py-1.5 text-xs font-semibold transition hover:bg-white/10"
+                  onClick={() => {
+                    if (resultPreview.userCorrected) {
+                      setConfirmTitle("Replace existing scan?");
+                      setConfirmDescription(
+                        "You have manually edited this result. Rescanning will overwrite your edits. This cannot be undone.",
+                      );
+                      setConfirmLabel("Rescan");
+                      setPendingAction(() => () => handleRerunWithSelectedModel(true));
+                      setPendingCancelAction(null);
+                      setConfirmOpen(true);
+                    } else {
+                      handleRerunWithSelectedModel(true);
+                    }
+                  }}
+                  disabled={busy}
+                >
+                  Scan fresh
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {("__disabled" as OcrFlowStep) === step && resultPreview && resultPreview.cached && (
             <div className={`rounded-[22px] border-2 px-5 py-4 text-sm shadow-sm ${resultPreview.cacheTrust === "low" ? "border-amber-400/60 bg-amber-50/80 text-amber-900" : "border-cyan-400/60 bg-cyan-50/80 text-cyan-900"}`}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
@@ -1774,18 +1963,23 @@ export default function OcrScanPage() {
                     <div className="mt-0.5 text-xs opacity-90">
                       {resultPreview.cacheTrust === "low"
                         ? "Fresh scan recommended for better accuracy"
-                        : `Processed ${Math.round(resultPreview.cacheAgeHours || 0)}h ago • No AI cost incurred`}
+                        : `Processed ${Math.round(resultPreview.cacheAgeHours || 0)}h ago`}
                     </div>
                   </div>
                 </div>
                 <button
                   type="button"
-                  className="rounded-full border-2 border-current/30 bg-white/60 px-4 py-2 text-xs font-semibold transition hover:bg-white hover:shadow-sm"
+                  className="rounded-full border-2 border-current/30 bg-white/60 px-4 py-2 text-xs font-semibold transition hover:bg-surface-card hover:shadow-sm"
                   onClick={() => {
                     if (resultPreview.userCorrected) {
-                      if (window.confirm("You have manually edited this result. Rescanning will replace your edits. Continue?")) {
-                        handleRerunWithSelectedModel(true);
-                      }
+                      setConfirmTitle("Replace existing scan?");
+                      setConfirmDescription(
+                        "You have manually edited this result. Rescanning will overwrite your edits. This cannot be undone.",
+                      );
+                      setConfirmLabel("Rescan");
+                      setPendingAction(() => () => handleRerunWithSelectedModel(true));
+                      setPendingCancelAction(null);
+                      setConfirmOpen(true);
                     } else {
                       handleRerunWithSelectedModel(true);
                     }
@@ -1799,21 +1993,491 @@ export default function OcrScanPage() {
           )}
 
           {(step === "preview" || step === "export") && resultPreview ? (
-            <div className="space-y-5">
-              <div className="grid gap-5 xl:grid-cols-[35%_65%] xl:items-start">
-                <div className="overflow-hidden rounded-[28px] border border-[#e3e8ef] bg-white shadow-[0_20px_54px_rgba(15,23,42,0.05)] xl:max-h-[85vh]">
-                  <div className="flex items-center justify-between border-b border-[#edf1f5] px-4 py-3">
+            <div className="space-y-3">
+              <div className={cn("ocr-workstation-grid", reviewRailCollapsed && "ocr-workstation-grid--rail-collapsed")}>
+                <section className="ocr-workstation-panel ocr-source-workspace">
+                  <div className="ocr-workstation-panel__header">
                     <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#667085]">
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">
+                        Source image
+                      </div>
+                      <div className="mt-1 text-sm font-semibold text-text-primary">
+                        {sourceFilename || "OCR source"}
+                      </div>
+                    </div>
+                    <span
+                      className={cn(
+                        "rounded-badge border px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em]",
+                        scanLooksBlurry
+                          ? "border-status-danger-border bg-status-danger-bg text-status-danger-fg"
+                          : "border-status-synced-border bg-status-synced-bg text-status-synced-fg",
+                      )}
+                    >
+                      {scanLooksBlurry ? "Blurry scan" : `${scanQualityBand} quality`}
+                    </span>
+                  </div>
+                  <div className="ocr-source-toolbar">
+                    <button type="button" onClick={() => setZoom((value) => Math.max(0.55, value - 0.15))}>
+                      Zoom -
+                    </button>
+                    <span>{Math.round(zoom * 100)}%</span>
+                    <button type="button" onClick={() => setZoom((value) => Math.min(3, value + 0.15))}>
+                      Zoom +
+                    </button>
+                    <button type="button" onClick={() => { setImageFitMode("width"); setZoom(1); }}>
+                      Fit width
+                    </button>
+                    <button type="button" onClick={() => { setImageFitMode("height"); setZoom(1); }}>
+                      Fit height
+                    </button>
+                    <button type="button" onClick={() => setMagnifierEnabled((value) => !value)}>
+                      {magnifierEnabled ? "Magnifier on" : "Magnifier"}
+                    </button>
+                    <button type="button" onClick={resetImageInspection}>
+                      Reset
+                    </button>
+                  </div>
+                  <div
+                    ref={sourceViewerRef}
+                    className="ocr-source-viewer"
+                    onPointerDown={handleSourcePointerDown}
+                    onPointerMove={handleSourcePointerMove}
+                    onPointerUp={handleSourcePointerUp}
+                    onPointerLeave={(event) => {
+                      handleSourcePointerUp(event);
+                      setMagnifierPoint((point) => ({ ...point, visible: false }));
+                    }}
+                  >
+                    {displayPreviewUrl ? (
+                      <div
+                        className={cn(
+                          "relative inline-block origin-top-left select-none",
+                          imageFitMode === "width" ? "w-full" : "",
+                          imageFitMode === "height" ? "h-full" : "",
+                        )}
+                        style={{ transform: `scale(${zoom})` }}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={displayPreviewUrl}
+                          alt="Source document"
+                          draggable={false}
+                          className={cn(
+                            "rounded-[0.35rem] border border-border-subtle bg-surface-card object-contain shadow-[0_20px_60px_rgba(0,0,0,0.34)]",
+                            imageFitMode === "width" ? "w-full max-w-none" : "",
+                            imageFitMode === "height" ? "h-full max-h-none" : "",
+                            imageFitMode === "free" ? "max-w-none" : "",
+                          )}
+                          onError={() => {
+                            setImageLoadError(true);
+                            if (imageRetryTimeoutRef.current) {
+                              clearTimeout(imageRetryTimeoutRef.current);
+                            }
+                            setImageRetryCount((count) => {
+                              if (count < 3) {
+                                imageRetryTimeoutRef.current = setTimeout(() => {
+                                  setImageRetryCount(count + 1);
+                                  setImageLoadError(false);
+                                }, 1000 * Math.pow(2, count));
+                              }
+                              return count;
+                            });
+                          }}
+                          onLoad={() => {
+                            if (imageRetryTimeoutRef.current) {
+                              clearTimeout(imageRetryTimeoutRef.current);
+                            }
+                            setImageLoadError(false);
+                            setImageRetryCount(0);
+                          }}
+                        />
+                        {boundingBox ? (
+                          <div
+                            className="pointer-events-none absolute border-2 border-status-info-border bg-status-info-bg/40 shadow-[0_0_0_6px_rgba(59,130,246,0.2)] transition duration-150"
+                            style={boundingBox ?? undefined}
+                          />
+                        ) : null}
+                      </div>
+                    ) : (
+                      <div className="text-sm text-text-secondary">Image preview unavailable</div>
+                    )}
+                    {displayPreviewUrl && magnifierEnabled && magnifierPoint.visible ? (
+                      <div
+                        className="ocr-source-magnifier"
+                        style={{
+                          left: `${magnifierPoint.x}%`,
+                          top: `${magnifierPoint.y}%`,
+                          backgroundImage: `url(${displayPreviewUrl})`,
+                          backgroundPosition: `${magnifierPoint.x}% ${magnifierPoint.y}%`,
+                        }}
+                      />
+                    ) : null}
+                    {imageLoadError ? (
+                      <div className="absolute bottom-3 left-3 rounded-control border border-status-warning-border bg-status-warning-bg px-3 py-2 text-xs font-medium text-status-warning-fg">
+                        Image load issue. Retrying inspection preview.
+                      </div>
+                    ) : null}
+                  </div>
+                </section>
+
+                <section className="ocr-workstation-panel ocr-sheet-workspace">
+                  <div className="ocr-workstation-panel__header">
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-text-tertiary">
+                        OCR spreadsheet
+                      </div>
+                      <div className="mt-1 text-sm text-text-secondary">
+                        Select cells to align source and table context without interrupting scroll.
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className={cn("ocr-mode-button", viewMode === "spreadsheet" && "ocr-mode-button--active")}
+                        onClick={() => setViewMode("spreadsheet")}
+                      >
+                        Spreadsheet
+                      </button>
+                      <button
+                        type="button"
+                        className={cn("ocr-mode-button", viewMode === "raw" && "ocr-mode-button--active")}
+                        onClick={() => setViewMode("raw")}
+                      >
+                        Raw
+                      </button>
+                    </div>
+                  </div>
+                  <div className="ocr-sheet-toolbar">
+                    <EditToolbar
+                      canUndo={canUndo}
+                      canRedo={canRedo}
+                      headerRowEnabled={headerRowEnabled}
+                      showLowConfidence={showLowConfidence}
+                      onAddRow={handleAddRow}
+                      onAddColumn={handleAddColumn}
+                      onUndo={undo}
+                      onRedo={redo}
+                      onToggleHeaderRow={handleToggleHeaderRow}
+                      onToggleConfidence={() => setShowLowConfidence((value) => !value)}
+                    />
+                  </div>
+                  <div className="ocr-sheet-scroll">
+                    {viewMode === "raw" ? (
+                      <RawDataView
+                        data={{
+                          resultPreview,
+                          headers: editableHeaders,
+                          rows: editableRows,
+                          confidenceMatrix,
+                          metadata: {
+                            savedId,
+                            documentHash,
+                            sourceFilename,
+                            step,
+                            correctionCount,
+                          },
+                        }}
+                        title="Raw OCR Data"
+                      />
+                    ) : sheet && sheet.rows && sheet.rows.length > 0 && resultPreview.type !== "table" ? (
+                      <OcrErrorBoundary
+                        fallbackMessage="The structured view could not be displayed. Switch to Raw view to see the data."
+                        onError={(error) => {
+                          console.error("Structured view error:", error);
+                          pushAppToast({
+                            title: "Display error",
+                            description: "Switched to raw view due to rendering error",
+                            tone: "error",
+                          });
+                          setViewMode("raw");
+                        }}
+                      >
+                        <div className="h-full overflow-auto">
+                          <table className="min-w-full border-separate border-spacing-0 text-table-density">
+                            <thead className="sticky top-0 z-10">
+                              <tr>
+                                <th className="sticky left-0 z-20 w-12 border border-border-default bg-surface-panel px-2 py-2 text-xs text-text-tertiary">#</th>
+                                {sheet.columns.map((column, columnIndex) => (
+                                  <th
+                                    key={`sheet-header-${columnIndex}`}
+                                    className="min-w-[11rem] border border-border-default bg-surface-panel px-3 py-2 text-left text-xs font-semibold uppercase tracking-[0.08em] text-text-secondary"
+                                  >
+                                    {stringifySheetCell(column)}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {sheet.rows.map((row, rowIndex) => (
+                                <tr key={`sheet-row-${rowIndex}`}>
+                                  <td className="sticky left-0 z-10 border border-border-default bg-surface-shell px-2 py-2 text-center text-xs font-semibold text-text-tertiary">
+                                    {rowIndex + 1}
+                                  </td>
+                                  {row.map((cell, columnIndex) => (
+                                    <td
+                                      key={`sheet-cell-${rowIndex}-${columnIndex}`}
+                                      className={cn(
+                                        "border border-border-default px-3 py-2 text-sm text-text-primary",
+                                        activeCell?.row === rowIndex && activeCell?.column === columnIndex
+                                          ? "bg-surface-selected ring-1 ring-border-focus"
+                                          : "bg-surface-shell hover:bg-surface-panel",
+                                      )}
+                                      onClick={() => setActiveCell({ row: rowIndex, column: columnIndex })}
+                                    >
+                                      {stringifySheetCell(cell)}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </OcrErrorBoundary>
+                    ) : USE_TANSTACK_TABLE ? (
+                      <OcrErrorBoundary
+                        fallbackMessage="The spreadsheet could not be displayed. Switch to Raw view to see the data."
+                        onError={(error) => {
+                          console.error("Spreadsheet error:", error);
+                          pushAppToast({
+                            title: "Display error",
+                            description: "Switched to raw view due to rendering error",
+                            tone: "error",
+                          });
+                          setViewMode("raw");
+                        }}
+                      >
+                        <OcrSpreadsheetGrid
+                          rows={editableRows}
+                          headers={editableHeaders}
+                          activeCell={activeCell}
+                          onActiveCellChange={setActiveCell}
+                          onCellEdit={(rowIndex, columnIndex, value) => {
+                            const updatedRows = cloneRows(editableRows);
+                            updatedRows[rowIndex][columnIndex] = {
+                              value,
+                              confidence: 0.95,
+                              source: "corrected",
+                            };
+                            applyTableChange({ rows: updatedRows });
+                          }}
+                          isReadOnly={false}
+                        />
+                      </OcrErrorBoundary>
+                    ) : (
+                      <DataTableGrid
+                        headers={editableHeaders}
+                        rows={editableRows}
+                        columnTypes={columnTypes}
+                        confidenceMatrix={confidenceMatrix}
+                        originalRows={resultPreview.rows}
+                        showLowConfidence={showLowConfidence}
+                        activeCell={activeCell}
+                        onActiveCellChange={setActiveCell}
+                        onChangeHeaders={(headers) => applyTableChange({ headers })}
+                        onChangeRows={(rows) => applyTableChange({ rows })}
+                        onChangeColumnTypes={(types) => applyTableChange({ columnTypes: types })}
+                      />
+                    )}
+                  </div>
+                  <KeyboardShortcutStrip
+                    lowConfidenceCount={visibleLowConfidenceCount}
+                    totalCells={editableRows.length * editableHeaders.length}
+                    editedCount={correctionCount}
+                  />
+                </section>
+
+                {reviewRailCollapsed ? (
+                  <PanelToggleButton
+                    kind="rail-right"
+                    expanded={false}
+                    onClick={() => setReviewRailCollapsed(false)}
+                    aria-label="Show review rail"
+                    title="Show review rail"
+                    className="ocr-review-rail-expand self-stretch"
+                  />
+                ) : (
+                  <aside className="ocr-workstation-panel ocr-review-rail">
+                    <div className="ocr-workstation-panel__header">
+                      <div className="min-w-0 flex-1">
+                        <div className="text-label-dense font-semibold text-text-tertiary">Review rail</div>
+                        <div className="mt-1 truncate text-sm font-semibold text-text-primary">
+                          {step === "export" ? "Ready for export" : "Verification active"}
+                        </div>
+                      </div>
+                      <PanelToggleButton
+                        kind="rail-right"
+                        expanded
+                        onClick={() => setReviewRailCollapsed(true)}
+                        aria-label="Hide review rail"
+                        title="Hide review rail"
+                      />
+                    </div>
+                    <div className="ocr-review-rail__body">
+                      <div className="ocr-rail-metric" data-tone="success">
+                        <span>Average confidence</span>
+                        <strong>{formatConfidence(resultPreview.avgConfidence)}</strong>
+                      </div>
+                      <div className="ocr-rail-metric" data-tone={visibleLowConfidenceCount ? "danger" : "success"}>
+                        <span>Unresolved cells</span>
+                        <strong>{visibleLowConfidenceCount}</strong>
+                      </div>
+                      <div className="ocr-rail-metric" data-tone={suspiciousRowCount ? "warning" : "success"}>
+                        <span>Suspicious rows</span>
+                        <strong>{suspiciousRowCount}</strong>
+                      </div>
+                      <div className="ocr-rail-metric">
+                        <span>Corrections</span>
+                        <strong>{correctionCount}</strong>
+                      </div>
+                      <div className="ocr-rail-context">
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">Linked focus</div>
+                        <div className="mt-1 text-sm font-medium text-text-primary">{activeCellLabel}</div>
+                        <div className="mt-1 text-xs text-text-secondary">Selected table context drives the source highlight.</div>
+                      </div>
+                      {resultPreview.scanQuality?.confidence_band === "low" || resultPreview.warnings.length ? (
+                        <div className="ocr-rail-context">
+                          <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-tertiary">Inspection notes</div>
+                          <div className="mt-2 flex flex-wrap gap-1.5">
+                            {resultPreview.scanQuality?.confidence_band === "low" ? (
+                              <span className="factory-ocr-chip factory-ocr-chip--warning">Low quality</span>
+                            ) : null}
+                            {resultPreview.warnings.map((warning) => (
+                              <span key={warning} className="factory-ocr-chip">
+                                {warning.replaceAll("_", " ")}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
+                      <div className="ocr-rail-context">
+                        <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-text-tertiary" htmlFor="ocr-review-pass">
+                          Reprocess mode
+                        </label>
+                        <Select
+                          id="ocr-review-pass"
+                          value={selectedModel}
+                          onChange={(event) => setSelectedModel(toModelOption(event.target.value))}
+                          disabled={busy}
+                          className="mt-2"
+                        >
+                          <option value="auto">Auto routing</option>
+                          <option value="claude-haiku-4-5-20251001">Fast pass</option>
+                          <option value="claude-sonnet-4-6">Balanced review</option>
+                          <option value="claude-opus-4-7">Maximum accuracy</option>
+                        </Select>
+                        <button
+                          type="button"
+                          className="factory-ocr-button-secondary mt-2 w-full px-3 py-2 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
+                          disabled={busy || !canRerunWithSelectedModel}
+                          onClick={() => handleRerunWithSelectedModel()}
+                        >
+                          Reprocess OCR
+                        </button>
+                      </div>
+                      <div className="grid gap-2">
+                        <button
+                          type="button"
+                          className="factory-ocr-button-secondary px-3 py-2 text-sm font-medium"
+                          disabled={!activeCell}
+                          onClick={handleDeleteSelectedRow}
+                        >
+                          Delete selected row
+                        </button>
+                        {step === "preview" ? (
+                          <button
+                            type="button"
+                            className="factory-ocr-button-primary px-3 py-2 text-sm font-semibold"
+                            onClick={async () => {
+                              if (draftDirty) {
+                                await persistStructuredDraft();
+                              }
+                              setStep("export");
+                            }}
+                          >
+                            Approve extraction
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="factory-ocr-button-secondary px-3 py-2 text-sm font-medium"
+                            onClick={() => setStep("preview")}
+                          >
+                            Reopen review
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="factory-ocr-button-secondary px-3 py-2 text-sm font-medium"
+                          onClick={resetFlow}
+                        >
+                          Try another image
+                        </button>
+                      </div>
+                    </div>
+                  </aside>
+                )}
+              </div>
+
+              {step === "export" ? (
+                <div className="ocr-export-action-rail">
+                  <ExportPanel
+                    rowCount={editableRows.length}
+                    columnCount={editableHeaders.length}
+                    correctionCount={correctionCount}
+                    busy={excelBusy || savingDraft}
+                    status={draftDirty ? "Saving edits in the background." : "Ready to re-download anytime."}
+                    primaryLabel="Export XLSX"
+                    onDownloadExcel={() => void handleDownloadExcel()}
+                    onDownloadCsv={() => void handleDownloadCsv()}
+                    onDownloadJson={() => void handleDownloadJson()}
+                    onCopyClipboard={() => void handleCopyClipboard()}
+                    shareCard={
+                      <ShareLinkGenerator
+                        busy={shareBusy}
+                        link={shareLink}
+                        expiresAt={shareExpiresAt}
+                        onGenerate={() => void handleGenerateShareLink()}
+                        onCopy={() => void handleCopyShareLink()}
+                      />
+                    }
+                  />
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="factory-ocr-button-secondary px-4 py-2 text-sm font-medium"
+                      onClick={() => void handleDownloadPdf()}
+                    >
+                      Download PDF
+                    </button>
+                    {savedId ? (
+                      <Link href={`/ocr/verify?verification_id=${savedId}`}>
+                        <span className="factory-ocr-button-secondary inline-flex px-4 py-2 text-sm font-medium">
+                          Open review workflow
+                        </span>
+                      </Link>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
+          {("__disabled" as OcrFlowStep) === step && resultPreview ? (
+            <div className="space-y-5">
+              <div className="factory-ocr-stage-grid factory-ocr-stage-grid--review">
+                <div className="factory-ocr-console overflow-hidden rounded-[0.45rem] xl:max-h-[85vh]">
+                  <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3">
+                    <div>
+                      <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-text-secondary">
                         Source
                       </div>
-                      <div className="mt-1 text-sm text-[#667085]">
+                      <div className="mt-1 text-sm text-text-secondary">
                         {formatExtractionSource(resultPreview.routingMeta, resultPreview.avgConfidence)}
                       </div>
-                      <div className="mt-1 text-xs text-[#667085]">
-                        Model used: <span className="font-semibold text-[#101828]">{formatModelUsed(resultPreview.routingMeta, resultPreview.tokenUsage, resultPreview.debug)}</span>
+                      <div className="mt-1 text-xs text-text-secondary">
+                        Extraction source: <span className="font-semibold text-text-primary">{formatExtractionSource(resultPreview.routingMeta, resultPreview.avgConfidence)}</span>
                         {resultPreview.routingMeta?.model_tier ? (
-                          <span className="ml-2 rounded-full border border-[#d9e1e8] bg-[#f8fafc] px-2 py-0.5 text-[11px] font-medium text-[#344054]">
+                          <span className="ml-2 rounded-full border border-border-subtle bg-surface-shell px-2 py-0.5 text-[11px] font-medium text-text-primary">
                             {formatSelectedModelLabel(resultPreview.routingMeta, resultPreview.tokenUsage)}
                             {resultPreview.routingMeta.forced ? " forced" : ""}
                           </span>
@@ -1823,21 +2487,23 @@ export default function OcrScanPage() {
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
-                        className="rounded-full border border-[#d9e1e8] bg-white px-3 py-1.5 text-sm text-[#344054]"
+                        className="rounded-full border border-border-subtle bg-surface-card px-3 py-1.5 text-sm text-text-primary"
                         onClick={() => setZoom((value) => Math.max(0.8, value - 0.1))}
+                        aria-label="Zoom out"
                       >
                         -
                       </button>
                       <button
                         type="button"
-                        className="rounded-full border border-[#d9e1e8] bg-white px-3 py-1.5 text-sm text-[#344054]"
+                        className="rounded-full border border-border-subtle bg-surface-card px-3 py-1.5 text-sm text-text-primary"
                         onClick={() => setZoom((value) => Math.min(2.2, value + 0.1))}
+                        aria-label="Zoom in"
                       >
                         +
                       </button>
                     </div>
                   </div>
-                  <div className="relative grid place-items-center overflow-auto bg-[#f7f9fb] p-3 max-h-[70vh]">
+                  <div className="relative grid place-items-center overflow-auto bg-surface-shell p-3 max-h-[70vh]">
                     {displayPreviewUrl ? (
                       <div className="relative">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1872,18 +2538,18 @@ export default function OcrScanPage() {
                         />
                         {boundingBox ? (
                           <div
-                            className="pointer-events-none absolute border-2 border-[#185FA5] bg-[#185FA5]/12 shadow-[0_0_0_6px_rgba(24,95,165,0.12)] transition duration-150"
+                            className="pointer-events-none absolute border-2 border-accent bg-accent-soft shadow-[0_0_0_6px_rgba(99,102,241,0.12)] transition duration-150"
                             style={boundingBox}
                           />
                         ) : null}
                       </div>
                     ) : (
-                      <div className="text-sm text-[#667085]">Image preview unavailable</div>
+                      <div className="text-sm text-text-secondary">Image preview unavailable</div>
                     )}
                   </div>
                 </div>
 
-                <div className="space-y-4">
+                <div className="factory-ocr-review-pane space-y-4">
                   <div className="flex items-center justify-between gap-3">
                     <EditToolbar
                       canUndo={canUndo}
@@ -1903,8 +2569,8 @@ export default function OcrScanPage() {
                       <button
                         type="button"
                         className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${viewMode === "spreadsheet"
-                          ? "bg-[#185FA5] text-white"
-                          : "border border-[#d9e1e8] bg-white text-[#344054] hover:bg-[#f8fafc]"
+                          ? "bg-accent text-white"
+                          : "border border-border-subtle bg-surface-card text-text-primary hover:bg-surface-shell"
                           }`}
                         onClick={() => setViewMode("spreadsheet")}
                       >
@@ -1913,8 +2579,8 @@ export default function OcrScanPage() {
                       <button
                         type="button"
                         className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${viewMode === "raw"
-                          ? "bg-[#185FA5] text-white"
-                          : "border border-[#d9e1e8] bg-white text-[#344054] hover:bg-[#f8fafc]"
+                          ? "bg-accent text-white"
+                          : "border border-border-subtle bg-surface-card text-text-primary hover:bg-surface-shell"
                           }`}
                         onClick={() => setViewMode("raw")}
                         title="Show raw OCR data for debugging"
@@ -1923,19 +2589,6 @@ export default function OcrScanPage() {
                       </button>
                     </div>
                   </div>
-
-                  {(() => {
-                    console.log("DEBUG resultPreview:", resultPreview);
-                    console.log("DEBUG sheets:", resultPreview?.sheets);
-                    console.log("DEBUG sheet:", resultPreview?.sheets?.[0]);
-                    console.log("DEBUG condition check:", {
-                      hasSheet: !!sheet,
-                      hasRows: !!sheet?.rows,
-                      rowCount: sheet?.rows?.length,
-                      willRenderNewTable: !!(sheet && sheet.rows && sheet.rows.length > 0)
-                    });
-                    return null;
-                  })()}
 
                   {viewMode === "raw" ? (
                     <RawDataView
@@ -1969,15 +2622,15 @@ export default function OcrScanPage() {
                             setViewMode("raw");
                           }}
                         >
-                          <div className="overflow-hidden rounded-[28px] border border-[#e3e8ef] bg-white shadow-[0_18px_54px_rgba(15,23,42,0.05)]">
+                          <div className="ocr-review-surface overflow-hidden rounded-[0.4rem]">
                             <div className="overflow-auto">
                               <table className="min-w-full border-collapse">
                                 <thead>
-                                  <tr className="bg-[#f8fafc]">
+                                  <tr className="bg-surface-shell">
                                     {sheet.columns.map((column, columnIndex) => (
                                       <th
                                         key={`sheet-header-${columnIndex}`}
-                                        className={`border border-[#e3e8ef] px-4 py-3 text-sm font-semibold text-[#101828] ${columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
+                                        className={`border border-border-subtle px-4 py-3 text-sm font-semibold text-text-primary ${columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
                                           }`}
                                       >
                                         {stringifySheetCell(column)}
@@ -1991,7 +2644,7 @@ export default function OcrScanPage() {
                                       {row.map((cell, columnIndex) => (
                                         <td
                                           key={`sheet-cell-${rowIndex}-${columnIndex}`}
-                                          className={`border border-[#e3e8ef] px-4 py-3 text-sm text-[#344054] ${columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
+                                          className={`border border-border-subtle px-4 py-3 text-sm text-text-primary ${columnIndex === 1 || columnIndex === 3 ? "text-right" : "text-left"
                                             }`}
                                         >
                                           {stringifySheetCell(cell)}
@@ -2055,44 +2708,44 @@ export default function OcrScanPage() {
                       />
 
                       {resultPreview.tokenUsage ? (
-                        <div className="rounded-[24px] border border-[#e3e8ef] bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
-                          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]">Token usage</div>
-                          <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                            <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
-                              <div className="text-xs text-[#667085]">Model</div>
-                              <div className="mt-1 text-sm font-semibold text-[#101828]">
+                        <div className="ocr-review-surface p-4">
+                          <div className="factory-ocr-card-title">Processing diagnostics</div>
+                          <div className="factory-ocr-token-grid mt-3">
+                            <div className="factory-ocr-data-card">
+                              <div className="factory-ocr-data-card__label">Model</div>
+                              <div className="factory-ocr-data-card__value">
                                 {formatSelectedModelLabel(resultPreview.routingMeta, resultPreview.tokenUsage)}
                               </div>
                             </div>
-                            <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
-                              <div className="text-xs text-[#667085]">Estimated cost</div>
-                              <div className="mt-1 text-sm font-semibold text-[#101828]">
+                            <div className="factory-ocr-data-card">
+                              <div className="factory-ocr-data-card__label">Diagnostics</div>
+                              <div className="factory-ocr-data-card__value">
                                 {formatUsd(resultPreview.tokenUsage.estimated_cost)}
                               </div>
                             </div>
-                            <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
-                              <div className="text-xs text-[#667085]">Input tokens</div>
-                              <div className="mt-1 text-sm font-semibold text-[#101828]">
+                            <div className="factory-ocr-data-card">
+                              <div className="factory-ocr-data-card__label">Source load</div>
+                              <div className="factory-ocr-data-card__value">
                                 {formatTokenCount(resultPreview.tokenUsage.input_tokens)}
                               </div>
                             </div>
-                            <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
-                              <div className="text-xs text-[#667085]">Output tokens</div>
-                              <div className="mt-1 text-sm font-semibold text-[#101828]">
+                            <div className="factory-ocr-data-card">
+                              <div className="factory-ocr-data-card__label">Extraction load</div>
+                              <div className="factory-ocr-data-card__value">
                                 {formatTokenCount(resultPreview.tokenUsage.output_tokens)}
                               </div>
                             </div>
                           </div>
-                          <div className="mt-3 rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
+                          <div className="factory-ocr-data-card mt-3">
                             <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                              <span className="text-[#667085]">Total tokens</span>
-                              <span className="font-semibold text-[#101828]">
+                              <span className="text-text-secondary">Total tokens</span>
+                              <span className="font-semibold text-text-primary">
                                 {formatTokenCount(resultPreview.tokenUsage.total_tokens)}
                               </span>
                             </div>
                             <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-sm">
-                              <span className="text-[#667085]">Processing time</span>
-                              <span className="font-medium text-[#101828]">
+                              <span className="text-text-secondary">Processing time</span>
+                              <span className="font-medium text-text-primary">
                                 {formatDurationMs(
                                   resultPreview.debug?.processing_time_ms
                                   ?? resultPreview.tokenUsage.processing_time_ms
@@ -2102,13 +2755,13 @@ export default function OcrScanPage() {
                             </div>
                           </div>
                           {resultPreview.debug ? (
-                            <details className="mt-3 rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
-                              <summary className="cursor-pointer text-sm font-medium text-[#344054]">Debug details</summary>
-                              <div className="mt-3 space-y-3 text-xs text-[#475467]">
+                            <details className="factory-ocr-data-card mt-3">
+                              <summary className="cursor-pointer text-sm font-medium text-text-primary">Advanced diagnostics</summary>
+                              <div className="mt-3 space-y-3 text-xs text-text-secondary">
                                 <div>Requested model: {resultPreview.debug.requested_model || "auto"}</div>
                                 <div>Selected model: {resultPreview.debug.selected_model || "Not reported"}</div>
-                                <div>Final model used: {resultPreview.debug.final_model_used || formatModelUsed(resultPreview.routingMeta, resultPreview.tokenUsage, resultPreview.debug)}</div>
-                                <pre className="overflow-auto rounded-[16px] bg-[#101828] p-3 text-[11px] text-[#f8fafc]">
+                                <div>Processing route: {formatExtractionSource(resultPreview.routingMeta, resultPreview.avgConfidence)}</div>
+                                <pre className="overflow-auto bg-surface-app p-3 text-[11px] text-text-primary">
                                   {JSON.stringify(
                                     {
                                       token_usage: resultPreview.debug.token_usage,
@@ -2125,19 +2778,19 @@ export default function OcrScanPage() {
                         </div>
                       ) : null}
 
-                      <div className="rounded-[24px] border border-[#dbe3eb] bg-[#f8fbff] p-4">
+                      <div className="ocr-review-surface p-4">
                         <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
                           <div className="max-w-2xl">
-                            <div className="text-sm font-semibold text-[#101828]">Need a cleaner Excel report?</div>
-                            <p className="mt-1 text-sm leading-6 text-[#667085]">
+                            <div className="text-sm font-semibold text-text-primary">Need a cleaner Excel report?</div>
+                            <p className="mt-1 text-sm leading-6 text-text-secondary">
                               If the extracted sheet still looks wrong, choose a stronger model and re-run this scan before exporting again.
                             </p>
-                            <div className="mt-2 text-xs text-[#667085]">
-                              Current result: <span className="font-medium text-[#344054]">{formatModelUsed(resultPreview.routingMeta, resultPreview.tokenUsage, resultPreview.debug)}</span>
+                            <div className="mt-2 text-xs text-text-secondary">
+                              Review mode: <span className="font-medium text-text-primary">Operator verification</span>
                             </div>
                           </div>
                           <div className="w-full max-w-sm">
-                            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]" htmlFor="ocr-model">
+                            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-text-tertiary" htmlFor="ocr-model">
                               Extraction model
                             </label>
                             <Select
@@ -2154,14 +2807,14 @@ export default function OcrScanPage() {
                             </Select>
                             <button
                               type="button"
-                              className="mt-3 w-full rounded-full bg-[#185FA5] px-4 py-2.5 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(24,95,165,0.16)] transition hover:bg-[#164f8a] disabled:cursor-not-allowed disabled:bg-[#98a2b3] disabled:shadow-none"
+                              className="factory-ocr-button-primary mt-3 w-full px-4 py-2.5 text-sm font-semibold disabled:cursor-not-allowed disabled:opacity-50"
                               disabled={busy || !canRerunWithSelectedModel}
                               onClick={() => handleRerunWithSelectedModel()}
                             >
                               Re-run with {MODEL_LABELS[selectedModel]}
                             </button>
                             {!canRerunWithSelectedModel ? (
-                              <p className="mt-2 text-xs text-[#667085]">
+                              <p className="mt-2 text-xs text-text-secondary">
                                 Re-run is only available while the uploaded source file is still in this session.
                               </p>
                             ) : null}
@@ -2170,15 +2823,15 @@ export default function OcrScanPage() {
                       </div>
 
                       {step === "preview" ? (
-                        <div className="flex flex-wrap items-center justify-between gap-3 rounded-[24px] border border-[#e3e8ef] bg-white p-4">
-                          <div className="flex flex-wrap items-center gap-2 text-sm text-[#667085]">
+                        <div className="ocr-review-surface flex flex-wrap items-center justify-between gap-3 p-4">
+                          <div className="flex flex-wrap items-center gap-2 text-sm text-text-secondary">
                             {resultPreview.scanQuality?.confidence_band === "low" ? (
-                              <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-amber-800">
+                              <span className="factory-ocr-chip factory-ocr-chip--warning">
                                 Low quality
                               </span>
                             ) : null}
                             {resultPreview.warnings.map((warning) => (
-                              <span key={warning} className="rounded-full border border-[#e4eaf0] bg-[#f8fafc] px-3 py-1">
+                              <span key={warning} className="factory-ocr-chip">
                                 {warning.replaceAll("_", " ")}
                               </span>
                             ))}
@@ -2186,7 +2839,7 @@ export default function OcrScanPage() {
                           <div className="flex flex-wrap gap-2">
                             <button
                               type="button"
-                              className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
+                              className="factory-ocr-button-secondary px-4 py-2 text-sm font-medium"
                               disabled={!activeCell}
                               onClick={handleDeleteSelectedRow}
                             >
@@ -2194,14 +2847,14 @@ export default function OcrScanPage() {
                             </button>
                             <button
                               type="button"
-                              className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
+                              className="factory-ocr-button-secondary px-4 py-2 text-sm font-medium"
                               onClick={resetFlow}
                             >
                               Try another image
                             </button>
                             <button
                               type="button"
-                              className="rounded-full bg-[#185FA5] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_16px_36px_rgba(24,95,165,0.2)] transition hover:bg-[#164f8a]"
+                              className="factory-ocr-button-primary px-5 py-2.5 text-sm font-semibold"
                               onClick={async () => {
                                 if (draftDirty) {
                                   await persistStructuredDraft();
@@ -2220,7 +2873,7 @@ export default function OcrScanPage() {
               </div>
 
               {step === "export" ? (
-                <div className="rounded-[28px] border border-[#e3e8ef] bg-white p-5 shadow-[0_18px_54px_rgba(15,23,42,0.05)] md:p-6">
+                <div className="factory-ocr-console rounded-[0.45rem] p-5 md:p-6">
                   <ExportPanel
                     rowCount={editableRows.length}
                     columnCount={editableHeaders.length}
@@ -2244,28 +2897,28 @@ export default function OcrScanPage() {
                   <div className="mt-4 flex flex-wrap gap-2">
                     <button
                       type="button"
-                      className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
+                      className="factory-ocr-button-secondary px-4 py-2 text-sm font-medium"
                       onClick={() => setStep("preview")}
                     >
                       Back to edit
                     </button>
                     <button
                       type="button"
-                      className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
+                      className="factory-ocr-button-secondary px-4 py-2 text-sm font-medium"
                       onClick={() => void handleDownloadPdf()}
                     >
                       Download PDF
                     </button>
                     {savedId ? (
                       <Link href={`/ocr/verify?verification_id=${savedId}`}>
-                        <span className="inline-flex rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]">
+                        <span className="factory-ocr-button-secondary inline-flex px-4 py-2 text-sm font-medium">
                           Open review workflow
                         </span>
                       </Link>
                     ) : null}
                     <button
                       type="button"
-                      className="rounded-full border border-[#d9e1e8] bg-white px-4 py-2 text-sm font-medium text-[#344054]"
+                      className="factory-ocr-button-secondary px-4 py-2 text-sm font-medium"
                       onClick={resetFlow}
                     >
                       Scan another image

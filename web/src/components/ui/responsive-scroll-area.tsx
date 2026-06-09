@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type Ref } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -11,7 +11,22 @@ type ResponsiveScrollAreaProps = {
   innerClassName?: string;
   debugLabel?: string;
   showIndicators?: boolean;
+  viewportRef?: Ref<HTMLDivElement | null>;
+  scrollableY?: boolean;
 };
+
+function assignRef<TValue>(ref: Ref<TValue | null> | undefined, value: TValue | null) {
+  if (!ref) {
+    return;
+  }
+
+  if (typeof ref === "function") {
+    ref(value);
+    return;
+  }
+
+  ref.current = value;
+}
 
 export function ResponsiveScrollArea({
   children,
@@ -20,25 +35,24 @@ export function ResponsiveScrollArea({
   innerClassName,
   debugLabel,
   showIndicators = true,
+  viewportRef,
+  scrollableY = true,
 }: ResponsiveScrollAreaProps) {
-  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const internalViewportRef = useRef<HTMLDivElement | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
 
-  const updateScrollState = useMemo(
-    () => () => {
-      const node = viewportRef.current;
-      if (!node) return;
-      const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
-      setCanScrollLeft(node.scrollLeft > 4);
-      setCanScrollRight(maxScrollLeft - node.scrollLeft > 4);
-    },
-    [],
-  );
+  const updateScrollState = useCallback(() => {
+    const node = internalViewportRef.current;
+    if (!node) return;
+    const maxScrollLeft = Math.max(0, node.scrollWidth - node.clientWidth);
+    setCanScrollLeft(node.scrollLeft > 4);
+    setCanScrollRight(maxScrollLeft - node.scrollLeft > 4);
+  }, []);
 
   useEffect(() => {
     updateScrollState();
-    const node = viewportRef.current;
+    const node = internalViewportRef.current;
     if (!node) return;
 
     const handleScroll = () => updateScrollState();
@@ -80,8 +94,15 @@ export function ResponsiveScrollArea({
         </>
       ) : null}
       <div
-        ref={viewportRef}
-        className={cn("responsive-scroll-area__viewport overflow-x-auto overflow-y-hidden", viewportClassName)}
+        ref={(node) => {
+          internalViewportRef.current = node;
+          assignRef(viewportRef, node);
+        }}
+        className={cn(
+          "responsive-scroll-area__viewport overflow-x-auto",
+          scrollableY ? "overflow-y-auto" : "overflow-y-hidden",
+          viewportClassName
+        )}
       >
         <div className={cn("responsive-scroll-area__inner min-w-full", innerClassName)}>{children}</div>
       </div>

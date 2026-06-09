@@ -1,5 +1,5 @@
-import AttendanceReportsPage from "@/components/attendance-reports-page";
+import { AttendanceReportsWorkspace } from "@/features/attendance";
 
 export default function Page() {
-  return <AttendanceReportsPage />;
+  return <AttendanceReportsWorkspace />;
 }

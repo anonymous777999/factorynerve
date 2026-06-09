@@ -62,6 +62,7 @@ export function OCREditor({
         <label className="text-xs text-[var(--muted)]">
           Brightness ({settings.brightness})
           <Input
+            aria-label="Brightness"
             type="range"
             min={-35}
             max={35}
@@ -73,6 +74,7 @@ export function OCREditor({
         <label className="mt-2 block text-xs text-[var(--muted)]">
           Contrast ({settings.contrast})
           <Input
+            aria-label="Contrast"
             type="range"
             min={-35}
             max={40}

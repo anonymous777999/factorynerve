@@ -161,6 +161,7 @@ export function getRoleAllowedNavHrefs(role?: string | null, industryType?: stri
       break;
     case "accountant":
       [
+        "/reports",
         "/attendance/reports",
         "/steel/customers",
         "/steel/invoices",
@@ -172,6 +173,7 @@ export function getRoleAllowedNavHrefs(role?: string | null, industryType?: stri
         "/dashboard",
         "/work-queue",
         "/ocr/history",
+        "/attendance/review",
         "/steel",
         "/steel/inventory",
         "/steel/inventory/transactions",
@@ -185,7 +187,11 @@ export function getRoleAllowedNavHrefs(role?: string | null, industryType?: stri
     case "admin":
       [
         "/dashboard",
+        "/settings",
+        "/settings/attendance",
         "/ocr/history",
+        "/reports",
+        "/approvals",
       ].forEach((href) => base.add(href));
       break;
     case "owner":

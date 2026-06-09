@@ -5,6 +5,9 @@ import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
+import { PageMain } from "@/components/ui/page-main";
+import { DisclosurePanel } from "@/shared/operational/disclosure-panel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
@@ -52,7 +55,7 @@ function statusBadgeClass(status: SteelDispatchStatus) {
   if (status === "exited") return "border-cyan-400/35 bg-cyan-500/12 text-cyan-200";
   if (status === "loaded") return "border-amber-400/35 bg-amber-500/12 text-amber-200";
   if (status === "cancelled") return "border-rose-400/35 bg-rose-500/12 text-rose-200";
-  return "border-slate-400/35 bg-slate-500/12 text-slate-200";
+  return "border-slate-400/35 bg-surface-panel/12 text-text-secondary";
 }
 
 function timelineTone(completed: boolean) {
@@ -165,23 +168,15 @@ export function SteelDispatchDetailPage() {
 
   const pageLoading = sessionLoading || (Boolean(user) && loading);
 
-  if (pageLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading steel dispatch detail...
-      </main>
-    );
-  }
-
   if (!user || !detail) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <PageMain maxWidth="3xl" innerClassName="flex min-h-[50vh] items-center justify-center px-4">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Dispatch Detail</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="text-sm text-red-400">{error || sessionError || "Dispatch not found."}</div>
+            <div className="text-sm text-status-danger-fg">{error || sessionError || "Dispatch not found."}</div>
             <div className="flex gap-3">
               <Link href="/steel/dispatches">
                 <Button variant="outline">Back to Dispatches</Button>
@@ -194,7 +189,7 @@ export function SteelDispatchDetailPage() {
             </div>
           </CardContent>
         </Card>
-      </main>
+      </PageMain>
     );
   }
 
@@ -312,32 +307,32 @@ export function SteelDispatchDetailPage() {
   ];
   const nextAction: DispatchAction | null = canMarkLoaded
     ? {
-        label: "Mark loaded",
-        status: "loaded" as SteelDispatchStatus,
-        title: "Confirm loading",
-        description: "Use this when the truck has been loaded and the gate process can continue.",
-      }
+      label: "Mark loaded",
+      status: "loaded" as SteelDispatchStatus,
+      title: "Confirm loading",
+      description: "Use this when the truck has been loaded and the gate process can continue.",
+    }
     : canMarkExited
       ? {
-          label: "Mark exited",
-          status: "exited" as SteelDispatchStatus,
-          title: "Release the truck",
-          description: "Confirm the truck has left the plant and post stock out of inventory.",
-        }
+        label: "Mark exited",
+        status: "exited" as SteelDispatchStatus,
+        title: "Release the truck",
+        description: "Confirm the truck has left the plant and post stock out of inventory.",
+      }
       : canMarkDelivered
         ? {
-            label: "Mark delivered",
-            status: "delivered" as SteelDispatchStatus,
-            title: "Close delivery",
-            description: "Capture the receiver details and close the dispatch once the customer accepts it.",
-          }
+          label: "Mark delivered",
+          status: "delivered" as SteelDispatchStatus,
+          title: "Close delivery",
+          description: "Capture the receiver details and close the dispatch once the customer accepts it.",
+        }
         : dispatchStatus === "delivered"
           ? {
-              label: "Open Reconciliation",
-              href: "/steel/reconciliations",
-              title: "Cycle count pending",
-              description: "Delivery is complete. Perform a cycle count to ensure the ledger matches physical yard stock.",
-            }
+            label: "Open Reconciliation",
+            href: "/steel/reconciliations",
+            title: "Cycle count pending",
+            description: "Delivery is complete. Perform a cycle count to ensure the ledger matches physical yard stock.",
+          }
           : null;
   const nextActionGuidance = (() => {
     if (dispatchStatus === "cancelled") {
@@ -382,30 +377,30 @@ export function SteelDispatchDetailPage() {
   })();
   const dispatchTransitionAction: DispatchAction | null = canMarkDispatched
     ? {
-        label: "Mark dispatched",
-        status: "dispatched",
-        title: "Release the truck",
-        description: "Confirm the truck has left the plant and post stock out of inventory.",
-      }
+      label: "Mark dispatched",
+      status: "dispatched",
+      title: "Release the truck",
+      description: "Confirm the truck has left the plant and post stock out of inventory.",
+    }
     : null;
   const deliveryTransitionAction: DispatchAction | null = canMarkDelivered
     ? {
-        label: "Mark delivered",
-        status: "delivered",
-        title: "Close delivery",
-        description: "Capture the receiver details and close the dispatch once the customer accepts it.",
-      }
+      label: "Mark delivered",
+      status: "delivered",
+      title: "Close delivery",
+      description: "Capture the receiver details and close the dispatch once the customer accepts it.",
+    }
     : null;
   const recommendedAction: DispatchAction | null =
     (inventoryPosted && !deliveryConfirmed ? deliveryTransitionAction : null) ||
     (truckExitRecorded && !inventoryPosted
       ? {
-          label: "Mark exited",
-          status: "exited" as SteelDispatchStatus,
-          title: "Record truck exit",
-          description:
-            "Truck exit is already recorded, but stock is still waiting to post. Move the dispatch to the next operational step so inventory can reduce.",
-        }
+        label: "Mark exited",
+        status: "exited" as SteelDispatchStatus,
+        title: "Record truck exit",
+        description:
+          "Truck exit is already recorded, but stock is still waiting to post. Move the dispatch to the next operational step so inventory can reduce.",
+      }
       : null) ||
     nextAction;
   const workflowSummaryCard = (() => {
@@ -482,93 +477,86 @@ export function SteelDispatchDetailPage() {
   const interpretedTimeline: MovementTimelineEntry[] = movementTimeline.map((entry) =>
     entry.id === "inventory-posted" && !entry.value
       ? {
-          ...entry,
-          pendingDetail:
-            "Inventory posting pending. Stock movement will occur when the dispatch is marked dispatched or delivered.",
-        }
+        ...entry,
+        pendingDetail:
+          "Inventory posting pending. Stock movement will occur when the dispatch is marked dispatched or delivered.",
+      }
       : entry,
   );
   const recommendedGuidance =
     dispatchStatus === "cancelled"
       ? {
-          title: "Dispatch cancelled",
-          description:
-            "No further operational action is available on this dispatch. Review the invoice if material still needs to move.",
-        }
+        title: "Dispatch cancelled",
+        description:
+          "No further operational action is available on this dispatch. Review the invoice if material still needs to move.",
+      }
       : deliveryConfirmed
         ? {
-            title: "Dispatch workflow complete",
-            description:
-              "Delivery confirmation is already recorded. Use the evidence panels below for audit or customer follow-up only.",
-          }
+          title: "Dispatch workflow complete",
+          description:
+            "Delivery confirmation is already recorded. Use the evidence panels below for audit or customer follow-up only.",
+        }
         : inventoryPosted && !deliveryConfirmed
           ? {
-              title: "Record delivery confirmation",
-              description:
-                "Capture the receiver name and POD notes after the customer accepts the material to close this dispatch cleanly.",
-            }
+            title: "Record delivery confirmation",
+            description:
+              "Capture the receiver name and POD notes after the customer accepts the material to close this dispatch cleanly.",
+          }
           : truckExitRecorded && !inventoryPosted && dispatchTransitionAction
             ? {
-                title: "Mark dispatch as dispatched",
-                description:
-                  "Truck exit is already recorded, but stock is still waiting to post. Mark this dispatch as dispatched so inventory can reduce.",
-              }
+              title: "Mark dispatch as dispatched",
+              description:
+                "Truck exit is already recorded, but stock is still waiting to post. Mark this dispatch as dispatched so inventory can reduce.",
+            }
             : recommendedAction
               ? {
-                  title: recommendedAction.title,
-                  description: recommendedAction.description,
-                }
+                title: recommendedAction.title,
+                description: recommendedAction.description,
+              }
               : nextActionGuidance;
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-4xl">
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)] mb-4">
-                <span>Production</span>
-                <span>→</span>
-                <span>Invoice</span>
-                <span>→</span>
-                <span className="text-[var(--accent)] font-bold">Dispatch</span>
-                <span>→</span>
-                <span>Reconciliation</span>
-              </div>
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Dispatch</div>
-              <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{detail.dispatch.dispatch_number}</h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Check the manifest, move the truck to its next valid status, and keep inventory posting aligned with delivery proof.
-              </p>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <div
-                className={`inline-flex rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em] ${statusBadgeClass(detail.dispatch.status)}`}
-              >
-                {detail.dispatch.status}
-              </div>
-              {/* AUDIT: BUTTON_CLUTTER - move cross-route links into a secondary tools tray so dispatch progression stays primary. */}
-              <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
-                  Dispatch tools
-                  <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
-                  <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
-                </summary>
-                <div className="flex flex-wrap gap-3 border-t border-[var(--border)] px-4 py-4">
-                  <Link href="/steel/dispatches">
-                    <Button variant="outline">Dispatches</Button>
-                  </Link>
-                  <Link href={`/steel/invoices/${detail.dispatch.invoice_id}`}>
-                    <Button variant="ghost">Invoice</Button>
-                  </Link>
-                  <Link href="/steel">
-                    <Button variant="ghost">Steel hub</Button>
-                  </Link>
-                </div>
-              </details>
-            </div>
+    <OperationalPageShell
+      eyebrow="Steel Dispatch"
+      title={detail.dispatch.dispatch_number}
+      description="Check the manifest, move the truck to its next valid status, and keep inventory posting aligned with delivery proof."
+      isLoading={pageLoading}
+      loadingTitle="Loading steel dispatch detail..."
+      contentClassName="space-y-6"
+      filters={
+        <div className="flex w-full flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-[11px] uppercase tracking-[0.2em] text-text-secondary">
+            <span>Production</span>
+            <span>→</span>
+            <span>Invoice</span>
+            <span>→</span>
+            <span className="font-bold text-[var(--accent)]">Dispatch</span>
+            <span>→</span>
+            <span>Reconciliation</span>
           </div>
-        </section>
+          <div className="flex flex-wrap items-center gap-3">
+            <div
+              className={`inline-flex rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em] ${statusBadgeClass(detail.dispatch.status)}`}
+            >
+              {detail.dispatch.status}
+            </div>
+            <DisclosurePanel title="Dispatch tools" className="w-full sm:max-w-xs">
+              <div className="flex flex-wrap gap-3">
+                <Link href="/steel/dispatches">
+                  <Button variant="outline" size="compact">Dispatches</Button>
+                </Link>
+                <Link href={`/steel/invoices/${detail.dispatch.invoice_id}`}>
+                  <Button variant="ghost" size="compact">Invoice</Button>
+                </Link>
+                <Link href="/steel">
+                  <Button variant="ghost" size="compact">Steel hub</Button>
+                </Link>
+              </div>
+            </DisclosurePanel>
+          </div>
+        </div>
+      }
+    >
 
         <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
           <CardHeader>
@@ -821,6 +809,7 @@ export function SteelDispatchDetailPage() {
                   <div>
                     <label className="text-sm text-[var(--muted)]">Entry Time</label>
                     <Input
+                      aria-label="Entry time"
                       type="datetime-local"
                       value={entryTime}
                       onChange={(event) => setEntryTime(event.target.value)}
@@ -829,6 +818,7 @@ export function SteelDispatchDetailPage() {
                   <div>
                     <label className="text-sm text-[var(--muted)]">Exit Time</label>
                     <Input
+                      aria-label="Exit time"
                       type="datetime-local"
                       value={exitTime}
                       onChange={(event) => setExitTime(event.target.value)}
@@ -1044,8 +1034,7 @@ export function SteelDispatchDetailPage() {
         </section>
 
         {status ? <div className="text-sm text-green-400">{status}</div> : null}
-        {error ? <div className="text-sm text-red-400">{error}</div> : null}
-      </div>
-    </main>
+        {error ? <div className="text-sm text-status-danger-fg">{error}</div> : null}
+    </OperationalPageShell>
   );
 }

@@ -42,6 +42,8 @@ def register_user(
     resp = client.post("/auth/register", json=payload)
     assert resp.status_code in (200, 201), resp.text
     data = resp.json()
+    if isinstance(data, dict) and "data" in data:
+        data = data["data"]
     verification_link = data.get("verification_link")
     assert verification_link, f"Expected verification link in test mode: {data}"
 
@@ -53,12 +55,14 @@ def register_user(
 
     headers = {"X-Use-Cookies": "1"} if use_cookies else None
     login = client.post(
-        "/auth/login",
+        "/auth/v2/login",
         json={"email": payload["email"], "password": payload["password"]},
         headers=headers,
     )
     assert login.status_code == 200, login.text
     auth_data = login.json()
+    if isinstance(auth_data, dict) and "data" in auth_data:
+        auth_data = auth_data["data"]
     actual_role = auth_data.get("user", {}).get("role")
     if requested_role != actual_role:
         init_db()

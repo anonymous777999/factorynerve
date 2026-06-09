@@ -32,13 +32,13 @@ export function RecentDocuments({
           <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8a93a0]">
             Recent
           </div>
-          <div className="mt-1 text-sm text-[#66707c]">Open the latest OCR drafts.</div>
+          <div className="mt-1 text-sm text-text-secondary">Open the latest OCR drafts.</div>
         </div>
         <Link href="/ocr/history">
           <Button
             type="button"
             variant="ghost"
-            className="h-10 rounded-[16px] border border-[#eef1f4] bg-[#fbfbfa] px-3 text-[#475467] hover:bg-white"
+            className="h-10 rounded-[16px] border border-border-subtle bg-surface-shell px-3 text-text-secondary hover:bg-surface-hover"
           >
             View all
           </Button>
@@ -50,7 +50,7 @@ export function RecentDocuments({
             <Link
               key={record.id}
               href={`/ocr/verify?verification_id=${record.id}`}
-              className="flex items-center justify-between gap-3 rounded-[20px] border border-[#eef1f4] bg-[#fbfbfa] px-4 py-3 transition duration-200 hover:border-[#d4d9df] hover:bg-white"
+              className="flex items-center justify-between gap-3 rounded-[20px] border border-border-subtle bg-surface-shell px-4 py-3 transition duration-200 hover:border-border-default hover:bg-surface-hover"
             >
               <div className="min-w-0">
                 <div className="truncate text-sm font-medium text-[#111827]">
@@ -77,7 +77,7 @@ export function RecentDocuments({
             </Link>
           ))
         ) : (
-          <div className="rounded-[20px] border border-[#eef1f4] bg-[#fbfbfa] px-4 py-4 text-sm text-[#8a93a0]">
+          <div className="rounded-[20px] border border-border-subtle bg-surface-shell px-4 py-4 text-sm text-[#8a93a0]">
             No OCR documents yet.
           </div>
         )}

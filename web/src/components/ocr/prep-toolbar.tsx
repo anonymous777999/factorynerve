@@ -36,8 +36,8 @@ export function PrepToolbar({
               className={cn(
                 "rounded-[18px] border px-3 py-3 text-sm font-medium transition duration-200",
                 selectedFilter === filter.value
-                  ? "border-[#111827] bg-[#111827] text-white"
-                  : "border-[#e5e7eb] bg-[#f8fafc] text-[#475467] hover:border-[#c9d2dd] hover:bg-white",
+                  ? "border-[#111827] bg-surface-app text-white"
+                  : "border-[#e5e7eb] bg-surface-shell text-text-secondary hover:border-[#c9d2dd] hover:bg-surface-hover",
               )}
             >
               {filter.label}
@@ -46,14 +46,14 @@ export function PrepToolbar({
         </div>
       </div>
 
-      <div className="rounded-[20px] border border-[#eef1f4] bg-[#fbfbfa] px-4 py-4 text-sm leading-6 text-[#66707c]">
+      <div className="rounded-[20px] border border-border-subtle bg-surface-shell px-4 py-4 text-sm leading-6 text-text-secondary">
         Crop the page tightly, keep the sheet flat, then run extraction.
       </div>
 
       <Button
         type="button"
         variant="ghost"
-        className="h-11 w-full rounded-[18px] border border-[#eef1f4] bg-[#fbfbfa] text-[#475467] hover:bg-white"
+        className="h-11 w-full rounded-[18px] border border-border-subtle bg-surface-shell text-text-secondary hover:bg-surface-hover"
         onClick={onRetake}
       >
         Retake

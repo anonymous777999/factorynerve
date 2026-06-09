@@ -26,6 +26,7 @@ from backend.models.report import AuditLog, TokenBlacklist
 from backend.models.email_verification_token import EmailVerificationToken
 from backend.models.pending_registration import PendingRegistration
 from backend.models.refresh_token import RefreshToken
+from backend.models.auth_user import AuthUser
 from backend.models.user import User, UserReadSchema, UserRole
 from backend.models.factory import Factory
 from backend.models.organization import Organization
@@ -70,6 +71,12 @@ from backend.services.user_code_service import (
 from backend.services.user_service import validate_factory_role_assignment
 from backend.email_service import send_email
 from backend.services.registration_service import resolve_registration_context
+from backend.services.auth_sync_service import (
+    detect_password_hash_algorithm,
+    ensure_auth_user,
+    ensure_auth_user_for_legacy_user,
+    hash_prefix as sync_hash_prefix,
+)
 from backend.auth_cookies import (
     clear_auth_cookies,
     get_access_cookie,
@@ -78,6 +85,7 @@ from backend.auth_cookies import (
     set_auth_cookies,
     wants_cookie_auth,
 )
+from backend.auth_security.passwords import hash_password as hash_password_secure
 
 
 logger = logging.getLogger(__name__)
@@ -257,6 +265,10 @@ def _register_failed_attempt(ip_address: str) -> None:
 def _clear_attempts(ip_address: str) -> None:
     with _rate_limit_lock:
         _login_attempts.pop(ip_address, None)
+
+
+def _hash_prefix(value: str | None, *, visible: int = 12) -> str:
+    return sync_hash_prefix(value, visible=visible)
 
 
 def _log_auth_event(
@@ -777,6 +789,12 @@ def _activate_pending_registration(
         email_verified_at=datetime.now(timezone.utc),
     )
     user = _persist_user_with_user_code(db, user)
+    ensure_auth_user(
+        db,
+        email=user.email,
+        is_active=True,
+        is_email_verified=True,
+    )
     validate_factory_role_assignment(assigned_role, assigned_role)
 
     db.add(
@@ -851,6 +869,13 @@ def register_user(
             company_code=payload.company_code,
             phone_number=normalize_phone_e164(payload.phone_number) if payload.phone_number else None,
             ttl_hours=EMAIL_VERIFICATION_TTL_HOURS,
+        )
+        ensure_auth_user(
+            db,
+            email=payload.email,
+            raw_password=payload.password,
+            is_active=False,
+            is_email_verified=False,
         )
         verification_link = (
             _frontend_verification_link_from_request(request, verification_token)
@@ -1342,25 +1367,117 @@ def password_reset(
         raise HTTPException(status_code=400, detail="Invalid or expired reset token.")
 
     now = datetime.now(timezone.utc)
-    user.password_hash = hash_password(payload.new_password)
-    record.used_at = now
+    normalized_email = user.email.lower().strip()
+    secure_user_before = db.query(AuthUser).filter(AuthUser.email == normalized_email).first()
+    legacy_hash_before = _hash_prefix(user.password_hash)
+    secure_hash_before = _hash_prefix(getattr(secure_user_before, "password_hash", None))
+    generated_secure_hash = hash_password_secure(payload.new_password)
+    rollback_status = "not_triggered"
+    try:
+        user.password_hash = hash_password(payload.new_password)
+        legacy_hash_after = _hash_prefix(user.password_hash)
+        sync_result = ensure_auth_user_for_legacy_user(
+            db,
+            legacy_user=user,
+            secure_password_hash=generated_secure_hash,
+            is_active=True,
+            is_email_verified=bool(user.email_verified_at),
+        )
+        secure_user = sync_result.auth_user
+        secure_user.password_changed_at = now
+        secure_user.updated_at = now
+        secure_hash_after = _hash_prefix(secure_user.password_hash)
+        record.used_at = now
 
-    db.query(RefreshToken).filter(
-        RefreshToken.user_id == user.id,
-        RefreshToken.revoked_at.is_(None),
-    ).update({"revoked_at": now}, synchronize_session=False)
+        refresh_tokens_revoked = db.query(RefreshToken).filter(
+            RefreshToken.user_id == user.id,
+            RefreshToken.revoked_at.is_(None),
+        ).update({"revoked_at": now}, synchronize_session=False)
 
-    _log_auth_event(
-        db,
-        "PASSWORD_RESET_COMPLETED",
-        "Password reset completed.",
-        user.id,
-        request,
-        org_id=user.org_id,
-        factory_id=None,
-    )
-    db.commit()
-    return {"message": "Password reset successful. Please log in again."}
+        logger.info(
+            "AUTH_DIAGNOSTIC_RESET_LEGACY",
+            extra={
+                "auth_flow_selected": "auth_legacy_password_reset",
+                "normalized_email": normalized_email,
+                "legacy_user_exists": True,
+                "secure_user_exists": bool(secure_user_before),
+                "legacy_user_id": user.id,
+                "auth_user_id": secure_user.id,
+                "old_user_hash_prefix": legacy_hash_before,
+                "new_user_hash_prefix": legacy_hash_after,
+                "old_auth_user_hash_prefix": secure_hash_before,
+                "new_auth_user_hash_prefix": secure_hash_after,
+                "generated_secure_hash_prefix": _hash_prefix(generated_secure_hash),
+                "generated_secure_hash_algorithm": detect_password_hash_algorithm(generated_secure_hash),
+                "secure_sync_applied": True,
+                "auth_user_updated": sync_result.created or sync_result.updated,
+                "secure_user_rows_updated": sync_result.rows_updated,
+                "refresh_token_rows_updated": refresh_tokens_revoked,
+                "commit_success": False,
+                "transaction_rollback_status": rollback_status,
+            },
+        )
+
+        _log_auth_event(
+            db,
+            "PASSWORD_RESET_COMPLETED",
+            "Password reset completed.",
+            user.id,
+            request,
+            org_id=user.org_id,
+            factory_id=None,
+        )
+        db.flush()
+        db.commit()
+        logger.info(
+            "AUTH_DIAGNOSTIC_RESET_LEGACY_COMMIT",
+            extra={
+                "auth_flow_selected": "auth_legacy_password_reset",
+                "normalized_email": normalized_email,
+                "legacy_user_exists": True,
+                "secure_user_exists": True,
+                "legacy_user_id": user.id,
+                "auth_user_id": secure_user.id,
+                "old_user_hash_prefix": legacy_hash_before,
+                "new_user_hash_prefix": legacy_hash_after,
+                "old_auth_user_hash_prefix": secure_hash_before,
+                "new_auth_user_hash_prefix": secure_hash_after,
+                "generated_secure_hash_prefix": _hash_prefix(generated_secure_hash),
+                "generated_secure_hash_algorithm": detect_password_hash_algorithm(generated_secure_hash),
+                "secure_sync_applied": True,
+                "auth_user_updated": sync_result.created or sync_result.updated,
+                "secure_user_rows_updated": sync_result.rows_updated,
+                "refresh_token_rows_updated": refresh_tokens_revoked,
+                "commit_success": True,
+                "transaction_rollback_status": rollback_status,
+            },
+        )
+        return {"message": "Password reset successful. Please log in again."}
+    except Exception:
+        rollback_status = "triggered"
+        db.rollback()
+        logger.exception(
+            "AUTH_DIAGNOSTIC_RESET_LEGACY_FAILED",
+            extra={
+                "auth_flow_selected": "auth_legacy_password_reset",
+                "normalized_email": normalized_email,
+                "legacy_user_exists": True,
+                "secure_user_exists": bool(secure_user_before),
+                "legacy_user_id": user.id,
+                "auth_user_id": getattr(secure_user_before, "id", None),
+                "old_user_hash_prefix": legacy_hash_before,
+                "old_auth_user_hash_prefix": secure_hash_before,
+                "generated_secure_hash_prefix": _hash_prefix(generated_secure_hash),
+                "generated_secure_hash_algorithm": detect_password_hash_algorithm(generated_secure_hash),
+                "secure_sync_applied": False,
+                "auth_user_updated": False,
+                "secure_user_rows_updated": 0,
+                "refresh_token_rows_updated": 0,
+                "commit_success": False,
+                "transaction_rollback_status": rollback_status,
+            },
+        )
+        raise
 
 
 @router.post("/factories", response_model=FactoryListResponse)
@@ -1663,6 +1780,13 @@ def change_password(
     try:
         validate_password_strength(payload.new_password)
         current_user.password_hash = hash_password(payload.new_password)
+        ensure_auth_user_for_legacy_user(
+            db,
+            legacy_user=current_user,
+            raw_password=payload.new_password,
+            is_active=True,
+            is_email_verified=bool(current_user.email_verified_at),
+        )
         _log_auth_event(db, "PASSWORD_CHANGED", "User changed password.", current_user.id, request)
         db.commit()
         return {"message": "Password changed successfully."}

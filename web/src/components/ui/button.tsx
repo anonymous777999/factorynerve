@@ -2,26 +2,109 @@ import * as React from "react";
 
 import { cn } from "@/lib/utils";
 
-type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "outline" | "ghost";
+type ButtonVariant = "primary" | "secondary" | "outline" | "ghost" | "destructive";
+type ButtonSize = "default" | "compact" | "icon";
+type ResolvedButtonVariant = "primary" | "secondary" | "ghost" | "destructive";
+
+export type ButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+  variant?: ButtonVariant;
+  size?: ButtonSize;
+  isBusy?: boolean;
+  busyLabel?: string;
 };
 
 const base =
-  "ui-no-select ui-no-callout inline-flex items-center justify-center rounded-full border px-5 py-2.5 text-sm font-semibold tracking-[-0.01em] transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)] disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:translate-y-0";
+  "ui-no-select ui-no-callout inline-flex h-[36px] shrink-0 cursor-pointer items-center justify-center gap-2 rounded-control border text-[length:var(--text-base)] font-medium transition-all duration-150 ease-out active:scale-[0.97] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--border-focus)] focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:border-transparent disabled:bg-[var(--action-disabled)] disabled:text-[var(--action-disabled-text)]";
 
-const variants: Record<NonNullable<ButtonProps["variant"]>, string> = {
+const variants: Record<ButtonVariant, string> = {
   primary:
-    "border-sky-300/20 bg-[linear-gradient(135deg,var(--accent),var(--accent-strong))] text-[#06111c] shadow-[0_14px_30px_rgba(47,125,255,0.28)] hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_18px_38px_rgba(47,125,255,0.34)]",
+    "border-transparent bg-[var(--action-primary)] text-[var(--action-primary-text)] hover:bg-[var(--action-primary-hover)] active:bg-[var(--action-primary-active)]",
   secondary:
-    "border-white/8 bg-[linear-gradient(180deg,rgba(32,45,67,0.92),rgba(23,33,49,0.96))] text-[var(--text)] shadow-[0_10px_24px_rgba(2,6,23,0.2)] hover:-translate-y-0.5 hover:border-white/14 hover:bg-[linear-gradient(180deg,rgba(39,54,78,0.96),rgba(26,37,56,0.98))]",
+    "border-[color:var(--action-secondary-border)] bg-[var(--action-secondary)] text-[var(--action-secondary-text)] hover:bg-[var(--action-secondary-hover)]",
   outline:
-    "border-[var(--border-strong)] bg-white/[0.02] text-[var(--text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] hover:-translate-y-0.5 hover:border-sky-300/30 hover:bg-[rgba(76,176,255,0.08)]",
+    "border-[color:var(--action-secondary-border)] bg-[var(--action-secondary)] text-[var(--action-secondary-text)] hover:bg-[var(--action-secondary-hover)]",
   ghost:
-    "border-transparent bg-transparent text-[var(--text)] hover:-translate-y-0.5 hover:border-white/8 hover:bg-white/[0.05]",
+    "border-transparent bg-transparent text-[var(--text-link)] hover:bg-[var(--action-ghost-hover)] hover:text-[var(--text-link-hover)]",
+  destructive:
+    "border-transparent bg-[var(--action-destructive)] text-[var(--action-primary-text)] hover:bg-[var(--action-destructive-hover)] active:bg-[var(--action-destructive-hover)]",
 };
 
-export function Button({ className, variant = "primary", ...props }: ButtonProps) {
+const sizes: Record<ButtonSize, string> = {
+  default: "px-[var(--space-4)] text-[length:var(--text-base)]",
+  compact: "px-[var(--space-4)] text-[length:var(--text-sm)]",
+  icon: "h-8 min-h-8 w-8 min-w-8 px-0 text-[length:var(--text-sm)]",
+};
+
+function resolveVariant(variant: ButtonVariant): ResolvedButtonVariant {
+  if (variant === "outline") return "secondary";
+  return variant;
+}
+
+function ButtonSpinner({ className }: { className?: string }) {
   return (
-    <button className={cn(base, variants[variant], className)} {...props} />
+    <svg
+      viewBox="0 0 16 16"
+      fill="none"
+      aria-hidden="true"
+      className={cn("h-icon w-icon animate-spin", className)}
+      style={{ color: 'var(--spinner-color)' }}
+    >
+      <circle
+        cx="8"
+        cy="8"
+        r="6"
+        className="opacity-30"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <path
+        d="M14 8a6 6 0 0 0-6-6"
+        className="opacity-100"
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeWidth="2"
+      />
+    </svg>
   );
 }
+
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(function Button(
+  {
+    children,
+    className,
+    disabled,
+    isBusy = false,
+    busyLabel,
+    size = "default",
+    type = "button",
+    variant = "primary",
+    ...props
+  },
+  ref,
+) {
+  const content = isBusy && busyLabel ? busyLabel : children;
+  const resolvedVariant = resolveVariant(variant);
+
+  return (
+    <button
+      ref={ref}
+      type={type}
+      className={cn(
+        base,
+        variants[variant],
+        sizes[size],
+        isBusy ? "pointer-events-none opacity-90" : "",
+        className,
+      )}
+      disabled={disabled || isBusy}
+      aria-busy={isBusy}
+      data-busy={isBusy ? "true" : "false"}
+      data-variant={resolvedVariant}
+      data-size={size}
+      {...props}
+    >
+      {isBusy ? <ButtonSpinner /> : null}
+      {content ? <span className="truncate">{content}</span> : null}
+    </button>
+  );
+});

@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FactoryNerve OS – Your Account</title>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f1117;
+      --sidebar:   #13151e;
+      --card:      #181c28;
+      --card2:     #1c2030;
+      --border:    #252a3a;
+      --border2:   #2e3450;
+      --text:      #e2e6f0;
+      --muted:     #6b7494;
+      --accent:    #3d7fff;
+      --accent2:   #56cfb2;
+      --green:     #22c55e;
+      --tag-bg:    #1a2a1e;
+      --tag-text:  #4ade80;
+      --font:      'IBM Plex Sans', sans-serif;
+      --mono:      'IBM Plex Mono', monospace;
+    }
+
+    html, body { height: 100%; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      font-size: 14px;
+    }
+
+    /* ── TOP NAV ─────────────────────────────────────── */
+    .topnav {
+      display: flex;
+      align-items: center;
+      height: 52px;
+      padding: 0 24px;
+      background: var(--sidebar);
+      border-bottom: 1px solid var(--border);
+      gap: 32px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; min-width: 200px; }
+    .brand-icon {
+      width: 30px; height: 30px;
+      background: var(--accent);
+      border-radius: 6px;
+      display: grid; place-items: center;
+    }
+    .brand-icon svg { width: 16px; height: 16px; fill: #fff; }
+    .brand-name {
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: .3px;
+    }
+    .nav-links { display: flex; gap: 4px; }
+    .nav-links a {
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 13px;
+      padding: 6px 12px;
+      border-radius: 5px;
+      transition: color .15s, background .15s;
+    }
+    .nav-links a:hover { color: var(--text); background: rgba(255,255,255,.05); }
+    .topnav-right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+    .icon-btn {
+      width: 32px; height: 32px;
+      background: none; border: none; cursor: pointer;
+      color: var(--muted);
+      border-radius: 6px;
+      display: grid; place-items: center;
+      transition: color .15s, background .15s;
+    }
+    .icon-btn:hover { color: var(--text); background: rgba(255,255,255,.06); }
+    .avatar {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3d7fff 0%, #7c3aed 100%);
+      display: grid; place-items: center;
+      font-size: 12px; font-weight: 600; color: #fff;
+      cursor: pointer;
+    }
+
+    /* ── LAYOUT ──────────────────────────────────────── */
+    .layout { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── SIDEBAR ─────────────────────────────────────── */
+    .sidebar {
+      width: 216px;
+      flex-shrink: 0;
+      background: var(--sidebar);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 16px 10px;
+      gap: 2px;
+      overflow-y: auto;
+    }
+    .sidebar-org {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 10px 14px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 8px;
+    }
+    .sidebar-org-icon {
+      width: 34px; height: 34px;
+      background: linear-gradient(135deg, #1e3a8a 0%, #3d7fff 100%);
+      border-radius: 7px;
+      display: grid; place-items: center;
+      flex-shrink: 0;
+    }
+    .sidebar-org-icon svg { width: 16px; height: 16px; fill: #fff; }
+    .sidebar-org-name { font-size: 13px; font-weight: 600; line-height: 1.3; }
+    .sidebar-org-sub  { font-size: 11px; color: var(--muted); }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 10px;
+      border-radius: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      text-decoration: none;
+    }
+    .nav-item:hover { background: rgba(255,255,255,.05); color: var(--text); }
+    .nav-item.active { background: rgba(61,127,255,.12); color: var(--accent); }
+    .nav-item svg { width: 15px; height: 15px; flex-shrink: 0; }
+    .sidebar-bottom { margin-top: auto; border-top: 1px solid var(--border); padding-top: 10px; display: flex; flex-direction: column; gap: 2px; }
+
+    /* ── MAIN CONTENT ────────────────────────────────── */
+    .main {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .page-header {
+      display: flex; justify-content: space-between; align-items: flex-start;
+    }
+    .breadcrumb { font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+    .page-title { font-size: 22px; font-weight: 600; letter-spacing: -.3px; }
+    .page-sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+    .last-updated { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+    .cols { display: grid; grid-template-columns: 1fr 380px; gap: 20px; }
+
+    /* ── CARD ─────────────────────────────────────────── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 22px 24px;
+    }
+    .card-title {
+      font-size: 14px; font-weight: 600;
+      margin-bottom: 18px;
+    }
+
+    /* ── IDENTITY ─────────────────────────────────────── */
+    .identity-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 18px;
+    }
+    .identity-body { display: flex; gap: 24px; }
+    .profile-photo-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; flex-shrink: 0; }
+    .profile-photo {
+      width: 118px; height: 118px; border-radius: 8px;
+      background: linear-gradient(160deg, #1e293b 0%, #334155 100%);
+      overflow: hidden; display: grid; place-items: center;
+    }
+    .profile-photo img { width: 100%; height: 100%; object-fit: cover; }
+    .profile-photo-placeholder {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 40px; font-weight: 700;
+      color: rgba(255,255,255,.15);
+      background: linear-gradient(160deg, #1e2a3d, #2c3a55);
+      letter-spacing: -2px;
+    }
+    .photo-actions { display: flex; flex-direction: column; gap: 6px; }
+    .btn-photo {
+      display: flex; align-items: center; gap: 6px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px; font-weight: 500;
+      cursor: pointer; border: none;
+      transition: background .15s;
+    }
+    .btn-photo.primary {
+      background: rgba(61,127,255,.15);
+      color: var(--accent);
+      border: 1px solid rgba(61,127,255,.25);
+    }
+    .btn-photo.primary:hover { background: rgba(61,127,255,.22); }
+    .btn-photo.ghost {
+      background: transparent;
+      color: var(--muted);
+      border: 1px solid var(--border);
+    }
+    .btn-photo.ghost:hover { background: rgba(255,255,255,.04); }
+
+    .identity-fields { flex: 1; display: flex; flex-direction: column; gap: 0; }
+    .field-row {
+      display: flex; align-items: center; gap: 14px;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .field-row:last-child { border-bottom: none; }
+    .field-icon { width: 28px; display: grid; place-items: center; flex-shrink: 0; color: var(--muted); }
+    .field-icon svg { width: 14px; height: 14px; }
+    .field-label { font-size: 11px; color: var(--muted); margin-bottom: 1px; }
+    .field-value { font-size: 13px; font-weight: 500; }
+    .status-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      background: var(--tag-bg);
+      color: var(--tag-text);
+      font-size: 11px; font-weight: 600;
+      padding: 3px 9px; border-radius: 20px;
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+
+    /* ── EDIT BTN ─────────────────────────────────────── */
+    .btn-edit {
+      display: flex; align-items: center; gap: 6px;
+      padding: 7px 14px;
+      border-radius: 6px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid var(--border2);
+      color: var(--text);
+      font-size: 12px; font-weight: 500;
+      cursor: pointer;
+      transition: background .15s;
+    }
+    .btn-edit:hover { background: rgba(255,255,255,.09); }
+    .btn-edit svg { width: 12px; height: 12px; }
+
+    /* ── SECURITY ─────────────────────────────────────── */
+    .security-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .sec-tile {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 12px;
+    }
+    .sec-tile-icon { color: var(--muted); margin-bottom: 8px; }
+    .sec-tile-icon svg { width: 16px; height: 16px; }
+    .sec-tile-label { font-size: 10px; color: var(--muted); margin-bottom: 3px; }
+    .sec-tile-value { font-size: 12px; font-weight: 600; font-family: var(--mono); }
+    .sec-tile-value.green { color: var(--green); }
+
+    .sec-action {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background .15s;
+      margin-bottom: 8px;
+    }
+    .sec-action:last-child { margin-bottom: 0; }
+    .sec-action:hover { background: rgba(255,255,255,.03); }
+    .sec-action-left { display: flex; align-items: center; gap: 12px; }
+    .sec-action-icon { color: var(--muted); }
+    .sec-action-icon svg { width: 15px; height: 15px; }
+    .sec-action-title { font-size: 13px; font-weight: 500; }
+    .sec-action-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+    .chevron { color: var(--muted); }
+    .chevron svg { width: 14px; height: 14px; }
+
+    /* ── RIGHT COLUMN ────────────────────────────────── */
+    .right-col { display: flex; flex-direction: column; gap: 20px; }
+
+    /* Workspace access */
+    .ws-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 11px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+    }
+    .ws-row:last-of-type { border-bottom: none; }
+    .ws-label { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+    .ws-label svg { width: 14px; height: 14px; }
+    .ws-value { font-weight: 500; font-size: 12.5px; text-align: right; }
+    .ws-link { display: flex; align-items: center; gap: 4px; color: var(--accent); cursor: pointer; }
+    .ws-link svg { width: 12px; height: 12px; }
+    .access-active {
+      display: flex; align-items: center; gap: 6px;
+      margin-top: 14px;
+      font-size: 12px; font-weight: 600;
+      color: var(--green);
+    }
+    .access-active .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px var(--green); }
+
+    /* Activity overview */
+    .activity-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+    .stat-tile {
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+    .stat-value { font-size: 26px; font-weight: 700; letter-spacing: -1px; font-family: var(--mono); }
+    .stat-icon { color: var(--accent); opacity: .7; }
+    .stat-icon svg { width: 22px; height: 22px; }
+    .stat-icon.cloud { color: var(--accent2); }
+
+    .activity-event {
+      display: flex; align-items: flex-start; gap: 10px;
+      background: var(--card2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+    }
+    .event-icon { color: var(--green); margin-top: 2px; flex-shrink: 0; }
+    .event-icon svg { width: 14px; height: 14px; }
+    .event-label { font-size: 10px; color: var(--muted); margin-bottom: 2px; }
+    .event-title { font-size: 13px; font-weight: 500; }
+    .event-time { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 1px; }
+
+    /* Account actions */
+    .btn-action {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%;
+      padding: 11px;
+      border-radius: 7px;
+      font-size: 13px; font-weight: 500;
+      cursor: pointer;
+      border: none;
+      transition: background .15s;
+      margin-bottom: 10px;
+    }
+    .btn-action:last-child { margin-bottom: 0; }
+    .btn-action.switch {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-action.switch:hover { background: #2d6ee0; }
+    .btn-action.signout {
+      background: rgba(255,255,255,.04);
+      color: var(--text);
+      border: 1px solid var(--border2);
+    }
+    .btn-action.signout:hover { background: rgba(255,255,255,.08); }
+    .btn-action svg { width: 15px; height: 15px; }
+
+    /* ── FOOTER ──────────────────────────────────────── */
+    footer {
+      background: var(--sidebar);
+      border-top: 1px solid var(--border);
+      padding: 14px 32px;
+      display: flex; align-items: center; justify-content: space-between;
+      font-size: 11px; color: var(--muted);
+    }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+    .footer-links { display: flex; gap: 20px; }
+  </style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <div class="brand">
+    <div class="brand-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+    </div>
+    <span class="brand-name">FactoryNerve OS</span>
+  </div>
+  <nav class="nav-links">
+    <a href="#">Workstation</a>
+    <a href="#">Assets</a>
+    <a href="#">Logs</a>
+    <a href="#">Security</a>
+  </nav>
+  <div class="topnav-right">
+    <button class="icon-btn">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"/></svg>
+    </button>
+    <button class="icon-btn">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg>
+    </button>
+    <button class="icon-btn">
+      <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    </button>
+    <div class="avatar">AR</div>
+  </div>
+</nav>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-org">
+      <div class="sidebar-org-icon">
+        <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      </div>
+      <div>
+        <div class="sidebar-org-name">FactoryNerve</div>
+        <div class="sidebar-org-sub">North Sector Plant</div>
+      </div>
+    </div>
+
+    <a class="nav-item" href="#">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </a>
+    <a class="nav-item" href="#">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Analytics
+    </a>
+    <a class="nav-item" href="#">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+      Nodes
+    </a>
+    <a class="nav-item" href="#">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+      Maintenance
+    </a>
+    <a class="nav-item active" href="#">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profile
+    </a>
+    <a class="nav-item" href="#">
+      <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      Audit
+    </a>
+
+    <div class="sidebar-bottom">
+      <a class="nav-item" href="#">
+        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3M12 17h.01"/></svg>
+        Support
+      </a>
+      <a class="nav-item" href="#">
+        <svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Logs
+      </a>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- Page header -->
+    <div class="page-header">
+      <div>
+        <div class="breadcrumb">Account profile</div>
+        <div class="page-title">Your account</div>
+        <div class="page-sub">Manage your profile and access.</div>
+      </div>
+      <div class="last-updated">Last updated: 2024-05-20 18:04</div>
+    </div>
+
+    <div class="cols">
+
+      <!-- LEFT COLUMN -->
+      <div style="display:flex;flex-direction:column;gap:20px;">
+
+        <!-- IDENTITY -->
+        <div class="card">
+          <div class="identity-header">
+            <div class="card-title" style="margin-bottom:0;">Identity</div>
+            <button class="btn-edit">
+              <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Edit
+            </button>
+          </div>
+          <div class="identity-body">
+            <div class="profile-photo-wrap">
+              <div class="profile-photo">
+                <div class="profile-photo-placeholder">AR</div>
+              </div>
+              <div class="photo-actions">
+                <button class="btn-photo primary">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>
+                  Change photo
+                </button>
+                <button class="btn-photo ghost">
+                  <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                  Remove photo
+                </button>
+              </div>
+            </div>
+
+            <div class="identity-fields">
+              <div class="field-row">
+                <div class="field-icon"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+                <div>
+                  <div class="field-label">Full name</div>
+                  <div class="field-value">Alex Rivera</div>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field-icon"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg></div>
+                <div>
+                  <div class="field-label">Role</div>
+                  <div class="field-value">System Administrator</div>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field-icon"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22 6 12 13 2 6"/></svg></div>
+                <div>
+                  <div class="field-label">Email</div>
+                  <div class="field-value">a.rivera@factorynerve.os</div>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field-icon"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 10.8a19.79 19.79 0 01-3.07-8.68A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div>
+                <div>
+                  <div class="field-label">Phone</div>
+                  <div class="field-value">+1 (555) 012-3456</div>
+                </div>
+              </div>
+              <div class="field-row">
+                <div class="field-icon"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+                <div>
+                  <div class="field-label">Status</div>
+                  <div style="margin-top:3px;"><span class="status-pill"><span class="status-dot"></span>Active</span></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SECURITY -->
+        <div class="card">
+          <div class="card-title">Security</div>
+
+          <div class="security-grid">
+            <div class="sec-tile">
+              <div class="sec-tile-icon"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+              <div class="sec-tile-label">Last sign in</div>
+              <div class="sec-tile-value">2024-05-20 14:22</div>
+            </div>
+            <div class="sec-tile">
+              <div class="sec-tile-icon"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+              <div class="sec-tile-label">Active sessions</div>
+              <div class="sec-tile-value">03 devices</div>
+            </div>
+            <div class="sec-tile">
+              <div class="sec-tile-icon"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg></div>
+              <div class="sec-tile-label">MFA status</div>
+              <div class="sec-tile-value green">Enabled</div>
+            </div>
+            <div class="sec-tile">
+              <div class="sec-tile-icon"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+              <div class="sec-tile-label">Recovery</div>
+              <div class="sec-tile-value">Configured</div>
+            </div>
+          </div>
+
+          <div class="sec-action">
+            <div class="sec-action-left">
+              <div class="sec-action-icon"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg></div>
+              <div>
+                <div class="sec-action-title">Change password</div>
+                <div class="sec-action-sub">Update your account password</div>
+              </div>
+            </div>
+            <div class="chevron"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+
+          <div class="sec-action">
+            <div class="sec-action-left">
+              <div class="sec-action-icon"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg></div>
+              <div>
+                <div class="sec-action-title">Sign out other devices</div>
+                <div class="sec-action-sub">Sign out from all other active sessions</div>
+              </div>
+            </div>
+            <div class="chevron"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+        </div>
+
+      </div><!-- /left col -->
+
+      <!-- RIGHT COLUMN -->
+      <div class="right-col">
+
+        <!-- WORKSPACE ACCESS -->
+        <div class="card">
+          <div class="card-title">Workspace access</div>
+          <div class="ws-row">
+            <div class="ws-label"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> Factory</div>
+            <div class="ws-value">North Sector Assembly-7</div>
+          </div>
+          <div class="ws-row">
+            <div class="ws-label"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg> Organization</div>
+            <div class="ws-value">Infrastructt Corp.</div>
+          </div>
+          <div class="ws-row">
+            <div class="ws-label"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg> Access level</div>
+            <div class="ws-value">Operations Lead (L5)</div>
+          </div>
+          <div class="ws-row">
+            <div class="ws-label"><svg fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Permissions</div>
+            <div class="ws-value ws-link">24 roles assigned <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+          </div>
+          <div class="access-active">
+            <span class="dot"></span> Access active
+          </div>
+        </div>
+
+        <!-- ACTIVITY OVERVIEW -->
+        <div class="card">
+          <div class="card-title">Activity overview</div>
+          <div class="activity-stats">
+            <div class="stat-tile">
+              <div>
+                <div class="stat-label">Entries today</div>
+                <div class="stat-value">124</div>
+              </div>
+              <div class="stat-icon"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+            </div>
+            <div class="stat-tile">
+              <div>
+                <div class="stat-label">Pending sync</div>
+                <div class="stat-value">02</div>
+              </div>
+              <div class="stat-icon cloud"><svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z"/></svg></div>
+            </div>
+          </div>
+          <div class="activity-event">
+            <div class="event-icon"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+            <div>
+              <div class="event-label">Last activity</div>
+              <div class="event-title">Data sync completed</div>
+              <div class="event-time">2024-05-20 18:04:12</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ACCOUNT ACTIONS -->
+        <div class="card">
+          <div class="card-title">Account actions</div>
+          <button class="btn-action switch">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>
+            Switch account
+          </button>
+          <button class="btn-action signout">
+            <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Sign out
+          </button>
+        </div>
+
+      </div><!-- /right col -->
+    </div><!-- /cols -->
+
+  </main>
+</div><!-- /layout -->
+
+<footer>
+  <span>© 2024 FactoryNerve OS. All rights reserved.</span>
+  <div class="footer-links">
+    <a href="#">Privacy</a>
+    <a href="#">Terms</a>
+    <a href="#">System status</a>
+    <a href="#">Contact admin</a>
+  </div>
+</footer>
+
+</body>
+</html>

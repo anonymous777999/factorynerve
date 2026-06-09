@@ -14,7 +14,7 @@ export function PasswordStrengthMeter({ password }: { password: string }) {
       </div>
       <div className="mt-3 h-2 overflow-hidden rounded-full bg-[rgba(148,163,184,0.18)]">
         <div
-          className={cn("h-full rounded-full transition-all duration-300", strength.barClass)}
+          className={cn("h-full rounded-full transition-[width] duration-300 ease-out", strength.barClass)}
           style={{ width: `${strength.percent}%` }}
         />
       </div>

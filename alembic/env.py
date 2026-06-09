@@ -26,6 +26,7 @@ import backend.models.factory_settings  # noqa: F401
 import backend.models.report  # noqa: F401
 import backend.models.ocr_template  # noqa: F401
 import backend.models.ocr_usage  # noqa: F401
+import backend.models.ocr_verification  # noqa: F401
 import backend.models.user_plan  # noqa: F401
 import backend.models.feature_usage  # noqa: F401
 import backend.models.org_feature_usage  # noqa: F401
@@ -53,7 +54,6 @@ import backend.models.ai_result_cache  # noqa: F401
 import backend.models.ai_usage_log  # noqa: F401
 import backend.models.intelligence_request  # noqa: F401
 import backend.models.intelligence_stage_usage  # noqa: F401
-import backend.models.ocr_verification  # noqa: F401
 import backend.models.steel_customer  # noqa: F401
 import backend.models.steel_customer_follow_up_task  # noqa: F401
 import backend.models.steel_customer_payment  # noqa: F401

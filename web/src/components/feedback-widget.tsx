@@ -80,27 +80,27 @@ const TYPE_OPTIONS: Array<{
   label: string;
   helper: string;
 }> = [
-  {
-    value: "issue",
-    label: "Issue",
-    helper: "What were you trying to do when it got stuck?",
-  },
-  {
-    value: "bug",
-    label: "Bug",
-    helper: "What broke, crashed, or behaved unexpectedly?",
-  },
-  {
-    value: "suggestion",
-    label: "Suggestion",
-    helper: "What would make this faster or easier?",
-  },
-  {
-    value: "alert_problem",
-    label: "Alert Problem",
-    helper: "Which alert felt wrong, missing, or confusing?",
-  },
-];
+    {
+      value: "issue",
+      label: "Issue",
+      helper: "What were you trying to do when it got stuck?",
+    },
+    {
+      value: "bug",
+      label: "Bug",
+      helper: "What broke, crashed, or behaved unexpectedly?",
+    },
+    {
+      value: "suggestion",
+      label: "Suggestion",
+      helper: "What would make this faster or easier?",
+    },
+    {
+      value: "alert_problem",
+      label: "Alert Problem",
+      helper: "Which alert felt wrong, missing, or confusing?",
+    },
+  ];
 
 const FOLLOW_UP_OPTIONS: Record<FeedbackType, FeedbackFollowUp> = {
   issue: {
@@ -206,6 +206,8 @@ export function FeedbackWidget({
   const [voiceDraft, setVoiceDraft] = useState("");
   const [usedVoiceInput, setUsedVoiceInput] = useState(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const previousActiveElementRef = useRef<HTMLElement | null>(null);
 
   const activeType = useMemo(
     () => TYPE_OPTIONS.find((option) => option.value === feedbackType) || TYPE_OPTIONS[0],
@@ -237,6 +239,69 @@ export function FeedbackWidget({
       recognitionRef.current = null;
     };
   }, []);
+
+  // Keyboard accessibility: close the feedback sheet on Escape, trap focus within
+  // the panel while open, and restore focus to the trigger on close.
+  useEffect(() => {
+    if (!open || typeof document === "undefined") {
+      return;
+    }
+
+    const FOCUSABLE_SELECTOR =
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const getFocusable = () =>
+      panelRef.current
+        ? Array.from(panelRef.current.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+          (element) => element.getAttribute("aria-hidden") !== "true",
+        )
+        : [];
+
+    previousActiveElementRef.current =
+      document.activeElement instanceof HTMLElement ? document.activeElement : null;
+
+    getFocusable()[0]?.focus();
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        setOpen(false);
+        return;
+      }
+
+      if (event.key !== "Tab") {
+        return;
+      }
+
+      const focusable = getFocusable();
+      if (focusable.length === 0) {
+        event.preventDefault();
+        panelRef.current?.focus();
+        return;
+      }
+
+      const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
+      const lastIndex = focusable.length - 1;
+
+      if (event.shiftKey) {
+        if (currentIndex <= 0) {
+          event.preventDefault();
+          focusable[lastIndex]?.focus();
+        }
+        return;
+      }
+
+      if (currentIndex === lastIndex) {
+        event.preventDefault();
+        focusable[0]?.focus();
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      previousActiveElementRef.current?.focus();
+    };
+  }, [open]);
 
   if (!userId) {
     return null;
@@ -391,12 +456,12 @@ export function FeedbackWidget({
         data-feedback-ignore-action="true"
         aria-label="Open feedback"
       >
-        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[rgba(62,166,255,0.16)] text-xs">
+        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[var(--surface-elevated)] text-xs text-[var(--text-secondary)]">
           ?
         </span>
         {!immersiveScannerRoute ? <span>Help</span> : null}
         {queuedCount > 0 ? (
-          <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[10px] font-bold text-[#08101D]">
+          <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-[var(--accent)] px-1.5 py-0.5 text-[11px] font-bold text-[var(--action-primary-text)]">
             {queuedCount}
           </span>
         ) : null}
@@ -410,9 +475,14 @@ export function FeedbackWidget({
             onClick={close}
             aria-label="Close feedback"
             data-feedback-ignore-action="true"
+            tabIndex={-1}
           />
           <div
-            className="relative z-10 w-full max-w-xl rounded-t-[2rem] border border-[var(--border)] bg-[rgba(11,16,25,0.98)] px-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pt-5 shadow-2xl animate-[feedback-sheet-in_190ms_ease-out] lg:rounded-[2rem] lg:p-6"
+            ref={panelRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Tell us what happened"
+            className="relative z-10 w-full max-w-xl rounded-t-[2rem] border border-[var(--border)] bg-[rgba(11,16,25,0.98)] px-4 pb-[calc(env(safe-area-inset-bottom,0px)+1rem)] pt-5 shadow-2xl outline-none animate-[feedback-sheet-in_190ms_ease-out] lg:rounded-[2rem] lg:p-6"
             data-feedback-ignore-action="true"
           >
             <div className="flex items-start justify-between gap-4">

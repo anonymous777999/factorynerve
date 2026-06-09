@@ -5,8 +5,9 @@ import { useMemo } from "react";
 import { ApexChartClient } from "@/components/charts/apex-chart-client";
 import { ChartCard } from "@/components/charts/chart-card";
 import { buildBarChartOptions } from "@/components/charts/chart-config";
-import { INDUSTRIAL_CHART_THEME } from "@/components/charts/industrial-chart-theme";
+import { getChartTheme } from "@/components/charts/industrial-chart-theme";
 import type { ProductionLossDatum } from "@/lib/industrial-dashboard";
+import { useUiPreferences } from "@/providers/ui-preferences-provider";
 
 export function ProductionLossChart({
   data,
@@ -17,6 +18,8 @@ export function ProductionLossChart({
   loading?: boolean;
   onDrillDown?: (meta: { chartId: string; label: string; seriesName: string; value: number }) => void;
 }) {
+  const { theme: appTheme } = useUiPreferences();
+  const chartTheme = useMemo(() => getChartTheme(), [appTheme]);
   const categories = useMemo(() => data.map((item) => item.label), [data]);
   const series = useMemo(
     () => [
@@ -25,7 +28,7 @@ export function ProductionLossChart({
         data: data.map((item) => ({
           x: item.label,
           y: item.production,
-          fillColor: item.production >= 1500 ? INDUSTRIAL_CHART_THEME.teal : INDUSTRIAL_CHART_THEME.blue,
+          fillColor: item.production >= 1500 ? chartTheme.series.success : chartTheme.series.primary,
         })),
       },
       {
@@ -33,34 +36,35 @@ export function ProductionLossChart({
         data: data.map((item) => ({
           x: item.label,
           y: item.loss,
-          fillColor: item.loss > 150 ? INDUSTRIAL_CHART_THEME.redDeep : INDUSTRIAL_CHART_THEME.coral,
+          fillColor: item.loss > 150 ? chartTheme.series.danger : chartTheme.series.warning,
         })),
       },
     ],
-    [data],
+    [chartTheme, data],
   );
 
   const options = useMemo(
     () => ({
       ...buildBarChartOptions({
+        theme: chartTheme,
         chartId: "production-vs-loss",
         categories,
         onDrillDown,
         yFormatter: (value) => `${Math.round(value)} KG`,
         tooltipFormatter: (value) => `${Math.round(value)} KG`,
       }),
-      colors: [INDUSTRIAL_CHART_THEME.teal, INDUSTRIAL_CHART_THEME.coral],
+      colors: [chartTheme.series.success, chartTheme.series.warning],
       annotations: {
         yaxis: [
           {
             y: 150,
-            borderColor: INDUSTRIAL_CHART_THEME.redDeep,
+            borderColor: chartTheme.series.danger,
             strokeDashArray: 4,
             label: {
               text: "High loss threshold",
               style: {
-                background: INDUSTRIAL_CHART_THEME.redDeep,
-                color: "#fff",
+                background: chartTheme.series.danger,
+                color: chartTheme.surfaceCard,
                 fontSize: "10px",
               },
             },
@@ -68,7 +72,7 @@ export function ProductionLossChart({
         ],
       },
     }),
-    [categories, onDrillDown],
+    [categories, chartTheme, onDrillDown],
   );
   const isEmpty = !data.length || data.every((item) => item.production <= 0 && item.loss <= 0);
 
@@ -81,7 +85,7 @@ export function ProductionLossChart({
       emptyTitle="No production-loss pattern yet"
       emptyDescription="Record steel batches first so the board can compare production weight against process loss."
     >
-      <ApexChartClient type="bar" options={options} series={series} height={320} />
+      <ApexChartClient type="bar" options={options} series={series} height={320} theme={chartTheme} />
     </ChartCard>
   );
 }

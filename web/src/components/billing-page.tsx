@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { Suspense, useEffect, useMemo, useState } from "react";
@@ -12,6 +12,7 @@ import { BillingPlanSummaryCards } from "@/components/billing-plan-summary-cards
 import { BillingUsageDiagnostics } from "@/components/billing-usage-diagnostics";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { OperationalPageShell } from "@/components/ui/operational-page-shell";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
@@ -99,7 +100,7 @@ function badgeClass(tone: "blue" | "green" | "amber" | "slate") {
   if (tone === "amber") {
     return "border border-amber-400/30 bg-amber-400/15 text-amber-200";
   }
-  return "border border-[var(--border)] bg-[rgba(148,163,184,0.14)] text-slate-200";
+  return "border border-[var(--border)] bg-[rgba(148,163,184,0.14)] text-text-secondary";
 }
 
 async function loadRazorpayScript() {
@@ -258,71 +259,71 @@ function BillingPageInner() {
       plansPayload?.plans?.length
         ? plansPayload.plans
         : ([
-            {
-              id: "free",
-              name: "Free",
-              monthly_price: 0,
-              user_limit: 3,
-              factory_limit: 1,
-              limits: { ocr: 0, summary: 10, email: 0, smart: 30 },
-              features: {},
+          {
+            id: "free",
+            name: "Free",
+            monthly_price: 0,
+            user_limit: 3,
+            factory_limit: 1,
+            limits: { ocr: 0, summary: 10, email: 0, smart: 30 },
+            features: {},
+          },
+          {
+            id: "starter",
+            name: "Starter",
+            monthly_price: 499,
+            user_limit: 8,
+            factory_limit: 1,
+            limits: { ocr: 0, summary: 30, email: 0, smart: 100 },
+            features: {},
+          },
+          {
+            id: "growth",
+            name: "Growth",
+            monthly_price: 1299,
+            user_limit: 20,
+            factory_limit: 2,
+            limits: { ocr: 0, summary: 150, email: 150, smart: 300 },
+            features: { analytics: true, pdf: true, emailSummary: true },
+          },
+          {
+            id: "factory",
+            name: "Factory",
+            monthly_price: 2999,
+            user_limit: 60,
+            factory_limit: 5,
+            limits: { ocr: 100, summary: 600, email: 600, smart: 1500 },
+            features: { analytics: true, pdf: true, emailSummary: true, templates: true },
+          },
+          {
+            id: "business",
+            name: "Business",
+            monthly_price: 6999,
+            user_limit: 150,
+            factory_limit: 10,
+            unlimited_limits: ["summary", "email", "smart"],
+            limits: { ocr: 150, summary: 0, email: 0, smart: 0 },
+            features: {
+              analytics: true,
+              pdf: true,
+              emailSummary: true,
+              templates: true,
+              api: true,
+              nlq: true,
             },
-            {
-              id: "starter",
-              name: "Starter",
-              monthly_price: 499,
-              user_limit: 8,
-              factory_limit: 1,
-              limits: { ocr: 0, summary: 30, email: 0, smart: 100 },
-              features: {},
-            },
-            {
-              id: "growth",
-              name: "Growth",
-              monthly_price: 1299,
-              user_limit: 20,
-              factory_limit: 2,
-              limits: { ocr: 0, summary: 150, email: 150, smart: 300 },
-              features: { analytics: true, pdf: true, emailSummary: true },
-            },
-            {
-              id: "factory",
-              name: "Factory",
-              monthly_price: 2999,
-              user_limit: 60,
-              factory_limit: 5,
-              limits: { ocr: 100, summary: 600, email: 600, smart: 1500 },
-              features: { analytics: true, pdf: true, emailSummary: true, templates: true },
-            },
-            {
-              id: "business",
-              name: "Business",
-              monthly_price: 6999,
-              user_limit: 150,
-              factory_limit: 10,
-              unlimited_limits: ["summary", "email", "smart"],
-              limits: { ocr: 150, summary: 0, email: 0, smart: 0 },
-              features: {
-                analytics: true,
-                pdf: true,
-                emailSummary: true,
-                templates: true,
-                api: true,
-                nlq: true,
-              },
-            },
-            {
-              id: "enterprise",
-              name: "Enterprise",
-              monthly_price: 0,
-              sales_only: true,
-              user_limit: 0,
-              factory_limit: 0,
-              unlimited_limits: ["ocr", "summary", "email", "smart"],
-              limits: { ocr: 0, summary: 0, email: 0, smart: 0 },
-              features: { analytics: true, pdf: true, emailSummary: true, templates: true, api: true, nlq: true },
-            },
-          ] as PlanInfo[]),
+          },
+          {
+            id: "enterprise",
+            name: "Enterprise",
+            monthly_price: 0,
+            sales_only: true,
+            user_limit: 0,
+            factory_limit: 0,
+            unlimited_limits: ["ocr", "summary", "email", "smart"],
+            limits: { ocr: 0, summary: 0, email: 0, smart: 0 },
+            features: { analytics: true, pdf: true, emailSummary: true, templates: true, api: true, nlq: true },
+          },
+        ] as PlanInfo[]),
     [plansPayload?.plans],
   );
 
@@ -435,7 +436,7 @@ function BillingPageInner() {
         ? "Locked - add OCR pack"
         : `${billing?.usage?.credits_used ?? 0}${billing?.usage?.max_credits ? ` / ${billing.usage.max_credits}` : " / Unlimited"}`,
       widthPercent: progressPercent(billing?.usage?.credits_used, billing?.usage?.max_credits),
-      barClassName: "bg-[linear-gradient(90deg,#3ea6ff,#2dd4bf)]",
+      barClassName: "bg-[var(--action-primary)]",
     },
     rateLimitLabel: `${billing?.usage?.rate_limit_per_minute ?? "-"} / minute`,
     summaryQuota: {
@@ -594,7 +595,9 @@ function BillingPageInner() {
           },
         },
         theme: {
-          color: "#3ea6ff",
+          // Razorpay checkout renders in its own iframe and cannot read CSS
+          // variables; this must be the literal value of --action-primary (#1D6EEB).
+          color: "#1D6EEB",
         },
       });
       checkout.open();
@@ -663,19 +666,33 @@ function BillingPageInner() {
     );
   }
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <BillingHeader
-          dashboardLabel={t("billing.billing.dashboard", "Dashboard")}
-          description={t(
-            "billing.billing.description",
-            "Review plan status, confirm the checkout fit, then pay through Razorpay.",
-          )}
-          plansLabel={t("billing.plans.title", "Plans")}
-          title={t("billing.billing.heading", "Plan status and live checkout")}
-          toolsTitle={t("billing.billing.tools", "Billing tools")}
-        />
-
+    <OperationalPageShell
+      className="factory-workstation-scope"
+      contentClassName="mx-auto max-w-7xl space-y-6"
+      eyebrow="Billing"
+      title={t("billing.billing.heading", "Plan status and live checkout")}
+      description={t(
+        "billing.billing.description",
+        "Review plan status, confirm the checkout fit, then pay through Razorpay.",
+      )}
+      actions={[
+        {
+          id: "plans",
+          label: t("billing.plans.title", "Plans"),
+          onAction: () => {
+            window.location.assign("/plans");
+          },
+        },
+        {
+          id: "dashboard",
+          label: t("billing.billing.dashboard", "Dashboard"),
+          variant: "outline",
+          onAction: () => {
+            window.location.assign("/dashboard");
+          },
+        },
+      ]}
+    >
         <BillingCheckoutSequence steps={checkoutSequenceSteps} />
 
         <BillingPlanSummaryCards cards={summaryCards} />
@@ -692,8 +709,8 @@ function BillingPageInner() {
                 Provider: Razorpay {billingConfig?.configured ? "configured" : "not configured"}
               </div>
               <div>
-                <label className="text-sm text-[var(--muted)]">Upgrade Plan</label>
-                <Select value={checkoutPlan} onChange={(event) => setCheckoutPlan(event.target.value)}>
+                <label htmlFor="checkout-upgrade-plan" className="text-sm text-[var(--muted)]">Upgrade Plan</label>
+                <Select id="checkout-upgrade-plan" value={checkoutPlan} onChange={(event) => setCheckoutPlan(event.target.value)}>
                   {planOptions.map((plan) => (
                     <option key={plan.id} value={plan.id}>
                       {plan.name}
@@ -703,8 +720,9 @@ function BillingPageInner() {
                 </Select>
               </div>
               <div>
-                <label className="text-sm text-[var(--muted)]">Billing Cycle</label>
+                <label htmlFor="checkout-billing-cycle" className="text-sm text-[var(--muted)]">Billing Cycle</label>
                 <Select
+                  id="checkout-billing-cycle"
                   value={billingCycle}
                   onChange={(event) => setBillingCycle(event.target.value as BillingCycle)}
                 >
@@ -714,8 +732,9 @@ function BillingPageInner() {
               </div>
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
-                  <label className="text-sm text-[var(--muted)]">Users</label>
+                  <label htmlFor="checkout-users" className="text-sm text-[var(--muted)]">Users</label>
                   <Input
+                    id="checkout-users"
                     type="number"
                     min={1}
                     value={requestedUsers}
@@ -723,8 +742,9 @@ function BillingPageInner() {
                   />
                 </div>
                 <div>
-                  <label className="text-sm text-[var(--muted)]">Factories</label>
+                  <label htmlFor="checkout-factories" className="text-sm text-[var(--muted)]">Factories</label>
                   <Input
+                    id="checkout-factories"
                     type="number"
                     min={1}
                     value={requestedFactories}
@@ -754,7 +774,7 @@ function BillingPageInner() {
                         <div className="space-y-3">
                           <div className="flex flex-wrap items-start justify-between gap-3">
                             <div className="min-w-0 flex-1">
-                              <div className="font-semibold text-white">{addon.name}</div>
+                              <div className="font-semibold text-text-primary">{addon.name}</div>
                               <div className="overflow-safe-text mt-1 text-xs leading-5 text-[var(--muted)]">
                                 {addon.description}
                               </div>
@@ -762,7 +782,7 @@ function BillingPageInner() {
                                 {addon.scan_quota ? `${addon.scan_quota} scans per pack` : "Billable pack"}
                               </div>
                             </div>
-                            <div className="shrink-0 text-xs font-semibold text-white">
+                            <div className="shrink-0 text-xs font-semibold text-text-primary">
                               {formatAmount(addon.price, billingConfig?.currency || "INR")}/mo
                             </div>
                           </div>
@@ -788,10 +808,11 @@ function BillingPageInner() {
                                 className="px-3 py-1"
                                 type="button"
                                 onClick={() => updateAddonQuantity(addon.id, selectedQuantity - 1)}
+                                aria-label={`Decrease ${addon.name} quantity`}
                               >
                                 -
                               </Button>
-                              <span className="min-w-8 text-center font-semibold text-white">
+                              <span className="min-w-8 text-center font-semibold text-text-primary">
                                 {selectedQuantity}
                               </span>
                               <Button
@@ -799,6 +820,7 @@ function BillingPageInner() {
                                 className="px-3 py-1"
                                 type="button"
                                 onClick={() => updateAddonQuantity(addon.id, selectedQuantity + 1)}
+                                aria-label={`Increase ${addon.name} quantity`}
                               >
                                 +
                               </Button>
@@ -950,8 +972,7 @@ function BillingPageInner() {
 
         {status ? <div className="text-sm text-green-400">{status}</div> : null}
         {error || sessionError ? <div className="text-sm text-red-400">{error || sessionError}</div> : null}
-      </div>
-    </main>
+    </OperationalPageShell>
   );
 }
 

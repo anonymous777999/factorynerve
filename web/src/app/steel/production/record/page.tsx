@@ -1,5 +1,5 @@
-import { SteelProductionRecordPage } from "@/components/steel-production-record-page";
+import { SteelProductionRecordWorkspace } from "@/features/steel";
 
 export default function SteelProductionRecordRoute() {
-  return <SteelProductionRecordPage />;
+  return <SteelProductionRecordWorkspace />;
 }

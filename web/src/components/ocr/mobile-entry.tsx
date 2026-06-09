@@ -21,7 +21,7 @@ export function MobileEntry({
         <h2 className="mt-4 max-w-xs text-[2rem] font-semibold leading-tight tracking-tight text-[#101418]">
           Camera-first capture for paper sheets
         </h2>
-        <p className="mt-3 max-w-sm text-sm leading-6 text-[#66707c]">
+        <p className="mt-3 max-w-sm text-sm leading-6 text-text-secondary">
           Open the camera, capture once, correct the table, and export the sheet.
         </p>
 
@@ -32,11 +32,11 @@ export function MobileEntry({
           </div>
           <button
             type="button"
-            className="ocr-camera-fab h-16 w-16 rounded-full bg-[#111827] text-white"
+            className="ocr-camera-fab h-16 w-16 rounded-full bg-surface-app text-white"
             onClick={onOpenCamera}
             aria-label="Scan with camera"
           >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="mx-auto h-7 w-7">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="mx-auto h-7 w-7" aria-hidden="true" focusable="false">
               <path d="M6 8.5h2.1L9.5 6h5L16 8.5H18A2.5 2.5 0 0 1 20.5 11v5A2.5 2.5 0 0 1 18 18.5H6A2.5 2.5 0 0 1 3.5 16v-5A2.5 2.5 0 0 1 6 8.5Z" strokeLinejoin="round" />
               <circle cx="12" cy="13.3" r="3.5" />
             </svg>
@@ -46,7 +46,7 @@ export function MobileEntry({
         <Button
           type="button"
           variant="outline"
-          className="mt-4 h-12 w-full rounded-[18px] border-[#d4d9df] bg-[#f8fafc] text-[#111827] hover:bg-white"
+          className="mt-4 h-12 w-full rounded-[18px] border-border-default bg-surface-shell text-[#111827] hover:bg-surface-hover"
           onClick={onOpenUpload}
         >
           Upload from device

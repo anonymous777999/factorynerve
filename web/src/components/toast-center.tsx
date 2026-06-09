@@ -12,12 +12,12 @@ type ToastItem = Required<Pick<AppToast, "id" | "title">> & Omit<AppToast, "id" 
 
 function toneClasses(tone: AppToast["tone"]) {
   if (tone === "success") {
-    return "border-emerald-500/35 bg-[rgba(16,185,129,0.14)] text-emerald-50";
+    return "border-status-success-border bg-status-success-bg text-status-success-fg";
   }
   if (tone === "error") {
-    return "border-red-500/35 bg-[rgba(239,68,68,0.14)] text-red-50";
+    return "border-status-danger-border bg-status-danger-bg text-status-danger-fg";
   }
-  return "border-[rgba(62,166,255,0.35)] bg-[rgba(62,166,255,0.12)] text-white";
+  return "border-status-info-border bg-status-info-bg text-status-info-fg";
 }
 
 export function ToastCenter() {
@@ -48,7 +48,7 @@ export function ToastCenter() {
   if (!visibleToasts.length) return null;
 
   return (
-    <div className="safe-fixed-right safe-top-inset pointer-events-none fixed top-0 z-[70] flex w-[calc(100%_-_2rem)] max-w-[24rem] flex-col gap-3 lg:right-6">
+    <div className="safe-fixed-right safe-top-inset pointer-events-none fixed top-0 z-[var(--z-toast)] flex w-[calc(100%_-_2rem)] max-w-[24rem] flex-col gap-3 lg:right-6">
       {visibleToasts.map((toast) => (
         <div
           key={toast.id}
@@ -61,12 +61,12 @@ export function ToastCenter() {
             <div>
               <div className="text-sm font-semibold">{toast.title}</div>
               {toast.description ? (
-                <div className="mt-1 text-sm text-white/80">{toast.description}</div>
+                <div className="mt-1 text-sm text-text-secondary">{toast.description}</div>
               ) : null}
             </div>
             <button
               type="button"
-              className="text-xs uppercase tracking-[0.18em] text-white/70"
+              className="rounded-control text-xs uppercase tracking-[0.18em] text-text-secondary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2"
               onClick={() => setToasts((current) => current.filter((item) => item.id !== toast.id))}
             >
               Close
@@ -74,7 +74,7 @@ export function ToastCenter() {
           </div>
           {toast.actionHref && toast.actionLabel ? (
             <div className="mt-3">
-              <Link href={toast.actionHref} className="text-sm font-medium text-white underline underline-offset-4">
+              <Link href={toast.actionHref} className="text-sm font-medium text-text-secondary underline underline-offset-4">
                 {toast.actionLabel}
               </Link>
             </div>

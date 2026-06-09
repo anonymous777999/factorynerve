@@ -1,0 +1,9 @@
+⚠ Port 3000 is in use by process 11020, using available port 3001 instead.
+⨯ Another next dev server is already running.
+
+- Local:        http://localhost:3000
+- PID:          11020
+- Dir:          D:\DPR APP\DPR.ai\web
+- Log:          .next\dev\logs\next-development.log
+
+Run taskkill /PID 11020 /F to stop it.

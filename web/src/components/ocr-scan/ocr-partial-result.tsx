@@ -11,15 +11,15 @@ export function OCRPartialResult({ fields, detectingText }: OCRPartialResultProp
     <div className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
       <label>
         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Date</div>
-        <Input readOnly value={fields.date || detectingText} className="mt-1 h-11" />
+        <Input aria-label="Date" readOnly value={fields.date || detectingText} className="mt-1 h-11" />
       </label>
       <label>
         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Material</div>
-        <Input readOnly value={fields.material || detectingText} className="mt-1 h-11" />
+        <Input aria-label="Material" readOnly value={fields.material || detectingText} className="mt-1 h-11" />
       </label>
       <label>
         <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Quantity</div>
-        <Input readOnly value={fields.quantity || detectingText} className="mt-1 h-11" />
+        <Input aria-label="Quantity" readOnly value={fields.quantity || detectingText} className="mt-1 h-11" />
       </label>
     </div>
   );

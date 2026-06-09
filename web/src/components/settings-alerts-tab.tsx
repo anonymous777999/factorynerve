@@ -27,6 +27,7 @@ import {
 } from "@/lib/settings-alerts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Field, Label } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { SafeText } from "@/components/ui/safe-text";
@@ -44,15 +45,15 @@ type AlertFormState = {
 
 type AlertPanelState =
   | {
-      open: false;
-      mode: "add" | "edit";
-      recipientId: number | null;
-    }
+    open: false;
+    mode: "add" | "edit";
+    recipientId: number | null;
+  }
   | {
-      open: true;
-      mode: "add" | "edit";
-      recipientId: number | null;
-    };
+    open: true;
+    mode: "add" | "edit";
+    recipientId: number | null;
+  };
 
 type VerificationModalState = {
   open: boolean;
@@ -106,9 +107,9 @@ function deliveryTone(status: string) {
 }
 
 function severityTone(severity: string) {
-  const normalized = String(severity || "").trim().toUpperCase();
+  const normalized = String(severity || "").trim();
   if (normalized === "CRITICAL") return "border-red-400/30 bg-red-500/12 text-red-200";
-  if (normalized === "HIGH") return "border-orange-400/30 bg-orange-500/12 text-orange-100";
+  if (normalized === "HIGH") return "border-status-warning-border bg-status-warning-bg text-status-warning-fg";
   if (normalized === "MEDIUM") return "border-amber-400/30 bg-amber-500/12 text-amber-100";
   return "border-sky-400/30 bg-sky-500/12 text-sky-100";
 }
@@ -144,7 +145,7 @@ function formatCountdown(seconds: number) {
 function readableDeliveryStatus(value: string) {
   return String(value || "")
     .replace(/_/g, " ")
-    .replace(/\b\w/g, (match) => match.toUpperCase());
+    .replace(/\b\w/g, (match) => match);
 }
 
 function buildFormState(recipient: AlertRecipient): AlertFormState {
@@ -603,54 +604,54 @@ export default function SettingsAlertsTab({ active }: Props) {
     verificationModal.expiresAt != null ? Math.max(0, Math.ceil((verificationModal.expiresAt - nowTs) / 1000)) : 0;
 
   return (
-    <div className="space-y-6">
+    <div className="control-center-workspace space-y-6">
       <section className="grid gap-4 lg:grid-cols-3">
-        <Card>
+        <Card className="bg-surface-panel border-border-subtle">
           <CardHeader>
-            <div className="text-sm text-[var(--muted)]">Active recipients</div>
-            <CardTitle>{recipientPayload?.active_count ?? 0}</CardTitle>
+            <div className="text-sm text-text-secondary font-medium">Active recipients</div>
+            <CardTitle className="text-text-primary font-mono">{recipientPayload?.active_count ?? 0}</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-[var(--muted)]">
-            {recipientPayload ? `${recipientPayload.plan} plan · ${recipientPayload.limit} active slot${recipientPayload.limit === 1 ? "" : "s"} total` : "Track who can currently receive live alerts."}
+          <CardContent className="text-sm text-text-secondary font-mono">
+            {recipientPayload ? `${recipientPayload.plan}_PLAN · ${recipientPayload.limit} ACTIVE_SLOT${recipientPayload.limit === 1 ? "" : "S"}_TOTAL` : "Track who can receive live alerts."}
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-surface-panel border-border-subtle">
           <CardHeader>
-            <div className="text-sm text-[var(--muted)]">Remaining capacity</div>
-            <CardTitle>
+            <div className="text-sm text-text-secondary font-medium">Remaining capacity</div>
+            <CardTitle className="text-text-primary font-mono">
               {recipientPayload ? Math.max(0, recipientPayload.limit - recipientPayload.active_count) : "-"}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-sm text-[var(--muted)]">
-            Unverified numbers do not count as live delivery targets until they are activated.
+          <CardContent className="text-sm text-text-secondary font-mono">
+            Unverified numbers do not count until activated.
           </CardContent>
         </Card>
-        <Card>
+        <Card className="bg-surface-panel border-border-subtle">
           <CardHeader>
-            <div className="text-sm text-[var(--muted)]">Last alert sent</div>
-            <CardTitle className="text-xl">{latestAlert ? readableDeliveryStatus(latestAlert.delivery_status) : "No recent alert"}</CardTitle>
+            <div className="text-sm text-text-secondary font-medium">Last alert sent</div>
+            <CardTitle className="text-xl text-text-primary font-mono">{latestAlert ? readableDeliveryStatus(latestAlert.delivery_status) : "No recent alert"}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1 text-sm text-[var(--muted)]">
-            <div>{latestAlert ? formatAlertEventTypeLabel(latestAlert.event_type) : "Alert activity will appear here once delivery starts."}</div>
-            <div>{latestAlert ? formatDateTime(latestAlert.timestamp) : "Keep recipients verified and active to build delivery history."}</div>
+          <CardContent className="space-y-1 text-sm text-text-secondary font-mono">
+            <div>{latestAlert ? formatAlertEventTypeLabel(latestAlert.event_type) : "Alert activity will appear here."}</div>
+            <div>{latestAlert ? formatDateTime(latestAlert.timestamp) : "Keep recipients verified and active."}</div>
           </CardContent>
         </Card>
       </section>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <Card className="min-w-0">
+        <Card className="min-w-0 bg-surface-panel border-border-subtle">
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle className="text-xl">WhatsApp Recipients</CardTitle>
-              <div className="mt-2 text-sm text-[var(--muted)]">
-                Decide who receives critical factory alerts, what they get, and whether each route is trusted.
+              <CardTitle className="text-xl text-text-primary font-mono uppercase">WhatsApp recipients</CardTitle>
+              <div className="mt-2 text-sm text-text-secondary font-mono">
+                Decide who receives critical factory alerts.
               </div>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Button variant="outline" onClick={() => void loadRecipients()} disabled={recipientsLoading}>
+              <Button variant="ghost" onClick={() => void loadRecipients()} disabled={recipientsLoading} className="font-mono uppercase border-border-subtle text-text-primary">
                 {recipientsLoading ? "Refreshing..." : "Refresh"}
               </Button>
-              <Button onClick={openAddModal}>Add Number</Button>
+              <Button onClick={openAddModal} className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-white font-medium">Add number</Button>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -672,7 +673,7 @@ export default function SettingsAlertsTab({ active }: Props) {
                 <div className="font-semibold">Could not load recipients</div>
                 <div className="mt-2">{recipientsError}</div>
                 <div className="mt-4">
-                  <Button variant="outline" onClick={() => void loadRecipients()}>
+                  <Button variant="ghost" onClick={() => void loadRecipients()}>
                     Retry
                   </Button>
                 </div>
@@ -758,7 +759,7 @@ export default function SettingsAlertsTab({ active }: Props) {
                           ) : null}
                           <div className="grid gap-2 sm:grid-cols-3">
                             <Button
-                              variant="outline"
+                              variant="ghost"
                               onClick={() => void startVerification(recipient)}
                               disabled={verifyPendingId === recipient.id || cooldownSeconds > 0}
                               title={cooldownSeconds > 0 ? "Retry once cooldown ends." : ""}
@@ -766,14 +767,14 @@ export default function SettingsAlertsTab({ active }: Props) {
                             >
                               {verifyLabel}
                             </Button>
-                            <Button variant="outline" onClick={() => void openEditModal(recipient.id)} className="w-full">
+                            <Button variant="ghost" onClick={() => void openEditModal(recipient.id)} className="w-full">
                               Edit
                             </Button>
                             <Button
-                              variant="ghost"
+                              variant="destructive"
                               onClick={() => void removeRecipient(recipient)}
                               disabled={deletePendingId === recipient.id}
-                              className="w-full text-red-100"
+                              className="w-full"
                             >
                               {deletePendingId === recipient.id ? "Deleting..." : "Delete"}
                             </Button>
@@ -824,7 +825,7 @@ export default function SettingsAlertsTab({ active }: Props) {
                   Recent org-wide alert events build trust and make delivery problems visible.
                 </div>
               </div>
-              <Button variant="outline" onClick={() => void loadActivity()} disabled={activityLoading}>
+              <Button variant="ghost" onClick={() => void loadActivity()} disabled={activityLoading}>
                 {activityLoading ? "Refreshing..." : "Refresh"}
               </Button>
             </CardHeader>
@@ -844,7 +845,7 @@ export default function SettingsAlertsTab({ active }: Props) {
                   <div className="font-semibold">Could not load alert activity</div>
                   <div className="mt-2">{activityError}</div>
                   <div className="mt-4">
-                    <Button variant="outline" onClick={() => void loadActivity()}>
+                    <Button variant="ghost" onClick={() => void loadActivity()}>
                       Retry
                     </Button>
                   </div>
@@ -864,10 +865,10 @@ export default function SettingsAlertsTab({ active }: Props) {
                           )}
                         >
                           <div className="flex flex-wrap items-start gap-3">
-                            <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]", severityTone(alert.severity))}>
+                            <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityTone(alert.severity))}>
                               {alert.severity}
                             </span>
-                            <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]", deliveryTone(alert.delivery_status))}>
+                            <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", deliveryTone(alert.delivery_status))}>
                               {readableDeliveryStatus(alert.delivery_status)}
                             </span>
                             <span className="text-xs text-[var(--muted)]">{formatDateTime(alert.timestamp)}</span>
@@ -887,7 +888,7 @@ export default function SettingsAlertsTab({ active }: Props) {
                           <div className="mt-1 text-xs text-[var(--muted)]">Selected ref: {selectedAlertRef}</div>
                         </div>
                         {selectedAlertError ? (
-                          <Button variant="outline" onClick={() => void loadAlertDetail(selectedAlertRef)}>
+                          <Button variant="ghost" onClick={() => void loadAlertDetail(selectedAlertRef)}>
                             Retry
                           </Button>
                         ) : null}
@@ -906,10 +907,10 @@ export default function SettingsAlertsTab({ active }: Props) {
                         <div className="mt-4 space-y-4">
                           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                             <div className="flex flex-wrap gap-3">
-                              <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]", severityTone(selectedAlert.severity))}>
+                              <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityTone(selectedAlert.severity))}>
                                 {selectedAlert.severity}
                               </span>
-                              <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]", deliveryTone(selectedAlert.delivery_status))}>
+                              <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", deliveryTone(selectedAlert.delivery_status))}>
                                 {readableDeliveryStatus(selectedAlert.delivery_status)}
                               </span>
                             </div>
@@ -923,7 +924,7 @@ export default function SettingsAlertsTab({ active }: Props) {
                               selectedAlert.deliveries.map((delivery, index) => (
                                 <div key={`${delivery.ref_id}:${delivery.recipient_phone || index}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                                   <div className="flex flex-wrap items-center gap-3">
-                                    <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]", deliveryTone(delivery.delivery_status))}>
+                                    <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", deliveryTone(delivery.delivery_status))}>
                                       {readableDeliveryStatus(delivery.delivery_status)}
                                     </span>
                                     <span className="text-xs text-[var(--muted)]">{maskPhoneNumber(delivery.recipient_phone)}</span>
@@ -975,8 +976,8 @@ export default function SettingsAlertsTab({ active }: Props) {
           </div>
         ) : (
           <div className="space-y-5">
-            <div>
-              <label className="text-sm text-[var(--muted)]">Phone number</label>
+            <Field>
+              <Label>Phone number</Label>
               <Input
                 value={form.phone_number}
                 onChange={(event) => setForm((current) => ({ ...current, phone_number: event.target.value }))}
@@ -985,7 +986,7 @@ export default function SettingsAlertsTab({ active }: Props) {
               <div className="mt-2 text-xs text-[var(--muted)]">
                 This is the only place where the full number is shown.
               </div>
-            </div>
+            </Field>
 
             <div className="grid gap-3 md:grid-cols-2">
               {[
@@ -1063,18 +1064,21 @@ export default function SettingsAlertsTab({ active }: Props) {
                     Keep this off until the route is verified and ready for live alerts.
                   </div>
                 </div>
-                <input
-                  type="checkbox"
-                  checked={form.is_active}
-                  disabled={panel.mode === "add" || !!(selectedRecipient && selectedRecipient.verification_status !== "verified")}
-                  onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))}
-                  className="h-4 w-4 accent-[var(--accent)]"
-                  title={
-                    panel.mode === "add" || !!(selectedRecipient && selectedRecipient.verification_status !== "verified")
-                      ? "Verify number before enabling alerts"
-                      : ""
-                  }
-                />
+                <label className="flex items-center gap-2 rounded-[8px] border-[0.5px] border-[color:var(--color-border-secondary)] px-3 py-2 text-[14px] text-[var(--color-text-primary)]">
+                  <input
+                    type="checkbox"
+                    checked={form.is_active}
+                    disabled={panel.mode === "add" || !!(selectedRecipient && selectedRecipient.verification_status !== "verified")}
+                    onChange={(event) => setForm((current) => ({ ...current, is_active: event.target.checked }))}
+                    className="h-4 w-4 accent-[var(--color-text-primary)]"
+                    title={
+                      panel.mode === "add" || !!(selectedRecipient && selectedRecipient.verification_status !== "verified")
+                        ? "Verify number before enabling alerts"
+                        : ""
+                    }
+                  />
+                  Enabled
+                </label>
               </div>
               {panel.mode === "add" || !!(selectedRecipient && selectedRecipient.verification_status !== "verified") ? (
                 <div className="mt-3 rounded-2xl border border-amber-400/20 bg-amber-500/10 px-3 py-2 text-xs text-amber-100">
@@ -1090,7 +1094,7 @@ export default function SettingsAlertsTab({ active }: Props) {
             ) : null}
 
             <div className="flex flex-wrap justify-end gap-3">
-              <Button variant="outline" onClick={closePanel} disabled={panelSubmitting}>
+              <Button variant="ghost" onClick={closePanel} disabled={panelSubmitting}>
                 Cancel
               </Button>
               <Button onClick={() => void savePanel()} disabled={panelSubmitting}>
@@ -1127,8 +1131,8 @@ export default function SettingsAlertsTab({ active }: Props) {
             </div>
           </div>
 
-          <div>
-            <label className="text-sm text-[var(--muted)]">Enter OTP</label>
+          <Field>
+            <Label>Enter OTP</Label>
             <Input
               value={verificationModal.otp}
               maxLength={6}
@@ -1141,7 +1145,7 @@ export default function SettingsAlertsTab({ active }: Props) {
               }
               placeholder="6-digit code"
             />
-          </div>
+          </Field>
 
           {verificationModal.error ? (
             <div className="rounded-2xl border border-red-500/25 bg-red-500/8 px-4 py-3 text-sm text-red-100">
@@ -1151,7 +1155,7 @@ export default function SettingsAlertsTab({ active }: Props) {
 
           <div className="flex flex-wrap justify-between gap-3">
             <Button
-              variant="outline"
+              variant="ghost"
               onClick={() => {
                 const recipient = recipients.find((item) => item.id === verificationModal.recipientId);
                 if (recipient) {
@@ -1175,7 +1179,7 @@ export default function SettingsAlertsTab({ active }: Props) {
             </Button>
             <div className="flex flex-wrap gap-3">
               <Button
-                variant="outline"
+                variant="ghost"
                 onClick={() =>
                   setVerificationModal({
                     open: false,
