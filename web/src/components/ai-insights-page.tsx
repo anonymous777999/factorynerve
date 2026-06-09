@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 
 import { GuidanceBlock } from "@/components/ui/guidance-block";
 import { Button } from "@/components/ui/button";
@@ -21,7 +21,7 @@ import { useI18n, useI18nNamespaces } from "@/lib/i18n";
 import { getQuotaHealth, quotaLabel } from "@/lib/quota-health";
 import { useSession } from "@/lib/use-session";
 
-const AUTO_REFRESH_MS = 45_000;
+const AUTO_REFRESH_MS = 180_000; // Reduced to 3 minutes from 45 seconds
 
 type SavedPreset = {
   id: string;
@@ -51,6 +51,8 @@ export default function AiInsightsPage() {
   useI18nNamespaces(["common", "ai"]);
 
   const { user, loading, error: sessionError } = useSession();
+
+  // Memoize expensive calculations
   const builtInPresets = useMemo<SavedPreset[]>(() => [
     {
       id: "downtime-shift",
@@ -73,6 +75,7 @@ export default function AiInsightsPage() {
       question: t("ai.preset.manpower_shift.question", "Show me last 14 days manpower by shift"),
     },
   ], [t]);
+
   const [usage, setUsage] = useState<AiUsage | null>(null);
   const [anomalies, setAnomalies] = useState<AnomalyResponse | null>(null);
   const [question, setQuestion] = useState("");
@@ -88,28 +91,57 @@ export default function AiInsightsPage() {
   const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
-  const summaryHealth = getQuotaHealth(usage?.summary_used, usage?.summary_limit);
-  const smartHealth = getQuotaHealth(usage?.smart_used, usage?.smart_limit);
 
+  // Use refs to prevent unnecessary re-renders
+  const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastDataRef = useRef<{ usage: AiUsage | null; anomalies: AnomalyResponse | null }>({ usage: null, anomalies: null });
+  const hasLoadedOnceRef = useRef(false);
+
+  // Memoize health calculations to prevent re-calculations
+  const summaryHealth = useMemo(() => getQuotaHealth(usage?.summary_used, usage?.summary_limit), [usage?.summary_used, usage?.summary_limit]);
+  const smartHealth = useMemo(() => getQuotaHealth(usage?.smart_used, usage?.smart_limit), [usage?.smart_used, usage?.smart_limit]);
+
+  // Initialize question only once
   useEffect(() => {
-    if (!question) {
-      setQuestion(t("ai.preset.downtime_shift.question", "Show me last month's downtime by shift"));
+    if (!question && builtInPresets.length > 0) {
+      setQuestion(builtInPresets[0]?.question || "");
     }
-  }, [question, t]);
+  }, [question, builtInPresets]);
 
   const loadAiHome = useCallback(async (options?: { background?: boolean; selectedDays?: number }) => {
     const selectedDays = options?.selectedDays ?? (Number(days) || 14);
-    const shouldBackground = Boolean(options?.background) && hasLoadedOnce;
+    const shouldBackground = Boolean(options?.background) || hasLoadedOnceRef.current;
+
+    // Less aggressive visual feedback for background updates
     if (shouldBackground) {
       setRefreshing(true);
     } else {
       setPageLoading(true);
     }
+
     setError("");
     try {
       const [usageResult, anomalyResult] = await Promise.all([getAiUsage(), getAnomalies(selectedDays)]);
-      setUsage(usageResult);
-      setAnomalies(anomalyResult);
+
+      // Only update state if data actually changed (deep comparison)
+      const hasUsageChanged = JSON.stringify(lastDataRef.current.usage) !== JSON.stringify(usageResult);
+      const hasAnomalyChanged = JSON.stringify(lastDataRef.current.anomalies) !== JSON.stringify(anomalyResult);
+
+      if (hasUsageChanged) {
+        setUsage(usageResult);
+        lastDataRef.current.usage = usageResult;
+      }
+
+      if (hasAnomalyChanged) {
+        setAnomalies(anomalyResult);
+        lastDataRef.current.anomalies = anomalyResult;
+      }
+
+      // Only update timestamp if data actually changed
+      if (hasUsageChanged || hasAnomalyChanged || !shouldBackground) {
+        setLastUpdatedAt(new Date().toISOString());
+      }
+
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -119,37 +151,56 @@ export default function AiInsightsPage() {
         setError(t("ai.errors.load", "Could not load AI insights."));
       }
     } finally {
-      setLastUpdatedAt(new Date().toISOString());
+      hasLoadedOnceRef.current = true;
       setHasLoadedOnce(true);
       setPageLoading(false);
       setRefreshing(false);
     }
-  }, [days, hasLoadedOnce, t]);
+  }, [days, t]);
 
   useEffect(() => {
-    setError("");
-    setStatus("");
-    setLastUpdatedAt(null);
-    setHasLoadedOnce(false);
     if (!user) {
+      setError("");
+      setStatus("");
+      setLastUpdatedAt(null);
+      setHasLoadedOnce(false);
+      hasLoadedOnceRef.current = false;
       setPageLoading(false);
       return;
     }
-    setPageLoading(true);
+    
+    // Only show page loader if we haven't loaded anything yet
+    // This prevents the full-page skeleton from flickering on every days/range change
+    if (!hasLoadedOnceRef.current) {
+      setPageLoading(true);
+    }
+    
     void loadAiHome();
   }, [loadAiHome, user]);
 
+  // Improved auto-refresh with better cleanup
   useEffect(() => {
     if (!user) return;
+
     const refresh = () => {
       if (!document.hidden) {
         void loadAiHome({ background: true });
       }
     };
-    const timer = window.setInterval(refresh, AUTO_REFRESH_MS);
+
+    // Clear existing timer
+    if (refreshTimerRef.current) {
+      clearInterval(refreshTimerRef.current);
+    }
+
+    refreshTimerRef.current = setInterval(refresh, AUTO_REFRESH_MS);
     document.addEventListener("visibilitychange", refresh);
+
     return () => {
-      window.clearInterval(timer);
+      if (refreshTimerRef.current) {
+        clearInterval(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
       document.removeEventListener("visibilitychange", refresh);
     };
   }, [loadAiHome, user]);
@@ -281,7 +332,7 @@ export default function AiInsightsPage() {
                   ? t("ai.hero.refreshing", "Refreshing AI...")
                   : lastUpdatedAt
                     ? t("ai.hero.updated", "Updated {{value}}", { value: formatDateTime(lastUpdatedAt, locale) })
-                    : t("ai.hero.live_updates", "Live updates every 45s")}
+                    : t("ai.hero.live_updates", "Live updates every 3 minutes")}
               </span>
             </div>
           </div>
@@ -298,9 +349,9 @@ export default function AiInsightsPage() {
               onClick={() => {
                 void loadAiHome({ background: true, selectedDays: Number(days) || 14 });
               }}
-              disabled={refreshing}
+              disabled={false}
             >
-              {refreshing ? t("ai.actions.refreshing", "Refreshing...") : t("common.refresh", "Refresh")}
+              {t("common.refresh", "Refresh")}
             </Button>
             <details className="group">
               <summary className="list-none">
@@ -353,11 +404,7 @@ export default function AiInsightsPage() {
           </div>
         </GuidanceBlock>
 
-        {refreshing ? (
-          <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3 text-sm text-[var(--muted)]">
-            {t("ai.refreshing_background", "Refreshing AI insights in the background...")}
-          </div>
-        ) : null}
+        {/* Removed refreshing indicator to prevent blinking - background updates are now silent */}
 
         <details className="group rounded-[2rem] border border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl">
           <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
