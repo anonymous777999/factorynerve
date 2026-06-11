@@ -1,5 +1,5 @@
-import PlansPage from "@/components/plans-page";
+import PricingPage from "@/components/pricing-page";
 
 export default function PlansRoutePage() {
-  return <PlansPage />;
+  return <PricingPage />;
 }

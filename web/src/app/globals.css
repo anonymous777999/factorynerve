@@ -1,6 +1,6 @@
 /* AUDIT: VISUAL_GENERIC - Load the new control-room font pairing from Google Fonts CDN without page-level font tags. */
 @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
-@import "tailwindcss";
+@import "tailwindcss" source("../");
 
 :root {
   /* AUDIT: VISUAL_GENERIC — Rebuilt the core palette around a warmer industrial accent and added a consistent 8px spacing scale. */
@@ -10,7 +10,7 @@
   --bg-soft: #151d24;
   --card: #172028;
   --card-strong: #202b35;
-  --card-elevated: #293642;
+  --card-elevated: #253528;
   --border: rgba(171, 154, 137, 0.2);
   --border-strong: rgba(201, 180, 157, 0.34);
   --text: #ece7df;
@@ -125,6 +125,7 @@ input[type="checkbox"] {
     opacity: 0;
     transform: translate3d(0, 24px, 0) scale(0.985);
   }
+
   100% {
     opacity: 1;
     transform: translate3d(0, 0, 0) scale(1);
@@ -136,10 +137,12 @@ input[type="checkbox"] {
     transform: translate3d(0, 0, 0) scale(1);
     filter: hue-rotate(0deg);
   }
+
   50% {
     transform: translate3d(-1.5%, 1.5%, 0) scale(1.04);
     filter: hue-rotate(2deg);
   }
+
   100% {
     transform: translate3d(1.5%, -1%, 0) scale(1.08);
     filter: hue-rotate(-4deg);
@@ -155,6 +158,7 @@ input[type="checkbox"] {
       16px 20px;
     transform: translate3d(0, 0, 0);
   }
+
   100% {
     background-position:
       center,
@@ -166,21 +170,25 @@ input[type="checkbox"] {
 }
 
 @keyframes auth-float {
+
   0%,
   100% {
     transform: translate3d(0, 0, 0) scale(1);
   }
+
   50% {
     transform: translate3d(0, -18px, 0) scale(1.06);
   }
 }
 
 @keyframes auth-beam {
+
   0%,
   100% {
     opacity: 0.28;
     transform: scaleX(0.72);
   }
+
   50% {
     opacity: 1;
     transform: scaleX(1);
@@ -191,6 +199,7 @@ input[type="checkbox"] {
   0% {
     opacity: 0;
   }
+
   100% {
     opacity: 1;
   }
@@ -201,6 +210,7 @@ input[type="checkbox"] {
     opacity: 0;
     transform: translate3d(0, 16px, 0) scale(0.98);
   }
+
   100% {
     opacity: 1;
     transform: translate3d(0, 0, 0) scale(1);
@@ -264,6 +274,7 @@ input[type="checkbox"] {
 }
 
 @keyframes ocr-camera-pulse {
+
   0%,
   100% {
     transform: scale(1);
@@ -271,6 +282,7 @@ input[type="checkbox"] {
       0 0 0 0 rgba(255, 255, 255, 0.18),
       0 10px 30px rgba(15, 23, 42, 0.28);
   }
+
   50% {
     transform: scale(1.03);
     box-shadow:
@@ -389,6 +401,7 @@ input[type="checkbox"] {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .auth-rise,
   .auth-ocean-mesh,
   .auth-dot-field,
