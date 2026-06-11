@@ -1,30 +1,30 @@
 /* AUDIT: VISUAL_GENERIC - Load the new control-room font pairing from Google Fonts CDN without page-level font tags. */
 @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
-@import "tailwindcss";
+@import "tailwindcss" source("../");
 
 :root {
-  /* AUDIT: VISUAL_GENERIC — Applied new green theme color scheme with dark backgrounds and green accents */
+  /* AUDIT: VISUAL_GENERIC — Rebuilt the core palette around a warmer industrial accent and added a consistent 8px spacing scale. */
   --font-body: "IBM Plex Sans";
   --font-display: "Space Grotesk";
-  --bg: #0B0E14;
-  --bg-soft: #0F1510;
-  --card: #162218;
-  --card-strong: #1E3A23;
+  --bg: #0d1218;
+  --bg-soft: #151d24;
+  --card: #172028;
+  --card-strong: #202b35;
   --card-elevated: #253528;
-  --border: #1E3A23;
-  --border-strong: rgba(30, 58, 35, 0.8);
-  --text: #EEFFF4;
-  --muted: #6DAB7E;
-  --accent: #39FF72;
-  --accent-strong: #2DD862;
-  --accent-soft: rgba(57, 255, 114, 0.18);
-  --accent-quiet: rgba(57, 255, 114, 0.1);
-  --signal: #39FF72;
+  --border: rgba(171, 154, 137, 0.2);
+  --border-strong: rgba(201, 180, 157, 0.34);
+  --text: #ece7df;
+  --muted: #ab9f93;
+  --accent: #c56d2d;
+  --accent-strong: #8c4218;
+  --accent-soft: rgba(197, 109, 45, 0.18);
+  --accent-quiet: rgba(197, 109, 45, 0.1);
+  --signal: #1f8a78;
   --success: #22c55e;
   --warning: #f59e0b;
   --danger: #ef4444;
-  --shadow-lg: 0 26px 70px rgba(11, 14, 20, 0.36);
-  --shadow-md: 0 14px 36px rgba(11, 14, 20, 0.26);
+  --shadow-lg: 0 26px 70px rgba(2, 6, 23, 0.36);
+  --shadow-md: 0 14px 36px rgba(2, 6, 23, 0.26);
   --space-1: 8px;
   --space-2: 16px;
   --space-3: 24px;
@@ -47,11 +47,11 @@
 body {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 12% 14%, rgba(57, 255, 114, 0.22), transparent 34%),
-    radial-gradient(circle at 82% 18%, rgba(109, 171, 126, 0.14), transparent 32%),
-    radial-gradient(circle at 48% 120%, rgba(57, 255, 114, 0.1), transparent 28%),
-    linear-gradient(180deg, rgba(57, 255, 114, 0.02), transparent 18%),
-    linear-gradient(180deg, #0B0E14 0%, #0F1510 46%, #162218 100%);
+    radial-gradient(circle at 12% 14%, rgba(197, 109, 45, 0.22), transparent 34%),
+    radial-gradient(circle at 82% 18%, rgba(31, 138, 120, 0.14), transparent 32%),
+    radial-gradient(circle at 48% 120%, rgba(245, 158, 11, 0.1), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 18%),
+    linear-gradient(180deg, #0b1116 0%, #111820 46%, #0c1319 100%);
   color: var(--text);
   font-family: var(--font-body), "IBM Plex Sans", sans-serif;
   text-rendering: optimizeLegibility;
@@ -77,8 +77,8 @@ select {
 }
 
 ::selection {
-  background: rgba(57, 255, 114, 0.28);
-  color: #EEFFF4;
+  background: rgba(197, 109, 45, 0.28);
+  color: #fdf8f2;
 }
 
 html {
@@ -335,7 +335,7 @@ input[type="checkbox"] {
   -webkit-touch-callout: default;
 }
 
-.overflow-safe-children>* {
+.overflow-safe-children > * {
   min-width: 0;
 }
 
@@ -413,17 +413,6 @@ input[type="checkbox"] {
     transform: none !important;
     opacity: 1 !important;
     filter: none !important;
-  }
-}
-
-@keyframes fadeIn {
-  0% {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 
