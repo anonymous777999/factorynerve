@@ -55,6 +55,15 @@ export function SteelProductionRecordPage() {
   const isSteelFactory = (activeFactory?.industry_type || "").toLowerCase() === "steel";
   const canRecord = Boolean(user && ["owner", "admin", "manager", "supervisor"].includes(user.role));
 
+  const inputItems = useMemo(
+    () => items.filter((item) => item.category === "raw_material" || item.category === "wip"),
+    [items],
+  );
+  const outputItems = useMemo(
+    () => items.filter((item) => item.category === "finished_goods"),
+    [items],
+  );
+
   const loadData = useCallback(async () => {
     if (!isSteelFactory) {
       setPageLoading(false);
@@ -194,7 +203,7 @@ export function SteelProductionRecordPage() {
                       required
                     >
                       <option value="">Select Input</option>
-                      {items.map((item) => (
+                      {inputItems.map((item) => (
                         <option key={item.id} value={item.id}>{item.item_code} - {item.name}</option>
                       ))}
                     </Select>
@@ -212,7 +221,7 @@ export function SteelProductionRecordPage() {
                       required
                     >
                       <option value="">Select Output</option>
-                      {items.map((item) => (
+                      {outputItems.map((item) => (
                         <option key={item.id} value={item.id}>{item.item_code} - {item.name}</option>
                       ))}
                     </Select>
