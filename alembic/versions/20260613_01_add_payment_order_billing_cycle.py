@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 
 revision = "20260613_01"
-down_revision = "e9d27018633b"
+down_revision = "20260529_01"
 branch_labels = None
 depends_on = None
 
