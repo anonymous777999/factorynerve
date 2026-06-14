@@ -72,6 +72,34 @@ def _mark_duplicate_subscriptions_stale(bind) -> None:
     )
 
 
+def _clear_duplicate_invoice_provider_ids(bind) -> None:
+    bind.execute(
+        sa.text(
+            """
+            WITH ranked AS (
+                SELECT
+                    id,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY user_id, provider, provider_invoice_id
+                        ORDER BY created_at DESC NULLS LAST, id DESC
+                    ) AS row_rank
+                FROM invoices
+                WHERE user_id IS NOT NULL
+                  AND provider IS NOT NULL
+                  AND provider_invoice_id IS NOT NULL
+            )
+            UPDATE invoices
+            SET provider_invoice_id = NULL
+            WHERE id IN (
+                SELECT id
+                FROM ranked
+                WHERE row_rank > 1
+            )
+            """
+        )
+    )
+
+
 def upgrade() -> None:
     bind = op.get_bind()
     table_names = _table_names(bind)
@@ -107,13 +135,21 @@ def upgrade() -> None:
         columns = _column_map(bind, "invoices")
         if "user_id" in columns and "provider" in columns and "provider_invoice_id" in columns:
             indexes = _index_names(bind, "invoices")
+            _clear_duplicate_invoice_provider_ids(bind)
             if "ix_invoices_user_provider_invoice" not in indexes:
-                with op.batch_alter_table("invoices") as batch_op:
-                    batch_op.create_index(
-                        "ix_invoices_user_provider_invoice",
-                        ["user_id", "provider", "provider_invoice_id"],
-                        unique=True,
-                    )
+                kwargs: dict[str, object] = {}
+                where_clause = sa.text("provider_invoice_id IS NOT NULL")
+                if bind.dialect.name == "postgresql":
+                    kwargs["postgresql_where"] = where_clause
+                if bind.dialect.name == "sqlite":
+                    kwargs["sqlite_where"] = where_clause
+                op.create_index(
+                    "ix_invoices_user_provider_invoice",
+                    "invoices",
+                    ["user_id", "provider", "provider_invoice_id"],
+                    unique=True,
+                    **kwargs,
+                )
 
 
 def downgrade() -> None:

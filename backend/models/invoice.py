@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String, Text, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from backend.database import Base
@@ -18,6 +18,15 @@ class Invoice(Base):
         Index("ix_invoices_invoice_number", "invoice_number", unique=True),
         Index("ix_invoices_user_id", "user_id"),
         Index("ix_invoices_status", "status"),
+        Index(
+            "ix_invoices_user_provider_invoice",
+            "user_id",
+            "provider",
+            "provider_invoice_id",
+            unique=True,
+            sqlite_where=text("provider_invoice_id IS NOT NULL"),
+            postgresql_where=text("provider_invoice_id IS NOT NULL"),
+        ),
     )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)

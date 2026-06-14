@@ -9,6 +9,7 @@ from unittest.mock import MagicMock, call
 import pytest
 
 from backend.models.subscription import Subscription
+from backend.models.invoice import Invoice
 from backend.services import billing_manager
 
 
@@ -188,6 +189,13 @@ async def test_no_duplicate_active_subscription_per_org():
     index = next(index for index in Subscription.__table__.indexes if index.name == "uq_subscriptions_org_id")
     assert index.unique is True
     assert "status NOT IN" in str(index.dialect_options["postgresql"]["where"])
+
+
+@pytest.mark.asyncio
+async def test_unique_invoice_provider_index_ignores_cleared_duplicates():
+    index = next(index for index in Invoice.__table__.indexes if index.name == "ix_invoices_user_provider_invoice")
+    assert index.unique is True
+    assert "provider_invoice_id IS NOT NULL" in str(index.dialect_options["postgresql"]["where"])
 
 
 @pytest.mark.asyncio

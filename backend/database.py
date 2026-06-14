@@ -84,9 +84,18 @@ if not _IS_SQLITE:
         "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "1800")),
     }
 
+
+def _build_connect_args(*, is_sqlite: bool) -> dict[str, Any]:
+    if is_sqlite:
+        return {"check_same_thread": False}
+    return {"options": "-c statement_timeout=30000"}
+
+
+connect_args: dict[str, Any] = _build_connect_args(is_sqlite=_IS_SQLITE)
+
 engine: Engine = create_engine(
     config.database_url,
-    connect_args={"check_same_thread": False, "options": "-c statement_timeout=30000"} if not _IS_SQLITE else {"check_same_thread": False},
+    connect_args=connect_args,
     future=True,
     pool_pre_ping=True,
     **pool_kwargs,
