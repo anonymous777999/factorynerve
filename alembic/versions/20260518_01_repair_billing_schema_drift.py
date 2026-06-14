@@ -90,7 +90,8 @@ def _repair_org_ocr_usage(bind) -> None:
 
 
 def _repair_payment_orders(bind) -> None:
-    if "payment_orders" not in _table_names(bind):
+    table_names = _table_names(bind)
+    if "payment_orders" not in table_names:
         return
 
     columns = _column_names(bind, "payment_orders")
@@ -107,25 +108,31 @@ def _repair_payment_orders(bind) -> None:
     if "receipt_id" not in columns:
         op.add_column("payment_orders", sa.Column("receipt_id", sa.String(length=120), nullable=True))
 
-    bind.execute(
-        sa.text(
+    repaired_columns = _column_names(bind, "payment_orders")
+    assignments: list[str] = []
+    if {"plan_id", "plan"} <= repaired_columns:
+        assignments.append("plan_id = COALESCE(plan_id, plan)")
+    if {"amount_paise", "amount"} <= repaired_columns:
+        assignments.append("amount_paise = COALESCE(amount_paise, amount)")
+    if {"razorpay_order_id", "provider_order_id"} <= repaired_columns:
+        assignments.append("razorpay_order_id = COALESCE(razorpay_order_id, provider_order_id)")
+    if {"receipt_id", "receipt"} <= repaired_columns:
+        assignments.append("receipt_id = COALESCE(receipt_id, receipt)")
+    if "users" in table_names and {"org_id", "user_id"} <= repaired_columns:
+        assignments.append(
             """
-            UPDATE payment_orders
-            SET plan_id = COALESCE(plan_id, plan),
-                amount_paise = COALESCE(amount_paise, amount),
-                razorpay_order_id = COALESCE(razorpay_order_id, provider_order_id),
-                receipt_id = COALESCE(receipt_id, receipt),
-                org_id = COALESCE(
-                    org_id,
-                    (
-                        SELECT users.org_id
-                        FROM users
-                        WHERE users.id = payment_orders.user_id
-                    )
+            org_id = COALESCE(
+                org_id,
+                (
+                    SELECT users.org_id
+                    FROM users
+                    WHERE users.id = payment_orders.user_id
                 )
+            )
             """
         )
-    )
+    if assignments:
+        bind.execute(sa.text("UPDATE payment_orders SET " + ", ".join(assignments)))
 
     with op.batch_alter_table("payment_orders") as batch_op:
         batch_op.alter_column("plan_id", existing_type=sa.String(length=32), nullable=False)

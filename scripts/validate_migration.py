@@ -1,13 +1,36 @@
 from __future__ import annotations
 
 import asyncio
+import importlib
+import os
+import pkgutil
+import sys
+from pathlib import Path
 
 from sqlalchemy import func, select
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
+os.environ.setdefault("AI_PROVIDER", "groq")
+os.environ.setdefault("GROQ_API_KEY", "migration-validator-placeholder")
+os.environ.setdefault("JWT_SECRET_KEY", "migration-validator-local-secret")
+os.environ.setdefault("JWT_EXPIRE_HOURS", "24")
+os.environ.setdefault("APP_NAME", "FactoryNerve")
+os.environ.setdefault("LOG_LEVEL", "INFO")
+os.environ.setdefault("DATA_ENCRYPTION_KEY", "FV_Ujzy33Rbm8fxM2XJzf-384VHAJYLMaJm61iX9K0o=")
 
 from backend.database import SessionLocal
 from backend.models.organization import Organization
 from backend.models.subscription import Subscription
 from backend.services.billing_manager import detect_orphaned_subscriptions
+
+
+def _load_model_registry() -> None:
+    models_dir = PROJECT_ROOT / "backend" / "models"
+    for module_info in pkgutil.iter_modules([str(models_dir)]):
+        importlib.import_module(f"backend.models.{module_info.name}")
 
 
 def _print_result(name: str, passed: bool, detail: str) -> bool:
@@ -17,6 +40,7 @@ def _print_result(name: str, passed: bool, detail: str) -> bool:
 
 
 def _run_checks() -> bool:
+    _load_model_registry()
     db = SessionLocal()
     try:
         missing_org_id_count = db.execute(

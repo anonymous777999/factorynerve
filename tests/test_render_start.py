@@ -9,6 +9,13 @@ import backend.database as database_module
 from scripts.render_start import _inspect_alembic_state, _should_bootstrap_legacy_schema
 
 
+def test_bootstrap_empty_schema_without_alembic_history():
+    assert _should_bootstrap_legacy_schema(
+        table_names=set(),
+        has_version_row=False,
+    )
+
+
 def test_bootstrap_legacy_schema_when_app_tables_exist_without_alembic_history(tmp_path):
     database_path = tmp_path / "legacy.db"
     engine = create_engine(f"sqlite:///{database_path}", future=True)
