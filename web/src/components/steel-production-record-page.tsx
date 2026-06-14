@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,10 +11,18 @@ import { Select } from "@/components/ui/select";
 import { ApiError } from "@/lib/api";
 import {
   createSteelBatch,
+  listSteelBatches,
   listSteelItems,
+  listSteelStock,
+  type SteelBatch,
   type SteelItem,
+  type SteelStockItem,
 } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
+
+function formatKg(value: number | null | undefined) {
+  return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value || 0);
+}
 
 function todayValue() {
   const now = new Date();
@@ -26,6 +34,8 @@ export function SteelProductionRecordPage() {
   const router = useRouter();
   const { user, activeFactory, loading, error: sessionError } = useSession();
   const [items, setItems] = useState<SteelItem[]>([]);
+  const [stock, setStock] = useState<SteelStockItem[]>([]);
+  const [recentBatches, setRecentBatches] = useState<SteelBatch[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
@@ -52,11 +62,17 @@ export function SteelProductionRecordPage() {
     }
     setPageLoading(true);
     try {
-      const payload = await listSteelItems();
-      setItems(payload.items || []);
+      const [itemsPayload, stockPayload, batchesPayload] = await Promise.all([
+        listSteelItems(),
+        listSteelStock(),
+        listSteelBatches(10),
+      ]);
+      setItems(itemsPayload.items || []);
+      setStock(stockPayload.items || []);
+      setRecentBatches(batchesPayload.items || []);
       setError("");
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : "Could not load items.");
+      setError(reason instanceof Error ? reason.message : "Could not load production data.");
     } finally {
       setPageLoading(false);
     }
@@ -69,6 +85,11 @@ export function SteelProductionRecordPage() {
     }
     void loadData();
   }, [isSteelFactory, loadData, user]);
+
+  const stockByItemId = useCallback(
+    (itemId: number) => stock.find((s) => s.item_id === itemId),
+    [stock],
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,9 +137,18 @@ export function SteelProductionRecordPage() {
                 Record material conversion (input to output) and variance signals directly into the ledger.
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-wrap gap-2">
               <Link href="/steel/batches">
-                <Button variant="outline">Batch List</Button>
+                <Button variant="outline" className="text-xs">Batch List</Button>
+              </Link>
+              <Link href="/steel/invoices">
+                <Button variant="ghost" className="text-xs">Invoices</Button>
+              </Link>
+              <Link href="/steel/dispatches">
+                <Button variant="ghost" className="text-xs">Dispatches</Button>
+              </Link>
+              <Link href="/steel">
+                <Button variant="ghost" className="text-xs">Steel Hub</Button>
               </Link>
             </div>
           </div>
@@ -168,6 +198,11 @@ export function SteelProductionRecordPage() {
                         <option key={item.id} value={item.id}>{item.item_code} - {item.name}</option>
                       ))}
                     </Select>
+                    {form.input_item_id ? (
+                      <div className="mt-1 text-xs text-[var(--muted)]">
+                        Stock: {formatKg(stockByItemId(Number(form.input_item_id))?.stock_balance_kg)} KG
+                      </div>
+                    ) : null}
                   </div>
                   <div>
                     <label className="text-xs uppercase tracking-[0.1em] text-[var(--muted)]">Output Material (Ingot/TMT)</label>
@@ -181,6 +216,11 @@ export function SteelProductionRecordPage() {
                         <option key={item.id} value={item.id}>{item.item_code} - {item.name}</option>
                       ))}
                     </Select>
+                    {form.output_item_id ? (
+                      <div className="mt-1 text-xs text-[var(--muted)]">
+                        Stock: {formatKg(stockByItemId(Number(form.output_item_id))?.stock_balance_kg)} KG
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
@@ -238,6 +278,31 @@ export function SteelProductionRecordPage() {
             )}
           </CardContent>
         </Card>
+
+        {recentBatches.length ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Batches</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-2">
+                {recentBatches.slice(0, 5).map((batch) => (
+                  <Link
+                    key={batch.id}
+                    href={`/steel/batches/${batch.id}`}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] px-4 py-3 text-sm transition hover:bg-[rgba(20,24,36,0.52)]"
+                  >
+                    <div>
+                      <div className="font-semibold text-white">{batch.batch_code || `Batch #${batch.id}`}</div>
+                      <div className="text-xs text-[var(--muted)]">{batch.output_item_name} | {formatKg(batch.actual_output_kg)} KG</div>
+                    </div>
+                    <span className="text-xs text-[var(--accent)]">View →</span>
+                  </Link>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        ) : null}
 
         {status && <div className="text-sm text-green-400">{status}</div>}
         {error && <div className="text-sm text-red-400">{error}</div>}

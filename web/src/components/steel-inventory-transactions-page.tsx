@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useMemo, useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -48,6 +48,27 @@ export function SteelInventoryTransactionsPage() {
     direction: "in",
     notes: "",
   });
+  const [searchFilter, setSearchFilter] = useState("");
+  const [directionFilter, setDirectionFilter] = useState("all");
+  const [visibleCount, setVisibleCount] = useState(50);
+
+  const filteredTransactions = useMemo(() => {
+    const normalizedSearch = searchFilter.trim().toLowerCase();
+    return transactions.filter((tx) => {
+      if (directionFilter !== "all" && tx.direction !== directionFilter) return false;
+      if (normalizedSearch) {
+        const itemName = (tx.item_name || "").toLowerCase();
+        const itemCode = (tx.item_code || "").toLowerCase();
+        if (!itemName.includes(normalizedSearch) && !itemCode.includes(normalizedSearch)) return false;
+      }
+      return true;
+    });
+  }, [transactions, searchFilter, directionFilter]);
+
+  const visibleTransactions = useMemo(
+    () => filteredTransactions.slice(0, visibleCount),
+    [filteredTransactions, visibleCount],
+  );
 
   const isSteelFactory = (activeFactory?.industry_type || "").toLowerCase() === "steel";
   const canManage = Boolean(user && ["owner", "admin", "manager"].includes(user.role));
@@ -144,7 +165,23 @@ export function SteelInventoryTransactionsPage() {
               <CardHeader>
                 <CardTitle>Recent Movements</CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                <div className="flex flex-wrap gap-3">
+                  <div className="min-w-[200px] flex-1">
+                    <Input
+                      value={searchFilter}
+                      onChange={(e) => { setSearchFilter(e.target.value); setVisibleCount(50); }}
+                      placeholder="Search by item name or code"
+                    />
+                  </div>
+                  <div className="w-[140px]">
+                    <Select value={directionFilter} onChange={(e) => { setDirectionFilter(e.target.value); setVisibleCount(50); }}>
+                      <option value="all">All directions</option>
+                      <option value="in">Inward only</option>
+                      <option value="out">Outward only</option>
+                    </Select>
+                  </div>
+                </div>
                 <ResponsiveScrollArea
                   className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]"
                   debugLabel="steel-transactions-list"
@@ -160,7 +197,7 @@ export function SteelInventoryTransactionsPage() {
                       </tr>
                     </thead>
                     <tbody>
-                      {transactions.map((tx) => (
+                      {visibleTransactions.map((tx) => (
                         <tr key={tx.id} className="border-b border-[var(--border)]/60 last:border-none">
                           <td className="px-3 py-3 text-[var(--text)]">{formatDateTime(tx.created_at)}</td>
                           <td className="px-3 py-3">
@@ -176,14 +213,25 @@ export function SteelInventoryTransactionsPage() {
                           </td>
                         </tr>
                       ))}
-                      {!transactions.length && (
+                      {!visibleTransactions.length && (
                         <tr>
-                          <td colSpan={5} className="px-3 py-8 text-center text-[var(--muted)]">No recent transactions found.</td>
+                          <td colSpan={5} className="px-3 py-8 text-center text-[var(--muted)]">
+                            {transactions.length ? "No transactions match the current filters." : "No recent transactions found."}
+                          </td>
                         </tr>
                       )}
                     </tbody>
                   </table>
                 </ResponsiveScrollArea>
+                {visibleCount < filteredTransactions.length ? (
+                  <Button variant="outline" className="w-full" onClick={() => setVisibleCount((c) => c + 50)}>
+                    Load more ({filteredTransactions.length - visibleCount} remaining)
+                  </Button>
+                ) : null}
+                <div className="text-xs text-[var(--muted)]">
+                  Showing {visibleTransactions.length} of {filteredTransactions.length} transactions
+                  {directionFilter !== "all" ? ` (filtered by ${directionFilter})` : ""}
+                </div>
               </CardContent>
             </Card>
           </div>

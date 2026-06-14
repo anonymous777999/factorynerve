@@ -495,20 +495,20 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
           </div>
         </section>
 
-        {/* AUDIT: BUTTON_CLUTTER - keep route jumps available in a secondary tray so recovery review stays primary. */}
-        <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
-          <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
-            Ledger tools
-          </summary>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Link href="/steel/customers">
-              <Button variant="outline">Customers</Button>
-            </Link>
-            <Link href="/steel/invoices">
-              <Button variant="ghost">Invoices</Button>
-            </Link>
-          </div>
-        </details>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/steel/customers">
+            <Button variant="ghost" className="text-xs">Customers</Button>
+          </Link>
+          <Link href={`/steel/invoices?customer_id=${customerId}`}>
+            <Button variant="ghost" className="text-xs">Create Invoice</Button>
+          </Link>
+          <Link href="/steel/invoices">
+            <Button variant="ghost" className="text-xs">All Invoices</Button>
+          </Link>
+          <Link href="/steel/dispatches">
+            <Button variant="ghost" className="text-xs">Dispatches</Button>
+          </Link>
+        </div>
 
         <section className="grid gap-4 md:grid-cols-4">
           <Card>

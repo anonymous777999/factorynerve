@@ -398,23 +398,20 @@ export function SteelCustomersPage() {
           </div>
         </section>
 
-        {/* AUDIT: BUTTON_CLUTTER - keep route jumps available in a secondary tray so customer creation stays primary. */}
-        <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(10,14,24,0.78)] p-5">
-          <summary className="cursor-pointer list-none text-sm font-semibold text-white marker:hidden">
-            Ledger tools
-          </summary>
-          <div className="mt-4 flex flex-wrap gap-3">
-            <Link href="/steel">
-              <Button variant="outline">Steel hub</Button>
-            </Link>
-            <Link href="/steel/invoices">
-              <Button variant="ghost">Invoices</Button>
-            </Link>
-            <Link href="/steel/dispatches">
-              <Button variant="ghost">Dispatches</Button>
-            </Link>
-          </div>
-        </details>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/steel">
+            <Button variant="ghost" className="text-xs">Steel Hub</Button>
+          </Link>
+          <Link href="/steel/invoices">
+            <Button variant="ghost" className="text-xs">Invoices</Button>
+          </Link>
+          <Link href="/steel/dispatches">
+            <Button variant="ghost" className="text-xs">Dispatches</Button>
+          </Link>
+          <Link href="/steel/reconciliations">
+            <Button variant="ghost" className="text-xs">Stock Review</Button>
+          </Link>
+        </div>
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
           <Card>
@@ -721,9 +718,14 @@ export function SteelCustomersPage() {
                             <div className="text-xs text-[var(--muted)]">{customer.credit_limit ? `${formatCurrency(customer.available_credit_inr)} available` : `${customer.payment_terms_days} day terms`}</div>
                           </td>
                           <td className="px-3 py-3">
-                            <Link href={`/steel/customers/${customer.id}`} className="text-xs font-medium text-[var(--accent)] hover:underline">
-                              View
-                            </Link>
+                            <div className="flex flex-col gap-1">
+                              <Link href={`/steel/customers/${customer.id}`} className="text-xs font-medium text-[var(--accent)] hover:underline">
+                                View
+                              </Link>
+                              <Link href={`/steel/invoices?customer_id=${customer.id}`} className="text-xs font-medium text-[var(--accent)] hover:underline">
+                                Create Invoice
+                              </Link>
+                            </div>
                           </td>
                         </tr>
                       ))}

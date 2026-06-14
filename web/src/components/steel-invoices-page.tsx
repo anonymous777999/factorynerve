@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -101,6 +102,8 @@ function parseRequiredNumber(
 
 export function SteelInvoicesPage() {
   const { user, activeFactory, loading, error: sessionError } = useSession();
+  const invoiceSearchParams = useSearchParams();
+  const customerIdParam = invoiceSearchParams.get("customer_id");
   const [items, setItems] = useState<SteelItem[]>([]);
   const [stockItems, setStockItems] = useState<SteelStockItem[]>([]);
   const [batches, setBatches] = useState<SteelBatch[]>([]);
@@ -155,6 +158,16 @@ export function SteelInvoicesPage() {
     }
     void loadData();
   }, [isSteelFactory, loadData, user]);
+
+  const initialCustomerRef = useRef(false);
+  useEffect(() => {
+    if (initialCustomerRef.current || !customers.length || !customerIdParam) return;
+    const customerExists = customers.some((c) => String(c.id) === customerIdParam);
+    if (customerExists) {
+      initialCustomerRef.current = true;
+      setSelectedCustomerId(customerIdParam);
+    }
+  }, [customers, customerIdParam]);
 
   const finishedItems = useMemo(
     () => items.filter((item) => item.category === "finished_goods"),
@@ -329,25 +342,20 @@ export function SteelInvoicesPage() {
                 Pick the buyer, add finished-goods lines, and let the server lock the invoice total before dispatch starts.
               </p>
             </div>
-            {/* AUDIT: BUTTON_CLUTTER - move cross-route steel actions into a secondary tools tray so invoice creation stays primary. */}
-            <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
-                Invoice tools
-                <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
-                <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
-              </summary>
-              <div className="flex flex-wrap gap-3 border-t border-[var(--border)] px-4 py-4">
-                <Link href="/steel">
-                  <Button variant="outline">Steel hub</Button>
-                </Link>
-                <Link href="/steel/customers">
-                  <Button variant="ghost">Customers</Button>
-                </Link>
-                <Link href="/steel/dispatches">
-                  <Button variant="ghost">Dispatches</Button>
-                </Link>
-              </div>
-            </details>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href="/steel">
+                <Button variant="ghost" className="text-xs">Steel Hub</Button>
+              </Link>
+              <Link href="/steel/customers">
+                <Button variant="ghost" className="text-xs">Customers</Button>
+              </Link>
+              <Link href="/steel/dispatches">
+                <Button variant="ghost" className="text-xs">Dispatches</Button>
+              </Link>
+              <Link href="/steel/production/record">
+                <Button variant="ghost" className="text-xs">Record Production</Button>
+              </Link>
+            </div>
           </div>
         </section>
 

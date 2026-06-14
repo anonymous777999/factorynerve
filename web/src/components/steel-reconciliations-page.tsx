@@ -237,22 +237,23 @@ export function SteelReconciliationsPage() {
                 Variances indicate unrecorded movements or counting errors.
               </p>
             </div>
-            {/* AUDIT: BUTTON_CLUTTER - move route jumps into a secondary tray so reconciliation review stays primary. */}
-            <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
-                Review tools
-                <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
-                <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
-              </summary>
-              <div className="flex flex-wrap gap-3 border-t border-[var(--border)] px-4 py-4">
-                <Link href="/steel">
-                  <Button variant="outline">Steel hub</Button>
-                </Link>
-                <Link href="/steel/customers">
-                  <Button variant="ghost">Customers</Button>
-                </Link>
-              </div>
-            </details>
+            <div className="flex flex-wrap items-center gap-2">
+              <Link href="/steel">
+                <Button variant="ghost" className="text-xs">Steel Hub</Button>
+              </Link>
+              <Link href="/steel/invoices">
+                <Button variant="ghost" className="text-xs">Invoices</Button>
+              </Link>
+              <Link href="/steel/dispatches">
+                <Button variant="ghost" className="text-xs">Dispatches</Button>
+              </Link>
+              <Link href="/steel/batches">
+                <Button variant="ghost" className="text-xs">Batches</Button>
+              </Link>
+              <Link href="/steel/customers">
+                <Button variant="ghost" className="text-xs">Customers</Button>
+              </Link>
+            </div>
           </div>
         </section>
 

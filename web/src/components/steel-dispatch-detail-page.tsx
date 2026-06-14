@@ -564,25 +564,20 @@ export function SteelDispatchDetailPage() {
               >
                 {detail.dispatch.status}
               </div>
-              {/* AUDIT: BUTTON_CLUTTER - move cross-route links into a secondary tools tray so dispatch progression stays primary. */}
-              <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
-                  Dispatch tools
-                  <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
-                  <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
-                </summary>
-                <div className="flex flex-wrap gap-3 border-t border-[var(--border)] px-4 py-4">
-                  <Link href="/steel/dispatches">
-                    <Button variant="outline">Dispatches</Button>
-                  </Link>
-                  <Link href={`/steel/invoices/${detail.dispatch.invoice_id}`}>
-                    <Button variant="ghost">Invoice</Button>
-                  </Link>
-                  <Link href="/steel">
-                    <Button variant="ghost">Steel hub</Button>
-                  </Link>
-                </div>
-              </details>
+              <div className="flex flex-wrap items-center gap-2">
+                <Link href="/steel/dispatches">
+                  <Button variant="ghost" className="text-xs">Dispatches</Button>
+                </Link>
+                <Link href={`/steel/invoices/${detail.dispatch.invoice_id}`}>
+                  <Button variant="ghost" className="text-xs">Invoice</Button>
+                </Link>
+                <Link href="/steel/reconciliations">
+                  <Button variant="ghost" className="text-xs">Stock Review</Button>
+                </Link>
+                <Link href="/steel">
+                  <Button variant="ghost" className="text-xs">Steel Hub</Button>
+                </Link>
+              </div>
             </div>
           </div>
         </section>
