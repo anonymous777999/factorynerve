@@ -4,10 +4,12 @@
 .continue
 .kiro
 .mcp
+.vercel
 .pytest_cache
 .tmp
 .venv*
 .vscode
+web/.vercel
 
 node_modules
 web/node_modules
