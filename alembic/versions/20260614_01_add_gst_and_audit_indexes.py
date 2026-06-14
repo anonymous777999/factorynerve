@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import JSONB
 
 revision = "20260614_01_add_gst_and_audit_indexes"
-down_revision = "20260613_03_add_steel_customer_party_type_bank"
+down_revision = "20260613_03"
 branch_labels = None
 depends_on = None
 

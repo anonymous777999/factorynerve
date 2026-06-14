@@ -5,7 +5,7 @@ from alembic import op
 import sqlalchemy as sa
 
 revision = "20260614_02_factory_scoped_unique_constraints"
-down_revision = "e9d27018633b"
+down_revision = "20260614_01_add_gst_and_audit_indexes"
 branch_labels = None
 depends_on = None
 
