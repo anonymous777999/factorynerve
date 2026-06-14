@@ -1,0 +1,32 @@
+{
+    "models": [
+        {
+            "title": "DeepSeek V3 (NIM)",
+            "provider": "openai",
+            "model": "deepseek-ai/deepseek-v3",
+            "apiBase": "https://integrate.api.nvidia.com/v1",
+            "apiKey": "nvapi-YOUR_KEY_HERE",
+            "contextLength": 128000,
+            "stream": true
+        },
+        {
+            "title": "Qwen3 Coder (NIM)",
+            "provider": "openai",
+            "model": "qwen/qwen3-next-80b-a3b-instruct",
+            "apiBase": "https://integrate.api.nvidia.com/v1",
+            "apiKey": "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",
+            "contextLength": 128000,
+            "stream": true
+        }
+    ],
+    "tabAutocompleteModel": {
+        "title": "Autocomplete (NIM)",
+        "provider": "openai",
+        "model": "deepseek-ai/deepseek-v3",
+        "apiBase": "https://integrate.api.nvidia.com/v1",
+        "apiKey": "nvapi-YOUR_KEY_HERE",
+        "stream": true
+    },
+    "customCommands": [],
+    "allowAnonymousTelemetry": false
+}

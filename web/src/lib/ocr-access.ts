@@ -42,7 +42,7 @@ export function validateOcrImageFile(
       : `${fieldLabel} must be an image file (JPG, PNG, WEBP).`;
   }
   if (input.size > OCR_MAX_SOURCE_BYTES) {
-    return "Image must be under 8 MB. Try compressing the photo.";
+    return "Image must be under 5 MB. Try compressing the photo.";
   }
   return "";
 }

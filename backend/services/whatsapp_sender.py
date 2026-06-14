@@ -571,14 +571,26 @@ async def _perform_send(
         attempt_count += 1
         try:
             response = await client.post(url, headers=headers, json=payload)
-        except httpx.TimeoutException as error:
+        except (httpx.TimeoutException, httpx.ConnectError) as error:
+            if attempt_count == 1:
+                logger.warning(
+                    "whatsapp_send_retry org_id=%s to=%s template=%s mode=%s status=transport_retry attempt=%s reason=%s",
+                    org_id,
+                    masked_phone,
+                    template_name,
+                    provider_mode,
+                    attempt_count,
+                    str(error)[:100],
+                )
+                await asyncio.sleep(0.5 * attempt_count)  # 500ms, 1000ms exponential backoff
+                continue
             return _failed_result(
                 provider_mode=provider_mode,
                 template_name=template_name,
                 org_id=org_id,
                 masked_phone=masked_phone,
-                reason=f"Request timed out: {error}",
-                provider_response={"provider": _META_PROVIDER_NAME, "reason": "timeout"},
+                reason=f"Transport error: {error}",
+                provider_response={"provider": _META_PROVIDER_NAME, "reason": "transport_error"},
                 attempt_count=attempt_count,
             )
         except httpx.HTTPError as error:
@@ -614,6 +626,19 @@ async def _perform_send(
             )
 
         error_message = _extract_meta_error_message(response=response, payload=provider_response)
+        if response.status_code == 429 and attempt_count < 2:
+            retry_after = int(response.headers.get("Retry-After", "2"))
+            logger.warning(
+                "whatsapp_send_retry org_id=%s to=%s template=%s mode=%s status=rate_limited attempt=%s retry_after=%s",
+                org_id,
+                masked_phone,
+                template_name,
+                provider_mode,
+                attempt_count,
+                retry_after,
+            )
+            await asyncio.sleep(min(retry_after, 10))
+            continue
         if response.status_code >= 500 and attempt_count == 1:
             logger.warning(
                 "whatsapp_send_retry org_id=%s to=%s template=%s mode=%s status=retry attempt=%s reason=%s",

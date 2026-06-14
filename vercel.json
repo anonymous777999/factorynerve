@@ -1,0 +1,8 @@
+{
+  "experimentalServices": {
+    "factorynerve-api": {
+      "type": "web",
+      "routePrefix": "/"
+    }
+  }
+}

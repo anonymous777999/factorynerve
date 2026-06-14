@@ -12,7 +12,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from backend.database import get_db
+from backend.database import get_db, hash_ip_address
 from backend.factory_templates import (
     default_workflow_template_key,
     get_workflow_template,
@@ -34,7 +34,7 @@ from backend.security import get_current_user, hash_password
 from backend.utils import sanitize_text
 from backend.ocr_limits import get_usage_summary, get_org_usage_summary
 from backend.email_service import send_email
-from backend.rbac import is_admin_or_owner, require_role, role_rank
+from backend.rbac import ROLE_ORDER as role_order, require_role, role_rank
 from backend.plans import (
     ALLOWED_PLANS,
     DEFAULT_PLAN,
@@ -261,7 +261,7 @@ def _write_admin_audit(
     previous_state: dict | None = None,
     new_state: dict | None = None,
 ) -> None:
-    ip_address = request.client.host if request.client else None
+    ip_address = hash_ip_address(request.client.host if request.client else None)
     db.add(
         AuditLog(
             user_id=actor_id,
@@ -1113,15 +1113,6 @@ def update_user_role(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     require_role(current_user, UserRole.MANAGER)
-    role_order = {
-        UserRole.ATTENDANCE: 0,
-        UserRole.OPERATOR: 1,
-        UserRole.SUPERVISOR: 2,
-        UserRole.ACCOUNTANT: 2,
-        UserRole.MANAGER: 3,
-        UserRole.ADMIN: 4,
-        UserRole.OWNER: 5,
-    }
     org_id = resolve_org_id(current_user)
     if payload.role == UserRole.ACCOUNTANT and not has_org_feature(
         db,
@@ -1163,7 +1154,7 @@ def update_user_role(
     if role_rank(payload.role) < role_rank(user.role):
         if (payload.confirm_action or "").strip().upper() != "DOWNGRADE":
             raise HTTPException(status_code=400, detail="Type DOWNGRADE to confirm role downgrade.")
-    if user.id == current_user.id and payload.role != current_user.role and not is_admin_or_owner(current_user):
+    if user.id == current_user.id and payload.role != current_user.role:
         raise HTTPException(status_code=400, detail="You cannot change your own role.")
     if user.role in {UserRole.ADMIN, UserRole.OWNER} and payload.role != user.role:
         if not _has_other_privileged_user(db, org_id=org_id, exclude_user_id=user.id):

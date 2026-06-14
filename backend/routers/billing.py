@@ -887,6 +887,25 @@ async def create_order(
             db.commit()
         except IntegrityError:
             db.rollback()
+            existing = db.query(PaymentOrder).filter(
+                PaymentOrder.idempotency_key == idempotency_key
+            ).first()
+            if existing:
+                return {
+                    "order": {
+                        "id": existing.provider_order_id,
+                        "amount": existing.amount,
+                        "currency": existing.currency,
+                        "receipt": existing.receipt,
+                        "status": existing.status,
+                    },
+                    "plan": normalized_plan,
+                    "billing_cycle": billing_cycle,
+                    "amount": existing.amount,
+                    "quote": quote,
+                    "idempotent": True,
+                }
+            raise HTTPException(status_code=500, detail="Order creation conflict. Please retry.")
         return {
             "order": order,
             "plan": normalized_plan,
@@ -1120,6 +1139,25 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
             db.commit()
         except IntegrityError:
             db.rollback()
+            existing = db.query(PaymentOrder).filter(
+                PaymentOrder.idempotency_key == idempotency_key
+            ).first()
+            if existing:
+                return {
+                    "order": {
+                        "id": existing.provider_order_id,
+                        "amount": existing.amount,
+                        "currency": existing.currency,
+                        "receipt": existing.receipt,
+                        "status": existing.status,
+                    },
+                    "plan": normalized_plan,
+                    "billing_cycle": billing_cycle,
+                    "amount": existing.amount,
+                    "quote": quote,
+                    "idempotent": True,
+                }
+            raise HTTPException(status_code=500, detail="Order creation conflict. Please retry.")
             log_billing_event(
                 event_type,
                 org_id if "org_id" in locals() else None,

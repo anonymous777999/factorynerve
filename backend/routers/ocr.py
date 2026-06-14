@@ -2137,6 +2137,7 @@ def _run_ocr_excel_job(progress, *, job_id: str) -> dict[str, object]:
         raise RuntimeError("OCR input file path is missing.")
     image_bytes = Path(str(stored_path)).read_bytes()
 
+    org_id = str(context.get("org_id") or "")
     progress(15, "Loading OCR image")
     metadata: dict[str, object]
     output_name: str
@@ -2175,25 +2176,37 @@ def _run_ocr_excel_job(progress, *, job_id: str) -> dict[str, object]:
     else:
         raise RuntimeError("Unsupported OCR job mode.")
 
-    file_meta = write_job_file(
-        job_id,
-        filename=output_name,
-        content=excel_bytes,
-        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    )
-    _log_ocr_job_success(
-        action=action,
-        user_id=int(job["owner_id"]),
-        org_id=job.get("org_id"),
-        factory_id=str(context.get("factory_id")) if context.get("factory_id") is not None else None,
-        details=f"{action} completed size_bytes={context.get('size_bytes', 0)}",
-    )
-    return {
-        "file": file_meta,
-        "metadata": metadata,
-        "source_filename": context.get("source_filename"),
-        "mode": mode,
-    }
+    try:
+        file_meta = write_job_file(
+            job_id,
+            filename=output_name,
+            content=excel_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        _log_ocr_job_success(
+            action=action,
+            user_id=int(job["owner_id"]),
+            org_id=job.get("org_id"),
+            factory_id=str(context.get("factory_id")) if context.get("factory_id") is not None else None,
+            details=f"{action} completed size_bytes={context.get('size_bytes', 0)}",
+        )
+        return {
+            "file": file_meta,
+            "metadata": metadata,
+            "source_filename": context.get("source_filename"),
+            "mode": mode,
+        }
+    except Exception as error:
+        from backend.database import SessionLocal
+        session = SessionLocal()
+        try:
+            refund_ocr_quota(session, org_id=org_id, reason="ocr_background_job_failed", user_id=context.get("user_id"))
+            session.commit()
+        except Exception:
+            session.rollback()
+        finally:
+            session.close()
+        raise
 
 
 def _queue_ocr_excel_job(
@@ -3036,6 +3049,7 @@ async def ocr_logbook(
     db: Session = Depends(get_db),
 ) -> dict:
     _require_ocr_access(current_user)
+    require_ocr_quota(db, current_user)
     image_bytes = await _read_validated_image_upload(file)
     requested_doc_type = _normalize_doc_type_hint(doc_type_hint) or "table"
     requested_model = sanitize_text(model or force_model, max_length=80, preserve_newlines=False) or None
@@ -3292,6 +3306,7 @@ async def warp_document(
     current_user: User = Depends(get_current_user),
 ) -> Response:
     _require_ocr_access(current_user)
+    require_ocr_quota(db, current_user)
     image_bytes = await _read_validated_image_upload(file)
 
     parsed = _parse_json_value(corners, field_name="corners")

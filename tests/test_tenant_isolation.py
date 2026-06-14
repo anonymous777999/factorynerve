@@ -3,6 +3,10 @@ from __future__ import annotations
 from http import HTTPStatus
 import time
 
+from backend.database import SessionLocal, init_db
+from backend.models.user import User
+from backend.models.user_factory_role import UserFactoryRole
+from backend.security import create_access_token
 from tests.utils import create_entry_payload, register_user, set_org_plan_for_user_email, unique_email, unique_factory
 
 
@@ -72,9 +76,27 @@ def _setup_multi_factory_manager(http_client, *, plan: str = "factory") -> dict[
     )
     assert updated.status_code == HTTPStatus.OK, updated.text
 
-    login = http_client.post("/auth/login", json={"email": manager_email, "password": temp_password})
-    assert login.status_code == HTTPStatus.OK, login.text
-    access_token = login.json()["access_token"]
+    # Generate token directly instead of calling deprecated /auth/login
+    init_db()
+    db = SessionLocal()
+    try:
+        manager = db.query(User).filter(User.email == manager_email).first()
+        assert manager is not None, f"Manager not found: {manager_email}"
+        membership = (
+            db.query(UserFactoryRole)
+            .filter(UserFactoryRole.user_id == manager.id)
+            .order_by(UserFactoryRole.assigned_at.asc())
+            .first()
+        )
+        access_token = create_access_token(
+            user_id=manager.id,
+            role=manager.role.value,
+            email=manager.email,
+            org_id=membership.org_id if membership else manager.org_id,
+            factory_id=membership.factory_id if membership else None,
+        )
+    finally:
+        db.close()
 
     context = http_client.get("/auth/context", headers=_auth_headers(access_token))
     assert context.status_code == HTTPStatus.OK, context.text

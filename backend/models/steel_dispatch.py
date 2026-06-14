@@ -14,8 +14,8 @@ class SteelDispatch(Base):
     __tablename__ = "steel_dispatches"
     __table_args__ = (
         Index("ix_steel_dispatches_factory_id", "factory_id"),
-        Index("ix_steel_dispatches_dispatch_number", "dispatch_number", unique=True),
-        Index("ix_steel_dispatches_gate_pass_number", "gate_pass_number", unique=True),
+        Index("ix_steel_dispatches_dispatch_number", "factory_id", "dispatch_number", unique=True),
+        Index("ix_steel_dispatches_gate_pass_number", "factory_id", "gate_pass_number", unique=True),
         Index("ix_steel_dispatches_invoice_id", "invoice_id"),
         Index("ix_steel_dispatches_dispatch_date", "dispatch_date"),
     )

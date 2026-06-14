@@ -1,0 +1,368 @@
+Comprehensive Audit Log & Compliance Report
+
+## 1. Model Overview
+
+**Two separate audit tables exist:**
+
+| Table | Model File | Purpose |
+|---|---|---|
+| `audit_logs` | `backend/models/report.py` | General business audit (entries, attendance, steel, AI, OCR, settings, etc.) |
+| `auth_audit_logs` | `backend/models/auth_audit_log.py` | Auth-secure login/register flows (used by `/auth/v2/*`) |
+
+Both are **dedicated audit tables** -- separate from business data tables. This is good design.
+
+---
+
+## 2. Fields Captured Per Log Entry
+
+### `audit_logs` table (main AuditLog model):
+| Field | Type | Always Populated? | Notes |
+|---|---|---|---|
+| `id` | int (PK) | Always | Auto-increment |
+| `user_id` | int / FK (nullable) | Usually | Some events have `None` (e.g., unauthenticated signup, OCR background jobs) |
+| `org_id` | str(36), nullable | Usually | Missing in some writes (e.g., `_record_entry_review`) |
+| `factory_id` | str(36), nullable | Sometimes | Not logged in auth events, AI events (resolved but nullable) |
+| `action` | str(120) | **Always** | The core audit action string |
+| `details` | Text, nullable | Usually | Human-readable description |
+| `previous_state` | JSON/JSONB, nullable | **Rarely** | Only set by `_write_admin_audit` (settings.py) and `billing_manager.py` |
+| `new_state` | JSON/JSONB, nullable | **Rarely** | Same as above |
+| `ip_address` | str(120), nullable | Inconsistent | **BUG: plaintext vs hashed vs None** -- see below |
+| `user_agent` | str(500), nullable | Inconsistent | Sometimes stored, sometimes None |
+| `timestamp` | DateTime(tz) | **Always** | With timezone (UTC) |
+
+### `auth_audit_logs` table (AuthAuditLog model):
+| Field | Type | Populated? |
+|---|---|---|
+| `id` | str(36) UUID | Always |
+| `auth_user_id` | str(36), FK nullable | Usually |
+| `action` | str(80) | Always |
+| `created_at` | DateTime(tz) | Always |
+| `ip_hash` | str(128), nullable | SHA-256 hashed **always** |
+| `user_agent_hash` | str(128), nullable | SHA-256 hashed **always** |
+| `meta` | JSON, nullable | Optional extra data |
+
+---
+
+## 3. All Unique Action Types Logged (86 total)
+
+### Auth actions (main AuditLog table via auth.py `_log_auth_event`):
+1. `USER_REGISTERED_VERIFIED`
+2. `PUBLIC_SIGNUP_PENDING_VERIFICATION_EMAIL_FAILED`
+3. `PUBLIC_SIGNUP_PENDING_VERIFICATION`
+4. `PUBLIC_SIGNUP_VERIFICATION_RESENT`
+5. `EMAIL_VERIFICATION_RESENT`
+6. `EMAIL_VERIFIED`
+7. `USER_LOGOUT`
+8. `USER_LOGOUT_ALL`
+9. `TOKEN_REFRESH`
+10. `FACTORY_SWITCH`
+11. `PROFILE_UPDATED`
+12. `PROFILE_PHOTO_UPDATED`
+13. `PROFILE_PHOTO_REMOVED`
+14. `PASSWORD_CHANGED`
+15. `USER_LOGIN` (via auth_google.py)
+
+### Auth actions (AuthAuditLog table via auth_secure.py `_log_event`):
+16. `AUTH_REGISTER`
+17. `AUTH_LOGIN_FAILED`
+18. `AUTH_LOGIN_MFA_REQUIRED`
+19. `AUTH_LOGIN_MFA_FAILED`
+20. `AUTH_LOGIN_SUCCESS`
+21. `AUTH_LOGOUT`
+22. `AUTH_PASSWORD_RESET_REQUESTED`
+23. `AUTH_PASSWORD_RESET`
+24. `AUTH_MFA_SETUP_STARTED`
+25. `AUTH_MFA_ENABLED`
+26. `AUTH_MFA_DISABLED`
+
+### Entry/DPR actions:
+27. `ENTRY_CREATED`
+28. `ENTRY_UPDATED`
+29. `ENTRY_DELETED` (soft-delete)
+30. `ENTRY_REVIEWED`
+31. `ENTRY_APPROVED`
+32. `ENTRY_REJECTED`
+33. `ENTRY_SUMMARY_GENERATED`
+34. `ENTRY_SUMMARY_REGENERATED`
+35. `SMART_INPUT_USED`
+
+### Attendance actions:
+36. `ATTENDANCE_PUNCHED_IN`
+37. `ATTENDANCE_PUNCHED_OUT`
+38. `ATTENDANCE_PROFILE_UPSERTED`
+39. `ATTENDANCE_SHIFT_TEMPLATE_UPSERTED`
+40. `ATTENDANCE_REGULARIZATION_CREATED`
+41. `ATTENDANCE_REVIEW_APPROVED`
+42. `ATTENDANCE_REVIEW_REJECTED`
+
+### AI actions:
+43. `AI_EXECUTIVE_SUMMARY_GENERATED`
+44. `AI_DPR_SUGGESTION_GENERATED`
+45. `AI_ANOMALY_SCAN_GENERATED`
+46. `AI_NLQ_QUERY_EXECUTED`
+
+### OCR actions:
+47. `OCR_VERIFICATION_CREATED`
+48. `OCR_VERIFICATION_EXCEL_EXPORT`
+49. `OCR_VERIFICATION_UPDATED`
+50. `OCR_LEDGER_EXCEL`
+51. `OCR_TABLE_EXCEL`
+52. `OCR_LEDGER_EXCEL_ASYNC`
+53. `OCR_TABLE_EXCEL_ASYNC`
+
+### Settings/Admin actions:
+54. `FACTORY_CREATED`
+55. `FACTORY_ACCESS_UPDATED`
+56. `ROLE_UPDATED`
+57. `PLAN_UPDATED`
+58. `ORG_PLAN_UPDATED`
+59. `USER_DEACTIVATED`
+60. `DEMO_DATA_LOADED`
+
+### Steel module actions:
+61. `STEEL_INVENTORY_ITEM_CREATED`
+62. `STEEL_LEDGER_TRANSACTION_CREATED`
+63. `STEEL_STOCK_RECONCILIATION_SUBMITTED`
+64. `STEEL_STOCK_RECONCILIATION_APPROVED`
+65. `STEEL_STOCK_RECONCILIATION_REJECTED`
+66. `STEEL_CUSTOMER_CREATED`
+67. `STEEL_CUSTOMER_FOLLOW_UP_CREATED`
+68. `STEEL_CUSTOMER_FOLLOW_UP_UPDATED`
+69. `STEEL_CUSTOMER_VERIFICATION_CHECKED`
+70. `STEEL_CUSTOMER_VERIFICATION_DOCUMENT_UPLOADED`
+71. `STEEL_CUSTOMER_VERIFICATION_REVIEWED`
+72. `STEEL_CUSTOMER_PAYMENT_RECORDED`
+73. `STEEL_INVOICE_CREATED`
+74. `STEEL_DISPATCH_CREATED`
+75. `STEEL_DISPATCH_STATUS_UPDATED`
+76. `STEEL_BATCH_RECORDED`
+
+### Plan/Billing actions (via billing_manager.py):
+77. `PLAN_UPGRADED`
+78. `PLAN_DOWNGRADED`
+79. `PLAN_DOWNGRADE_SCHEDULED`
+80. `PLAN_DOWNGRADE_CANCELLED`
+
+### Email:
+81. `EMAIL_SUMMARY_GENERATED`
+
+### Alert Recipients:
+82. `alert_recipient_created`
+83. `alert_recipient_updated`
+84. `alert_recipient_deleted`
+
+### Auto-generated by `_audit_writes` SQLAlchemy hook (database.py):
+85. `create_{ClassName}` (e.g., `create_entry`)
+86. `update_{ClassName}` / `delete_{ClassName}` for tracked entities
+
+---
+
+## 4. What Actions Are NOT Logged (Gaps)
+
+| Missing Log | Severity | Details |
+|---|---|---|
+| **Failed login attempts** (legacy `/login`) | **HIGH** | The deprecated `/login` (auth.py line 916-931) is gone; `/auth/v2/login` (auth_secure.py) logs to `auth_audit_logs` but this is a **different table**. A unified view does not exist. |
+| **Brute-force detection events** | MEDIUM | Rate-limiting happens but is not logged as an audit event |
+| **Data exports** (non-OCR) | MEDIUM | No audit for bulk CSV/PDF exports of entries |
+| **Org-level config/settings changes** | MEDIUM | System settings changes not captured unless routed through `_write_admin_audit` |
+| **Failed authorization attempts** | MEDIUM | 403 Forbidden responses from RBAC are not logged |
+| **API key usage / token creation** | LOW | Token creation/refresh is logged; failed token validation is not |
+| **Webhook processing detail** | LOW | `log_billing_event` goes to stdout only, not the database |
+| **User hard-delete / GDPR purge** | **HIGH** | No mechanism to delete/anonymize audit logs for user deletion requests |
+| **No `previous_state`/`new_state` on most logs** | MEDIUM | Only `_write_admin_audit` and `billing_manager.py` capture before/after state; most writes only log an action string |
+
+---
+
+## 5. Append-Only Analysis
+
+**Application level:** Audit logs are **append-only** -- there are zero DELETE, UPDATE, PUT, or PATCH endpoints targeting the `audit_logs` or `auth_audit_logs` tables anywhere in the codebase. No truncation or purge exists.
+
+**Database level:** There is **NO protection**:
+- No database triggers preventing UPDATE/DELETE
+- No row-level security (RLS)
+- No audit table permissions configured at DB level
+- A superadmin with direct database access (or SQL injection) could freely modify or delete audit entries without detection
+
+**BUG-AUDIT-013:** No integrity protection. There is no checksum, hash chain, or merkle tree linking log entries. A tampered log entry cannot be detected.
+
+---
+
+## 6. Can Users Delete or Edit Audit Logs?
+
+**No API endpoint exists** for any user role (including admin/owner/superadmin) to delete or edit audit log entries. The `_audit_writes` hook (database.py line 170) explicitly excludes `AuditLog` from auto-audit of its own writes.
+
+However, there is no application-level check preventing a compromised admin session from executing raw SQL if the database user has sufficient privileges.
+
+---
+
+## 7. UI to View Audit Logs
+
+Yes -- the **Premium Dashboard** provides two views:
+
+1. **Dashboard heatmap** (`GET /premium/dashboard`, premium.py line 306-337): Shows the last 250 audit entries as a 7-day heatmap + the most recent 18 entries as a preview list with `PremiumAuditItem` (id, timestamp, action, details, user_name, user_email, factory_id).
+
+2. **Full audit trail** (`GET /premium/audit-trail`, premium.py line 491-537): Paginated, filterable by factory_id, action, and time window (7-45 days). Requires `factory` plan or higher, and roles SUPERVISOR+.
+
+**Limitation:** The UI does NOT show `ip_address`, `user_agent`, `previous_state`, or `new_state`. This limits forensic investigation capability directly from the UI.
+
+---
+
+## 8. Sufficiency for Tax Audit or Dispute Resolution
+
+**Partially sufficient.** Strengths:
+- All core business mutations (entries, steel, attendance, OCR) are logged
+- Action types are descriptive and well-named
+- Timestamps are timezone-aware (UTC)
+
+**Weaknesses for tax/dispute use:**
+- Many writes lack `previous_state` / `new_state` (no "diff" view)
+- IP address handling is inconsistent (see bugs below)
+- No login audit for legacy auth path
+- No data export/print trail
+- No tamper-proofing (hash chain)
+- No data retention policy
+- Audit logs are not backed up separately from business data
+
+---
+
+## 9. Timestamp Timezone
+
+**Both models correctly use timezone-aware timestamps:**
+- `AuditLog.timestamp`: `DateTime(timezone=True)` with `default=lambda: datetime.now(timezone.utc)`
+- `AuthAuditLog.created_at`: `DateTime(timezone=True)` with `default=lambda: datetime.now(timezone.utc)`
+
+This is **compliant** with audit best practices.
+
+---
+
+## 10. IP Address Storage Analysis
+
+### Methods that correctly HASH the IP:
+| Method | File | Line |
+|---|---|---|
+| `_log_auth_event` | `routers/auth.py` | 279 |
+| `_write_attendance_audit` | `routers/attendance.py` | 654 |
+| `_log_ocr_event` | `routers/ocr.py` | 2323 |
+| `_write_audit_log` | `routers/entries.py` | 205 |
+
+### Methods that store IP in PLAINTEXT:
+| Method | File | Line |
+|---|---|---|
+| `_write_steel_audit` | `routers/steel.py` | 327 |
+| `_write_admin_audit` | `routers/settings.py` | 264/272 |
+| `_write_audit` (alert recipients) | `routers/alert_recipients.py` | 134/142 |
+
+### Methods that store None (no IP):
+| Method | File | Line |
+|---|---|---|
+| `_write_ai_audit` | `routers/ai.py` | 214 |
+| `_record_entry_review` | `routers/entries.py` | 220 |
+| `_log_ocr_job_success` | `routers/ocr.py` | 2119 |
+| `_log_job_success` | `ocr_jobs.py` | 117 |
+| `_generate_summary_task` | `routers/entries.py` | 309 |
+| `apply_plan_change` | `services/billing_manager.py` | 277 |
+| `_ensure_audit_logs_columns` auto-generated logs | `database.py` 191-228 | All set to `None` |
+
+### AuthAuditLog always hashes:
+`ip_hash=hash_token(ip)` and `user_agent_hash=hash_token(user_agent)` -- always hashed via `hash_token` (SHA-256).
+
+### Hash function:
+`hash_ip_address` (database.py line 136) uses `hashlib.sha256(ip.encode("utf-8")).hexdigest()`. This is **deterministic** -- same IP always yields the same hash, which allows correlation but also means a rainbow table on common IPs could reverse it. No salt is used.
+
+---
+
+## 11. Bug Report
+
+### BUG-AUDIT-001: Inconsistent IP address handling across audit write functions
+- **Severity:** HIGH
+- **Description:** Three different approaches coexist: (a) plaintext IP storage, (b) SHA-256 hashed IP, (c) no IP at all. This is a compliance and privacy issue.
+- **Files:** `routers/steel.py:327`, `routers/settings.py:264-272`, `routers/alert_recipients.py:134-142`, `routers/attendance.py:654`, `routers/auth.py:279`, `routers/ocr.py:2323`, `routers/entries.py:205/220`, `routers/ai.py:214`, `services/billing_manager.py:277`, `database.py:191-228`
+
+### BUG-AUDIT-002: `_write_admin_audit` stores IP in plaintext
+- **Severity:** HIGH
+- **Description:** `routers/settings.py` line 264 assigns `ip_address = request.client.host` without hashing. This function handles sensitive admin actions (FACTORY_CREATED, ROLE_UPDATED, ORG_PLAN_UPDATED) and stores raw client IPs in the database.
+- **File:** `D:\DPR APP\DPR.ai\backend\routers\settings.py` line 264
+
+### BUG-AUDIT-003: `_write_steel_audit` stores IP in plaintext
+- **Severity:** HIGH
+- **Description:** `routers/steel.py` line 327 stores raw `request.client.host` without hashing. Called 17 times across the steel module for financial transactions.
+- **File:** `D:\DPR APP\DPR.ai\backend\routers\steel.py` line 327
+
+### BUG-AUDIT-004: `_write_audit` (alert_recipients) stores IP in plaintext
+- **Severity:** MEDIUM
+- **Description:** `routers/alert_recipients.py` line 134 stores raw `request.client.host` without hashing.
+- **File:** `D:\DPR APP\DPR.ai\backend\routers\alert_recipients.py` line 134
+
+### BUG-AUDIT-005: `_write_ai_audit` discards IP and user-agent entirely
+- **Severity:** MEDIUM
+- **Description:** `routers/ai.py` line 200-218 hardcodes `ip_address=None` and does not accept a `request` parameter. AI actions have no network forensics capability.
+- **File:** `D:\DPR APP\DPR.ai\backend\routers\ai.py` lines 200-218
+
+### BUG-AUDIT-006: `_record_entry_review` loses org_id, factory_id, and user-agent
+- **Severity:** MEDIUM
+- **Description:** `routers/entries.py` line 212-226 only sets `user_id`, `action`, `details`, and `timestamp`. Missing: `org_id`, `factory_id`, `ip_address`, `user_agent`. This is called from a background context without request context.
+- **File:** `D:\DPR APP\DPR.ai\backend\routers\entries.py` lines 212-226
+
+### BUG-AUDIT-007: Auto-generated audit logs by `_audit_writes` lack IP and user-agent
+- **Severity:** MEDIUM
+- **Description:** The SQLAlchemy `before_flush` hook at `database.py` lines 170-228 creates automatic audit entries for all model creates/updates/deletes, but always sets `ip_address=None` and `user_agent=None`. These are generated at the ORM flush level where the HTTP request context is unavailable.
+- **File:** `D:\DPR APP\DPR.ai\backend\database.py` lines 170-228
+
+### BUG-AUDIT-008: No data retention, GDPR, or privacy deletion mechanism
+- **Severity:** HIGH
+- **Description:** There is no cron job, endpoint, or mechanism to purge/rotate/anonymize audit logs. No GDPR right-to-erasure implementation exists for audit data. No retention period is configured.
+- **Evidence:** Grep for "GDPR", "retention", "anonymize", "purge", "truncate" returns no relevant results.
+
+### BUG-AUDIT-009: No database-level append-only enforcement
+- **Severity:** HIGH
+- **Description:** While the application layer never issues UPDATE/DELETE on audit_logs, there are no database triggers, RLS policies, or restricted permissions preventing direct modification. A compromised admin account with sufficient DB privileges can silently tamper with logs.
+- **Evidence:** No triggers or RLS found in the codebase.
+
+### BUG-AUDIT-010: No tamper detection (hash chain / checksum)
+- **Severity:** HIGH
+- **Description:** Audit log entries have no `previous_hash` or checksum field. There is no mechanism to detect if a row in `audit_logs` has been modified retroactively.
+- **Evidence:** AuditLog model has no hash/checksum field.
+
+### BUG-AUDIT-011: Split audit tables create blind spots
+- **Severity:** MEDIUM
+- **Description:** Auth events go to `auth_audit_logs` while business events go to `audit_logs`. The premium audit trail UI only queries `audit_logs`. A security investigation would need to query both tables. Login failures for `/auth/v2/*` (AUTH_LOGIN_FAILED) are only in `auth_audit_logs` and invisible to the main audit trail.
+- **Files:** `backend/models/report.py`, `backend/models/auth_audit_log.py`
+
+### BUG-AUDIT-012: `_write_ai_audit` commits inline, risking partial commits
+- **Severity:** MEDIUM
+- **Description:** `routers/ai.py` line 218 calls `db.commit()` immediately after adding the audit log. This can commit other pending changes in the session prematurely. Other audit write functions defer commit to the caller.
+- **File:** `D:\DPR APP\DPR.ai\backend\routers\ai.py` line 218
+
+### BUG-AUDIT-013: `_ensure_audit_logs_columns` silently swallows migration errors
+- **Severity:** LOW
+- **Description:** `database.py` lines 1575-1608 uses bare `except: pass` for column additions on non-SQLite databases. This could mask genuine schema migration failures.
+- **File:** `D:\DPR APP\DPR.ai\backend\database.py` lines 1590-1605
+
+### BUG-AUDIT-014: Premium audit trail scoping only uses `factory_id` filter, missing `org_id` isolation
+- **Severity:** LOW
+- **Description:** The `_audit_query` at `routers/premium.py` lines 145-164 filters by `org_id` when present, but for users without an org, no org-scoping is applied. The query also falls back to `AuditLog.org_id` which could be null.
+- **File:** `D:\DPR APP\DPR.ai\backend\routers\premium.py` lines 145-164
+
+### BUG-AUDIT-015: `log_billing_event` writes PII to stdout (not auditable)
+- **Severity:** MEDIUM
+- **Description:** `services/billing_logger.py` prints JSON to stdout. While it sanitizes sensitive fields, these events are not stored in the database and are not queryable through the audit trail UI. They are only visible in server logs, which may not be backed up or monitored.
+- **File:** `D:\DPR APP\DPR.ai\backend\services\billing_logger.py` line 74
+
+---
+
+## 12. Summary Assessment
+
+| Criteria | Assessment |
+|---|---|
+| **Coverage** | Good -- 86 action types across all modules |
+| **Consistency** | **Poor** -- 3 different IP handling strategies, haphazard field population |
+| **Append-only** | Application-level yes, database-level **no** |
+| **Tamper-proof** | **No** -- no hash chain, no detection mechanism |
+| **Privacy (IP)** | **Partially failing** -- plaintext IPs stored in 3+ write paths |
+| **Timezone** | Compliant -- all UTC with timezone awareness |
+| **UI available** | Yes -- premium dashboard + audit trail endpoint |
+| **GDPR ready** | **No** -- no deletion/anonymization/retention mechanism |
+| **Tax audit ready** | **Partially** -- captures mutations but lacks before/after state on most entries, no tamper detection |
+| **State capture** | **Poor** -- `previous_state`/`new_state` only used in 2 of 14 write functions |
+
+**Total: 15 bugs identified (BUG-AUDIT-001 through BUG-AUDIT-015)**

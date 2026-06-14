@@ -86,7 +86,7 @@ if not _IS_SQLITE:
 
 engine: Engine = create_engine(
     config.database_url,
-    connect_args={"check_same_thread": False} if _IS_SQLITE else {},
+    connect_args={"check_same_thread": False, "options": "-c statement_timeout=30000"} if not _IS_SQLITE else {"check_same_thread": False},
     future=True,
     pool_pre_ping=True,
     **pool_kwargs,

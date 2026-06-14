@@ -18,9 +18,10 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from sqlalchemy import func, or_
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from backend.database import get_db
+from backend.database import get_db, hash_ip_address
 from backend.models.factory import Factory
 from backend.models.report import AuditLog
 from backend.models.steel_inventory_item import SteelInventoryItem
@@ -37,7 +38,7 @@ from backend.models.steel_sales_invoice_line import SteelSalesInvoiceLine
 from backend.models.steel_stock_reconciliation import SteelStockReconciliation
 from backend.models.user import User, UserRole
 from backend.plans import get_org_plan, has_plan_feature, min_plan_for_feature
-from backend.rbac import is_admin_or_owner, require_any_role, require_role
+from backend.rbac import assert_not_self_approval, is_admin_or_owner, require_any_role, require_role
 from backend.security import get_current_user
 from backend.services.steel_service import (
     build_steel_overview,
@@ -179,6 +180,8 @@ class SteelInvoiceCreateRequest(BaseModel):
     customer_name: str | None = Field(default=None, max_length=200)
     customer_id: int | None = None
     payment_terms_days: int | None = Field(default=None, ge=0, le=365)
+    gst_rate: float | None = Field(default=None, ge=0, le=100)
+    supply_type: str | None = Field(default=None, pattern=r"^(intra|inter)$")
     notes: str | None = Field(default=None, max_length=500)
     lines: list[SteelInvoiceLineCreateRequest] = Field(min_length=1, max_length=25)
 
@@ -316,6 +319,8 @@ def _write_steel_audit(
     action: str,
     details: str,
     request: Request | None = None,
+    previous_state: dict | None = None,
+    new_state: dict | None = None,
 ) -> None:
     db.add(
         AuditLog(
@@ -324,7 +329,9 @@ def _write_steel_audit(
             factory_id=factory_id,
             action=action,
             details=details,
-            ip_address=request.client.host if request and request.client else None,
+            previous_state=previous_state,
+            new_state=new_state,
+            ip_address=hash_ip_address(request.client.host if request and request.client else None),
             user_agent=request.headers.get("user-agent") if request else None,
             timestamp=datetime.now(timezone.utc),
         )
@@ -468,6 +475,12 @@ def _serialize_steel_invoice(
         "payment_terms_days": int(row.payment_terms_days or 0),
         "total_weight_kg": round(float(row.total_weight_kg or 0.0), 3),
         "subtotal_amount": round(float(row.subtotal_amount or 0.0), 2),
+        "gst_rate": float(row.gst_rate) if row.gst_rate is not None else None,
+        "supply_type": row.supply_type,
+        "taxable_amount": round(float(row.taxable_amount or 0.0), 2),
+        "cgst_amount": round(float(row.cgst_amount or 0.0), 2) if row.cgst_amount is not None else None,
+        "sgst_amount": round(float(row.sgst_amount or 0.0), 2) if row.sgst_amount is not None else None,
+        "igst_amount": round(float(row.igst_amount or 0.0), 2) if row.igst_amount is not None else None,
         "total_amount": round(float(row.total_amount or 0.0), 2),
         "notes": row.notes,
         "created_by_user_id": row.created_by_user_id,
@@ -762,6 +775,16 @@ def _normalize_customer_payment_terms(value: int | float | str | None) -> int:
     if not normalized.is_integer() or int(normalized) <= 0:
         raise HTTPException(status_code=400, detail="Payment terms must be a positive whole number.")
     return int(normalized)
+
+
+VALID_DISPATCH_TRANSITIONS: dict[str, set[str]] = {
+    "pending": {"loaded", "cancelled"},
+    "loaded": {"exited", "cancelled"},
+    "exited": {"dispatched"},
+    "dispatched": {"delivered"},
+    "delivered": set(),
+    "cancelled": set(),
+}
 
 
 def _normalize_dispatch_status(value: str | None, *, allow_cancelled: bool = True) -> str:
@@ -1621,6 +1644,10 @@ def get_steel_overview(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
+    require_any_role(current_user, {
+        UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN,
+        UserRole.OWNER, UserRole.ACCOUNTANT,
+    })
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
@@ -1727,7 +1754,7 @@ def list_steel_inventory_items(
 ) -> dict:
     require_any_role(
         current_user,
-        {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
+        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
     )
     try:
         factory = require_active_steel_factory(db, current_user)
@@ -1768,7 +1795,7 @@ def list_steel_inventory_stock(
 ) -> dict:
     require_any_role(
         current_user,
-        {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
+        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
     )
     try:
         factory = require_active_steel_factory(db, current_user)
@@ -1785,7 +1812,7 @@ def list_steel_inventory_transactions(
 ) -> dict:
     require_any_role(
         current_user,
-        {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
+        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
     )
     try:
         factory = require_active_steel_factory(db, current_user)
@@ -1890,6 +1917,8 @@ def create_steel_inventory_transaction(
         raise HTTPException(status_code=400, detail=str(error)) from error
 
     item = _get_item_or_404(db, factory_id=factory.factory_id, item_id=payload.item_id)
+    # Lock the item row to prevent concurrent stock underflow (TOCTOU race)
+    db.query(SteelInventoryItem).filter(SteelInventoryItem.id == item.id).with_for_update().first()
     balances = stock_balances_for_factory(db, factory.factory_id)
     projected_balance = float(balances.get(item.id, 0.0)) + signed_quantity
     if projected_balance < -0.001:
@@ -1935,7 +1964,7 @@ def create_steel_stock_reconciliation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
+    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
@@ -2136,6 +2165,7 @@ def approve_steel_stock_reconciliation(
         raise HTTPException(status_code=404, detail="Steel reconciliation not found.")
     if row.status != "pending":
         raise HTTPException(status_code=400, detail="Only pending reconciliations can be approved.")
+    assert_not_self_approval(row.created_by_user_id, current_user.id)
     mismatch_cause = (
         _normalize_stock_mismatch_cause(payload.mismatch_cause)
         if payload.mismatch_cause is not None
@@ -2218,6 +2248,7 @@ def reject_steel_stock_reconciliation(
         raise HTTPException(status_code=404, detail="Steel reconciliation not found.")
     if row.status != "pending":
         raise HTTPException(status_code=400, detail="Only pending reconciliations can be rejected.")
+    assert_not_self_approval(row.created_by_user_id, current_user.id)
     rejection_reason = sanitize_text(payload.rejection_reason, max_length=500)
     if not rejection_reason:
         raise HTTPException(status_code=400, detail="Rejection reason is required.")
@@ -2653,6 +2684,97 @@ def create_steel_customer(
     db.commit()
     db.refresh(customer)
     return {"customer": _serialize_steel_customer(customer)}
+
+
+@router.put("/customers/{customer_id}")
+def update_steel_customer(
+    customer_id: int,
+    payload: SteelCustomerCreateRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    require_any_role(current_user, {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT})
+    try:
+        factory = require_active_steel_factory(db, current_user)
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=customer_id)
+
+    previous_state = {
+        "status": customer.status,
+        "credit_limit": float(customer.credit_limit or 0.0),
+        "payment_terms_days": int(customer.payment_terms_days or 0),
+        "name": customer.name,
+    }
+
+    name = _sanitize_customer_text(payload.name, max_length=200)
+    if not name:
+        raise HTTPException(status_code=400, detail="Customer name is required.")
+    phone = _normalize_customer_phone(payload.phone)
+    email = _normalize_customer_email(payload.email)
+    gst_number = _normalize_customer_gst(payload.gst_number)
+    pan_number = _normalize_customer_pan(payload.pan_number)
+    credit_limit = _normalize_customer_credit_limit(payload.credit_limit)
+    payment_terms_days = _normalize_customer_payment_terms(payload.payment_terms_days)
+
+    duplicate = (
+        db.query(SteelCustomer.id)
+        .filter(
+            SteelCustomer.factory_id == factory.factory_id,
+            func.lower(func.trim(SteelCustomer.name)) == name.lower(),
+            SteelCustomer.is_active.is_(True),
+            SteelCustomer.id != customer_id,
+        )
+        .first()
+    )
+    if duplicate:
+        raise HTTPException(status_code=409, detail="Another customer with this name already exists.")
+
+    customer.name = name
+    customer.phone = phone or customer.phone
+    customer.email = email or customer.email
+    customer.address = _sanitize_customer_text(payload.address, max_length=500, preserve_newlines=True) or customer.address
+    customer.city = _sanitize_customer_text(payload.city, max_length=120) or customer.city
+    customer.state = _sanitize_customer_text(payload.state, max_length=120) or customer.state
+    customer.tax_id = _sanitize_customer_text(payload.tax_id, max_length=64) or customer.tax_id
+    customer.gst_number = gst_number or customer.gst_number
+    customer.pan_number = pan_number or customer.pan_number
+    customer.company_type = _sanitize_customer_text(payload.company_type, max_length=40) or customer.company_type
+    customer.contact_person = _sanitize_customer_text(payload.contact_person, max_length=160) or customer.contact_person
+    customer.designation = _sanitize_customer_text(payload.designation, max_length=120) or customer.designation
+    customer.credit_limit = credit_limit
+    customer.payment_terms_days = payment_terms_days
+    customer.status = _normalize_customer_status(payload.status)
+    customer.notes = _sanitize_customer_text(payload.notes, max_length=500, preserve_newlines=True) or customer.notes
+
+    if gst_number or pan_number:
+        _apply_customer_verification_state(customer, verification_source="system_check")
+
+    _write_steel_audit(
+        db,
+        actor=current_user,
+        factory_id=factory.factory_id,
+        action="STEEL_CUSTOMER_UPDATED",
+        details=(
+            f"customer_id={customer.id} customer_code={customer.customer_code} "
+            f"name={previous_state['name']} -> {customer.name} "
+            f"status={previous_state['status']} -> {customer.status} "
+            f"credit_limit_inr={previous_state['credit_limit']} -> {round(float(customer.credit_limit or 0.0), 2)}"
+        ),
+        request=request,
+        previous_state=previous_state,
+        new_state={
+            "status": customer.status,
+            "credit_limit": float(customer.credit_limit or 0.0),
+            "payment_terms_days": int(customer.payment_terms_days or 0),
+            "name": customer.name,
+        },
+    )
+    db.commit()
+    db.refresh(customer)
+    return {"message": "Customer updated.", "customer": _serialize_steel_customer(customer)}
 
 
 @router.get("/customers/{customer_id}")
@@ -3519,6 +3641,7 @@ def create_steel_invoice(
     )
     if not invoice_number:
         invoice_number = generate_invoice_number(db, factory)
+    # Check for duplicate - race-safe: if IntegrityError occurs later, we retry
     existing = db.query(SteelSalesInvoice.id).filter(SteelSalesInvoice.invoice_number == invoice_number).first()
     if existing:
         raise HTTPException(status_code=409, detail="Invoice number already exists.")
@@ -3589,6 +3712,8 @@ def create_steel_invoice(
         )
 
     if customer and float(customer.credit_limit or 0.0) > 0:
+        # Lock customer row to prevent concurrent credit limit race condition
+        db.query(SteelCustomer).filter(SteelCustomer.id == customer.id).with_for_update().first()
         current_invoice_total = float(
             db.query(func.coalesce(func.sum(SteelSalesInvoice.total_amount), 0))
             .filter(
@@ -3622,14 +3747,40 @@ def create_steel_invoice(
         status="unpaid",
         currency="INR",
         payment_terms_days=payment_terms_days,
+        gst_rate=payload.gst_rate,
+        supply_type=payload.supply_type,
+        taxable_amount=round(subtotal_amount, 2),
+        cgst_amount=round(subtotal_amount * payload.gst_rate / 200.0, 2) if payload.gst_rate and payload.supply_type == "intra" else None,
+        sgst_amount=round(subtotal_amount * payload.gst_rate / 200.0, 2) if payload.gst_rate and payload.supply_type == "intra" else None,
+        igst_amount=round(subtotal_amount * payload.gst_rate / 100.0, 2) if payload.gst_rate and payload.supply_type == "inter" else None,
         total_weight_kg=round(total_weight_kg, 3),
         subtotal_amount=round(subtotal_amount, 2),
-        total_amount=round(subtotal_amount, 2),
+        total_amount=round(
+            subtotal_amount * (1 + payload.gst_rate / 100.0), 2
+        ) if payload.gst_rate else round(subtotal_amount, 2),
         notes=sanitize_text(payload.notes, max_length=500),
         created_by_user_id=current_user.id,
     )
-    db.add(invoice)
-    db.flush()
+    max_retries = 3
+    retry_count = 0
+    last_error: Exception | None = None
+    while retry_count < max_retries:
+        try:
+            db.add(invoice)
+            db.flush()
+            break
+        except IntegrityError as error:
+            db.rollback()
+            last_error = error
+            retry_count += 1
+            if retry_count >= max_retries:
+                raise HTTPException(status_code=409, detail="Could not create invoice due to a number conflict. Please retry.") from error
+            if not payload.invoice_number:
+                # Regenerate the invoice number and retry
+                invoice_number = generate_invoice_number(db, factory)
+                invoice.invoice_number = invoice_number
+            else:
+                raise HTTPException(status_code=409, detail="Invoice number already exists.") from error
 
     line_rows: list[SteelSalesInvoiceLine] = []
     for line in prepared_lines:
@@ -3690,7 +3841,7 @@ def list_steel_dispatches(
 ) -> dict:
     require_any_role(
         current_user,
-        {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
+        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
     )
     try:
         factory = require_active_steel_factory(db, current_user)
@@ -3738,7 +3889,7 @@ def get_steel_dispatch_detail(
 ) -> dict:
     require_any_role(
         current_user,
-        {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
+        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
     )
     try:
         factory = require_active_steel_factory(db, current_user)
@@ -3954,6 +4105,9 @@ def create_steel_dispatch(
         raise HTTPException(status_code=400, detail="Add at least one dispatch line.")
 
     if _dispatch_status_posts_inventory(requested_status):
+        # Lock all affected item rows to prevent concurrent stock underflow (TOCTOU race)
+        for lock_item_id in requested_by_item:
+            db.query(SteelInventoryItem).filter(SteelInventoryItem.id == lock_item_id).with_for_update().first()
         balances = stock_balances_for_factory(db, factory.factory_id)
         for item_id, requested_weight in requested_by_item.items():
             available = float(balances.get(item_id, 0.0))
@@ -4092,6 +4246,7 @@ def update_steel_dispatch_status(
 
     dispatch = _get_dispatch_or_404(db, factory_id=factory.factory_id, dispatch_id=dispatch_id)
     invoice = _get_invoice_or_404(db, factory_id=factory.factory_id, invoice_id=dispatch.invoice_id)
+    assert_not_self_approval(dispatch.created_by_user_id, current_user.id)
     next_status = _normalize_dispatch_status(payload.status)
     current_status = _normalize_dispatch_status(dispatch.status)
     if current_status == "cancelled":
@@ -4100,6 +4255,11 @@ def update_steel_dispatch_status(
         raise HTTPException(status_code=409, detail="Only non-posted draft dispatches can be cancelled.")
     if next_status in {"pending", "loaded"} and _dispatch_has_posted_inventory(dispatch):
         raise HTTPException(status_code=409, detail="Posted dispatches cannot move back to pending or loaded.")
+    if next_status not in VALID_DISPATCH_TRANSITIONS.get(current_status, set()):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot move dispatch from {current_status} to {next_status}.",
+        )
 
     dispatch.entry_time = coerce_utc_datetime(payload.entry_time) or dispatch.entry_time
     dispatch.exit_time = coerce_utc_datetime(payload.exit_time) or dispatch.exit_time
@@ -4116,6 +4276,9 @@ def update_steel_dispatch_status(
         requested_by_item: dict[int, float] = {}
         for row in line_rows:
             requested_by_item[row.item_id] = float(requested_by_item.get(row.item_id, 0.0)) + float(row.weight_kg or 0.0)
+        # Lock all affected item rows to prevent concurrent stock underflow (TOCTOU race)
+        for lock_item_id in requested_by_item:
+            db.query(SteelInventoryItem).filter(SteelInventoryItem.id == lock_item_id).with_for_update().first()
         balances = stock_balances_for_factory(db, factory.factory_id)
         for item_id, requested_weight in requested_by_item.items():
             available = float(balances.get(item_id, 0.0))
@@ -4225,6 +4388,8 @@ def create_steel_batch(
     if payload.actual_output_kg > payload.input_quantity_kg:
         raise HTTPException(status_code=400, detail="Actual output cannot exceed input quantity.")
 
+    # Lock the input item row to prevent concurrent stock underflow (TOCTOU race)
+    db.query(SteelInventoryItem).filter(SteelInventoryItem.id == input_item.id).with_for_update().first()
     balances = stock_balances_for_factory(db, factory.factory_id)
     available_input = float(balances.get(input_item.id, 0.0))
     if available_input + 0.0001 < payload.input_quantity_kg:

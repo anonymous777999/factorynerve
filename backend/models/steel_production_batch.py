@@ -14,7 +14,7 @@ class SteelProductionBatch(Base):
     __tablename__ = "steel_production_batches"
     __table_args__ = (
         Index("ix_steel_production_batches_factory_id", "factory_id"),
-        Index("ix_steel_production_batches_batch_code", "batch_code", unique=True),
+        Index("ix_steel_production_batches_batch_code", "factory_id", "batch_code", unique=True),
         Index("ix_steel_production_batches_operator_user_id", "operator_user_id"),
         Index("ix_steel_production_batches_production_date", "production_date"),
     )

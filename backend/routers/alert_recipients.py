@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from backend.database import get_db
+from backend.database import get_db, hash_ip_address
 from backend.models.admin_alert_recipient import AdminAlertRecipient
 from backend.models.phone_verification import PhoneVerificationChannel, PhoneVerificationStatus
 from backend.models.report import AuditLog
@@ -131,7 +131,7 @@ def _write_audit(
     details: str,
     org_id: str,
 ) -> None:
-    ip_address = request.client.host if request.client else None
+    ip_address = hash_ip_address(request.client.host if request.client else None)
     db.add(
         AuditLog(
             user_id=current_user.id,

@@ -9,6 +9,7 @@ from backend.models.organization import Organization
 from backend.models.user import User
 from backend.models.user_factory_role import UserFactoryRole
 from backend.plans import normalize_plan
+from backend.security import create_access_token
 
 
 def unique_email() -> str:
@@ -41,7 +42,8 @@ def register_user(
     }
     resp = client.post("/auth/register", json=payload)
     assert resp.status_code in (200, 201), resp.text
-    data = resp.json()
+    raw = resp.json()
+    data = raw.get("data", raw)  # unwrap response envelope if present
     verification_link = data.get("verification_link")
     assert verification_link, f"Expected verification link in test mode: {data}"
 
@@ -51,37 +53,54 @@ def register_user(
     verify = client.post("/auth/email/verify", json={"token": token_values[0]})
     assert verify.status_code == 200, verify.text
 
-    headers = {"X-Use-Cookies": "1"} if use_cookies else None
-    login = client.post(
-        "/auth/login",
-        json={"email": payload["email"], "password": payload["password"]},
-        headers=headers,
-    )
-    assert login.status_code == 200, login.text
-    auth_data = login.json()
-    actual_role = auth_data.get("user", {}).get("role")
-    if requested_role != actual_role:
-        init_db()
-        db = SessionLocal()
-        try:
-            user = db.query(User).filter(User.email == payload["email"]).first()
-            assert user is not None
+    # Generate JWT directly from DB instead of calling deprecated /auth/login
+    init_db()
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == payload["email"]).first()
+        assert user is not None
+
+        # Get the first factory role for this user
+        membership = (
+            db.query(UserFactoryRole)
+            .filter(UserFactoryRole.user_id == user.id)
+            .order_by(UserFactoryRole.assigned_at.asc())
+            .first()
+        )
+
+        actual_role = user.role.value
+        if requested_role != actual_role:
             user.role = requested_role
             memberships = db.query(UserFactoryRole).filter(UserFactoryRole.user_id == user.id).all()
-            for membership in memberships:
-                membership.role = requested_role
+            for m in memberships:
+                m.role = requested_role
             db.commit()
-        finally:
-            db.close()
-    return {
-        "email": payload["email"],
-        "password": payload["password"],
-        "access_token": auth_data.get("access_token"),
-        "user_id": auth_data.get("user", {}).get("id"),
-        "user_code": auth_data.get("user", {}).get("user_code"),
-        "company_code": auth_data.get("user", {}).get("factory_code"),
-        "factory_name": auth_data.get("user", {}).get("factory_name") or payload["factory_name"],
-    }
+            role_to_use = requested_role
+        else:
+            role_to_use = actual_role
+
+        org_id = membership.org_id if membership else user.org_id
+        factory_id = membership.factory_id if membership else None
+
+        access_token = create_access_token(
+            user_id=user.id,
+            role=role_to_use,
+            email=user.email,
+            org_id=org_id,
+            factory_id=factory_id,
+        )
+
+        return {
+            "email": payload["email"],
+            "password": payload["password"],
+            "access_token": access_token,
+            "user_id": user.id,
+            "user_code": user.user_code,
+            "company_code": user.factory_code,
+            "factory_name": user.factory_name or payload["factory_name"],
+        }
+    finally:
+        db.close()
 
 
 def create_entry_payload(index: int = 0) -> dict:

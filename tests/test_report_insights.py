@@ -7,6 +7,7 @@ from urllib.parse import parse_qs, urlparse
 from backend.database import SessionLocal, init_db
 from backend.models.user import User
 from backend.models.user_factory_role import UserFactoryRole
+from backend.security import create_access_token
 
 
 def _register(
@@ -31,7 +32,8 @@ def _register(
         },
     )
     assert response.status_code == HTTPStatus.CREATED, response.text
-    payload = response.json()
+    raw = response.json()
+    payload = raw.get("data", raw)  # unwrap response envelope if present
     verification_link = payload.get("verification_link")
     assert verification_link, payload
     parsed = urlparse(verification_link)
@@ -39,34 +41,47 @@ def _register(
     assert token_values, verification_link
     verify = http_client.post("/auth/email/verify", json={"token": token_values[0]})
     assert verify.status_code == HTTPStatus.OK, verify.text
-    login = http_client.post(
-        "/auth/login",
-        json={"email": email, "password": "StrongPassw0rd!"},
-    )
-    assert login.status_code == HTTPStatus.OK, login.text
-    login_payload = login.json()
-    actual_role = login_payload.get("user", {}).get("role")
-    if actual_role != role:
-        init_db()
-        db = SessionLocal()
-        try:
-            user = db.query(User).filter(User.email == email).first()
-            assert user is not None
+
+    # Generate token directly from DB instead of calling deprecated /auth/login
+    init_db()
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        assert user is not None
+        membership = (
+            db.query(UserFactoryRole)
+            .filter(UserFactoryRole.user_id == user.id)
+            .order_by(UserFactoryRole.assigned_at.asc())
+            .first()
+        )
+        actual_role = user.role.value
+        if actual_role != role:
             user.role = role
             memberships = db.query(UserFactoryRole).filter(UserFactoryRole.user_id == user.id).all()
-            for membership in memberships:
-                membership.role = role
+            for m in memberships:
+                m.role = role
             db.commit()
-        finally:
-            db.close()
-        login = http_client.post(
-            "/auth/login",
-            json={"email": email, "password": "StrongPassw0rd!"},
+        org_id = membership.org_id if membership else user.org_id
+        factory_id = membership.factory_id if membership else None
+        access_token = create_access_token(
+            user_id=user.id,
+            role=user.role.value,
+            email=user.email,
+            org_id=org_id,
+            factory_id=factory_id,
         )
-        assert login.status_code == HTTPStatus.OK, login.text
-        login_payload = login.json()
-    login_payload["access_token"] = login_payload["access_token"]
-    return login_payload
+    finally:
+        db.close()
+
+    return {
+        "access_token": access_token,
+        "user": {
+            "id": user.id,
+            "role": user.role.value,
+            "factory_code": user.factory_code,
+            "email": user.email,
+        },
+    }
 
 
 def _entry_payload(*, day_offset: int, units_target: int, units_produced: int, downtime_minutes: int, quality_issues: bool) -> dict:

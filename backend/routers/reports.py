@@ -38,6 +38,11 @@ from backend.services.background_jobs import (
 
 router = APIRouter(tags=["Reports"])
 REPORTS_CACHE_TTL = int(os.getenv("REPORTS_CACHE_TTL_SECONDS", "45"))
+def _safe_cell_value(value: str | None) -> str:
+    """Sanitize cell values to prevent Excel formula injection."""
+    if value and str(value).startswith(('=', '+', '-', '@')):
+        return "'" + value
+    return value or ""
 
 
 def _factory_user_ids_query(db: Session, current_user: User):
@@ -166,21 +171,21 @@ def _render_entries_excel(entries: list[Entry]) -> bytes:
                 entry.id,
                 str(entry.date),
                 str(entry.shift),
-                entry.department or "",
-                entry.submitted_by or "",
-                entry.created_at.isoformat() if entry.created_at else "",
+                _safe_cell_value(entry.department),
+                _safe_cell_value(entry.submitted_by),
+                str(entry.created_at.isoformat() if entry.created_at else ""),
                 entry.status,
                 entry.units_target,
                 entry.units_produced,
                 entry.manpower_present,
                 entry.manpower_absent,
                 entry.downtime_minutes,
-                entry.downtime_reason or "",
-                entry.materials_used or "",
+                _safe_cell_value(entry.downtime_reason),
+                _safe_cell_value(entry.materials_used),
                 "Yes" if entry.quality_issues else "No",
-                entry.quality_details or "",
-                entry.notes or "",
-                entry.ai_summary or "",
+                _safe_cell_value(entry.quality_details),
+                _safe_cell_value(entry.notes),
+                _safe_cell_value(entry.ai_summary),
             ]
         )
     buffer = BytesIO()
@@ -1040,7 +1045,7 @@ def export_factory_excel(
     start = start_date or (date.today() - timedelta(days=6))
     end = end_date or date.today()
     entries = _scoped_entries_query(db, current_user, start=start, end=end).order_by(Entry.date.asc(), Entry.created_at.asc())
-    excel_bytes = _render_entries_excel(entries.all())
+    excel_bytes = _render_entries_excel(entries.limit(10000).all())
     return Response(
         content=excel_bytes,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

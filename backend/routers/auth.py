@@ -78,6 +78,7 @@ from backend.auth_cookies import (
     set_auth_cookies,
     wants_cookie_auth,
 )
+from backend.rbac import ROLE_ORDER
 
 
 logger = logging.getLogger(__name__)
@@ -404,6 +405,7 @@ class RegisterResponse(BaseModel):
     verification_required: bool = True
     verification_link: str | None = None
     delivery_mode: str = "email"
+    assigned_role: str = "attendance"
 
 
 class EmailVerificationResponse(BaseModel):
@@ -450,15 +452,7 @@ def _hash_refresh_token(token: str) -> str:
     return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
-_ROLE_ORDER = {
-    UserRole.ATTENDANCE: 0,
-    UserRole.OPERATOR: 1,
-    UserRole.SUPERVISOR: 2,
-    UserRole.ACCOUNTANT: 2,
-    UserRole.MANAGER: 3,
-    UserRole.ADMIN: 4,
-    UserRole.OWNER: 5,
-}
+
 
 
 def _build_permissions(user: User) -> PermissionsSchema:
@@ -466,9 +460,9 @@ def _build_permissions(user: User) -> PermissionsSchema:
     role = user.role if isinstance(user.role, UserRole) else None
     return PermissionsSchema(
         can_view_billing=role in {UserRole.ADMIN, UserRole.OWNER},
-        can_manage_users=bool(role and _ROLE_ORDER[role] >= _ROLE_ORDER[UserRole.MANAGER]),
-        can_view_analytics=bool(role and _ROLE_ORDER[role] >= _ROLE_ORDER[UserRole.SUPERVISOR]),
-        can_approve_entries=bool(role and _ROLE_ORDER[role] >= _ROLE_ORDER[UserRole.SUPERVISOR]),
+        can_manage_users=bool(role and ROLE_ORDER[role] >= ROLE_ORDER[UserRole.MANAGER]),
+        can_view_analytics=bool(role and ROLE_ORDER[role] >= ROLE_ORDER[UserRole.SUPERVISOR]),
+        can_approve_entries=bool(role and ROLE_ORDER[role] >= ROLE_ORDER[UserRole.SUPERVISOR]),
         can_export_data=role not in {UserRole.ATTENDANCE, UserRole.OPERATOR},
         can_manage_billing=role == UserRole.OWNER,
         can_view_admin_panel=role_value == "superadmin",
@@ -686,7 +680,7 @@ def _preview_public_registration(
         )
         if factory:
             if factory.name.strip().lower() != normalized_factory.lower():
-                raise HTTPException(status_code=400, detail="Company code does not match factory name.")
+                raise HTTPException(status_code=400, detail="Registration not possible with the provided details.")
             org_id = factory.org_id
             normalized_factory = factory.name
         else:
@@ -696,9 +690,9 @@ def _preview_public_registration(
                 .first()
             )
             if not legacy:
-                raise HTTPException(status_code=400, detail="Invalid company code.")
+                raise HTTPException(status_code=400, detail="Registration not possible with the provided details.")
             if legacy.factory_name.strip().lower() != normalized_factory.lower():
-                raise HTTPException(status_code=400, detail="Company code does not match factory name.")
+                raise HTTPException(status_code=400, detail="Registration not possible with the provided details.")
             org_id = legacy.org_id
             normalized_factory = legacy.factory_name
     else:
@@ -722,7 +716,7 @@ def _preview_public_registration(
     if has_existing_org_user and requested_role not in {UserRole.ATTENDANCE, UserRole.OPERATOR}:
         raise HTTPException(
             status_code=403,
-            detail="Public registration is limited to attendance accounts. Ask an admin or owner to invite higher roles.",
+            detail="Registration not possible with the provided details.",
         )
 
     return normalized_factory, org_id
@@ -757,7 +751,7 @@ def _activate_pending_registration(
     if has_existing_org_user and pending.requested_role not in {UserRole.ATTENDANCE, UserRole.OPERATOR}:
         raise HTTPException(
             status_code=403,
-            detail="Public registration is limited to attendance accounts. Ask an admin or owner to invite higher roles.",
+            detail="Registration not possible with the provided details.",
         )
     assigned_role = UserRole.OWNER if not has_existing_org_user else UserRole.ATTENDANCE
 
@@ -893,6 +887,16 @@ def register_user(
                 request,
             )
         db.commit()
+        # Determine the role that will be assigned at email verification
+        has_existing_org_user = False
+        if _org_id_hint:
+            has_existing_org_user = (
+                db.query(User.id)
+                .filter(User.org_id == _org_id_hint, User.is_active.is_(True))
+                .first()
+                is not None
+            )
+        _assigned_role = "owner" if not has_existing_org_user else "attendance"
         return RegisterResponse(
             message=message,
             email=payload.email.lower(),
@@ -900,6 +904,7 @@ def register_user(
             verification_required=True,
             verification_link=verification_link if delivery_mode == "preview" else None,
             delivery_mode=delivery_mode,
+            assigned_role=_assigned_role,
         )
     except HTTPException:
         db.rollback()
@@ -977,11 +982,19 @@ def logout_all_devices(
     token = str(getattr(current_user, "current_token", "") or "")
     if not token:
         token = get_access_cookie(request) or ""
-    if token:
-        jti = str(getattr(current_user, "current_token_jti", "") or "")
-        exp = getattr(current_user, "current_token_expires_at", None)
-        existing = db.query(TokenBlacklist).filter(TokenBlacklist.token_jti == jti).first() if jti else None
-        if jti and exp and not existing:
+    jti = str(getattr(current_user, "current_token_jti", "") or "")
+    exp = getattr(current_user, "current_token_expires_at", None)
+    if not jti and token:
+        # Fallback: decode the token to extract JTI if request state doesn't have it
+        try:
+            payload = decode_access_token(token)
+            jti = str(payload.get("jti", ""))
+            exp = datetime.fromtimestamp(int(payload["exp"]), tz=timezone.utc) if payload.get("exp") else None
+        except Exception:
+            pass
+    if jti and exp:
+        existing = db.query(TokenBlacklist).filter(TokenBlacklist.token_jti == jti).first()
+        if not existing:
             db.add(TokenBlacklist(token_jti=jti, user_id=current_user.id, expires_at=exp))
 
     now = datetime.now(timezone.utc)
@@ -1663,6 +1676,11 @@ def change_password(
     try:
         validate_password_strength(payload.new_password)
         current_user.password_hash = hash_password(payload.new_password)
+        now = datetime.now(timezone.utc)
+        db.query(RefreshToken).filter(
+            RefreshToken.user_id == current_user.id,
+            RefreshToken.revoked_at.is_(None),
+        ).update({"revoked_at": now}, synchronize_session=False)
         _log_auth_event(db, "PASSWORD_CHANGED", "User changed password.", current_user.id, request)
         db.commit()
         return {"message": "Password changed successfully."}

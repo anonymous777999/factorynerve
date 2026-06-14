@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from backend.ai_rate_limit import RateLimitError
 from backend.database import get_db
-from backend.models.user import User
+from backend.models.user import User, UserRole
+from backend.rbac import require_any_role
 from backend.security import get_current_user
 from backend.services.intelligence import (
     enqueue_intelligence_request,
@@ -26,6 +27,7 @@ async def create_intelligence_request(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
+    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
     try:
         file_bytes = await file.read()
         return enqueue_intelligence_request(
@@ -49,6 +51,7 @@ def get_intelligence_requests(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
+    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
     return list_intelligence_requests(db=db, current_user=current_user, limit=limit)
 
 
@@ -58,6 +61,7 @@ def get_intelligence_request(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
+    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
     payload = get_intelligence_request_payload(db=db, current_user=current_user, request_id=request_id)
     if payload is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Factory Intelligence request not found.")
@@ -70,4 +74,5 @@ def get_intelligence_usage(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
+    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
     return summarize_user_intelligence_usage(db=db, current_user=current_user, days=days)

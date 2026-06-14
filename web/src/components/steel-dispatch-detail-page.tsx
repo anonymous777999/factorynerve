@@ -137,8 +137,25 @@ export function SteelDispatchDetailPage() {
     return () => window.clearTimeout(timeoutId);
   }, [loadDetail, sessionLoading, user]);
 
+  const getConfirmationMessage = (nextStatus: SteelDispatchStatus): string | null => {
+    if (nextStatus === "cancelled") {
+      const lineCount = detail?.dispatch?.lines?.length || 0;
+      const weightKg = detail?.dispatch?.total_weight_kg || 0;
+      return `Cancel this dispatch? This will remove ${lineCount} material line(s) (${weightKg} KG) from the active dispatch queue. This action cannot be undone.`;
+    }
+    if (nextStatus === "exited" || nextStatus === "dispatched" || nextStatus === "delivered") {
+      const weightKg = detail?.dispatch?.total_weight_kg || 0;
+      return `This will deduct ${weightKg} KG of material from inventory. This action cannot be undone. Continue with status "${nextStatus}"?`;
+    }
+    return null;
+  };
+
   const updateStatus = async (nextStatus: SteelDispatchStatus) => {
     if (!detail) return;
+    const confirmMsg = getConfirmationMessage(nextStatus);
+    if (confirmMsg && !window.confirm(confirmMsg)) {
+      return;
+    }
     setBusy(true);
     setStatus("");
     setError("");
