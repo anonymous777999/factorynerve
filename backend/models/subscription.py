@@ -16,11 +16,11 @@ class Subscription(Base):
         Index("ix_subscriptions_user_id", "user_id", unique=True),
         Index("ix_subscriptions_status", "status"),
         Index(
-            "uq_subscriptions_active_org_id",
+            "uq_subscriptions_org_id",
             "org_id",
             unique=True,
-            sqlite_where=text("status = 'active'"),
-            postgresql_where=text("status = 'active'"),
+            sqlite_where=text("status NOT IN ('stale', 'cancelled', 'expired')"),
+            postgresql_where=text("status NOT IN ('stale', 'cancelled', 'expired')"),
         ),
     )
 

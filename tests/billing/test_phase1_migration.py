@@ -185,9 +185,9 @@ async def test_subscription_resolves_by_org_id(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_no_duplicate_active_subscription_per_org():
-    index = next(index for index in Subscription.__table__.indexes if index.name == "uq_subscriptions_active_org_id")
+    index = next(index for index in Subscription.__table__.indexes if index.name == "uq_subscriptions_org_id")
     assert index.unique is True
-    assert "status = 'active'" in str(index.dialect_options["postgresql"]["where"])
+    assert "status NOT IN" in str(index.dialect_options["postgresql"]["where"])
 
 
 @pytest.mark.asyncio
