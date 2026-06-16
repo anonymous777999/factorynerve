@@ -14,7 +14,7 @@ class SteelSalesInvoice(Base):
     __tablename__ = "steel_sales_invoices"
     __table_args__ = (
         Index("ix_steel_sales_invoices_factory_id", "factory_id"),
-        Index("ix_steel_sales_invoices_invoice_number", "factory_id", "invoice_number", unique=True),
+        Index("ix_steel_sales_invoices_invoice_number", "invoice_number", unique=True),
         Index("ix_steel_sales_invoices_invoice_date", "invoice_date"),
         Index("ix_steel_sales_invoices_status", "status"),
     )
@@ -32,12 +32,6 @@ class SteelSalesInvoice(Base):
     payment_terms_days: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     total_weight_kg: Mapped[float] = mapped_column(Numeric(14, 3), nullable=False, default=0)
     subtotal_amount: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False, default=0)
-    gst_rate: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True, default=None)
-    supply_type: Mapped[str | None] = mapped_column(String(8), nullable=True, default=None)  # "intra" or "inter"
-    taxable_amount: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False, default=0)
-    cgst_amount: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True, default=None)
-    sgst_amount: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True, default=None)
-    igst_amount: Mapped[float | None] = mapped_column(Numeric(14, 2), nullable=True, default=None)
     total_amount: Mapped[float] = mapped_column(Numeric(14, 2), nullable=False, default=0)
     notes: Mapped[str | None] = mapped_column(String(500), nullable=True)
     created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import os
 import sys
@@ -70,6 +70,7 @@ import backend.models.auth_audit_log  # noqa: F401
 import backend.models.auth_password_reset  # noqa: F401
 import backend.models.auth_session  # noqa: F401
 import backend.models.auth_user  # noqa: F401
+import backend.models.approval_instance  # noqa: F401
 
 config = context.config
 

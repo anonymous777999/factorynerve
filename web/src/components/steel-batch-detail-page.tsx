@@ -169,18 +169,12 @@ export function SteelBatchDetailPage() {
                 </span>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               <Link href="/steel/invoices">
-                <Button className="text-xs">Create Invoice</Button>
-              </Link>
-              <Link href="/steel/dispatches">
-                <Button variant="outline" className="text-xs">Dispatches</Button>
-              </Link>
-              <Link href="/steel/reconciliations">
-                <Button variant="outline" className="text-xs">Stock Review</Button>
+                <Button>Create Invoice</Button>
               </Link>
               <Link href="/steel">
-                <Button variant="ghost" className="text-xs">Steel Hub</Button>
+                <Button variant="outline">Back to Steel</Button>
               </Link>
             </div>
           </div>
@@ -196,16 +190,10 @@ export function SteelBatchDetailPage() {
               This batch consumed <span className="font-semibold text-white">{formatKg(detail.batch.input_quantity_kg)} KG</span> of {detail.traceability.input_item.name} to produce <span className="font-semibold text-white">{formatKg(detail.batch.actual_output_kg)} KG</span> of {detail.traceability.output_item.name}.
               The resulting finished goods are now available in inventory for customer invoicing.
             </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="text-xs uppercase tracking-wider text-[var(--muted)]">Next Steps:</span>
-              <Link href="/steel/invoices" className="text-xs font-medium text-[var(--accent)] hover:underline">
-                Create Invoice →
-              </Link>
-              <Link href="/steel/dispatches" className="text-xs font-medium text-[var(--accent)] hover:underline">
-                Create Dispatch →
-              </Link>
-              <Link href="/steel/reconciliations" className="text-xs font-medium text-[var(--accent)] hover:underline">
-                Stock Review →
+            <div className="flex items-center gap-2">
+              <span className="text-xs uppercase tracking-wider text-[var(--muted)]">Next Step:</span>
+              <Link href="/steel/invoices" className="font-medium text-[var(--accent)] hover:underline">
+                Issue a sales invoice for these goods →
               </Link>
             </div>
           </CardContent>

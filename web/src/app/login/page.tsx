@@ -173,13 +173,9 @@ export default function LoginPage() {
     return null;
   }, [searchParams, t]);
 
-  const isAllowedRedirect = (url: string): boolean => {
-    return url.startsWith("/") && !url.startsWith("//") && !url.startsWith("/\\");
-  };
-
   const nextPath = useMemo(() => {
     const raw = searchParams.get("next");
-    if (!raw || !isAllowedRedirect(raw)) {
+    if (!raw || !raw.startsWith("/") || raw.startsWith("//")) {
       return "/";
     }
     if (raw === "/login" || raw === "/access" || raw === "/register") {

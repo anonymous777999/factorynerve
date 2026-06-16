@@ -22,13 +22,13 @@ from backend.models.entry import Entry, ShiftType
 from backend.models.report import AuditLog
 from backend.models.user import User, UserRole
 from backend.ocr_limits import get_org_usage_summary, get_usage_summary
+from backend.authorization import PDP, ResourceContext
 from backend.plans import get_org_plan, normalize_plan, plan_rank
 from backend.query_helpers import apply_org_scope, apply_role_scope
 from backend.security import get_current_user
 from backend.services import ai_router
 from backend.services.background_jobs import create_job, get_job, register_retry_handler, start_job
 from backend.tenancy import resolve_factory_id, resolve_org_id
-from backend.rbac import require_any_role
 
 
 router = APIRouter(tags=["AI"])
@@ -587,7 +587,7 @@ def get_ai_usage(
     current_user: User = Depends(get_current_user),
 ) -> AiUsageResponse:
     _ensure_ai_access(current_user)
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
+    PDP(db=db).require_permission(actor=current_user, permission_key="ai.usage.view")
     org_id = resolve_org_id(current_user)
     plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
     usage = get_org_usage_summary(db, org_id=org_id, plan=plan) if org_id else get_usage_summary(db, user_id=current_user.id)
@@ -616,9 +616,13 @@ def get_dpr_suggestions(
     current_user: User = Depends(get_current_user),
 ) -> SuggestionResponse:
     _ensure_ai_access(current_user)
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
-    if current_user.role == UserRole.ACCOUNTANT:
-        raise HTTPException(status_code=403, detail="Accountant role cannot generate DPR suggestions.")
+    pdp = PDP(db=db)
+    factory_id = resolve_factory_id(db, current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="ai.suggestions.view",
+        resource=ResourceContext(factory_id=factory_id) if factory_id else None,
+    )
     min_plan = _suggestion_min_plan()
     plan = _require_min_plan(db, current_user, min_plan=min_plan, feature_name="AI suggestions")
     _consume_quota(db, current_user, quota_feature="smart", plan=plan)
@@ -716,7 +720,13 @@ def get_anomalies(
     current_user: User = Depends(get_current_user),
 ) -> AnomalyResponse:
     _ensure_ai_access(current_user)
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
+    pdp = PDP(db=db)
+    factory_id = resolve_factory_id(db, current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="ai.anomalies.view",
+        resource=ResourceContext(factory_id=factory_id) if factory_id else None,
+    )
     min_plan = _anomaly_min_plan()
     plan = _require_min_plan(db, current_user, min_plan=min_plan, feature_name="AI anomalies")
     cache_key = _ai_cache_key(db, current_user, "anomalies", plan, days)
@@ -743,7 +753,13 @@ def get_anomaly_preview(
     current_user: User = Depends(get_current_user),
 ) -> AnomalyResponse:
     _ensure_ai_access(current_user)
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
+    pdp = PDP(db=db)
+    factory_id = resolve_factory_id(db, current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="ai.anomalies.view",
+        resource=ResourceContext(factory_id=factory_id) if factory_id else None,
+    )
     min_plan = _anomaly_min_plan()
     plan = _require_min_plan(db, current_user, min_plan=min_plan, feature_name="AI anomalies")
     cache_key = _ai_cache_key(db, current_user, "anomaly_preview", plan, days)
@@ -800,7 +816,13 @@ def query_with_natural_language(
     current_user: User = Depends(get_current_user),
 ) -> NaturalLanguageQueryResponse:
     _ensure_ai_access(current_user)
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
+    pdp = PDP(db=db)
+    factory_id = resolve_factory_id(db, current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="ai.nlq.query",
+        resource=ResourceContext(factory_id=factory_id) if factory_id else None,
+    )
     min_plan = _nlq_min_plan()
     plan = _require_min_plan(db, current_user, min_plan=min_plan, feature_name="Natural language queries")
     _consume_quota(db, current_user, quota_feature="summary", plan=plan)
@@ -916,7 +938,13 @@ def executive_summary(
     current_user: User = Depends(get_current_user),
 ) -> ExecutiveSummaryResponse:
     _ensure_ai_access(current_user)
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
+    pdp = PDP(db=db)
+    factory_id = resolve_factory_id(db, current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="ai.executive.view",
+        resource=ResourceContext(factory_id=factory_id) if factory_id else None,
+    )
     min_plan = _executive_min_plan()
     plan = _require_min_plan(db, current_user, min_plan=min_plan, feature_name="Executive AI summary")
     start = start_date or (date.today() - timedelta(days=6))
@@ -953,7 +981,13 @@ def executive_summary_job(
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
     _ensure_ai_access(current_user)
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
+    pdp = PDP(db=db)
+    factory_id = resolve_factory_id(db, current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="ai.executive.view",
+        resource=ResourceContext(factory_id=factory_id) if factory_id else None,
+    )
     min_plan = _executive_min_plan()
     _require_min_plan(db, current_user, min_plan=min_plan, feature_name="Executive AI summary")
     start = start_date or (date.today() - timedelta(days=6))
@@ -970,10 +1004,12 @@ def executive_summary_job(
 @router.get("/jobs/{job_id}")
 def get_ai_job(
     job_id: str,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
     _ensure_ai_access(current_user)
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
+    pdp = PDP(db=db)
+    pdp.require_permission(actor=current_user, permission_key="ai.executive.view")
     job = get_job(job_id, owner_id=current_user.id)
     if not job or not str(job.get("kind", "")).startswith("ai_"):
         raise HTTPException(status_code=404, detail="AI job not found.")

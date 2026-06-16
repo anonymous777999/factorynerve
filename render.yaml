@@ -78,8 +78,6 @@ services:
         value: "30"
       - key: DB_POOL_RECYCLE
         value: "1800"
-      - key: ALLOW_INIT_DB_FALLBACK
-        value: "true"
       - key: RATE_LIMIT_WINDOW_SECONDS
         value: "60"
       - key: RATE_LIMIT_MAX_REQUESTS

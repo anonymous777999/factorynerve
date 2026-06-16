@@ -84,18 +84,9 @@ if not _IS_SQLITE:
         "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "1800")),
     }
 
-
-def _build_connect_args(*, is_sqlite: bool) -> dict[str, Any]:
-    if is_sqlite:
-        return {"check_same_thread": False}
-    return {"options": "-c statement_timeout=30000"}
-
-
-connect_args: dict[str, Any] = _build_connect_args(is_sqlite=_IS_SQLITE)
-
 engine: Engine = create_engine(
     config.database_url,
-    connect_args=connect_args,
+    connect_args={"check_same_thread": False} if _IS_SQLITE else {},
     future=True,
     pool_pre_ping=True,
     **pool_kwargs,
@@ -238,6 +229,14 @@ def _audit_writes(session: Session, _flush_context: Any, _instances: Any) -> Non
 
 
 def init_db() -> None:
+    """Initialize database tables, indexes, and repair schema drift.
+
+    Safe to call multiple times — uses ``checkfirst`` on ``create_all`` and
+    idempotent ``_ensure_*`` helpers for columns and indexes.  On SQLite,
+    ``Base.metadata.create_all`` with ``checkfirst=True`` can fail when
+    trying to create indexes that already exist (a known SQLAlchemy/SQLite
+    edge case), so we skip ``create_all`` entirely when tables already exist.
+    """
     try:
         import backend.models.alert  # noqa: F401
         import backend.models.entry  # noqa: F401
@@ -294,8 +293,23 @@ def init_db() -> None:
         import backend.models.ops_alert_daily_summary  # noqa: F401
         import backend.models.phone_verification  # noqa: F401
         import backend.models.feedback  # noqa: F401
+        import backend.models.approval_instance  # noqa: F401
 
-        Base.metadata.create_all(bind=engine)
+        # Create tables and indexes.  Skip ``create_all`` on second+
+        # call to avoid SQLite index-already-exists errors (a known
+        # SQLAlchemy/SQLite edge case where ``checkfirst=True`` fails
+        # to detect existing indexes).  The ``_ensure_*`` helpers below
+        # handle column/index drift idempotently.
+        _need_create_all = True
+        try:
+            inspector = inspect(engine)
+            if "users" in inspector.get_table_names():
+                _need_create_all = False
+        except Exception:
+            pass
+
+        if _need_create_all:
+            Base.metadata.create_all(bind=engine)
         _ensure_factory_profile_columns()
         _ensure_factory_template_columns()
         _ensure_user_code_columns()

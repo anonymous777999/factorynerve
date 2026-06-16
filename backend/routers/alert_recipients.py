@@ -9,13 +9,13 @@ from pydantic import BaseModel, Field
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from backend.database import get_db, hash_ip_address
+from backend.database import get_db
 from backend.models.admin_alert_recipient import AdminAlertRecipient
 from backend.models.phone_verification import PhoneVerificationChannel, PhoneVerificationStatus
 from backend.models.report import AuditLog
 from backend.models.user import User, UserRole
 from backend.middleware.rate_limit_middleware import extract_client_ip
-from backend.rbac import require_any_role
+from backend.authorization import PDP, ResourceContext
 from backend.schemas.phone_verification import (
     PhoneVerificationConfirmRequest,
     PhoneVerificationConfirmResponse,
@@ -91,8 +91,8 @@ class AlertRecipientListResponse(BaseModel):
     preference_rules: dict[str, str]
 
 
-def _require_alert_admin(current_user: User) -> None:
-    require_any_role(current_user, {UserRole.ADMIN, UserRole.OWNER})
+def _require_alert_admin(current_user: User, db: Session) -> None:
+    PDP(db=db).require_permission(actor=current_user, permission_key="ops.alerts.manage")
 
 
 def _current_org_id(current_user: User) -> str:
@@ -131,7 +131,7 @@ def _write_audit(
     details: str,
     org_id: str,
 ) -> None:
-    ip_address = hash_ip_address(request.client.host if request.client else None)
+    ip_address = request.client.host if request.client else None
     db.add(
         AuditLog(
             user_id=current_user.id,
@@ -209,7 +209,7 @@ def get_alert_recipients(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AlertRecipientListResponse:
-    _require_alert_admin(current_user)
+    _require_alert_admin(current_user, db)
     org_id = _current_org_id(current_user)
     recipients = list_alert_recipients(db, org_id=org_id)
     plan, limit = get_alert_recipient_limit(db, org_id=org_id, fallback_user_id=current_user.id)
@@ -233,7 +233,7 @@ def create_alert_recipient(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AlertRecipientResponse:
-    _require_alert_admin(current_user)
+    _require_alert_admin(current_user, db)
     org_id = _current_org_id(current_user)
     try:
         phone_number = normalize_alert_phone_number(payload.phone_number)
@@ -297,7 +297,7 @@ def update_alert_recipient(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AlertRecipientResponse:
-    _require_alert_admin(current_user)
+    _require_alert_admin(current_user, db)
     org_id = _current_org_id(current_user)
     row = _recipient_or_404(db, org_id=org_id, recipient_id=recipient_id)
     if payload.phone_number is not None:
@@ -386,7 +386,7 @@ def start_alert_recipient_verification(
     current_user: User = Depends(get_current_user),
     otp_service: OTPService = Depends(get_otp_service),
 ) -> PhoneVerificationStartResponse:
-    _require_alert_admin(current_user)
+    _require_alert_admin(current_user, db)
     org_id = _current_org_id(current_user)
     row = _recipient_or_404(db, org_id=org_id, recipient_id=recipient_id)
     try:
@@ -418,7 +418,7 @@ def confirm_alert_recipient_verification(
     current_user: User = Depends(get_current_user),
     otp_service: OTPService = Depends(get_otp_service),
 ) -> PhoneVerificationConfirmResponse:
-    _require_alert_admin(current_user)
+    _require_alert_admin(current_user, db)
     org_id = _current_org_id(current_user)
     row = _recipient_or_404(db, org_id=org_id, recipient_id=recipient_id)
     try:
@@ -458,7 +458,7 @@ def delete_alert_recipient(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> None:
-    _require_alert_admin(current_user)
+    _require_alert_admin(current_user, db)
     org_id = _current_org_id(current_user)
     row = _recipient_or_404(db, org_id=org_id, recipient_id=recipient_id)
     _write_audit(

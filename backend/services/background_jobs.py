@@ -429,14 +429,3 @@ def read_job_file(job_id: str, *, owner_id: int | None = None) -> tuple[bytes, d
     if not path.exists():
         raise FileNotFoundError("Job file missing.")
     return path.read_bytes(), file_meta
-
-
-def archive_old_audit_logs(db, *, keep_days: int = 365) -> dict[str, int]:
-    """Delete audit log entries older than keep_days to prevent unbounded table growth."""
-    from datetime import datetime, timezone, timedelta
-    from backend.models.report import AuditLog
-
-    cutoff = datetime.now(timezone.utc) - timedelta(days=keep_days)
-    result = db.query(AuditLog).filter(AuditLog.timestamp < cutoff).delete()
-    db.commit()
-    return {"deleted_count": result}

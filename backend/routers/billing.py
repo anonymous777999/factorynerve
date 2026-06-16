@@ -31,7 +31,9 @@ from backend.models.payment_order import PaymentOrder
 from backend.models.webhook_event import WebhookEvent
 from backend.models.user import User, UserRole
 from backend.security import get_current_user
-from backend.rbac import require_role
+from backend.authorization import PDP, ResourceContext
+from backend.authorization.pdp import build_request_context
+from backend.services.approval_service import approval_service as APPROVAL_SERVICE
 from backend.plans import (
     PRICING_META,
     addon_kind,
@@ -611,8 +613,8 @@ def _resolve_checkout_plan(request: Request, payload: CreateOrderRequest) -> str
 
 
 @router.get("/config")
-def get_billing_config(current_user: User = Depends(get_current_user)) -> dict:
-    require_role(current_user, UserRole.ADMIN)
+def get_billing_config(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)) -> dict:
+    PDP(db=db).require_permission(actor=current_user, permission_key="billing.config.view")
     key_id = os.getenv("RAZORPAY_KEY_ID")
     return {
         "configured": bool(key_id and os.getenv("RAZORPAY_KEY_SECRET")),
@@ -629,7 +631,7 @@ def get_billing_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.ADMIN)
+    PDP(db=db).require_permission(actor=current_user, permission_key="billing.status.view")
     org_id = resolve_org_id(current_user)
     plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
     sub = _ensure_trial(db, current_user.id, plan)
@@ -705,7 +707,7 @@ def get_invoices(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
-    require_role(current_user, UserRole.ADMIN)
+    PDP(db=db).require_permission(actor=current_user, permission_key="billing.invoice.view")
     rows = list_invoices(db, user_id=current_user.id)
     return [
         {
@@ -730,15 +732,51 @@ class DowngradeRequest(BaseModel):
 @router.post("/downgrade")
 def schedule_plan_downgrade(
     payload: DowngradeRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.OWNER)
+    # Step 1: PDP permission check (requires_mfa=True for billing.plan.change)
+    pdp = PDP(db=db)
+    org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="billing.plan.change",
+        resource=ResourceContext(org_id=org_id),
+        request_context=build_request_context(request),
+    )
+
     normalized = normalize_plan(payload.plan)
     if not normalized:
         raise HTTPException(status_code=400, detail="Invalid plan.")
+
+    # Step 2: Approval service initiation (IP-5 — critical action)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+        actor_user_id=current_user.id,
+        subject_user_id=None,
+        workflow_key="billing.plan.downgrade",
+        action_key="billing.plan.change",
+        resource_type="Subscription",
+        resource_id=org_id or "",
+        org_id=org_id,
+        current_workflow_state=None,
+        requested_change={"plan": normalized},
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
     sub = schedule_downgrade(db, user_id=current_user.id, plan=normalized)
     db.commit()
+
+    # Step 3: Notify approval system of completion
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
     return {
         "pending_plan": sub.pending_plan,
         "pending_plan_effective_at": sub.pending_plan_effective_at,
@@ -747,12 +785,47 @@ def schedule_plan_downgrade(
 
 @router.delete("/downgrade")
 def cancel_plan_downgrade(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.OWNER)
+    # Step 1: PDP permission check
+    pdp = PDP(db=db)
+    org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="billing.plan.change",
+        resource=ResourceContext(org_id=org_id),
+        request_context=build_request_context(request),
+    )
+
+    # Step 2: Approval service initiation
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+        actor_user_id=current_user.id,
+        subject_user_id=current_user.id,
+        workflow_key="billing.plan.downgrade",
+        action_key="billing.plan.change",
+        resource_type="Subscription",
+        resource_id=org_id or "",
+        org_id=org_id,
+        current_workflow_state="downgrade_scheduled",
+        requested_change={"action": "cancel_downgrade"},
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
     cancel_scheduled_downgrade(db, user_id=current_user.id)
     db.commit()
+
+    # Step 3: Notify approval system of completion
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
     return {"message": "Scheduled downgrade cancelled."}
 
 
@@ -765,7 +838,7 @@ async def create_order(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     try:
-        require_role(current_user, UserRole.OWNER)
+        PDP(db=db).require_permission(actor=current_user, permission_key="billing.order.create")
         normalized_plan = _resolve_checkout_plan(request, payload)
         if is_sales_only_plan(normalized_plan):
             raise HTTPException(status_code=400, detail=f"{get_plan(normalized_plan).get('name', 'This plan')} requires a custom sales quote.")
@@ -887,25 +960,6 @@ async def create_order(
             db.commit()
         except IntegrityError:
             db.rollback()
-            existing = db.query(PaymentOrder).filter(
-                PaymentOrder.idempotency_key == idempotency_key
-            ).first()
-            if existing:
-                return {
-                    "order": {
-                        "id": existing.provider_order_id,
-                        "amount": existing.amount,
-                        "currency": existing.currency,
-                        "receipt": existing.receipt,
-                        "status": existing.status,
-                    },
-                    "plan": normalized_plan,
-                    "billing_cycle": billing_cycle,
-                    "amount": existing.amount,
-                    "quote": quote,
-                    "idempotent": True,
-                }
-            raise HTTPException(status_code=500, detail="Order creation conflict. Please retry.")
         return {
             "order": order,
             "plan": normalized_plan,
@@ -934,7 +988,7 @@ async def sync_order_status(
     current_user: User = Depends(get_current_user),
 ) -> dict:
     del request
-    require_role(current_user, UserRole.OWNER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="billing.order.sync")
     payment_order = (
         db.query(PaymentOrder)
         .filter(
@@ -1139,25 +1193,6 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)) -> d
             db.commit()
         except IntegrityError:
             db.rollback()
-            existing = db.query(PaymentOrder).filter(
-                PaymentOrder.idempotency_key == idempotency_key
-            ).first()
-            if existing:
-                return {
-                    "order": {
-                        "id": existing.provider_order_id,
-                        "amount": existing.amount,
-                        "currency": existing.currency,
-                        "receipt": existing.receipt,
-                        "status": existing.status,
-                    },
-                    "plan": normalized_plan,
-                    "billing_cycle": billing_cycle,
-                    "amount": existing.amount,
-                    "quote": quote,
-                    "idempotent": True,
-                }
-            raise HTTPException(status_code=500, detail="Order creation conflict. Please retry.")
             log_billing_event(
                 event_type,
                 org_id if "org_id" in locals() else None,

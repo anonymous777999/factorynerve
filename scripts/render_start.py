@@ -96,7 +96,7 @@ def _inspect_alembic_state(url: str) -> tuple[set[str], bool]:
 def _should_bootstrap_legacy_schema(*, table_names: set[str], has_version_row: bool) -> bool:
     if has_version_row:
         return False
-    return not table_names or bool(table_names & LEGACY_SCHEMA_SENTINELS)
+    return bool(table_names & LEGACY_SCHEMA_SENTINELS)
 
 
 def _run_init_db(runtime_env: dict[str, str]) -> None:

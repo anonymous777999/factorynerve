@@ -12,12 +12,42 @@ from backend.plans import normalize_plan
 from backend.security import create_access_token
 
 
+def _unwrap_response(data: dict) -> dict:
+    """Unwrap response envelope if present.
+
+    The backend may wrap JSON responses in {success: True, data: ...}
+    when the response envelope middleware is active.
+    """
+    if isinstance(data, dict) and data.get("success") is True and "data" in data:
+        return data["data"]
+    return data
+
+
 def unique_email() -> str:
     return f"qa_{uuid.uuid4().hex[:10]}@example.com"
 
 
 def unique_factory() -> str:
     return f"QA Factory {uuid.uuid4().hex[:6]}"
+
+
+def _lookup_user(email: str) -> User:
+    init_db()
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.email == email).first()
+        assert user is not None, f"User {email} not found after verification"
+        # Force-load all attributes before closing the session
+        _ = user.id
+        _ = user.org_id
+        _ = user.role
+        _ = user.user_code
+        _ = user.factory_code
+        _ = user.factory_name
+        _ = user.email
+        return user
+    finally:
+        db.close()
 
 
 def register_user(
@@ -42,8 +72,7 @@ def register_user(
     }
     resp = client.post("/auth/register", json=payload)
     assert resp.status_code in (200, 201), resp.text
-    raw = resp.json()
-    data = raw.get("data", raw)  # unwrap response envelope if present
+    data = _unwrap_response(resp.json())
     verification_link = data.get("verification_link")
     assert verification_link, f"Expected verification link in test mode: {data}"
 
@@ -53,54 +82,59 @@ def register_user(
     verify = client.post("/auth/email/verify", json={"token": token_values[0]})
     assert verify.status_code == 200, verify.text
 
-    # Generate JWT directly from DB instead of calling deprecated /auth/login
+    # Look up the user from DB and create an access token directly.
+    # /auth/login is deprecated (returns 410), so we bypass it in tests.
+    user = _lookup_user(normalized_email)
+
+    # Override role if requested role differs from the assigned role
+    if requested_role != user.role.value:
+        init_db()
+        db = SessionLocal()
+        try:
+            user_db = db.query(User).filter(User.email == normalized_email).first()
+            assert user_db is not None
+            user_db.role = requested_role
+            memberships = db.query(UserFactoryRole).filter(UserFactoryRole.user_id == user_db.id).all()
+            for membership in memberships:
+                membership.role = requested_role
+            db.commit()
+            user.role = requested_role
+        finally:
+            db.close()
+
+    # Get the first factory membership for auth context
     init_db()
     db = SessionLocal()
     try:
-        user = db.query(User).filter(User.email == payload["email"]).first()
-        assert user is not None
-
-        # Get the first factory role for this user
         membership = (
             db.query(UserFactoryRole)
             .filter(UserFactoryRole.user_id == user.id)
             .order_by(UserFactoryRole.assigned_at.asc())
             .first()
         )
-
-        actual_role = user.role.value
-        if requested_role != actual_role:
-            user.role = requested_role
-            memberships = db.query(UserFactoryRole).filter(UserFactoryRole.user_id == user.id).all()
-            for m in memberships:
-                m.role = requested_role
-            db.commit()
-            role_to_use = requested_role
-        else:
-            role_to_use = actual_role
-
-        org_id = membership.org_id if membership else user.org_id
         factory_id = membership.factory_id if membership else None
-
-        access_token = create_access_token(
-            user_id=user.id,
-            role=role_to_use,
-            email=user.email,
-            org_id=org_id,
-            factory_id=factory_id,
-        )
-
-        return {
-            "email": payload["email"],
-            "password": payload["password"],
-            "access_token": access_token,
-            "user_id": user.id,
-            "user_code": user.user_code,
-            "company_code": user.factory_code,
-            "factory_name": user.factory_name or payload["factory_name"],
-        }
+        org_id = membership.org_id if membership else user.org_id
     finally:
         db.close()
+
+    access_token = create_access_token(
+        user_id=user.id,
+        role=str(user.role.value) if hasattr(user.role, "value") else str(user.role),
+        email=user.email,
+        org_id=org_id,
+        factory_id=factory_id,
+        mfa_verified=False,
+    )
+
+    return {
+        "email": user.email,
+        "password": payload["password"],
+        "access_token": access_token,
+        "user_id": user.id,
+        "user_code": user.user_code,
+        "company_code": user.factory_code,
+        "factory_name": user.factory_name or payload["factory_name"],
+    }
 
 
 def create_entry_payload(index: int = 0) -> dict:

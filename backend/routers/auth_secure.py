@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import hashlib
 import os
-import secrets
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from pydantic import BaseModel, EmailStr, Field
@@ -13,12 +11,11 @@ from sqlalchemy.orm import Session
 
 from backend.database import get_db
 from backend.email_service import send_email
-from backend.auth_cookies import clear_auth_cookies, set_auth_cookies
+from backend.auth_cookies import clear_auth_cookies, set_access_cookie
 from backend.security import create_access_token
 from backend.models.auth_audit_log import AuthAuditLog
 from backend.models.auth_password_reset import AuthPasswordReset
 from backend.models.auth_user import AuthUser
-from backend.models.refresh_token import RefreshToken
 from backend.models.user import User
 from backend.models.user_factory_role import UserFactoryRole
 from backend.auth_security.mfa import generate_secret, provisioning_uri, verify_totp
@@ -99,7 +96,14 @@ def _generic_login_error() -> HTTPException:
     return HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials.")
 
 
-def _issue_legacy_access_cookie(db: Session, *, auth_user: AuthUser, request: Request, response: Response) -> None:
+def _issue_legacy_access_cookie(
+    db: Session,
+    *,
+    auth_user: AuthUser,
+    request: Request,
+    response: Response,
+    mfa_verified: bool = False,
+) -> None:
     legacy_user = db.query(User).filter(User.email == auth_user.email, User.is_active.is_(True)).first()
     if not legacy_user:
         return
@@ -110,31 +114,15 @@ def _issue_legacy_access_cookie(db: Session, *, auth_user: AuthUser, request: Re
         .order_by(UserFactoryRole.assigned_at.asc())
         .first()
     )
-    org_id = role_row.org_id if role_row else legacy_user.org_id
-    factory_id = role_row.factory_id if role_row else None
     access_token = create_access_token(
         user_id=legacy_user.id,
         role=role_row.role.value if role_row else legacy_user.role.value,
         email=legacy_user.email,
-        org_id=org_id,
-        factory_id=factory_id,
+        org_id=role_row.org_id if role_row else legacy_user.org_id,
+        factory_id=role_row.factory_id if role_row else None,
+        mfa_verified=mfa_verified,
     )
-    # Also issue a legacy refresh token so the CSRF cookie is set
-    raw_refresh = secrets.token_urlsafe(48)
-    now = datetime.now(timezone.utc)
-    refresh_expires = now + timedelta(days=30)
-    token_hash = hashlib.sha256(raw_refresh.encode("utf-8")).hexdigest()
-    db.add(
-        RefreshToken(
-            token_hash=token_hash,
-            user_id=legacy_user.id,
-            org_id=org_id,
-            factory_id=factory_id,
-            created_at=now,
-            expires_at=refresh_expires,
-        )
-    )
-    set_auth_cookies(response=response, access_token=access_token, refresh_token=raw_refresh, request=request)
+    set_access_cookie(response=response, access_token=access_token, request=request)
 
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
@@ -175,17 +163,6 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
         db.commit()
         raise _generic_login_error()
 
-    # Block login if email not verified
-    if not user.is_email_verified:
-        _log_event(db, action="AUTH_LOGIN_FAILED", user_id=None, request=request, meta={"email": email, "reason": "email_not_verified"})
-        db.commit()
-        raise _generic_login_error()
-
-    if user.mfa_enabled:
-        _log_event(db, action="AUTH_LOGIN_FAILED", user_id=None, request=request, meta={"email": email})
-        db.commit()
-        raise _generic_login_error()
-
     if user.mfa_enabled:
         if not payload.mfa_code or not user.mfa_secret_encrypted:
             _log_event(db, action="AUTH_LOGIN_MFA_REQUIRED", user_id=user.id, request=request)
@@ -196,9 +173,18 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
             db.commit()
             raise _generic_login_error()
 
+    # mfa_verified is True ONLY when the user has MFA enabled AND
+    # successfully completed an MFA challenge during this login session.
+    # The login handler guards above ensure we only reach here when:
+    #   1) MFA is not enabled (mfa_verified=False — PDP allows via _check_mfa), OR
+    #   2) MFA is enabled AND a valid code was provided (mfa_verified=True).
+    mfa_verified = user.mfa_enabled
     session = create_session(db, user=user, request=request, response=response)
     touch_session(db, session)
-    _issue_legacy_access_cookie(db, auth_user=user, request=request, response=response)
+    _issue_legacy_access_cookie(
+        db, auth_user=user, request=request, response=response,
+        mfa_verified=mfa_verified,
+    )
     _log_event(db, action="AUTH_LOGIN_SUCCESS", user_id=user.id, request=request)
     db.commit()
     return {"message": "Login successful."}

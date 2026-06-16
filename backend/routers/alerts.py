@@ -10,7 +10,7 @@ from backend.models.alert import Alert, AlertReadSchema
 from backend.models.entry import Entry
 from backend.models.user import User, UserRole
 from backend.security import get_current_user
-from backend.rbac import require_any_role
+from backend.authorization import PDP, ResourceContext
 from backend.tenancy import resolve_factory_id, resolve_org_id
 from backend.query_helpers import factory_user_ids_query
 
@@ -49,10 +49,7 @@ def list_unread_alerts(
     current_user: User = Depends(get_current_user),
     response: Response = Response(),
 ) -> list[Alert]:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="ops.alerts.view")
     response.headers["Cache-Control"] = "private, max-age=30"
     query = _scoped_alert_query(db, current_user).filter(Alert.is_read.is_(False))
     return query.order_by(Alert.created_at.desc()).all()
@@ -64,10 +61,7 @@ def mark_alert_read(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, str]:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="ops.alerts.view")
     alert = _scoped_alert_query(db, current_user).filter(Alert.id == alert_id).first()
     if not alert:
         raise HTTPException(status_code=404, detail="Alert not found.")

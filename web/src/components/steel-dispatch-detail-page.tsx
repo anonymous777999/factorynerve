@@ -137,25 +137,8 @@ export function SteelDispatchDetailPage() {
     return () => window.clearTimeout(timeoutId);
   }, [loadDetail, sessionLoading, user]);
 
-  const getConfirmationMessage = (nextStatus: SteelDispatchStatus): string | null => {
-    if (nextStatus === "cancelled") {
-      const lineCount = detail?.dispatch?.lines?.length || 0;
-      const weightKg = detail?.dispatch?.total_weight_kg || 0;
-      return `Cancel this dispatch? This will remove ${lineCount} material line(s) (${weightKg} KG) from the active dispatch queue. This action cannot be undone.`;
-    }
-    if (nextStatus === "exited" || nextStatus === "dispatched" || nextStatus === "delivered") {
-      const weightKg = detail?.dispatch?.total_weight_kg || 0;
-      return `This will deduct ${weightKg} KG of material from inventory. This action cannot be undone. Continue with status "${nextStatus}"?`;
-    }
-    return null;
-  };
-
   const updateStatus = async (nextStatus: SteelDispatchStatus) => {
     if (!detail) return;
-    const confirmMsg = getConfirmationMessage(nextStatus);
-    if (confirmMsg && !window.confirm(confirmMsg)) {
-      return;
-    }
     setBusy(true);
     setStatus("");
     setError("");
@@ -564,20 +547,25 @@ export function SteelDispatchDetailPage() {
               >
                 {detail.dispatch.status}
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Link href="/steel/dispatches">
-                  <Button variant="ghost" className="text-xs">Dispatches</Button>
-                </Link>
-                <Link href={`/steel/invoices/${detail.dispatch.invoice_id}`}>
-                  <Button variant="ghost" className="text-xs">Invoice</Button>
-                </Link>
-                <Link href="/steel/reconciliations">
-                  <Button variant="ghost" className="text-xs">Stock Review</Button>
-                </Link>
-                <Link href="/steel">
-                  <Button variant="ghost" className="text-xs">Steel Hub</Button>
-                </Link>
-              </div>
+              {/* AUDIT: BUTTON_CLUTTER - move cross-route links into a secondary tools tray so dispatch progression stays primary. */}
+              <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
+                  Dispatch tools
+                  <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
+                  <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
+                </summary>
+                <div className="flex flex-wrap gap-3 border-t border-[var(--border)] px-4 py-4">
+                  <Link href="/steel/dispatches">
+                    <Button variant="outline">Dispatches</Button>
+                  </Link>
+                  <Link href={`/steel/invoices/${detail.dispatch.invoice_id}`}>
+                    <Button variant="ghost">Invoice</Button>
+                  </Link>
+                  <Link href="/steel">
+                    <Button variant="ghost">Steel hub</Button>
+                  </Link>
+                </div>
+              </details>
             </div>
           </div>
         </section>

@@ -35,6 +35,8 @@ from backend.routers.reports import router as reports_router
 from backend.routers.settings import router as settings_router
 from backend.routers.ocr import router as ocr_router
 from backend.routers.observability import router as observability_router
+from backend.routers.permissions import router as permissions_router
+from backend.routers.approvals import router as approvals_router
 from backend.routers.whatsapp_webhook import router as whatsapp_webhook_router
 from backend.routers.plans import router as plans_router
 from backend.routers.billing import router as billing_router
@@ -63,6 +65,14 @@ from backend.services.whatsapp_sender import initialize_whatsapp_sender, shutdow
 from backend.services.attendance_absence_service import (
     initialize_attendance_absence_scheduler,
     shutdown_attendance_absence_scheduler,
+)
+from backend.services.approval_expiry_service import (
+    initialize_approval_expiry_scheduler,
+    shutdown_approval_expiry_scheduler,
+)
+from backend.services.feedback_anomaly_detection import (
+    initialize_feedback_anomaly_detector,
+    shutdown_feedback_anomaly_detector,
 )
 from backend.services.billing_manager import (
     enforce_expired_grace_periods,
@@ -103,7 +113,17 @@ async def lifespan(_app: FastAPI):
             logger.exception("Billing recovery failed during startup; continuing without blocking app boot.")
         initialize_whatsapp_sender()
         initialize_attendance_absence_scheduler()
+        initialize_approval_expiry_scheduler()
+        initialize_feedback_anomaly_detector()
         initialize_ops_alerting()
+
+        # Phase P3: Register approval completion callbacks
+        try:
+            from backend.services.approval_callbacks import register_all_callbacks
+            register_all_callbacks()
+        except Exception:
+            logger.exception("Failed to register approval callbacks; continuing without blocking app boot.")
+
         logger.info("Backend startup completed successfully.")
         yield
     except Exception as error:  # pylint: disable=broad-except
@@ -111,6 +131,8 @@ async def lifespan(_app: FastAPI):
         raise RuntimeError("Backend startup failed.") from error
     finally:
         shutdown_attendance_absence_scheduler()
+        shutdown_approval_expiry_scheduler()
+        shutdown_feedback_anomaly_detector()
         shutdown_ops_alerting()
         shutdown_whatsapp_sender()
 
@@ -131,6 +153,8 @@ app.include_router(phone_auth_router, prefix="/auth")
 if os.getenv("ENABLE_AUTH_SECURE", "").strip().lower() in {"1", "true", "yes", "on"}:
     app.include_router(auth_secure_router, prefix="/auth-secure")
 app.include_router(auth_secure_router, prefix="/auth/v2")
+app.include_router(permissions_router, prefix="/auth")
+app.include_router(approvals_router, prefix="/api")
 app.include_router(jobs_router, prefix="/jobs")
 app.include_router(entries_router, prefix="/entries")
 app.include_router(reports_router, prefix="/reports")

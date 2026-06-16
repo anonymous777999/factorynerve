@@ -50,7 +50,10 @@ from backend.ocr_utils import (
     warp_perspective,
 )
 from backend.security import get_current_user
-from backend.rbac import is_manager_or_admin, require_any_role
+from backend.authorization import PDP, ResourceContext
+from backend.authorization import PDP, ResourceContext
+from backend.authorization.pdp import build_request_context
+from backend.services.approval_service import approval_service as APPROVAL_SERVICE
 from backend.models.user import User, UserRole
 from backend.utils import (
     HIGH_CONFIDENCE_THRESHOLD,
@@ -1991,10 +1994,7 @@ def _apply_verification_payload(
 
 
 def _require_ocr_access(current_user: User) -> None:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="ocr.template.view")
 
 
 def _image_too_large_response() -> JSONResponse:
@@ -2137,7 +2137,6 @@ def _run_ocr_excel_job(progress, *, job_id: str) -> dict[str, object]:
         raise RuntimeError("OCR input file path is missing.")
     image_bytes = Path(str(stored_path)).read_bytes()
 
-    org_id = str(context.get("org_id") or "")
     progress(15, "Loading OCR image")
     metadata: dict[str, object]
     output_name: str
@@ -2176,37 +2175,25 @@ def _run_ocr_excel_job(progress, *, job_id: str) -> dict[str, object]:
     else:
         raise RuntimeError("Unsupported OCR job mode.")
 
-    try:
-        file_meta = write_job_file(
-            job_id,
-            filename=output_name,
-            content=excel_bytes,
-            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        )
-        _log_ocr_job_success(
-            action=action,
-            user_id=int(job["owner_id"]),
-            org_id=job.get("org_id"),
-            factory_id=str(context.get("factory_id")) if context.get("factory_id") is not None else None,
-            details=f"{action} completed size_bytes={context.get('size_bytes', 0)}",
-        )
-        return {
-            "file": file_meta,
-            "metadata": metadata,
-            "source_filename": context.get("source_filename"),
-            "mode": mode,
-        }
-    except Exception as error:
-        from backend.database import SessionLocal
-        session = SessionLocal()
-        try:
-            refund_ocr_quota(session, org_id=org_id, reason="ocr_background_job_failed", user_id=context.get("user_id"))
-            session.commit()
-        except Exception:
-            session.rollback()
-        finally:
-            session.close()
-        raise
+    file_meta = write_job_file(
+        job_id,
+        filename=output_name,
+        content=excel_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    _log_ocr_job_success(
+        action=action,
+        user_id=int(job["owner_id"]),
+        org_id=job.get("org_id"),
+        factory_id=str(context.get("factory_id")) if context.get("factory_id") is not None else None,
+        details=f"{action} completed size_bytes={context.get('size_bytes', 0)}",
+    )
+    return {
+        "file": file_meta,
+        "metadata": metadata,
+        "source_filename": context.get("source_filename"),
+        "mode": mode,
+    }
 
 
 def _queue_ocr_excel_job(
@@ -2985,13 +2972,55 @@ def submit_verification(
 def approve_verification(
     verification_id: int,
     payload: OcrVerificationDecisionPayload,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
     _require_ocr_access(current_user)
-    if not is_manager_or_admin(current_user):
-        raise HTTPException(status_code=403, detail="Only managers and admins can approve verification records.")
+
+    # Step 1: Load verification and resolve domain-split permission
     verification = _get_verification_or_404(db, verification_id, current_user)
+    doc_type = (verification.doc_type_hint or "").strip().lower()
+    is_finance_doc = doc_type in {"invoice", "ledger", "payment", "receipt", "bill"}
+    permission_key = (
+        "ocr.verification.approve_finance" if is_finance_doc
+        else "ocr.verification.approve"
+    )
+
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key=permission_key,
+        resource=ResourceContext(factory_id=verification.factory_id),
+        request_context=build_request_context(request),
+    )
+
+    # Step 2: Approval service initiation (maker-checker)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+        actor_user_id=current_user.id,
+        subject_user_id=verification.user_id,
+        workflow_key="ocr.verification.approve",
+        action_key=permission_key,
+        resource_type="OcrVerification",
+        resource_id=str(verification_id),
+        org_id=verification.org_id,
+        factory_id=verification.factory_id,
+        current_workflow_state=verification.status,
+        attributes={
+            "doc_type_hint": verification.doc_type_hint,
+            "avg_confidence": verification.avg_confidence,
+            "is_finance_doc": is_finance_doc,
+        },
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
+    # Step 3: Proceed with mutation
     verification.status = "approved"
     verification.approved_at = datetime.now(timezone.utc)
     verification.approved_by = current_user.id
@@ -3001,8 +3030,23 @@ def approve_verification(
     if payload.reviewer_notes is not None:
         verification.reviewer_notes = sanitize_text(payload.reviewer_notes, max_length=5000)
     verification.updated_at = datetime.now(timezone.utc)
+
+    _log_ocr_event(
+        db,
+        action="OCR_VERIFICATION_APPROVED",
+        details=f"Verification id={verification.id} doc_type={doc_type} finance={is_finance_doc}",
+        request=request,
+        user_id=current_user.id,
+        org_id=verification.org_id,
+        factory_id=verification.factory_id,
+    )
     db.commit()
     db.refresh(verification)
+
+    # Step 4: Notify approval system of completion
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
     return _serialize_verification(db, verification)
 
 
@@ -3010,16 +3054,49 @@ def approve_verification(
 def reject_verification(
     verification_id: int,
     payload: OcrVerificationDecisionPayload,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
     _require_ocr_access(current_user)
-    if not is_manager_or_admin(current_user):
-        raise HTTPException(status_code=403, detail="Only managers and admins can reject verification records.")
+
+    # Step 1: Load verification for context
     verification = _get_verification_or_404(db, verification_id, current_user)
+
+    # Step 2: PDP permission check
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="ocr.verification.reject",
+        resource=ResourceContext(factory_id=verification.factory_id),
+        request_context=build_request_context(request),
+    )
+
+    # Step 3: Approval service initiation (maker-checker)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+        actor_user_id=current_user.id,
+        subject_user_id=verification.user_id,
+        workflow_key="ocr.verification.reject",
+        action_key="ocr.verification.reject",
+        resource_type="OcrVerification",
+        resource_id=str(verification_id),
+        org_id=verification.org_id,
+        factory_id=verification.factory_id,
+        current_workflow_state=verification.status,
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
     rejection_reason = sanitize_text(payload.rejection_reason, max_length=5000)
     if not rejection_reason:
         raise HTTPException(status_code=400, detail="Rejection reason is required.")
+
+    # Step 4: Proceed with mutation
     verification.status = "rejected"
     verification.rejected_at = datetime.now(timezone.utc)
     verification.rejected_by = current_user.id
@@ -3029,8 +3106,23 @@ def reject_verification(
     if payload.reviewer_notes is not None:
         verification.reviewer_notes = sanitize_text(payload.reviewer_notes, max_length=5000)
     verification.updated_at = datetime.now(timezone.utc)
+
+    _log_ocr_event(
+        db,
+        action="OCR_VERIFICATION_REJECTED",
+        details=f"Verification id={verification.id} reason={rejection_reason[:120]}",
+        request=request,
+        user_id=current_user.id,
+        org_id=verification.org_id,
+        factory_id=verification.factory_id,
+    )
     db.commit()
     db.refresh(verification)
+
+    # Step 5: Notify approval system of completion
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
     return _serialize_verification(db, verification)
 
 
@@ -3049,7 +3141,6 @@ async def ocr_logbook(
     db: Session = Depends(get_db),
 ) -> dict:
     _require_ocr_access(current_user)
-    require_ocr_quota(db, current_user)
     image_bytes = await _read_validated_image_upload(file)
     requested_doc_type = _normalize_doc_type_hint(doc_type_hint) or "table"
     requested_model = sanitize_text(model or force_model, max_length=80, preserve_newlines=False) or None
@@ -3306,7 +3397,6 @@ async def warp_document(
     current_user: User = Depends(get_current_user),
 ) -> Response:
     _require_ocr_access(current_user)
-    require_ocr_quota(db, current_user)
     image_bytes = await _read_validated_image_upload(file)
 
     parsed = _parse_json_value(corners, field_name="corners")

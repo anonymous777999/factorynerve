@@ -214,24 +214,6 @@ export function SteelBatchesPage() {
   return (
     <main className="min-h-screen px-4 py-8 md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <div className="flex flex-wrap items-center gap-3">
-          <Link href="/steel">
-            <Button variant="ghost" className="text-sm">&larr; Back to Steel Hub</Button>
-          </Link>
-          <Link href="/steel/invoices">
-            <Button variant="ghost" className="text-sm">Invoices</Button>
-          </Link>
-          <Link href="/steel/dispatches">
-            <Button variant="ghost" className="text-sm">Dispatches</Button>
-          </Link>
-          <Link href="/steel/production/record">
-            <Button variant="ghost" className="text-sm">Record Production</Button>
-          </Link>
-          <Link href="/steel/reconciliations">
-            <Button variant="ghost" className="text-sm">Stock Review</Button>
-          </Link>
-        </div>
-
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
           <div className="max-w-4xl">
             <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Batches</div>

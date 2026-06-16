@@ -23,7 +23,7 @@ from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
 from backend.security import get_current_user
 from backend.plans import has_plan_feature, min_plan_for_feature, get_org_plan
-from backend.rbac import require_any_role
+from backend.authorization import PDP, ResourceContext
 from backend.tenancy import resolve_factory_id, resolve_org_id
 from backend.query_helpers import apply_org_scope, apply_role_scope, can_view_entry, factory_user_ids_query
 from backend.services.background_jobs import (
@@ -38,11 +38,6 @@ from backend.services.background_jobs import (
 
 router = APIRouter(tags=["Reports"])
 REPORTS_CACHE_TTL = int(os.getenv("REPORTS_CACHE_TTL_SECONDS", "45"))
-def _safe_cell_value(value: str | None) -> str:
-    """Sanitize cell values to prevent Excel formula injection."""
-    if value and str(value).startswith(('=', '+', '-', '@')):
-        return "'" + value
-    return value or ""
 
 
 def _factory_user_ids_query(db: Session, current_user: User):
@@ -171,21 +166,21 @@ def _render_entries_excel(entries: list[Entry]) -> bytes:
                 entry.id,
                 str(entry.date),
                 str(entry.shift),
-                _safe_cell_value(entry.department),
-                _safe_cell_value(entry.submitted_by),
-                str(entry.created_at.isoformat() if entry.created_at else ""),
+                entry.department or "",
+                entry.submitted_by or "",
+                entry.created_at.isoformat() if entry.created_at else "",
                 entry.status,
                 entry.units_target,
                 entry.units_produced,
                 entry.manpower_present,
                 entry.manpower_absent,
                 entry.downtime_minutes,
-                _safe_cell_value(entry.downtime_reason),
-                _safe_cell_value(entry.materials_used),
+                entry.downtime_reason or "",
+                entry.materials_used or "",
                 "Yes" if entry.quality_issues else "No",
-                _safe_cell_value(entry.quality_details),
-                _safe_cell_value(entry.notes),
-                _safe_cell_value(entry.ai_summary),
+                entry.quality_details or "",
+                entry.notes or "",
+                entry.ai_summary or "",
             ]
         )
     buffer = BytesIO()
@@ -758,7 +753,7 @@ def report_insights(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.insights.view")
     start = start_date or (date.today() - timedelta(days=27))
     end = end_date or date.today()
     if start > end:
@@ -816,10 +811,7 @@ def download_pdf(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     org_id = resolve_org_id(current_user)
     plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
     if not has_plan_feature(plan, "pdf"):
@@ -843,10 +835,7 @@ def download_pdf_job(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     org_id = resolve_org_id(current_user)
     plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
     if not has_plan_feature(plan, "pdf"):
@@ -901,10 +890,7 @@ def download_excel(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     org_id = resolve_org_id(current_user)
     plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
     if not has_plan_feature(plan, "excel"):
@@ -955,10 +941,7 @@ def weekly_export(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     start = date.today() - timedelta(days=6)
     end = date.today()
 
@@ -991,10 +974,7 @@ def monthly_export(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     start = date.today() - timedelta(days=29)
     end = date.today()
 
@@ -1029,10 +1009,7 @@ def export_factory_excel(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     org_id = resolve_org_id(current_user)
     plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
     if not has_plan_feature(plan, "excel"):
@@ -1045,7 +1022,7 @@ def export_factory_excel(
     start = start_date or (date.today() - timedelta(days=6))
     end = end_date or date.today()
     entries = _scoped_entries_query(db, current_user, start=start, end=end).order_by(Entry.date.asc(), Entry.created_at.asc())
-    excel_bytes = _render_entries_excel(entries.limit(10000).all())
+    excel_bytes = _render_entries_excel(entries.all())
     return Response(
         content=excel_bytes,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
@@ -1059,10 +1036,7 @@ def export_factory_excel_job(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ACCOUNTANT, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     org_id = resolve_org_id(current_user)
     plan = get_org_plan(db, org_id=org_id, fallback_user_id=current_user.id)
     if not has_plan_feature(plan, "excel"):
@@ -1086,8 +1060,10 @@ def export_factory_excel_job(
 @router.get("/export-jobs/{job_id}")
 def get_report_job(
     job_id: str,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, Any]:
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     job = get_job(job_id, owner_id=current_user.id)
     if not job or not str(job.get("kind", "")).startswith("reports_"):
         raise HTTPException(status_code=404, detail="Export job not found.")
@@ -1097,8 +1073,10 @@ def get_report_job(
 @router.get("/export-jobs/{job_id}/download")
 def download_report_job(
     job_id: str,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
+    PDP(db=db).require_permission(actor=current_user, permission_key="reporting.export.view")
     job = get_job(job_id, owner_id=current_user.id)
     if not job or not str(job.get("kind", "")).startswith("reports_"):
         raise HTTPException(status_code=404, detail="Export job not found.")

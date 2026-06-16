@@ -54,6 +54,7 @@ def create_access_token(
     email: str,
     org_id: str | None = None,
     factory_id: str | None = None,
+    mfa_verified: bool = False,
 ) -> str:
     expire = datetime.now(timezone.utc) + timedelta(hours=config.jwt_expire_hours)
     payload = {
@@ -64,6 +65,7 @@ def create_access_token(
         "email": email,
         "exp": int(expire.timestamp()),
         "jti": secrets.token_urlsafe(16),
+        "mfa_verified": mfa_verified,
     }
     return jwt.encode(payload, config.jwt_secret_key, algorithm="HS256")
 
@@ -120,13 +122,8 @@ def get_current_user(
         )
         if membership:
             active_factory_id = factory_id
-            setattr(user, "effective_role", membership.role.value)
-        elif factory_id:
-            setattr(user, "effective_role", user.role.value if user.org_id else None)
     setattr(user, "active_org_id", user.org_id)
     setattr(user, "active_factory_id", active_factory_id)
-    if not hasattr(user, "effective_role") or getattr(user, "effective_role", None) is None:
-        setattr(user, "effective_role", user.role.value)
     setattr(user, "current_token", token)
     setattr(user, "current_token_payload", payload)
     setattr(user, "current_token_jti", jti)

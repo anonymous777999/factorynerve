@@ -18,10 +18,9 @@ from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from sqlalchemy import func, or_
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from backend.database import get_db, hash_ip_address
+from backend.database import get_db
 from backend.models.factory import Factory
 from backend.models.report import AuditLog
 from backend.models.steel_inventory_item import SteelInventoryItem
@@ -38,7 +37,9 @@ from backend.models.steel_sales_invoice_line import SteelSalesInvoiceLine
 from backend.models.steel_stock_reconciliation import SteelStockReconciliation
 from backend.models.user import User, UserRole
 from backend.plans import get_org_plan, has_plan_feature, min_plan_for_feature
-from backend.rbac import assert_not_self_approval, is_admin_or_owner, require_any_role, require_role
+from backend.authorization import PDP, ResourceContext
+from backend.authorization.pdp import build_request_context
+from backend.services.approval_service import approval_service as APPROVAL_SERVICE
 from backend.security import get_current_user
 from backend.services.steel_service import (
     build_steel_overview,
@@ -180,8 +181,6 @@ class SteelInvoiceCreateRequest(BaseModel):
     customer_name: str | None = Field(default=None, max_length=200)
     customer_id: int | None = None
     payment_terms_days: int | None = Field(default=None, ge=0, le=365)
-    gst_rate: float | None = Field(default=None, ge=0, le=100)
-    supply_type: str | None = Field(default=None, pattern=r"^(intra|inter)$")
     notes: str | None = Field(default=None, max_length=500)
     lines: list[SteelInvoiceLineCreateRequest] = Field(min_length=1, max_length=25)
 
@@ -319,8 +318,6 @@ def _write_steel_audit(
     action: str,
     details: str,
     request: Request | None = None,
-    previous_state: dict | None = None,
-    new_state: dict | None = None,
 ) -> None:
     db.add(
         AuditLog(
@@ -329,9 +326,7 @@ def _write_steel_audit(
             factory_id=factory_id,
             action=action,
             details=details,
-            previous_state=previous_state,
-            new_state=new_state,
-            ip_address=hash_ip_address(request.client.host if request and request.client else None),
+            ip_address=request.client.host if request and request.client else None,
             user_agent=request.headers.get("user-agent") if request else None,
             timestamp=datetime.now(timezone.utc),
         )
@@ -475,12 +470,6 @@ def _serialize_steel_invoice(
         "payment_terms_days": int(row.payment_terms_days or 0),
         "total_weight_kg": round(float(row.total_weight_kg or 0.0), 3),
         "subtotal_amount": round(float(row.subtotal_amount or 0.0), 2),
-        "gst_rate": float(row.gst_rate) if row.gst_rate is not None else None,
-        "supply_type": row.supply_type,
-        "taxable_amount": round(float(row.taxable_amount or 0.0), 2),
-        "cgst_amount": round(float(row.cgst_amount or 0.0), 2) if row.cgst_amount is not None else None,
-        "sgst_amount": round(float(row.sgst_amount or 0.0), 2) if row.sgst_amount is not None else None,
-        "igst_amount": round(float(row.igst_amount or 0.0), 2) if row.igst_amount is not None else None,
         "total_amount": round(float(row.total_amount or 0.0), 2),
         "notes": row.notes,
         "created_by_user_id": row.created_by_user_id,
@@ -775,16 +764,6 @@ def _normalize_customer_payment_terms(value: int | float | str | None) -> int:
     if not normalized.is_integer() or int(normalized) <= 0:
         raise HTTPException(status_code=400, detail="Payment terms must be a positive whole number.")
     return int(normalized)
-
-
-VALID_DISPATCH_TRANSITIONS: dict[str, set[str]] = {
-    "pending": {"loaded", "cancelled"},
-    "loaded": {"exited", "cancelled"},
-    "exited": {"dispatched"},
-    "dispatched": {"delivered"},
-    "delivered": set(),
-    "cancelled": set(),
-}
 
 
 def _normalize_dispatch_status(value: str | None, *, allow_cancelled: bool = True) -> str:
@@ -1644,14 +1623,16 @@ def get_steel_overview(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(current_user, {
-        UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN,
-        UserRole.OWNER, UserRole.ACCOUNTANT,
-    })
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="inventory.ledger.view",
+        resource=ResourceContext(factory_id=factory.factory_id),
+    )
     overview = build_steel_overview(db, factory)
     financial_access = _can_view_steel_financials(current_user)
     overview["financial_access"] = financial_access
@@ -1667,7 +1648,7 @@ def download_steel_owner_daily_pdf(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    require_role(current_user, UserRole.OWNER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="admin.billing.quota.reset")
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
@@ -1752,14 +1733,11 @@ def list_steel_inventory_items(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
-    )
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    PDP(db=db).require_permission(actor=current_user, permission_key="inventory.item.view", resource=ResourceContext(factory_id=factory.factory_id))
     items = (
         db.query(SteelInventoryItem)
         .filter(SteelInventoryItem.factory_id == factory.factory_id, SteelInventoryItem.is_active.is_(True))
@@ -1793,14 +1771,11 @@ def list_steel_inventory_stock(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
-    )
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    PDP(db=db).require_permission(actor=current_user, permission_key="inventory.ledger.view", resource=ResourceContext(factory_id=factory.factory_id))
     return {"items": _serialize_items_with_stock(db, factory_id=factory.factory_id, current_user=current_user)}
 
 
@@ -1810,14 +1785,11 @@ def list_steel_inventory_transactions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
-    )
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    PDP(db=db).require_permission(actor=current_user, permission_key="inventory.ledger.view", resource=ResourceContext(factory_id=factory.factory_id))
     limit = max(1, min(limit, 100))
     transactions = recent_transactions(db, factory.factory_id, limit=limit)
     item_map = {
@@ -1851,13 +1823,42 @@ def create_steel_inventory_item(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
     try:
         factory = require_active_steel_factory(db, current_user)
         category = normalize_steel_category(payload.category)
         display_unit = normalize_display_unit(payload.display_unit)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="inventory.item.manage",
+        resource=ResourceContext(factory_id=factory.factory_id),
+        request_context=build_request_context(request),
+    )
+
+    # Conditional approval for item creation
+    approval_decision_item = APPROVAL_SERVICE.initiate_approval(db,
+        actor_user_id=current_user.id,
+        subject_user_id=current_user.id,
+        workflow_key="inventory.item.manage",
+        action_key="inventory.item.manage",
+        resource_type="SteelInventoryItem",
+        resource_id=f"pending-{current_user.id}-{int(datetime.now(timezone.utc).timestamp())}",
+        org_id=factory.org_id,
+        factory_id=factory.factory_id,
+        current_workflow_state="active",
+        requested_change={"item_code": payload.item_code, "category": category},
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision_item.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision_item.reason)
+
+    if approval_decision_item.result == "approval_required":
+        return {"status": "pending_approval", "approval_instance_id": approval_decision_item.instance_id, "message": "Item creation submitted for approval."}
+    elif approval_decision_item.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision_item.result}")
 
     item_code = (sanitize_text(payload.item_code, max_length=40, preserve_newlines=False) or "").upper()
     name = sanitize_text(payload.name, max_length=160, preserve_newlines=False)
@@ -1895,6 +1896,8 @@ def create_steel_inventory_item(
     )
     db.commit()
     db.refresh(item)
+    if approval_decision_item.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision_item.instance_id)
     return {"item": {"id": item.id, "item_code": item.item_code, "name": item.name, "category": item.category}}
 
 
@@ -1905,7 +1908,6 @@ def create_steel_inventory_transaction(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_role(current_user, UserRole.MANAGER)
     try:
         factory = require_active_steel_factory(db, current_user)
         signed_quantity = _signed_transaction_quantity(
@@ -1916,9 +1918,43 @@ def create_steel_inventory_transaction(
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        current_user,
+        "inventory.transaction.create",
+        factory_id=factory.factory_id,
+        request=request,
+    )
+
+    # Conditional approval for high-value transactions
+    approval_decision_txn = APPROVAL_SERVICE.initiate_approval(db,
+        actor_user_id=current_user.id,
+        subject_user_id=current_user.id,
+        workflow_key="inventory.transaction.create",
+        action_key="inventory.transaction.create",
+        resource_type="SteelInventoryTransaction",
+        resource_id=f"pending-{current_user.id}-{int(datetime.now(timezone.utc).timestamp())}",
+        org_id=factory.org_id,
+        factory_id=factory.factory_id,
+        current_workflow_state="active",
+        requested_change={"transaction_type": payload.transaction_type, "quantity_kg": payload.quantity_kg},
+        attributes={
+            "quantity_kg": payload.quantity_kg,
+            "is_high_value": payload.quantity_kg > 5000.0,
+            "is_backdated": False,
+        },
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision_txn.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision_txn.reason)
+
+    if approval_decision_txn.result == "approval_required":
+        return {"status": "pending_approval", "approval_instance_id": approval_decision_txn.instance_id, "message": "Transaction submitted for approval."}
+    elif approval_decision_txn.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision_txn.result}")
+
     item = _get_item_or_404(db, factory_id=factory.factory_id, item_id=payload.item_id)
-    # Lock the item row to prevent concurrent stock underflow (TOCTOU race)
-    db.query(SteelInventoryItem).filter(SteelInventoryItem.id == item.id).with_for_update().first()
     balances = stock_balances_for_factory(db, factory.factory_id)
     projected_balance = float(balances.get(item.id, 0.0)) + signed_quantity
     if projected_balance < -0.001:
@@ -1947,6 +1983,8 @@ def create_steel_inventory_transaction(
     )
     db.commit()
     db.refresh(transaction)
+    if approval_decision_txn.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision_txn.instance_id)
     return {
         "transaction": {
             "id": transaction.id,
@@ -1964,11 +2002,17 @@ def create_steel_stock_reconciliation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="inventory.reconciliation.create",
+        resource=ResourceContext(factory_id=factory.factory_id),
+        request_context=build_request_context(request),
+    )
 
     item = _get_item_or_404(db, factory_id=factory.factory_id, item_id=payload.item_id)
     balances = stock_balances_for_factory(db, factory.factory_id)
@@ -1982,7 +2026,6 @@ def create_steel_stock_reconciliation(
             status_code=400,
             detail="Mismatch cause is required when physical stock does not match system stock.",
         )
-    auto_approved = is_admin_or_owner(current_user)
     now = datetime.now(timezone.utc)
     confidence_status, _confidence_reason = stock_confidence_for_item(
         balance_kg=system_qty,
@@ -1999,6 +2042,7 @@ def create_steel_stock_reconciliation(
         ),
     )
 
+    # G4 fix: No more auto-approval for admin/owner. All reconciliations enter proper maker-checker workflow.
     row = SteelStockReconciliation(
         org_id=factory.org_id,
         factory_id=factory.factory_id,
@@ -2008,37 +2052,22 @@ def create_steel_stock_reconciliation(
         variance_kg=variance_kg,
         variance_percent=variance_percent,
         confidence_status=confidence_status,
-        status="approved" if auto_approved else "pending",
+        status="pending",
         notes=sanitize_text(payload.notes, max_length=500),
         mismatch_cause=mismatch_cause,
         counted_by_user_id=current_user.id,
         submitted_by_user_id=current_user.id,
-        approved_by_user_id=current_user.id if auto_approved else None,
-        approved_at=now if auto_approved else None,
+        approved_by_user_id=None,
+        approved_at=None,
     )
     db.add(row)
     db.flush()
-
-    if auto_approved and abs(variance_kg) > 0.0001:
-        db.add(
-            SteelInventoryTransaction(
-                org_id=factory.org_id,
-                factory_id=factory.factory_id,
-                item_id=item.id,
-                transaction_type="adjustment",
-                quantity_kg=variance_kg,
-                reference_type="steel_reconciliation",
-                reference_id=str(row.id),
-                notes=f"Auto-correction from reconciliation #{row.id} ({mismatch_cause or 'other'})",
-                created_by_user_id=current_user.id,
-            )
-        )
 
     _write_steel_audit(
         db,
         actor=current_user,
         factory_id=factory.factory_id,
-        action="STEEL_STOCK_RECONCILIATION_APPROVED" if auto_approved else "STEEL_STOCK_RECONCILIATION_SUBMITTED",
+        action="STEEL_STOCK_RECONCILIATION_SUBMITTED",
         details=(
             f"item={item.item_code} status={row.status} "
             f"system_kg={round(system_qty, 3)} physical_kg={round(physical_qty, 3)} "
@@ -2065,12 +2094,11 @@ def get_steel_stock_reconciliation_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-
+    PDP(db=db).require_permission(actor=current_user, permission_key="inventory.reconciliation.view", resource=ResourceContext(factory_id=factory.factory_id))
     return {
         "summary": stock_reconciliation_summary_for_factory(
             db,
@@ -2087,12 +2115,11 @@ def list_steel_stock_reconciliations(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-
+    PDP(db=db).require_permission(actor=current_user, permission_key="inventory.reconciliation.view", resource=ResourceContext(factory_id=factory.factory_id))
     query = db.query(SteelStockReconciliation).filter(SteelStockReconciliation.factory_id == factory.factory_id)
     normalized_status = str(status or "").strip().lower()
     if normalized_status:
@@ -2147,11 +2174,16 @@ def approve_steel_stock_reconciliation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(current_user, {UserRole.ADMIN, UserRole.OWNER})
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="inventory.reconciliation.approve",
+        resource=ResourceContext(factory_id=factory.factory_id),
+    )
 
     row = (
         db.query(SteelStockReconciliation)
@@ -2165,7 +2197,37 @@ def approve_steel_stock_reconciliation(
         raise HTTPException(status_code=404, detail="Steel reconciliation not found.")
     if row.status != "pending":
         raise HTTPException(status_code=400, detail="Only pending reconciliations can be approved.")
-    assert_not_self_approval(row.created_by_user_id, current_user.id)
+
+    # Step 1: Approval service initiation (maker-checker)
+    org_id = resolve_org_id(current_user)
+    factory_id = factory.factory_id
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+        actor_user_id=current_user.id,
+        subject_user_id=row.counted_by_user_id,
+        workflow_key="inventory.reconciliation.approve",
+        action_key="inventory.reconciliation.approve",
+        resource_type="SteelStockReconciliation",
+        resource_id=str(reconciliation_id),
+        org_id=org_id,
+        factory_id=factory_id,
+        current_workflow_state=row.status,
+        requested_change={"new_status": "approved"},
+        attributes={
+            "variance_percent": float(row.variance_percent or 0.0),
+            "variance_kg": float(row.variance_kg or 0.0),
+        },
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        return {"status": "pending_approval", "approval_instance_id": approval_decision.instance_id, "message": "Submitted for approval."}
+    elif approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
+    # Step 2: Validate and apply
     mismatch_cause = (
         _normalize_stock_mismatch_cause(payload.mismatch_cause)
         if payload.mismatch_cause is not None
@@ -2212,6 +2274,11 @@ def approve_steel_stock_reconciliation(
     )
     db.commit()
     db.refresh(row)
+
+    # Step 3: Notify approval system of completion
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
     return {
         "reconciliation": {
             "id": row.id,
@@ -2230,11 +2297,16 @@ def reject_steel_stock_reconciliation(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(current_user, {UserRole.ADMIN, UserRole.OWNER})
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="inventory.reconciliation.approve",
+        resource=ResourceContext(factory_id=factory.factory_id),
+    )
 
     row = (
         db.query(SteelStockReconciliation)
@@ -2248,7 +2320,6 @@ def reject_steel_stock_reconciliation(
         raise HTTPException(status_code=404, detail="Steel reconciliation not found.")
     if row.status != "pending":
         raise HTTPException(status_code=400, detail="Only pending reconciliations can be rejected.")
-    assert_not_self_approval(row.created_by_user_id, current_user.id)
     rejection_reason = sanitize_text(payload.rejection_reason, max_length=500)
     if not rejection_reason:
         raise HTTPException(status_code=400, detail="Rejection reason is required.")
@@ -2259,6 +2330,35 @@ def reject_steel_stock_reconciliation(
     )
     if _stock_variance_needs_cause(row.variance_kg) and mismatch_cause is None:
         raise HTTPException(status_code=400, detail="Mismatch cause is required before rejection.")
+
+    # Approval service initiation (maker-checker)
+    org_id = resolve_org_id(current_user)
+    factory_id = factory.factory_id
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+        actor_user_id=current_user.id,
+        subject_user_id=row.counted_by_user_id,
+        workflow_key="inventory.reconciliation.reject",
+        action_key="inventory.reconciliation.approve",
+        resource_type="SteelStockReconciliation",
+        resource_id=str(reconciliation_id),
+        org_id=org_id,
+        factory_id=factory_id,
+        current_workflow_state=row.status,
+        requested_change={"new_status": "rejected"},
+        attributes={
+            "variance_percent": float(row.variance_percent or 0.0),
+            "variance_kg": float(row.variance_kg or 0.0),
+        },
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        return {"status": "pending_approval", "approval_instance_id": approval_decision.instance_id, "message": "Submitted for rejection approval."}
+    elif approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
 
     row.status = "rejected"
     row.approver_notes = sanitize_text(payload.approver_notes, max_length=500)
@@ -2282,6 +2382,11 @@ def reject_steel_stock_reconciliation(
     )
     db.commit()
     db.refresh(row)
+
+    # Notify approval system of completion
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
     return {
         "reconciliation": {
             "id": row.id,
@@ -2302,6 +2407,12 @@ def list_steel_batches(
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="production.batch.view",
+        resource=ResourceContext(factory_id=factory.factory_id),
+    )
     limit = max(1, min(limit, 100))
     batches = recent_steel_batches(db, factory.factory_id, limit=limit)
     item_map = {
@@ -2350,6 +2461,12 @@ def get_steel_batch_detail(
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="production.batch.view",
+        resource=ResourceContext(factory_id=factory.factory_id),
+    )
 
     batch = (
         db.query(SteelProductionBatch)
@@ -2502,10 +2619,7 @@ def list_steel_customers(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(
-        current_user,
-        {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="customer.record.view")
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
@@ -2607,11 +2721,17 @@ def create_steel_customer(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(current_user, {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT})
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="customer.record.create",
+        resource=ResourceContext(factory_id=factory.factory_id),
+        request_context=build_request_context(request),
+    )
 
     name = _sanitize_customer_text(payload.name, max_length=200)
     if not name:
@@ -2686,107 +2806,13 @@ def create_steel_customer(
     return {"customer": _serialize_steel_customer(customer)}
 
 
-@router.put("/customers/{customer_id}")
-def update_steel_customer(
-    customer_id: int,
-    payload: SteelCustomerCreateRequest,
-    request: Request,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
-) -> dict:
-    require_any_role(current_user, {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT})
-    try:
-        factory = require_active_steel_factory(db, current_user)
-    except ValueError as error:
-        raise HTTPException(status_code=400, detail=str(error)) from error
-
-    customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=customer_id)
-
-    previous_state = {
-        "status": customer.status,
-        "credit_limit": float(customer.credit_limit or 0.0),
-        "payment_terms_days": int(customer.payment_terms_days or 0),
-        "name": customer.name,
-    }
-
-    name = _sanitize_customer_text(payload.name, max_length=200)
-    if not name:
-        raise HTTPException(status_code=400, detail="Customer name is required.")
-    phone = _normalize_customer_phone(payload.phone)
-    email = _normalize_customer_email(payload.email)
-    gst_number = _normalize_customer_gst(payload.gst_number)
-    pan_number = _normalize_customer_pan(payload.pan_number)
-    credit_limit = _normalize_customer_credit_limit(payload.credit_limit)
-    payment_terms_days = _normalize_customer_payment_terms(payload.payment_terms_days)
-
-    duplicate = (
-        db.query(SteelCustomer.id)
-        .filter(
-            SteelCustomer.factory_id == factory.factory_id,
-            func.lower(func.trim(SteelCustomer.name)) == name.lower(),
-            SteelCustomer.is_active.is_(True),
-            SteelCustomer.id != customer_id,
-        )
-        .first()
-    )
-    if duplicate:
-        raise HTTPException(status_code=409, detail="Another customer with this name already exists.")
-
-    customer.name = name
-    customer.phone = phone or customer.phone
-    customer.email = email or customer.email
-    customer.address = _sanitize_customer_text(payload.address, max_length=500, preserve_newlines=True) or customer.address
-    customer.city = _sanitize_customer_text(payload.city, max_length=120) or customer.city
-    customer.state = _sanitize_customer_text(payload.state, max_length=120) or customer.state
-    customer.tax_id = _sanitize_customer_text(payload.tax_id, max_length=64) or customer.tax_id
-    customer.gst_number = gst_number or customer.gst_number
-    customer.pan_number = pan_number or customer.pan_number
-    customer.company_type = _sanitize_customer_text(payload.company_type, max_length=40) or customer.company_type
-    customer.contact_person = _sanitize_customer_text(payload.contact_person, max_length=160) or customer.contact_person
-    customer.designation = _sanitize_customer_text(payload.designation, max_length=120) or customer.designation
-    customer.credit_limit = credit_limit
-    customer.payment_terms_days = payment_terms_days
-    customer.status = _normalize_customer_status(payload.status)
-    customer.notes = _sanitize_customer_text(payload.notes, max_length=500, preserve_newlines=True) or customer.notes
-
-    if gst_number or pan_number:
-        _apply_customer_verification_state(customer, verification_source="system_check")
-
-    _write_steel_audit(
-        db,
-        actor=current_user,
-        factory_id=factory.factory_id,
-        action="STEEL_CUSTOMER_UPDATED",
-        details=(
-            f"customer_id={customer.id} customer_code={customer.customer_code} "
-            f"name={previous_state['name']} -> {customer.name} "
-            f"status={previous_state['status']} -> {customer.status} "
-            f"credit_limit_inr={previous_state['credit_limit']} -> {round(float(customer.credit_limit or 0.0), 2)}"
-        ),
-        request=request,
-        previous_state=previous_state,
-        new_state={
-            "status": customer.status,
-            "credit_limit": float(customer.credit_limit or 0.0),
-            "payment_terms_days": int(customer.payment_terms_days or 0),
-            "name": customer.name,
-        },
-    )
-    db.commit()
-    db.refresh(customer)
-    return {"message": "Customer updated.", "customer": _serialize_steel_customer(customer)}
-
-
 @router.get("/customers/{customer_id}")
 def get_steel_customer_ledger(
     customer_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(
-        current_user,
-        {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="customer.record.view")
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
@@ -2944,11 +2970,17 @@ def create_steel_customer_follow_up_task(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(current_user, {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT})
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="customer.verification.review",
+        resource=ResourceContext(factory_id=factory.factory_id),
+        request_context=build_request_context(request),
+    )
 
     customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=customer_id)
     invoice = None
@@ -2998,12 +3030,11 @@ def update_steel_customer_follow_up_task_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(current_user, {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT})
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-
+    PDP(db=db).require_permission(actor=current_user, permission_key="followup.task.manage", resource=ResourceContext(factory_id=factory.factory_id))
     task = _get_customer_follow_up_task_or_404(db, factory_id=factory.factory_id, customer_id=customer_id, task_id=task_id)
     task.status = _normalize_follow_up_task_status(payload.status)
     if payload.note:
@@ -3033,11 +3064,17 @@ def run_steel_customer_verification_check(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(current_user, {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT})
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="payment.record.create",
+        resource=ResourceContext(factory_id=factory.factory_id),
+        request_context=build_request_context(request),
+    )
 
     customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=customer_id)
     _apply_customer_verification_state(customer, verification_source="system_check")
@@ -3065,10 +3102,7 @@ def get_steel_customer_verification_document(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FileResponse:
-    require_any_role(
-        current_user,
-        {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="customer.record.view")
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
@@ -3097,11 +3131,18 @@ async def upload_steel_customer_verification_document(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(current_user, {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT})
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        current_user,
+        "customer.verification.review",
+        factory_id=factory.factory_id,
+        request=request,
+    )
 
     customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=customer_id)
     if not file.filename:
@@ -3157,13 +3198,37 @@ def review_steel_customer_verification(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(current_user, {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT})
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-
+    PDP(db=db).require_permission(actor=current_user, permission_key="customer.verification.review", resource=ResourceContext(factory_id=factory.factory_id))
     customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=customer_id)
+
+    # Approval service initiation (maker-checker for verification review)
+    org_id_cv = resolve_org_id(current_user)
+    factory_id_cv = factory.factory_id
+    approval_decision_cv = APPROVAL_SERVICE.initiate_approval(db, 
+        actor_user_id=current_user.id,
+        subject_user_id=customer.created_by_user_id or current_user.id,
+        workflow_key="customer.verification.review",
+        action_key="customer.verification.review",
+        resource_type="SteelCustomer",
+        resource_id=str(customer_id),
+        org_id=org_id_cv,
+        factory_id=factory_id_cv,
+        current_workflow_state=customer.verification_status,
+        requested_change={"decision": payload.decision},
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision_cv.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision_cv.reason)
+
+    if approval_decision_cv.result == "approval_required":
+        return {"status": "pending_approval", "approval_instance_id": approval_decision_cv.instance_id, "message": "Verification review submitted for approval."}
+    elif approval_decision_cv.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision_cv.result}")
     customer.official_legal_name = sanitize_text(payload.official_legal_name, max_length=200, preserve_newlines=False)
     customer.official_trade_name = sanitize_text(payload.official_trade_name, max_length=200, preserve_newlines=False)
     customer.official_state = sanitize_text(payload.official_state, max_length=120, preserve_newlines=False)
@@ -3203,6 +3268,11 @@ def review_steel_customer_verification(
     )
     db.commit()
     db.refresh(customer)
+
+    # Notify approval system of completion
+    if approval_decision_cv.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision_cv.instance_id)
+
     return {"customer": _serialize_steel_customer(customer, verified_by_name=current_user.name if customer.verified_by_user_id else None)}
 
 
@@ -3213,11 +3283,18 @@ def create_steel_customer_payment(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(current_user, {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT})
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        current_user,
+        "payment.record.create",
+        factory_id=factory.factory_id,
+        request=request,
+    )
 
     customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=payload.customer_id)
     if payload.allocations and payload.invoice_id is not None:
@@ -3379,10 +3456,7 @@ def list_steel_invoices(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(
-        current_user,
-        {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="customer.record.view")
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
@@ -3453,14 +3527,15 @@ def get_steel_invoice_detail(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(
-        current_user,
-        {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
-    )
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    PDP(db=db).require_permission(
+        actor=current_user,
+        permission_key="invoice.record.view",
+        resource=ResourceContext(factory_id=factory.factory_id),
+    )
 
     invoice = (
         db.query(SteelSalesInvoice)
@@ -3628,11 +3703,17 @@ def create_steel_invoice(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(current_user, {UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT})
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="invoice.record.create",
+        resource=ResourceContext(factory_id=factory.factory_id),
+        request_context=build_request_context(request),
+    )
 
     invoice_number = (
         sanitize_text(payload.invoice_number, max_length=40, preserve_newlines=False).upper()
@@ -3641,7 +3722,6 @@ def create_steel_invoice(
     )
     if not invoice_number:
         invoice_number = generate_invoice_number(db, factory)
-    # Check for duplicate - race-safe: if IntegrityError occurs later, we retry
     existing = db.query(SteelSalesInvoice.id).filter(SteelSalesInvoice.invoice_number == invoice_number).first()
     if existing:
         raise HTTPException(status_code=409, detail="Invoice number already exists.")
@@ -3712,8 +3792,6 @@ def create_steel_invoice(
         )
 
     if customer and float(customer.credit_limit or 0.0) > 0:
-        # Lock customer row to prevent concurrent credit limit race condition
-        db.query(SteelCustomer).filter(SteelCustomer.id == customer.id).with_for_update().first()
         current_invoice_total = float(
             db.query(func.coalesce(func.sum(SteelSalesInvoice.total_amount), 0))
             .filter(
@@ -3747,40 +3825,14 @@ def create_steel_invoice(
         status="unpaid",
         currency="INR",
         payment_terms_days=payment_terms_days,
-        gst_rate=payload.gst_rate,
-        supply_type=payload.supply_type,
-        taxable_amount=round(subtotal_amount, 2),
-        cgst_amount=round(subtotal_amount * payload.gst_rate / 200.0, 2) if payload.gst_rate and payload.supply_type == "intra" else None,
-        sgst_amount=round(subtotal_amount * payload.gst_rate / 200.0, 2) if payload.gst_rate and payload.supply_type == "intra" else None,
-        igst_amount=round(subtotal_amount * payload.gst_rate / 100.0, 2) if payload.gst_rate and payload.supply_type == "inter" else None,
         total_weight_kg=round(total_weight_kg, 3),
         subtotal_amount=round(subtotal_amount, 2),
-        total_amount=round(
-            subtotal_amount * (1 + payload.gst_rate / 100.0), 2
-        ) if payload.gst_rate else round(subtotal_amount, 2),
+        total_amount=round(subtotal_amount, 2),
         notes=sanitize_text(payload.notes, max_length=500),
         created_by_user_id=current_user.id,
     )
-    max_retries = 3
-    retry_count = 0
-    last_error: Exception | None = None
-    while retry_count < max_retries:
-        try:
-            db.add(invoice)
-            db.flush()
-            break
-        except IntegrityError as error:
-            db.rollback()
-            last_error = error
-            retry_count += 1
-            if retry_count >= max_retries:
-                raise HTTPException(status_code=409, detail="Could not create invoice due to a number conflict. Please retry.") from error
-            if not payload.invoice_number:
-                # Regenerate the invoice number and retry
-                invoice_number = generate_invoice_number(db, factory)
-                invoice.invoice_number = invoice_number
-            else:
-                raise HTTPException(status_code=409, detail="Invoice number already exists.") from error
+    db.add(invoice)
+    db.flush()
 
     line_rows: list[SteelSalesInvoiceLine] = []
     for line in prepared_lines:
@@ -3839,16 +3891,11 @@ def list_steel_dispatches(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
-    )
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-
-    limit = max(1, min(limit, 100))
+    PDP(db=db).require_permission(actor=current_user, permission_key="dispatch.record.view", resource=ResourceContext(factory_id=factory.factory_id))
     rows = (
         db.query(SteelDispatch)
         .filter(SteelDispatch.factory_id == factory.factory_id)
@@ -3887,17 +3934,18 @@ def get_steel_dispatch_detail(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER, UserRole.ACCOUNTANT},
-    )
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
-
-    dispatch = _get_dispatch_or_404(db, factory_id=factory.factory_id, dispatch_id=dispatch_id)
-
+    PDP(db=db).require_permission(actor=current_user, permission_key="dispatch.record.view", resource=ResourceContext(factory_id=factory.factory_id))
+    dispatch = (
+        db.query(SteelDispatch)
+        .filter(SteelDispatch.id == dispatch_id, SteelDispatch.factory_id == factory.factory_id)
+        .first()
+    )
+    if not dispatch:
+        raise HTTPException(status_code=404, detail="Steel dispatch not found.")
     invoice = _get_invoice_or_404(db, factory_id=factory.factory_id, invoice_id=dispatch.invoice_id)
     line_rows = (
         db.query(SteelDispatchLine)
@@ -4008,11 +4056,17 @@ def create_steel_dispatch(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="dispatch.record.create",
+        resource=ResourceContext(factory_id=factory.factory_id),
+        request_context=build_request_context(request),
+    )
 
     invoice = _get_invoice_or_404(db, factory_id=factory.factory_id, invoice_id=payload.invoice_id)
     requested_status = _normalize_dispatch_status(payload.status)
@@ -4105,9 +4159,6 @@ def create_steel_dispatch(
         raise HTTPException(status_code=400, detail="Add at least one dispatch line.")
 
     if _dispatch_status_posts_inventory(requested_status):
-        # Lock all affected item rows to prevent concurrent stock underflow (TOCTOU race)
-        for lock_item_id in requested_by_item:
-            db.query(SteelInventoryItem).filter(SteelInventoryItem.id == lock_item_id).with_for_update().first()
         balances = stock_balances_for_factory(db, factory.factory_id)
         for item_id, requested_weight in requested_by_item.items():
             available = float(balances.get(item_id, 0.0))
@@ -4238,15 +4289,20 @@ def update_steel_dispatch_status(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(current_user, {UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER})
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="dispatch.record.update",
+        resource=ResourceContext(factory_id=factory.factory_id),
+        request_context=build_request_context(request),
+    )
 
     dispatch = _get_dispatch_or_404(db, factory_id=factory.factory_id, dispatch_id=dispatch_id)
     invoice = _get_invoice_or_404(db, factory_id=factory.factory_id, invoice_id=dispatch.invoice_id)
-    assert_not_self_approval(dispatch.created_by_user_id, current_user.id)
     next_status = _normalize_dispatch_status(payload.status)
     current_status = _normalize_dispatch_status(dispatch.status)
     if current_status == "cancelled":
@@ -4255,11 +4311,32 @@ def update_steel_dispatch_status(
         raise HTTPException(status_code=409, detail="Only non-posted draft dispatches can be cancelled.")
     if next_status in {"pending", "loaded"} and _dispatch_has_posted_inventory(dispatch):
         raise HTTPException(status_code=409, detail="Posted dispatches cannot move back to pending or loaded.")
-    if next_status not in VALID_DISPATCH_TRANSITIONS.get(current_status, set()):
-        raise HTTPException(
-            status_code=409,
-            detail=f"Cannot move dispatch from {current_status} to {next_status}.",
-        )
+
+    # Approval service initiation for dispatch status changes
+    org_id_ds = resolve_org_id(current_user)
+    factory_id_ds = factory.factory_id
+    approval_decision_ds = APPROVAL_SERVICE.initiate_approval(db, 
+        actor_user_id=current_user.id,
+        subject_user_id=dispatch.created_by_user_id or current_user.id,
+        workflow_key="dispatch.status.update",
+        action_key="dispatch.record.update",
+        resource_type="SteelDispatch",
+        resource_id=str(dispatch_id),
+        org_id=org_id_ds,
+        factory_id=factory_id_ds,
+        current_workflow_state=dispatch.status,
+        requested_change={"new_status": next_status},
+        attributes={"is_cancellation": next_status == "cancelled"},
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision_ds.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision_ds.reason)
+
+    if approval_decision_ds.result == "approval_required":
+        return {"status": "pending_approval", "approval_instance_id": approval_decision_ds.instance_id, "message": "Dispatch status change submitted for approval."}
+    elif approval_decision_ds.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision_ds.result}")
 
     dispatch.entry_time = coerce_utc_datetime(payload.entry_time) or dispatch.entry_time
     dispatch.exit_time = coerce_utc_datetime(payload.exit_time) or dispatch.exit_time
@@ -4276,9 +4353,6 @@ def update_steel_dispatch_status(
         requested_by_item: dict[int, float] = {}
         for row in line_rows:
             requested_by_item[row.item_id] = float(requested_by_item.get(row.item_id, 0.0)) + float(row.weight_kg or 0.0)
-        # Lock all affected item rows to prevent concurrent stock underflow (TOCTOU race)
-        for lock_item_id in requested_by_item:
-            db.query(SteelInventoryItem).filter(SteelInventoryItem.id == lock_item_id).with_for_update().first()
         balances = stock_balances_for_factory(db, factory.factory_id)
         for item_id, requested_weight in requested_by_item.items():
             available = float(balances.get(item_id, 0.0))
@@ -4313,6 +4387,11 @@ def update_steel_dispatch_status(
     )
     db.commit()
     db.refresh(dispatch)
+
+    # Notify approval system of completion
+    if approval_decision_ds.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision_ds.instance_id)
+
     line_rows = (
         db.query(SteelDispatchLine)
         .filter(SteelDispatchLine.dispatch_id == dispatch.id)
@@ -4370,14 +4449,17 @@ def create_steel_batch(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    require_any_role(
-        current_user,
-        {UserRole.OPERATOR, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER},
-    )
     try:
         factory = require_active_steel_factory(db, current_user)
     except ValueError as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
+    pdp = PDP(db=db)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="production.batch.create",
+        resource=ResourceContext(factory_id=factory.factory_id),
+        request_context=build_request_context(request),
+    )
 
     input_item = _get_item_or_404(db, factory_id=factory.factory_id, item_id=payload.input_item_id)
     output_item = _get_item_or_404(db, factory_id=factory.factory_id, item_id=payload.output_item_id)
@@ -4388,8 +4470,6 @@ def create_steel_batch(
     if payload.actual_output_kg > payload.input_quantity_kg:
         raise HTTPException(status_code=400, detail="Actual output cannot exceed input quantity.")
 
-    # Lock the input item row to prevent concurrent stock underflow (TOCTOU race)
-    db.query(SteelInventoryItem).filter(SteelInventoryItem.id == input_item.id).with_for_update().first()
     balances = stock_balances_for_factory(db, factory.factory_id)
     available_input = float(balances.get(input_item.id, 0.0))
     if available_input + 0.0001 < payload.input_quantity_kg:

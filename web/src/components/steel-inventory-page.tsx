@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -41,7 +40,6 @@ function deriveOperationalZone(category: string) {
 
 export function SteelInventoryPage() {
   const { user, activeFactory, loading, error: sessionError } = useSession();
-  const router = useRouter();
   const [stock, setStock] = useState<SteelStockItem[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -177,12 +175,11 @@ export function SteelInventoryPage() {
                         <th className="px-3 py-3 font-medium">Balance (KG)</th>
                         <th className="px-3 py-3 font-medium">Last Variance</th>
                         <th className="px-3 py-3 font-medium">Confidence</th>
-                        <th className="px-3 py-3 font-medium">Actions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {stock.map((row) => (
-                        <tr key={row.item_id} className="cursor-pointer border-b border-[var(--border)]/60 transition hover:bg-[rgba(20,24,36,0.52)] last:border-none" onClick={() => router.push(`/steel/inventory/transactions`)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); router.push(`/steel/inventory/transactions`); } }} role="link" tabIndex={0}>
+                        <tr key={row.item_id} className="border-b border-[var(--border)]/60 last:border-none">
                           <td className="px-3 py-3">
                             <div className="font-semibold text-white">{row.name}</div>
                             <div className="text-xs text-[var(--muted)]">{row.item_code} / {row.category.replace("_", " ")}</div>
@@ -204,16 +201,11 @@ export function SteelInventoryPage() {
                               {row.confidence_status}
                             </span>
                           </td>
-                          <td className="px-3 py-3">
-                            <Link href="/steel/inventory/transactions" className="text-xs font-medium text-[var(--accent)] hover:underline">
-                              Transactions
-                            </Link>
-                          </td>
                         </tr>
                       ))}
                       {!stock.length ? (
                         <tr>
-                          <td colSpan={6} className="px-3 py-8 text-center text-[var(--muted)]">No inventory items found.</td>
+                          <td colSpan={5} className="px-3 py-8 text-center text-[var(--muted)]">No inventory items found.</td>
                         </tr>
                       ) : null}
                     </tbody>

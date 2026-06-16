@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { DispatchDebugPanel } from "@/components/steel-dispatches-debug";
 import { Button } from "@/components/ui/button";
@@ -17,12 +17,10 @@ import {
   getSteelInvoiceDetail,
   listSteelDispatches,
   listSteelInvoices,
-  listSteelStock,
   type SteelDispatch,
   type SteelDispatchStatus,
   type SteelInvoice,
   type SteelInvoiceDetail,
-  type SteelStockItem,
   type SteelVehicleType,
 } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
@@ -84,10 +82,7 @@ export function SteelDispatchesPage() {
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
   const [warnings, setWarnings] = useState<string[]>([]);
-  const [stockItems, setStockItems] = useState<SteelStockItem[]>([]);
 
-  const dispatchSearchParams = useSearchParams();
-  const invoiceIdParam = dispatchSearchParams.get("invoice_id");
   const isSteelFactory = (activeFactory?.industry_type || "").toLowerCase() === "steel";
   const canCreate = Boolean(user && ["owner", "admin", "manager", "supervisor"].includes(user.role));
 
@@ -98,14 +93,12 @@ export function SteelDispatchesPage() {
     }
     setPageLoading(true);
     try {
-      const [invoicesPayload, dispatchesPayload, stockPayload] = await Promise.all([
+      const [invoicesPayload, dispatchesPayload] = await Promise.all([
         listSteelInvoices(30),
         listSteelDispatches(20),
-        listSteelStock(),
       ]);
       setInvoices(invoicesPayload.items || []);
       setDispatches(dispatchesPayload.items || []);
-      setStockItems(stockPayload.items || []);
       setError("");
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : "Could not load steel dispatches.");
@@ -121,16 +114,6 @@ export function SteelDispatchesPage() {
     }
     void loadBase();
   }, [isSteelFactory, loadBase, user]);
-
-  const initialInvoiceRef = useRef(false);
-  useEffect(() => {
-    if (initialInvoiceRef.current || !invoices.length || !invoiceIdParam) return;
-    const invoiceExists = invoices.some((inv) => String(inv.id) === invoiceIdParam);
-    if (invoiceExists) {
-      initialInvoiceRef.current = true;
-      setSelectedInvoiceId(invoiceIdParam);
-    }
-  }, [invoices, invoiceIdParam]);
 
   useEffect(() => {
     if (!selectedInvoiceId) {
@@ -226,28 +209,6 @@ export function SteelDispatchesPage() {
       });
   }, [selectedInvoice, selectedLines]);
 
-  const stockByItemId = useMemo(() => {
-    const map = new Map<number, SteelStockItem>();
-    for (const item of stockItems) map.set(item.item_id, item);
-    return map;
-  }, [stockItems]);
-
-  const stockShortfallLines = useMemo(() => {
-    if (!selectedInvoice || !selectedLines.length) return [] as string[];
-    const invoiceLines = selectedInvoice.invoice.lines || [];
-    const shortfalls: string[] = [];
-    for (const sel of selectedLines) {
-      const invLine = invoiceLines.find((l) => l.id === sel.invoice_line_id);
-      if (!invLine || !invLine.item_id) continue;
-      const stock = stockByItemId.get(invLine.item_id);
-      const available = stock ? stock.stock_balance_kg : 0;
-      if (sel.weight_kg > available + 0.001) {
-        shortfalls.push(`${invLine.item_code || `Item #${invLine.item_id}`}: dispatching ${formatKg(sel.weight_kg)} KG but only ${formatKg(available)} KG in stock`);
-      }
-    }
-    return shortfalls;
-  }, [selectedInvoice, selectedLines, stockByItemId]);
-
   const truckNumberError = useMemo(() => validateReferenceCode(truckNumber, "Truck number", 40), [truckNumber]);
   const driverPhoneError = useMemo(() => validatePhoneNumber(driverPhone, "Driver phone"), [driverPhone]);
   const driverLicenseError = useMemo(
@@ -301,9 +262,6 @@ export function SteelDispatchesPage() {
     if (capacityInputError) {
       reasons.push(capacityInputError);
     }
-    if (stockShortfallLines.length) {
-      reasons.push(`Stock shortfall: ${stockShortfallLines.join("; ")}`);
-    }
     return reasons;
   }, [
     canCreate,
@@ -316,7 +274,6 @@ export function SteelDispatchesPage() {
     selectedInvoice,
     selectedInvoiceId,
     selectedLines.length,
-    stockShortfallLines,
     truckNumber,
     truckNumberError,
   ]);
@@ -364,15 +321,6 @@ export function SteelDispatchesPage() {
           capacityInputError ||
           "Optional phone/license/capacity values are valid.",
       },
-      {
-        id: "stock",
-        label: "Stock available",
-        ready: stockShortfallLines.length === 0,
-        detail:
-          stockShortfallLines.length > 0
-            ? stockShortfallLines.join("; ")
-            : "Stock balance covers the dispatch quantities.",
-      },
     ],
     [
       canCreate,
@@ -384,7 +332,6 @@ export function SteelDispatchesPage() {
       selectedInvoice,
       selectedInvoiceId,
       selectedLines.length,
-      stockShortfallLines,
       totalWeight,
       truckNumber,
       truckNumberError,
@@ -566,20 +513,25 @@ export function SteelDispatchesPage() {
                 </span>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Link href="/steel">
-                <Button variant="ghost" className="text-xs">Steel Hub</Button>
-              </Link>
-              <Link href="/steel/invoices">
-                <Button variant="ghost" className="text-xs">Invoices</Button>
-              </Link>
-              <Link href="/steel/customers">
-                <Button variant="ghost" className="text-xs">Customers</Button>
-              </Link>
-              <Link href="/steel/reconciliations">
-                <Button variant="ghost" className="text-xs">Stock Review</Button>
-              </Link>
-            </div>
+            {/* AUDIT: BUTTON_CLUTTER - move route jumps into a secondary tools tray so dispatch creation stays primary. */}
+            <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
+                Dispatch tools
+                <span className="text-xs text-[var(--muted)] transition group-open:hidden">Open</span>
+                <span className="hidden text-xs text-[var(--muted)] group-open:inline">Hide</span>
+              </summary>
+              <div className="flex flex-wrap gap-3 border-t border-[var(--border)] px-4 py-4">
+                <Link href="/steel">
+                  <Button variant="outline">Steel hub</Button>
+                </Link>
+                <Link href="/steel/customers">
+                  <Button variant="ghost">Customers</Button>
+                </Link>
+                <Link href="/steel/invoices">
+                  <Button variant="ghost">Invoices</Button>
+                </Link>
+              </div>
+            </details>
           </div>
         </section>
 

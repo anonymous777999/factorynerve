@@ -22,7 +22,9 @@ from backend.models.report import AuditLog
 from backend.models.shift_template import ShiftTemplate
 from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
-from backend.rbac import assert_not_self_approval, require_any_role, require_role
+from backend.authorization import PDP, ResourceContext
+from backend.authorization.pdp import build_request_context
+from backend.services.approval_service import approval_service as APPROVAL_SERVICE
 from backend.security import get_current_user
 from backend.tenancy import resolve_factory_id, resolve_org_id
 from backend.utils import normalize_identifier_code, sanitize_text
@@ -985,7 +987,7 @@ def get_live_attendance(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AttendanceLiveResponse:
-    require_role(current_user, UserRole.SUPERVISOR)
+    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.team.view")
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     local_now = _factory_now(factory)
@@ -1129,7 +1131,7 @@ def get_attendance_employee_profiles(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[EmployeeProfileItem]:
-    require_role(current_user, UserRole.MANAGER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.profile.manage")
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     users = _attendance_users_for_factory(db, factory_id=factory.factory_id, org_id=org_id)
@@ -1166,7 +1168,7 @@ def upsert_attendance_employee_profile(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EmployeeProfileItem:
-    require_role(current_user, UserRole.MANAGER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.profile.manage")
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     user = (
@@ -1270,7 +1272,7 @@ def get_shift_templates(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[ShiftTemplateItem]:
-    require_role(current_user, UserRole.MANAGER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.shift_template.manage")
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     templates = _shift_templates_for_factory(db, org_id=org_id, factory_id=factory.factory_id)
@@ -1284,7 +1286,7 @@ def upsert_shift_template(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ShiftTemplateItem:
-    require_role(current_user, UserRole.MANAGER)
+    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.shift_template.manage")
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
 
@@ -1425,7 +1427,7 @@ def get_attendance_review_queue(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AttendanceReviewResponse:
-    require_any_role(current_user, REPORTING_MANAGER_ALLOWED_ROLES)
+    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.report.view")
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     local_now = _factory_now(factory)
@@ -1548,7 +1550,17 @@ def approve_attendance_review(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AttendanceReviewItem:
-    require_any_role(current_user, REPORTING_MANAGER_ALLOWED_ROLES)
+    # Step 1: PDP permission check
+    pdp = PDP(db=db)
+    factory_id = resolve_factory_id(db, current_user)
+    org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="attendance.record.approve",
+        resource=ResourceContext(factory_id=factory_id),
+        request_context=build_request_context(request),
+    )
+
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     record = (
@@ -1562,7 +1574,26 @@ def approve_attendance_review(
     )
     if not record:
         raise HTTPException(status_code=404, detail="Attendance review record not found.")
-    assert_not_self_approval(record.user_id, current_user.id)
+
+    # Step 2: Approval service initiation (maker-checker — replaces assert_not_self_approval)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+        actor_user_id=current_user.id,
+        subject_user_id=record.user_id,
+        workflow_key="attendance.review.approve",
+        action_key="attendance.record.approve",
+        resource_type="AttendanceRecord",
+        resource_id=str(attendance_id),
+        org_id=org_id,
+        factory_id=factory.factory_id,
+        current_workflow_state=record.review_status,
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
 
     regularization = (
         db.query(AttendanceRegularization)
@@ -1638,6 +1669,11 @@ def approve_attendance_review(
     )
     db.commit()
     db.refresh(record)
+
+    # Step 3: Notify approval system of completion
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
     profile = _employee_profile_for_user(db, org_id=org_id, factory_id=factory.factory_id, user_id=record.user_id)
     user = db.query(User).filter(User.id == record.user_id).first()
     if not user:
@@ -1673,7 +1709,17 @@ def reject_attendance_review(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AttendanceReviewItem:
-    require_any_role(current_user, REPORTING_MANAGER_ALLOWED_ROLES)
+    # Step 1: PDP permission check
+    pdp = PDP(db=db)
+    factory_id = resolve_factory_id(db, current_user)
+    org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="attendance.review.reject",
+        resource=ResourceContext(factory_id=factory_id),
+        request_context=build_request_context(request),
+    )
+
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     record = (
@@ -1687,7 +1733,27 @@ def reject_attendance_review(
     )
     if not record:
         raise HTTPException(status_code=404, detail="Attendance review record not found.")
-    assert_not_self_approval(record.user_id, current_user.id)
+
+    # Step 2: Approval service initiation (maker-checker — replaces assert_not_self_approval)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+        actor_user_id=current_user.id,
+        subject_user_id=record.user_id,
+        workflow_key="attendance.review.reject",
+        action_key="attendance.review.reject",
+        resource_type="AttendanceRecord",
+        resource_id=str(attendance_id),
+        org_id=org_id,
+        factory_id=factory.factory_id,
+        current_workflow_state=record.review_status,
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
     note = sanitize_text(payload.note, max_length=500) if payload.note else None
     if not note:
         raise HTTPException(status_code=422, detail="A rejection note is required.")
@@ -1723,6 +1789,11 @@ def reject_attendance_review(
     )
     db.commit()
     db.refresh(record)
+
+    # Step 3: Notify approval system of completion
+    if approval_decision.instance_id:
+        APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
     profile = _employee_profile_for_user(db, org_id=org_id, factory_id=factory.factory_id, user_id=record.user_id)
     user = db.query(User).filter(User.id == record.user_id).first()
     if not user:
@@ -1757,10 +1828,7 @@ def get_attendance_report_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> AttendanceReportSummary:
-    require_any_role(
-        current_user,
-        {UserRole.ACCOUNTANT, UserRole.SUPERVISOR, UserRole.MANAGER, UserRole.ADMIN, UserRole.OWNER},
-    )
+    PDP(db=db).require_permission(actor=current_user, permission_key="attendance.report.view")
     factory = _active_factory_or_400(db, current_user)
     org_id = _active_org_or_400(current_user)
     local_now = _factory_now(factory)

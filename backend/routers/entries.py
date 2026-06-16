@@ -34,7 +34,9 @@ from backend.models.report import AuditLog
 from backend.models.user import User, UserRole
 from backend.models.user_factory_role import UserFactoryRole
 from backend.security import get_current_user
-from backend.rbac import assert_not_self_approval, require_role
+from backend.authorization import PDP, ResourceContext
+from backend.authorization.pdp import build_request_context
+from backend.services.approval_service import approval_service as APPROVAL_SERVICE
 from backend.plans import normalize_plan, plan_rank, get_org_plan
 from backend.ai_rate_limit import check_rate_limit, RateLimitError
 from backend.utils import (
@@ -759,16 +761,46 @@ def approve_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntryResponse:
-    require_role(current_user, UserRole.SUPERVISOR)
+    # Step 1: PDP permission check
+    pdp = PDP(db=db)
+    factory_id = resolve_factory_id(db, current_user)
+    org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="production.entry.approve",
+        resource=ResourceContext(factory_id=factory_id),
+        request_context=build_request_context(request),
+    )
+
     entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
     if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
-    if not _can_view_entry(db, current_user, entry):
-        raise HTTPException(status_code=403, detail="Access denied.")
-    assert_not_self_approval(entry.user_id, current_user.id)
+
+    # Step 2: Approval service initiation (maker-checker)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+        actor_user_id=current_user.id,
+        subject_user_id=entry.user_id,
+        workflow_key="production.entry.approve",
+        action_key="production.entry.approve",
+        resource_type="Entry",
+        resource_id=str(entry_id),
+        org_id=org_id,
+        factory_id=factory_id,
+        current_workflow_state=entry.status,
+        requested_change={"new_status": "approved"},
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
+    # Step 3: Proceed with mutation
     entry.status = "approved"
-    request.state.org_id = entry.org_id or resolve_org_id(current_user)
-    request.state.factory_id = entry.factory_id or resolve_factory_id(db, current_user)
+    request.state.org_id = entry.org_id or org_id
+    request.state.factory_id = entry.factory_id or factory_id
     try:
         _write_audit_log(
             db,
@@ -780,6 +812,11 @@ def approve_entry(
         db.commit()
         db.refresh(entry)
         _invalidate_entry_related_cache(entry)
+
+        # Step 4: Notify approval system of completion
+        if approval_decision.instance_id:
+            APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
         return entry
     except Exception as error:  # pylint: disable=broad-except
         db.rollback()
@@ -795,20 +832,50 @@ def reject_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> EntryResponse:
-    require_role(current_user, UserRole.SUPERVISOR)
+    # Step 1: PDP permission check
+    pdp = PDP(db=db)
+    factory_id = resolve_factory_id(db, current_user)
+    org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="production.entry.approve",
+        resource=ResourceContext(factory_id=factory_id),
+        request_context=build_request_context(request),
+    )
+
     entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
     if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
-    if not _can_view_entry(db, current_user, entry):
-        raise HTTPException(status_code=403, detail="Access denied.")
-    assert_not_self_approval(entry.user_id, current_user.id)
+
+    # Step 2: Approval service initiation (maker-checker)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db, 
+        actor_user_id=current_user.id,
+        subject_user_id=entry.user_id,
+        workflow_key="production.entry.approve",
+        action_key="production.entry.approve",
+        resource_type="Entry",
+        resource_id=str(entry_id),
+        org_id=org_id,
+        factory_id=factory_id,
+        current_workflow_state=entry.status,
+        requested_change={"new_status": "rejected"},
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
+    # Step 3: Proceed with mutation
     entry.status = "rejected"
     reason = sanitize_text(payload.reason, max_length=500, preserve_newlines=False) if payload else None
     detail = f"entry_id={entry.id}"
     if reason:
         detail = f"{detail}; reason={reason}"
-    request.state.org_id = entry.org_id or resolve_org_id(current_user)
-    request.state.factory_id = entry.factory_id or resolve_factory_id(db, current_user)
+    request.state.org_id = entry.org_id or org_id
+    request.state.factory_id = entry.factory_id or factory_id
     try:
         _write_audit_log(
             db,
@@ -820,6 +887,11 @@ def reject_entry(
         db.commit()
         db.refresh(entry)
         _invalidate_entry_related_cache(entry)
+
+        # Step 4: Notify approval system of completion
+        if approval_decision.instance_id:
+            APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
         return entry
     except Exception as error:  # pylint: disable=broad-except
         db.rollback()
@@ -1022,17 +1094,54 @@ def delete_entry(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict[str, str]:
-    require_role(current_user, UserRole.MANAGER)
+    pdp = PDP(db=db)
+    factory_id = resolve_factory_id(db, current_user)
+    org_id = resolve_org_id(current_user)
+    pdp.require_permission(
+        actor=current_user,
+        permission_key="production.entry.delete",
+        resource=ResourceContext(factory_id=factory_id),
+        request_context=build_request_context(request),
+    )
     entry = get_org_record_or_404_sync(db, Entry, entry_id, current_user)
     if not entry.is_active:
         raise HTTPException(status_code=404, detail="Entry not found.")
     if current_user.role == UserRole.MANAGER and not _can_view_entry(db, current_user, entry):
         raise HTTPException(status_code=403, detail="Access denied.")
+
+    # Approval service initiation (maker-checker)
+    approval_decision = APPROVAL_SERVICE.initiate_approval(db,
+        actor_user_id=current_user.id,
+        subject_user_id=entry.user_id,
+        workflow_key="production.entry.delete",
+        action_key="production.entry.delete",
+        resource_type="Entry",
+        resource_id=str(entry_id),
+        org_id=org_id,
+        factory_id=factory_id,
+        current_workflow_state=entry.status,
+        requested_change={"is_active": False},
+        request_context=build_request_context(request),
+    )
+
+    if approval_decision.result == "denied":
+        raise HTTPException(status_code=403, detail=approval_decision.reason)
+
+    if approval_decision.result == "approval_required":
+        return {"status": "pending_approval", "approval_instance_id": approval_decision.instance_id, "message": "Submitted for approval."}
+    elif approval_decision.result not in ("approved", "no_approval_required"):
+        raise HTTPException(status_code=500, detail=f"Unexpected approval result: {approval_decision.result}")
+
     try:
         entry.is_active = False
         _write_audit_log(db, user_id=current_user.id, action="ENTRY_DELETED", details=f"Entry soft deleted: id={entry.id}", request=request)
         db.commit()
         _invalidate_entry_related_cache(entry)
+
+        # Notify approval system of completion
+        if approval_decision.instance_id:
+            APPROVAL_SERVICE.complete_approval(db, instance_id=approval_decision.instance_id)
+
         return {"message": "Entry deleted successfully."}
     except Exception as error:  # pylint: disable=broad-except
         db.rollback()

@@ -3,10 +3,6 @@ from http import HTTPStatus
 from tests.utils import register_user
 
 
-def _auth_headers(token: str) -> dict[str, str]:
-    return {"Authorization": f"Bearer {token}"}
-
-
 def test_user_code_is_five_digits_and_unique_within_org(http_client):
     first = register_user(http_client)
     second = register_user(
@@ -23,8 +19,9 @@ def test_user_code_is_five_digits_and_unique_within_org(http_client):
 
 
 def test_invited_user_receives_org_scoped_user_code(http_client):
-    admin = register_user(http_client)
-    headers = _auth_headers(admin["access_token"])
+    admin = register_user(http_client, use_cookies=True)
+    csrf = http_client.cookies.get("dpr_csrf")
+    assert csrf
 
     invite = http_client.post(
         "/settings/users/invite",
@@ -34,12 +31,11 @@ def test_invited_user_receives_org_scoped_user_code(http_client):
             "role": "operator",
             "factory_name": admin["factory_name"],
         },
-        headers=headers,
+        headers={"X-CSRF-Token": csrf},
     )
     assert invite.status_code == HTTPStatus.CREATED, invite.text
 
-    raw = invite.json()
-    payload = raw.get("data", raw)  # unwrap response envelope if present
+    payload = invite.json()
     assert isinstance(payload.get("user_code"), int)
     assert payload["user_code"] >= 10000
     assert payload["user_code"] != admin["user_code"]

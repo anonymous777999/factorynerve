@@ -73,18 +73,15 @@ def normalize_transaction_type(value: str | None) -> str:
 
 
 def stock_balances_for_factory(db: Session, factory_id: str) -> dict[int, float]:
-    from sqlalchemy import text
-
-    rows = db.execute(
-        text(
-            "SELECT item_id, SUM(quantity_kg) AS balance "
-            "FROM steel_inventory_transactions "
-            "WHERE factory_id = :fid "
-            "GROUP BY item_id"
-        ),
-        {"fid": factory_id},
-    ).fetchall()
-    return {int(row.item_id): float(row.balance or 0.0) for row in rows}
+    balances: dict[int, float] = defaultdict(float)
+    rows = (
+        db.query(SteelInventoryTransaction.item_id, SteelInventoryTransaction.quantity_kg)
+        .filter(SteelInventoryTransaction.factory_id == factory_id)
+        .all()
+    )
+    for item_id, quantity_kg in rows:
+        balances[int(item_id)] += float(quantity_kg or 0.0)
+    return dict(balances)
 
 
 def latest_reconciliations_for_factory(db: Session, factory_id: str) -> dict[int, SteelStockReconciliation]:
@@ -400,15 +397,9 @@ def build_steel_realization_metrics(
     factory_id: str,
     target_date: date | None = None,
 ) -> dict[str, float | int]:
-    # Use date-windowed query with hard limit to prevent OOM
-    cutoff_date = (target_date - timedelta(days=90)) if target_date else (date.today() - timedelta(days=365))
     batch_rows = (
         db.query(SteelProductionBatch)
-        .filter(
-            SteelProductionBatch.factory_id == factory_id,
-            SteelProductionBatch.production_date >= cutoff_date,
-        )
-        .limit(5000)
+        .filter(SteelProductionBatch.factory_id == factory_id)
         .all()
     )
     if batch_rows:
@@ -441,13 +432,10 @@ def build_steel_realization_metrics(
         for item_id, row in output_item_cost_rollup.items()
     }
 
-    invoices_query = db.query(SteelSalesInvoice).filter(
-        SteelSalesInvoice.factory_id == factory_id,
-        SteelSalesInvoice.invoice_date >= cutoff_date,
-    )
+    invoices_query = db.query(SteelSalesInvoice).filter(SteelSalesInvoice.factory_id == factory_id)
     if target_date is not None:
         invoices_query = invoices_query.filter(SteelSalesInvoice.invoice_date == target_date)
-    invoice_rows = invoices_query.limit(5000).all()
+    invoice_rows = invoices_query.all()
     invoice_ids = [int(row.id) for row in invoice_rows]
     invoice_lines = (
         db.query(SteelSalesInvoiceLine)
@@ -461,14 +449,11 @@ def build_steel_realization_metrics(
     dispatch_query = (
         db.query(SteelDispatchLine, SteelDispatch)
         .join(SteelDispatch, SteelDispatch.id == SteelDispatchLine.dispatch_id)
-        .filter(
-            SteelDispatch.factory_id == factory_id,
-            SteelDispatch.dispatch_date >= cutoff_date,
-        )
+        .filter(SteelDispatch.factory_id == factory_id)
     )
     if target_date is not None:
         dispatch_query = dispatch_query.filter(SteelDispatch.dispatch_date == target_date)
-    dispatch_rows = dispatch_query.limit(5000).all()
+    dispatch_rows = dispatch_query.all()
 
     realized_dispatched_revenue_inr = 0.0
     realized_dispatched_cost_inr = 0.0

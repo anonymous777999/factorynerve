@@ -23,6 +23,22 @@ class UserRole(str, Enum):
     OWNER = "owner"
 
 
+_ROLE_ORDER = {
+    UserRole.ATTENDANCE: 0,
+    UserRole.OPERATOR: 1,
+    UserRole.ACCOUNTANT: 2,
+    UserRole.SUPERVISOR: 3,
+    UserRole.MANAGER: 4,
+    UserRole.ADMIN: 5,
+    UserRole.OWNER: 6,
+}
+
+
+def role_rank(role: UserRole) -> int:
+    """Return numeric rank for a role. Higher = more privileged."""
+    return _ROLE_ORDER.get(role, 0)
+
+
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (

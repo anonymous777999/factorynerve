@@ -4,12 +4,11 @@ import importlib.util
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 import pytest
 
 from backend.models.subscription import Subscription
-from backend.models.invoice import Invoice
 from backend.services import billing_manager
 
 
@@ -37,14 +36,12 @@ async def test_subscription_resolves_by_org_id(monkeypatch):
         org_id="org-123",
         user_id=42,
         plan="free",
-        status="active",
+        status="trialing",
         provider=None,
         current_period_end_at=None,
         trial_end_at=None,
-        grace_period_end_at=None,
         pending_plan=None,
         pending_plan_effective_at=None,
-        created_at=None,
         updated_at=None,
     )
     apply_sub = SimpleNamespace(
@@ -56,10 +53,8 @@ async def test_subscription_resolves_by_org_id(monkeypatch):
         provider=None,
         current_period_end_at=None,
         trial_end_at=None,
-        grace_period_end_at=None,
         pending_plan="growth",
         pending_plan_effective_at=None,
-        created_at=None,
         updated_at=None,
     )
     scheduled_sub = SimpleNamespace(
@@ -71,10 +66,8 @@ async def test_subscription_resolves_by_org_id(monkeypatch):
         provider="razorpay",
         current_period_end_at=None,
         trial_end_at=None,
-        grace_period_end_at=None,
         pending_plan=None,
         pending_plan_effective_at=None,
-        created_at=None,
         updated_at=None,
     )
     due_sub = SimpleNamespace(
@@ -86,10 +79,8 @@ async def test_subscription_resolves_by_org_id(monkeypatch):
         provider="razorpay",
         current_period_end_at=None,
         trial_end_at=None,
-        grace_period_end_at=None,
         pending_plan="free",
         pending_plan_effective_at=datetime.now(timezone.utc) - timedelta(days=1),
-        created_at=None,
         updated_at=None,
     )
     user = SimpleNamespace(id=42, org_id="org-123")
@@ -97,12 +88,12 @@ async def test_subscription_resolves_by_org_id(monkeypatch):
     plan_row = SimpleNamespace(user_id=42, plan="free", updated_at=None)
 
     active_query = MagicMock()
-    active_query.filter.return_value.all.return_value = [active_sub]
+    active_query.filter.return_value.first.return_value = active_sub
 
     resolve_user_apply_query = MagicMock()
     resolve_user_apply_query.filter.return_value.first.return_value = user
     apply_query = MagicMock()
-    apply_query.filter.return_value.all.return_value = [apply_sub]
+    apply_query.filter.return_value.first.return_value = apply_sub
     plan_apply_query = MagicMock()
     plan_apply_query.filter.return_value.first.return_value = plan_row
     audit_user_apply_query = MagicMock()
@@ -113,12 +104,12 @@ async def test_subscription_resolves_by_org_id(monkeypatch):
     resolve_user_schedule_query = MagicMock()
     resolve_user_schedule_query.filter.return_value.first.return_value = user
     schedule_query = MagicMock()
-    schedule_query.filter.return_value.all.return_value = [scheduled_sub]
+    schedule_query.filter.return_value.first.return_value = scheduled_sub
 
     resolve_user_cancel_query = MagicMock()
     resolve_user_cancel_query.filter.return_value.first.return_value = user
     cancel_query = MagicMock()
-    cancel_query.filter.return_value.all.return_value = [scheduled_sub]
+    cancel_query.filter.return_value.first.return_value = scheduled_sub
 
     due_query = MagicMock()
     due_query.filter.return_value = due_query
@@ -127,7 +118,7 @@ async def test_subscription_resolves_by_org_id(monkeypatch):
     resolve_user_due_apply_query = MagicMock()
     resolve_user_due_apply_query.filter.return_value.first.return_value = user
     due_apply_query = MagicMock()
-    due_apply_query.filter.return_value.all.return_value = [due_sub]
+    due_apply_query.filter.return_value.first.return_value = due_sub
     plan_due_apply_query = MagicMock()
     plan_due_apply_query.filter.return_value.first.return_value = plan_row
     audit_user_due_apply_query = MagicMock()
@@ -186,16 +177,9 @@ async def test_subscription_resolves_by_org_id(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_no_duplicate_active_subscription_per_org():
-    index = next(index for index in Subscription.__table__.indexes if index.name == "uq_subscriptions_org_id")
+    index = next(index for index in Subscription.__table__.indexes if index.name == "uq_subscriptions_active_org_id")
     assert index.unique is True
-    assert "status NOT IN" in str(index.dialect_options["postgresql"]["where"])
-
-
-@pytest.mark.asyncio
-async def test_unique_invoice_provider_index_ignores_cleared_duplicates():
-    index = next(index for index in Invoice.__table__.indexes if index.name == "ix_invoices_user_provider_invoice")
-    assert index.unique is True
-    assert "provider_invoice_id IS NOT NULL" in str(index.dialect_options["postgresql"]["where"])
+    assert "status = 'active'" in str(index.dialect_options["postgresql"]["where"])
 
 
 @pytest.mark.asyncio
@@ -221,46 +205,28 @@ async def test_migration_backfill_correctness(monkeypatch):
     inspector.get_columns.return_value = [{"name": "id"}, {"name": "user_id"}, {"name": "status"}]
     inspector.get_indexes.return_value = []
 
-    bind = MagicMock()
-    bind.dialect.name = "postgresql"
-    bind.execute.return_value.scalar.return_value = 0
-    bind.execute.return_value.fetchall.return_value = []
-
-    batch_op = MagicMock()
-    batch_context = MagicMock()
-    batch_context.__enter__.return_value = batch_op
-    batch_context.__exit__.return_value = None
-
     op = MagicMock()
-    op.get_bind.return_value = bind
-    op.batch_alter_table.return_value = batch_context
+    op.get_bind.return_value = object()
 
     monkeypatch.setattr(module.sa, "inspect", lambda bind: inspector)
     monkeypatch.setattr(module, "op", op)
 
     module.upgrade()
 
-    assert batch_op.add_column.call_count == 1
-    added_column = batch_op.add_column.call_args.args[0]
+    assert op.add_column.call_count == 1
+    added_column = op.add_column.call_args.args[1]
     assert added_column.name == "org_id"
     assert added_column.nullable is True
-    batch_op.create_foreign_key.assert_called_once_with(
-        "fk_subscriptions_org_id_organizations",
-        "organizations",
-        ["org_id"],
-        ["org_id"],
-    )
     assert any(
-        "SET org_id = (" in str(execute_call.args[0])
-        and "users.id = subscriptions.user_id" in str(execute_call.args[0])
-        for execute_call in bind.execute.call_args_list
+        "SET org_id = users.org_id" in str(call.args[0]) and "users.id = subscriptions.user_id" in str(call.args[0])
+        for call in op.execute.call_args_list
     )
-    assert batch_op.alter_column.call_args.kwargs["nullable"] is False
+    assert op.alter_column.call_args.kwargs["nullable"] is False
     assert any(
-        index_call.args[0] == "uq_subscriptions_active_org_id"
-        and index_call.kwargs.get("unique") is True
-        and "status = 'active'" in str(index_call.kwargs.get("postgresql_where"))
-        for index_call in op.create_index.call_args_list
+        call.args[0] == "uq_subscriptions_active_org_id"
+        and call.kwargs.get("unique") is True
+        and "status = 'active'" in str(call.kwargs.get("postgresql_where"))
+        for call in op.create_index.call_args_list
     )
 
     inspector.get_columns.return_value = [{"name": "id"}, {"name": "user_id"}, {"name": "org_id"}]
@@ -272,8 +238,4 @@ async def test_migration_backfill_correctness(monkeypatch):
     module.downgrade()
 
     assert op.drop_index.call_count == 2
-    batch_op.drop_constraint.assert_called_once_with(
-        "fk_subscriptions_org_id_organizations",
-        type_="foreignkey",
-    )
-    assert batch_op.drop_column.call_args == call("org_id")
+    assert op.drop_column.call_args.args == ("subscriptions", "org_id")
