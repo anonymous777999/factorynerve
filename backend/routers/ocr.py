@@ -1993,7 +1993,7 @@ def _apply_verification_payload(
     verification.updated_at = datetime.now(timezone.utc)
 
 
-def _require_ocr_access(current_user: User) -> None:
+def _require_ocr_access(db: Session, current_user: User) -> None:
     PDP(db=db).require_permission(actor=current_user, permission_key="ocr.template.view")
 
 
@@ -3392,6 +3392,7 @@ async def ocr_logbook(
 
 @router.post("/warp", status_code=status.HTTP_200_OK)
 async def warp_document(
+    db: Session = Depends(get_db),
     file: UploadFile = File(...),
     corners: str | None = Form(default=None),
     current_user: User = Depends(get_current_user),
