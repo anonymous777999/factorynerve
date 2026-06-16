@@ -39,8 +39,11 @@ os.environ.setdefault("DATA_ENCRYPTION_KEY", Fernet.generate_key().decode("utf-8
 os.environ.setdefault("AI_PROVIDER_TIMEOUT_SECONDS", "1")
 os.environ.setdefault("AI_PROVIDER_RETRY_ATTEMPTS", "1")
 os.environ.setdefault("AI_PROVIDER_RETRY_BACKOFF_SECONDS", "0")
-os.environ.setdefault("RATE_LIMIT_MAX_REQUESTS", "5000")
-os.environ.setdefault("AUTH_RATE_LIMIT_MAX_ATTEMPTS", "5000")
+# Force high rate limits for tests — setdefault won't work if shell has lower values
+os.environ["RATE_LIMIT_MAX_REQUESTS"] = "100000"
+os.environ["RATE_LIMIT_WINDOW_SECONDS"] = "1"
+os.environ["AUTH_RATE_LIMIT_MAX_ATTEMPTS"] = "100000"
+os.environ["OCR_RATE_LIMIT_MAX_REQUESTS"] = "100000"
 os.environ.setdefault("EMAIL_VERIFICATION_EXPOSE_LINK", "1")
 os.environ.setdefault("PASSWORD_RESET_EXPOSE_LINK", "1")
 os.environ.setdefault("SMTP_DRY_RUN", "1")
