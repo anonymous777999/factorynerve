@@ -62,7 +62,7 @@ def build_request_context(request: Any = None) -> dict[str, Any]:
     if request is not None:
         ctx["ip"] = getattr(request.client, "host", None) if hasattr(request, "client") else None
         ctx["user_agent"] = request.headers.get("user-agent") if hasattr(request, "headers") else None
-        ctx["path"] = getattr(request, "url", {}).get("path") if hasattr(request, "url") else None
+        ctx["path"] = request.url.path if hasattr(request, "url") and request.url is not None else None
     return ctx
 
 
