@@ -2444,7 +2444,7 @@ def list_templates(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     _require_templates_access(db, current_user)
     templates = (
         _template_query(db, current_user)
@@ -2483,7 +2483,7 @@ async def create_template(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     _require_templates_access(db, current_user)
     if not samples:
         raise HTTPException(status_code=400, detail="Sample images are required.")
@@ -2552,7 +2552,7 @@ def deactivate_template(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     _require_templates_access(db, current_user)
     template = (
         _template_query(db, current_user)
@@ -2573,7 +2573,7 @@ def list_verifications(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> list[dict]:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     query = _verification_query(db, current_user)
     if verification_status:
         normalized = (sanitize_text(verification_status, max_length=20, preserve_newlines=False) or "").lower()
@@ -2589,7 +2589,7 @@ def get_verification_summary(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     records = _verification_query(db, current_user).all()
 
     trusted_documents = 0
@@ -2676,7 +2676,7 @@ async def create_verification(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
 
     template = None
     if template_id is not None:
@@ -2763,7 +2763,7 @@ def get_verification(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     verification = _get_verification_or_404(db, verification_id, current_user)
     return _serialize_verification(db, verification)
 
@@ -2774,7 +2774,7 @@ def get_verification_source_image(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FileResponse:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     verification = _get_verification_or_404(db, verification_id, current_user)
     if not verification.source_image_path:
         raise HTTPException(status_code=404, detail="Verification source image not found.")
@@ -2805,7 +2805,7 @@ def export_verification_excel(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     verification = _get_verification_or_404(db, verification_id, current_user)
     rows = _verification_export_rows(verification)
     headers = _verification_export_headers(verification, rows)
@@ -2833,7 +2833,7 @@ def create_verification_share_link(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     verification = _get_verification_or_404(db, verification_id, current_user)
     token = _build_ocr_share_token(verification)
     expires_at = datetime.now(timezone.utc) + timedelta(seconds=_OCR_SHARE_MAX_AGE_SECONDS)
@@ -2872,7 +2872,7 @@ def update_verification(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     verification = _get_verification_or_404(db, verification_id, current_user)
 
     template_id = payload.template_id
@@ -2949,7 +2949,7 @@ def submit_verification(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     verification = _get_verification_or_404(db, verification_id, current_user)
     if not (verification.reviewed_rows or verification.original_rows):
         raise HTTPException(status_code=400, detail="Verification draft has no OCR rows to submit.")
@@ -2976,7 +2976,7 @@ def approve_verification(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
 
     # Step 1: Load verification and resolve domain-split permission
     verification = _get_verification_or_404(db, verification_id, current_user)
@@ -3058,7 +3058,7 @@ def reject_verification(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> dict:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
 
     # Step 1: Load verification for context
     verification = _get_verification_or_404(db, verification_id, current_user)
@@ -3140,7 +3140,7 @@ async def ocr_logbook(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     image_bytes = await _read_validated_image_upload(file)
     requested_doc_type = _normalize_doc_type_hint(doc_type_hint) or "table"
     requested_model = sanitize_text(model or force_model, max_length=80, preserve_newlines=False) or None
@@ -3396,7 +3396,7 @@ async def warp_document(
     corners: str | None = Form(default=None),
     current_user: User = Depends(get_current_user),
 ) -> Response:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     image_bytes = await _read_validated_image_upload(file)
 
     parsed = _parse_json_value(corners, field_name="corners")
@@ -3440,7 +3440,7 @@ async def ocr_logbook_excel(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Response:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     requested_model = sanitize_text(model, max_length=80, preserve_newlines=False) or None
     try:
         if mock:
@@ -3540,7 +3540,7 @@ async def ocr_logbook_excel_async(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     requested_model = sanitize_text(model, max_length=80, preserve_newlines=False) or None
     org_id = resolve_org_id(current_user)
     try:
@@ -3590,7 +3590,7 @@ async def ocr_table_excel(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> Response:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     del preprocess_profile
     requested_model = sanitize_text(model, max_length=80, preserve_newlines=False) or None
     try:
@@ -3655,7 +3655,7 @@ async def ocr_table_excel_async(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ) -> dict:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     del preprocess_profile
     requested_model = sanitize_text(model, max_length=80, preserve_newlines=False) or None
     try:
@@ -3706,7 +3706,7 @@ async def ocr_table_excel_async(
     dependencies=[Depends(require_active_subscription)],
 )
 def get_ocr_job(job_id: str, current_user: User = Depends(get_current_user)) -> dict:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     payload = get_background_job(job_id, owner_id=current_user.id)
     if payload is None or not str(payload.get("kind", "")).startswith("ocr_"):
         raise HTTPException(status_code=404, detail="Job not found.")
@@ -3720,7 +3720,7 @@ def get_ocr_job(job_id: str, current_user: User = Depends(get_current_user)) -> 
     dependencies=[Depends(require_active_subscription)],
 )
 def download_ocr_job(job_id: str, current_user: User = Depends(get_current_user)) -> Response:
-    _require_ocr_access(current_user)
+    _require_ocr_access(db, current_user)
     job = get_background_job(job_id, owner_id=current_user.id)
     if job is None or not str(job.get("kind", "")).startswith("ocr_"):
         raise HTTPException(status_code=404, detail="Job not found.")
