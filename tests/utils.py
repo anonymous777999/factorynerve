@@ -126,6 +126,11 @@ def register_user(
         mfa_verified=False,
     )
 
+    if use_cookies:
+        client.cookies.set("access_token_cookie", access_token)
+        # Trigger CSRF middleware to set the CSRF cookie
+        client.get("/health")
+
     return {
         "email": user.email,
         "password": payload["password"],

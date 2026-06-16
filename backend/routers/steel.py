@@ -1840,7 +1840,7 @@ def create_steel_inventory_item(
     # Conditional approval for item creation
     approval_decision_item = APPROVAL_SERVICE.initiate_approval(db,
         actor_user_id=current_user.id,
-        subject_user_id=current_user.id,
+        subject_user_id=None,
         workflow_key="inventory.item.manage",
         action_key="inventory.item.manage",
         resource_type="SteelInventoryItem",
@@ -1920,16 +1920,16 @@ def create_steel_inventory_transaction(
 
     pdp = PDP(db=db)
     pdp.require_permission(
-        current_user,
-        "inventory.transaction.create",
-        factory_id=factory.factory_id,
-        request=request,
+        actor=current_user,
+        permission_key="inventory.transaction.create",
+        resource=ResourceContext(factory_id=factory.factory_id),
+        request_context=build_request_context(request),
     )
 
     # Conditional approval for high-value transactions
     approval_decision_txn = APPROVAL_SERVICE.initiate_approval(db,
         actor_user_id=current_user.id,
-        subject_user_id=current_user.id,
+        subject_user_id=None,
         workflow_key="inventory.transaction.create",
         action_key="inventory.transaction.create",
         resource_type="SteelInventoryTransaction",

@@ -147,7 +147,11 @@ def base_url() -> str:
 
 @pytest.fixture
 def http_client(base_url: str):
-    client = httpx.Client(base_url=base_url, timeout=20.0)
+    client = httpx.Client(
+        base_url=base_url,
+        timeout=20.0,
+        headers={"X-Response-Envelope": "0"},
+    )
     try:
         yield client
     finally:
