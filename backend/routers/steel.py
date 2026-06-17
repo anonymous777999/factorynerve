@@ -3290,10 +3290,10 @@ def create_steel_customer_payment(
 
     pdp = PDP(db=db)
     pdp.require_permission(
-        current_user,
-        "payment.record.create",
-        factory_id=factory.factory_id,
-        request=request,
+        actor=current_user,
+        permission_key="payment.record.create",
+        resource=ResourceContext(factory_id=factory.factory_id),
+        request_context=build_request_context(request),
     )
 
     customer = _get_customer_or_404(db, factory_id=factory.factory_id, customer_id=payload.customer_id)
@@ -3976,6 +3976,11 @@ def get_steel_dispatch_detail(
         .filter(SteelProductionBatch.factory_id == factory.factory_id, SteelProductionBatch.id.in_(batch_ids))
         .all()
     } if batch_ids else {}
+    can_view_dispatch_line_financials = _can_view_steel_financials(current_user) or current_user.role in {
+        UserRole.MANAGER,
+        UserRole.ADMIN,
+        UserRole.ACCOUNTANT,
+    }
     serialized_lines = [
         _serialize_steel_dispatch_line(
             row,
@@ -4014,11 +4019,6 @@ def get_steel_dispatch_detail(
         user.id: user
         for user in db.query(User).filter(User.id.in_({actor_id for actor_id in actor_ids if actor_id})).all()
     } if actor_ids else {}
-    can_view_dispatch_line_financials = _can_view_steel_financials(current_user) or current_user.role in {
-        UserRole.MANAGER,
-        UserRole.ADMIN,
-        UserRole.ACCOUNTANT,
-    }
 
     return {
         "factory": {
