@@ -24,7 +24,7 @@ from backend.services.billing.provider_adapter import AbstractPaymentProvider, P
 
 
 logger = logging.getLogger(__name__)
-SUPPORTED_BILLING_CYCLES = {"monthly", "annual"}
+SUPPORTED_BILLING_CYCLES = {"monthly", "yearly"}
 
 
 @dataclass(frozen=True)
@@ -51,10 +51,10 @@ def get_plan_catalog_entry(plan_id: str) -> PlanCatalogEntry:
     )
 
 
-def calculate_amount_paise(plan: PlanCatalogEntry, billing_cycle: Literal["monthly", "annual"]) -> int:
+def calculate_amount_paise(plan: PlanCatalogEntry, billing_cycle: Literal["monthly", "yearly"]) -> int:
     if billing_cycle not in SUPPORTED_BILLING_CYCLES:
         raise ValueError("Invalid billing cycle.")
-    amount = plan.price_annual if billing_cycle == "annual" else plan.price_monthly
+    amount = plan.price_annual if billing_cycle == "yearly" else plan.price_monthly
     return int(amount) * 100
 
 
@@ -65,7 +65,7 @@ async def create_payment_order(
     org_id: str,
     user_id: int | None,
     plan_id: str,
-    billing_cycle: Literal["monthly", "annual"],
+    billing_cycle: Literal["monthly", "yearly"],
     currency: str = "INR",
 ) -> dict[str, Any]:
     plan = get_plan_catalog_entry(plan_id)
@@ -128,7 +128,7 @@ def create_paid_invoice(
         period_end=period_end,
         invoice_number=next_invoice_number(db, org_id),
         issued_at=datetime.now(timezone.utc),
-        plan="free",
+        plan="pilot",
     )
     db.add(invoice)
     return invoice
@@ -137,9 +137,9 @@ def create_paid_invoice(
 def _resolve_cycle_period(
     *,
     now: datetime,
-    billing_cycle: Literal["monthly", "annual"],
+    billing_cycle: Literal["monthly", "yearly"],
 ) -> tuple[datetime, datetime]:
-    if billing_cycle == "annual":
+    if billing_cycle == "yearly":
         return now, now + timedelta(days=365)
     return now, now + timedelta(days=30)
 
@@ -162,12 +162,12 @@ def _extract_subscription_entity(event: dict[str, Any]) -> dict[str, Any]:
     return subscription.get("entity", {}) or {}
 
 
-def _billing_cycle_from_notes(event: dict[str, Any]) -> Literal["monthly", "annual"]:
+def _billing_cycle_from_notes(event: dict[str, Any]) -> Literal["monthly", "yearly"]:
     for entity in (_extract_order_entity(event), _extract_payment_entity(event), _extract_subscription_entity(event)):
         notes = entity.get("notes", {}) or {}
         raw = str(notes.get("billing_cycle") or "").strip().lower()
-        if raw == "annual":
-            return "annual"
+        if raw == "yearly":
+            return "yearly"
     return "monthly"
 
 
@@ -195,7 +195,7 @@ def _resolve_payment_order(db: Session, order_id: str) -> PaymentOrder:
 def _resolve_subscription(db: Session, org_id: str) -> Subscription:
     sub = get_mutable_subscription(db, org_id)
     if not sub:
-        sub = Subscription(org_id=org_id, user_id=None, plan="free", status="inactive")
+        sub = Subscription(org_id=org_id, user_id=None, plan="pilot", status="inactive")
         db.add(sub)
         db.flush()
     return sub

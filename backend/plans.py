@@ -17,17 +17,21 @@ from backend.services.plan_resolver import get_effective_plan
 from backend.utils import ensure_utc
 
 
-ALLOWED_PLANS = {"free", "starter", "growth", "factory", "business", "enterprise"}
+ALLOWED_PLANS = {"pilot", "operator", "factory", "operations", "group", "enterprise"}
 PLAN_ALIASES = {
-    "pro": "growth",
-    "biz": "business",
+    "free": "pilot",
+    "starter": "operator",
+    "pro": "operator",
+    "growth": "operations",
+    "biz": "group",
+    "business": "group",
 }
 PLAN_ORDER = {
-    "free": 0,
-    "starter": 1,
-    "growth": 2,
-    "factory": 3,
-    "business": 4,
+    "pilot": 0,
+    "operator": 1,
+    "factory": 2,
+    "operations": 3,
+    "group": 4,
     "enterprise": 5,
 }
 
@@ -35,98 +39,73 @@ PLAN_ORDER = {
 def normalize_plan(plan: str | None) -> str:
     key = (plan or "").strip().lower()
     if not key:
-        return "free"
+        return "pilot"
     key = PLAN_ALIASES.get(key, key)
-    return key if key in ALLOWED_PLANS else "free"
+    return key if key in ALLOWED_PLANS else "pilot"
 
 
 def plan_rank(plan: str | None) -> int:
     return PLAN_ORDER.get(normalize_plan(plan), 0)
 
 
-DEFAULT_PLAN = normalize_plan(os.getenv("OCR_DEFAULT_PLAN") or "free")
+DEFAULT_PLAN = normalize_plan(os.getenv("OCR_DEFAULT_PLAN") or "pilot")
 HARD_USER_FACTORY_CAPS = True
 ENTERPRISE_CUSTOM_ONLY = True
 OCR_RATE_LIMITS = {
-    "free": 6,
-    "starter": 10,
-    "growth": 20,
-    "factory": 40,
-    "business": 50,
+    "pilot": 6,
+    "operator": 10,
+    "factory": 20,
+    "operations": 30,
+    "group": 40,
     "enterprise": 60,
 }
 
 
 PLAN_CATALOG: dict[str, dict[str, Any]] = {
-    "free": {
-        "id": "free",
-        "name": "Free",
+    "pilot": {
+        "id": "pilot",
+        "name": "Factory Pilot",
         "subtitle": "Solo operators, trial",
         "monthly_price": 0,
         "display_price": "₹0",
-        "badge": None,
-        "user_limit": 3,
+        "badge": "FREE PILOT",
+        "user_limit": 7,
         "factory_limit": 1,
-        "limits": {"ocr": 0, "summary": 10, "email": 0, "smart": 30},
+        "limits": {"ocr": 150, "summary": 50, "email": 50, "smart": 100},
         "unlimited_limits": [],
         "features": {
             "accountant": False,
-            "emailSummary": False,
-            "whatsapp": False,
+            "emailSummary": True,
+            "whatsapp": True,
             "priority": False,
             "pdf": False,
             "excel": True,
-            "analytics": False,
+            "analytics": True,
             "templates": False,
             "api": False,
             "onPremise": False,
             "nlq": False,
         },
     },
-    "starter": {
-        "id": "starter",
-        "name": "Starter",
-        "subtitle": "Workshops, 5-20 workers",
-        "monthly_price": 499,
-        "display_price": "₹499/mo",
-        "badge": "new",
-        "user_limit": 8,
+    "operator": {
+        "id": "operator",
+        "name": "Operator",
+        "subtitle": "Small teams, single plant or dispatch hub",
+        "monthly_price": 3499,
+        "display_price": "₹3,499/mo",
+        "badge": "ESSENTIAL",
+        "user_limit": 10,
         "factory_limit": 1,
-        "limits": {"ocr": 0, "summary": 30, "email": 0, "smart": 100},
+        "limits": {"ocr": 0, "summary": 30, "email": 30, "smart": 100},
         "unlimited_limits": [],
         "features": {
             "accountant": False,
-            "emailSummary": False,
-            "whatsapp": False,
+            "emailSummary": True,
+            "whatsapp": True,
             "priority": False,
             "pdf": True,
             "excel": True,
             "analytics": False,
-            "templates": False,
-            "api": False,
-            "onPremise": False,
-            "nlq": False,
-        },
-    },
-    "growth": {
-        "id": "growth",
-        "name": "Growth",
-        "subtitle": "SME, 20-80 workers",
-        "monthly_price": 1299,
-        "display_price": "₹1,299/mo",
-        "badge": None,
-        "user_limit": 20,
-        "factory_limit": 2,
-        "limits": {"ocr": 0, "summary": 150, "email": 150, "smart": 300},
-        "unlimited_limits": [],
-        "features": {
-            "accountant": True,
-            "emailSummary": True,
-            "whatsapp": False,
-            "priority": False,
-            "pdf": True,
-            "excel": True,
-            "analytics": True,
             "templates": False,
             "api": False,
             "onPremise": False,
@@ -136,19 +115,19 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
     "factory": {
         "id": "factory",
         "name": "Factory",
-        "subtitle": "Mid-factories, 80-300 workers",
-        "monthly_price": 2999,
-        "display_price": "₹2,999/mo",
-        "badge": "popular",
-        "user_limit": 60,
-        "factory_limit": 5,
-        "limits": {"ocr": 100, "summary": 600, "email": 600, "smart": 1500},
+        "subtitle": "Growing factories managing multiple shifts",
+        "monthly_price": 8999,
+        "display_price": "₹8,999/mo",
+        "badge": "MOST POPULAR",
+        "user_limit": 30,
+        "factory_limit": 3,
+        "limits": {"ocr": 0, "summary": 150, "email": 150, "smart": 600},
         "unlimited_limits": [],
         "features": {
             "accountant": True,
             "emailSummary": True,
             "whatsapp": True,
-            "priority": False,
+            "priority": True,
             "pdf": True,
             "excel": True,
             "analytics": True,
@@ -158,16 +137,41 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
             "nlq": False,
         },
     },
-    "business": {
-        "id": "business",
-        "name": "Business",
-        "subtitle": "Factory groups, 2-8 plants",
-        "monthly_price": 6999,
-        "display_price": "₹6,999/mo",
-        "badge": "new",
-        "user_limit": 150,
-        "factory_limit": 10,
-        "limits": {"ocr": 150, "summary": 0, "email": 0, "smart": 0},
+    "operations": {
+        "id": "operations",
+        "name": "Operations",
+        "subtitle": "Large factories with multiple departments",
+        "monthly_price": 19999,
+        "display_price": "₹19,999/mo",
+        "badge": "SCALE OPERATIONS",
+        "user_limit": 75,
+        "factory_limit": 8,
+        "limits": {"ocr": 0, "summary": 500, "email": 500, "smart": 2000},
+        "unlimited_limits": [],
+        "features": {
+            "accountant": True,
+            "emailSummary": True,
+            "whatsapp": True,
+            "priority": True,
+            "pdf": True,
+            "excel": True,
+            "analytics": True,
+            "templates": True,
+            "api": True,
+            "onPremise": False,
+            "nlq": True,
+        },
+    },
+    "group": {
+        "id": "group",
+        "name": "Group",
+        "subtitle": "Factory groups managing multiple plants",
+        "monthly_price": 44999,
+        "display_price": "₹44,999/mo",
+        "badge": "ENTERPRISE READY",
+        "user_limit": 200,
+        "factory_limit": 20,
+        "limits": {"ocr": 0, "summary": 0, "email": 0, "smart": 0},
         "unlimited_limits": ["summary", "email", "smart"],
         "features": {
             "accountant": True,
@@ -186,12 +190,12 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
     "enterprise": {
         "id": "enterprise",
         "name": "Enterprise",
-        "subtitle": "Industrial groups, 8+ plants",
+        "subtitle": "Industrial groups, multi-plant operations",
         "monthly_price": 0,
-        "display_price": "Contact sales",
-        "custom_price_hint": "₹20k–₹80k/mo",
+        "display_price": "Custom",
+        "custom_price_hint": "From ₹1,50,000/mo",
         "sales_only": True,
-        "badge": None,
+        "badge": "CUSTOM SOLUTION",
         "user_limit": 0,
         "factory_limit": 0,
         "limits": {"ocr": 0, "summary": 0, "email": 0, "smart": 0},
@@ -263,14 +267,14 @@ FEATURE_ADDON_MAP = {
 
 def get_plan(plan: str | None) -> dict[str, Any]:
     key = normalize_plan(plan)
-    return PLAN_CATALOG.get(key, PLAN_CATALOG["free"])
+    return PLAN_CATALOG.get(key, PLAN_CATALOG["pilot"])
 
 
 def ops_alert_recipient_limit(plan: str | None) -> int:
     normalized = normalize_plan(plan)
     if normalized == "enterprise":
         return 20
-    if normalized in {"growth", "factory", "business"}:
+    if normalized in {"operations", "factory", "group"}:
         return 10
     return 2
 
@@ -295,7 +299,7 @@ def plan_limit_is_unlimited(plan: str | None, limit_key: str) -> bool:
 
 def plan_ocr_rate_limit(plan: str | None) -> int:
     plan_key = normalize_plan(plan)
-    base = int(OCR_RATE_LIMITS.get(plan_key, OCR_RATE_LIMITS["free"]))
+    base = int(OCR_RATE_LIMITS.get(plan_key, OCR_RATE_LIMITS["pilot"]))
     return int(os.getenv(f"OCR_PLAN_{plan_key.upper()}_RATE_LIMIT", str(base)))
 
 

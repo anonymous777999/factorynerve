@@ -45,7 +45,7 @@ def _require_analytics_feature(db: Session, current_user: User) -> None:
 
 
 def _basic_min_plan() -> str:
-    raw = (os.getenv("ANALYTICS_BASIC_MIN_PLAN") or "growth").strip().lower()
+    raw = (os.getenv("ANALYTICS_BASIC_MIN_PLAN") or "pilot").strip().lower()
     return normalize_plan(raw)
 
 

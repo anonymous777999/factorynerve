@@ -23,9 +23,9 @@ def _set_org_plan(email: str, plan: str) -> None:
         db.commit()
 
 
-def test_ai_suggestions_increment_smart_usage_for_growth_plan(http_client):
+def test_ai_suggestions_increment_smart_usage_for_operations_plan(http_client):
     user = register_user(http_client, role="admin")
-    _set_org_plan(user["email"], "growth")
+    _set_org_plan(user["email"], "operations")
     headers = _auth_headers(user["access_token"])
 
     payload = create_entry_payload(index=2)
@@ -49,9 +49,9 @@ def test_ai_suggestions_increment_smart_usage_for_growth_plan(http_client):
     assert after_payload["smart_used"] == before_payload["smart_used"] + 1
 
 
-def test_ai_anomalies_require_growth_and_executive_summary_requires_factory(http_client):
-    free_user = register_user(http_client, role="admin")
-    free_headers = _auth_headers(free_user["access_token"])
+def test_ai_anomalies_require_operations_and_executive_summary_requires_factory(http_client):
+    pilot_user = register_user(http_client, role="admin")
+    pilot_headers = _auth_headers(pilot_user["access_token"])
 
     blocked_anomalies = http_client.get("/ai/anomalies", headers=free_headers)
     assert blocked_anomalies.status_code == HTTPStatus.PAYMENT_REQUIRED
@@ -60,7 +60,7 @@ def test_ai_anomalies_require_growth_and_executive_summary_requires_factory(http
     assert blocked_exec.status_code == HTTPStatus.PAYMENT_REQUIRED
 
     growth_user = register_user(http_client, role="admin")
-    _set_org_plan(growth_user["email"], "growth")
+    _set_org_plan(growth_user["email"], "operations")
     growth_headers = _auth_headers(growth_user["access_token"])
 
     first_payload = create_entry_payload(index=3)
@@ -95,7 +95,7 @@ def test_ai_anomalies_require_growth_and_executive_summary_requires_factory(http
     assert int(executive_payload["metrics"]["total_units"]) >= first_payload["units_produced"] + second_payload["units_produced"]
 
 
-def test_ai_nlq_requires_business_and_returns_data(http_client):
+def test_ai_nlq_requires_group_and_returns_data(http_client):
     factory_user = register_user(http_client, role="admin")
     _set_org_plan(factory_user["email"], "factory")
     factory_headers = _auth_headers(factory_user["access_token"])
@@ -104,7 +104,7 @@ def test_ai_nlq_requires_business_and_returns_data(http_client):
     assert blocked.status_code == HTTPStatus.PAYMENT_REQUIRED
 
     business_user = register_user(http_client, role="admin")
-    _set_org_plan(business_user["email"], "business")
+    _set_org_plan(business_user["email"], "group")
     headers = _auth_headers(business_user["access_token"])
 
     payload = create_entry_payload(index=6)
@@ -122,7 +122,7 @@ def test_ai_nlq_requires_business_and_returns_data(http_client):
 
 def test_billing_status_exposes_ai_usage_summary(http_client):
     user = register_user(http_client, role="admin")
-    _set_org_plan(user["email"], "growth")
+    _set_org_plan(user["email"], "operations")
     headers = _auth_headers(user["access_token"])
 
     suggestion = http_client.get("/ai/suggestions?shift=morning", headers=headers)

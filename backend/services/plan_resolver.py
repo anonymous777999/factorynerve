@@ -21,4 +21,4 @@ def get_effective_plan(org_id: str, db: Session) -> str:
     )
     if subscription and subscription.plan:
         return str(subscription.plan)
-    return "free"
+    return "pilot"

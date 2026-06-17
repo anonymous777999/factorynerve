@@ -400,7 +400,7 @@ def _summary_scope(entry: Entry) -> str:
 
 
 def _summary_min_plan() -> str:
-    raw = (os.getenv("SUMMARY_REGEN_MIN_PLAN") or "free").strip().lower()
+    raw = (os.getenv("SUMMARY_REGEN_MIN_PLAN") or "pilot").strip().lower()
     return normalize_plan(raw)
 
 

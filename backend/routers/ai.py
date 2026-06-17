@@ -138,19 +138,19 @@ def _min_plan(env_key: str, default: str) -> str:
 
 
 def _suggestion_min_plan() -> str:
-    return _min_plan("AI_SUGGESTIONS_MIN_PLAN", "free")
+    return _min_plan("AI_SUGGESTIONS_MIN_PLAN", "pilot")
 
 
 def _anomaly_min_plan() -> str:
-    return _min_plan("AI_ANOMALIES_MIN_PLAN", "growth")
+    return _min_plan("AI_ANOMALIES_MIN_PLAN", "pilot")
 
 
 def _nlq_min_plan() -> str:
-    return _min_plan("AI_NLQ_MIN_PLAN", "business")
+    return _min_plan("AI_NLQ_MIN_PLAN", "operations")
 
 
 def _executive_min_plan() -> str:
-    return _min_plan("AI_EXECUTIVE_MIN_PLAN", "factory")
+    return _min_plan("AI_EXECUTIVE_MIN_PLAN", "pilot")
 
 
 def _scoped_entries_query(db: Session, current_user: User):

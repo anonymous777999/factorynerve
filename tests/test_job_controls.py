@@ -103,7 +103,7 @@ def test_shared_report_pdf_job_and_cancel(http_client):
     user = register_user(http_client, role="manager")
     headers = _auth_headers(user["access_token"])
 
-    set_org_plan_for_user_email(user["email"], "growth")
+    set_org_plan_for_user_email(user["email"], "operations")
 
     created = http_client.post("/entries", json=create_entry_payload(index=22), headers=headers)
     assert created.status_code == HTTPStatus.CREATED, created.text

@@ -306,7 +306,7 @@ def schedule_downgrade(
     resolved_org_id = _resolve_subscription_org_id(db, org_id=org_id, user_id=user_id)
     sub = get_mutable_subscription(db, resolved_org_id)
     if not sub:
-        sub = Subscription(org_id=resolved_org_id, user_id=user_id, plan="free", status="trialing")
+        sub = Subscription(org_id=resolved_org_id, user_id=user_id, plan="pilot", status="trialing")
         db.add(sub)
         db.flush()
     if not effective_at:

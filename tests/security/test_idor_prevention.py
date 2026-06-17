@@ -27,8 +27,8 @@ def _seed_org_user_data():
     with SessionLocal() as db:
         db.add_all(
             [
-                Organization(org_id=org_a, name="Org A", plan="growth", created_at=datetime.now(timezone.utc), is_active=True),
-                Organization(org_id=org_b, name="Org B", plan="growth", created_at=datetime.now(timezone.utc), is_active=True),
+                Organization(org_id=org_a, name="Org A", plan="operations", created_at=datetime.now(timezone.utc), is_active=True),
+                Organization(org_id=org_b, name="Org B", plan="operations", created_at=datetime.now(timezone.utc), is_active=True),
                 Factory(factory_id=factory_a, org_id=org_a, name="Factory A"),
                 Factory(factory_id=factory_b, org_id=org_b, name="Factory B"),
             ]

@@ -35,7 +35,7 @@ async def test_subscription_resolves_by_org_id(monkeypatch):
         id=1,
         org_id="org-123",
         user_id=42,
-        plan="free",
+        plan="pilot",
         status="trialing",
         provider=None,
         current_period_end_at=None,
@@ -48,12 +48,12 @@ async def test_subscription_resolves_by_org_id(monkeypatch):
         id=2,
         org_id="org-123",
         user_id=42,
-        plan="free",
+        plan="pilot",
         status="trialing",
         provider=None,
         current_period_end_at=None,
         trial_end_at=None,
-        pending_plan="growth",
+        pending_plan="operations",
         pending_plan_effective_at=None,
         updated_at=None,
     )
@@ -61,7 +61,7 @@ async def test_subscription_resolves_by_org_id(monkeypatch):
         id=3,
         org_id="org-123",
         user_id=42,
-        plan="starter",
+        plan="operator",
         status="active",
         provider="razorpay",
         current_period_end_at=None,
@@ -74,18 +74,18 @@ async def test_subscription_resolves_by_org_id(monkeypatch):
         id=4,
         org_id="org-123",
         user_id=42,
-        plan="growth",
+        plan="operations",
         status="active",
         provider="razorpay",
         current_period_end_at=None,
         trial_end_at=None,
-        pending_plan="free",
+        pending_plan="pilot",
         pending_plan_effective_at=datetime.now(timezone.utc) - timedelta(days=1),
         updated_at=None,
     )
     user = SimpleNamespace(id=42, org_id="org-123")
-    org = SimpleNamespace(org_id="org-123", plan="free", plan_expires_at=None)
-    plan_row = SimpleNamespace(user_id=42, plan="free", updated_at=None)
+    org = SimpleNamespace(org_id="org-123", plan="pilot", plan_expires_at=None)
+    plan_row = SimpleNamespace(user_id=42, plan="pilot", updated_at=None)
 
     active_query = MagicMock()
     active_query.filter.return_value.first.return_value = active_sub
@@ -147,8 +147,8 @@ async def test_subscription_resolves_by_org_id(monkeypatch):
     ]
 
     assert billing_manager.get_active_subscription(db, "org-123") is active_sub
-    billing_manager.apply_plan_change(db, user_id=42, plan="starter")
-    assert billing_manager.schedule_downgrade(db, user_id=42, plan="free") is scheduled_sub
+    billing_manager.apply_plan_change(db, user_id=42, plan="operator")
+    assert billing_manager.schedule_downgrade(db, user_id=42, plan="pilot") is scheduled_sub
     billing_manager.cancel_scheduled_downgrade(db, user_id=42)
     assert billing_manager.apply_due_downgrades(db, user_id=42) == 1
 
@@ -166,11 +166,11 @@ async def test_subscription_resolves_by_org_id(monkeypatch):
     due_filters = [" ".join(str(arg) for arg in call.args) for call in due_query.filter.call_args_list]
     assert any("subscriptions.org_id" in rendered for rendered in due_filters)
     assert all("subscriptions.user_id" not in rendered for rendered in due_filters)
-    assert apply_sub.plan == "starter"
+    assert apply_sub.plan == "operator"
     assert apply_sub.status == "active"
     assert apply_sub.pending_plan is None
     assert scheduled_sub.pending_plan is None
-    assert due_sub.plan == "free"
+    assert due_sub.plan == "pilot"
     assert due_sub.status == "active"
     assert due_sub.pending_plan is None
 

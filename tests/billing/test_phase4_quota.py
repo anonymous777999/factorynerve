@@ -28,7 +28,7 @@ def _create_authenticated_user(*, role: UserRole = UserRole.OWNER) -> dict[str, 
     try:
         org_id = str(uuid4())
         email = f"phase4_{uuid4().hex[:10]}@example.com"
-        org = Organization(org_id=org_id, name=f"Phase4 Org {uuid4().hex[:6]}", plan="starter", is_active=True)
+        org = Organization(org_id=org_id, name=f"Phase4 Org {uuid4().hex[:6]}", plan="operator", is_active=True)
         user = User(
             org_id=org_id,
             user_code=10000 + int(uuid4().hex[:4], 16),
@@ -100,10 +100,10 @@ def _set_subscription_state(email: str, *, status: str, grace_hours: int = 24) -
         assert user is not None
         sub = db.query(Subscription).filter(Subscription.org_id == user.org_id).first()
         if not sub:
-            sub = Subscription(org_id=user.org_id, user_id=user.id, plan="starter", status="active")
+            sub = Subscription(org_id=user.org_id, user_id=user.id, plan="operator", status="active")
         sub.status = status
         sub.user_id = user.id
-        sub.plan = "starter"
+        sub.plan = "operator"
         sub.grace_period_end_at = datetime.now(timezone.utc) + timedelta(hours=grace_hours)
         db.add(sub)
         db.commit()
@@ -246,8 +246,7 @@ def test_suspended_blocks_all_routes(http_client):
 def test_rate_limit_5_per_minute_on_order_creation(http_client):
     _fallback_hits.clear()
     user = _create_authenticated_user()
-    headers = _headers(str(user["access_token"]))
-    payload = {"plan": "starter", "billing_cycle": "monthly", "currency": "INR"}
+    headers = _headers(str(user["access_token"]))        payload = {"plan": "operator", "billing_cycle": "monthly", "currency": "INR"}
 
     responses = [
         http_client.post("/billing/orders", headers=headers, json=payload)

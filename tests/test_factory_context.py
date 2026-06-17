@@ -13,7 +13,7 @@ def test_auth_context_and_factory_switch_with_cookies(http_client):
     assert csrf, "CSRF cookie not set during registration."
 
     auth_headers = _auth_headers(user["access_token"])
-    set_org_plan_for_user_email(user["email"], "growth")
+    set_org_plan_for_user_email(user["email"], "operations")
 
     second_factory_name = unique_factory()
     created = http_client.post(
@@ -93,7 +93,7 @@ def test_active_workflow_template_tracks_selected_factory(http_client):
     assert csrf
 
     headers = _auth_headers(user["access_token"])
-    set_org_plan_for_user_email(user["email"], "growth")
+    set_org_plan_for_user_email(user["email"], "operations")
 
     initial_template = http_client.get("/auth/active-workflow-template")
     assert initial_template.status_code == HTTPStatus.OK, initial_template.text

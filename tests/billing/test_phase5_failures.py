@@ -53,7 +53,7 @@ def _seed_user_and_order() -> dict[str, object]:
             factory_name="Phase5 Factory",
             is_active=True,
         )
-        db.add(Organization(org_id=org_id, name="Phase5 Org", plan="starter", is_active=True))
+        db.add(Organization(org_id=org_id, name="Phase5 Org", plan="operator", is_active=True))
         db.add(user)
         db.commit()
         db.refresh(user)
@@ -62,8 +62,8 @@ def _seed_user_and_order() -> dict[str, object]:
             PaymentOrder(
                 org_id=org_id,
                 user_id=user.id,
-                plan_id="starter",
-                plan="starter",
+                plan_id="operator",
+                plan="operator",
                 amount_paise=49900,
                 amount=49900,
                 currency="INR",
@@ -94,7 +94,7 @@ def _payment_captured_payload(*, order_id: str, user_id: int, event_id: str) -> 
                     "amount": 49900,
                     "currency": "INR",
                     "notes": {
-                        "plan": "starter",
+                        "plan": "operator",
                         "billing_cycle": "monthly",
                         "user_id": str(user_id),
                     },
@@ -107,7 +107,7 @@ def _payment_captured_payload(*, order_id: str, user_id: int, event_id: str) -> 
                     "currency": "INR",
                     "receipt": f"dpr_{user_id}_receipt",
                     "notes": {
-                        "plan": "starter",
+                        "plan": "operator",
                         "billing_cycle": "monthly",
                         "user_id": str(user_id),
                     },
@@ -327,7 +327,7 @@ def test_razorpay_5xx_retried_once_then_fails(monkeypatch):
     )
 
     with pytest.raises(httpx.HTTPStatusError):
-        asyncio.run(adapter.create_order(49900, "INR", "receipt-1", {"plan": "starter"}))
+        asyncio.run(adapter.create_order(349900, "INR", "receipt-1", {"plan": "operator"}))
 
     assert attempts["count"] == 2
 
@@ -336,11 +336,11 @@ def test_past_due_grace_period_expires():
     init_db()
     with SessionLocal() as db:
         org_id = str(uuid4())
-        db.add(Organization(org_id=org_id, name="Grace Expiry Org", plan="starter", is_active=True))
+        db.add(Organization(org_id=org_id, name="Grace Expiry Org", plan="operator", is_active=True))
         sub = Subscription(
             org_id=org_id,
             user_id=None,
-            plan="starter",
+            plan="operator",
             status="past_due",
             grace_period_end_at=datetime.now(timezone.utc) - timedelta(hours=1),
         )

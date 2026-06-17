@@ -458,7 +458,7 @@ def test_dispatcher_continues_when_one_recipient_fails(monkeypatch):
     init_db()
 
     with SessionLocal() as db:
-        db.add(Organization(org_id="org-test", name="Org Test", plan="free"))
+        db.add(Organization(org_id="org-test", name="Org Test", plan="pilot"))
         db.commit()
         db.add_all(
                 [
@@ -558,7 +558,7 @@ def test_recipient_preferences_filter_delivery_targets():
     init_db()
 
     with SessionLocal() as db:
-        db.add(Organization(org_id="org-pref", name="Pref Org", plan="free"))
+        db.add(Organization(org_id="org-pref", name="Pref Org", plan="pilot"))
         db.commit()
         db.add_all(
             [
@@ -690,7 +690,7 @@ def test_daily_summary_creates_summary_record_and_alert(monkeypatch):
     summary_ts = datetime(2026, 5, 1, 10, 0, tzinfo=timezone.utc)
 
     with SessionLocal() as db:
-        db.add(Organization(org_id="org-summary", name="Summary Org", plan="pro"))
+        db.add(Organization(org_id="org-summary", name="Summary Org", plan="pilot"))
         db.commit()
         db.add(
             AdminAlertRecipient(

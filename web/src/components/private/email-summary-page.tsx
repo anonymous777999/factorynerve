@@ -466,7 +466,7 @@ export default function EmailSummaryPage() {
                   <CardTitle>{summary?.plan || "-"}</CardTitle>
                 </CardHeader>
                 <CardContent className="text-sm text-[var(--muted)]">
-                  Requires {summary?.min_plan || "growth"} or higher.
+                  Requires {summary?.min_plan || "operations"} or higher.
                 </CardContent>
               </Card>
               <Card>

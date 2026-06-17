@@ -139,9 +139,9 @@ function BillingPageInner() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [error, setError] = useState("");
-  const [downgradePlan, setDowngradePlan] = useState("free");
-  const [overridePlan, setOverridePlan] = useState("free");
-  const [checkoutPlan, setCheckoutPlan] = useState("starter");
+  const [downgradePlan, setDowngradePlan] = useState("pilot");
+  const [overridePlan, setOverridePlan] = useState("pilot");
+  const [checkoutPlan, setCheckoutPlan] = useState("operator");
   const [billingCycle, setBillingCycle] = useState<BillingCycle>("monthly");
   const [requestedUsers, setRequestedUsers] = useState(20);
   const [requestedFactories, setRequestedFactories] = useState(1);
@@ -196,8 +196,8 @@ function BillingPageInner() {
 
     if (billingResult.status === "fulfilled") {
       setBilling(billingResult.value);
-      setDowngradePlan(billingResult.value.pending_plan || "free");
-      setOverridePlan(billingResult.value.plan || "free");
+      setDowngradePlan(billingResult.value.pending_plan || "pilot");
+      setOverridePlan(billingResult.value.plan || "pilot");
     } else if (billingResult.reason instanceof Error) {
       setError(billingResult.reason.message);
     }
@@ -259,53 +259,54 @@ function BillingPageInner() {
         ? plansPayload.plans
         : ([
             {
-              id: "free",
-              name: "Free",
+              id: "pilot",
+              name: "Factory Pilot",
               monthly_price: 0,
-              user_limit: 3,
+              user_limit: 7,
               factory_limit: 1,
               limits: { ocr: 0, summary: 10, email: 0, smart: 30 },
               features: {},
             },
             {
-              id: "starter",
-              name: "Starter",
-              monthly_price: 499,
-              user_limit: 8,
+              id: "operator",
+              name: "Operator",
+              monthly_price: 3499,
+              user_limit: 10,
               factory_limit: 1,
-              limits: { ocr: 0, summary: 30, email: 0, smart: 100 },
-              features: {},
-            },
-            {
-              id: "growth",
-              name: "Growth",
-              monthly_price: 1299,
-              user_limit: 20,
-              factory_limit: 2,
-              limits: { ocr: 0, summary: 150, email: 150, smart: 300 },
-              features: { analytics: true, pdf: true, emailSummary: true },
+              limits: { ocr: 0, summary: 30, email: 30, smart: 100 },
+              features: { emailSummary: true, pdf: true, excel: true },
             },
             {
               id: "factory",
               name: "Factory",
-              monthly_price: 2999,
-              user_limit: 60,
-              factory_limit: 5,
-              limits: { ocr: 100, summary: 600, email: 600, smart: 1500 },
-              features: { analytics: true, pdf: true, emailSummary: true, templates: true },
+              monthly_price: 8999,
+              user_limit: 30,
+              factory_limit: 3,
+              limits: { ocr: 0, summary: 150, email: 150, smart: 600 },
+              features: { analytics: true, emailSummary: true, pdf: true, excel: true, templates: true },
             },
             {
-              id: "business",
-              name: "Business",
-              monthly_price: 6999,
-              user_limit: 150,
-              factory_limit: 10,
+              id: "operations",
+              name: "Operations",
+              monthly_price: 19999,
+              user_limit: 75,
+              factory_limit: 8,
+              limits: { ocr: 0, summary: 500, email: 500, smart: 2000 },
+              features: { analytics: true, emailSummary: true, pdf: true, excel: true, templates: true, api: true, nlq: true },
+            },
+            {
+              id: "group",
+              name: "Group",
+              monthly_price: 44999,
+              user_limit: 200,
+              factory_limit: 20,
               unlimited_limits: ["summary", "email", "smart"],
-              limits: { ocr: 150, summary: 0, email: 0, smart: 0 },
+              limits: { ocr: 0, summary: 0, email: 0, smart: 0 },
               features: {
                 analytics: true,
-                pdf: true,
                 emailSummary: true,
+                pdf: true,
+                excel: true,
                 templates: true,
                 api: true,
                 nlq: true,
@@ -320,7 +321,7 @@ function BillingPageInner() {
               factory_limit: 0,
               unlimited_limits: ["ocr", "summary", "email", "smart"],
               limits: { ocr: 0, summary: 0, email: 0, smart: 0 },
-              features: { analytics: true, pdf: true, emailSummary: true, templates: true, api: true, nlq: true },
+              features: { analytics: true, emailSummary: true, pdf: true, excel: true, templates: true, api: true, nlq: true },
             },
           ] as PlanInfo[]),
     [plansPayload?.plans],

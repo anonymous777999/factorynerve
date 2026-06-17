@@ -609,7 +609,7 @@ def _resolve_checkout_plan(request: Request, payload: CreateOrderRequest) -> str
         or payload.selected_plan
         or payload.plan
     )
-    return normalize_plan(selected_plan or "starter")
+    return normalize_plan(selected_plan or "operator")
 
 
 @router.get("/config")
@@ -726,7 +726,7 @@ def get_invoices(
 
 
 class DowngradeRequest(BaseModel):
-    plan: str = Field(default="free")
+    plan: str = Field(default="pilot")
 
 
 @router.post("/downgrade")
