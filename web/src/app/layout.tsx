@@ -1,13 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import { AppProviders } from "@/components/app-providers";
-import { AppShell } from "@/components/app-shell";
-import { BetaRolloutBanner } from "@/components/beta-rollout-banner";
-import { FeedbackSyncAgent } from "@/components/feedback-sync-agent";
-import { FrontendErrorMonitor } from "@/components/frontend-error-monitor";
-import { OfflineSyncAgent } from "@/components/offline-sync-agent";
-import { ServiceWorker } from "@/components/service-worker";
-import { ToastCenter } from "@/components/toast-center";
+import { AppProviders } from "@/components/layout/app-providers";
+import { AppShell } from "@/components/layout/app-shell";
+import { BetaRolloutBanner } from "@/components/shared/beta-rollout-banner";
+import { FeedbackSyncAgent } from "@/components/shared/feedback-sync-agent";
+import { FrontendErrorMonitor } from "@/components/shared/frontend-error-monitor";
+import { OfflineSyncAgent } from "@/components/shared/offline-sync-agent";
+import { ServiceWorker } from "@/components/shared/service-worker";
+import { ToastCenter } from "@/components/shared/toast-center";
 
 export const metadata: Metadata = {
   title: "DPR.ai Web",

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { DEFAULT_PERMISSIONS, type Permissions } from "../src/lib/auth";
-import { getVisibleNavSections } from "../src/components/app-shell";
+import { getVisibleNavSections } from "../src/components/layout/app-shell";
 
 function makePermissions(overrides: Partial<Permissions>): Permissions {
   return {

@@ -4,8 +4,8 @@ import test from "node:test";
 import type { NextRequest } from "next/server";
 
 import { middleware } from "../../middleware";
-import { getVisibleNavSections } from "../../src/components/app-shell";
-import { resolveApiError } from "../../src/components/api-error-boundary";
+import { getVisibleNavSections } from "../../src/components/layout/app-shell";
+import { resolveApiError } from "../../src/components/shared/api-error-boundary";
 import { resolveAccessReasonMessage } from "../../src/lib/access-reason";
 import { resolveWorkspaceRecoveryPlan, type Permissions, DEFAULT_PERMISSIONS } from "../../src/lib/auth";
 
