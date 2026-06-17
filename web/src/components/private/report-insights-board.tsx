@@ -43,7 +43,7 @@ function severityTone(score: number) {
 function MetricCard({ label, value, hint }: { label: string; value: string; hint: string }) {
   return (
     <div className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card-strong)] p-4">
-      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{label}</div>
+      <div className="text-xs uppercase tracking-caption text-[var(--muted)]">{label}</div>
       <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{value}</div>
       <div className="mt-2 text-xs leading-5 text-[var(--muted)]">{hint}</div>
     </div>
@@ -140,7 +140,7 @@ export default function ReportInsightsBoard({
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Charts & Rankings</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Charts & Rankings</div>
               <CardTitle className="mt-2 text-2xl">Manager Reporting Board</CardTitle>
             </div>
             <div className="max-w-md text-right text-sm text-[var(--muted)]">
@@ -176,7 +176,7 @@ export default function ReportInsightsBoard({
             <div className="rounded-[1.75rem] border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Production vs Target</div>
+                  <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Production vs Target</div>
                   <div className="mt-1 text-lg font-semibold">Daily output chart</div>
                 </div>
                 <div className="text-xs text-[var(--muted)]">Bars compare actual output to target for each day.</div>
@@ -222,7 +222,7 @@ export default function ReportInsightsBoard({
             </div>
 
             <div className="rounded-[1.75rem] border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-5">
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Shift Mix</div>
+              <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Shift Mix</div>
               <div className="mt-1 text-lg font-semibold">Which shift delivered strongest</div>
               <div className="mt-5 space-y-4">
                 {insights.shift_breakdown.map((shift) => (
@@ -247,14 +247,14 @@ export default function ReportInsightsBoard({
 
           <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
             <div className="rounded-[1.75rem] border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-5">
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Employee Output</div>
+              <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Employee Output</div>
               <div className="mt-1 text-lg font-semibold">Who carried the best production load</div>
               <div className="mt-5 space-y-3">
                 {insights.employee_leaderboard.map((employee, index) => (
                   <div key={employee.user_id} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                     <div className="flex items-start justify-between gap-4">
                       <div>
-                        <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">#{index + 1}</div>
+                        <div className="text-xs uppercase tracking-caption text-[var(--muted)]">#{index + 1}</div>
                         <div className="mt-1 text-base font-semibold text-[var(--text)]">{employee.name}</div>
                       </div>
                       <div className="text-right text-sm text-[var(--muted)]">
@@ -277,7 +277,7 @@ export default function ReportInsightsBoard({
             </div>
 
             <div className="rounded-[1.75rem] border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-5">
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Support Signals</div>
+              <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Support Signals</div>
               <div className="mt-1 text-lg font-semibold">Who may need tightening or support</div>
               <div className="mt-5 space-y-3">
                 {insights.support_signals.map((employee) => (
@@ -308,7 +308,7 @@ export default function ReportInsightsBoard({
 
           <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
             <div className="rounded-[1.75rem] border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-5">
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Weekly Winners</div>
+              <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Weekly Winners</div>
               <div className="mt-1 text-lg font-semibold">Which employee did great in which week</div>
               <div className="mt-5 space-y-3">
                 {insights.weekly_snapshots.length ? (
@@ -316,14 +316,14 @@ export default function ReportInsightsBoard({
                     <div key={week.week_start} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{formatWeekLabel(week.week_start, week.week_end)}</div>
+                          <div className="text-xs uppercase tracking-caption text-[var(--muted)]">{formatWeekLabel(week.week_start, week.week_end)}</div>
                           <div className="mt-1 text-base font-semibold text-[var(--text)]">{week.total_units_produced.toLocaleString("en-IN")} units</div>
                         </div>
                         <div className="text-sm text-[var(--muted)]">{week.performance_percent.toFixed(1)}% team performance</div>
                       </div>
                       <div className="mt-4 grid gap-3 md:grid-cols-2">
                         <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/10 p-4">
-                          <div className="text-xs uppercase tracking-[0.18em] text-emerald-300">Best Employee</div>
+                          <div className="text-xs uppercase tracking-caption text-emerald-300">Best Employee</div>
                           <div className="mt-2 text-base font-semibold text-[var(--text)]">{week.best_employee?.name || "No data"}</div>
                           <div className="mt-1 text-xs text-[var(--muted)]">
                             {week.best_employee
@@ -332,7 +332,7 @@ export default function ReportInsightsBoard({
                           </div>
                         </div>
                         <div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4">
-                          <div className="text-xs uppercase tracking-[0.18em] text-amber-300">Needs Support</div>
+                          <div className="text-xs uppercase tracking-caption text-amber-300">Needs Support</div>
                           <div className="mt-2 text-base font-semibold text-[var(--text)]">{week.needs_support_employee?.name || "No data"}</div>
                           <div className="mt-1 text-xs text-[var(--muted)]">
                             {week.needs_support_employee?.reason || "No support signal triggered for this week."}
@@ -350,7 +350,7 @@ export default function ReportInsightsBoard({
             </div>
 
             <div className="rounded-[1.75rem] border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-5">
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Weekly Trend Matrix</div>
+              <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Weekly Trend Matrix</div>
               <div className="mt-1 text-lg font-semibold">Top employee momentum across weeks</div>
               <div className="mt-5 space-y-4">
                 {insights.employee_trend.length ? (
@@ -418,7 +418,7 @@ export default function ReportInsightsBoard({
 
             <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
               <div className="rounded-[1.75rem] border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-5">
-                <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Loss By Operator</div>
+                <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Loss By Operator</div>
                 <div className="mt-1 text-lg font-semibold">Steel responsibility ranking</div>
                 <div className="mt-5 space-y-3">
                   {steelOverview.responsibility_analytics.by_operator.map((row) => (
@@ -447,14 +447,14 @@ export default function ReportInsightsBoard({
               </div>
 
               <div className="rounded-[1.75rem] border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-5">
-                <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Ranked Anomalies</div>
+                <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Ranked Anomalies</div>
                 <div className="mt-1 text-lg font-semibold">Which steel batches lost the most</div>
                 <div className="mt-5 space-y-3">
                   {steelOverview.ranked_anomalies.map((row) => (
                     <div key={`${row.rank}-${row.batch.id}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div>
-                          <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Rank #{row.rank}</div>
+                          <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Rank #{row.rank}</div>
                           <div className="mt-1 text-base font-semibold text-[var(--text)]">{row.batch.batch_code}</div>
                           <div className="mt-1 text-xs text-[var(--muted)]">{row.reason}</div>
                         </div>

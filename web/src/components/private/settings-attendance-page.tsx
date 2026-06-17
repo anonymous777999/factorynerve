@@ -315,13 +315,13 @@ export default function SettingsAttendancePage() {
         <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.9)] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">Attendance Admin</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Attendance Admin</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Keep roster and shifts ready for review</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 Update the team profile first, then shape the shift windows that power punch, live board, and review logic.
               </p>
             </div>
-            {/* AUDIT: BUTTON_CLUTTER - move companion attendance routes into a secondary tray so the active admin editor stays primary. */}
+
             <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
                 Attendance tools

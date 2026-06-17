@@ -15,7 +15,7 @@ export default function HeroSection() {
           AI-Native Factory Operating System
         </div>
 
-        <h1 className="bg-[linear-gradient(180deg,#fff_40%,#ab9f93_100%)] bg-clip-text text-4xl font-bold leading-[1.1] tracking-[-0.04em] text-transparent sm:text-6xl sm:leading-[1.08] md:text-7xl">
+        <h1 className="bg-[linear-gradient(180deg,#fff_40%,#ab9f93_100%)] bg-clip-text text-4xl font-bold leading-[1.1] tracking-tight text-transparent sm:text-6xl sm:leading-[1.08] md:text-7xl">
           Factory trust infrastructure for teams that operate on paper, WhatsApp, and instinct.
         </h1>
 

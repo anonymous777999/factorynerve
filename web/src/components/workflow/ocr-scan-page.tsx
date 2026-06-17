@@ -365,14 +365,6 @@ function extractPreviewTable(result: OcrPreviewResult) {
     Array.from({ length: columnCount }, (_, index) => stringifySheetCell(row[index])),
   );
 
-  console.log("EXTRACT OUTPUT:", {
-    sheetHeaders,
-    sheetRows,
-    normalizedHeaders,
-    normalizedRows,
-    willCreateSheets: normalizedRows.length > 0
-  });
-
   return {
     sheets: normalizedRows.length
       ? [{ columns: normalizedHeaders, rows: normalizedRows }]
@@ -708,10 +700,6 @@ export default function OcrScanPage() {
 
   const canUndo = historyIndexRef.current > 0;
   const canRedo = historyIndexRef.current >= 0 && historyIndexRef.current < historyRef.current.length - 1;
-
-  useEffect(() => {
-    console.info("[OCR] Model selection changed", selectedModel);
-  }, [selectedModel]);
 
   const loadRecentRecords = useCallback(async () => {
     try {
@@ -1115,7 +1103,6 @@ export default function OcrScanPage() {
       const extractTimer = window.setTimeout(() => setProcessingStage("extract"), 500);
       const confidenceTimer = window.setTimeout(() => setProcessingStage("confidence"), 1300);
 
-      console.info("[OCR] Selected model", model, "forceRefresh", forceRefresh);
       let result: OcrPreviewResult;
       try {
         result = await previewOcrLogbook({
@@ -1140,7 +1127,6 @@ export default function OcrScanPage() {
       const isLargeDataset = rowCount > 500 || colCount > 50;
 
       if (isLargeDataset) {
-        console.warn(`Large dataset detected: ${rowCount} rows × ${colCount} columns`);
         setProcessingWarning(
           `Large document (${rowCount} rows × ${colCount} columns). Performance may be affected.`
         );
@@ -1173,12 +1159,6 @@ export default function OcrScanPage() {
         userCorrected: result.user_corrected ?? null,
         reviewRequired: result.review_required ?? null,
       };
-
-      console.info("[OCR] OCR response", {
-        requestedModel: model,
-        finalModel: result.routing?.provider_model || result.routing?.selected_model || "unknown",
-        tokenUsage: result.token_usage ?? result.routing?.usage ?? null,
-      });
 
       setResultPreview(nextPreview);
       setConfidenceMatrix(result.cell_confidence || []);
@@ -1266,8 +1246,7 @@ export default function OcrScanPage() {
       signalWorkflowRefresh("ocr-scan");
       void loadRecentRecords();
     } catch (reason) {
-      console.error("OCR extraction error:", reason);
-      setStatus(humanExtractError(reason));
+        setStatus(humanExtractError(reason));
       setStatusTone("error");
       setStep("upload");
     } finally {
@@ -1597,7 +1576,7 @@ export default function OcrScanPage() {
 
   if (loading || !deviceReady || !restored) {
     return (
-      <main className="flex min-h-screen items-center justify-center bg-[#f4f7fb] text-sm text-[#667085]">
+      <main className="flex min-h-screen items-center justify-center bg-[var(--bg)] text-sm text-[var(--muted)]">
         Loading OCR workspace...
       </main>
     );
@@ -1605,7 +1584,7 @@ export default function OcrScanPage() {
 
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 content-fade-in">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>OCR Workspace</CardTitle>
@@ -1662,15 +1641,15 @@ export default function OcrScanPage() {
         }}
       />
 
-      <main className="bg-[#f4f7fb] px-4 py-4 md:px-6 md:py-6">
+      <main className="bg-[var(--bg)] px-4 py-4 md:px-6 md:py-6">
         <div className="mx-auto max-w-[1800px] space-y-5">
-          <div className="rounded-[28px] border border-[#e3e8ef] bg-white px-4 py-4 shadow-[0_24px_64px_rgba(15,23,42,0.06)] md:px-5">
+          <div className="rounded-card border border-[var(--border)] bg-[var(--card)] px-4 py-4 shadow-[var(--shadow-md)] md:px-5">
             <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
               <div className="max-w-3xl">
-                <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#667085]">
+                <div className="text-[11px] font-semibold uppercase tracking-caption text-[var(--muted)]">
                   Document Scan
                 </div>
-                <h1 className="mt-2 text-[2rem] font-semibold tracking-tight text-[#101828] md:text-[2.35rem]">
+                <h1 className="mt-2 text-[2rem] font-semibold tracking-tight text-[var(--text)] md:text-[2.35rem]">
                   Scan & Review
                 </h1>
               </div>
@@ -1682,15 +1661,15 @@ export default function OcrScanPage() {
                     <div
                       key={item.key}
                       className={[
-                        "rounded-[18px] border px-3 py-3 text-center transition duration-200",
+                        "rounded-lg border px-3 py-3 text-center transition duration-200",
                         state === "done"
-                          ? "border-[#cfe0f0] bg-[#f7fbff] text-[#185FA5]"
+                          ? "border-[var(--accent)] bg-[var(--accent-soft)] text-[var(--accent)]"
                           : state === "current"
-                            ? "border-[#185FA5] bg-[#185FA5] text-white"
-                            : "border-[#e7edf3] bg-[#f8fafc] text-[#98a2b3]",
+                            ? "border-[var(--accent)] bg-[var(--accent)] text-[#06111c]"
+                            : "border-[var(--border)] bg-[var(--card-strong)] text-[var(--muted)]",
                       ].join(" ")}
                     >
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.14em]">
+                      <div className="text-[10px] font-semibold uppercase tracking-label">
                         {index + 1}
                       </div>
                       <div className="mt-1 text-sm font-medium">{item.label}</div>
@@ -1816,7 +1795,7 @@ export default function OcrScanPage() {
                 <div className="overflow-hidden rounded-[28px] border border-[#e3e8ef] bg-white shadow-[0_20px_54px_rgba(15,23,42,0.05)] xl:max-h-[85vh]">
                   <div className="flex items-center justify-between border-b border-[#edf1f5] px-4 py-3">
                     <div>
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#667085]">
+                      <div className="text-[10px] font-semibold uppercase tracking-label text-[#667085]">
                         Source
                       </div>
                       <div className="mt-1 text-sm text-[#667085]">
@@ -1859,8 +1838,7 @@ export default function OcrScanPage() {
                           className="max-h-full w-auto rounded-[16px] object-contain shadow-[0_12px_28px_rgba(15,23,42,0.08)] transition duration-200"
                           style={{ transform: `scale(${zoom})`, transformOrigin: "center center" }}
                           onError={() => {
-                            console.error("Image load failed, retrying...");
-                            setImageLoadError(true);
+                                    setImageLoadError(true);
                             if (imageRetryTimeoutRef.current) {
                               clearTimeout(imageRetryTimeoutRef.current);
                             }
@@ -1936,19 +1914,6 @@ export default function OcrScanPage() {
                     </div>
                   </div>
 
-                  {(() => {
-                    console.log("DEBUG resultPreview:", resultPreview);
-                    console.log("DEBUG sheets:", resultPreview?.sheets);
-                    console.log("DEBUG sheet:", resultPreview?.sheets?.[0]);
-                    console.log("DEBUG condition check:", {
-                      hasSheet: !!sheet,
-                      hasRows: !!sheet?.rows,
-                      rowCount: sheet?.rows?.length,
-                      willRenderNewTable: !!(sheet && sheet.rows && sheet.rows.length > 0)
-                    });
-                    return null;
-                  })()}
-
                   {viewMode === "raw" ? (
                     <RawDataView
                       data={{
@@ -1972,8 +1937,7 @@ export default function OcrScanPage() {
                         <OcrErrorBoundary
                           fallbackMessage="The structured view could not be displayed. Switch to Raw view to see the data."
                           onError={(error) => {
-                            console.error("Structured view error:", error);
-                            pushAppToast({
+                                    pushAppToast({
                               title: "Display error",
                               description: "Switched to raw view due to rendering error",
                               tone: "error",
@@ -2020,8 +1984,7 @@ export default function OcrScanPage() {
                         <OcrErrorBoundary
                           fallbackMessage="The spreadsheet could not be displayed. Switch to Raw view to see the data."
                           onError={(error) => {
-                            console.error("Spreadsheet error:", error);
-                            pushAppToast({
+                                        pushAppToast({
                               title: "Display error",
                               description: "Switched to raw view due to rendering error",
                               tone: "error",
@@ -2068,7 +2031,7 @@ export default function OcrScanPage() {
 
                       {resultPreview.tokenUsage ? (
                         <div className="rounded-[24px] border border-[#e3e8ef] bg-white p-4 shadow-[0_16px_40px_rgba(15,23,42,0.04)]">
-                          <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]">Token usage</div>
+                          <div className="text-xs font-semibold uppercase tracking-label text-[#667085]">Token usage</div>
                           <div className="mt-3 grid gap-3 sm:grid-cols-2">
                             <div className="rounded-[18px] border border-[#edf1f5] bg-[#f8fafc] p-3">
                               <div className="text-xs text-[#667085]">Model</div>
@@ -2149,7 +2112,7 @@ export default function OcrScanPage() {
                             </div>
                           </div>
                           <div className="w-full max-w-sm">
-                            <label className="text-xs font-semibold uppercase tracking-[0.14em] text-[#667085]" htmlFor="ocr-model">
+                            <label className="text-xs font-semibold uppercase tracking-label text-[#667085]" htmlFor="ocr-model">
                               Extraction model
                             </label>
                             <Select

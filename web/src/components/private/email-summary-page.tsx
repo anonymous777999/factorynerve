@@ -304,7 +304,7 @@ export default function EmailSummaryPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
-            {/* AUDIT: FLOW_BROKEN - Signed-out recovery should return to the current auth entry route instead of an older legacy path. */}
+
             <Link href="/access">
               <Button>Open Access</Button>
             </Link>
@@ -359,7 +359,7 @@ export default function EmailSummaryPage() {
                 key={item.step}
                 className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card-strong)] px-5 py-4 shadow-[var(--shadow-soft)]"
               >
-                <div className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--accent)]">Step {item.step}</div>
+                <div className="text-[0.65rem] uppercase tracking-prominent text-[var(--accent)]">Step {item.step}</div>
                 <div className="mt-2 font-semibold text-[var(--text)]">{item.title}</div>
                 <div className="mt-1 text-sm text-[var(--muted)]">{item.detail}</div>
               </div>
@@ -369,11 +369,11 @@ export default function EmailSummaryPage() {
 
         <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div>
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">
+            <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">
               Email Summary
             </div>
             <h1 className="mt-2 text-3xl font-semibold">Compose trusted factory updates fast</h1>
-            {/* AUDIT: TEXT_NOISE - The hero copy now states the promise once and lets the workflow cards explain the rest. */}
+
             <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
               Pull the range, check trust, and open a leadership-ready draft in your own mail client.
             </p>
@@ -387,7 +387,7 @@ export default function EmailSummaryPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-3">
-            {/* AUDIT: BUTTON_CLUTTER - Kept the most likely companion route visible and moved lower-priority jumps into a compact tray. */}
+
             <Link href="/reports">
               <Button>Reports</Button>
             </Link>
@@ -407,12 +407,12 @@ export default function EmailSummaryPage() {
 
         <Card>
           <CardHeader>
-            <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">Range</div>
+            <div className="text-xs uppercase tracking-header text-[var(--accent)]">Range</div>
             <CardTitle className="text-xl">Pick range</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-3">
-              {/* AUDIT: TEXT_NOISE - Shortened quick-range labels so the controls scan as presets instead of mini explanations. */}
+
               <Button variant="outline" onClick={() => handleQuickRange("today")}>Today</Button>
               <Button variant="outline" onClick={() => handleQuickRange("week")}>Last 7d</Button>
               <Button variant="outline" onClick={() => handleQuickRange("month")}>This Month</Button>
@@ -432,14 +432,14 @@ export default function EmailSummaryPage() {
                 </Button>
               </div>
             </div>
-            {/* AUDIT: FLOW_BROKEN - Replaced the long recommendation sentence with one short next-step cue. */}
+
             <div className="text-xs text-[var(--muted)]">Refresh, then review trust.</div>
           </CardContent>
         </Card>
 
         <section className="space-y-4">
           <div>
-            <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">Trust</div>
+            <div className="text-xs uppercase tracking-header text-[var(--accent)]">Trust</div>
             <h2 className="mt-2 text-2xl font-semibold">Review trust</h2>
           </div>
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -448,13 +448,13 @@ export default function EmailSummaryPage() {
               key={item.label}
               className={`rounded-2xl border p-4 ${item.tone}`}
             >
-              <div className="text-xs uppercase tracking-[0.2em] opacity-80">{item.label}</div>
+              <div className="text-xs uppercase tracking-caption opacity-80">{item.label}</div>
               <div className="mt-2 text-2xl font-semibold">{item.value}</div>
               <div className="mt-2 text-sm opacity-85">{item.detail}</div>
             </div>
           ))}
         </section>
-          {/* AUDIT: DENSITY_OVERLOAD - Range context metrics remain available, but they no longer compete with the send-readiness scan on first glance. */}
+
           <details className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-soft)]">
             <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">
               Window context
@@ -566,15 +566,15 @@ export default function EmailSummaryPage() {
                       </div>
                       <div className="mt-3 grid gap-3 md:grid-cols-3">
                         <div className="rounded-2xl border border-white/10 bg-black/10 p-3">
-                          <div className="text-xs uppercase tracking-[0.18em] text-cyan-100/80">Trusted rows</div>
+                          <div className="text-xs uppercase tracking-caption text-cyan-100/80">Trusted rows</div>
                           <div className="mt-1 text-lg font-semibold text-white">{ocrSummary?.trusted_rows ?? 0}</div>
                         </div>
                         <div className="rounded-2xl border border-white/10 bg-black/10 p-3">
-                          <div className="text-xs uppercase tracking-[0.18em] text-cyan-100/80">Untrusted docs</div>
+                          <div className="text-xs uppercase tracking-caption text-cyan-100/80">Untrusted docs</div>
                           <div className="mt-1 text-lg font-semibold text-white">{ocrSummary?.untrusted_documents ?? 0}</div>
                         </div>
                         <div className="rounded-2xl border border-white/10 bg-black/10 p-3">
-                          <div className="text-xs uppercase tracking-[0.18em] text-cyan-100/80">Last trusted</div>
+                          <div className="text-xs uppercase tracking-caption text-cyan-100/80">Last trusted</div>
                           <div className="mt-1 text-sm font-semibold text-white">
                             {ocrSummary?.last_trusted_at
                               ? new Date(ocrSummary.last_trusted_at).toLocaleString("en-IN", {
@@ -616,7 +616,7 @@ export default function EmailSummaryPage() {
                             </Link>
                           </div>
                         </div>
-                        {/* AUDIT: DENSITY_OVERLOAD - Owner risk lines stay available, but the guidance copy is shortened so the signals carry the weight. */}
+
                         <div className="mt-4 space-y-2">
                           {ownerRiskLines.map((line) => (
                             <div key={line} className="rounded-2xl border border-white/10 bg-black/10 px-3 py-3 text-sm text-red-50/90">
@@ -628,7 +628,7 @@ export default function EmailSummaryPage() {
                       </div>
                     ) : null}
                   </div>
-                  {/* AUDIT: DENSITY_OVERLOAD - The verbose line-by-line source stays accessible in a collapsed drawer instead of dominating the review panel. */}
+
                   <details className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                     <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">
                       Raw lines
@@ -648,7 +648,7 @@ export default function EmailSummaryPage() {
 
           <Card>
             <CardHeader>
-                <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">Draft</div>
+                <div className="text-xs uppercase tracking-header text-[var(--accent)]">Draft</div>
               <CardTitle className="text-xl">Draft and send</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -665,7 +665,7 @@ export default function EmailSummaryPage() {
                 <label className="text-sm text-[var(--muted)]">Subject</label>
                 <Input value={subject} onChange={(event) => setSubject(event.target.value)} />
               </div>
-              {/* AUDIT: BUTTON_CLUTTER - The draft card now keeps one visible draft action and moves the utility actions into a compact tools tray. */}
+
               <div className="flex flex-wrap gap-3">
                 <Button
                   onClick={handleGenerate}
@@ -707,7 +707,7 @@ export default function EmailSummaryPage() {
                   placeholder="Generate the AI draft or write your own email here."
                 />
               </div>
-              {/* AUDIT: BUTTON_CLUTTER - Gmail stays the primary finish action while other client handoffs move into a secondary tray. */}
+
               <div className="flex flex-wrap gap-3">
                 <a href={composeLinks.gmail} target="_blank" rel="noreferrer">
                   <Button>Open Gmail</Button>
@@ -724,7 +724,7 @@ export default function EmailSummaryPage() {
                   </div>
                 </details>
               </div>
-              {/* AUDIT: TEXT_NOISE - Reduced the mail-client explanation to one sentence because the client launch buttons already explain the delivery model. */}
+
               <div className="text-xs text-[var(--muted)]">Final send stays in your own mail client for review before delivery.</div>
             </CardContent>
           </Card>

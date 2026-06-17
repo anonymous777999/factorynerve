@@ -15,6 +15,7 @@ import {
   type SteelStockItem,
 } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
+import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
 
 function formatKg(value: number | null | undefined) {
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value || 0);
@@ -112,16 +113,12 @@ export function SteelInventoryPage() {
   };
 
   if (loading || pageLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading steel inventory...
-      </main>
-    );
+    return <DashboardPageSkeleton />;
   }
 
   if (!isSteelFactory) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
+      <main className="min-h-screen px-4 py-8 md:px-8 content-fade-in">
         <div className="mx-auto max-w-4xl text-center">
           <Card>
             <CardHeader>
@@ -142,7 +139,7 @@ export function SteelInventoryPage() {
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Inventory Management</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Inventory Management</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Stock Balance & Material Master</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 Trusted stock levels across operational zones. Manage material definitions and monitor inventory health.
@@ -197,7 +194,7 @@ export function SteelInventoryPage() {
                             </div>
                           </td>
                           <td className="px-3 py-3">
-                            <span className={`inline-flex rounded-full px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${badgeTone(row.confidence_status)}`}>
+                            <span className={`inline-flex rounded-full px-3 py-1 text-[10px] uppercase tracking-caption ${badgeTone(row.confidence_status)}`}>
                               {row.confidence_status}
                             </span>
                           </td>

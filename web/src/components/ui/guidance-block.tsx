@@ -62,13 +62,13 @@ export function GuidanceBlock({
         aria-expanded={isExpanded}
       >
         <div>
-          <div className={cn("text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]", eyebrowClassName)}>
+          <div className={cn("text-xs font-semibold uppercase tracking-header text-[var(--muted)]", eyebrowClassName)}>
             {eyebrow}
           </div>
           <div className={cn("mt-1 text-lg font-semibold text-[var(--text)]", titleClassName)}>{title}</div>
           {summary ? <div className={cn("mt-2 text-sm leading-6 text-[var(--muted)]", summaryClassName)}>{summary}</div> : null}
         </div>
-        <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
+        <span className="shrink-0 text-xs font-semibold uppercase tracking-caption text-[var(--accent)]">
           {isExpanded ? expandedLabel : collapsedLabel}
         </span>
       </button>

@@ -628,7 +628,7 @@ function BillingPageInner() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
-            {/* AUDIT: FLOW_BROKEN - send signed-out users to the live auth entry instead of the stale login route */}
+
             <Link href="/access">
               <Button>Open Access</Button>
             </Link>
@@ -738,7 +738,7 @@ function BillingPageInner() {
               <div className="min-w-0 space-y-3 rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <span className="text-sm font-semibold">OCR scan packs</span>
-                  <Link href="/plans" className="overflow-safe-text text-xs uppercase tracking-[0.18em] text-[var(--accent)]">
+                  <Link href="/plans" className="overflow-safe-text text-xs uppercase tracking-caption text-[var(--accent)]">
                     Compare on plans page
                   </Link>
                 </div>
@@ -766,7 +766,7 @@ function BillingPageInner() {
                               {formatAmount(addon.price, billingConfig?.currency || "INR")}/mo
                             </div>
                           </div>
-                          <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-[0.18em]">
+                          <div className="flex flex-wrap gap-2 text-[11px] uppercase tracking-caption">
                             {activeQuantity > 0 ? (
                               <span className={`rounded-full px-3 py-1 ${badgeClass("green")}`}>
                                 Active x{activeQuantity}
@@ -779,7 +779,7 @@ function BillingPageInner() {
                             ) : null}
                           </div>
                           <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.6)] px-3 py-2">
-                            <span className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                            <span className="text-xs uppercase tracking-caption text-[var(--muted)]">
                               Quantity
                             </span>
                             <div className="flex items-center gap-2">

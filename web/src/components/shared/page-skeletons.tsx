@@ -3,7 +3,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 export function DashboardPageSkeleton() {
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
+    <main className="min-h-screen px-4 py-8 md:px-8 content-fade-in">
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl">
           <Skeleton className="h-4 w-28" />
@@ -58,7 +58,7 @@ export function DashboardPageSkeleton() {
 
 export function EntryPageSkeleton() {
   return (
-    <main className="min-h-screen px-4 py-10 md:px-8">
+    <main className="min-h-screen px-4 py-10 md:px-8 content-fade-in">
       <div className="mx-auto max-w-6xl space-y-6">
         <section className="flex flex-wrap items-center justify-between gap-4">
           <div className="space-y-3">
@@ -111,7 +111,7 @@ export function EntryPageSkeleton() {
 
 export function ReportsPageSkeleton() {
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
+    <main className="min-h-screen px-4 py-8 md:px-8 content-fade-in">
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl">
           <Skeleton className="h-4 w-24" />

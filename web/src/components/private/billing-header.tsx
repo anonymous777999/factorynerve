@@ -22,7 +22,7 @@ export function BillingHeader({
   return (
     <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
       <div>
-        <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Billing</div>
+        <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Billing</div>
         <h1 className="mt-2 text-3xl font-semibold">{title}</h1>
         <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">{description}</p>
       </div>

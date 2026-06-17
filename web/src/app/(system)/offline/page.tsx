@@ -2,7 +2,7 @@ export default function OfflinePage() {
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-16">
       <div className="w-full max-w-2xl rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.92)] p-8 shadow-2xl">
-        <div className="text-xs font-semibold uppercase tracking-[0.3em] text-[var(--accent)]">
+        <div className="text-xs font-semibold uppercase tracking-prominent text-[var(--accent)]">
           Offline Mode
         </div>
         <h1 className="mt-4 text-3xl font-semibold text-[var(--text)]">

@@ -27,6 +27,7 @@ import { OcrGuideCard } from "@/components/workflow/ocr-guide-card";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
 
 const TEMPLATE_LANGUAGES = ["eng", "auto", "eng+hin+mar"];
 const TEMPLATE_HEADER_MODES = ["first", "none"];
@@ -294,16 +295,12 @@ export default function OcrPage() {
   };
 
   if (loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading OCR workspace...
-      </main>
-    );
+    return <DashboardPageSkeleton />;
   }
 
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 content-fade-in">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>OCR Workspace</CardTitle>
@@ -351,7 +348,7 @@ export default function OcrPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div>
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">
+            <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">
               OCR
             </div>
             <h1 className="mt-2 text-3xl font-semibold">Logbook OCR and template manager</h1>

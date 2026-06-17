@@ -89,7 +89,6 @@ export default function ForgotPasswordPage() {
     }
   };
 
-  // AUDIT: TEXT_NOISE - shorten the auth-shell narrative so the recovery action stays primary
   return (
     <AuthShell
       badge={t("auth.forgot.badge", "Password Recovery")}
@@ -135,7 +134,7 @@ export default function ForgotPasswordPage() {
           </form>
 
           {response ? (
-            // AUDIT: DENSITY_OVERLOAD - collapse repeated guidance so the next recovery action is clearer
+
             <div className="rounded-2xl border border-[rgba(34,197,94,0.22)] bg-[rgba(34,197,94,0.08)] p-4 text-sm">
               <div className="font-semibold text-green-300">
                 {isEmailDelivery ? t("auth.forgot.sent", "Reset email sent if the account exists") : t("auth.forgot.preview_ready", "Reset link ready")}
@@ -145,7 +144,7 @@ export default function ForgotPasswordPage() {
                 Next: check the inbox for {email}, open the newest link, then sign in again after the reset.
               </div>
               <details className="mt-3 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3 text-xs text-[var(--muted)]">
-                <summary className="cursor-pointer list-none font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+                <summary className="cursor-pointer list-none font-semibold uppercase tracking-header text-[var(--muted)]">
                   {t("auth.forgot.help", "Need help")}
                 </summary>
                 <div className="mt-3 space-y-3">

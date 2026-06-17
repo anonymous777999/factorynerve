@@ -5,7 +5,7 @@ import Link from "next/link";
 function Section({ id, title, children, icon }: { id: string; title: string; children: React.ReactNode; icon?: React.ReactNode }) {
   return (
     <section id={id} className="mb-12 scroll-mt-24">
-      <h2 className="mb-4 flex items-center gap-3 text-xl font-semibold tracking-[-0.02em] text-white">
+      <h2 className="mb-4 flex items-center gap-3 text-xl font-semibold tracking-tight text-white">
         {icon && <span className="text-sky-300">{icon}</span>}
         {title}
       </h2>
@@ -145,7 +145,7 @@ export default function SecurityPage() {
         {/* Header */}
         <div className="mb-8 flex flex-wrap items-start justify-between gap-4 border-b border-white/10 pb-8 sm:mb-10">
           <div>
-            <h1 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+            <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
               Security
             </h1>
             <p className="mt-2 text-sm leading-7 text-slate-300">
@@ -167,7 +167,7 @@ export default function SecurityPage() {
 
         {/* TOC */}
         <nav className="mb-10 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-          <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">On this page</h2>
+          <h2 className="mb-4 text-xs font-semibold uppercase tracking-caption text-slate-300">On this page</h2>
           <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {[
               { id: "overview", label: "1. Security Overview" },

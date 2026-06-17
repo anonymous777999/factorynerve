@@ -375,14 +375,14 @@ export default function AttendancePage() {
             <div className="text-base font-semibold tracking-wide text-slate-100">{factoryName}</div>
 
             <div className="mt-10 flex flex-col items-center text-center">
-              <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] ${statusMeta.badge}`}>
+              <div className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-header ${statusMeta.badge}`}>
                 <span className={`h-2.5 w-2.5 rounded-full ${statusMeta.dot}`} />
                 {statusLabel(today?.status)}
               </div>
 
               <div className="mt-5 text-2xl font-semibold md:text-3xl">{shiftLabel(displayShift)} {t("attendance.summary.shift", "Shift")}</div>
 
-              <div className="mt-8 text-sm uppercase tracking-[0.22em] text-slate-400">
+              <div className="mt-8 text-sm uppercase tracking-header text-slate-400">
                 {today?.status === "working" ? t("attendance.main.shift_running", "Shift running") : t("attendance.main.worked_time", "Worked time")}
               </div>
               <div className="mt-3 text-4xl font-semibold tracking-tight md:text-5xl">{workedTime}</div>
@@ -440,7 +440,7 @@ export default function AttendancePage() {
                   </div>
                 ) : (
                   <div className="rounded-[20px] border border-white/10 bg-[rgba(8,12,20,0.45)] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">{t("attendance.tools.shift", "Shift")}</div>
+                    <div className="text-xs uppercase tracking-label text-slate-400">{t("attendance.tools.shift", "Shift")}</div>
                     <div className="mt-2 text-sm font-semibold text-white">{shiftLabel(displayShift)}</div>
                     <div className="mt-2 text-xs text-slate-400">Shift is assigned automatically from the employee profile or attendance rules.</div>
                   </div>
@@ -467,7 +467,7 @@ export default function AttendancePage() {
 
           <aside className="hidden lg:block">
             <div className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(14,21,36,0.96),rgba(11,15,25,0.98))] p-6 shadow-[0_20px_70px_rgba(6,10,18,0.32)]">
-              <div className="text-xs uppercase tracking-[0.22em] text-slate-400">{t("attendance.summary.title", "Today Summary")}</div>
+              <div className="text-xs uppercase tracking-header text-slate-400">{t("attendance.summary.title", "Today Summary")}</div>
 
               <div className="mt-6 space-y-4 text-sm text-slate-300">
                 <div className="flex items-center justify-between">
@@ -503,8 +503,8 @@ export default function AttendancePage() {
               <details className="mt-6 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
                 <summary className="cursor-pointer list-none text-sm font-semibold text-white">{t("attendance.summary.shift_details", "Shift details")}</summary>
                 <div className="mt-4 rounded-[20px] border border-white/10 bg-[rgba(8,12,20,0.45)] px-4 py-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-slate-400">{t("attendance.summary.shift_status", "Shift status")}</div>
-                  <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-white">
+                  <div className="text-xs uppercase tracking-caption text-slate-400">{t("attendance.summary.shift_status", "Shift status")}</div>
+                  <div className="mt-3 inline-flex items-center gap-2 rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-caption text-white">
                     <span className={`h-2.5 w-2.5 rounded-full ${statusMeta.dot}`} />
                     {formatAttendanceStatusLabel(today?.status)}
                   </div>

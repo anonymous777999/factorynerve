@@ -1,9 +1,7 @@
-/* AUDIT: VISUAL_GENERIC - Load the new control-room font pairing from Google Fonts CDN without page-level font tags. */
 @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
 @import "tailwindcss" source("../");
 
 :root {
-  /* AUDIT: VISUAL_GENERIC — Rebuilt the core palette around a warmer industrial accent and added a consistent 8px spacing scale. */
   --font-body: "IBM Plex Sans";
   --font-display: "Space Grotesk";
   --bg: #0d1218;
@@ -31,6 +29,19 @@
   --space-4: 32px;
   --space-5: 48px;
   --space-6: 64px;
+  --radius-sm: 0.75rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 2rem;
+  --radius-card: 1.7rem;
+  --radius-section: 2rem;
+  --radius-full: 9999px;
+  --tracking-tight: -0.03em;
+  --tracking-label: 0.15em;
+  --tracking-caption: 0.19em;
+  --tracking-header: 0.23em;
+  --tracking-prominent: 0.28em;
+  --tracking-display: 0.36em;
 }
 
 @theme inline {
@@ -38,6 +49,18 @@
   --color-foreground: var(--text);
   --font-sans: var(--font-body);
   --font-display: var(--font-display);
+  --radius-sm: 0.75rem;
+  --radius-md: 1rem;
+  --radius-lg: 1.5rem;
+  --radius-xl: 2rem;
+  --radius-card: 1.7rem;
+  --radius-section: 2rem;
+  --tracking-tight: -0.03em;
+  --tracking-label: 0.15em;
+  --tracking-caption: 0.19em;
+  --tracking-header: 0.23em;
+  --tracking-prominent: 0.28em;
+  --tracking-display: 0.36em;
 }
 
 * {
@@ -273,6 +296,23 @@ input[type="checkbox"] {
     0 20px 46px rgba(2, 6, 23, 0.48);
 }
 
+@keyframes content-fade-in {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.content-fade-in {
+  animation: content-fade-in 0.35s cubic-bezier(0.18, 0.88, 0.24, 1) forwards;
+  will-change: transform, opacity;
+}
+
 @keyframes ocr-camera-pulse {
 
   0%,
@@ -311,6 +351,72 @@ input[type="checkbox"] {
 .overflow-safe-text {
   overflow-wrap: anywhere;
   word-break: break-word;
+}
+
+/* Auth form shared classes */
+.auth-input {
+  height: 4rem;
+  border-radius: var(--radius-md);
+  border: 1px solid #323845;
+  background: rgba(51, 56, 73, 0.85);
+  padding: 0 1.25rem;
+  font-size: 1.05rem;
+  color: #edf3ff;
+  width: 100%;
+  transition: border-color 180ms ease, background-color 180ms ease;
+}
+
+.auth-input::placeholder {
+  color: #69758a;
+}
+
+.auth-input:focus {
+  border-color: #5ba8ff;
+  background: #383e49;
+  outline: none;
+}
+
+.auth-button-primary {
+  height: 4.4rem;
+  width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(124, 191, 255, 0.2);
+  background: linear-gradient(180deg, #89bcf8, #55a9ff);
+  color: #07131f;
+  font-size: 1.02rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  box-shadow: 0 20px 40px rgba(66, 150, 255, 0.3);
+  cursor: pointer;
+  transition: background 180ms ease;
+}
+
+.auth-button-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #9bc8ff, #63b2ff);
+}
+
+.auth-button-primary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-button-outline {
+  height: 3.5rem;
+  border-radius: var(--radius-md);
+  border: 1px solid #2d3746;
+  background: #151a24;
+  color: #9bc9ff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  cursor: pointer;
+  transition: background 180ms ease;
+}
+
+.auth-button-outline:hover:not(:disabled) {
+  background: #1b2230;
 }
 
 .ui-no-select {

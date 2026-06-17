@@ -262,7 +262,7 @@ export default function MyTasksPage() {
 
   if (loading || (pageLoading && !hasLoadedOnce)) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
+      <main className="min-h-screen px-4 py-8 md:px-8 content-fade-in">
         <div className="mx-auto max-w-7xl space-y-6">
           <Skeleton className="h-32 rounded-[2rem]" />
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -286,7 +286,7 @@ export default function MyTasksPage() {
         <div className="mx-auto max-w-4xl">
           <Card>
             <CardHeader>
-              <div className="text-sm uppercase tracking-[0.26em] text-[var(--accent)]">{t("tasks.title", "My Tasks")}</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">{t("tasks.title", "My Tasks")}</div>
               <CardTitle>{t("tasks.sign_in_title", "Sign in to open your task board")}</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
@@ -305,7 +305,7 @@ export default function MyTasksPage() {
         <div className="mx-auto max-w-4xl">
           <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
             <CardHeader>
-              <div className="text-sm uppercase tracking-[0.26em] text-[var(--accent)]">{t("tasks.title", "My Tasks")}</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">{t("tasks.title", "My Tasks")}</div>
               <CardTitle>{t("tasks.worker_only_title", "This worker board is kept simple on purpose")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-[var(--muted)]">
@@ -479,7 +479,7 @@ export default function MyTasksPage() {
                     key={item.label}
                     className={`rounded-2xl border px-4 py-4 ${highlightCard(item.active)}`}
                   >
-                    <div className="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">{item.label}</div>
+                    <div className="text-xs uppercase tracking-caption text-[var(--muted)]">{item.label}</div>
                     <div className="mt-2 text-xl font-semibold text-[var(--text)]">{item.value}</div>
                     <div className="mt-2 text-xs leading-5 text-[var(--muted)]">{item.detail}</div>
                   </div>

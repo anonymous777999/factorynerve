@@ -120,7 +120,6 @@ export default function VerifyEmailPage() {
     }
   };
 
-  // AUDIT: TEXT_NOISE - shorten the auth-shell narrative so the verification action stays primary
   return (
     <AuthShell
       badge={t("auth.verify.badge", "Email Verification")}
@@ -173,7 +172,7 @@ export default function VerifyEmailPage() {
 
           {resolvedValid && !resolvedVerifying ? (
             <>
-              {/* AUDIT: DENSITY_OVERLOAD - add one compact prep card so the verify CTA reads as the clear next move */}
+
               <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-4 text-sm text-[var(--text)]/90">
                 {t("auth.verify.prep", "Confirm this link once, then return to sign in with the same registration email.")}
               </div>

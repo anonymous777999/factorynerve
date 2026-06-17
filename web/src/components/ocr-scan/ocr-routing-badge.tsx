@@ -28,7 +28,7 @@ export function OcrRoutingBadge({ routing }: OcrRoutingBadgeProps) {
         : "Local OCR";
   return (
     <div className="flex flex-wrap gap-2">
-      <span className={cn("rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em]", tierTone(routing.model_tier))}>
+      <span className={cn("rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-label", tierTone(routing.model_tier))}>
         {providerLabel}
       </span>
       <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1 text-xs text-slate-300">

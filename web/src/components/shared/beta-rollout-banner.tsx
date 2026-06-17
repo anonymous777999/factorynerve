@@ -10,14 +10,14 @@ export function BetaRolloutBanner() {
     <div className="border-b border-amber-400/25 bg-[linear-gradient(135deg,rgba(245,158,11,0.18),rgba(249,115,22,0.08))] px-4 py-3 text-sm text-amber-100">
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <span className="rounded-full border border-amber-300/30 bg-amber-300/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]">
+          <span className="rounded-full border border-amber-300/30 bg-amber-300/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-caption">
             Beta {betaStage}
           </span>
           <span className="leading-6">
             {betaBannerText || "This release is under monitored beta rollout. Please report anything that feels off before full cutover."}
           </span>
         </div>
-        <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-[0.16em]">
+        <div className="flex flex-wrap items-center gap-3 text-xs uppercase tracking-label">
           {releaseVersion ? <span>Release {releaseVersion}</span> : null}
           {betaFeedbackUrl ? (
             <a

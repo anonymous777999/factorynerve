@@ -71,7 +71,7 @@ export function SettingsShell({
     <>
       <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
         <div>
-          <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{title}</div>
+          <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">{title}</div>
           <h1 className="mt-2 text-3xl font-semibold">{heroTitle}</h1>
           <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">{heroSubtitle}</p>
         </div>

@@ -1405,7 +1405,7 @@ export default function DashboardHome() {
 
               <div className="mt-8">
                 <div className="text-xl font-semibold md:text-2xl">Ready for shift</div>
-                <div className={`mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] ${workerStatus.tone}`}>
+                <div className={`mt-5 inline-flex items-center gap-2 rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-header ${workerStatus.tone}`}>
                   <span className="h-2.5 w-2.5 rounded-full bg-current opacity-80" />
                   Status: {workerStatus.label}
                 </div>
@@ -1414,7 +1414,7 @@ export default function DashboardHome() {
               </div>
 
               <div className="mt-8">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Main Action</div>
+                <div className="text-xs uppercase tracking-caption text-slate-400">Main Action</div>
                 <Link
                   href={workerPrimaryAction.href}
                   className="mt-3 inline-flex h-20 w-full items-center justify-center rounded-[28px] bg-[linear-gradient(90deg,#22d3ee,#60a5fa)] px-6 text-xl font-semibold text-[#08101D] transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0B0F19]"
@@ -1425,7 +1425,7 @@ export default function DashboardHome() {
               </div>
 
               <div className="mt-8">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Quick Actions</div>
+                <div className="text-xs uppercase tracking-caption text-slate-400">Quick Actions</div>
                 <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {workerQuickActions.map((action) => (
                     <Link
@@ -1441,7 +1441,7 @@ export default function DashboardHome() {
               </div>
 
               <div className="mt-8 rounded-[24px] border border-white/10 bg-white/5 px-4 py-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Today Summary</div>
+                <div className="text-xs uppercase tracking-caption text-slate-400">Today Summary</div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <div className="rounded-[20px] border border-white/10 bg-[#0E1524]/80 px-4 py-3">
                     <div className="text-xs text-slate-400">Completed</div>
@@ -1457,7 +1457,7 @@ export default function DashboardHome() {
 
             <aside className="space-y-4">
               <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(14,21,36,0.96),rgba(11,15,25,0.98))] p-5 shadow-[0_20px_60px_rgba(6,10,18,0.32)]">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Today Summary</div>
+                <div className="text-xs uppercase tracking-caption text-slate-400">Today Summary</div>
                 <div className="mt-4 space-y-3 text-sm text-slate-300">
                   <div className="flex items-center justify-between">
                     <span>Completed</span>
@@ -1480,7 +1480,7 @@ export default function DashboardHome() {
               </div>
 
               <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Alerts</div>
+                <div className="text-xs uppercase tracking-caption text-slate-400">Alerts</div>
                 {workerAlerts.length ? (
                   <div className="mt-4 space-y-3">
                     {workerAlerts.slice(0, 2).map((alert) => (
@@ -1505,7 +1505,7 @@ export default function DashboardHome() {
               </div>
 
               <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Shift Status</div>
+                <div className="text-xs uppercase tracking-caption text-slate-400">Shift Status</div>
                 <div className="mt-4 space-y-3">
                   {todayShiftCards.map(({ shift, entry }) => (
                     <div
@@ -1517,7 +1517,7 @@ export default function DashboardHome() {
                       }`}
                     >
                       <span className="text-sm font-medium text-white">{formatShift(shift)}</span>
-                      <span className={`text-xs font-semibold uppercase tracking-[0.18em] ${entry ? "text-emerald-100" : "text-slate-400"}`}>
+                      <span className={`text-xs font-semibold uppercase tracking-caption ${entry ? "text-emerald-100" : "text-slate-400"}`}>
                         {entry ? "Done" : "Pending"}
                       </span>
                     </div>
@@ -1544,7 +1544,7 @@ export default function DashboardHome() {
               {headerCopy}
             </p>
           </div>
-          {/* AUDIT: BUTTON_CLUTTER — The hero now keeps only the immediate board actions; logout and report navigation stay available from the shell and secondary routes below. */}
+
           <div className="flex flex-wrap gap-3">
             {primaryAction ? (
               <Link href={primaryAction.href}>
@@ -1554,7 +1554,7 @@ export default function DashboardHome() {
           </div>
         </section>
 
-        {/* AUDIT: BUTTON_CLUTTER - move board maintenance actions into a secondary tray so the main work lane stays obvious. */}
+
         <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
           <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
             Board tools
@@ -1608,7 +1608,7 @@ export default function DashboardHome() {
         <section className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr_1fr]">
           <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
             <CardHeader>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
+              <div className="text-xs font-semibold uppercase tracking-header text-[var(--accent)]">
                 {t("dashboard.section.now", "Now")}
               </div>
               <CardTitle className="text-xl">
@@ -1634,7 +1634,7 @@ export default function DashboardHome() {
 
           <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
             <CardHeader>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
+              <div className="text-xs font-semibold uppercase tracking-header text-[var(--accent)]">
                 {t("dashboard.section.attention", "Attention")}
               </div>
               <CardTitle className="text-xl">{t("dashboard.attention.title", "What needs review now")}</CardTitle>
@@ -1656,13 +1656,13 @@ export default function DashboardHome() {
               </div>
               {topAnomaly ? (
                 <div className={`rounded-2xl border p-3 ${severityTone(topAnomaly.severity)}`}>
-                  <div className="text-xs uppercase tracking-[0.2em] opacity-80">{topAnomaly.anomaly_type.replaceAll("_", " ")}</div>
+                  <div className="text-xs uppercase tracking-caption opacity-80">{topAnomaly.anomaly_type.replaceAll("_", " ")}</div>
                   <div className="mt-1 text-sm font-medium">{topAnomaly.message}</div>
                 </div>
               ) : null}
               {state.ocrSummary ? (
                 <div className="rounded-2xl border border-cyan-400/30 bg-[rgba(34,211,238,0.08)] p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-cyan-100">Trusted OCR</div>
+                  <div className="text-xs uppercase tracking-caption text-cyan-100">Trusted OCR</div>
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-xl border border-cyan-400/20 bg-[rgba(8,18,28,0.42)] p-3">
                       <div className="text-[11px] text-cyan-100/80">Approved docs</div>
@@ -1701,16 +1701,16 @@ export default function DashboardHome() {
 
           <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
             <CardHeader>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
+              <div className="text-xs font-semibold uppercase tracking-header text-[var(--accent)]">
                 {t("dashboard.section.quick_actions", "Quick Actions")}
               </div>
               <CardTitle className="text-xl">{t("dashboard.quick.title", "No hunting, just move")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {/* AUDIT: DENSITY_OVERLOAD — The dashboard now spotlights the first few next routes and tucks the long route list into a secondary tray. */}
+
               {secondaryActions.slice(0, 3).map((card) => (
                 <div key={`${card.eyebrow}-${card.href}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{card.eyebrow}</div>
+                  <div className="text-xs uppercase tracking-caption text-[var(--muted)]">{card.eyebrow}</div>
                   <div className="mt-1 text-sm font-semibold">{card.title}</div>
                   <div className="mt-1 text-xs text-[var(--muted)]">{card.detail}</div>
                   <Link href={card.href} className="mt-2 inline-block text-xs text-[var(--accent)] underline underline-offset-4">
@@ -1720,13 +1720,13 @@ export default function DashboardHome() {
               ))}
               {secondaryActions.length > 3 || dashboardQuickLinks.length ? (
                 <details className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,24,0.62)] p-3">
-                  <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                  <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-caption text-[var(--muted)]">
                     More routes
                   </summary>
                   <div className="mt-3 space-y-3">
                     {secondaryActions.slice(3).map((card) => (
                       <div key={`${card.eyebrow}-${card.href}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
-                        <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{card.eyebrow}</div>
+                        <div className="text-xs uppercase tracking-caption text-[var(--muted)]">{card.eyebrow}</div>
                         <div className="mt-1 text-sm font-semibold">{card.title}</div>
                         <div className="mt-1 text-xs text-[var(--muted)]">{card.detail}</div>
                         <Link href={card.href} className="mt-2 inline-block text-xs text-[var(--accent)] underline underline-offset-4">
@@ -1753,7 +1753,7 @@ export default function DashboardHome() {
         {activeFactory?.industry_type === "steel" && ["supervisor", "manager", "owner"].includes(user?.role || "") ? (
           <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
             <CardHeader>
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">
+              <div className="text-xs font-semibold uppercase tracking-header text-[var(--accent)]">
                 {t("dashboard.steel.section", "Steel Control")}
               </div>
               <CardTitle className="text-xl">
@@ -1820,9 +1820,9 @@ export default function DashboardHome() {
           ))}
         </section>
 
-        {/* AUDIT: BUTTON_CLUTTER — Organization and deep analytics context now sit behind a compact reveal so the operational home stays action-first. */}
+
         <details className="rounded-[1.5rem] border border-[var(--border)] bg-[rgba(16,20,32,0.82)] p-4">
-          <summary className="cursor-pointer list-none text-sm font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
+          <summary className="cursor-pointer list-none text-sm font-semibold uppercase tracking-caption text-[var(--muted)]">
             {t("dashboard.section.advanced", "Context")}
           </summary>
           <div className="mt-5 space-y-6">
@@ -1870,7 +1870,7 @@ export default function DashboardHome() {
                 <CardTitle className="text-xl">{t("dashboard.last_7_days", "Last 7 Days")}</CardTitle>
               </div>
               {state.usage?.plan ? (
-                <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs uppercase tracking-[0.2em] text-[var(--muted)]">
+                <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs uppercase tracking-caption text-[var(--muted)]">
                   {state.usage.plan}
                 </span>
               ) : null}
@@ -2025,19 +2025,19 @@ export default function DashboardHome() {
                   </div>
                   <div className="grid gap-3 sm:grid-cols-3">
                     <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
-                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                      <div className="text-xs uppercase tracking-caption text-[var(--muted)]">
                         {t("dashboard.metric.signals", "Signals")}
                       </div>
                       <div className="mt-2 text-2xl font-semibold">{state.anomalyPreview.items.length}</div>
                     </div>
                     <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
-                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                      <div className="text-xs uppercase tracking-caption text-[var(--muted)]">
                         {t("dashboard.window", "Window")}
                       </div>
                       <div className="mt-2 text-2xl font-semibold">{state.anomalyPreview.days}d</div>
                     </div>
                     <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
-                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{t("dashboard.mode", "Mode")}</div>
+                      <div className="text-xs uppercase tracking-caption text-[var(--muted)]">{t("dashboard.mode", "Mode")}</div>
                       <div className="mt-2 text-2xl font-semibold">{t("dashboard.preview", "Preview")}</div>
                     </div>
                   </div>
@@ -2061,7 +2061,7 @@ export default function DashboardHome() {
                   <div key={`${item.entry_id}-${item.anomaly_type}`} className={`rounded-2xl border p-4 ${severityTone(item.severity)}`}>
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="text-xs uppercase tracking-[0.2em] opacity-80">
+                        <div className="text-xs uppercase tracking-caption opacity-80">
                           {item.anomaly_type.replaceAll("_", " ")}
                         </div>
                         <div className="mt-1 text-sm font-medium">{item.message}</div>
@@ -2103,7 +2103,7 @@ export default function DashboardHome() {
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <div className="text-xs uppercase tracking-[0.2em] opacity-80">{alert.alert_type}</div>
+                        <div className="text-xs uppercase tracking-caption opacity-80">{alert.alert_type}</div>
                         <div className="mt-1 text-sm font-medium">{alert.message}</div>
                         <div className="mt-2 text-xs opacity-70">{formatDateTime(alert.created_at, locale)}</div>
                       </div>

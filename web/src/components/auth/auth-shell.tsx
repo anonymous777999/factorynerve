@@ -73,7 +73,7 @@ export function AuthShell({
           </div>
           <div className="leading-tight">
             <div className="font-semibold text-white">{t("auth.shell.home_label", "DPR.ai")}</div>
-            <div className="text-[11px] uppercase tracking-[0.22em] text-slate-400">{t("auth.shell.home_caption", "Factory access")}</div>
+            <div className="text-[11px] uppercase tracking-header text-slate-400">{t("auth.shell.home_caption", "Factory access")}</div>
           </div>
         </Link>
 
@@ -87,14 +87,14 @@ export function AuthShell({
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(76,176,255,0.10),transparent_34%),radial-gradient(circle_at_bottom_right,rgba(45,212,191,0.08),transparent_28%)]" />
           <CardHeader className="relative space-y-4 border-b border-white/8 pb-6">
             <div
-              className="auth-rise inline-flex w-fit rounded-full border border-white/12 bg-white/6 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300"
+              className="auth-rise inline-flex w-fit rounded-full border border-white/12 bg-white/6 px-3 py-1 text-[11px] font-semibold uppercase tracking-header text-slate-300"
               style={{ animationDelay: "120ms" }}
             >
               {badge}
             </div>
             <div className="space-y-3">
               <CardTitle
-                className="auth-rise auth-title-glow text-3xl tracking-[-0.04em] text-white sm:text-[2.65rem]"
+                className="auth-rise auth-title-glow text-3xl tracking-tight text-white sm:text-[2.65rem]"
                 style={{ animationDelay: "170ms" }}
               >
                 {title}
@@ -133,8 +133,8 @@ export function AuthShell({
           >
             <div className="grid gap-4 lg:grid-cols-[1.18fr_0.82fr]">
               <div className="rounded-[1.7rem] border border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.05),rgba(255,255,255,0.02))] p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]">
-                <div className="text-xs font-semibold uppercase tracking-[0.24em] text-slate-400">{t("auth.shell.workflow_map", "Workflow map")}</div>
-                <h2 className="mt-3 text-2xl font-semibold tracking-[-0.03em] text-white">{journeyTitle}</h2>
+                <div className="text-xs font-semibold uppercase tracking-header text-slate-400">{t("auth.shell.workflow_map", "Workflow map")}</div>
+                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-white">{journeyTitle}</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-300">{journeyDescription}</p>
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -148,7 +148,7 @@ export function AuthShell({
                           {index + 1}
                         </div>
                         <div>
-                          <div className="text-sm font-semibold tracking-[-0.01em] text-white">{step.title}</div>
+                          <div className="text-sm font-semibold tracking-tight text-white">{step.title}</div>
                           <div className="mt-1 text-sm leading-6 text-slate-300">{step.description}</div>
                         </div>
                       </div>
@@ -158,8 +158,8 @@ export function AuthShell({
               </div>
 
               <div className="rounded-[1.7rem] border border-emerald-400/18 bg-[linear-gradient(180deg,rgba(9,25,23,0.88),rgba(7,17,22,0.96))] p-5 shadow-[0_18px_60px_rgba(2,6,23,0.34)] backdrop-blur-xl">
-                <div className="text-xs font-semibold uppercase tracking-[0.24em] text-emerald-100/70">{t("auth.shell.guardrails", "Guardrails")}</div>
-                <div className="mt-3 text-xl font-semibold tracking-[-0.02em] text-emerald-50">{resolvedSupportTitle}</div>
+                <div className="text-xs font-semibold uppercase tracking-header text-emerald-100/70">{t("auth.shell.guardrails", "Guardrails")}</div>
+                <div className="mt-3 text-xl font-semibold tracking-tight text-emerald-50">{resolvedSupportTitle}</div>
                 <div className="mt-3 text-sm leading-7 text-emerald-50/80">{resolvedSupportDescription}</div>
               </div>
             </div>

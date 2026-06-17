@@ -17,6 +17,7 @@ import {
   updateSteelDispatchStatus,
 } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
+import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
 
 function formatKg(value: number | null | undefined) {
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value || 0);
@@ -166,16 +167,12 @@ export function SteelDispatchDetailPage() {
   const pageLoading = sessionLoading || (Boolean(user) && loading);
 
   if (pageLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading steel dispatch detail...
-      </main>
-    );
+    return <DashboardPageSkeleton />;
   }
 
   if (!user || !detail) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 content-fade-in">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Dispatch Detail</CardTitle>
@@ -526,7 +523,7 @@ export function SteelDispatchDetailPage() {
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)] mb-4">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-caption text-[var(--muted)] mb-4">
                 <span>Production</span>
                 <span>→</span>
                 <span>Invoice</span>
@@ -535,7 +532,7 @@ export function SteelDispatchDetailPage() {
                 <span>→</span>
                 <span>Reconciliation</span>
               </div>
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Dispatch</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Steel Dispatch</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{detail.dispatch.dispatch_number}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 Check the manifest, move the truck to its next valid status, and keep inventory posting aligned with delivery proof.
@@ -543,11 +540,11 @@ export function SteelDispatchDetailPage() {
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <div
-                className={`inline-flex rounded-full border px-4 py-2 text-xs uppercase tracking-[0.18em] ${statusBadgeClass(detail.dispatch.status)}`}
+                className={`inline-flex rounded-full border px-4 py-2 text-xs uppercase tracking-caption ${statusBadgeClass(detail.dispatch.status)}`}
               >
                 {detail.dispatch.status}
               </div>
-              {/* AUDIT: BUTTON_CLUTTER - move cross-route links into a secondary tools tray so dispatch progression stays primary. */}
+
               <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
                   Dispatch tools
@@ -592,22 +589,22 @@ export function SteelDispatchDetailPage() {
             </div>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
               <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-3">
-                <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Dispatch status</div>
+                <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Dispatch status</div>
                 <div className="mt-2 font-semibold text-white">{dispatchStatusLabel}</div>
                 <div className="mt-1 text-xs text-[var(--muted)]">{dispatchStatusDetail}</div>
               </div>
               <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-3">
-                <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Truck movement</div>
+                <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Truck movement</div>
                 <div className="mt-2 font-semibold text-white">{movementStateLabel}</div>
                 <div className="mt-1 text-xs text-[var(--muted)]">{movementStateDetail}</div>
               </div>
               <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-3">
-                <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Inventory</div>
+                <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Inventory</div>
                 <div className="mt-2 font-semibold text-white">{inventoryStateLabel}</div>
                 <div className="mt-1 text-xs text-[var(--muted)]">{inventoryStateDetail}</div>
               </div>
               <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-3">
-                <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Delivery</div>
+                <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Delivery</div>
                 <div className="mt-2 font-semibold text-white">{deliveryStateLabel}</div>
                 <div className="mt-1 text-xs text-[var(--muted)]">{deliveryStateDetail}</div>
               </div>
@@ -809,7 +806,7 @@ export function SteelDispatchDetailPage() {
                 ) : null}
               </div>
 
-              {/* AUDIT: DENSITY_OVERLOAD - keep the editable status form as the primary lane and move lesser status actions behind a secondary reveal. */}
+
               <div className="space-y-4 rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
                 <div>
                   <div className="text-sm font-semibold text-white">Status update</div>
@@ -918,7 +915,7 @@ export function SteelDispatchDetailPage() {
                 </details>
               </div>
 
-              {/* AUDIT: BUTTON_CLUTTER - keep evidence-heavy sections in reveals so the next status change stays easier to spot. */}
+
               <details className="group rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
                   Movement timeline

@@ -21,6 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
+import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
 
 type DerivedFactoryStat = {
   factoryId: string;
@@ -278,7 +279,7 @@ function ShiftChart({
                 : "border-[var(--border)] bg-[rgba(255,255,255,0.03)] hover:border-[rgba(45,212,191,0.28)]"
             }`}
           >
-            <div className="text-xs uppercase tracking-[0.22em] text-[var(--muted)]">{shiftLabel(item.shift)}</div>
+            <div className="text-xs uppercase tracking-header text-[var(--muted)]">{shiftLabel(item.shift)}</div>
             <div className="mt-3 text-2xl font-semibold text-[var(--text)]">{item.performance.toFixed(1)}%</div>
             <div className="mt-1 text-sm text-[var(--muted)]">{item.units} units - {item.downtime} min downtime</div>
             <div className="mt-3 h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
@@ -545,7 +546,7 @@ export default function PremiumDashboardPage() {
   };
 
   if (loading) {
-    return <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">Loading premium analytics...</main>;
+    return <DashboardPageSkeleton />;
   }
 
   if (!user) {
@@ -704,7 +705,7 @@ export default function PremiumDashboardPage() {
           </div>
         </section>
 
-        {/* AUDIT: BUTTON_CLUTTER - keep route jumps in a secondary tray so the owner signal board stays primary. */}
+
         <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
           <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
             Owner tools
@@ -729,7 +730,7 @@ export default function PremiumDashboardPage() {
             </div>
             <div className="grid gap-3 sm:grid-cols-4">
               <div>
-                <div className="mb-2 text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Window</div>
+                <div className="mb-2 text-xs uppercase tracking-header text-[var(--muted)]">Window</div>
                 <Select value={String(days)} onChange={(event) => setDays(Number(event.target.value))}>
                   <option value="7">Last 7 days</option>
                   <option value="14">Last 14 days</option>
@@ -737,7 +738,7 @@ export default function PremiumDashboardPage() {
                 </Select>
               </div>
               <div>
-                <div className="mb-2 text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Factory</div>
+                <div className="mb-2 text-xs uppercase tracking-header text-[var(--muted)]">Factory</div>
                 <Select value={selectedFactoryId || ""} onChange={(event) => setSelectedFactoryId(event.target.value || null)}>
                   <option value="">All factories</option>
                   {(dashboard?.filters.factories || []).map((factory) => (
@@ -748,7 +749,7 @@ export default function PremiumDashboardPage() {
                 </Select>
               </div>
               <div>
-                <div className="mb-2 text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Shift</div>
+                <div className="mb-2 text-xs uppercase tracking-header text-[var(--muted)]">Shift</div>
                 <Select value={selectedShift || ""} onChange={(event) => setSelectedShift(event.target.value || null)}>
                   <option value="">All shifts</option>
                   {(dashboard?.filters.shifts || []).map((item) => (
@@ -759,7 +760,7 @@ export default function PremiumDashboardPage() {
                 </Select>
               </div>
               <div>
-                <div className="mb-2 text-xs uppercase tracking-[0.24em] text-[var(--muted)]">Audit Action</div>
+                <div className="mb-2 text-xs uppercase tracking-header text-[var(--muted)]">Audit Action</div>
                 <Select value={auditAction} onChange={(event) => setAuditAction(event.target.value)}>
                   <option value="">All actions</option>
                   {auditActions.map((action) => (
@@ -811,7 +812,7 @@ export default function PremiumDashboardPage() {
               ].map(([label, value]) => (
                 <Card key={label}>
                   <CardHeader>
-                    <div className="text-xs uppercase tracking-[0.24em] text-[var(--muted)]">{label}</div>
+                    <div className="text-xs uppercase tracking-header text-[var(--muted)]">{label}</div>
                     <CardTitle className="text-2xl">{value}</CardTitle>
                   </CardHeader>
                 </Card>
@@ -830,7 +831,7 @@ export default function PremiumDashboardPage() {
               <section className="space-y-6">
                 <Card className="border-[rgba(239,68,68,0.18)] bg-[linear-gradient(135deg,rgba(42,16,16,0.96),rgba(14,20,30,0.92))]">
                   <CardHeader className="space-y-3">
-                    <div className="text-xs font-semibold uppercase tracking-[0.28em] text-red-200">Owner Risk Desk</div>
+                    <div className="text-xs font-semibold uppercase tracking-prominent text-red-200">Owner Risk Desk</div>
                     <CardTitle className="text-2xl">Where am I losing money, why, and what should I check first?</CardTitle>
                     <div className="max-w-4xl text-sm leading-6 text-[var(--muted)]">
                       This layer turns approved steel operating data into owner action: leakage value, stock confidence, dispatch exposure, repeated anomaly patterns, and responsibility signals tied back to the source workflow.
@@ -839,7 +840,7 @@ export default function PremiumDashboardPage() {
                   <CardContent className="grid gap-4 xl:grid-cols-5">
                     {ownerRiskCards.map((card) => (
                       <div key={card.label} className={`rounded-2xl border p-4 ${card.tone}`}>
-                        <div className="text-xs uppercase tracking-[0.18em] text-white/75">{card.label}</div>
+                        <div className="text-xs uppercase tracking-caption text-white/75">{card.label}</div>
                         <div className="mt-3 text-2xl font-semibold text-white">{card.value}</div>
                         <div className="mt-2 min-h-[3.5rem] text-sm leading-6 text-white/80">{card.helper}</div>
                         <Link href={card.href}>
@@ -865,11 +866,11 @@ export default function PremiumDashboardPage() {
                               <div className="space-y-2">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span className={severityClasses(entry.batch.severity)}>
-                                    <span className="rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]">
+                                    <span className="rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label">
                                       {entry.batch.severity}
                                     </span>
                                   </span>
-                                  <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                                  <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] font-semibold uppercase tracking-label text-[var(--muted)]">
                                     Score {entry.anomaly_score.toFixed(1)}
                                   </span>
                                 </div>
@@ -880,19 +881,19 @@ export default function PremiumDashboardPage() {
                             </div>
                             <div className="mt-4 grid gap-3 md:grid-cols-4">
                               <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
-                                <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Operator</div>
+                                <div className="text-[11px] uppercase tracking-label text-[var(--muted)]">Operator</div>
                                 <div className="mt-1 text-sm text-[var(--text)]">{entry.batch.operator_name || "Unassigned"}</div>
                               </div>
                               <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
-                                <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Loss %</div>
+                                <div className="text-[11px] uppercase tracking-label text-[var(--muted)]">Loss %</div>
                                 <div className="mt-1 text-sm text-[var(--text)]">{formatPercent(entry.batch.loss_percent)}</div>
                               </div>
                               <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
-                                <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Variance</div>
+                                <div className="text-[11px] uppercase tracking-label text-[var(--muted)]">Variance</div>
                                 <div className="mt-1 text-sm text-[var(--text)]">{formatKg(entry.batch.variance_kg)}</div>
                               </div>
                               <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-3">
-                                <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Leakage value</div>
+                                <div className="text-[11px] uppercase tracking-label text-[var(--muted)]">Leakage value</div>
                                 <div className="mt-1 text-sm text-[var(--text)]">
                                   {steelOverview?.financial_access ? formatCurrency(entry.estimated_leakage_value_inr) : "Restricted"}
                                 </div>
@@ -1048,7 +1049,7 @@ export default function PremiumDashboardPage() {
                           <div key={`stock:${item.item_id}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                             <div className="flex items-center justify-between gap-3">
                               <div className="text-sm font-semibold text-[var(--text)]">{item.name}</div>
-                              <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">{item.confidence_status}</div>
+                              <div className="text-xs uppercase tracking-label text-[var(--muted)]">{item.confidence_status}</div>
                             </div>
                             <div className="mt-2 text-xs leading-5 text-[var(--muted)]">{item.confidence_reason}</div>
                             <div className="mt-2 text-sm text-[var(--text)]">
@@ -1076,22 +1077,22 @@ export default function PremiumDashboardPage() {
                   <CardContent className="space-y-4">
                     <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                       <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] p-4">
-                        <div className="text-xs uppercase tracking-[0.22em] text-emerald-100/80">Trusted docs</div>
+                        <div className="text-xs uppercase tracking-header text-emerald-100/80">Trusted docs</div>
                         <div className="mt-2 text-2xl font-semibold text-emerald-50">{ocrSummary.trusted_documents}</div>
                         <div className="mt-1 text-sm text-emerald-100/85">{ocrSummary.trusted_rows} trusted rows</div>
                       </div>
                       <div className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.12)] p-4">
-                        <div className="text-xs uppercase tracking-[0.22em] text-amber-100/80">Pending review</div>
+                        <div className="text-xs uppercase tracking-header text-amber-100/80">Pending review</div>
                         <div className="mt-2 text-2xl font-semibold text-amber-50">{ocrSummary.pending_documents}</div>
                         <div className="mt-1 text-sm text-amber-100/85">{ocrSummary.pending_rows} rows waiting</div>
                       </div>
                       <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] p-4">
-                        <div className="text-xs uppercase tracking-[0.22em] text-red-100/80">Untrusted docs</div>
+                        <div className="text-xs uppercase tracking-header text-red-100/80">Untrusted docs</div>
                         <div className="mt-2 text-2xl font-semibold text-red-50">{ocrSummary.untrusted_documents}</div>
                         <div className="mt-1 text-sm text-red-100/85">{ocrSummary.untrusted_rows} rows outside trusted reporting</div>
                       </div>
                       <div className="rounded-2xl border border-cyan-400/30 bg-[rgba(34,211,238,0.12)] p-4">
-                        <div className="text-xs uppercase tracking-[0.22em] text-cyan-100/80">Approval rate</div>
+                        <div className="text-xs uppercase tracking-header text-cyan-100/80">Approval rate</div>
                         <div className="mt-2 text-2xl font-semibold text-cyan-50">
                           {(ocrSummary.approval_rate ?? 0).toFixed(0)}%
                         </div>
@@ -1187,7 +1188,7 @@ export default function PremiumDashboardPage() {
                   <div className="grid gap-3 lg:hidden">
                     {heatmapDailySummary.map((item) => (
                       <div key={item.day} className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4">
-                        <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{item.day}</div>
+                        <div className="text-xs uppercase tracking-caption text-[var(--muted)]">{item.day}</div>
                         <div className="mt-2 text-lg font-semibold text-[var(--text)]">{item.count}</div>
                         <div className="mt-1 text-xs text-[var(--muted)]">Events across the full day</div>
                       </div>
@@ -1197,7 +1198,7 @@ export default function PremiumDashboardPage() {
                     <div className="grid min-w-max lg:min-w-[980px] grid-cols-[100px_repeat(24,minmax(0,1fr))] gap-2">
                       <div />
                       {Array.from({ length: 24 }).map((_, hour) => (
-                        <div key={hour} className="text-center text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
+                        <div key={hour} className="text-center text-[10px] uppercase tracking-caption text-[var(--muted)]">
                           {hour.toString().padStart(2, "0")}
                         </div>
                       ))}
@@ -1205,7 +1206,7 @@ export default function PremiumDashboardPage() {
                         const dayCells = (dashboard.heatmap || []).slice(rowIndex * 24, rowIndex * 24 + 24);
                         return (
                           <Fragment key={dayCells[0]?.day || dayLabel}>
-                            <div className="flex items-center text-xs font-semibold uppercase tracking-[0.2em] text-[var(--muted)]">
+                            <div className="flex items-center text-xs font-semibold uppercase tracking-caption text-[var(--muted)]">
                               {dayCells[0]?.label || dayLabel}
                             </div>
                             {dayCells.map((cell) => (
@@ -1242,7 +1243,7 @@ export default function PremiumDashboardPage() {
                           <div className="text-sm font-semibold text-[var(--text)]">{item.action}</div>
                           <div className="text-xs text-[var(--muted)]">{formatDateTime(item.timestamp)}</div>
                         </div>
-                        <div className="mt-2 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                        <div className="mt-2 text-xs uppercase tracking-caption text-[var(--muted)]">
                           {item.user_name || item.user_email || "System"}
                         </div>
                         <div className="mt-2 text-sm leading-6 text-[var(--text)]/85">{item.details || "-"}</div>

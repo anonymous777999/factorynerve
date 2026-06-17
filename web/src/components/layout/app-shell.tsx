@@ -989,7 +989,7 @@ function NavContent({
         return (
           <div key={section.title} className="space-y-3">
             {hideSectionTitles ? null : (
-              <div className="ui-no-select ui-no-callout px-1 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+              <div className="ui-no-select ui-no-callout px-1 text-[11px] font-semibold uppercase tracking-header text-[var(--muted)]">
                 {translatedSectionTitle}
               </div>
             )}
@@ -1036,7 +1036,7 @@ function NavContent({
                               </div>
                             ) : null}
                           </div>
-                          {/* AUDIT: TEXT_NOISE — The sidebar now stays label-first and leaves route explanation to the workspace rail instead of repeating it under each active item. */}
+
                         </div>
                       </div>
                     </Link>
@@ -1096,7 +1096,7 @@ function DesktopContextRail({
         <div className="rounded-[1.5rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-5 shadow-[0_16px_44px_rgba(3,8,20,0.28)]">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(62,166,255,0.82)]">
+              <div className="text-[11px] font-semibold uppercase tracking-header text-[rgba(62,166,255,0.82)]">
                 Workspace
               </div>
               <div className="mt-3 text-lg font-semibold text-[var(--text)]">{currentItem.label}</div>
@@ -1105,7 +1105,7 @@ function DesktopContextRail({
               type="button"
               aria-label={translate ? translate("shell.hide_workspace", "Hide workspace") : "Hide workspace"}
               title={translate ? translate("shell.hide_workspace", "Hide workspace") : "Hide workspace"}
-              className="ui-no-select ui-no-callout inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(8,12,20,0.62)] px-3 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)] hover:bg-[rgba(20,24,36,0.85)]"
+              className="ui-no-select ui-no-callout inline-flex h-9 shrink-0 items-center justify-center rounded-full border border-[var(--border)] bg-[rgba(8,12,20,0.62)] px-3 text-xs font-semibold uppercase tracking-label text-[var(--text)] transition hover:border-[rgba(62,166,255,0.35)] hover:bg-[rgba(20,24,36,0.85)]"
               onClick={onHide}
             >
               Hide
@@ -1115,26 +1115,26 @@ function DesktopContextRail({
         </div>
 
         <div className="rounded-[1.5rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-5">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+          <div className="text-[11px] font-semibold uppercase tracking-header text-[var(--muted)]">
             Factory Context
           </div>
           <div className="mt-4 space-y-3 text-sm text-[var(--muted)]">
             <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.5)] px-4 py-3">
-              <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Factory</div>
+              <div className="text-[11px] uppercase tracking-caption text-[var(--muted)]">Factory</div>
               <div className="mt-1 font-semibold text-[var(--text)]">{factoryName}</div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.5)] px-4 py-3">
-                <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Role</div>
+                <div className="text-[11px] uppercase tracking-caption text-[var(--muted)]">Role</div>
                 <div className="mt-1 font-semibold text-[var(--text)]">{roleLabel(role, translate)}</div>
               </div>
               <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.5)] px-4 py-3">
-                <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Alerts</div>
+                <div className="text-[11px] uppercase tracking-caption text-[var(--muted)]">Alerts</div>
                 <div className="mt-1 font-semibold text-[var(--text)]">{badgeCounts.alerts}</div>
               </div>
             </div>
             <div className="rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.5)] px-4 py-3">
-              <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">Review Load</div>
+              <div className="text-[11px] uppercase tracking-caption text-[var(--muted)]">Review Load</div>
               <div className="mt-1 font-semibold text-[var(--text)]">{badgeCounts.approvals}</div>
               <div className="mt-1 text-xs text-[var(--muted)]">
                 {organizationName || "Active organization context"}
@@ -1144,7 +1144,7 @@ function DesktopContextRail({
         </div>
 
         <div className="rounded-[1.5rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-5">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+          <div className="text-[11px] font-semibold uppercase tracking-header text-[var(--muted)]">
             Primary Flow
           </div>
           <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.5)] px-4 py-4">
@@ -1153,7 +1153,7 @@ function DesktopContextRail({
         </div>
 
         <div className="rounded-[1.5rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-5">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+          <div className="text-[11px] font-semibold uppercase tracking-header text-[var(--muted)]">
             Quick Jump
           </div>
           <div className="mt-4 space-y-2">
@@ -1764,7 +1764,7 @@ function AppShellFrame({
           <div className="rounded-[1.25rem] border border-[rgba(62,166,255,0.18)] bg-[linear-gradient(180deg,rgba(62,166,255,0.1),rgba(12,16,26,0.94))] p-3 shadow-[0_14px_38px_rgba(3,8,20,0.24)]">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-[rgba(62,166,255,0.88)]">
+                <div className="text-[10px] font-semibold uppercase tracking-header text-[rgba(62,166,255,0.88)]">
                   DPR.ai
                 </div>
                 <div className="mt-1 truncate text-[15px] font-semibold leading-5 text-[var(--text)]">
@@ -1803,7 +1803,7 @@ function AppShellFrame({
 
             {factoryChoices.length > 1 ? (
               <div className="mt-3">
-                <label className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                <label className="text-[10px] font-semibold uppercase tracking-label text-[var(--muted)]">
                   {t("shell.switch_factory", "Switch Factory")}
                 </label>
                 <Select
@@ -1819,7 +1819,7 @@ function AppShellFrame({
                   ))}
                 </Select>
                 <div className="mt-1 text-[11px] text-[var(--muted)]">
-                  {/* AUDIT: TEXT_NOISE — The factory helper now shows only the scope needed to confirm how many contexts are available. */}
+
                   {switchingFactory
                     ? t("shell.switching_factory_context", "Switching factory context...")
                     : `${organization?.accessible_factories || factoryChoices.length} factories`}
@@ -1869,7 +1869,7 @@ function AppShellFrame({
                       onClick={() => toggleSectionGroup(storageKey)}
                     >
                       <div className="flex items-center gap-2">
-                        <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+                        <div className="text-[11px] font-semibold uppercase tracking-header text-[var(--muted)]">
                           {localizedSectionTitle(section.title, t)}
                         </div>
                         {active ? (
@@ -1900,11 +1900,11 @@ function AppShellFrame({
           </div>
 
           <div className="mt-3 border-t border-[var(--border)] pt-3">
-            {/* AUDIT: BUTTON_CLUTTER — Moved language and account utilities into a collapsible tray so the shell stays focused on navigation first. */}
+
             <details className="group rounded-2xl border border-[var(--border)] bg-[rgba(8,12,20,0.45)] px-3 py-3">
               <summary className="ui-no-select ui-no-callout flex cursor-pointer list-none items-center justify-between gap-3 text-left">
                 <div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                  <div className="text-[10px] font-semibold uppercase tracking-caption text-[var(--muted)]">
                     {t("shell.account_title", "Account")}
                   </div>
                   <div className="mt-1 text-sm font-semibold text-[var(--text)]">
@@ -1917,7 +1917,7 @@ function AppShellFrame({
               </summary>
               <div className="mt-4 space-y-3">
                 <div className="flex items-center gap-2">
-                  <label className="ui-no-select ui-no-callout shrink-0 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                  <label className="ui-no-select ui-no-callout shrink-0 text-[10px] font-semibold uppercase tracking-label text-[var(--muted)]">
                     {t("language.label", "Language")}
                   </label>
                   <Select
@@ -1936,7 +1936,7 @@ function AppShellFrame({
 
                 <div className="flex items-center justify-between gap-3 rounded-xl border border-[var(--border)] bg-[rgba(12,16,24,0.62)] px-3 py-2.5">
                   <div>
-                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                    <div className="text-[10px] font-semibold uppercase tracking-label text-[var(--muted)]">
                       {t("shell.tips_title", "Tips")}
                     </div>
                     <div className="mt-1 text-xs text-[var(--text)]">
@@ -2023,7 +2023,7 @@ function AppShellFrame({
               )}
 
               <div className="min-w-0 flex-1 text-center">
-                <div className="truncate text-[10px] font-semibold uppercase tracking-[0.22em] text-[rgba(62,166,255,0.88)]">
+                <div className="truncate text-[10px] font-semibold uppercase tracking-header text-[rgba(62,166,255,0.88)]">
                   {activeFactory?.name || user?.factory_name || "DPR.ai"}
                 </div>
                 <div className="truncate text-sm font-semibold text-[var(--text)]">{currentItem.label}</div>
@@ -2071,7 +2071,7 @@ function AppShellFrame({
                   type="button"
                   aria-label={t("shell.show_workspace", "Show workspace")}
                   title={t("shell.show_workspace", "Show workspace")}
-                  className="ui-no-select ui-no-callout fixed right-6 top-6 z-30 hidden items-center justify-center rounded-full border border-[rgba(62,166,255,0.28)] bg-[rgba(12,16,26,0.96)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--text)] shadow-[0_12px_30px_rgba(3,8,20,0.35)] transition hover:border-[rgba(62,166,255,0.48)] hover:bg-[rgba(20,24,36,0.98)] xl:inline-flex"
+                  className="ui-no-select ui-no-callout fixed right-6 top-6 z-30 hidden items-center justify-center rounded-full border border-[rgba(62,166,255,0.28)] bg-[rgba(12,16,26,0.96)] px-4 py-2 text-xs font-semibold uppercase tracking-label text-[var(--text)] shadow-[0_12px_30px_rgba(3,8,20,0.35)] transition hover:border-[rgba(62,166,255,0.48)] hover:bg-[rgba(20,24,36,0.98)] xl:inline-flex"
                   onClick={toggleDesktopContextRail}
                 >
                   Workspace

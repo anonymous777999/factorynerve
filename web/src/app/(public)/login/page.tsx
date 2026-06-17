@@ -123,8 +123,8 @@ function GuardrailCard({ eyebrow, title, tone, icon }: GuardrailCardProps) {
     <div className={`flex items-center gap-4 rounded-[1.7rem] px-5 py-5 shadow-[0_14px_38px_rgba(3,7,18,0.26)] ${toneClasses.card}`}>
       <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl ${toneClasses.iconWrap}`}>{icon}</div>
       <div className="min-w-0 flex-1">
-        <div className={`text-xs font-semibold uppercase tracking-[0.28em] ${toneClasses.eyebrow}`}>{eyebrow}</div>
-        <div className="mt-2 text-[1.05rem] font-semibold tracking-[-0.03em] text-white sm:text-[1.1rem]">{title}</div>
+        <div className={`text-xs font-semibold uppercase tracking-prominent ${toneClasses.eyebrow}`}>{eyebrow}</div>
+        <div className="mt-2 text-[1.05rem] font-semibold tracking-tight text-white sm:text-[1.1rem]">{title}</div>
       </div>
       <div className={`h-3.5 w-3.5 shrink-0 rounded-full ${toneClasses.dot}`} />
     </div>
@@ -311,16 +311,16 @@ export default function LoginPage() {
               <WorkflowIcon />
             </div>
             <div>
-              <div className="text-[0.68rem] font-semibold uppercase tracking-[0.38em] text-[#8fc8ff]">{t("auth.login.factory_os", "Factory OS")}</div>
-              <div className="text-[1.9rem] font-semibold uppercase tracking-[-0.05em] text-[#4aa7ff]">DPR.ai</div>
+              <div className="text-[0.68rem] font-semibold uppercase tracking-display text-[#8fc8ff]">{t("auth.login.factory_os", "Factory OS")}</div>
+              <div className="text-[1.9rem] font-semibold uppercase tracking-tight text-[#4aa7ff]">DPR.ai</div>
             </div>
           </div>
-          <div className="text-sm font-semibold uppercase tracking-[0.34em] text-white/22">{t("auth.login.system", "System")}</div>
+          <div className="text-sm font-semibold uppercase tracking-display text-white/22">{t("auth.login.system", "System")}</div>
         </header>
 
         <section className="mt-10">
-          <div className="text-[0.88rem] font-medium uppercase tracking-[0.36em] text-white/70">{t("auth.login.eyebrow", "Industrial intelligence platform")}</div>
-          <h1 className="mt-3 text-[3rem] font-semibold tracking-[-0.06em] text-[#f0f4fc] sm:text-[3.35rem]">
+          <div className="text-[0.88rem] font-medium uppercase tracking-display text-white/70">{t("auth.login.eyebrow", "Industrial intelligence platform")}</div>
+          <h1 className="mt-3 text-[3rem] font-semibold tracking-tight text-[#f0f4fc] sm:text-[3.35rem]">
             {t("auth.login.title", "System Access")}
           </h1>
           <p className="mt-4 max-w-[34rem] text-sm leading-7 text-[#97a6bd]">
@@ -328,20 +328,20 @@ export default function LoginPage() {
           </p>
         </section>
 
-        {/* AUDIT: FLOW_BROKEN - add a short access sequence so the page points to one clear sign-in outcome. */}
+
         <section className="mt-8 grid gap-3 sm:grid-cols-3">
           <div className="rounded-[1.5rem] border border-white/6 bg-[linear-gradient(180deg,rgba(24,28,37,0.96),rgba(18,23,33,0.98))] px-4 py-5">
-            <div className="text-[0.68rem] font-semibold uppercase tracking-[0.3em] text-[#8fc8ff]">{t("auth.login.step_1_label", "1. Verify inbox")}</div>
+            <div className="text-[0.68rem] font-semibold uppercase tracking-prominent text-[#8fc8ff]">{t("auth.login.step_1_label", "1. Verify inbox")}</div>
             <div className="mt-3 text-base font-semibold text-white">{t("auth.login.step_1_title", "Use a real account")}</div>
             <div className="mt-2 text-sm leading-6 text-[#97a6bd]">{t("auth.login.step_1_detail", "Only verified inboxes can open the workspace.")}</div>
           </div>
           <div className="rounded-[1.5rem] border border-white/6 bg-[linear-gradient(180deg,rgba(24,28,37,0.96),rgba(18,23,33,0.98))] px-4 py-5">
-            <div className="text-[0.68rem] font-semibold uppercase tracking-[0.3em] text-[#8fc8ff]">{t("auth.login.step_2_label", "2. Start session")}</div>
+            <div className="text-[0.68rem] font-semibold uppercase tracking-prominent text-[#8fc8ff]">{t("auth.login.step_2_label", "2. Start session")}</div>
             <div className="mt-3 text-base font-semibold text-white">{t("auth.login.step_2_title", "Lock the route")}</div>
             <div className="mt-2 text-sm leading-6 text-[#97a6bd]">{t("auth.login.step_2_detail", "Cookie protection keeps the handoff stable after sign-in.")}</div>
           </div>
           <div className="rounded-[1.5rem] border border-white/6 bg-[linear-gradient(180deg,rgba(24,28,37,0.96),rgba(18,23,33,0.98))] px-4 py-5">
-            <div className="text-[0.68rem] font-semibold uppercase tracking-[0.3em] text-[#8fc8ff]">{t("auth.login.step_3_label", "3. Open desk")}</div>
+            <div className="text-[0.68rem] font-semibold uppercase tracking-prominent text-[#8fc8ff]">{t("auth.login.step_3_label", "3. Open desk")}</div>
             <div className="mt-3 text-base font-semibold text-white">
               {hasRedirectTarget ? t("auth.login.guardrail.redirect_title", "Open {{destination}}", { destination: nextDestination }) : t("auth.login.step_3_title", "Open workspace")}
             </div>
@@ -352,7 +352,7 @@ export default function LoginPage() {
         <section className="mt-8 rounded-[2rem] border border-white/6 bg-[linear-gradient(135deg,rgba(24,28,37,0.98),rgba(18,23,33,0.98))] px-5 py-6 shadow-[0_24px_60px_rgba(2,6,23,0.45)] sm:px-8 sm:py-8">
           <form onSubmit={onSubmit} className="space-y-6">
             <div>
-              <label className="text-sm font-semibold uppercase tracking-[0.14em] text-[#8ec4ff]">{t("auth.login.email_label", "Email address")}</label>
+              <label className="text-sm font-semibold uppercase tracking-label text-[#8ec4ff]">{t("auth.login.email_label", "Email address")}</label>
               <Input
                 type="email"
                 autoComplete="email"
@@ -360,12 +360,12 @@ export default function LoginPage() {
                 onChange={(event) => setEmail(event.target.value)}
                 placeholder={t("auth.login.email_placeholder", "operator@factory.ai")}
                 required
-                className="mt-3 h-16 rounded-xl border-[#323845] bg-[#333842]/85 px-5 text-[1.05rem] text-[#edf3ff] placeholder:text-[#69758a] focus:border-[#5ba8ff] focus:bg-[#383e49]"
+                className="auth-input mt-3"
               />
             </div>
 
             <div>
-              <label className="text-sm font-semibold uppercase tracking-[0.14em] text-[#d7dde8]">{t("auth.login.password_label", "Access password")}</label>
+              <label className="text-sm font-semibold uppercase tracking-label text-[#d7dde8]">{t("auth.login.password_label", "Access password")}</label>
               <div className="relative mt-3">
                 <Input
                   type={showPassword ? "text" : "password"}
@@ -374,7 +374,7 @@ export default function LoginPage() {
                   onChange={(event) => setPassword(event.target.value)}
                   placeholder={t("auth.login.password_placeholder", "........")}
                   required
-                  className="mt-0 h-16 rounded-xl border-[#323845] bg-[#333842]/85 px-5 pr-24 text-[1.05rem] text-[#edf3ff] placeholder:text-[#69758a] focus:border-[#5ba8ff] focus:bg-[#383e49]"
+                  className="auth-input mt-0 pr-24"
                 />
                 <button
                   type="button"
@@ -385,11 +385,10 @@ export default function LoginPage() {
                 </button>
               </div>
             </div>
-
             <Button
               type="submit"
               disabled={loading}
-              className="h-[4.4rem] w-full rounded-xl border border-[#7cbfff]/20 bg-[linear-gradient(180deg,#89bcf8,#55a9ff)] text-[1.02rem] font-extrabold uppercase tracking-[0.24em] text-[#07131f] shadow-[0_20px_40px_rgba(66,150,255,0.3)] hover:bg-[linear-gradient(180deg,#9bc8ff,#63b2ff)]"
+              className="auth-button-primary tracking-header"
             >
               {loading ? t("auth.login.submitting", "Authorizing...") : t("auth.login.submit", "Sign in")}
             </Button>
@@ -398,7 +397,7 @@ export default function LoginPage() {
               <div className={`rounded-[1.3rem] px-4 py-4 text-sm leading-6 shadow-[0_12px_30px_rgba(2,6,23,0.18)] ${panelToneClasses(surfaceStatus.tone)}`}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <div className={`inline-flex rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-[0.22em] ${badgeToneClasses(surfaceStatus.tone === "error" ? "error" : surfaceStatus.tone === "success" ? "success" : "neutral")}`}>
+                    <div className={`inline-flex rounded-full px-2.5 py-1 text-[0.65rem] font-semibold uppercase tracking-header ${badgeToneClasses(surfaceStatus.tone === "error" ? "error" : surfaceStatus.tone === "success" ? "success" : "neutral")}`}>
                       {surfaceStatus.tone === "error" ? t("auth.login.status_blocked", "Access blocked") : surfaceStatus.tone === "success" ? t("notifications.ready", "Ready") : t("notifications.status", "Status")}
                     </div>
                     <div className="mt-3">{surfaceStatus.message}</div>
@@ -411,11 +410,11 @@ export default function LoginPage() {
                       variant="outline"
                       onClick={onResendVerification}
                       disabled={resending}
-                      className="rounded-xl border-amber-300/25 bg-white/[0.03] px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.18em] text-amber-100 hover:bg-amber-300/12"
+                      className="rounded-lg border-amber-300/25 bg-white/[0.03] px-4 py-2.5 text-xs font-semibold uppercase tracking-caption text-amber-100 hover:bg-amber-300/12"
                     >
                       {resending ? t("auth.login.resending", "Sending...") : t("auth.login.resend", "Resend verification")}
                     </Button>
-                    <div className="self-center text-xs uppercase tracking-[0.18em] text-amber-100/70">
+                    <div className="self-center text-xs uppercase tracking-caption text-amber-100/70">
                       {t("auth.login.resend_hint", "Use the same signup inbox.")}
                     </div>
                   </div>
@@ -429,18 +428,18 @@ export default function LoginPage() {
                 variant="outline"
                 onClick={() => void onGoogleLogin()}
                 disabled={googleLoading}
-                className="h-14 rounded-xl border-[#2d3746] bg-[#151a24] text-sm font-semibold uppercase tracking-[0.16em] text-[#9bc9ff] hover:bg-[#1b2230]"
+                className="auth-button-outline"
               >
                 {googleLoading ? t("auth.login.google_loading", "Connecting...") : t("auth.login.google", "Google sign-in")}
               </Button>
-              <Link href="/forgot-password" className="flex h-14 items-center justify-center rounded-xl border border-[#2d3746] bg-[#11161f] text-sm font-semibold uppercase tracking-[0.16em] text-white/72 transition hover:bg-[#171d29] hover:text-white">
+              <Link href="/forgot-password" className="auth-button-outline inline-flex items-center justify-center bg-[#11161f] text-white/72 transition hover:bg-[#171d29] hover:text-white">
                 {t("auth.login.reset_password", "Reset password")}
               </Link>
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/6 pt-2 text-sm text-[#91a2ba]">
               <span>{t("auth.login.create_account_prompt", "Need a new workspace access path?")}</span>
-              <Link href="/register" className="font-semibold uppercase tracking-[0.14em] text-[#82c0ff] transition hover:text-white">
+              <Link href="/register" className="font-semibold uppercase tracking-label text-[#82c0ff] transition hover:text-white">
                 {t("auth.login.create_account", "Create account")}
               </Link>
             </div>
@@ -464,7 +463,7 @@ export default function LoginPage() {
           >
             <div className="space-y-4">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#3ce8d1]">
+                <div className="text-xs font-semibold uppercase tracking-header text-[#3ce8d1]">
                   {t("auth.login.workflow_map_title", "Workflow map")}
                 </div>
                 <div className="mt-4 grid gap-3 sm:grid-cols-3">
@@ -477,20 +476,20 @@ export default function LoginPage() {
                           : "border-white/6 bg-[linear-gradient(180deg,rgba(24,28,37,0.96),rgba(18,23,33,0.98))]"
                       }`}
                     >
-                      <div className={`text-center text-[3rem] font-semibold tracking-[-0.08em] ${step.active ? "text-[#90c2ff]" : "text-white/78"}`}>
+                      <div className={`text-center text-[3rem] font-semibold tracking-tight ${step.active ? "text-[#90c2ff]" : "text-white/78"}`}>
                         {step.id}
                       </div>
-                      <div className="overflow-safe-text mt-3 text-center text-xs font-semibold uppercase tracking-[0.18em] text-white">
+                      <div className="overflow-safe-text mt-3 text-center text-xs font-semibold uppercase tracking-caption text-white">
                         {step.label}
                       </div>
-                      <div className="overflow-safe-text mt-2 text-center text-[0.67rem] uppercase tracking-[0.18em] text-white/46">{step.detail}</div>
+                      <div className="overflow-safe-text mt-2 text-center text-[0.67rem] uppercase tracking-caption text-white/46">{step.detail}</div>
                     </div>
                   ))}
                 </div>
               </div>
 
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.24em] text-[#3ce8d1]">
+                <div className="text-xs font-semibold uppercase tracking-header text-[#3ce8d1]">
                   {t("auth.login.safety_guardrails", "Safety guardrails")}
                 </div>
                 <div className="mt-4 space-y-4">
@@ -509,13 +508,13 @@ export default function LoginPage() {
             <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-[linear-gradient(180deg,transparent,rgba(7,13,20,0.86))]" />
 
             <div className="relative">
-              <div className="text-xs font-semibold uppercase tracking-[0.34em] text-[#b8ddff]">{t("auth.login.access_lane_rating", "Access lane rating")}</div>
+              <div className="text-xs font-semibold uppercase tracking-display text-[#b8ddff]">{t("auth.login.access_lane_rating", "Access lane rating")}</div>
               <div className="mt-4 flex items-end justify-between gap-4">
                 <div>
-                  <div className="text-6xl font-semibold tracking-[-0.08em] text-white">05</div>
-                  <div className="text-sm uppercase tracking-[0.2em] text-white/74">{t("auth.login.routes_online", "Role routes online")}</div>
+                  <div className="text-6xl font-semibold tracking-tight text-white">05</div>
+                  <div className="text-sm uppercase tracking-caption text-white/74">{t("auth.login.routes_online", "Role routes online")}</div>
                 </div>
-                <div className="rounded-full border border-white/10 bg-[rgba(14,22,33,0.82)] px-5 py-3 text-sm font-semibold uppercase tracking-[0.18em] text-white/86">
+                <div className="rounded-full border border-white/10 bg-[rgba(14,22,33,0.82)] px-5 py-3 text-sm font-semibold uppercase tracking-caption text-white/86">
                   <span className="mr-2 inline-block h-2.5 w-2.5 rounded-full bg-cyan-300 shadow-[0_0_14px_rgba(45,212,191,0.85)]" />
                   {t("auth.login.protected", "Protected")}
                 </div>

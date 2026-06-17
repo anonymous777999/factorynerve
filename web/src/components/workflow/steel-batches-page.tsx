@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { listSteelBatches, listSteelItems, type SteelBatch, type SteelItem } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
+import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
 
 const BATCH_LIST_LIMIT = 100;
 
@@ -157,17 +158,13 @@ export function SteelBatchesPage() {
     hasAutoScrolled.current = true;
   }, [highlight, highlightedRowId, pageLoading]);
 
-  if (loading || (user && isSteelFactory && pageLoading)) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading steel batches...
-      </main>
-    );
+  if (loading || pageLoading) {
+    return <DashboardPageSkeleton />;
   }
 
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 content-fade-in">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Batches</CardTitle>
@@ -216,7 +213,7 @@ export function SteelBatchesPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
           <div className="max-w-4xl">
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Batches</div>
+            <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Steel Batches</div>
             <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Investigate production batches</h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
               Continue from batch signals into a read-only production list, then open the batch trace that needs attention.
@@ -305,7 +302,7 @@ export function SteelBatchesPage() {
                         <td className="px-3 py-3 text-[var(--text)]">{formatKg(row.batch.actual_output_kg)} KG</td>
                         <td className="px-3 py-3 text-[var(--text)]">{formatKg(row.batch.loss_kg)} KG</td>
                         <td className="px-3 py-3">
-                          <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${statusBadgeClass(row.batch.status)}`}>
+                          <span className={`inline-flex rounded-full border px-3 py-1 text-[11px] uppercase tracking-caption ${statusBadgeClass(row.batch.status)}`}>
                             {row.batch.status}
                           </span>
                         </td>

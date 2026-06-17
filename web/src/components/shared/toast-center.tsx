@@ -66,7 +66,7 @@ export function ToastCenter() {
             </div>
             <button
               type="button"
-              className="text-xs uppercase tracking-[0.18em] text-white/70"
+              className="text-xs uppercase tracking-caption text-white/70"
               onClick={() => setToasts((current) => current.filter((item) => item.id !== toast.id))}
             >
               Close

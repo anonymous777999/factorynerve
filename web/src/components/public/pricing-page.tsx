@@ -534,7 +534,7 @@ function PlanCard({
         <div className="flex-1" />
         <span
           className={cn(
-            "inline-flex items-center rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em]",
+            "inline-flex items-center rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-caption",
             highlight
               ? "bg-[var(--accent)] text-[#06111c]"
               : "border border-[var(--border-strong)] bg-[rgba(148,163,184,0.1)] text-[var(--muted)]",
@@ -598,7 +598,7 @@ function PlanCard({
       <button
         type="button"
         className={cn(
-          "w-full rounded-full px-5 py-2.5 text-sm font-semibold tracking-[-0.01em] transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]",
+          "w-full rounded-full px-5 py-2.5 text-sm font-semibold tracking-tight transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]",
           ctaStyle === "primary" &&
             "border border-[var(--accent)]/20 bg-[linear-gradient(135deg,var(--accent),var(--accent-strong))] text-[#06111c] shadow-[0_14px_30px_rgba(57,255,114,0.28)] hover:-translate-y-0.5 hover:brightness-105 hover:shadow-[0_18px_38px_rgba(57,255,114,0.34)]",
           ctaStyle === "outline" &&
@@ -645,7 +645,7 @@ function OcrPackCard({
 }: OcrPackCardProps) {
   return (
     <div className="flex flex-col rounded-[1.7rem] border border-[var(--border)] bg-[linear-gradient(180deg,rgba(18,27,41,0.96),rgba(13,20,32,0.98))] p-6 shadow-[var(--shadow-md)] transition-all duration-200 hover:border-[var(--border-strong)]">
-      <span className="mb-3 inline-flex items-center self-start rounded-full border border-[var(--border-strong)] bg-[rgba(148,163,184,0.1)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+      <span className="mb-3 inline-flex items-center self-start rounded-full border border-[var(--border-strong)] bg-[rgba(148,163,184,0.1)] px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-caption text-[var(--muted)]">
         {badge}
       </span>
 
@@ -671,7 +671,7 @@ function OcrPackCard({
 
       <button
         type="button"
-        className="mt-6 w-full rounded-full border border-[var(--border-strong)] bg-white/[0.02] px-5 py-2.5 text-sm font-semibold tracking-[-0.01em] text-[var(--text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)]/30 hover:bg-[rgba(57,255,114,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
+        className="mt-6 w-full rounded-full border border-[var(--border-strong)] bg-white/[0.02] px-5 py-2.5 text-sm font-semibold tracking-tight text-[var(--text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)]/30 hover:bg-[rgba(57,255,114,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
       >
         {cta}
       </button>
@@ -705,7 +705,7 @@ function WhatsAppPack({ name, price, priceSuffix, volume, cta }: WhatsAppPackPro
 
       <button
         type="button"
-        className="mt-6 w-full rounded-full border border-[var(--border-strong)] bg-white/[0.02] px-5 py-2.5 text-sm font-semibold tracking-[-0.01em] text-[var(--text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)]/30 hover:bg-[rgba(57,255,114,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
+        className="mt-6 w-full rounded-full border border-[var(--border-strong)] bg-white/[0.02] px-5 py-2.5 text-sm font-semibold tracking-tight text-[var(--text)] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] transition-all duration-200 hover:-translate-y-0.5 hover:border-[var(--accent)]/30 hover:bg-[rgba(57,255,114,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--bg)]"
       >
         {cta}
       </button>
@@ -725,7 +725,7 @@ export default function PricingPage() {
       <div className="mx-auto max-w-7xl">
         {/* ── Page Header ── */}
         <section className="mb-12 text-center">
-          <div className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">
+          <div className="text-xs font-semibold uppercase tracking-prominent text-[var(--accent)]">
             AI-NATIVE OPERATIONAL INFRASTRUCTURE
           </div>
           <h1 className="mt-4 text-4xl font-bold tracking-tight text-[var(--text)] sm:text-5xl lg:text-6xl">
@@ -763,7 +763,7 @@ export default function PricingPage() {
         {/* ── OCR Packs Section ── */}
         <section className="mt-20">
           <div className="mb-10 text-center">
-            <div className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">
+            <div className="text-xs font-semibold uppercase tracking-prominent text-[var(--accent)]">
               OCR PACKS
             </div>
             <h2 className="mt-3 text-3xl font-bold tracking-tight text-[var(--text)] sm:text-4xl">
@@ -788,7 +788,7 @@ export default function PricingPage() {
         {/* ── WhatsApp Packs Section ── */}
         <section className="mt-20">
           <div className="mb-10 text-center">
-            <div className="text-xs font-semibold uppercase tracking-[0.28em] text-[var(--accent)]">
+            <div className="text-xs font-semibold uppercase tracking-prominent text-[var(--accent)]">
               WHATSAPP PACKS
             </div>
             <h2 className="mt-3 text-3xl font-bold tracking-tight text-[var(--text)] sm:text-4xl">

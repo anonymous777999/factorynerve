@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
 
 type EditState = {
   units_target: number;
@@ -276,12 +277,14 @@ export default function EntryDetailPage() {
   };
 
   if (sessionLoading || loading) {
-    return <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">Loading entry detail...</main>;
+  if (loading) {
+    return <DashboardPageSkeleton />;
+  }
   }
 
   if (!user || !entry) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 content-fade-in">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Entry Detail</CardTitle>
@@ -302,7 +305,7 @@ export default function EntryDetailPage() {
       <div className="mx-auto max-w-6xl space-y-6">
         <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div className="space-y-2">
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Entry Detail</div>
+            <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Entry Detail</div>
             <h1 className="text-3xl font-semibold">Entry detail</h1>
             <p className="text-sm text-[var(--muted)]">
               {formatDate(entry.date)} | {entry.shift} | submitted by {entry.submitted_by || `User ${entry.user_id || "-"}`} | status {entry.status}
@@ -310,7 +313,7 @@ export default function EntryDetailPage() {
           </div>
         </section>
 
-        {/* AUDIT: BUTTON_CLUTTER - keep route jumps available in a secondary tray so review stays primary. */}
+
         <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
           <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
             Entry tools
@@ -488,7 +491,7 @@ export default function EntryDetailPage() {
                 </div>
               ) : null}
 
-              {/* AUDIT: BUTTON_CLUTTER - keep export controls available in a secondary reveal so review decisions stay first. */}
+
               <details className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,24,0.62)] p-4">
                 <summary className="cursor-pointer list-none text-sm font-medium text-[var(--text)] marker:hidden">
                   Downloads

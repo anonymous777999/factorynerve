@@ -5,7 +5,7 @@ export default function FinalCTA() {
     <section className="relative px-4 py-20 sm:py-28">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(197,109,45,0.08),transparent_60%)]" />
       <div className="relative mx-auto max-w-3xl text-center">
-        <h2 className="text-3xl font-bold tracking-[-0.03em] text-white sm:text-4xl">
+        <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
           Your factory runs on data. Make it trusted.
         </h2>
         <p className="mx-auto mt-4 max-w-xl text-sm leading-7 text-slate-400">

@@ -96,7 +96,7 @@ export default function AdminBillingPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div>
-            <div className="text-sm uppercase tracking-[0.28em] text-amber-200">Superadmin</div>
+            <div className="text-sm uppercase tracking-prominent text-amber-200">Superadmin</div>
             <h1 className="mt-2 text-3xl font-semibold">Billing Admin</h1>
             <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
               Review billing events, manage subscriptions, and audit webhook activity across all organizations.
@@ -118,7 +118,7 @@ export default function AdminBillingPage() {
               </Button>
             </div>
           </div>
-          <div className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-amber-100">
+          <div className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-4 py-2 text-xs font-semibold uppercase tracking-label text-amber-100">
             {user?.role || "unknown"}
           </div>
         </section>
@@ -170,7 +170,7 @@ export default function AdminBillingPage() {
             ) : events.length === 0 ? (
               <Card className="border-dashed border-[var(--border)] bg-[var(--card-strong)]">
                 <CardContent className="flex min-h-[8rem] flex-col items-center justify-center px-6 py-8 text-center">
-                  <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">No Events</div>
+                  <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">No Events</div>
                   <div className="mt-2 text-lg font-semibold text-[var(--text)]">No billing events found</div>
                   <div className="mt-1 text-sm text-[var(--muted)]">
                     Try a different filter or check back later.
@@ -187,11 +187,11 @@ export default function AdminBillingPage() {
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="min-w-0 flex-1 space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full border border-sky-400/30 bg-[rgba(56,189,248,0.12)] px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-sky-100">
+                          <span className="rounded-full border border-sky-400/30 bg-[rgba(56,189,248,0.12)] px-3 py-0.5 text-[11px] font-semibold uppercase tracking-label text-sky-100">
                             {event.event_type || "unknown"}
                           </span>
                           <span
-                            className={`rounded-full border px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                            className={`rounded-full border px-3 py-0.5 text-[11px] font-semibold uppercase tracking-label ${
                               event.status === "success"
                                 ? "border-emerald-400/30 bg-[rgba(34,197,94,0.12)] text-emerald-100"
                                 : event.status === "failed"
@@ -204,19 +204,19 @@ export default function AdminBillingPage() {
                         </div>
                         <div className="grid gap-2 text-sm sm:grid-cols-2 xl:grid-cols-4">
                           <div>
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                            <span className="text-[11px] font-semibold uppercase tracking-label text-[var(--muted)]">
                               Org
                             </span>
                             <div className="mt-0.5 text-[var(--text)]">{event.org_id || "-"}</div>
                           </div>
                           <div>
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                            <span className="text-[11px] font-semibold uppercase tracking-label text-[var(--muted)]">
                               Outcome
                             </span>
                             <div className="mt-0.5 text-[var(--text)]">{event.outcome || "-"}</div>
                           </div>
                           <div>
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                            <span className="text-[11px] font-semibold uppercase tracking-label text-[var(--muted)]">
                               Duration
                             </span>
                             <div className="mt-0.5 text-[var(--text)]">
@@ -224,7 +224,7 @@ export default function AdminBillingPage() {
                             </div>
                           </div>
                           <div>
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                            <span className="text-[11px] font-semibold uppercase tracking-label text-[var(--muted)]">
                               Received
                             </span>
                             <div className="mt-0.5 text-[var(--text)]">
@@ -236,13 +236,13 @@ export default function AdminBillingPage() {
                         </div>
                         <div className="grid gap-2 text-sm sm:grid-cols-2">
                           <div>
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                            <span className="text-[11px] font-semibold uppercase tracking-label text-[var(--muted)]">
                               Provider
                             </span>
                             <div className="mt-0.5 text-[var(--text)]">{event.provider || "-"}</div>
                           </div>
                           <div>
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                            <span className="text-[11px] font-semibold uppercase tracking-label text-[var(--muted)]">
                               Event ID
                             </span>
                             <div className="mt-0.5 overflow-safe-text text-[var(--text)]">
@@ -294,7 +294,7 @@ export default function AdminBillingPage() {
             ) : subscriptions.length === 0 ? (
               <Card className="border-dashed border-[var(--border)] bg-[var(--card-strong)]">
                 <CardContent className="flex min-h-[8rem] flex-col items-center justify-center px-6 py-8 text-center">
-                  <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">No Subscriptions</div>
+                  <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">No Subscriptions</div>
                   <div className="mt-2 text-lg font-semibold text-[var(--text)]">
                     No subscriptions match the status filter
                   </div>
@@ -313,11 +313,11 @@ export default function AdminBillingPage() {
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="min-w-0 flex-1 space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full border border-cyan-400/30 bg-[rgba(34,211,238,0.12)] px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] text-cyan-100">
+                          <span className="rounded-full border border-cyan-400/30 bg-[rgba(34,211,238,0.12)] px-3 py-0.5 text-[11px] font-semibold uppercase tracking-label text-cyan-100">
                             {sub.plan}
                           </span>
                           <span
-                            className={`rounded-full border px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.16em] ${
+                            className={`rounded-full border px-3 py-0.5 text-[11px] font-semibold uppercase tracking-label ${
                               sub.status === "active"
                                 ? "border-emerald-400/30 bg-[rgba(34,197,94,0.12)] text-emerald-100"
                                 : sub.status === "past_due"
@@ -332,19 +332,19 @@ export default function AdminBillingPage() {
                         </div>
                         <div className="grid gap-2 text-sm sm:grid-cols-2 xl:grid-cols-4">
                           <div>
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                            <span className="text-[11px] font-semibold uppercase tracking-label text-[var(--muted)]">
                               Org ID
                             </span>
                             <div className="mt-0.5 overflow-safe-text text-[var(--text)]">{sub.org_id}</div>
                           </div>
                           <div>
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                            <span className="text-[11px] font-semibold uppercase tracking-label text-[var(--muted)]">
                               User ID
                             </span>
                             <div className="mt-0.5 text-[var(--text)]">{sub.user_id ?? "-"}</div>
                           </div>
                           <div>
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                            <span className="text-[11px] font-semibold uppercase tracking-label text-[var(--muted)]">
                               Period End
                             </span>
                             <div className="mt-0.5 text-[var(--text)]">
@@ -354,7 +354,7 @@ export default function AdminBillingPage() {
                             </div>
                           </div>
                           <div>
-                            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                            <span className="text-[11px] font-semibold uppercase tracking-label text-[var(--muted)]">
                               Grace End
                             </span>
                             <div className="mt-0.5 text-[var(--text)]">

@@ -185,13 +185,13 @@ export default function RegisterPage() {
         <div className="space-y-5">
               {hasRedirectTarget ? (
                 <div className="rounded-2xl border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.08)] p-4 text-sm text-[var(--text)]">
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">{t("auth.register.after_verification", "After verification")}</div>
+                  <div className="text-xs font-semibold uppercase tracking-header text-[var(--muted)]">{t("auth.register.after_verification", "After verification")}</div>
                   <div className="mt-2 text-base font-semibold">{t("auth.register.after_verification_detail", "Sign in to continue into {{destination}}.", { destination: nextDestination })}</div>
                 </div>
               ) : null}
               {successState ? (
                 <div className={`rounded-2xl border p-4 text-sm ${successState.className}`}>
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-white/80">{t("auth.register.status_title", "Signup Status")}</div>
+                  <div className="text-xs font-semibold uppercase tracking-header text-white/80">{t("auth.register.status_title", "Signup Status")}</div>
                   <div className="mt-2 text-base font-semibold text-[var(--text)]">{successState.title}</div>
                   <div className="mt-2 leading-6">{successState.detail}</div>
                 </div>
@@ -210,7 +210,7 @@ export default function RegisterPage() {
                   The account cannot sign in until that inbox opens the verification link.
                 </div>
                 <div className="mt-4 rounded-xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-3">
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
+                  <div className="text-xs font-semibold uppercase tracking-header text-[var(--muted)]">
                     What to do next
                   </div>
                   <ol className="mt-3 space-y-2 text-sm text-[var(--text)]/90">
@@ -286,16 +286,16 @@ export default function RegisterPage() {
         <div className="space-y-5">
           {hasRedirectTarget ? (
             <div className="rounded-2xl border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.08)] p-4 text-sm text-[var(--text)]">
-              <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">{t("auth.register.start_here", "Start here first")}</div>
+              <div className="text-xs font-semibold uppercase tracking-header text-[var(--muted)]">{t("auth.register.start_here", "Start here first")}</div>
               <div className="mt-2 text-base font-semibold">{t("auth.register.start_here_detail", "After verification, the user can continue into {{destination}}.", { destination: nextDestination })}</div>
             </div>
           ) : null}
-          {/* AUDIT: BUTTON_CLUTTER - keep the Google route available in a secondary reveal so the worker signup form stays primary. */}
+
           <details className="group rounded-2xl border border-[rgba(62,166,255,0.2)] bg-[rgba(62,166,255,0.08)] p-4">
             <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-semibold text-[var(--text)]">
               {t("auth.register.google_summary", "Google sign-in")}
-              <span className="text-xs uppercase tracking-[0.18em] text-[var(--muted)] transition group-open:hidden">{t("common.open", "Open")}</span>
-              <span className="hidden text-xs uppercase tracking-[0.18em] text-[var(--muted)] group-open:inline">{t("common.close", "Close")}</span>
+              <span className="text-xs uppercase tracking-caption text-[var(--muted)] transition group-open:hidden">{t("common.open", "Open")}</span>
+              <span className="hidden text-xs uppercase tracking-caption text-[var(--muted)] group-open:inline">{t("common.close", "Close")}</span>
             </summary>
             <div className="mt-3 text-sm leading-6 text-[var(--muted)]">
               {t("auth.register.google_description", "Use Google when you want the direct workspace route instead of the attendance-worker signup request.")}

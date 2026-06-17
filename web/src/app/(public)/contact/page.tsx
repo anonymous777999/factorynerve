@@ -170,7 +170,7 @@ export default function ContactPage() {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl border border-sky-400/20 bg-sky-400/[0.1] text-sky-200">
             <MailIcon />
           </div>
-          <h1 className="mt-6 text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+          <h1 className="mt-6 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
             Get in Touch
           </h1>
           <p className="mt-3 text-sm leading-7 text-slate-300">

@@ -5,7 +5,7 @@ import Link from "next/link";
 function Section({ id, title, children }: { id: string; title: string; children: React.ReactNode }) {
   return (
     <section id={id} className="mb-12 scroll-mt-24">
-      <h2 className="mb-4 text-xl font-semibold tracking-[-0.02em] text-white">{title}</h2>
+      <h2 className="mb-4 text-xl font-semibold tracking-tight text-white">{title}</h2>
       {children}
     </section>
   );
@@ -47,7 +47,7 @@ export default function DPAPage() {
         <div className="mb-8 border-b border-white/10 pb-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">
+              <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
                 Data Processing Addendum
               </h1>
               <p className="mt-1 text-sm text-slate-400">Version 1.0 &mdash; Effective: June 17, 2026</p>
@@ -67,7 +67,7 @@ export default function DPAPage() {
 
         {/* TOC */}
         <nav className="mb-10 rounded-2xl border border-white/10 bg-white/[0.03] p-6">
-          <h2 className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-slate-300">On this page</h2>
+          <h2 className="mb-4 text-xs font-semibold uppercase tracking-caption text-slate-300">On this page</h2>
           <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {[
               { id: "intro", label: "1. Introduction" },

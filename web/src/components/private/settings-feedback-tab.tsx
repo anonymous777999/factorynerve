@@ -240,7 +240,7 @@ export default function SettingsFeedbackTab({ active }: Props) {
             <div className="grid gap-3 xl:grid-cols-4">
               {recurringGroups.map((row) => (
                 <div key={row.group_key} className="rounded-2xl border border-[rgba(62,166,255,0.22)] bg-[rgba(20,24,36,0.86)] p-4">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
+                  <div className="text-[10px] font-semibold uppercase tracking-label text-[var(--accent)]">
                     Recurring issue
                   </div>
                   <div className="mt-2 text-sm font-semibold text-white">{row.group_occurrences} reports</div>
@@ -276,27 +276,27 @@ export default function SettingsFeedbackTab({ active }: Props) {
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
                       <div className="flex flex-wrap gap-2">
-                        <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                        <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[10px] font-semibold uppercase tracking-label text-[var(--muted)]">
                           {formatTypeLabel(row.type)}
                         </span>
-                        <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]", badgeTone(row.status))}>
+                        <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-label", badgeTone(row.status))}>
                           {formatStatusLabel(row.status)}
                         </span>
-                        <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                        <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[10px] font-semibold uppercase tracking-label text-[var(--muted)]">
                           {formatSourceLabel(row.source)}
                         </span>
                         {row.rating ? (
-                          <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                          <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[10px] font-semibold uppercase tracking-label text-[var(--muted)]">
                             {row.rating === "up" ? "Helpful" : "Not helpful"}
                           </span>
                         ) : null}
                         {row.mood ? (
-                          <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                          <span className="rounded-full border border-[var(--border)] bg-[rgba(255,255,255,0.04)] px-3 py-1 text-[10px] font-semibold uppercase tracking-label text-[var(--muted)]">
                             {row.mood}
                           </span>
                         ) : null}
                         {row.group_occurrences > 1 ? (
-                          <span className="rounded-full border border-[rgba(62,166,255,0.26)] bg-[rgba(62,166,255,0.12)] px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-sky-100">
+                          <span className="rounded-full border border-[rgba(62,166,255,0.26)] bg-[rgba(62,166,255,0.12)] px-3 py-1 text-[10px] font-semibold uppercase tracking-label text-sky-100">
                             {row.group_occurrences} similar
                           </span>
                         ) : null}

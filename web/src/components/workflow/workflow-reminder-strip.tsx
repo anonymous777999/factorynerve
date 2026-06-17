@@ -388,7 +388,7 @@ export function WorkflowReminderStrip({ className }: { className?: string }) {
       <div className="rounded-[1.6rem] border border-[var(--border)] bg-[rgba(14,18,28,0.92)] px-4 py-4 shadow-[0_18px_50px_rgba(3,8,20,0.18)]">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[rgba(62,166,255,0.88)]">
+            <div className="text-[11px] font-semibold uppercase tracking-header text-[rgba(62,166,255,0.88)]">
               Live Reminders
             </div>
             <div className="mt-1 text-sm text-[var(--muted)]">

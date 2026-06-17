@@ -18,6 +18,7 @@ import {
   type SteelStockItem,
 } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
+import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
 
 function formatKg(value: number | null | undefined) {
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value || 0);
@@ -170,16 +171,12 @@ export function SteelReconciliationsPage() {
   };
 
   if (loading || pageLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading steel reconciliations...
-      </main>
-    );
+    return <DashboardPageSkeleton />;
   }
 
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 content-fade-in">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Reconciliations</CardTitle>
@@ -221,7 +218,7 @@ export function SteelReconciliationsPage() {
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)] mb-4">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-caption text-[var(--muted)] mb-4">
                 <span>Production</span>
                 <span>→</span>
                 <span>Invoice</span>
@@ -230,14 +227,14 @@ export function SteelReconciliationsPage() {
                 <span>→</span>
                 <span className="text-[var(--accent)] font-bold">Reconciliation</span>
               </div>
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Reconciliations</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Steel Reconciliations</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Stock mismatches</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
-                Reconciliation compares your physical stock count against the system ledger. 
+                Reconciliation compares your physical stock count against the system ledger.
                 Variances indicate unrecorded movements or counting errors.
               </p>
             </div>
-            {/* AUDIT: BUTTON_CLUTTER - move route jumps into a secondary tray so reconciliation review stays primary. */}
+
             <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
                 Review tools
@@ -257,7 +254,7 @@ export function SteelReconciliationsPage() {
         </section>
 
         {nextPending ? (
-          // AUDIT: FLOW_BROKEN - feature the next pending reconciliation first so reviewers see the immediate task before the full history list.
+
           <section className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
             <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
               <CardHeader>
@@ -309,7 +306,7 @@ export function SteelReconciliationsPage() {
             <CardTitle className="text-xl">History</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* AUDIT: BUTTON_CLUTTER - keep filters available in a reveal so the review list itself stays easier to scan. */}
+
             <details className="group rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
                 Filter history
@@ -351,10 +348,10 @@ export function SteelReconciliationsPage() {
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeTone(row.status)}`}>
+                      <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-caption ${badgeTone(row.status)}`}>
                         {row.status}
                       </span>
-                      <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${badgeTone(row.confidence_status)}`}>
+                      <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-caption ${badgeTone(row.confidence_status)}`}>
                         {row.confidence_status}
                       </span>
                     </div>
@@ -362,19 +359,19 @@ export function SteelReconciliationsPage() {
 
                   <div className="mt-4 grid gap-3 md:grid-cols-4">
                     <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
-                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">System</div>
+                      <div className="text-xs uppercase tracking-caption text-[var(--muted)]">System</div>
                       <div className="mt-1 text-sm font-semibold text-white">{formatKg(row.system_qty_kg)} KG</div>
                     </div>
                     <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
-                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Physical</div>
+                      <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Physical</div>
                       <div className="mt-1 text-sm font-semibold text-white">{formatKg(row.physical_qty_kg)} KG</div>
                     </div>
                     <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
-                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Variance</div>
+                      <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Variance</div>
                       <div className="mt-1 text-sm font-semibold text-white">{formatKg(row.variance_kg)} KG</div>
                     </div>
                     <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
-                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Variance %</div>
+                      <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Variance %</div>
                       <div className="mt-1 text-sm font-semibold text-white">{row.variance_percent.toFixed(2)}%</div>
                     </div>
                   </div>
@@ -382,7 +379,7 @@ export function SteelReconciliationsPage() {
                   <div className="mt-3 rounded-2xl border border-[var(--border)] bg-[rgba(8,14,24,0.4)] p-3 text-sm text-[var(--muted)]">
                     <div className="font-semibold text-white">Analysis & Correction</div>
                     <div className="mt-1">
-                      {row.variance_kg > 0 
+                      {row.variance_kg > 0
                         ? `System shows ${formatKg(Math.abs(row.variance_kg))} KG LESS than physical count. Likely cause: Unrecorded production or inward material.`
                         : row.variance_kg < 0
                         ? `System shows ${formatKg(Math.abs(row.variance_kg))} KG MORE than physical count. Likely cause: Unrecorded dispatch, process loss, or theft.`
@@ -397,7 +394,7 @@ export function SteelReconciliationsPage() {
 
                   {row.notes ? <div className="mt-3 text-sm text-[var(--muted)]">Count note: {row.notes}</div> : null}
                   <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
-                    <div className="rounded-full border border-[var(--border)] bg-[rgba(8,14,24,0.6)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                    <div className="rounded-full border border-[var(--border)] bg-[rgba(8,14,24,0.6)] px-3 py-1 text-xs uppercase tracking-caption text-[var(--muted)]">
                       Cause: {formatMismatchCause(mismatchCauses[row.id] || row.mismatch_cause)}
                     </div>
                     <Link href={mismatchActionLink(mismatchCauses[row.id] || row.mismatch_cause).href} className="text-xs font-medium text-[var(--accent)] hover:underline">

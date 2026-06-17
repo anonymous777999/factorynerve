@@ -417,7 +417,7 @@ export function FeedbackWidget({
           >
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">
+                <div className="text-xs font-semibold uppercase tracking-caption text-[var(--accent)]">
                   Feedback
                 </div>
                 <h2 className="mt-2 text-xl font-semibold text-white">Tell us what happened</h2>
@@ -517,7 +517,7 @@ export function FeedbackWidget({
               </div>
               <div className="space-y-3">
                 <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                  <div className="text-xs font-semibold uppercase tracking-label text-[var(--muted)]">
                     Voice Language
                   </div>
                   <div className="mt-2 flex flex-wrap gap-2">

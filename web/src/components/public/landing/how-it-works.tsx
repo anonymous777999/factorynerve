@@ -9,7 +9,7 @@ export default function HowItWorksSection() {
     <section id="how-it-works" className="relative scroll-mt-20 px-4 py-16 sm:py-20">
       <div className="mx-auto max-w-5xl">
         <div className="mb-12 text-center">
-          <h2 className="text-3xl font-bold tracking-[-0.03em] text-white sm:text-4xl">
+          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
             Capture, Review, Act — in one flow
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-400">
@@ -26,7 +26,7 @@ export default function HowItWorksSection() {
                   </svg>
                 </div>
               )}
-              <div className="text-xs font-bold tracking-[0.2em] text-amber-400/60">{step.num}</div>
+              <div className="text-xs font-bold tracking-caption text-amber-400/60">{step.num}</div>
               <h3 className="mt-2 text-xl font-semibold text-white">{step.title}</h3>
               <p className="mt-2 text-sm leading-6 text-slate-400">{step.desc}</p>
             </div>

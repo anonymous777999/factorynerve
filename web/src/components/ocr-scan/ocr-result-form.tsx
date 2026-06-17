@@ -32,7 +32,7 @@ export function OCRResultForm({
     <div className="space-y-4">
       <div className="grid gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
         <label>
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Date</div>
+          <div className="text-xs font-semibold uppercase tracking-caption text-[var(--muted)]">Date</div>
           <Input
             value={fields.date}
             onChange={(e) => onChange("date", e.target.value)}
@@ -40,7 +40,7 @@ export function OCRResultForm({
           />
         </label>
         <label>
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Material</div>
+          <div className="text-xs font-semibold uppercase tracking-caption text-[var(--muted)]">Material</div>
           <Input
             value={fields.material}
             onChange={(e) => onChange("material", e.target.value)}
@@ -48,7 +48,7 @@ export function OCRResultForm({
           />
         </label>
         <label>
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Quantity</div>
+          <div className="text-xs font-semibold uppercase tracking-caption text-[var(--muted)]">Quantity</div>
           <Input
             value={fields.quantity}
             onChange={(e) => onChange("quantity", e.target.value)}

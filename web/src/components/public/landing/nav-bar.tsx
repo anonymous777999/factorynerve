@@ -52,7 +52,7 @@ export default function NavBar() {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-2.5">
           <DprLogo />
-          <span className="text-sm font-semibold tracking-[-0.01em] text-white">DPR.ai</span>
+          <span className="text-sm font-semibold tracking-tight text-white">DPR.ai</span>
         </Link>
 
         <div className="hidden items-center gap-1 md:flex">

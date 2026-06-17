@@ -16,6 +16,7 @@ import {
 } from "@/lib/ocr";
 import { transferBlob } from "@/lib/blob-transfer";
 import { useSession } from "@/lib/use-session";
+import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
 
 function formatTimestamp(value?: string | null) {
   if (!value) return "-";
@@ -87,12 +88,12 @@ export default function OcrHistoryPage() {
   };
 
   if (loading) {
-    return <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">Loading OCR history...</main>;
+    return <DashboardPageSkeleton />;
   }
 
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 content-fade-in">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>OCR History</CardTitle>
@@ -141,24 +142,24 @@ export default function OcrHistoryPage() {
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Search by file, type, or status"
-            className="mt-0 h-12 rounded-[18px] border-[#d4d9df] bg-white text-[#111827] placeholder:text-[#98a2b3] focus:border-[#111827] focus:bg-white focus:ring-[#111827]/10"
+            className="mt-0"
           />
           <Link href="/ocr/scan">
-            <Button className="h-12 w-full rounded-[18px] bg-[#111827] text-white shadow-none hover:bg-[#1f2937]">
+            <Button className="h-12 w-full rounded-xl">
               Scan another image
             </Button>
           </Link>
         </div>
 
-        <div className="overflow-hidden rounded-[28px] border border-[#e7eaee] bg-white">
-          <div className="grid gap-3 border-b border-[#eff2f5] px-4 py-4 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8a93a0] md:grid-cols-[minmax(0,2fr)_1fr_1fr_1fr_10rem]">
+        <div className="overflow-hidden rounded-section border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
+          <div className="grid gap-3 border-b border-[var(--border)] px-4 py-4 text-[11px] font-semibold uppercase tracking-label text-[var(--muted)] md:grid-cols-[minmax(0,2fr)_1fr_1fr_1fr_10rem]">
             <div>Document</div>
             <div>Type</div>
             <div>Status</div>
             <div>Updated</div>
             <div className="text-right">Action</div>
           </div>
-          <div className="divide-y divide-[#eff2f5]">
+          <div className="divide-y divide-[var(--border)]">
             {filteredRecords.length ? (
               filteredRecords.map((record) => (
                 <div
@@ -166,29 +167,29 @@ export default function OcrHistoryPage() {
                   className="grid gap-3 px-4 py-4 md:grid-cols-[minmax(0,2fr)_1fr_1fr_1fr_10rem] md:items-center"
                 >
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium text-[#111827]">
+                    <div className="truncate text-sm font-medium text-[var(--text)]">
                       {record.source_filename || `Document #${record.id}`}
                     </div>
-                    <div className="mt-1 text-xs text-[#8a93a0]">
+                    <div className="mt-1 text-xs text-[var(--muted)]">
                       {Math.round(record.avg_confidence || 0)}% confidence
                     </div>
                   </div>
-                  <div className="text-sm text-[#66707c]">{record.doc_type_hint || "table"}</div>
+                  <div className="text-sm text-[var(--muted)]">{record.doc_type_hint || "table"}</div>
                   <div>
-                    <span className="rounded-full border border-[#e5e7eb] bg-[#fbfbfa] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#66707c]">
+                    <span className="rounded-full border border-[var(--border)] bg-[rgba(20,24,36,0.72)] px-3 py-1 text-[11px] font-semibold uppercase tracking-label text-[var(--muted)]">
                       {record.status}
                     </span>
                   </div>
-                  <div className="text-sm text-[#66707c]">{formatTimestamp(record.updated_at)}</div>
+                  <div className="text-sm text-[var(--muted)]">{formatTimestamp(record.updated_at)}</div>
                   <div className="flex justify-end gap-2">
                     <Link href={`/ocr/verify?verification_id=${record.id}`}>
-                      <Button variant="outline" className="h-10 rounded-[16px] border-[#d4d9df] bg-[#f8fafc] px-4 text-[#111827] hover:bg-white">
+                      <Button variant="outline" className="h-10 rounded-xl px-4">
                         Open
                       </Button>
                     </Link>
                     <Button
                       variant="outline"
-                      className="h-10 rounded-[16px] border-[#d4d9df] bg-[#f8fafc] px-4 text-[#111827] hover:bg-white"
+                      className="h-10 rounded-xl px-4"
                       disabled={busyId === record.id}
                       onClick={() => void handleDownload(record.id)}
                     >
@@ -198,7 +199,7 @@ export default function OcrHistoryPage() {
                 </div>
               ))
             ) : (
-              <div className="px-4 py-10 text-center text-sm text-[#8a93a0]">No OCR documents match this search.</div>
+              <div className="px-4 py-10 text-center text-sm text-[var(--muted)]">No OCR documents match this search.</div>
             )}
           </div>
         </div>

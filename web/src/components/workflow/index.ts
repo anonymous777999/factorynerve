@@ -19,7 +19,6 @@ export { SteelCommandCenterPage } from "./steel-command-center-page";
 export { SteelCustomerLedgerPage } from "./steel-customer-ledger-page";
 export { SteelCustomersPage } from "./steel-customers-page";
 export { SteelDispatchDetailPage } from "./steel-dispatch-detail-page";
-export { DispatchDebugPanel } from "./steel-dispatches-debug";
 export { SteelDispatchesPage } from "./steel-dispatches-page";
 export { SteelInventoryPage } from "./steel-inventory-page";
 export { SteelInventoryTransactionsPage } from "./steel-inventory-transactions-page";

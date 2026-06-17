@@ -168,13 +168,13 @@ export default function AiInsightsPage() {
       setPageLoading(false);
       return;
     }
-    
+
     // Only show page loader if we haven't loaded anything yet
     // This prevents the full-page skeleton from flickering on every days/range change
     if (!hasLoadedOnceRef.current) {
       setPageLoading(true);
     }
-    
+
     void loadAiHome();
   }, [loadAiHome, user]);
 
@@ -320,7 +320,7 @@ export default function AiInsightsPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div className="max-w-4xl space-y-3">
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("ai.title", "AI Insights")}</div>
+            <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">{t("ai.title", "AI Insights")}</div>
             <h1 className="text-3xl font-semibold">{t("ai.hero.title", "Ask an operations question")}</h1>
             <p className="max-w-3xl text-sm text-[var(--muted)]">{t("ai.hero.subtitle", "Ask now. Check drift only when needed.")}</p>
             <div className="flex flex-wrap gap-2 text-xs text-[var(--muted)]">
@@ -413,8 +413,8 @@ export default function AiInsightsPage() {
               <div className="mt-1 text-xl font-semibold text-[var(--text)]">{t("ai.quota.subtitle", "Usage context")}</div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${summaryHealth.badgeClass}`}>{summaryHealth.badge}</span>
-              <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${smartHealth.badgeClass}`}>{smartHealth.badge}</span>
+              <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-caption ${summaryHealth.badgeClass}`}>{summaryHealth.badge}</span>
+              <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-caption ${smartHealth.badgeClass}`}>{smartHealth.badge}</span>
             </div>
           </summary>
           <div className="grid gap-4 border-t border-[var(--border)] px-6 py-6 md:grid-cols-3">
@@ -425,13 +425,13 @@ export default function AiInsightsPage() {
                     <div className="text-sm text-[var(--muted)]">{t("ai.quota.summary", "Summary quota")}</div>
                     <CardTitle>{quotaLabel(usage?.summary_used, usage?.summary_limit)}</CardTitle>
                   </div>
-                  <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${summaryHealth.badgeClass}`}>
+                  <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-caption ${summaryHealth.badgeClass}`}>
                     {summaryHealth.badge}
                   </span>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-                <div className="text-xs uppercase tracking-[0.18em] text-white/80">{summaryHealth.detail}</div>
+                <div className="text-xs uppercase tracking-caption text-white/80">{summaryHealth.detail}</div>
                 <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
                   <div className={`h-2 rounded-full ${summaryHealth.barClass}`} style={{ width: `${summaryHealth.percent}%` }} />
                 </div>
@@ -445,13 +445,13 @@ export default function AiInsightsPage() {
                     <div className="text-sm text-[var(--muted)]">{t("ai.quota.smart", "Smart quota")}</div>
                     <CardTitle>{quotaLabel(usage?.smart_used, usage?.smart_limit)}</CardTitle>
                   </div>
-                  <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-[0.18em] ${smartHealth.badgeClass}`}>
+                  <span className={`rounded-full px-3 py-1 text-[11px] uppercase tracking-caption ${smartHealth.badgeClass}`}>
                     {smartHealth.badge}
                   </span>
                 </div>
               </CardHeader>
               <CardContent className="space-y-3 text-sm text-[var(--muted)]">
-                <div className="text-xs uppercase tracking-[0.18em] text-white/80">{smartHealth.detail}</div>
+                <div className="text-xs uppercase tracking-caption text-white/80">{smartHealth.detail}</div>
                 <div className="h-2 rounded-full bg-[rgba(255,255,255,0.08)]">
                   <div className={`h-2 rounded-full ${smartHealth.barClass}`} style={{ width: `${smartHealth.percent}%` }} />
                 </div>
@@ -493,7 +493,7 @@ export default function AiInsightsPage() {
                 </Button>
               </div>
               <details className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)]">
-                <summary className="cursor-pointer list-none px-4 py-4 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                <summary className="cursor-pointer list-none px-4 py-4 text-xs uppercase tracking-caption text-[var(--muted)]">
                   {t("ai.query.presets", "Prompt presets")}
                 </summary>
                 <div className="space-y-3 border-t border-[var(--border)] px-4 py-4">
@@ -535,13 +535,13 @@ export default function AiInsightsPage() {
                 </div>
               </details>
               <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{t("ai.query.answer", "Answer")}</div>
+                <div className="text-xs uppercase tracking-caption text-[var(--muted)]">{t("ai.query.answer", "Answer")}</div>
                 <div className="mt-3 text-sm leading-6 text-[var(--text)]">
                   {nlqResult?.answer || t("ai.query.answer_empty", "Run a query to see the answer here.")}
                 </div>
                 {nlqResult ? (
                   <details className="mt-4 rounded-xl border border-[var(--border)] bg-[rgba(255,255,255,0.02)]">
-                    <summary className="cursor-pointer list-none px-3 py-3 text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
+                    <summary className="cursor-pointer list-none px-3 py-3 text-xs uppercase tracking-label text-[var(--muted)]">
                       {t("ai.query.details", "Query details")}
                     </summary>
                     <div className="space-y-2 border-t border-[var(--border)] px-3 py-3 text-xs text-[var(--muted)]">
@@ -554,7 +554,7 @@ export default function AiInsightsPage() {
               </div>
               {nlqResult?.data_points?.length ? (
                 <details className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)]">
-                  <summary className="cursor-pointer list-none px-4 py-4 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                  <summary className="cursor-pointer list-none px-4 py-4 text-xs uppercase tracking-caption text-[var(--muted)]">
                     {t("ai.query.data_points", "Data points")}
                   </summary>
                   <div className="space-y-2 border-t border-[var(--border)] px-4 py-4">
@@ -610,7 +610,7 @@ export default function AiInsightsPage() {
                         <div className="font-semibold">
                           {item.anomaly_type.replaceAll("_", " ")} - {item.shift} - {item.date}
                         </div>
-                        <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                        <span className="rounded-full border border-[var(--border)] px-3 py-1 text-xs uppercase tracking-caption text-[var(--muted)]">
                           {item.severity}
                         </span>
                       </div>

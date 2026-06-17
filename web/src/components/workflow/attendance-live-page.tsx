@@ -190,7 +190,7 @@ export default function AttendanceLivePage() {
 
   if (loading || (pageLoading && user && canReview && !hasLoadedOnce)) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
+      <main className="min-h-screen px-4 py-8 md:px-8 content-fade-in">
         <div className="mx-auto max-w-7xl space-y-6">
           <Skeleton className="h-36 rounded-[2rem]" />
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -253,7 +253,7 @@ export default function AttendanceLivePage() {
         <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.9)] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">{t("attendance.live.title", "Attendance Board")}</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">{t("attendance.live.title", "Attendance Board")}</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{t("attendance.live.hero.title", "Live attendance across the active factory")}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">{t("attendance.live.hero.subtitle", "See the next signal and act.")}</p>
             </div>
@@ -446,13 +446,13 @@ export default function AttendanceLivePage() {
                 <div className={`rounded-2xl border p-4 ${statusTone(nextAttentionRow.status)}`}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">{t("attendance.live.rows.next_signal", "Next signal")}</div>
+                      <div className="text-xs uppercase tracking-caption text-[var(--muted)]">{t("attendance.live.rows.next_signal", "Next signal")}</div>
                       <div className="mt-2 text-sm font-semibold text-[var(--text)]">{nextAttentionRow.name}</div>
                       <div className="mt-1 text-xs text-[var(--muted)]">
                         {nextAttentionRow.role} • {nextAttentionRow.department || t("attendance.live.rows.no_department", "No department")} • {shiftLabel(nextAttentionRow.shift)}
                       </div>
                     </div>
-                     <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${statusTone(nextAttentionRow.status)}`}>
+                     <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label ${statusTone(nextAttentionRow.status)}`}>
                        {formatAttendanceStatusLabel(nextAttentionRow.status)}
                      </span>
                   </div>
@@ -484,7 +484,7 @@ export default function AttendanceLivePage() {
                           <td className="px-3 py-3">{row.department || "-"}</td>
                           <td className="px-3 py-3">{shiftLabel(row.shift)}</td>
                           <td className="px-3 py-3">
-                            <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] ${statusTone(row.status)}`}>
+                            <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label ${statusTone(row.status)}`}>
                               {formatAttendanceStatusLabel(row.status)}
                             </span>
                           </td>

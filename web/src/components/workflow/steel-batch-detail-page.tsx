@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { getSteelBatchDetail, type SteelBatchDetail } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
+import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
 
 function formatKg(value: number | null | undefined) {
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value || 0);
@@ -108,16 +109,12 @@ export function SteelBatchDetailPage() {
   );
 
   if (sessionLoading || loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading steel batch traceability...
-      </main>
-    );
+    return <DashboardPageSkeleton />;
   }
 
   if (!user || !detail) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 content-fade-in">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Batch Detail</CardTitle>
@@ -146,7 +143,7 @@ export function SteelBatchDetailPage() {
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)] mb-4">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-caption text-[var(--muted)] mb-4">
                 <span className="text-[var(--accent)] font-bold">Production</span>
                 <span>→</span>
                 <span>Invoice</span>
@@ -155,16 +152,16 @@ export function SteelBatchDetailPage() {
                 <span>→</span>
                 <span>Reconciliation</span>
               </div>
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Batch Traceability</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Steel Batch Traceability</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{detail.batch.batch_code}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 Start with the batch loss signal, then inspect traceability and audit evidence before leaving this record.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <span className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${badgeTone(detail.batch.severity)}`}>
+                <span className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-caption ${badgeTone(detail.batch.severity)}`}>
                   {detail.batch.severity}
                 </span>
-                <span className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${badgeTone(detail.batch.status)}`}>
+                <span className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-caption ${badgeTone(detail.batch.status)}`}>
                   {detail.batch.status}
                 </span>
               </div>
@@ -273,7 +270,7 @@ export function SteelBatchDetailPage() {
             </CardHeader>
             <CardContent className="grid gap-4 lg:grid-cols-2">
               <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Input Material</div>
+                <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Input Material</div>
                 <div className="mt-2 text-lg font-semibold text-white">
                   {detail.traceability.input_item.item_code} • {detail.traceability.input_item.name}
                 </div>
@@ -285,7 +282,7 @@ export function SteelBatchDetailPage() {
                 </div>
               </div>
               <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Output Material</div>
+                <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Output Material</div>
                 <div className="mt-2 text-lg font-semibold text-white">
                   {detail.traceability.output_item.item_code} • {detail.traceability.output_item.name}
                 </div>
@@ -346,7 +343,7 @@ export function SteelBatchDetailPage() {
               <CardTitle className="text-xl">Who touched this batch</CardTitle>
             </CardHeader>
             <CardContent>
-              {/* AUDIT: DENSITY_OVERLOAD - keep full audit evidence available in a secondary reveal so the ledger trace stays primary. */}
+
               <details className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,24,0.62)] p-4" open={detail.audit_events.length <= 2}>
                 <summary className="cursor-pointer list-none text-sm font-medium text-[var(--text)] marker:hidden">
                   View audit

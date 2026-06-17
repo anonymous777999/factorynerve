@@ -46,7 +46,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      {/* AUDIT: VISUAL_GENERIC — Swapped the default app fonts for a more deliberate control-room pairing loaded from Google Fonts CDN. */}
+
       <body className="min-h-full flex flex-col bg-[var(--bg)] text-[var(--text)]">
         <AppProviders>
           <BetaRolloutBanner />

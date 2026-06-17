@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { getSteelInvoiceDetail, type SteelInvoiceDetail } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
+import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
 
 function formatKg(value: number | null | undefined) {
   return new Intl.NumberFormat("en-IN", { maximumFractionDigits: 2 }).format(value || 0);
@@ -93,16 +94,12 @@ export function SteelInvoiceDetailPage() {
   }, [loadDetail, sessionLoading, user]);
 
   if (sessionLoading || loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading steel invoice detail...
-      </main>
-    );
+    return <DashboardPageSkeleton />;
   }
 
   if (!user || !detail) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 content-fade-in">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Invoice Detail</CardTitle>
@@ -162,7 +159,7 @@ export function SteelInvoiceDetailPage() {
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
-              <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.2em] text-[var(--muted)] mb-4">
+              <div className="flex items-center gap-2 text-[10px] uppercase tracking-caption text-[var(--muted)] mb-4">
                 <span>Production</span>
                 <span>→</span>
                 <span className="text-[var(--accent)] font-bold">Invoice</span>
@@ -171,13 +168,13 @@ export function SteelInvoiceDetailPage() {
                 <span>→</span>
                 <span>Reconciliation</span>
               </div>
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Invoice</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Steel Invoice</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{detail.invoice.invoice_number}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 Check dispatch progress, open the next truck action, and keep the commercial record aligned with steel movement.
               </p>
             </div>
-            {/* AUDIT: BUTTON_CLUTTER - move route jumps into a secondary tools tray so the dispatch handoff stays primary. */}
+
             <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
                 Invoice tools
@@ -204,8 +201,8 @@ export function SteelInvoiceDetailPage() {
           </div>
         </section>
 
-        {/* AUDIT: FLOW_BROKEN - add a short next-step sequence so the invoice detail leads directly into dispatch follow-through. */}
-        {/* AUDIT: FLOW_BROKEN - feature the next dispatch action before supporting audit context so the page has a clear operational handoff. */}
+
+
         <section className="grid gap-4 lg:grid-cols-[1.18fr_0.82fr]">
           <Card className="border-[var(--border-strong)] bg-[var(--card-strong)]">
             <CardHeader>
@@ -354,15 +351,15 @@ export function SteelInvoiceDetailPage() {
                         <td className="px-3 py-3">{formatCurrency(line.line_total)}</td>
                         <td className="px-3 py-3">
                           {Number(line.remaining_weight_kg || 0) <= 0.001 ? (
-                            <span className="inline-flex rounded-full border border-emerald-400/35 bg-emerald-500/12 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-emerald-200">
+                            <span className="inline-flex rounded-full border border-emerald-400/35 bg-emerald-500/12 px-3 py-1 text-[10px] uppercase tracking-caption text-emerald-200">
                               Dispatched
                             </span>
                           ) : Number(line.dispatched_weight_kg || 0) > 0 ? (
-                            <span className="inline-flex rounded-full border border-amber-400/35 bg-amber-500/12 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-amber-200">
+                            <span className="inline-flex rounded-full border border-amber-400/35 bg-amber-500/12 px-3 py-1 text-[10px] uppercase tracking-caption text-amber-200">
                               Partial
                             </span>
                           ) : (
-                            <span className="inline-flex rounded-full border border-slate-400/35 bg-slate-500/12 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-slate-200">
+                            <span className="inline-flex rounded-full border border-slate-400/35 bg-slate-500/12 px-3 py-1 text-[10px] uppercase tracking-caption text-slate-200">
                               Open
                             </span>
                           )}
@@ -393,7 +390,7 @@ export function SteelInvoiceDetailPage() {
                     : "Not recorded"}
                 </div>
               </div>
-              {/* AUDIT: DENSITY_OVERLOAD - keep the truck chain available in a reveal so the current dispatch handoff stays easier to scan. */}
+
               <details className="group rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
                   Dispatch chain
@@ -415,7 +412,7 @@ export function SteelInvoiceDetailPage() {
                           </div>
                           <div className="flex flex-wrap items-center gap-2">
                             <div
-                              className={`inline-flex rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${dispatchStatusBadgeClass(dispatch.status)}`}
+                              className={`inline-flex rounded-full border px-3 py-1 text-[10px] uppercase tracking-caption ${dispatchStatusBadgeClass(dispatch.status)}`}
                             >
                               {dispatch.status}
                             </div>
@@ -442,7 +439,7 @@ export function SteelInvoiceDetailPage() {
                   )}
                 </div>
               </details>
-              {/* AUDIT: BUTTON_CLUTTER - keep invoice notes and audit history available in reveals instead of making them compete with the next dispatch action. */}
+
               <details className="group rounded-2xl border border-[var(--border)] bg-[var(--card-strong)]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
                   Invoice notes

@@ -18,7 +18,7 @@ export default function FAQSection() {
     <section id="faq" className="relative scroll-mt-20 px-4 py-16 sm:py-20">
       <div className="mx-auto max-w-3xl">
         <div className="mb-10 text-center">
-          <h2 className="text-3xl font-bold tracking-[-0.03em] text-white sm:text-4xl">
+          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
             Questions? We have answers.
           </h2>
         </div>

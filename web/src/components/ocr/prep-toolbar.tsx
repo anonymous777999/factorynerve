@@ -23,7 +23,7 @@ export function PrepToolbar({
   return (
     <div className="space-y-4 rounded-[28px] border border-[#e7eaee] bg-white p-4">
       <div>
-        <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8a93a0]">
+        <div className="text-[11px] font-semibold uppercase tracking-label text-[#8a93a0]">
           Enhance
         </div>
         <div className="mt-3 grid grid-cols-3 gap-2">

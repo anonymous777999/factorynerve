@@ -665,7 +665,7 @@ export default function ReportsPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-red-400">{sessionError || t("reports.sign_in_required", "Please sign in to continue.")}</div>
-            {/* AUDIT: FLOW_BROKEN - Signed-out recovery should route through the current auth entry instead of a legacy login path. */}
+
             <Link href="/access">
               <Button>{t("dashboard.action.open_login", "Open Access")}</Button>
             </Link>
@@ -695,7 +695,7 @@ export default function ReportsPage() {
                 key={item.step}
                 className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card-strong)] px-5 py-4"
               >
-                <div className="text-[0.65rem] uppercase tracking-[0.28em] text-[var(--accent)]">{t("common.step", "Step")} {item.step}</div>
+                <div className="text-[0.65rem] uppercase tracking-prominent text-[var(--accent)]">{t("common.step", "Step")} {item.step}</div>
                 <div className="mt-2 font-semibold text-[var(--text)]">{item.title}</div>
                 <div className="mt-1 text-sm text-[var(--muted)]">{item.detail}</div>
               </div>
@@ -705,9 +705,9 @@ export default function ReportsPage() {
 
         <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div>
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("reports.title", "Reports")}</div>
+            <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">{t("reports.title", "Reports")}</div>
             <h1 className="mt-2 text-3xl font-semibold">{t("reports.hero.title", "Export trusted factory reports fast")}</h1>
-            {/* AUDIT: TEXT_NOISE - The hero now states the outcome once and lets the step strip explain the workflow. */}
+
             <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
               {t("reports.hero.subtitle", "Pull the reporting window, confirm trust, and queue the format that needs to leave the factory next.")}
             </p>
@@ -722,7 +722,7 @@ export default function ReportsPage() {
           </div>
           <div className="space-y-3">
             <div className="flex flex-wrap gap-3">
-              {/* AUDIT: BUTTON_CLUTTER - Kept the main export launch visible and moved route-jump utilities into a compact tray. */}
+
               <Button onClick={handleRangeExcelJob} disabled={busy}>
                 {busy ? t("reports.actions.working", "Working...") : t("reports.actions.export_excel", "Export Excel")}
               </Button>
@@ -771,14 +771,14 @@ export default function ReportsPage() {
         ) : null}
         {sessionError ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{sessionError}</div> : null}
 
-        {/* AUDIT: BUTTON_CLUTTER - Cross-product routes and deeper reporting lanes stay available, but they no longer compete with the export desk on first scan. */}
+
         <details className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-soft)]">
           <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">Connected lanes</summary>
           <div className="mt-4 grid gap-4 lg:grid-cols-3">
             {reportHubCards.map((card) => (
               <Card key={card.title} className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
                 <CardHeader>
-                  <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">{card.eyebrow}</div>
+                  <div className="text-xs uppercase tracking-header text-[var(--accent)]">{card.eyebrow}</div>
                   <CardTitle className="text-xl">{card.title}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -797,10 +797,10 @@ export default function ReportsPage() {
           <Card>
             <CardHeader className="space-y-4">
               <div>
-                <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">{t("reports.step_one", "Range")}</div>
+                <div className="text-xs uppercase tracking-header text-[var(--accent)]">{t("reports.step_one", "Range")}</div>
                 <CardTitle className="mt-2 text-xl">{t("reports.pick_range", "Pick range")}</CardTitle>
               </div>
-              {/* AUDIT: TEXT_NOISE - Quick range controls stay visible, but the labels are shortened so they scan as presets rather than helper text. */}
+
               <div className="flex flex-wrap gap-3">
                 <Button variant="outline" onClick={() => handleQuickRange("today")}>Today</Button>
                 <Button variant="outline" onClick={() => handleQuickRange("week")}>Last 7d</Button>
@@ -835,7 +835,7 @@ export default function ReportsPage() {
                   </Button>
                 </div>
               </div>
-              {/* AUDIT: DENSITY_OVERLOAD - Less common filters stay on the screen, but they now live in a compact advanced tray instead of crowding the main export range. */}
+
               <details className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                 <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">
                   Advanced filters{activeAdvancedFilterCount ? ` (${activeAdvancedFilterCount} active)` : ""}
@@ -894,18 +894,18 @@ export default function ReportsPage() {
 
           <Card>
             <CardHeader>
-                <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">{t("reports.step_two", "Export")}</div>
+                <div className="text-xs uppercase tracking-header text-[var(--accent)]">{t("reports.step_two", "Export")}</div>
               <CardTitle className="mt-2 text-xl">{t("reports.export_report", "Export report")}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* AUDIT: TEXT_NOISE - The export desk now leads with one short instruction instead of explaining every downstream reporting lane up front. */}
+
               <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4 text-sm text-[var(--muted)]">
                 Export Excel first. Use other formats only when needed.
               </div>
               <Button onClick={handleRangeExcelJob} disabled={busy}>
                 {busy ? "Working..." : "Export Excel"}
               </Button>
-              {/* AUDIT: BUTTON_CLUTTER - Alternate export formats and follow-on routes stay available, but they no longer compete with the main range export. */}
+
               <details className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                 <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("reports.more_exports", "More exports")}</summary>
                 <div className="mt-4 flex flex-wrap gap-3">
@@ -935,7 +935,7 @@ export default function ReportsPage() {
               </details>
               {reportJob ? (
                 <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
-                  <div className="flex items-center justify-between gap-4 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                  <div className="flex items-center justify-between gap-4 text-xs uppercase tracking-caption text-[var(--muted)]">
                     <span>Range Export Job</span>
                     <span>{reportJob.progress}%</span>
                   </div>
@@ -952,7 +952,7 @@ export default function ReportsPage() {
           </Card>
         </section>
 
-        {/* AUDIT: DENSITY_OVERLOAD - Trust and analysis surfaces remain available, but they now sit behind one reveal so the range and export desk lead the screen. */}
+
         <details className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-soft)]">
           <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("reports.trust_insights", "Trust and insights")}</summary>
           <div className="mt-4 space-y-6">
@@ -961,7 +961,7 @@ export default function ReportsPage() {
               <Card className="border-cyan-400/20 bg-[rgba(18,24,36,0.92)]">
                 <CardHeader className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div>
-                    <div className="text-sm uppercase tracking-[0.22em] text-cyan-200">OCR Trust</div>
+                    <div className="text-sm uppercase tracking-header text-cyan-200">OCR Trust</div>
                     <CardTitle className="mt-2 text-xl">Approved OCR is reporting-safe</CardTitle>
                     <div className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
                       {ocrSummary.trust_note}
@@ -978,19 +978,19 @@ export default function ReportsPage() {
                 </CardHeader>
                 <CardContent className="grid gap-4 md:grid-cols-4">
                   <div className="rounded-2xl border border-cyan-400/20 bg-[rgba(6,14,22,0.55)] p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-cyan-100/80">Approved Docs</div>
+                    <div className="text-xs uppercase tracking-caption text-cyan-100/80">Approved Docs</div>
                     <div className="mt-2 text-2xl font-semibold text-white">{ocrSummary.trusted_documents}</div>
                   </div>
                   <div className="rounded-2xl border border-cyan-400/20 bg-[rgba(6,14,22,0.55)] p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-cyan-100/80">Trusted Rows</div>
+                    <div className="text-xs uppercase tracking-caption text-cyan-100/80">Trusted Rows</div>
                     <div className="mt-2 text-2xl font-semibold text-white">{ocrSummary.trusted_rows}</div>
                   </div>
                   <div className="rounded-2xl border border-amber-400/20 bg-[rgba(28,20,8,0.42)] p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-amber-100/80">Pending Review</div>
+                    <div className="text-xs uppercase tracking-caption text-amber-100/80">Pending Review</div>
                     <div className="mt-2 text-2xl font-semibold text-white">{ocrSummary.pending_documents}</div>
                   </div>
                   <div className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Last Approval</div>
+                    <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Last Approval</div>
                     <div className="mt-2 text-lg font-semibold text-white">{formatDateTime(ocrSummary.last_trusted_at || undefined)}</div>
                     <div className="mt-1 text-xs text-[var(--muted)]">
                       Approval rate: {ocrSummary.approval_rate != null ? `${ocrSummary.approval_rate}%` : "-"}
@@ -1002,7 +1002,7 @@ export default function ReportsPage() {
           </div>
         </details>
 
-        {/* AUDIT: BUTTON_CLUTTER - The AI summary stays available as a secondary reporting lane instead of competing with the main export action. */}
+
         <details className="rounded-[1.5rem] border border-[var(--border)] bg-[var(--card)] p-5 shadow-[var(--shadow-soft)]">
           <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)]">{t("reports.executive_summary", "Executive summary")}</summary>
           <div className="mt-4">
@@ -1017,13 +1017,13 @@ export default function ReportsPage() {
               </CardHeader>
               <CardContent className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
                 <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Summary</div>
+                  <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Summary</div>
                   <div className="mt-3 text-sm leading-7 text-[var(--text)]">
                     {executiveSummary?.summary || "Generate a management summary for the currently selected date range."}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,26,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Metrics</div>
+                  <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Metrics</div>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     <div>
                       <div className="text-xs text-[var(--muted)]">Units</div>
@@ -1054,7 +1054,7 @@ export default function ReportsPage() {
                   </div>
                   {summaryJob ? (
                     <div className="mt-4 rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.03)] p-4">
-                      <div className="flex items-center justify-between gap-4 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                      <div className="flex items-center justify-between gap-4 text-xs uppercase tracking-caption text-[var(--muted)]">
                         <span>Summary Job</span>
                         <span>{summaryJob.progress}%</span>
                       </div>
@@ -1080,7 +1080,7 @@ export default function ReportsPage() {
                 <div className="text-sm text-[var(--muted)]">{t("reports.results", "Results")}</div>
                 <CardTitle className="text-xl">{filteredRows.length} rows on this page</CardTitle>
               </div>
-              {/* AUDIT: FLOW_BROKEN - Page navigation now lives with the result set instead of interrupting the main filter workflow above. */}
+
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-[var(--muted)]">Page {page} of {pageCount}</span>
                 <Button

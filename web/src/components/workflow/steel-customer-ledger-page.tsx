@@ -29,6 +29,7 @@ import {
 } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
 import { validateReferenceCode } from "@/lib/validation";
+import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
 
 function todayValue() {
   const now = new Date();
@@ -394,16 +395,12 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
   };
 
   if (loading || pageLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading customer ledger...
-      </main>
-    );
+    return <DashboardPageSkeleton />;
   }
 
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 content-fade-in">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Customer Ledger</CardTitle>
@@ -486,7 +483,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Customer Ledger</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Customer Ledger</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{ledger.customer.name}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 Start with recovery risk, then move into payments, verification, and follow-up without leaving the buyer record.
@@ -495,7 +492,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
           </div>
         </section>
 
-        {/* AUDIT: BUTTON_CLUTTER - keep route jumps available in a secondary tray so recovery review stays primary. */}
+
         <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
           <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
             Ledger tools
@@ -526,7 +523,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
           <Card>
             <CardHeader><CardTitle className="text-base">Risk</CardTitle></CardHeader>
             <CardContent className="space-y-2">
-              <div className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${riskBadgeClass(ledger.ledger_summary.risk_level)}`}>
+              <div className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-caption ${riskBadgeClass(ledger.ledger_summary.risk_level)}`}>
                 {ledger.ledger_summary.risk_level}
               </div>
               <div className="text-sm text-[var(--muted)]">
@@ -537,7 +534,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
         </section>
 
         {ledger.alerts.length ? (
-          // AUDIT: DENSITY_OVERLOAD - keep the full alert list available in a secondary reveal so the recovery cards stay first.
+
           <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5" open={ledger.alerts.length <= 2}>
             <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
               Risk alerts
@@ -559,7 +556,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
         <section className="grid gap-4 xl:grid-cols-3">
           <Card className="border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
             <CardHeader>
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Collections Focus</div>
+              <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Collections Focus</div>
               <CardTitle className="text-xl">Highest recovery priority</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
@@ -582,7 +579,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
 
           <Card className="border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
             <CardHeader>
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Exposure Mix</div>
+              <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Exposure Mix</div>
               <CardTitle className="text-xl">Open vs overdue</CardTitle>
             </CardHeader>
             <CardContent className="space-y-2 text-sm">
@@ -603,7 +600,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
 
           <Card className="border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
             <CardHeader>
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--accent)]">Next Team Action</div>
+              <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Next Team Action</div>
               <CardTitle className="text-xl">Recovery handoff</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
@@ -630,52 +627,52 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
             <CardContent className="space-y-5">
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Customer Code</div>
+                  <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Customer Code</div>
                   <div className="mt-2 text-sm font-semibold text-white">{ledger.customer.customer_code || "Pending"}</div>
                 </div>
                 <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Status</div>
+                  <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Status</div>
                   <div className="mt-2 text-sm font-semibold text-white">{ledger.customer.status.replace("_", " ")}</div>
                 </div>
                 <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Phone</div>
+                  <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Phone</div>
                   <div className="mt-2 text-sm font-semibold text-white">{ledger.customer.phone || "Not set"}</div>
                 </div>
                 <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Email</div>
+                  <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Email</div>
                   <div className="mt-2 text-sm font-semibold text-white">{ledger.customer.email || "Not set"}</div>
                 </div>
                 <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Contact Person</div>
+                  <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Contact Person</div>
                   <div className="mt-2 text-sm font-semibold text-white">{ledger.customer.contact_person || "Not set"}</div>
                 </div>
                 <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">GST / PAN</div>
+                  <div className="text-xs uppercase tracking-caption text-[var(--muted)]">GST / PAN</div>
                   <div className="mt-2 text-sm font-semibold text-white">{ledger.customer.gst_number || ledger.customer.tax_id || "Not set"}</div>
                   <div className="text-xs text-[var(--muted)]">
                     {ledger.customer.pan_number || "PAN not set"} {" · "} {formatVerificationLabel(ledger.customer.verification_status)}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Credit Policy</div>
+                  <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Credit Policy</div>
                   <div className="mt-2 text-sm font-semibold text-white">{formatCurrency(ledger.customer.credit_limit)} limit</div>
                   <div className="text-xs text-[var(--muted)]">
                     {ledger.customer.payment_terms_days} day terms {" · "} {formatCurrency(ledger.customer.available_credit_inr)} available
                   </div>
                 </div>
                 <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Recovery Queue</div>
+                  <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Recovery Queue</div>
                   <div className="mt-2 text-sm font-semibold text-white">{openTaskCount} open follow-ups</div>
                   <div className="text-xs text-[var(--muted)]">
                     {ledger.customer.next_follow_up_date ? `Next due ${formatDate(ledger.customer.next_follow_up_date)}` : "No follow-up due yet"}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Location</div>
+                  <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Location</div>
                   <div className="mt-2 text-sm font-semibold text-white">{[ledger.customer.city, ledger.customer.state].filter(Boolean).join(", ") || "Not set"}</div>
                 </div>
                 <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4 sm:col-span-2">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Address</div>
+                  <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Address</div>
                   <div className="mt-2 text-sm font-semibold text-white">{ledger.customer.address || "Not set"}</div>
                 </div>
               </div>
@@ -688,47 +685,47 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                       Format checks, uploaded documents, and manual approval for PAN and GST data.
                     </div>
                   </div>
-                  <div className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-[0.18em] ${verificationBadgeClass(ledger.customer.verification_status)}`}>
+                  <div className={`inline-flex rounded-full border px-3 py-1 text-xs uppercase tracking-caption ${verificationBadgeClass(ledger.customer.verification_status)}`}>
                     {formatVerificationLabel(ledger.customer.verification_status)}
                   </div>
                 </div>
 
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
                   <div className="rounded-2xl border border-[var(--border)] bg-[rgba(7,12,20,0.72)] p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">PAN</div>
+                    <div className="text-xs uppercase tracking-caption text-[var(--muted)]">PAN</div>
                     <div className="mt-2 text-sm font-semibold text-white">{ledger.customer.pan_number || "Not set"}</div>
                     <div className={`text-xs ${fieldStatusTone(ledger.customer.pan_status)}`}>
                       {formatVerificationLabel(ledger.customer.pan_status)}
                     </div>
                   </div>
                   <div className="rounded-2xl border border-[var(--border)] bg-[rgba(7,12,20,0.72)] p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">GST</div>
+                    <div className="text-xs uppercase tracking-caption text-[var(--muted)]">GST</div>
                     <div className="mt-2 text-sm font-semibold text-white">{ledger.customer.gst_number || "Not set"}</div>
                     <div className={`text-xs ${fieldStatusTone(ledger.customer.gst_status)}`}>
                       {formatVerificationLabel(ledger.customer.gst_status)}
                     </div>
                   </div>
                   <div className="rounded-2xl border border-[var(--border)] bg-[rgba(7,12,20,0.72)] p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Match Score</div>
+                    <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Match Score</div>
                     <div className="mt-2 text-sm font-semibold text-white">{ledger.customer.match_score.toFixed(0)} / 100</div>
                     <div className="text-xs text-[var(--muted)]">{ledger.customer.verification_source || "system_check"}</div>
                   </div>
                   <div className="rounded-2xl border border-[var(--border)] bg-[rgba(7,12,20,0.72)] p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Legal Name Match</div>
+                    <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Legal Name Match</div>
                     <div className={`mt-2 text-sm font-semibold ${fieldStatusTone(ledger.customer.name_match_status)}`}>
                       {formatVerificationLabel(ledger.customer.name_match_status)}
                     </div>
                     <div className="text-xs text-[var(--muted)]">{ledger.customer.official_legal_name || "Official name not added"}</div>
                   </div>
                   <div className="rounded-2xl border border-[var(--border)] bg-[rgba(7,12,20,0.72)] p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">State Match</div>
+                    <div className="text-xs uppercase tracking-caption text-[var(--muted)]">State Match</div>
                     <div className={`mt-2 text-sm font-semibold ${fieldStatusTone(ledger.customer.state_match_status)}`}>
                       {formatVerificationLabel(ledger.customer.state_match_status)}
                     </div>
                     <div className="text-xs text-[var(--muted)]">{ledger.customer.official_state || "Official state not added"}</div>
                   </div>
                   <div className="rounded-2xl border border-[var(--border)] bg-[rgba(7,12,20,0.72)] p-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Documents</div>
+                    <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Documents</div>
                     <div className="mt-2 text-sm font-semibold text-white">
                       {ledger.customer.pan_document_url ? "PAN uploaded" : "PAN pending"}
                     </div>
@@ -922,7 +919,7 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                         Add the next recovery or account-check step without leaving the customer ledger.
                       </div>
                     </div>
-                    <div className="rounded-full border border-[var(--border)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                    <div className="rounded-full border border-[var(--border)] px-3 py-1 text-xs uppercase tracking-caption text-[var(--muted)]">
                       {openTaskCount} open
                     </div>
                   </div>
@@ -1007,10 +1004,10 @@ export function SteelCustomerLedgerPage({ customerId }: Props) {
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <div className={`inline-flex rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${taskPriorityBadgeClass(task.priority)}`}>
+                        <div className={`inline-flex rounded-full border px-3 py-1 text-[10px] uppercase tracking-caption ${taskPriorityBadgeClass(task.priority)}`}>
                           {formatTaskLabel(task.priority)}
                         </div>
-                        <div className={`inline-flex rounded-full border px-3 py-1 text-[10px] uppercase tracking-[0.18em] ${taskStatusBadgeClass(task.status)}`}>
+                        <div className={`inline-flex rounded-full border px-3 py-1 text-[10px] uppercase tracking-caption ${taskStatusBadgeClass(task.status)}`}>
                           {formatTaskLabel(task.status)}
                         </div>
                       </div>

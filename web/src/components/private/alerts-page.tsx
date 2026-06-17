@@ -111,7 +111,7 @@ export default function AlertsPage() {
         <div className="mx-auto max-w-4xl">
           <Card>
             <CardHeader>
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Alerts</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Alerts</div>
               <CardTitle>Sign in to view alerts</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
@@ -133,7 +133,7 @@ export default function AlertsPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div>
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Alerts</div>
+            <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Alerts</div>
             <h1 className="mt-2 text-3xl font-semibold">Factory signals &amp; notifications</h1>
             <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">
               Review and acknowledge unread alerts. Cleared alerts disappear from this list.
@@ -158,7 +158,7 @@ export default function AlertsPage() {
         {alerts.length === 0 ? (
           <Card className="border-dashed border-[var(--border)] bg-[var(--card-strong)]">
             <CardContent className="flex min-h-[12rem] flex-col items-center justify-center gap-3 px-6 py-10 text-center">
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">All Clear</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">All Clear</div>
               <div className="text-2xl font-semibold text-[var(--text)]">No unread alerts</div>
               <div className="max-w-xl text-sm leading-6 text-[var(--muted)]">
                 Factory signals and notifications will appear here when they need attention.
@@ -183,7 +183,7 @@ export default function AlertsPage() {
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0 flex-1 space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-[var(--border)] bg-[rgba(0,0,0,0.2)] px-3 py-0.5 text-[11px] font-semibold uppercase tracking-[0.16em]">
+                      <span className="rounded-full border border-[var(--border)] bg-[rgba(0,0,0,0.2)] px-3 py-0.5 text-[11px] font-semibold uppercase tracking-label">
                         {alert.alert_type}
                       </span>
                       <span className="text-xs text-[var(--muted)]">

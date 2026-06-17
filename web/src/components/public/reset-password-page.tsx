@@ -134,7 +134,6 @@ export default function ResetPasswordPage() {
     }
   };
 
-  // AUDIT: TEXT_NOISE - shorten the auth-shell narrative so the reset action stays primary
   return (
     <AuthShell
       badge={t("auth.reset.badge", "Reset Password")}
@@ -187,7 +186,7 @@ export default function ResetPasswordPage() {
 
           {resolvedValid && !resolvedVerifying ? (
             <div className="space-y-4">
-              {/* AUDIT: DENSITY_OVERLOAD - compress repeated recovery guidance into one compact prep card */}
+
               <div className="rounded-2xl border border-[rgba(255,255,255,0.08)] bg-[rgba(15,23,42,0.35)] p-4 text-sm text-[var(--text)]/90">
                 {t("auth.reset.prep", "Enter the new password twice, save it once, then return to sign in with the same email.")}
                 <div className="mt-3 text-xs text-[var(--muted)]">
@@ -203,7 +202,7 @@ export default function ResetPasswordPage() {
                   required
                 />
                 <PasswordStrengthMeter password={password} />
-                {/* AUDIT: TEXT_NOISE - reduce inline helper copy because the strength meter already carries most of the guidance */}
+
                 <div className="text-xs text-[var(--muted)]">{t("auth.reset.password_guidance", "Use 12+ characters with uppercase, lowercase, number, and symbol.")}</div>
                 <PasswordField
                   label={t("auth.reset.confirm_password", "Confirm Password")}

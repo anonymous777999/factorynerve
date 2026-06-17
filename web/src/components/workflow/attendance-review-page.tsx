@@ -311,7 +311,7 @@ function EmptyQueueState({ filtered }: { filtered: boolean }) {
   return (
     <Card className="border-dashed border-[var(--border)] bg-[var(--card-strong)]">
       <CardContent className="flex flex-col items-center justify-center gap-3 px-6 py-12 text-center">
-        <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Attendance Review</div>
+        <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Attendance Review</div>
         <div className="text-2xl font-semibold text-[var(--text)]">
           {filtered ? "No issues match these filters" : "No attendance issues are waiting"}
         </div>
@@ -341,7 +341,7 @@ function ReviewDetailPanel({
     return (
       <Card className="border-dashed border-[var(--border)] bg-[var(--card-strong)]">
         <CardContent className="flex min-h-[22rem] flex-col items-center justify-center gap-3 px-6 py-10 text-center">
-          <div className="text-sm uppercase tracking-[0.26em] text-[var(--accent)]">Review Panel</div>
+          <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Review Panel</div>
           <div className="text-2xl font-semibold text-[var(--text)]">Select an issue to review</div>
           <div className="max-w-sm text-sm leading-6 text-[var(--muted)]">
             Open any attendance issue from the queue to inspect the worker details, apply the suggested fix, and approve or reject the record.
@@ -388,10 +388,10 @@ function ReviewDetailPanel({
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]", severityClasses(review.severity))}>
+              <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-caption", severityClasses(review.severity))}>
                 {review.severityLabel}
               </span>
-              <span className="rounded-full border border-[var(--border)] bg-[var(--card-strong)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+              <span className="rounded-full border border-[var(--border)] bg-[var(--card-strong)] px-3 py-1 text-[11px] font-semibold uppercase tracking-caption text-[var(--muted)]">
                 {review.issueLabel}
               </span>
             </div>
@@ -447,20 +447,20 @@ function ReviewDetailPanel({
                 { label: "Late / Overtime", value: `${formatMinutes(item.late_minutes)} / ${formatMinutes(item.overtime_minutes)}` },
               ].map((row) => (
                 <div key={row.label} className="rounded-2xl border border-[var(--border)] bg-[rgba(10,14,24,0.78)] p-4">
-                  <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">{row.label}</div>
+                  <div className="text-xs uppercase tracking-label text-[var(--muted)]">{row.label}</div>
                   <div className="mt-2 text-sm font-semibold text-[var(--text)]">{row.value}</div>
                 </div>
               ))}
             </div>
 
             <div className="rounded-2xl border border-[var(--border)] bg-[rgba(10,14,24,0.78)] p-4">
-              <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Review reason</div>
+              <div className="text-xs uppercase tracking-label text-[var(--muted)]">Review reason</div>
               <div className="mt-2 text-sm leading-6 text-[var(--text)]">{item.review_reason}</div>
             </div>
 
             {item.regularization ? (
               <div className="rounded-2xl border border-[var(--border)] bg-[rgba(10,14,24,0.78)] p-4">
-                <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Requested correction</div>
+                <div className="text-xs uppercase tracking-label text-[var(--muted)]">Requested correction</div>
                 <div className="mt-2 text-sm leading-6 text-[var(--text)]">
                   {ISSUE_TYPE_LABELS[item.regularization.request_type as ReviewIssueType] || formatRole(item.regularization.request_type)}
                 </div>
@@ -473,7 +473,7 @@ function ReviewDetailPanel({
         {detailTab === "fix" ? (
           <div className="space-y-4">
             <div className="rounded-2xl border border-cyan-400/20 bg-[rgba(34,211,238,0.08)] p-4">
-              <div className="text-xs uppercase tracking-[0.16em] text-cyan-100/80">Suggested outcome</div>
+              <div className="text-xs uppercase tracking-label text-cyan-100/80">Suggested outcome</div>
               <div className="mt-2 text-sm font-semibold text-cyan-50">{review.suggestedFix}</div>
             </div>
 
@@ -530,7 +530,7 @@ function ReviewDetailPanel({
               <div key={`${entry.title}-${entry.timestamp}`} className="rounded-2xl border border-[var(--border)] bg-[rgba(10,14,24,0.78)] p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div className="text-sm font-semibold text-[var(--text)]">{entry.title}</div>
-                  <div className="text-xs uppercase tracking-[0.14em] text-[var(--muted)]">{entry.timestamp}</div>
+                  <div className="text-xs uppercase tracking-label text-[var(--muted)]">{entry.timestamp}</div>
                 </div>
                 <div className="mt-2 text-sm leading-6 text-[var(--muted)]">{entry.body}</div>
               </div>
@@ -735,9 +735,9 @@ export default function AttendanceReviewPage() {
       return haystack.includes(searchTerm);
     });
   }, [deferredSearch, departmentFilter, derivedItems, issueFilter, shiftFilter]);
-  // AUDIT: FLOW_BROKEN - keep the next attendance issue explicit so the board leads with one clear review action.
+
   const nextReview = filteredItems[0] ?? null;
-  // AUDIT: DENSITY_OVERLOAD - separate the featured issue from the wider backlog.
+
   const remainingFilteredItems = filteredItems.slice(1);
   const hasCriticalBacklog = remainingFilteredItems.some((r) => r.severity === "critical");
 
@@ -902,7 +902,7 @@ export default function AttendanceReviewPage() {
 
   if (loading || (pageLoading && user && canReview && !hasLoadedOnce)) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
+      <main className="min-h-screen px-4 py-8 md:px-8 content-fade-in">
         <div className="mx-auto max-w-7xl space-y-6">
           <Skeleton className="h-40 rounded-[2rem]" />
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -929,7 +929,7 @@ export default function AttendanceReviewPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
-            {/* AUDIT: FLOW_BROKEN - send reviewers back through the active auth entry instead of the stale login route. */}
+
             <Link href="/access">
               <Button>Open Access</Button>
             </Link>
@@ -967,11 +967,11 @@ export default function AttendanceReviewPage() {
   return (
     <main className="min-h-screen px-4 py-6 md:px-8 md:py-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* AUDIT: FLOW_BROKEN - lead the screen with the next attendance review instead of a broad review-board description. */}
+
         <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.9)] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-4xl space-y-3">
-              <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">Attendance Review</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Attendance Review</div>
               <h1 className="text-3xl font-semibold md:text-4xl">Close the next attendance exception fast</h1>
               <p className="max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 Review missed punches and correction requests for {payload?.factory_name || activeFactory?.name || user.factory_name}, then move through the rest of the queue without losing fix context.
@@ -1048,7 +1048,7 @@ export default function AttendanceReviewPage() {
             ].map((item) => (
               <Card key={item.title} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
                 <CardContent className="space-y-3 px-5 py-5">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
+                  <div className="text-xs font-semibold uppercase tracking-caption text-[var(--accent)]">{item.step}</div>
                   <div className="text-xl font-semibold text-[var(--text)]">{item.title}</div>
                   <div className="text-sm leading-6 text-[var(--muted)]">{item.body}</div>
                 </CardContent>
@@ -1073,7 +1073,7 @@ export default function AttendanceReviewPage() {
           </div>
         ) : null}
 
-        {/* AUDIT: DENSITY_OVERLOAD - collapse queue pulse metrics until the reviewer wants backlog context. */}
+
         <details className="group rounded-[2rem] border border-[var(--border)] bg-[rgba(18,22,34,0.9)] shadow-xl">
           <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
             <div>
@@ -1081,10 +1081,10 @@ export default function AttendanceReviewPage() {
               <div className="mt-1 text-xl font-semibold text-[var(--text)]">Attendance load and risk</div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border border-[var(--border)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text)]">
+              <span className="rounded-full border border-[var(--border)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-label text-[var(--text)]">
                 Open {derivedItems.length}
               </span>
-              <span className="rounded-full border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-red-100">
+              <span className="rounded-full border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-label text-red-100">
                 Critical {highPriorityCount}
               </span>
             </div>
@@ -1097,7 +1097,7 @@ export default function AttendanceReviewPage() {
           </div>
         </details>
 
-        {/* AUDIT: BUTTON_CLUTTER - move route jumps and filters into one tools tray so the issue queue stays primary. */}
+
         <details className="group rounded-[2rem] border border-[var(--border)] bg-[rgba(18,22,34,0.9)] shadow-xl">
           <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
             <div>
@@ -1105,7 +1105,7 @@ export default function AttendanceReviewPage() {
               <div className="mt-1 text-xl font-semibold text-[var(--text)]">Routes and filters</div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <span className="rounded-full border border-[var(--border)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text)]">
+              <span className="rounded-full border border-[var(--border)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-label text-[var(--text)]">
                 Showing {filteredItems.length} of {derivedItems.length}
               </span>
             </div>
@@ -1176,7 +1176,7 @@ export default function AttendanceReviewPage() {
           <div className="space-y-4">
             {nextReview ? (
               <>
-                {/* AUDIT: FLOW_BROKEN - feature the next attendance issue before the wider backlog so the first move is obvious. */}
+
                 <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
                   <CardHeader className="space-y-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1184,7 +1184,7 @@ export default function AttendanceReviewPage() {
                         <div className="text-sm text-[var(--muted)]">Review next</div>
                         <CardTitle className="text-xl">Top attendance issue</CardTitle>
                       </div>
-                      <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityClasses(nextReview.severity))}>
+                      <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-label", severityClasses(nextReview.severity))}>
                         {nextReview.severityLabel}
                       </span>
                     </div>
@@ -1194,13 +1194,13 @@ export default function AttendanceReviewPage() {
                       <div className="flex flex-wrap items-start justify-between gap-4">
                         <div className="space-y-3">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityClasses(nextReview.severity))}>
+                            <span className={cn("rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-label", severityClasses(nextReview.severity))}>
                               {nextReview.issueLabel}
                             </span>
-                            <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                            <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] font-semibold uppercase tracking-label text-[var(--muted)]">
                               {formatShift(nextReview.item.shift)}
                             </span>
-                            <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                            <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] font-semibold uppercase tracking-label text-[var(--muted)]">
                               {formatDate(nextReview.item.attendance_date)}
                             </span>
                           </div>
@@ -1215,7 +1215,7 @@ export default function AttendanceReviewPage() {
                             <span className="rounded-full border border-[var(--border)] px-3 py-1">Attendance {formatAttendanceStatusLabel(nextReview.item.status)}</span>
                             <span className="rounded-full border border-[var(--border)] px-3 py-1">Review {formatAttendanceReviewStatusLabel(nextReview.item.review_status)}</span>
                             {nextReview.issueType === "missed_punch" ? (
-                              <span className={cn("rounded-full px-3 py-1 font-semibold uppercase tracking-[0.14em]", severityClasses("critical"))}>
+                              <span className={cn("rounded-full px-3 py-1 font-semibold uppercase tracking-label", severityClasses("critical"))}>
                                 Missed punch
                               </span>
                             ) : null}
@@ -1243,14 +1243,14 @@ export default function AttendanceReviewPage() {
                       </div>
                     </div>
 
-                    {/* AUDIT: DENSITY_OVERLOAD - keep the rest of the issue queue available, but tuck it below the featured next item. */}
+
                     <details open={hasCriticalBacklog} className="group rounded-3xl border border-[var(--border)] bg-[var(--card-strong)]">
                       <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-5 py-4">
                         <div>
                           <div className="text-sm text-[var(--muted)]">Backlog</div>
                           <div className="mt-1 text-lg font-semibold text-[var(--text)]">More attendance issues</div>
                         </div>
-                        <span className="rounded-full border border-[var(--border)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--text)]">
+                        <span className="rounded-full border border-[var(--border)] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-label text-[var(--text)]">
                           {remainingFilteredItems.length} more
                         </span>
                       </summary>
@@ -1269,7 +1269,7 @@ export default function AttendanceReviewPage() {
                                 <ResponsiveScrollArea debugLabel="attendance-review-backlog-table">
                                   <table className="min-w-full border-separate border-spacing-0">
                                     <thead>
-                                      <tr className="text-left text-xs uppercase tracking-[0.14em] text-[var(--muted)]">
+                                      <tr className="text-left text-xs uppercase tracking-label text-[var(--muted)]">
                                         <th className="px-3 py-3 w-10">
                                           <input
                                             type="checkbox"
@@ -1354,7 +1354,7 @@ export default function AttendanceReviewPage() {
                                               <div className="space-y-2">
                                                 <span
                                                   className={cn(
-                                                    "inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]",
+                                                    "inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-label",
                                                     severityClasses(review.severity),
                                                   )}
                                                 >
@@ -1370,7 +1370,7 @@ export default function AttendanceReviewPage() {
                                               <div className="mt-1 text-xs text-[var(--muted)]">{formatAttendanceStatusLabel(review.item.status)}</div>
                                               {review.issueType === "missed_punch" ? (
                                                 <div className="mt-2">
-                                                  <span className={cn("rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]", severityClasses("critical"))}>
+                                                  <span className={cn("rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-label", severityClasses("critical"))}>
                                                     Missed punch
                                                   </span>
                                                 </div>
@@ -1457,7 +1457,7 @@ export default function AttendanceReviewPage() {
                                       </div>
                                       <span
                                         className={cn(
-                                          "rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]",
+                                          "rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-label",
                                           severityClasses(review.severity),
                                         )}
                                       >
@@ -1592,14 +1592,14 @@ n                            {remainingFilteredItems.length > 0 && selectedAtten
         <div className="fixed inset-0 z-[55] flex items-center justify-center bg-[rgba(5,10,18,0.84)] px-4 py-4">
           <Card className="w-full max-w-lg border-[var(--border)] bg-[rgba(17,21,33,0.98)] shadow-2xl">
             <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Confirm bulk decision</div>
+              <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Confirm bulk decision</div>
               <CardTitle className="text-xl">
                 {bulkConfirmDecision === "approve" ? "Approve selected attendance records?" : "Reject selected attendance records?"}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="rounded-xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-3">
-                <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">Selected</div>
+                <div className="text-[11px] uppercase tracking-label text-[var(--muted)]">Selected</div>
                 <div className="mt-1 text-xl font-semibold">{selectedAttendanceIds.size}</div>
               </div>
 

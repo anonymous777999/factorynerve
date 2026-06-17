@@ -78,7 +78,7 @@ export default function CompliancePage() {
               <ShieldCheck className="h-6 w-6" />
             </span>
             <div>
-              <h1 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">Trust Center</h1>
+              <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">Trust Center</h1>
               <p className="mt-1 text-sm text-slate-400">Last updated: June 17, 2026</p>
             </div>
           </div>
@@ -108,7 +108,7 @@ export default function CompliancePage() {
 
         {/* Policy Quick Links */}
         <div className="mb-8 rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(24,28,37,0.98),rgba(18,23,33,0.98))] p-6 shadow-[0_24px_60px_rgba(2,6,23,0.45)] sm:p-10">
-          <h2 className="mb-6 text-xl font-semibold tracking-[-0.02em] text-white">Policies & Legal Documents</h2>
+          <h2 className="mb-6 text-xl font-semibold tracking-tight text-white">Policies & Legal Documents</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {policyLinks.map((link) => (
               <Link key={link.href} href={link.href} className="group flex items-start gap-3 rounded-xl border border-white/5 bg-white/[0.02] p-4 transition hover:border-sky-300/20 hover:bg-white/[0.04]">
@@ -126,7 +126,7 @@ export default function CompliancePage() {
 
         {/* Compliance Roadmap */}
         <div className="mb-8 rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(24,28,37,0.98),rgba(18,23,33,0.98))] p-6 shadow-[0_24px_60px_rgba(2,6,23,0.45)] sm:p-10">
-          <h2 className="mb-2 text-xl font-semibold tracking-[-0.02em] text-white">Compliance Roadmap</h2>
+          <h2 className="mb-2 text-xl font-semibold tracking-tight text-white">Compliance Roadmap</h2>
           <p className="mb-6 text-sm text-slate-400">Our planned certifications and audit milestones.</p>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {roadmapItems.map((r) => (
@@ -147,7 +147,7 @@ export default function CompliancePage() {
 
         {/* Additional Resources */}
         <div className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(24,28,37,0.98),rgba(18,23,33,0.98))] p-6 shadow-[0_24px_60px_rgba(2,6,23,0.45)] sm:p-10">
-          <h2 className="mb-6 text-xl font-semibold tracking-[-0.02em] text-white">Additional Resources</h2>
+          <h2 className="mb-6 text-xl font-semibold tracking-tight text-white">Additional Resources</h2>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {[
               { title: "Report a Vulnerability", desc: "Submit security concerns to our team", href: "mailto:security@dpr.ai" },

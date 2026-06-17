@@ -168,7 +168,7 @@ export default function FAQPage() {
       <div className="mx-auto max-w-4xl">
         {/* Hero */}
         <div className="mb-8 rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(24,28,37,0.98),rgba(18,23,33,0.98))] p-6 shadow-[0_24px_60px_rgba(2,6,23,0.45)] sm:p-10">
-          <h1 className="text-3xl font-semibold tracking-[-0.04em] text-white sm:text-4xl">FAQ</h1>
+          <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">FAQ</h1>
           <p className="mt-2 text-sm text-slate-400">Last updated: June 17, 2026</p>
           <p className="mt-4 text-sm leading-7 text-slate-300">
             Find answers to common questions about DPR.ai, our platform, security, data practices, and support.

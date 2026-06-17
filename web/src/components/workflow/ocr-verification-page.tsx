@@ -40,6 +40,7 @@ import { Input } from "@/components/ui/input";
 import { ResponsiveScrollArea } from "@/components/ui/responsive-scroll-area";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
 
 const PREVIEW_LANGUAGES = ["eng", "auto", "eng+hin+mar"];
 
@@ -282,7 +283,7 @@ function SurfaceBadge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]",
+        "inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label",
         className,
       )}
     >
@@ -304,7 +305,7 @@ function MetricCard({
 }) {
   return (
     <div className={cn("rounded-[1.4rem] border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4", className)}>
-      <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">{label}</div>
+      <div className="text-[11px] uppercase tracking-label text-[var(--muted)]">{label}</div>
       <div className="mt-2 text-lg font-semibold text-[var(--text)]">{value}</div>
       {detail ? <div className="mt-2 text-sm leading-6 text-[var(--muted)]">{detail}</div> : null}
     </div>
@@ -324,8 +325,8 @@ function SectionHeading({
 }) {
   return (
     <div className={cn("space-y-2", className)}>
-      <div className="text-sm uppercase tracking-[0.24em] text-[var(--accent)]">{eyebrow}</div>
-      <div className="text-2xl font-semibold tracking-[-0.02em] text-[var(--text)]">{title}</div>
+      <div className="text-sm uppercase tracking-header text-[var(--accent)]">{eyebrow}</div>
+      <div className="text-2xl font-semibold tracking-tight text-[var(--text)]">{title}</div>
       {detail ? <div className="max-w-3xl text-sm leading-6 text-[var(--muted)]">{detail}</div> : null}
     </div>
   );
@@ -370,7 +371,7 @@ function EmptyWorkspace() {
             </div>
           </div>
           <div className="rounded-[1.8rem] border border-white/10 bg-[rgba(8,12,20,0.74)] p-5 shadow-[0_24px_60px_rgba(2,6,23,0.26)] backdrop-blur">
-            <div className="text-[11px] uppercase tracking-[0.18em] text-[var(--muted)]">What opens here</div>
+            <div className="text-[11px] uppercase tracking-caption text-[var(--muted)]">What opens here</div>
             <div className="mt-3 space-y-3">
               <div className="rounded-[1.3rem] border border-cyan-400/20 bg-[rgba(34,211,238,0.08)] px-4 py-4">
                 <div className="text-sm font-semibold text-cyan-100">Original paper viewer</div>
@@ -609,7 +610,7 @@ function ReviewWorkspace({
       <CardContent className="space-y-4">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <div className={cn("rounded-[1.45rem] border px-4 py-4 shadow-[0_18px_40px_rgba(2,6,23,0.18)]", trustState.className)}>
-            <div className="text-[11px] uppercase tracking-[0.16em]">Trust state</div>
+            <div className="text-[11px] uppercase tracking-label">Trust state</div>
             <div className="mt-2 text-lg font-semibold">{trustState.title}</div>
             <div className="mt-2 text-sm leading-6">{trustState.detail}</div>
           </div>
@@ -649,7 +650,7 @@ function ReviewWorkspace({
         <div className="rounded-[1.5rem] border border-[var(--border)] bg-[rgba(10,15,24,0.76)] px-4 py-4 sm:px-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Audit timeline</div>
+              <div className="text-[11px] uppercase tracking-label text-[var(--muted)]">Audit timeline</div>
               <div className="mt-1 text-sm text-[var(--muted)]">Every save, submit, approval, and send-back checkpoint appears here.</div>
             </div>
             <SurfaceBadge className="border-white/10 bg-white/[0.03] text-[var(--muted)]">
@@ -660,7 +661,7 @@ function ReviewWorkspace({
             {auditEvents.length ? (
               auditEvents.map((event) => (
                 <div key={`${event.label}-${event.detail}`} className="rounded-[1.25rem] border border-[var(--border)] bg-[rgba(8,12,20,0.82)] px-4 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                  <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">{event.label}</div>
+                  <div className="text-[11px] uppercase tracking-label text-[var(--muted)]">{event.label}</div>
                   <div className="mt-2 text-sm text-[var(--text)]">{event.detail}</div>
                 </div>
               ))
@@ -745,7 +746,7 @@ function ReviewWorkspace({
               }}
               className="rounded-[1.35rem] border border-red-400/30 bg-[rgba(239,68,68,0.1)] px-4 py-4 text-left text-red-100 transition hover:-translate-y-0.5 hover:bg-[rgba(239,68,68,0.14)]"
             >
-              <div className="text-[11px] uppercase tracking-[0.16em]">Critical</div>
+              <div className="text-[11px] uppercase tracking-label">Critical</div>
               <div className="mt-2 text-2xl font-semibold">{criticalCount}</div>
               <div className="mt-2 text-sm text-red-50/80">Highest-risk values that can break operations or approvals.</div>
             </button>
@@ -757,12 +758,12 @@ function ReviewWorkspace({
               }}
               className="rounded-[1.35rem] border border-amber-400/30 bg-[rgba(245,158,11,0.1)] px-4 py-4 text-left text-amber-100 transition hover:-translate-y-0.5 hover:bg-[rgba(245,158,11,0.14)]"
             >
-              <div className="text-[11px] uppercase tracking-[0.16em]">Warning</div>
+              <div className="text-[11px] uppercase tracking-label">Warning</div>
               <div className="mt-2 text-2xl font-semibold">{warningCount}</div>
               <div className="mt-2 text-sm text-amber-50/80">Likely readable, but still worth a quick paper check.</div>
             </button>
             <div className="rounded-[1.35rem] border border-emerald-400/30 bg-[rgba(34,197,94,0.1)] px-4 py-4 text-emerald-100">
-              <div className="text-[11px] uppercase tracking-[0.16em]">Checked</div>
+              <div className="text-[11px] uppercase tracking-label">Checked</div>
               <div className="mt-2 text-2xl font-semibold">{checkedIssueCount}</div>
               <div className="mt-2 text-sm text-emerald-50/80">Fields already reviewed and cleared for this pass.</div>
             </div>
@@ -788,14 +789,14 @@ function ReviewWorkspace({
                     <div className="flex items-start justify-between gap-3">
                       <div className="space-y-2">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]", signalTone(issue.tone))}>
+                          <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label", signalTone(issue.tone))}>
                             {issue.tone}
                           </span>
-                          <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]", impactTone(issue.impact))}>
+                          <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label", impactTone(issue.impact))}>
                             {impactLabel(issue.impact)}
                           </span>
                           {resolved ? (
-                            <span className="rounded-full border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-100">
+                            <span className="rounded-full border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-label text-emerald-100">
                               Checked
                             </span>
                           ) : null}
@@ -869,7 +870,7 @@ function ReviewWorkspace({
           {activeIssue ? (
             <>
               <div className={cn("rounded-[1.35rem] border px-4 py-4", signalTone(activeIssue.tone))}>
-                <div className="text-xs font-semibold uppercase tracking-[0.16em]">Suggested check</div>
+                <div className="text-xs font-semibold uppercase tracking-label">Suggested check</div>
                 <div className="mt-2 text-sm leading-6">{activeIssue.detail}</div>
               </div>
               <div className="grid gap-3 sm:grid-cols-2">
@@ -877,7 +878,7 @@ function ReviewWorkspace({
                 <MetricCard label="Expected review" value={activeIssue.expectedValue} />
               </div>
               <div className="rounded-[1.35rem] border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Why it matters</div>
+                <div className="text-[11px] uppercase tracking-label text-[var(--muted)]">Why it matters</div>
                 <div className="mt-2 flex flex-wrap items-center gap-2">
                   <SurfaceBadge className={cn("", impactTone(activeIssue.impact))}>
                     {impactLabel(activeIssue.impact)}
@@ -887,7 +888,7 @@ function ReviewWorkspace({
               </div>
               <div className="flex flex-wrap gap-3">
                 {resolvedIssueKeys.includes(activeIssue.key) ? (
-                  <div className="rounded-full border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-100">
+                  <div className="rounded-full border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-2 text-xs font-semibold uppercase tracking-label text-emerald-100">
                     Issue checked
                   </div>
                 ) : (
@@ -1040,16 +1041,16 @@ function ReviewWorkspace({
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
                       <div className="flex flex-wrap items-center gap-2">
-                        <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]", signalTone(issue.tone))}>
+                        <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label", signalTone(issue.tone))}>
                           {issue.tone}
                         </span>
                         <span className="text-xs text-[var(--muted)]">Row {issue.rowIndex + 1}</span>
                         {dirty ? (
-                          <span className="rounded-full border border-orange-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-orange-100">
+                          <span className="rounded-full border border-orange-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-label text-orange-100">
                             Unsaved
                           </span>
                         ) : null}
-                        <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]", confidenceBadgeClass(confidence))}>
+                        <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label", confidenceBadgeClass(confidence))}>
                           {confidenceLabel(confidence)}
                         </span>
                       </div>
@@ -1058,7 +1059,7 @@ function ReviewWorkspace({
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {resolved ? (
-                        <div className="rounded-full border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-100">
+                        <div className="rounded-full border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-3 py-2 text-[11px] font-semibold uppercase tracking-label text-emerald-100">
                           Checked
                         </div>
                       ) : (
@@ -1978,9 +1979,9 @@ export default function OcrVerificationPage() {
         .includes(term);
     });
   }, [search, statusFilter, verifications]);
-  // AUDIT: FLOW_BROKEN - keep the next queue document explicit so the page leads with one clear review target.
+
   const nextQueueVerification = filteredVerifications[0] ?? null;
-  // AUDIT: DENSITY_OVERLOAD - surface the active document state once at the page level instead of repeating it across hero copy.
+
   const activeDocumentLabel = activeVerification?.source_filename || file?.name || (preview ? "New document review" : "No document open");
   const activeDocumentStatus = activeVerification?.status || (preview ? "draft" : "idle");
 
@@ -2200,11 +2201,7 @@ export default function OcrVerificationPage() {
   }, [handleNextIssue, resolvedIssueKeys, reviewIssues, selectedIssueKey]);
 
   if (loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading document review...
-      </main>
-    );
+    return <DashboardPageSkeleton />;
   }
 
   if (!user) {
@@ -2216,7 +2213,7 @@ export default function OcrVerificationPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
-            {/* AUDIT: FLOW_BROKEN - send reviewers through the live auth entry instead of the stale login route. */}
+
             <Link href="/access">
               <Button>Open Access</Button>
             </Link>
@@ -2252,12 +2249,12 @@ export default function OcrVerificationPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#0d1218_0%,#111820_100%)] px-4 py-4 md:px-6">
+    <main className="min-h-screen bg-[linear-gradient(180deg,#0d1218_0%,#111820_100%)] px-4 py-4 md:px-6 content-fade-in">
       <div className="w-full space-y-4">
         <section className="sticky top-3 z-20 overflow-hidden rounded-[2rem] border border-white/8 bg-[linear-gradient(180deg,rgba(248,248,246,0.98),rgba(244,245,246,0.98))] p-5 shadow-2xl backdrop-blur md:p-6">
           <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-end">
             <div>
-              <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#8a93a0]">
+              <div className="text-[11px] font-semibold uppercase tracking-caption text-[#8a93a0]">
                 Review
               </div>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-[#101418]">
@@ -2267,13 +2264,13 @@ export default function OcrVerificationPage() {
                 Open the next document, clear the risky values, and export a trusted sheet.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <span className="rounded-full border border-[#d4d9df] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#66707c]">
+                <span className="rounded-full border border-[#d4d9df] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-label text-[#66707c]">
                   {activeDocumentLabel}
                 </span>
-                <span className="rounded-full border border-[#d4d9df] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#66707c]">
+                <span className="rounded-full border border-[#d4d9df] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-label text-[#66707c]">
                   {activeDocumentStatus === "idle" ? "idle" : activeDocumentStatus.replace("_", " ")}
                 </span>
-                <span className="rounded-full border border-[#d4d9df] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#66707c]">
+                <span className="rounded-full border border-[#d4d9df] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-label text-[#66707c]">
                   {totalIssues ? `${unresolvedIssueCount} issues left` : "Clean review"}
                 </span>
               </div>
@@ -2317,7 +2314,7 @@ export default function OcrVerificationPage() {
                   title="Pick the next document"
                   detail="Keep the queue visible, but tuck search and status controls away until they are needed."
                 />
-                {/* AUDIT: BUTTON_CLUTTER - move queue filters into a secondary reveal so document picking stays primary. */}
+
                 <details className="w-full">
                   <summary className="list-none">
                     <Button variant="outline" className="w-full px-4 py-2 text-xs">
@@ -2362,7 +2359,7 @@ export default function OcrVerificationPage() {
                             <div className="text-xs text-[var(--muted)]">
                               {verification.template_name || "No template"} | {formatTimestamp(verification.updated_at)}
                             </div>
-                            <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-[0.14em]">
+                            <div className="flex flex-wrap gap-2 text-[11px] font-semibold uppercase tracking-label">
                               <span className={cn("rounded-full border px-3 py-1", statusBadgeClass(verification.status))}>
                                 {verification.status}
                               </span>
@@ -2398,12 +2395,12 @@ export default function OcrVerificationPage() {
               </CardContent>
             </Card>
 
-            {/* AUDIT: BUTTON_CLUTTER - keep quick intake available but secondary to the review queue and active workspace. */}
+
             {showQuickIntake ? (
               <details className="group overflow-hidden rounded-[1.6rem] border border-[var(--border-strong)] bg-[linear-gradient(180deg,rgba(15,22,35,0.97),rgba(11,17,29,0.98))]" open>
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-5 py-4">
                   <div>
-                    <div className="text-sm uppercase tracking-[0.22em] text-[var(--accent)]">Quick intake</div>
+                    <div className="text-sm uppercase tracking-header text-[var(--accent)]">Quick intake</div>
                     <div className="mt-1 text-xl font-semibold text-[var(--text)]">Bring a new document into review</div>
                   </div>
                 </summary>

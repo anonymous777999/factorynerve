@@ -538,7 +538,7 @@ export default function ProfilePage() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="text-sm text-red-400">{sessionError || "Please sign in to continue."}</div>
-            {/* AUDIT: FLOW_BROKEN - send signed-out users to the live auth entry instead of the stale login route */}
+
             <Link href="/access">
               <Button>Open Access</Button>
             </Link>
@@ -552,11 +552,11 @@ export default function ProfilePage() {
     <main className="min-h-screen bg-[#0B0F19] px-4 py-6 md:px-8 lg:py-8">
       <div className="mx-auto max-w-6xl space-y-6">
         <section className="rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(18,24,36,0.96),rgba(11,15,25,0.98))] p-6 shadow-[0_24px_80px_rgba(6,10,18,0.42)]">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.26em] text-[rgba(62,166,255,0.88)]">
+          <div className="text-[11px] font-semibold uppercase tracking-prominent text-[rgba(62,166,255,0.88)]">
             Profile
           </div>
           <h1 className="mt-2 text-3xl font-semibold text-white">Your account</h1>
-          {/* AUDIT: TEXT_NOISE - shorten the hero copy so identity and security actions feel more immediate */}
+
           <p className="mt-2 max-w-3xl text-sm text-slate-300">Manage your profile and access.</p>
         </section>
 
@@ -617,9 +617,9 @@ export default function ProfilePage() {
                         profileInitials
                       )}
                     </div>
-                    <div className="mt-3 text-xs uppercase tracking-[0.18em] text-slate-400">Profile Photo</div>
+                    <div className="mt-3 text-xs uppercase tracking-caption text-slate-400">Profile Photo</div>
                     <div className="mt-4 flex w-full flex-col gap-2 sm:w-auto">
-                      {/* AUDIT: BUTTON_CLUTTER - keep photo tools available, but shorten the labels so they read like a compact toolset */}
+
                       <Button
                         variant="outline"
                         className="h-10 px-4"
@@ -668,7 +668,7 @@ export default function ProfilePage() {
                   <div className="min-w-0 flex-1 space-y-4">
                     {selectedPhotoPreview ? (
                       <div className="rounded-[1.7rem] border border-[rgba(62,166,255,0.26)] bg-[rgba(8,12,20,0.56)] p-4">
-                        <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Crop selection</div>
+                        <div className="text-xs uppercase tracking-label text-slate-400">Crop selection</div>
                         <div className="mt-3 grid gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
                           <div>
                             <div className="relative aspect-square overflow-hidden rounded-[1.7rem] border border-white/10 bg-[rgba(15,23,42,0.9)]">
@@ -749,7 +749,7 @@ export default function ProfilePage() {
                             </div>
                           </div>
                           <div className="min-w-0 rounded-[1.7rem] border border-white/10 bg-[rgba(15,23,42,0.64)] p-4">
-                            <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Final preview</div>
+                            <div className="text-xs uppercase tracking-label text-slate-400">Final preview</div>
                             <div className="mt-4 flex items-center gap-4">
                               <div className="h-24 w-24 overflow-hidden rounded-[1.5rem] border border-white/10 bg-[rgba(8,12,20,0.9)]">
                                 {cropPreviewStyle ? (
@@ -849,19 +849,19 @@ export default function ProfilePage() {
                     ) : (
                       <div className="grid gap-3 md:grid-cols-2">
                         <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                          <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Name</div>
+                          <div className="text-xs uppercase tracking-label text-slate-400">Name</div>
                           <div className="mt-2 text-sm font-semibold text-white">{profile.name}</div>
                         </div>
                         <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                          <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Role</div>
+                          <div className="text-xs uppercase tracking-label text-slate-400">Role</div>
                           <div className="mt-2 text-sm font-semibold text-white">{formatRole(profile.role)}</div>
                         </div>
                         <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                          <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Phone</div>
+                          <div className="text-xs uppercase tracking-label text-slate-400">Phone</div>
                           <div className="mt-2 text-sm font-semibold text-white">{profile.phone_number || "Not added"}</div>
                         </div>
                         <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                          <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Email</div>
+                          <div className="text-xs uppercase tracking-label text-slate-400">Email</div>
                           <div className="mt-2 break-all text-sm font-semibold text-white">{profile.email}</div>
                         </div>
                       </div>
@@ -891,11 +891,11 @@ export default function ProfilePage() {
               <CardContent className={sectionContentClass("security")}>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Last Login</div>
+                    <div className="text-xs uppercase tracking-label text-slate-400">Last Login</div>
                     <div className="mt-2 text-sm font-semibold text-white">{formatShortDate(profile.last_login)}</div>
                   </div>
                   <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Active Devices</div>
+                    <div className="text-xs uppercase tracking-label text-slate-400">Active Devices</div>
                     <div className="mt-2 text-sm font-semibold text-white">
                       {sessionSummary ? sessionSummary.active_devices : "-"}
                     </div>
@@ -988,23 +988,23 @@ export default function ProfilePage() {
               <CardContent className={sectionContentClass("workspace")}>
                 <div className="grid gap-3 md:grid-cols-2">
                   <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Factory</div>
+                    <div className="text-xs uppercase tracking-label text-slate-400">Factory</div>
                     <div className="mt-2 text-sm font-semibold text-white">
                       {activeFactory?.name || profile.factory_name || "Factory not assigned"}
                     </div>
                   </div>
                   <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Role</div>
+                    <div className="text-xs uppercase tracking-label text-slate-400">Role</div>
                     <div className="mt-2 text-sm font-semibold text-white">{formatRole(profile.role)}</div>
                   </div>
                   <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Status</div>
+                    <div className="text-xs uppercase tracking-label text-slate-400">Status</div>
                     <div className="mt-2 text-sm font-semibold text-emerald-200">
                       {profile.is_active ? "Active" : "Inactive"}
                     </div>
                   </div>
                   <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                    <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Organization</div>
+                    <div className="text-xs uppercase tracking-label text-slate-400">Organization</div>
                     <div className="mt-2 text-sm font-semibold text-white">
                       {organization?.name || "Current organization"}
                     </div>
@@ -1034,15 +1034,15 @@ export default function ProfilePage() {
                 <CardContent className={sectionContentClass("activity")}>
                   <div className="grid gap-3">
                     <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                      <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Entries Today</div>
+                      <div className="text-xs uppercase tracking-label text-slate-400">Entries Today</div>
                       <div className="mt-2 text-2xl font-semibold text-white">{activity.entriesToday}</div>
                     </div>
                     <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                      <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Pending Sync</div>
+                      <div className="text-xs uppercase tracking-label text-slate-400">Pending Sync</div>
                       <div className="mt-2 text-2xl font-semibold text-white">{activity.pendingSync}</div>
                     </div>
                     <div className="rounded-[1.4rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
-                      <div className="text-xs uppercase tracking-[0.16em] text-slate-400">Last Action</div>
+                      <div className="text-xs uppercase tracking-label text-slate-400">Last Action</div>
                       <div className="mt-2 text-sm font-semibold text-white">
                         {formatDateTime(activity.lastAction)}
                       </div>
@@ -1072,7 +1072,7 @@ export default function ProfilePage() {
             </div>
           </CardHeader>
           <CardContent className={sectionContentClass("actions")}>
-            {/* AUDIT: BUTTON_CLUTTER - move rare account-level actions into a secondary tray so edit and security stay primary */}
+
             <details className="rounded-[1.7rem] border border-white/10 bg-[rgba(8,12,20,0.5)] px-4 py-4">
               <summary className="cursor-pointer list-none text-sm font-semibold text-white">Open account actions</summary>
               <div className="mt-4 text-sm text-slate-300">Use these only when you are leaving this account or changing workspace context.</div>

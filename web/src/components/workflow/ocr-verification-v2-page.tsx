@@ -40,6 +40,7 @@ import {
 import { triggerBlobDownload } from "@/lib/reports";
 import { useSession } from "@/lib/use-session";
 import { signalWorkflowRefresh } from "@/lib/workflow-sync";
+import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
 
 const PREVIEW_LANGUAGES = ["eng", "auto", "eng+hin+mar"] as const;
 
@@ -474,16 +475,12 @@ export default function OcrVerificationV2Page() {
   };
 
   if (loading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading OCR verification access...
-      </main>
-    );
+    return <DashboardPageSkeleton />;
   }
 
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 content-fade-in">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Review Documents</CardTitle>
@@ -751,15 +748,15 @@ export default function OcrVerificationV2Page() {
                     <>
                       <div className="grid gap-4 md:grid-cols-3">
                         <div className="rounded-2xl border border-[var(--border)] p-4">
-                          <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Status</div>
+                          <div className="text-xs uppercase tracking-label text-[var(--muted)]">Status</div>
                           <div className="mt-2 text-lg font-semibold text-[var(--text)]">{activeRecord.status}</div>
                         </div>
                         <div className="rounded-2xl border border-[var(--border)] p-4">
-                          <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Updated</div>
+                          <div className="text-xs uppercase tracking-label text-[var(--muted)]">Updated</div>
                           <div className="mt-2 text-lg font-semibold text-[var(--text)]">{formatTimestamp(activeRecord.updated_at)}</div>
                         </div>
                         <div className="rounded-2xl border border-[var(--border)] p-4">
-                          <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">Warnings</div>
+                          <div className="text-xs uppercase tracking-label text-[var(--muted)]">Warnings</div>
                           <div className="mt-2 text-lg font-semibold text-[var(--text)]">{reviewSignals.length}</div>
                         </div>
                       </div>

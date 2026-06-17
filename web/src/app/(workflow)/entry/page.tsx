@@ -813,7 +813,7 @@ export default function EntryPage() {
       <div className="mx-auto max-w-7xl">
         <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-1 text-xs uppercase tracking-[0.22em] text-cyan-200">
+            <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-400/10 px-4 py-1 text-xs uppercase tracking-header text-cyan-200">
               Shift entry
             </div>
             <h1 className="mt-4 text-3xl font-semibold tracking-tight md:text-4xl">Finish one shift before the next one starts piling up</h1>
@@ -838,7 +838,7 @@ export default function EntryPage() {
           </div>
         </header>
 
-        {/* AUDIT: BUTTON_CLUTTER - move route and queue utilities into a secondary tray so the active step stays primary. */}
+
         <details className="mt-5 rounded-[24px] border border-white/10 bg-white/5 p-4">
           <summary className="cursor-pointer list-none text-sm font-semibold text-white marker:hidden">
             Entry tools
@@ -859,7 +859,7 @@ export default function EntryPage() {
           <section className="rounded-[32px] border border-white/10 bg-[linear-gradient(180deg,rgba(21,28,44,0.92),rgba(11,15,25,0.98))] p-5 shadow-[0_24px_80px_rgba(6,10,18,0.48)] backdrop-blur md:p-7">
             <div className="flex flex-wrap items-center justify-between gap-4">
               <div>
-                <div className="text-sm uppercase tracking-[0.22em] text-cyan-200">
+                <div className="text-sm uppercase tracking-header text-cyan-200">
                   Step {activeStep + 1}/{STEP_DEFINITIONS.length}
                 </div>
                 <div className="mt-2 text-2xl font-semibold">{activeDefinition.title}</div>
@@ -899,9 +899,9 @@ export default function EntryPage() {
                     }`}
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <span className="text-xs uppercase tracking-[0.18em] text-slate-400">Step {index + 1}</span>
+                      <span className="text-xs uppercase tracking-caption text-slate-400">Step {index + 1}</span>
                       {"optional" in step && step.optional ? (
-                        <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-[0.18em] text-slate-400">
+                        <span className="rounded-full border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-caption text-slate-400">
                           Optional
                         </span>
                       ) : null}
@@ -1036,7 +1036,7 @@ export default function EntryPage() {
 
                   {submittedShifts.length ? (
                     <div className="rounded-[24px] border border-white/10 bg-white/5 px-4 py-4 text-sm text-slate-300">
-                      <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Submitted On {form.date}</div>
+                      <div className="text-xs uppercase tracking-caption text-slate-400">Submitted On {form.date}</div>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {submittedShifts.map(([shift, entryId]) => (
                           <span
@@ -1087,7 +1087,7 @@ export default function EntryPage() {
                   <div className="rounded-[24px] border border-cyan-300/15 bg-[linear-gradient(180deg,rgba(34,211,238,0.1),rgba(14,21,36,0.95))] p-5">
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div>
-                        <div className="text-xs uppercase tracking-[0.18em] text-cyan-200">Live Performance</div>
+                        <div className="text-xs uppercase tracking-caption text-cyan-200">Live Performance</div>
                         <div className="mt-3 text-4xl font-semibold">{performance.toFixed(0)}%</div>
                         <div className="mt-2 text-sm text-slate-300">
                           {form.units_produced} produced of {form.units_target} target
@@ -1246,7 +1246,7 @@ export default function EntryPage() {
 
                       {templateContext ? (
                         <div className="rounded-[24px] border border-cyan-300/15 bg-white/5 px-4 py-4 text-sm text-slate-300">
-                          <div className="text-xs uppercase tracking-[0.18em] text-cyan-200">Active Workflow</div>
+                          <div className="text-xs uppercase tracking-caption text-cyan-200">Active Workflow</div>
                           <div className="mt-2 text-base font-semibold text-white">{templateContext.workflow_template_label}</div>
                           <div className="mt-2">{templateContext.template.description}</div>
                         </div>
@@ -1375,7 +1375,7 @@ export default function EntryPage() {
               <div className="rounded-[28px] border border-white/10 bg-[linear-gradient(180deg,rgba(17,25,40,0.94),rgba(11,15,25,0.98))] p-5 shadow-[0_20px_60px_rgba(6,10,18,0.38)]">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Live Summary</div>
+                    <div className="text-xs uppercase tracking-caption text-slate-400">Live Summary</div>
                     <div className="mt-3 text-4xl font-semibold">{performance.toFixed(0)}%</div>
                     <div className="mt-2 text-sm text-slate-300">{performanceLabel}</div>
                   </div>
@@ -1398,7 +1398,7 @@ export default function EntryPage() {
               </div>
 
               <div className="rounded-[28px] border border-white/10 bg-white/5 p-5">
-                <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Workforce Summary</div>
+                <div className="text-xs uppercase tracking-caption text-slate-400">Workforce Summary</div>
                 <div className="mt-4 space-y-3 text-sm text-slate-300">
                   <div className="flex items-center justify-between">
                     <span>Present</span>
@@ -1415,9 +1415,9 @@ export default function EntryPage() {
                 </div>
               </div>
 
-              {/* AUDIT: DENSITY_OVERLOAD - keep shift diagnostics available in secondary reveals so the form and live summary stay dominant. */}
+
               <details className="rounded-[28px] border border-white/10 bg-white/5 p-5" open={alerts.length > 0 || Boolean(conflictId)}>
-                <summary className="cursor-pointer list-none text-xs font-medium uppercase tracking-[0.18em] text-slate-400 marker:hidden">
+                <summary className="cursor-pointer list-none text-xs font-medium uppercase tracking-caption text-slate-400 marker:hidden">
                   Alerts
                 </summary>
                 {alerts.length ? (
@@ -1447,7 +1447,7 @@ export default function EntryPage() {
               </details>
 
               <details className="rounded-[28px] border border-white/10 bg-white/5 p-5" open={activeStep === STEP_DEFINITIONS.length - 1}>
-                <summary className="cursor-pointer list-none text-xs font-medium uppercase tracking-[0.18em] text-slate-400 marker:hidden">
+                <summary className="cursor-pointer list-none text-xs font-medium uppercase tracking-caption text-slate-400 marker:hidden">
                   Production snapshot
                 </summary>
                 <div className="mt-4 space-y-3 text-sm text-slate-300">
@@ -1479,7 +1479,7 @@ export default function EntryPage() {
 
                 {traceabilitySummary.length ? (
                   <div className="mt-5 border-t border-white/10 pt-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Traceability</div>
+                    <div className="text-xs uppercase tracking-caption text-slate-400">Traceability</div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {traceabilitySummary.map((item) => (
                         <span
@@ -1495,7 +1495,7 @@ export default function EntryPage() {
 
                 {submittedShifts.length ? (
                   <div className="mt-5 border-t border-white/10 pt-4">
-                    <div className="text-xs uppercase tracking-[0.18em] text-slate-400">Already Submitted</div>
+                    <div className="text-xs uppercase tracking-caption text-slate-400">Already Submitted</div>
                     <div className="mt-3 flex flex-wrap gap-2">
                       {submittedShifts.map(([shift, entryId]) => (
                         <span
@@ -1511,7 +1511,7 @@ export default function EntryPage() {
               </details>
 
               <details className="rounded-[28px] border border-white/10 bg-white/5 p-5" open={queueCount > 0}>
-                <summary className="cursor-pointer list-none text-xs font-medium uppercase tracking-[0.18em] text-slate-400 marker:hidden">
+                <summary className="cursor-pointer list-none text-xs font-medium uppercase tracking-caption text-slate-400 marker:hidden">
                   Entry health
                 </summary>
                 <div className="mt-4 space-y-3 text-sm text-slate-300">

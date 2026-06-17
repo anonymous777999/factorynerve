@@ -63,15 +63,15 @@ export function OCRProgress({
       <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
         <div className="grid gap-3">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Date</div>
+            <div className="text-xs font-semibold uppercase tracking-caption text-[var(--muted)]">Date</div>
             <div className="mt-1 min-h-6 text-sm transition-all duration-200">{fields.date || detectingText}</div>
           </div>
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Material</div>
+            <div className="text-xs font-semibold uppercase tracking-caption text-[var(--muted)]">Material</div>
             <div className="mt-1 min-h-6 text-sm transition-all duration-200">{fields.material || detectingText}</div>
           </div>
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">Quantity</div>
+            <div className="text-xs font-semibold uppercase tracking-caption text-[var(--muted)]">Quantity</div>
             <div className="mt-1 min-h-6 text-sm transition-all duration-200">{fields.quantity || detectingText}</div>
           </div>
         </div>

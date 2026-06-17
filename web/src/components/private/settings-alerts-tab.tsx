@@ -204,11 +204,11 @@ function ActionModal({
       <div className="max-h-[90vh] w-full max-w-2xl overflow-hidden rounded-[32px] border border-[var(--border)] bg-[rgba(11,16,25,0.98)] shadow-2xl">
         <div className="flex items-start justify-between gap-4 border-b border-[var(--border)] px-6 py-5">
           <div>
-            <div className="text-sm uppercase tracking-[0.18em] text-[var(--accent)]">Alerts</div>
+            <div className="text-sm uppercase tracking-caption text-[var(--accent)]">Alerts</div>
             <h3 className="mt-2 text-xl font-semibold text-white">{title}</h3>
             {subtitle ? <p className="mt-2 text-sm text-[var(--muted)]">{subtitle}</p> : null}
           </div>
-          <Button variant="ghost" onClick={onClose} className="px-3 py-2 text-xs uppercase tracking-[0.18em]">
+          <Button variant="ghost" onClick={onClose} className="px-3 py-2 text-xs uppercase tracking-caption">
             Close
           </Button>
         </div>
@@ -699,24 +699,24 @@ export default function SettingsAlertsTab({ active }: Props) {
                             <SafeText as="div" className="text-lg font-semibold text-white">
                               {maskPhoneNumber(recipient.phone_e164 || recipient.phone_number)}
                             </SafeText>
-                            <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", verificationStatusTone(recipient.verification_status))}>
+                            <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label", verificationStatusTone(recipient.verification_status))}>
                               {recipient.verification_status}
                             </span>
-                            <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", recipient.is_active ? "border-emerald-400/30 bg-emerald-500/12 text-emerald-200" : "border-[var(--border)] bg-white/5 text-[var(--muted)]")}>
+                            <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label", recipient.is_active ? "border-emerald-400/30 bg-emerald-500/12 text-emerald-200" : "border-[var(--border)] bg-white/5 text-[var(--muted)]")}>
                               {recipient.is_active ? "Active" : "Paused"}
                             </span>
                           </div>
                           <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                             <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(8,14,24,0.6)] p-4">
-                              <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Receives</div>
+                              <div className="text-[11px] uppercase tracking-label text-[var(--muted)]">Receives</div>
                               <div className="mt-2 text-sm font-medium text-white">{summarizeRecipientCategories(recipient)}</div>
                             </div>
                             <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(8,14,24,0.6)] p-4">
-                              <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Verified at</div>
+                              <div className="text-[11px] uppercase tracking-label text-[var(--muted)]">Verified at</div>
                               <div className="mt-2 text-sm font-medium text-white">{formatDateTime(recipient.verified_at)}</div>
                             </div>
                             <div className="rounded-2xl border border-[var(--border)]/80 bg-[rgba(8,14,24,0.6)] p-4">
-                              <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Safety rule</div>
+                              <div className="text-[11px] uppercase tracking-label text-[var(--muted)]">Safety rule</div>
                               <div className="mt-2 text-sm font-medium text-white">
                                 {verified ? "Eligible for live alerts" : "Verify number before enabling alerts"}
                               </div>
@@ -727,7 +727,7 @@ export default function SettingsAlertsTab({ active }: Props) {
                         <div className="w-full max-w-sm space-y-3 rounded-[24px] border border-[var(--border)] bg-[rgba(7,10,18,0.76)] p-4">
                           <div className="flex items-center justify-between gap-3">
                             <div>
-                              <div className="text-[11px] uppercase tracking-[0.16em] text-[var(--muted)]">Live delivery</div>
+                              <div className="text-[11px] uppercase tracking-label text-[var(--muted)]">Live delivery</div>
                               <div className="mt-1 text-sm text-white">{recipient.is_active ? "Enabled" : "Disabled"}</div>
                             </div>
                             <span title={!verified ? "Verify number before enabling alerts" : ""}>
@@ -864,10 +864,10 @@ export default function SettingsAlertsTab({ active }: Props) {
                           )}
                         >
                           <div className="flex flex-wrap items-start gap-3">
-                            <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]", severityTone(alert.severity))}>
+                            <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-label", severityTone(alert.severity))}>
                               {alert.severity}
                             </span>
-                            <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]", deliveryTone(alert.delivery_status))}>
+                            <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-label", deliveryTone(alert.delivery_status))}>
                               {readableDeliveryStatus(alert.delivery_status)}
                             </span>
                             <span className="text-xs text-[var(--muted)]">{formatDateTime(alert.timestamp)}</span>
@@ -906,10 +906,10 @@ export default function SettingsAlertsTab({ active }: Props) {
                         <div className="mt-4 space-y-4">
                           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                             <div className="flex flex-wrap gap-3">
-                              <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]", severityTone(selectedAlert.severity))}>
+                              <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-label", severityTone(selectedAlert.severity))}>
                                 {selectedAlert.severity}
                               </span>
-                              <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]", deliveryTone(selectedAlert.delivery_status))}>
+                              <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-label", deliveryTone(selectedAlert.delivery_status))}>
                                 {readableDeliveryStatus(selectedAlert.delivery_status)}
                               </span>
                             </div>
@@ -923,7 +923,7 @@ export default function SettingsAlertsTab({ active }: Props) {
                               selectedAlert.deliveries.map((delivery, index) => (
                                 <div key={`${delivery.ref_id}:${delivery.recipient_phone || index}`} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] p-4">
                                   <div className="flex flex-wrap items-center gap-3">
-                                    <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em]", deliveryTone(delivery.delivery_status))}>
+                                    <span className={cn("rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-label", deliveryTone(delivery.delivery_status))}>
                                       {readableDeliveryStatus(delivery.delivery_status)}
                                     </span>
                                     <span className="text-xs text-[var(--muted)]">{maskPhoneNumber(delivery.recipient_phone)}</span>

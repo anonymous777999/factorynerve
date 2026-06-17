@@ -73,12 +73,12 @@ export default function ControlTowerPage() {
   }
 
   return (
-    <main className="min-h-screen px-4 py-8 md:px-8">
+    <main className="min-h-screen px-4 py-8 md:px-8 content-fade-in">
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Control Tower</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Control Tower</div>
               <h1 className="mt-2 text-3xl font-semibold">Pick the right factory before opening the next desk</h1>
               <p className="mt-3 max-w-3xl text-sm text-[var(--muted)]">
                 Compare sites, confirm the active context, and switch into the exact plant before opening day-to-day tools.
@@ -87,7 +87,7 @@ export default function ControlTowerPage() {
           </div>
         </section>
 
-        {/* AUDIT: BUTTON_CLUTTER - keep route jumps and refresh in a secondary tray so context switching stays primary. */}
+
         <details className="rounded-[28px] border border-[var(--border)] bg-[rgba(12,16,24,0.72)] p-5">
           <summary className="cursor-pointer list-none text-sm font-semibold text-[var(--text)] marker:hidden">
             Control tools
@@ -191,7 +191,7 @@ export default function ControlTowerPage() {
                           {factory.industry_label} · {factory.workflow_template_label}
                         </div>
                       </div>
-                      <div className="rounded-full border border-[var(--border)] px-3 py-1 text-xs uppercase tracking-[0.18em] text-[var(--muted)]">
+                      <div className="rounded-full border border-[var(--border)] px-3 py-1 text-xs uppercase tracking-caption text-[var(--muted)]">
                         {factory.is_active_context ? "Active" : factory.my_role || "Member"}
                       </div>
                     </div>
@@ -212,7 +212,7 @@ export default function ControlTowerPage() {
                       <div className="mt-1">Location: <span className="text-[var(--text)]">{factory.location || "-"}</span></div>
                     </div>
                     <div>
-                      <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Starter Modules</div>
+                      <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Starter Modules</div>
                       <div className="mt-3 flex flex-wrap gap-2">
                         {factory.starter_modules.map((module) => (
                           <span
@@ -235,9 +235,9 @@ export default function ControlTowerPage() {
                             ? "Switching..."
                             : "Switch Context"}
                       </Button>
-                      {/* AUDIT: BUTTON_CLUTTER - keep open-desk routes available in a secondary reveal so switching context stays primary. */}
+
                       <details className="rounded-2xl border border-[var(--border)] bg-[rgba(12,16,24,0.62)] p-3">
-                        <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)] marker:hidden">
+                        <summary className="cursor-pointer list-none text-xs font-semibold uppercase tracking-caption text-[var(--muted)] marker:hidden">
                           Open desk
                         </summary>
                         <div className="mt-3 flex flex-wrap gap-2">

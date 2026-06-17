@@ -57,13 +57,13 @@ export function OcrGuideCard({
         aria-expanded={isExpanded}
       >
         <div>
-          <div className={cn("text-xs font-semibold uppercase tracking-[0.22em]", summaryClassName)}>
+          <div className={cn("text-xs font-semibold uppercase tracking-header", summaryClassName)}>
             {eyebrow}
           </div>
           <div className={cn("mt-1 text-lg font-semibold", titleClassName)}>{title}</div>
           <div className={cn("mt-2 text-sm leading-6", bodyClassName)}>{summary}</div>
         </div>
-        <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.18em]">
+        <span className="shrink-0 text-xs font-semibold uppercase tracking-caption">
           {isExpanded ? expandedLabel : collapsedLabel}
         </span>
       </button>

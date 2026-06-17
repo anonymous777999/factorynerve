@@ -147,7 +147,7 @@ export function SettingsFactoryTab({
               {(selectedFactoryTemplate?.modules || factory.starter_modules || []).map((module) => (
                 <span
                   key={module}
-                  className="rounded-full border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]"
+                  className="rounded-full border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-label text-[var(--accent)]"
                 >
                   {module.replace(/_/g, " ")}
                 </span>
@@ -163,7 +163,7 @@ export function SettingsFactoryTab({
                       {section.fields.map((field) => (
                         <span
                           key={field.key}
-                          className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]"
+                          className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] uppercase tracking-label text-[var(--muted)]"
                         >
                           {field.label}
                         </span>
@@ -306,7 +306,7 @@ export function SettingsFactoryTab({
                 {(selectedNewFactoryTemplate?.modules || newFactoryTemplates?.starter_modules || []).map((module) => (
                   <span
                     key={module}
-                    className="rounded-full border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]"
+                    className="rounded-full border border-[rgba(62,166,255,0.24)] bg-[rgba(62,166,255,0.12)] px-3 py-1 text-xs font-semibold uppercase tracking-label text-[var(--accent)]"
                   >
                     {module.replace(/_/g, " ")}
                   </span>
@@ -340,7 +340,7 @@ export function SettingsFactoryTab({
                         </div>
                       </div>
                       {item.is_active_context ? (
-                        <span className="rounded-full border border-[rgba(34,197,94,0.25)] bg-[rgba(34,197,94,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-emerald-200">
+                        <span className="rounded-full border border-[rgba(34,197,94,0.25)] bg-[rgba(34,197,94,0.12)] px-3 py-1 text-[11px] font-semibold uppercase tracking-label text-emerald-200">
                           Active
                         </span>
                       ) : null}

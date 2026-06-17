@@ -26,10 +26,10 @@ export default function AccessRestrictedPage() {
         <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-400/25 bg-amber-400/10 text-amber-200">
           <LockIcon />
         </div>
-        <div className="mt-6 text-xs font-semibold uppercase tracking-[0.28em] text-amber-200/80">
+        <div className="mt-6 text-xs font-semibold uppercase tracking-prominent text-amber-200/80">
           Access Restricted
         </div>
-        <h1 className="mt-3 text-3xl font-semibold tracking-[-0.04em] text-white">
+        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-white">
           You don&apos;t have permission to access this page.
         </h1>
         <p className="mt-4 text-sm leading-7 text-slate-300">

@@ -10,7 +10,7 @@ export default function PricingPreview() {
     <section id="pricing" className="relative scroll-mt-20 px-4 py-16 sm:py-20">
       <div className="mx-auto max-w-6xl">
         <div className="mb-12 text-center">
-          <h2 className="text-3xl font-bold tracking-[-0.03em] text-white sm:text-4xl">
+          <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
             Plans built for real factory operations
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-slate-400">
@@ -34,7 +34,7 @@ export default function PricingPreview() {
               )}
               <div className="text-sm font-semibold text-white">{tier.name}</div>
               <div className="mt-3">
-                <span className="text-3xl font-bold tracking-[-0.03em] text-white">{tier.price}</span>
+                <span className="text-3xl font-bold tracking-tight text-white">{tier.price}</span>
                 {tier.period && <span className="ml-1 text-sm text-slate-500">{tier.period}</span>}
               </div>
               <p className="mt-2 text-xs text-slate-400">{tier.tagline}</p>

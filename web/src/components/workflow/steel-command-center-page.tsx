@@ -27,6 +27,7 @@ import {
   type SteelStockItem,
 } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
+import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
 
 type SteelControlTab = "overview" | "inventory" | "production" | "sales" | "risk";
 
@@ -255,16 +256,12 @@ export function SteelCommandCenterPage() {
   );
 
   if (loading || pageLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading steel command center...
-      </main>
-    );
+    return <DashboardPageSkeleton />;
   }
 
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 content-fade-in">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Operations</CardTitle>
@@ -314,19 +311,19 @@ export function SteelCommandCenterPage() {
         <section className="rounded-[2rem] border border-[#e7e5e4] bg-[linear-gradient(135deg,#ffffff,#fafaf9)] p-6 shadow-[0_22px_55px_rgba(15,23,42,0.08)]">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.28em] text-[#78716c]">Steel Operations</div>
+              <div className="text-sm uppercase tracking-prominent text-[#78716c]">Steel Operations</div>
               <h1 className="mt-2 text-3xl font-semibold text-[#111111] md:text-4xl">Run the steel desk from one trusted control lane</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[#57534e]">
                 Start with live stock trust, then move into batch, sales, and risk lanes without losing the factory context.
               </p>
             </div>
             <div className="rounded-3xl border border-[#e7e5e4] bg-[#f5f5f4] px-4 py-3 text-sm text-[#57534e]">
-              <div className="text-xs uppercase tracking-[0.2em] text-[#78716c]">Active Steel Factory</div>
+              <div className="text-xs uppercase tracking-caption text-[#78716c]">Active Steel Factory</div>
               <div className="mt-2 font-semibold text-[#111111]">{overview?.factory.name || activeFactory?.name}</div>
               <div className="mt-1">{overview?.factory.factory_code || activeFactory?.factory_code || "Code pending"}</div>
               {canSeeFinancials ? (
                 <div className="mt-3 space-y-2">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[#78716c]">Owner Report Date</div>
+                  <div className="text-xs uppercase tracking-caption text-[#78716c]">Owner Report Date</div>
                   <Input type="date" value={ownerReportDate} onChange={(event) => setOwnerReportDate(event.target.value)} />
                 </div>
               ) : null}
@@ -395,7 +392,7 @@ export function SteelCommandCenterPage() {
         <section className="rounded-[1.7rem] border border-[#e7e5e4] bg-white p-5 shadow-[0_16px_36px_rgba(15,23,42,0.06)]">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <div className="text-xs uppercase tracking-[0.24em] text-[#78716c]">Quick Actions</div>
+              <div className="text-xs uppercase tracking-header text-[#78716c]">Quick Actions</div>
               <h2 className="mt-2 text-2xl font-semibold text-[#111111]">Move from signal to steel action fast</h2>
               <p className="mt-2 max-w-3xl text-sm leading-6 text-[#57534e]">
                 What is happening: the summary strip and KPI cards show health, drift, and commercial movement. Is it good or bad: read the badge and comparison row. What should you do next: use one of the direct actions below.
@@ -478,7 +475,7 @@ export function SteelCommandCenterPage() {
           {steelHubSections.map((section) => (
             <Card key={section.id} className="border border-[#e7e5e4] bg-white text-[#111111] shadow-[0_14px_32px_rgba(15,23,42,0.05)]">
               <CardHeader>
-                <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[#78716c]">{section.eyebrow}</div>
+                <div className="text-xs font-semibold uppercase tracking-header text-[#78716c]">{section.eyebrow}</div>
                 <CardTitle className="text-xl">{section.title}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -506,7 +503,7 @@ export function SteelCommandCenterPage() {
             <section id="sales-lane" className="grid gap-4 md:grid-cols-3">
               <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
                 <CardHeader>
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">Sales Lane</div>
+                  <div className="text-xs font-semibold uppercase tracking-header text-[var(--accent)]">Sales Lane</div>
                   <CardTitle className="text-xl">Invoices</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -520,7 +517,7 @@ export function SteelCommandCenterPage() {
               </Card>
               <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
                 <CardHeader>
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">Sales Lane</div>
+                  <div className="text-xs font-semibold uppercase tracking-header text-[var(--accent)]">Sales Lane</div>
                   <CardTitle className="text-xl">Dispatch</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -534,7 +531,7 @@ export function SteelCommandCenterPage() {
               </Card>
               <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
                 <CardHeader>
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">Sales Lane</div>
+                  <div className="text-xs font-semibold uppercase tracking-header text-[var(--accent)]">Sales Lane</div>
                   <CardTitle className="text-xl">Customers & Collections</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -639,7 +636,7 @@ export function SteelCommandCenterPage() {
                               </div>
                             </td>
                             <td className="px-3 py-3">
-                              <span className={`inline-flex rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${badgeTone(row.confidence_status)}`}>
+                              <span className={`inline-flex rounded-full px-3 py-1 text-xs uppercase tracking-caption ${badgeTone(row.confidence_status)}`}>
                                 {row.confidence_status}
                               </span>
                               <div className="mt-2 max-w-[18rem] text-xs text-[var(--muted)]">{row.confidence_reason}</div>
@@ -660,11 +657,11 @@ export function SteelCommandCenterPage() {
                   <CardHeader><CardTitle>Owner Control Board</CardTitle></CardHeader>
                   <CardContent className="space-y-4 text-sm">
                     <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                      <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Top loss batch</div>
+                      <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Top loss batch</div>
                       {overview?.top_loss_batch ? (
                         <div className="mt-3 space-y-2">
                           <div className="text-lg font-semibold text-white">{overview.top_loss_batch.batch_code}</div>
-                          <div className={`inline-flex rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${badgeTone(overview.top_loss_batch.severity)}`}>
+                          <div className={`inline-flex rounded-full px-3 py-1 text-xs uppercase tracking-caption ${badgeTone(overview.top_loss_batch.severity)}`}>
                             {overview.top_loss_batch.severity}
                           </div>
                           <div className="text-[var(--muted)]">
@@ -682,7 +679,7 @@ export function SteelCommandCenterPage() {
                       )}
                     </div>
                     <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                      <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Highest risk operator</div>
+                      <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Highest risk operator</div>
                       <div className="mt-3 space-y-2">
                         {highestRiskOperator ? (
                           <div className="space-y-2">
@@ -707,7 +704,7 @@ export function SteelCommandCenterPage() {
                       </div>
                     </div>
                     <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                      <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Highest loss day</div>
+                      <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Highest loss day</div>
                       {highestLossDay ? (
                         <div className="mt-3 space-y-2">
                           <div className="text-lg font-semibold text-white">{highestLossDay.date}</div>
@@ -723,7 +720,7 @@ export function SteelCommandCenterPage() {
                       )}
                     </div>
                     <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                      <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Best gross-profit batch</div>
+                      <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Best gross-profit batch</div>
                       {bestProfitBatch ? (
                         <div className="mt-3 space-y-2">
                           <div className="text-lg font-semibold text-white">{bestProfitBatch.batch_code}</div>
@@ -746,7 +743,7 @@ export function SteelCommandCenterPage() {
                 <CardHeader><CardTitle>Stock Reconciliation</CardTitle></CardHeader>
                 <CardContent className="space-y-3">
                   <div className="rounded-2xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4 text-sm">
-                    <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Operational zones</div>
+                    <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Operational zones</div>
                     <div className="mt-3 grid gap-3">
                       {Object.entries(inventoryZones).map(([zone, quantity]) => (
                         <div key={zone} className="flex items-center justify-between gap-3 rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-3 py-3">
@@ -778,14 +775,14 @@ export function SteelCommandCenterPage() {
                     <div key={entry.batch.id} className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div>
-                          <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Rank #{entry.rank}</div>
+                          <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Rank #{entry.rank}</div>
                           <div className="mt-1 text-lg font-semibold text-white">{entry.batch.batch_code}</div>
                           <div className="mt-1 text-xs text-[var(--muted)]">
                             {entry.batch.production_date} / {entry.batch.operator_name || "Operator not tagged"}
                           </div>
                         </div>
                         <div className="text-right">
-                          <div className={`inline-flex rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${badgeTone(entry.batch.severity)}`}>
+                          <div className={`inline-flex rounded-full px-3 py-1 text-xs uppercase tracking-caption ${badgeTone(entry.batch.severity)}`}>
                             {entry.batch.severity}
                           </div>
                           <div className="mt-2 text-sm font-semibold text-white">Score {entry.anomaly_score.toFixed(2)}</div>
@@ -793,19 +790,19 @@ export function SteelCommandCenterPage() {
                       </div>
                       <div className="mt-3 grid gap-3 md:grid-cols-3">
                         <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
-                          <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Variance</div>
+                          <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Variance</div>
                           <div className="mt-1 text-sm font-semibold text-white">{formatKg(entry.batch.variance_kg)} KG</div>
                           <div className="text-xs text-[var(--muted)]">{formatPercent(entry.batch.variance_percent)}</div>
                         </div>
                         {canSeeFinancials ? (
                           <>
                             <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
-                              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Leakage Value</div>
+                              <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Leakage Value</div>
                               <div className="mt-1 text-sm font-semibold text-white">{formatCurrency(entry.estimated_leakage_value_inr || 0)}</div>
                               <div className="text-xs text-[var(--muted)]">Potential margin erosion</div>
                             </div>
                             <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
-                              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Gross Profit</div>
+                              <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Gross Profit</div>
                               <div className="mt-1 text-sm font-semibold text-white">{formatCurrency(entry.batch.estimated_gross_profit_inr || 0)}</div>
                               <div className="text-xs text-[var(--muted)]">Profit after input cost snapshot</div>
                             </div>
@@ -813,12 +810,12 @@ export function SteelCommandCenterPage() {
                         ) : (
                           <>
                             <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
-                              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Loss</div>
+                              <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Loss</div>
                               <div className="mt-1 text-sm font-semibold text-white">{formatPercent(entry.batch.loss_percent)}</div>
                               <div className="text-xs text-[var(--muted)]">Operational deviation</div>
                             </div>
                             <div className="rounded-2xl border border-[var(--border)] px-3 py-3">
-                              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Signal</div>
+                              <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Signal</div>
                               <div className="mt-1 text-sm font-semibold text-white">{entry.batch.severity}</div>
                               <div className="text-xs text-[var(--muted)]">Investigate process drift</div>
                             </div>
@@ -845,7 +842,7 @@ export function SteelCommandCenterPage() {
               <CardHeader><CardTitle>Responsibility Analytics</CardTitle></CardHeader>
               <CardContent className="space-y-5">
                 <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Loss by operator</div>
+                  <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Loss by operator</div>
                   <div className="mt-3 space-y-3">
                     {responsibility?.by_operator?.length ? (
                       responsibility.by_operator.map((row) => (
@@ -873,7 +870,7 @@ export function SteelCommandCenterPage() {
                 </div>
 
                 <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Highest loss days</div>
+                  <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Highest loss days</div>
                   <div className="mt-3 space-y-3">
                     {responsibility?.by_day?.length ? (
                       responsibility.by_day.slice(0, 4).map((row) => (
@@ -899,7 +896,7 @@ export function SteelCommandCenterPage() {
                 </div>
 
                 <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.2em] text-[var(--accent)]">Loss by batch</div>
+                  <div className="text-xs uppercase tracking-caption text-[var(--accent)]">Loss by batch</div>
                   <div className="mt-3 space-y-3">
                     {responsibility?.by_batch?.length ? (
                       responsibility.by_batch.slice(0, 4).map((row) => (
@@ -935,7 +932,7 @@ export function SteelCommandCenterPage() {
             <section id="production-lane" className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
               <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
                 <CardHeader>
-                  <div className="text-xs font-semibold uppercase tracking-[0.22em] text-[var(--accent)]">Production Snapshot</div>
+                  <div className="text-xs font-semibold uppercase tracking-header text-[var(--accent)]">Production Snapshot</div>
                   <CardTitle className="text-xl">Latest batch signals</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 text-sm text-[var(--muted)]">
@@ -985,7 +982,7 @@ export function SteelCommandCenterPage() {
                             </div>
                           </td>
                           <td className="px-3 py-3">
-                            <span className={`inline-flex rounded-full px-3 py-1 text-xs uppercase tracking-[0.18em] ${badgeTone(batch.severity)}`}>
+                            <span className={`inline-flex rounded-full px-3 py-1 text-xs uppercase tracking-caption ${badgeTone(batch.severity)}`}>
                               {batch.severity}
                             </span>
                             <div className="mt-2">

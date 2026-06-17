@@ -311,7 +311,7 @@ export function JobsDrawer() {
           <aside className="absolute right-0 top-0 flex h-full w-full max-w-md flex-col border-l border-[var(--border)] bg-[rgba(10,14,22,0.98)] p-5 shadow-2xl backdrop-blur">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <div className="text-xs uppercase tracking-[0.22em] text-[var(--accent)]">Background Jobs</div>
+                <div className="text-xs uppercase tracking-header text-[var(--accent)]">Background Jobs</div>
                 <h2 className="mt-2 text-2xl font-semibold">Track exports and AI work</h2>
                 <p className="mt-2 text-sm text-[var(--muted)]">
                   You can leave the current page and still watch reports, summaries, and OCR jobs finish here.
@@ -358,7 +358,7 @@ export function JobsDrawer() {
                       <div className="flex items-start justify-between gap-4">
                         <div>
                           <div className="text-sm font-semibold">{jobTitle(job.kind)}</div>
-                          <div className={cn("mt-1 text-xs uppercase tracking-[0.18em]", jobTone(job.status))}>
+                          <div className={cn("mt-1 text-xs uppercase tracking-caption", jobTone(job.status))}>
                             {job.status}
                           </div>
                         </div>

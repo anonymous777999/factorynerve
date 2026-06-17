@@ -902,7 +902,7 @@ function SummaryMetric({
         <CardTitle className="text-3xl">{value}</CardTitle>
       </CardHeader>
       <CardContent className="flex items-center justify-between gap-3">
-        <div className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", tone)}>
+        <div className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label", tone)}>
           {helper}
         </div>
       </CardContent>
@@ -922,7 +922,7 @@ function QueueStatPill({
   return (
     <div
       className={cn(
-        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em]",
+        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-label",
         tone,
       )}
     >
@@ -944,7 +944,7 @@ function EmptyState({
   return (
     <Card className="border-dashed border-[var(--border)] bg-[var(--card-strong)]">
       <CardContent className="flex min-h-[12rem] flex-col items-center justify-center gap-3 px-6 py-10 text-center">
-        <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{eyebrow}</div>
+        <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">{eyebrow}</div>
         <div className="text-2xl font-semibold text-[var(--text)]">{title}</div>
         <div className="max-w-xl text-sm leading-6 text-[var(--muted)]">{body}</div>
       </CardContent>
@@ -979,7 +979,7 @@ function QueueDetailPanel({
     return (
       <Card className="border-dashed border-[var(--border)] bg-[var(--card-strong)]">
         <CardContent className="flex min-h-[22rem] flex-col items-center justify-center gap-3 px-6 py-10 text-center">
-          <div className="text-sm uppercase tracking-[0.26em] text-[var(--accent)]">Review Detail</div>
+          <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Review Detail</div>
           <div className="text-2xl font-semibold text-[var(--text)]">Select a review item</div>
           <div className="max-w-sm text-sm leading-6 text-[var(--muted)]">
             Pick any task or signal from the left to inspect context, capture a note, and close the decision without losing your place in the queue.
@@ -1005,13 +1005,13 @@ function QueueDetailPanel({
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-2">
-              <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]", typeClasses(item.kind))}>
+              <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-caption", typeClasses(item.kind))}>
                 {item.typeLabel}
               </span>
-              <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em]", severityClasses(item.severity))}>
+              <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-caption", severityClasses(item.severity))}>
                 {item.severity}
               </span>
-              <span className={cn("text-xs font-semibold uppercase tracking-[0.18em]", ageClasses(item.ageBand))}>
+              <span className={cn("text-xs font-semibold uppercase tracking-caption", ageClasses(item.ageBand))}>
                 {item.ageLabel}
               </span>
             </div>
@@ -1027,11 +1027,11 @@ function QueueDetailPanel({
           ) : null}
         </div>
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Recommended action</div>
+          <div className="text-xs font-semibold uppercase tracking-label text-[var(--muted)]">Recommended action</div>
           <div className="mt-2 text-sm leading-6 text-[var(--text)]">{item.recommendation}</div>
         </div>
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">{summary.title}</div>
+          <div className="text-xs font-semibold uppercase tracking-label text-[var(--muted)]">{summary.title}</div>
           <div className="mt-2 text-sm leading-6 text-[var(--text)]">{summary.summary}</div>
           <div className="mt-3 grid gap-2">
             {summary.checks.map((check) => (
@@ -1044,17 +1044,17 @@ function QueueDetailPanel({
       </CardHeader>
       <CardContent className="space-y-5">
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Why this item is here</div>
+          <div className="text-xs font-semibold uppercase tracking-label text-[var(--muted)]">Why this item is here</div>
           <div className="mt-2 text-sm leading-6 text-[var(--text)]">{item.description}</div>
         </div>
 
         {historyFacts.length ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Latest activity and history</div>
+            <div className="text-xs font-semibold uppercase tracking-label text-[var(--muted)]">Latest activity and history</div>
             <div className="mt-3 grid gap-3 sm:grid-cols-2">
               {historyFacts.map((fact) => (
                 <div key={`${item.key}:history:${fact.label}`} className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.02)] px-4 py-3">
-                  <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">{fact.label}</div>
+                  <div className="text-[11px] font-semibold uppercase tracking-label text-[var(--muted)]">{fact.label}</div>
                   <div className="mt-1 text-sm text-[var(--text)]">{fact.value}</div>
                 </div>
               ))}
@@ -1065,7 +1065,7 @@ function QueueDetailPanel({
         <div className="grid gap-3 sm:grid-cols-2">
           {item.facts.map((fact) => (
             <div key={`${item.key}:${fact.label}`} className="rounded-2xl border border-[var(--border)] bg-[rgba(255,255,255,0.02)] px-4 py-3">
-              <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">{fact.label}</div>
+              <div className="text-[11px] font-semibold uppercase tracking-label text-[var(--muted)]">{fact.label}</div>
               <div className="mt-1 text-sm text-[var(--text)]">{fact.value}</div>
             </div>
           ))}
@@ -1088,13 +1088,13 @@ function QueueDetailPanel({
 
         {restrictedReason ? (
           <div className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.08)] px-4 py-4">
-            <div className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-100">Escalation needed</div>
+            <div className="text-xs font-semibold uppercase tracking-label text-amber-100">Escalation needed</div>
             <div className="mt-2 text-sm leading-6 text-amber-100">{restrictedReason}</div>
           </div>
         ) : null}
 
         <div className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-          <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Next step links</div>
+          <div className="text-xs font-semibold uppercase tracking-label text-[var(--muted)]">Next step links</div>
           <div className="mt-3 flex flex-wrap gap-3">
             {nextSteps.map((step) => (
               <Link key={`${item.key}:next:${step.href}:${step.label}`} href={step.href}>
@@ -1357,9 +1357,9 @@ export default function ApprovalsPage() {
         .includes(searchTerm);
     });
   }, [ageFilter, escalatedKeys, searchTerm, severityFilter, taskFilter, taskItems]);
-  // AUDIT: FLOW_BROKEN - keep the next review item explicit so the page leads with one clear decision.
+
   const nextReviewItem = filteredTasks[0] ?? null;
-  // AUDIT: DENSITY_OVERLOAD - separate the featured next item from the rest of the backlog.
+
   const remainingFilteredTasks = filteredTasks.slice(1);
   const hasCriticalBacklog = remainingFilteredTasks.some((item) => item.severity === "critical");
 
@@ -1830,7 +1830,7 @@ export default function ApprovalsPage() {
 
   if (loading) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
+      <main className="min-h-screen px-4 py-8 md:px-8 content-fade-in">
         <div className="mx-auto max-w-7xl space-y-6">
           <Skeleton className="h-36 rounded-[2rem]" />
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -1853,11 +1853,11 @@ export default function ApprovalsPage() {
         <div className="mx-auto max-w-4xl">
           <Card>
             <CardHeader>
-              <div className="text-sm uppercase tracking-[0.26em] text-[var(--accent)]">Review Queue</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Review Queue</div>
               <CardTitle>You need an active session first</CardTitle>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-3">
-              {/* AUDIT: FLOW_BROKEN - send reviewers back through the live auth entry instead of the stale login route. */}
+
               <Link href="/access">
                 <Button>Open Access</Button>
               </Link>
@@ -1877,7 +1877,7 @@ export default function ApprovalsPage() {
         <div className="mx-auto max-w-4xl">
           <Card className="border border-[var(--border)] bg-[rgba(20,24,36,0.88)]">
             <CardHeader>
-              <div className="text-sm uppercase tracking-[0.26em] text-[var(--accent)]">Review Queue</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Review Queue</div>
               <CardTitle>Review work is assigned to supervisors and above</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 text-sm text-[var(--muted)]">
@@ -1902,7 +1902,7 @@ export default function ApprovalsPage() {
   return (
     <main className="min-h-screen px-4 py-8 md:px-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        {/* AUDIT: FLOW_BROKEN - lead the screen with the next review action instead of a passive inbox summary. */}
+
         <section className="flex flex-col gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur md:flex-row md:items-end md:justify-between">
           <div className="space-y-3">
             <div className="text-sm uppercase tracking-[0.32em] text-[var(--accent)]">Review</div>
@@ -1963,7 +1963,7 @@ export default function ApprovalsPage() {
             ].map((item) => (
               <Card key={item.title} className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
                 <CardContent className="space-y-3 px-5 py-5">
-                  <div className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--accent)]">{item.step}</div>
+                  <div className="text-xs font-semibold uppercase tracking-caption text-[var(--accent)]">{item.step}</div>
                   <div className="text-xl font-semibold text-[var(--text)]">{item.title}</div>
                   <div className="text-sm leading-6 text-[var(--muted)]">{item.body}</div>
                 </CardContent>
@@ -1975,7 +1975,7 @@ export default function ApprovalsPage() {
         {error ? <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-4 py-3 text-sm text-red-100">{error}</div> : null}
         {status ? <div className="rounded-2xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-4 py-3 text-sm text-emerald-100">{status}</div> : null}
 
-        {/* AUDIT: DENSITY_OVERLOAD - collapse backlog analytics and SLA diagnostics until the reviewer asks for them. */}
+
         <details className="group rounded-[2rem] border border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl">
           <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
             <div>
@@ -2025,7 +2025,7 @@ export default function ApprovalsPage() {
                 },
               ] as Array<{ label: string; total: number; urgent: number; aging: number }>).map((metric) => (
                 <div key={metric.label} className="rounded-2xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
-                  <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">{metric.label}</div>
+                  <div className="text-xs uppercase tracking-label text-[var(--muted)]">{metric.label}</div>
                   <div className="mt-2 text-2xl font-semibold text-[var(--text)]">{metric.total}</div>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs">
                     <span className="rounded-full border border-red-400/30 bg-[rgba(239,68,68,0.12)] px-3 py-1 text-red-100">Urgent {metric.urgent}</span>
@@ -2039,10 +2039,10 @@ export default function ApprovalsPage() {
               <div className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.08)] p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-200">8h+ waiting</div>
+                    <div className="text-xs font-semibold uppercase tracking-label text-amber-200">8h+ waiting</div>
                     <div className="mt-1 text-3xl font-semibold text-[var(--text)]">{sla8TaskCount}</div>
                   </div>
-                  <div className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.14)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-amber-100">
+                  <div className="rounded-full border border-amber-400/30 bg-[rgba(245,158,11,0.14)] px-3 py-1 text-xs font-semibold uppercase tracking-label text-amber-100">
                     Urgent: {sla8UrgentCount}
                   </div>
                 </div>
@@ -2057,10 +2057,10 @@ export default function ApprovalsPage() {
               <div className="rounded-2xl border border-red-400/30 bg-[rgba(239,68,68,0.1)] p-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
-                    <div className="text-xs font-semibold uppercase tracking-[0.16em] text-red-200">24h+ breached</div>
+                    <div className="text-xs font-semibold uppercase tracking-label text-red-200">24h+ breached</div>
                     <div className="mt-1 text-3xl font-semibold text-[var(--text)]">{sla24TaskCount}</div>
                   </div>
-                  <div className="rounded-full border border-red-400/30 bg-[rgba(239,68,68,0.16)] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-red-100">
+                  <div className="rounded-full border border-red-400/30 bg-[rgba(239,68,68,0.16)] px-3 py-1 text-xs font-semibold uppercase tracking-label text-red-100">
                     Urgent: {sla24UrgentCount}
                   </div>
                 </div>
@@ -2080,7 +2080,7 @@ export default function ApprovalsPage() {
 
         <section className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(340px,0.95fr)]">
           <div className="space-y-6">
-            {/* AUDIT: BUTTON_CLUTTER - move presets, filters, and bulk actions into one tools tray so they stop crowding the review lane. */}
+
             <details className="group rounded-[2rem] border border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl">
               <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
                 <div>
@@ -2098,7 +2098,7 @@ export default function ApprovalsPage() {
                   <div className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Quick presets</div>
+                        <div className="text-xs font-semibold uppercase tracking-label text-[var(--muted)]">Quick presets</div>
                         <div className="mt-1 text-sm text-[var(--text)]">Jump into the lane that needs attention without rebuilding filters.</div>
                       </div>
                       <QueueStatPill label="Active" value={presetLabel(activePreset)} />
@@ -2119,7 +2119,7 @@ export default function ApprovalsPage() {
 
                   <div className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
                     <div>
-                      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Bulk actions</div>
+                      <div className="text-xs font-semibold uppercase tracking-label text-[var(--muted)]">Bulk actions</div>
                       <div className="mt-1 text-sm text-[var(--text)]">Use one shared note when the same decision fits multiple selected items.</div>
                     </div>
                     <div className="mt-4 flex flex-wrap gap-2">
@@ -2188,7 +2188,7 @@ export default function ApprovalsPage() {
                 <div className="rounded-3xl border border-[var(--border)] bg-[var(--card-strong)] px-4 py-4">
                   <div className="flex flex-wrap items-start justify-between gap-3">
                     <div>
-                      <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">Filters</div>
+                      <div className="text-xs font-semibold uppercase tracking-label text-[var(--muted)]">Filters</div>
                       <div className="mt-1 text-sm text-[var(--text)]">Refine the review lane by type, severity, age, or search.</div>
                     </div>
                     {hasActiveFilters ? (
@@ -2237,7 +2237,7 @@ export default function ApprovalsPage() {
               </div>
             </details>
 
-            {/* AUDIT: FLOW_BROKEN - feature the next review item before the wider backlog so the first move is obvious. */}
+
             <Card className="border-[var(--border)] bg-[rgba(18,22,34,0.92)]">
               <CardHeader className="space-y-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -2276,13 +2276,13 @@ export default function ApprovalsPage() {
                     <div className="flex flex-wrap items-start justify-between gap-4">
                       <div className="space-y-3">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", typeClasses(nextReviewItem.kind))}>
+                          <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label", typeClasses(nextReviewItem.kind))}>
                             {nextReviewItem.typeLabel}
                           </span>
-                          <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityClasses(nextReviewItem.severity))}>
+                          <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label", severityClasses(nextReviewItem.severity))}>
                             {nextReviewItem.severity}
                           </span>
-                          <span className={cn("text-xs font-semibold uppercase tracking-[0.16em]", ageClasses(nextReviewItem.ageBand))}>
+                          <span className={cn("text-xs font-semibold uppercase tracking-label", ageClasses(nextReviewItem.ageBand))}>
                             {nextReviewItem.ageLabel}
                           </span>
                         </div>
@@ -2362,7 +2362,7 @@ export default function ApprovalsPage() {
                             <ResponsiveScrollArea debugLabel="approvals-backlog-table">
                               <table className="min-w-full border-separate border-spacing-0">
                                 <thead>
-                                  <tr className="text-left text-xs uppercase tracking-[0.14em] text-[var(--muted)]">
+                                  <tr className="text-left text-xs uppercase tracking-label text-[var(--muted)]">
                                     <th className="px-6 py-3">
                                       <input
                                         type="checkbox"
@@ -2407,8 +2407,8 @@ export default function ApprovalsPage() {
                                         </td>
                                         <td className="px-6 py-4 align-top">
                                           <div className="flex flex-col gap-2">
-                                            <span className={cn("inline-flex w-fit rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityClasses(item.severity))}>{item.severity}</span>
-                                            <span className={cn("inline-flex w-fit rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", typeClasses(item.kind))}>{item.typeLabel}</span>
+                                            <span className={cn("inline-flex w-fit rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label", severityClasses(item.severity))}>{item.severity}</span>
+                                            <span className={cn("inline-flex w-fit rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label", typeClasses(item.kind))}>{item.typeLabel}</span>
                                           </div>
                                         </td>
                                         <td className="px-4 py-4 align-top">
@@ -2458,8 +2458,8 @@ export default function ApprovalsPage() {
                                   <div className="flex items-start justify-between gap-3">
                                     <div>
                                       <div className="flex flex-wrap items-center gap-2">
-                                        <span className={cn("inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", typeClasses(item.kind))}>{item.typeLabel}</span>
-                                        <span className={cn("inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityClasses(item.severity))}>{item.severity}</span>
+                                        <span className={cn("inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label", typeClasses(item.kind))}>{item.typeLabel}</span>
+                                        <span className={cn("inline-flex rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label", severityClasses(item.severity))}>{item.severity}</span>
                                       </div>
                                       <div className="mt-3 text-lg font-semibold text-[var(--text)]">{item.title}</div>
                                       <div className="mt-1 text-sm text-[var(--muted)]">{item.headline}</div>
@@ -2473,7 +2473,7 @@ export default function ApprovalsPage() {
                                         onChange={() => toggleTaskSelection(item.key)}
                                         aria-label={`Select ${item.title}`}
                                       />
-                                      <div className={cn("text-xs font-semibold uppercase tracking-[0.14em]", ageClasses(item.ageBand))}>{item.ageLabel}</div>
+                                      <div className={cn("text-xs font-semibold uppercase tracking-label", ageClasses(item.ageBand))}>{item.ageLabel}</div>
                                     </div>
                                   </div>
                                   <div className="text-sm leading-6 text-[var(--text)]">{item.description}</div>
@@ -2507,7 +2507,7 @@ export default function ApprovalsPage() {
               </CardContent>
             </Card>
 
-            {/* AUDIT: BUTTON_CLUTTER - move signal routing behind a secondary reveal so review decisions stay primary. */}
+
             <details className="group rounded-[2rem] border border-[var(--border)] bg-[rgba(18,22,34,0.92)] shadow-xl">
               <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 px-6 py-5">
                 <div>
@@ -2531,14 +2531,14 @@ export default function ApprovalsPage() {
                       <div className="flex flex-wrap items-start justify-between gap-3">
                         <div className="space-y-2">
                           <div className="flex flex-wrap items-center gap-2">
-                            <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", typeClasses(item.kind))}>{item.typeLabel}</span>
-                            <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]", severityClasses(item.severity))}>{item.severity}</span>
+                            <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label", typeClasses(item.kind))}>{item.typeLabel}</span>
+                            <span className={cn("rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label", severityClasses(item.severity))}>{item.severity}</span>
                           </div>
                           <div className="text-sm font-semibold text-[var(--text)]">{item.title}</div>
                           <div className="text-xs text-[var(--muted)]">{item.headline}</div>
                           <div className="text-xs text-[var(--muted)]">{latestActivityLabel(item)}</div>
                         </div>
-                        <div className={cn("text-xs font-semibold uppercase tracking-[0.14em]", ageClasses(item.ageBand))}>{item.ageLabel}</div>
+                        <div className={cn("text-xs font-semibold uppercase tracking-label", ageClasses(item.ageBand))}>{item.ageLabel}</div>
                       </div>
                     </button>
                   ))
@@ -2574,7 +2574,7 @@ export default function ApprovalsPage() {
         <div className="fixed inset-0 z-[55] flex items-center justify-center bg-[rgba(5,10,18,0.84)] px-4 py-4">
           <Card className="w-full max-w-2xl border-[var(--border)] bg-[rgba(17,21,33,0.98)] shadow-2xl">
             <CardHeader className="space-y-2">
-              <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Confirm bulk decision</div>
+              <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Confirm bulk decision</div>
               <CardTitle className="text-2xl">
                 {bulkConfirmDecision === "approve" ? "Approve selected tasks?" : "Reject selected tasks?"}
               </CardTitle>
@@ -2582,15 +2582,15 @@ export default function ApprovalsPage() {
             <CardContent className="space-y-4">
               <div className="grid gap-3 sm:grid-cols-3">
                 <div className="rounded-xl border border-[var(--border)] bg-[var(--card-strong)] px-3 py-3">
-                  <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">Selected</div>
+                  <div className="text-[11px] uppercase tracking-label text-[var(--muted)]">Selected</div>
                   <div className="mt-1 text-xl font-semibold">{selectedTaskItems.length}</div>
                 </div>
                 <div className="rounded-xl border border-emerald-400/30 bg-[rgba(34,197,94,0.12)] px-3 py-3">
-                  <div className="text-[11px] uppercase tracking-[0.14em] text-emerald-100">Will process</div>
+                  <div className="text-[11px] uppercase tracking-label text-emerald-100">Will process</div>
                   <div className="mt-1 text-xl font-semibold text-emerald-100">{bulkConfirmEligibleItems.length}</div>
                 </div>
                 <div className="rounded-xl border border-amber-400/30 bg-[rgba(245,158,11,0.12)] px-3 py-3">
-                  <div className="text-[11px] uppercase tracking-[0.14em] text-amber-100">Restricted</div>
+                  <div className="text-[11px] uppercase tracking-label text-amber-100">Restricted</div>
                   <div className="mt-1 text-xl font-semibold text-amber-100">{bulkConfirmRestrictedItems.length}</div>
                 </div>
               </div>
@@ -2616,7 +2616,7 @@ export default function ApprovalsPage() {
 
               {bulkConfirmRestrictedItems.length ? (
                 <div className="rounded-2xl border border-amber-400/30 bg-[rgba(245,158,11,0.1)] px-4 py-4">
-                  <div className="text-xs font-semibold uppercase tracking-[0.16em] text-amber-100">
+                  <div className="text-xs font-semibold uppercase tracking-label text-amber-100">
                     Restricted items (not processed)
                   </div>
                   <div className="mt-2 space-y-1 text-xs text-amber-100">

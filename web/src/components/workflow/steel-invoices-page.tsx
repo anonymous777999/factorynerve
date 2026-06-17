@@ -24,6 +24,7 @@ import {
   type SteelStockItem,
 } from "@/lib/steel";
 import { useSession } from "@/lib/use-session";
+import { DashboardPageSkeleton } from "@/components/shared/page-skeletons";
 
 type DraftLine = {
   item_id: string;
@@ -264,16 +265,12 @@ export function SteelInvoicesPage() {
   };
 
   if (loading || pageLoading) {
-    return (
-      <main className="flex min-h-screen items-center justify-center text-sm text-[var(--muted)]">
-        Loading steel invoicing...
-      </main>
-    );
+    return <DashboardPageSkeleton />;
   }
 
   if (!user) {
     return (
-      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4">
+      <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-4 content-fade-in">
         <Card className="w-full">
           <CardHeader>
             <CardTitle>Steel Invoicing</CardTitle>
@@ -323,13 +320,13 @@ export function SteelInvoicesPage() {
         <section className="rounded-[2rem] border border-[var(--border)] bg-[linear-gradient(135deg,rgba(20,24,36,0.96),rgba(12,18,28,0.9))] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">Steel Invoicing</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">Steel Invoicing</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">Create a steel invoice from finished goods</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 Pick the buyer, add finished-goods lines, and let the server lock the invoice total before dispatch starts.
               </p>
             </div>
-            {/* AUDIT: BUTTON_CLUTTER - move cross-route steel actions into a secondary tools tray so invoice creation stays primary. */}
+
             <details className="group w-full min-w-0 rounded-3xl border border-[var(--border)] bg-[rgba(10,16,26,0.72)] sm:w-auto sm:min-w-[220px]">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
                 Invoice tools
@@ -351,7 +348,7 @@ export function SteelInvoicesPage() {
           </div>
         </section>
 
-        {/* AUDIT: FLOW_BROKEN - add a short three-step sequence so the invoice journey points to a clear finish. */}
+
         <section className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader><CardTitle className="text-base">Recent Invoices</CardTitle></CardHeader>
@@ -376,7 +373,7 @@ export function SteelInvoicesPage() {
             <CardContent className="space-y-4">
               {finishedItems.length > 0 && (
                 <div className="rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)] p-4">
-                  <div className="text-xs uppercase tracking-[0.18em] text-[var(--muted)]">Stock availability</div>
+                  <div className="text-xs uppercase tracking-caption text-[var(--muted)]">Stock availability</div>
                   <div className="mt-3 flex flex-wrap gap-4">
                     {finishedItems.slice(0, 4).map((item) => (
                       <div key={item.id} className="text-sm">
@@ -457,7 +454,7 @@ export function SteelInvoicesPage() {
                             <div className="mt-3 rounded-2xl border border-amber-400/35 bg-amber-500/10 px-3 py-3 text-sm text-amber-100">
                               <div className="font-semibold text-white">No finished goods available for invoicing</div>
                               <div className="mt-1">Invoice lines only support inventory items categorized as finished goods.</div>
-                              <div className="mt-1 text-xs uppercase tracking-[0.16em] text-amber-200">
+                              <div className="mt-1 text-xs uppercase tracking-label text-amber-200">
                                 Workflow: Production Batch -&gt; Finished Goods -&gt; Invoice
                               </div>
                               <div className="mt-2">Record a Production Batch or create a finished goods inventory item first.</div>
@@ -541,7 +538,7 @@ export function SteelInvoicesPage() {
               <CardTitle className="text-xl">Recent invoices</CardTitle>
             </CardHeader>
             <CardContent>
-              {/* AUDIT: DENSITY_OVERLOAD - keep invoice history available but collapsed so the creation form stays dominant. */}
+
               <details className="group rounded-3xl border border-[var(--border)] bg-[rgba(12,18,28,0.72)]">
                 <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 text-sm font-semibold text-white">
                   Review recent invoices

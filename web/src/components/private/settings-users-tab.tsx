@@ -86,7 +86,7 @@ export function SettingsUsersTab({
                   >
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
-                        <div className="text-xs uppercase tracking-[0.16em] text-[var(--muted)]">
+                        <div className="text-xs uppercase tracking-label text-[var(--muted)]">
                           User #{row.user_code}
                         </div>
                         <SafeText as="div" className="mt-1 text-sm font-semibold">
@@ -96,13 +96,13 @@ export function SettingsUsersTab({
                           {row.email}
                         </SafeText>
                       </div>
-                      <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                      <span className="rounded-full border border-[var(--border)] px-3 py-1 text-[11px] font-semibold uppercase tracking-label text-[var(--muted)]">
                         {row.role}
                       </span>
                     </div>
                     <div className="mt-4 grid gap-3 sm:grid-cols-2">
                       <div className="rounded-2xl border border-[var(--border)]/70 bg-[rgba(15,23,42,0.34)] p-3">
-                        <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">
+                        <div className="text-[11px] uppercase tracking-label text-[var(--muted)]">
                           Factory Access
                         </div>
                         <div className="mt-1 text-sm font-medium">
@@ -114,13 +114,13 @@ export function SettingsUsersTab({
                       </div>
                       <div className="grid gap-3 sm:grid-cols-2">
                         <div className="rounded-2xl border border-[var(--border)]/70 bg-[rgba(15,23,42,0.34)] p-3">
-                          <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">
+                          <div className="text-[11px] uppercase tracking-label text-[var(--muted)]">
                             Plan
                           </div>
                           <div className="mt-1 text-sm font-medium">{row.plan}</div>
                         </div>
                         <div className="rounded-2xl border border-[var(--border)]/70 bg-[rgba(15,23,42,0.34)] p-3">
-                          <div className="text-[11px] uppercase tracking-[0.14em] text-[var(--muted)]">
+                          <div className="text-[11px] uppercase tracking-label text-[var(--muted)]">
                             Active
                           </div>
                           <div className="mt-1 text-sm font-medium">{row.is_active ? "Yes" : "No"}</div>

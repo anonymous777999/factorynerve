@@ -48,7 +48,7 @@ export default function TrustStrip() {
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
           {stats.map((stat) => (
             <div key={stat.label} className="rounded-2xl border border-white/5 bg-white/[0.02] p-6 text-center">
-              <div className="text-2xl font-bold tracking-[-0.02em] text-amber-300 sm:text-3xl">
+              <div className="text-2xl font-bold tracking-tight text-amber-300 sm:text-3xl">
                 <AnimatedCounter value={stat.value} suffix={stat.suffix} />
               </div>
               <div className="mt-2 text-xs text-slate-400 sm:text-sm">{stat.label}</div>

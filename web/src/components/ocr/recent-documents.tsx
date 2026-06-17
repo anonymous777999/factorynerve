@@ -29,7 +29,7 @@ export function RecentDocuments({
     <div className="rounded-[28px] border border-[#e7eaee] bg-white p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#8a93a0]">
+          <div className="text-[11px] font-semibold uppercase tracking-label text-[#8a93a0]">
             Recent
           </div>
           <div className="mt-1 text-sm text-[#66707c]">Open the latest OCR drafts.</div>
@@ -62,7 +62,7 @@ export function RecentDocuments({
               </div>
               <span
                 className={cn(
-                  "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em]",
+                  "rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-label",
                   record.status === "approved"
                     ? "border-emerald-200 bg-emerald-50 text-emerald-700"
                     : record.status === "pending"

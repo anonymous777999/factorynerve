@@ -247,7 +247,7 @@ export default function AnalyticsPage() {
       <div className="mx-auto max-w-7xl space-y-6">
         <section className="flex flex-wrap items-start justify-between gap-4 rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.88)] p-6 shadow-2xl backdrop-blur">
           <div>
-            <div className="text-sm uppercase tracking-[0.28em] text-[var(--accent)]">{t("analytics.title", "Analytics")}</div>
+            <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">{t("analytics.title", "Analytics")}</div>
             <h1 className="mt-2 text-3xl font-semibold">{t("analytics.hero.title", "Performance insights")}</h1>
             <p className="mt-2 max-w-3xl text-sm text-[var(--muted)]">{t("analytics.hero.subtitle", "Review this week, then check trend shifts.")}</p>
           </div>

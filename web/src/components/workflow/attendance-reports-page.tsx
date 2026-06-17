@@ -144,7 +144,7 @@ export default function AttendanceReportsPage() {
 
   if (loading || (pageLoading && user && canView && !hasLoadedOnce)) {
     return (
-      <main className="min-h-screen px-4 py-8 md:px-8">
+      <main className="min-h-screen px-4 py-8 md:px-8 content-fade-in">
         <div className="mx-auto max-w-7xl space-y-6">
           <Skeleton className="h-36 rounded-[2rem]" />
           <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -192,7 +192,7 @@ export default function AttendanceReportsPage() {
         <section className="rounded-[2rem] border border-[var(--border)] bg-[rgba(20,24,36,0.9)] p-6 shadow-2xl backdrop-blur">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-4xl">
-              <div className="text-sm uppercase tracking-[0.3em] text-[var(--accent)]">{t("attendance.reports.title", "Attendance Reports")}</div>
+              <div className="text-sm uppercase tracking-prominent text-[var(--accent)]">{t("attendance.reports.title", "Attendance Reports")}</div>
               <h1 className="mt-2 text-3xl font-semibold md:text-4xl">{t("attendance.reports.hero.title", "Daily attendance signal across the selected range")}</h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-[var(--muted)]">
                 {t("attendance.reports.hero.subtitle", "Review attendance and exceptions for {{factory}}.", {

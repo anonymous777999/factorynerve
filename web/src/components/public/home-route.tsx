@@ -72,7 +72,7 @@ export default function HomeRoute() {
           <CardTitle className="text-2xl">Opening {destinationLabel(destination)}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* AUDIT: TEXT_NOISE - trim the redirect message so the fallback action reads faster */}
+
           <p className="text-sm text-[var(--muted)]">Your role-based home is ready. Use the button below if the redirect pauses.</p>
           <Link href={destination}>
             <Button>Continue</Button>
