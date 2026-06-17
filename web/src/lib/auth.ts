@@ -367,7 +367,9 @@ export function resolveWorkspaceRecoveryPlan(
 
 export async function login(email: string, password: string): Promise<AuthResponse> {
   const performLogin = async () => {
-    const response = await apiFetch<AuthResponse>(
+    // /auth/v2/login uses cookie-based sessions — the response is just a
+    // success message, not user data. Fetch the full context afterward.
+    await apiFetch(
       "/auth/v2/login",
       {
         method: "POST",
@@ -375,18 +377,15 @@ export async function login(email: string, password: string): Promise<AuthRespon
       },
       { cookieAuth: true },
     );
-    primeRoleRevision(response.user.role_revision);
-    const currentUser = await getMe();
-    const mergedResponse = {
-      ...response,
-      user: mergeCurrentUserWithPermissions({
-        ...response.user,
-        ...currentUser,
-        permissions: currentUser.permissions,
-      }),
-    };
-    primeSession(mergedResponse);
-    return mergedResponse;
+
+    const context = await getAuthContext();
+    primeRoleRevision(context.user.role_revision);
+    primeSession(context);
+    return {
+      ...context,
+      access_token: "",
+      token_type: "cookie",
+    } as AuthResponse;
   };
 
   return withBackendWakeRetry(performLogin, {
