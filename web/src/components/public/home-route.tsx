@@ -6,6 +6,7 @@ import { useEffect, useMemo } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import LandingPage from "@/components/public/landing/landing-page";
 import { getHomeDestination } from "@/lib/role-navigation";
 import { useSession } from "@/lib/use-session";
 
@@ -61,30 +62,7 @@ export default function HomeRoute() {
   }
 
   if (!user) {
-    return (
-      <main className="flex min-h-screen items-center justify-center px-6 py-16">
-        <Card className="w-full max-w-3xl border border-[var(--border)] bg-[var(--card)] shadow-xl">
-          <CardHeader>
-            <div className="text-sm uppercase tracking-[0.24em] text-[var(--accent)]">DPR.ai</div>
-            <CardTitle className="text-3xl">Factory control without the noise</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {/* AUDIT: TEXT_NOISE - keep the home entry message compact so the sign-in action stays primary */}
-            <p className="max-w-2xl text-sm text-[var(--muted)]">Open your workspace.</p>
-            {error ? <div className="text-sm text-red-400">{error}</div> : null}
-            <div className="flex flex-wrap gap-3">
-              {/* AUDIT: FLOW_BROKEN - route the primary entry action to the live auth entry instead of the stale login route */}
-              <Link href="/access">
-                <Button>Open workspace</Button>
-              </Link>
-              <Link href="/register">
-                <Button variant="outline">Create account</Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </main>
-    );
+    return <LandingPage />;
   }
 
   return (
