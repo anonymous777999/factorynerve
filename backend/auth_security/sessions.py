@@ -18,26 +18,40 @@ CSRF_COOKIE = os.getenv("AUTH_CSRF_COOKIE", "auth_csrf")
 CSRF_HEADER = os.getenv("AUTH_CSRF_HEADER", "X-CSRF-Token")
 SESSION_TTL_MINUTES = int(os.getenv("AUTH_SESSION_TTL_MINUTES", "1440"))
 SESSION_SAMESITE = os.getenv("AUTH_SESSION_SAMESITE", "Lax")
-SESSION_SECURE = str(os.getenv("AUTH_SESSION_SECURE", "1")).lower() in {"1", "true", "yes", "on"}
+
+# Raw env var — None means "auto-detect from request scheme"
+_SESSION_SECURE_RAW: str | None = os.getenv("AUTH_SESSION_SECURE")
+
+
+def _should_use_secure_cookie(request: Request) -> bool:
+    """Determine whether to set cookie Secure flag.
+
+    Respect explicit env var if set; otherwise auto-detect from request
+    scheme (Secure only for HTTPS).  This mirrors the pattern in
+    backend/auth_cookies.py so cookies work over plain HTTP in local dev.
+    """
+    if _SESSION_SECURE_RAW is not None:
+        return _SESSION_SECURE_RAW.strip().lower() in {"1", "true", "yes", "on"}
+    return request.url.scheme == "https"
 
 
 def _expires_at() -> datetime:
     return datetime.now(timezone.utc) + timedelta(minutes=SESSION_TTL_MINUTES)
 
 
-def _cookie_kwargs() -> dict:
+def _cookie_kwargs(*, request: Request) -> dict:
     return {
         "httponly": True,
-        "secure": SESSION_SECURE,
+        "secure": _should_use_secure_cookie(request),
         "samesite": SESSION_SAMESITE,
         "path": "/",
     }
 
 
-def _csrf_cookie_kwargs() -> dict:
+def _csrf_cookie_kwargs(*, request: Request) -> dict:
     return {
         "httponly": False,
-        "secure": SESSION_SECURE,
+        "secure": _should_use_secure_cookie(request),
         "samesite": SESSION_SAMESITE,
         "path": "/",
     }
@@ -60,8 +74,8 @@ def create_session(db: Session, *, user: AuthUser, request: Request, response: R
     )
     db.add(session)
     db.flush()
-    response.set_cookie(SESSION_COOKIE, raw_token, **_cookie_kwargs())
-    response.set_cookie(CSRF_COOKIE, csrf_token, **_csrf_cookie_kwargs())
+    response.set_cookie(SESSION_COOKIE, raw_token, **_cookie_kwargs(request=request))
+    response.set_cookie(CSRF_COOKIE, csrf_token, **_csrf_cookie_kwargs(request=request))
     return session
 
 
@@ -95,7 +109,14 @@ def get_current_session(db: Session, request: Request) -> AuthSession:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated.")
     token_hash = hash_token(raw_token)
     session = db.query(AuthSession).filter(AuthSession.token_hash == token_hash).first()
-    if not session or session.revoked_at or session.expires_at <= datetime.now(timezone.utc):
+    if not session or session.revoked_at:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired.")
+    # SQLite discards tzinfo on write, so the read-back value is offset-naive
+    # while our _expires_at() uses offset-aware UTC.  Handle both cases.
+    expires_at = session.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at <= datetime.now(timezone.utc):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired.")
     return session
 

@@ -1,8 +1,9 @@
 from http import HTTPStatus
+from datetime import datetime, timezone, timedelta
 
 from backend.database import SessionLocal, init_db
-from backend.models.organization import Organization
 from backend.models.user import User
+from backend.services.billing_manager import apply_plan_change
 from tests.utils import create_entry_payload, register_user
 
 
@@ -16,10 +17,14 @@ def _auth_headers(token: str) -> dict[str, str]:
 def _set_org_plan(email: str, plan: str) -> None:
     with SessionLocal() as db:
         user = db.query(User).filter(User.email == email).first()
-        assert user is not None
-        org = db.query(Organization).filter(Organization.org_id == user.org_id).first()
-        assert org is not None
-        org.plan = plan
+        assert user is not None, f"User {email} not found"
+        apply_plan_change(
+            db,
+            user_id=user.id,
+            org_id=user.org_id,
+            plan=plan,
+            current_period_end_at=datetime.now(timezone.utc) + timedelta(days=30),
+        )
         db.commit()
 
 
@@ -49,19 +54,21 @@ def test_ai_suggestions_increment_smart_usage_for_operations_plan(http_client):
     assert after_payload["smart_used"] == before_payload["smart_used"] + 1
 
 
-def test_ai_anomalies_require_operations_and_executive_summary_requires_factory(http_client):
+def test_ai_anomalies_and_executive_summary_accessible_on_pilot(http_client):
     pilot_user = register_user(http_client, role="admin")
     pilot_headers = _auth_headers(pilot_user["access_token"])
 
-    blocked_anomalies = http_client.get("/ai/anomalies", headers=free_headers)
-    assert blocked_anomalies.status_code == HTTPStatus.PAYMENT_REQUIRED
+    # Pilot users can now access anomalies (min plan = "pilot")
+    pilot_anomalies = http_client.get("/ai/anomalies", headers=pilot_headers)
+    assert pilot_anomalies.status_code == HTTPStatus.OK, pilot_anomalies.text
 
-    blocked_exec = http_client.get("/ai/executive-summary", headers=free_headers)
-    assert blocked_exec.status_code == HTTPStatus.PAYMENT_REQUIRED
+    # Pilot users can now access executive summaries (min plan = "pilot")
+    pilot_exec = http_client.get("/ai/executive-summary", headers=pilot_headers)
+    assert pilot_exec.status_code == HTTPStatus.OK, pilot_exec.text
 
-    growth_user = register_user(http_client, role="admin")
-    _set_org_plan(growth_user["email"], "operations")
-    growth_headers = _auth_headers(growth_user["access_token"])
+    operations_user = register_user(http_client, role="admin")
+    _set_org_plan(operations_user["email"], "operations")
+    ops_headers = _auth_headers(operations_user["access_token"])
 
     first_payload = create_entry_payload(index=3)
     first_payload["units_target"] = 100
@@ -73,22 +80,24 @@ def test_ai_anomalies_require_operations_and_executive_summary_requires_factory(
     second_payload["units_produced"] = 98
     second_payload["downtime_minutes"] = 8
 
-    created_one = http_client.post("/entries", json=first_payload, headers=growth_headers)
+    created_one = http_client.post("/entries", json=first_payload, headers=ops_headers)
     assert created_one.status_code == HTTPStatus.CREATED, created_one.text
-    created_two = http_client.post("/entries", json=second_payload, headers=growth_headers)
+    created_two = http_client.post("/entries", json=second_payload, headers=ops_headers)
     assert created_two.status_code == HTTPStatus.CREATED, created_two.text
 
-    anomalies = http_client.get("/ai/anomalies?days=30", headers=growth_headers)
+    anomalies = http_client.get("/ai/anomalies?days=30", headers=ops_headers)
     assert anomalies.status_code == HTTPStatus.OK, anomalies.text
     anomaly_payload = anomalies.json()
     assert anomaly_payload["summary"]
     assert anomaly_payload["quota_feature"] == "summary"
 
-    blocked_growth_exec = http_client.get("/ai/executive-summary", headers=growth_headers)
-    assert blocked_growth_exec.status_code == HTTPStatus.PAYMENT_REQUIRED
+    # Executive summary is now accessible on Operations plan (min plan = "pilot")
+    ops_exec = http_client.get("/ai/executive-summary", headers=ops_headers)
+    assert ops_exec.status_code == HTTPStatus.OK, ops_exec.text
 
-    _set_org_plan(growth_user["email"], "factory")
-    executive = http_client.get("/ai/executive-summary", headers=growth_headers)
+    # Also verify it works on Factory plan
+    _set_org_plan(operations_user["email"], "factory")
+    executive = http_client.get("/ai/executive-summary", headers=ops_headers)
     assert executive.status_code == HTTPStatus.OK, executive.text
     executive_payload = executive.json()
     assert executive_payload["summary"]
