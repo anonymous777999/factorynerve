@@ -294,7 +294,7 @@ def _anomaly_min_plan() -> str:
 
 
 def _nlq_min_plan() -> str:
-    return _min_plan("AI_NLQ_MIN_PLAN", "operations")
+    return _min_plan("AI_NLQ_MIN_PLAN", "pilot")
 
 
 def _executive_min_plan() -> str:
@@ -2559,7 +2559,7 @@ def query_with_natural_language(
     )
     min_plan = _nlq_min_plan()
     plan = _require_min_plan(db, current_user, min_plan=min_plan, feature_name="Natural language queries")
-    _consume_quota(db, current_user, quota_feature="summary", plan=plan)
+    _consume_quota(db, current_user, quota_feature="nlq", plan=plan)
 
     question = payload.question.strip()
 

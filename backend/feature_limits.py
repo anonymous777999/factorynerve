@@ -13,7 +13,7 @@ from backend.models.org_feature_usage import OrgFeatureUsage
 from backend.plans import get_plan, min_plan_for_feature, normalize_plan, plan_limit_is_unlimited
 
 
-FEATURES = ("summary", "email", "smart")
+FEATURES = ("summary", "email", "smart", "nlq")
 
 
 def _period_key(now: datetime | None = None) -> str:
@@ -29,6 +29,7 @@ def _plan_limits(plan: str) -> dict[str, int]:
         "summary": int(limits.get("summary", 0)),
         "email": int(limits.get("email", 0)),
         "smart": int(limits.get("smart", 0)),
+        "nlq": int(limits.get("nlq", 0)),
     }
 
 
@@ -53,6 +54,7 @@ def _feature_label(feature_key: str) -> str:
         "summary": "AI summaries",
         "email": "AI emails",
         "smart": "Smart inputs",
+        "nlq": "Natural language queries",
     }
     return labels.get(feature_key, feature_key.title())
 
@@ -275,9 +277,11 @@ def get_feature_usage_summary(db: Session, *, user_id: int, plan: str) -> dict:
         "summary_used": used_map.get("summary", 0),
         "email_used": used_map.get("email", 0),
         "smart_used": used_map.get("smart", 0),
+        "nlq_used": used_map.get("nlq", 0),
         "summary_limit": _display_limit(plan, "summary"),
         "email_limit": _display_limit(plan, "email"),
         "smart_limit": _display_limit(plan, "smart"),
+        "nlq_limit": _display_limit(plan, "nlq"),
     }
 
 

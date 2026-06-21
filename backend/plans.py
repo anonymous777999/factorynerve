@@ -74,7 +74,7 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
         "badge": "FREE PILOT",
         "user_limit": 7,
         "factory_limit": 1,
-        "limits": {"ocr": 150, "summary": 50, "email": 50, "smart": 100},
+        "limits": {"ocr": 150, "summary": 50, "email": 50, "smart": 100, "nlq": 10},
         "unlimited_limits": [],
         "features": {
             "accountant": False,
@@ -87,7 +87,7 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
             "templates": False,
             "api": False,
             "onPremise": False,
-            "nlq": False,
+            "nlq": True,
         },
     },
     "operator": {
