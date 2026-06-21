@@ -964,6 +964,20 @@ def _ensure_steel_columns() -> None:
                 "CREATE INDEX IF NOT EXISTS ix_steel_dispatches_status ON steel_dispatches (status)"
             )
 
+            # Inventory item columns (Phase 2: reorder, safety stock, coil weight, lead time)
+            inv_columns = {column["name"] for column in inspector.get_columns("steel_inventory_items")}
+            if "reorder_point_kg" not in inv_columns:
+                conn.exec_driver_sql("ALTER TABLE steel_inventory_items ADD COLUMN reorder_point_kg FLOAT")
+            if "safety_stock_kg" not in inv_columns:
+                conn.exec_driver_sql("ALTER TABLE steel_inventory_items ADD COLUMN safety_stock_kg FLOAT")
+            if "coil_weight_kg" not in inv_columns:
+                conn.exec_driver_sql("ALTER TABLE steel_inventory_items ADD COLUMN coil_weight_kg FLOAT DEFAULT 0.0")
+            if "lead_time_days" not in inv_columns:
+                conn.exec_driver_sql("ALTER TABLE steel_inventory_items ADD COLUMN lead_time_days INTEGER")
+            conn.exec_driver_sql(
+                "UPDATE steel_inventory_items SET coil_weight_kg = 0.0 WHERE coil_weight_kg IS NULL"
+            )
+
             reconciliation_columns = {
                 column["name"] for column in inspector.get_columns("steel_stock_reconciliations")
             }
