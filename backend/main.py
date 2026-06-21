@@ -59,12 +59,37 @@ from backend.middleware.response_envelope import apply_response_envelope
 from backend.middleware.csrf_cookie import apply_cookie_csrf
 from backend.auth_cookies import get_access_cookie
 from backend.security import decode_access_token
+import threading
+
 from backend.services.ops_alerts import (
     initialize_ops_alerting,
     record_request_exception as record_ops_request_exception,
     record_request_outcome as record_ops_request_outcome,
     shutdown_ops_alerting,
 )
+
+
+# In-memory cache for User.role_revision to avoid a DB query on every request.
+# role_revision changes infrequently, so a 5-minute TTL is safe.
+_ROLE_REVISION_CACHE: dict[int, tuple[float, int]] = {}
+_ROLE_REVISION_CACHE_TTL: float = 300.0  # 5 minutes
+_ROLE_REVISION_LOCK = threading.Lock()
+
+
+def _get_cached_role_revision(user_id: int) -> int | None:
+    with _ROLE_REVISION_LOCK:
+        entry = _ROLE_REVISION_CACHE.get(user_id)
+        if entry is not None:
+            cached_at, revision = entry
+            if time.monotonic() - cached_at < _ROLE_REVISION_CACHE_TTL:
+                return revision
+            del _ROLE_REVISION_CACHE[user_id]
+    return None
+
+
+def _set_cached_role_revision(user_id: int, revision: int) -> None:
+    with _ROLE_REVISION_LOCK:
+        _ROLE_REVISION_CACHE[user_id] = (time.monotonic(), revision)
 from backend.services.whatsapp_sender import initialize_whatsapp_sender, shutdown_whatsapp_sender
 from backend.services.attendance_absence_service import (
     initialize_attendance_absence_scheduler,
@@ -191,29 +216,39 @@ apply_cookie_csrf(app)
 
 @app.middleware("http")
 async def attach_role_revision_header(request: Request, call_next: Callable) -> Response:
-    response = await call_next(request)
+    # Resolve role_revision from cache or DB before processing the request.
+    # Move this lookup before call_next so the header value is ready when
+    # the response is constructed, and to release the DB connection promptly.
+    role_revision: int | None = None
     token: str | None = None
     authorization = request.headers.get("Authorization") or ""
     if authorization.startswith("Bearer "):
         token = authorization.replace("Bearer ", "", 1).strip()
     if not token:
         token = get_access_cookie(request)
-    if not token:
-        return response
+    if token:
+        try:
+            payload = decode_access_token(token)
+            user_id = int(payload.get("sub", 0))
+            if user_id > 0:
+                role_revision = _get_cached_role_revision(user_id)
+                if role_revision is None:
+                    with SessionLocal() as db:
+                        current_user = (
+                            db.query(User)
+                            .filter(User.id == user_id, User.is_active.is_(True))
+                            .first()
+                        )
+                        if current_user and current_user.role_revision is not None:
+                            role_revision = current_user.role_revision
+                            _set_cached_role_revision(user_id, role_revision)
+        except Exception:
+            pass
 
-    try:
-        payload = decode_access_token(token)
-        user_id = int(payload.get("sub", 0))
-    except Exception:
-        return response
+    response = await call_next(request)
 
-    if user_id <= 0:
-        return response
-
-    with SessionLocal() as db:
-        current_user = db.query(User).filter(User.id == user_id, User.is_active.is_(True)).first()
-        if current_user:
-            response.headers["X-Role-Revision"] = str(current_user.role_revision)
+    if role_revision is not None:
+        response.headers["X-Role-Revision"] = str(role_revision)
     return response
 
 
