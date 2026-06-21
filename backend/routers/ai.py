@@ -1915,7 +1915,7 @@ def _generate_anomaly_response(
         days=days,
         plan=plan,
         min_plan=min_plan,
-        quota_feature="summary",
+        quota_feature="nlq",
         provider=provider,
         ai_used=ai_used,
         degraded=is_degraded,
