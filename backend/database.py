@@ -329,7 +329,7 @@ def init_db() -> None:
         _ensure_user_code_columns()
         _ensure_users_columns()
         _ensure_auth_email_columns()
-        _ensure_entry_idempotency_columns()
+        _ensure_entry_columns()
         _ensure_entry_performance_indexes()
         _ensure_subscription_addon_columns()
         _ensure_ocr_verification_columns()
@@ -699,8 +699,8 @@ def _ensure_factory_template_columns() -> None:
         logger.exception("Failed to ensure factories.workflow_template_key column.")
 
 
-def _ensure_entry_idempotency_columns() -> None:
-    """Ensure entry idempotency metadata exists for offline sync retries."""
+def _ensure_entry_columns() -> None:
+    """Ensure entry idempotency metadata and quality intelligence columns."""
     try:
         inspector = inspect(engine)
         columns = {column["name"] for column in inspector.get_columns("entries")}
@@ -710,9 +710,30 @@ def _ensure_entry_idempotency_columns() -> None:
             conn.exec_driver_sql(
                 "CREATE INDEX IF NOT EXISTS ix_entries_client_request_id ON entries (client_request_id)"
             )
+            # Quality intelligence columns (Phase 1+2)
+            if "rejection_qty" not in columns:
+                conn.exec_driver_sql("ALTER TABLE entries ADD COLUMN rejection_qty INTEGER")
+            if "defect_reason_id" not in columns:
+                conn.exec_driver_sql("ALTER TABLE entries ADD COLUMN defect_reason_id INTEGER")
+            if "defect_reason_details" not in columns:
+                conn.exec_driver_sql("ALTER TABLE entries ADD COLUMN defect_reason_details VARCHAR(300)")
+            if "rework_required" not in columns:
+                dialect = conn.dialect.name
+                if dialect == "postgresql":
+                    conn.exec_driver_sql("ALTER TABLE entries ADD COLUMN rework_required BOOLEAN NOT NULL DEFAULT FALSE")
+                else:
+                    conn.exec_driver_sql("ALTER TABLE entries ADD COLUMN rework_required BOOLEAN NOT NULL DEFAULT 0")
+            if "scrap_qty_entry" not in columns:
+                conn.exec_driver_sql("ALTER TABLE entries ADD COLUMN scrap_qty_entry INTEGER")
+            try:
+                conn.exec_driver_sql(
+                    "CREATE INDEX IF NOT EXISTS ix_entries_defect_reason_id ON entries (defect_reason_id)"
+                )
+            except Exception:
+                pass
             conn.commit()
     except Exception:
-        logger.exception("Failed to ensure entries.client_request_id column.")
+        logger.exception("Failed to ensure entries idempotency and quality columns.")
 
 
 def _ensure_entry_performance_indexes() -> None:

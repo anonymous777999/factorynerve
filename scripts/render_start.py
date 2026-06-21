@@ -154,15 +154,23 @@ def main() -> None:
                 f"Exit status: {error.returncode}"
             )
             _run_init_db(env)
-            print("[render-start] init_db compatibility bootstrap completed after Alembic failure.")
+            print("[render-start] init_db completed; retrying alembic upgrade head.")
             try:
-                _run_alembic(env, ["stamp", "head"])
-                print("[render-start] Alembic history stamped to head after compatibility bootstrap.")
-            except subprocess.CalledProcessError as stamp_error:
+                _run_alembic(env, ["upgrade", "head"])
+                print("[render-start] Alembic migrations applied successfully on retry after init_db.")
+            except subprocess.CalledProcessError as retry_error:
                 print(
-                    "[render-start] Alembic stamp after compatibility bootstrap failed. "
-                    f"Exit status: {stamp_error.returncode}"
+                    "[render-start] Alembic upgrade retry also failed; falling back to stamp head. "
+                    f"Exit status: {retry_error.returncode}"
                 )
+                try:
+                    _run_alembic(env, ["stamp", "head"])
+                    print("[render-start] Alembic history stamped to head after compatibility bootstrap.")
+                except subprocess.CalledProcessError as stamp_error:
+                    print(
+                        "[render-start] Alembic stamp after compatibility bootstrap failed. "
+                        f"Exit status: {stamp_error.returncode}"
+                    )
 
     os.execvpe(
         sys.executable,
