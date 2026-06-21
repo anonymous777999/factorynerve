@@ -78,9 +78,9 @@ _REQUIRED_MESSAGING_COLUMNS: dict[str, set[str]] = {
 pool_kwargs: dict[str, Any] = {}
 if not _IS_SQLITE:
     pool_kwargs = {
-        "pool_size": int(os.getenv("DB_POOL_SIZE", "10")),
-        "max_overflow": int(os.getenv("DB_POOL_OVERFLOW", "20")),
-        "pool_timeout": int(os.getenv("DB_POOL_TIMEOUT", "30")),
+        "pool_size": int(os.getenv("DB_POOL_SIZE", "3")),
+        "max_overflow": int(os.getenv("DB_POOL_OVERFLOW", "3")),
+        "pool_timeout": int(os.getenv("DB_POOL_TIMEOUT", "10")),
         "pool_recycle": int(os.getenv("DB_POOL_RECYCLE", "1800")),
     }
 

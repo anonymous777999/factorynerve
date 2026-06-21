@@ -71,11 +71,11 @@ services:
       - key: DATA_ENCRYPTION_KEY
         sync: false
       - key: DB_POOL_SIZE
-        value: "10"
+        value: "3"
       - key: DB_POOL_OVERFLOW
-        value: "20"
+        value: "3"
       - key: DB_POOL_TIMEOUT
-        value: "30"
+        value: "10"
       - key: DB_POOL_RECYCLE
         value: "1800"
       - key: RATE_LIMIT_WINDOW_SECONDS
